@@ -73,6 +73,74 @@ xcodegen
 open NotchBuddy.xcodeproj   # then ⌘R
 ```
 
+## Linux
+
+Coucou also has a **Linux** companion (floating top-center island — most PCs have no notch). Stack: Tauri 2 + TypeScript/Canvas under `apps/linux/`. The macOS app is untouched.
+
+Full detail: **[docs/linux.md](docs/linux.md)** · Codex: **[docs/codex-linux.md](docs/codex-linux.md)** · quickstart: **[apps/linux/README.md](apps/linux/README.md)**.
+
+### What you need
+
+| Need | Why |
+|---|---|
+| **Rust** (`rustup`) + **Node 20+** | build / run Tauri |
+| **System deps** (GTK, WebKit, pkg-config, …) | real desktop window — without these, `tauri:dev` fails |
+| **Python 3** + **uv** (optional) | Claude hooks + Codex ChatGPT sign-in bridge |
+| **xdotool** / **playerctl** / **grim** (optional) | desktop control (Shift+M): keys, media, screenshots |
+
+One-shot on Ubuntu/Debian:
+
+```bash
+./scripts/install-linux-deps.sh
+# also installs Rust PATH helper usage; if cargo is missing:
+# curl https://sh.rustup.rs -sSf | sh && source ~/.cargo/env
+```
+
+### Run correctly (important)
+
+Use the **desktop app** (`tauri:dev`), not browser-only Vite, if you want Codex sign-in, secrets, hooks socket, or Shift+M desktop control.
+
+```bash
+# 1) once: system packages
+./scripts/install-linux-deps.sh
+
+# 2) app deps
+cd apps/linux
+npm install
+
+# 3) optional — Codex “Sign in with ChatGPT”
+npm run codex:setup          # needs `uv`
+
+# 4) run the real window (cargo must be on PATH)
+npm run tauri:dev
+```
+
+From the repo root you can also use `./scripts/dev-linux.sh` for a **browser preview only** (UI polish / no native APIs). That mode cannot sign in to Codex.
+
+### Connect Claude Code / Codex
+
+1. Open the island → **gear (Settings)**.
+2. **Claude Code** → **Install hooks** (backs up `~/.claude/settings.json`, shows a merge preview, writes only after you confirm in the UI flow).
+3. **Cloud AI** → **Sign in with ChatGPT** (Codex) — only works inside `tauri:dev` / a built AppImage·deb.
+4. Optional: save an **Anthropic API key** for chat / screen analysis.
+
+Hotkey: **Shift+M** — ask Coucou to open YouTube, change the song, analyze the screen, type text, press Enter, etc.
+
+### Package / install
+
+```bash
+./scripts/install-linux-deps.sh   # once
+./scripts/build-linux.sh          # → dist/linux/*.deb and *.AppImage
+```
+
+```bash
+sudo dpkg -i dist/linux/*.deb
+# or
+chmod +x dist/linux/*.AppImage && ./dist/linux/*.AppImage
+```
+
+Secrets use Secret Service (GNOME Keyring / KWallet) when available; otherwise a `0600` file fallback. Hook protocol matches macOS (`nb-hook` → Unix socket under `~/.local/share/coucou/`).
+
 ## Setup
 
 Click the Coucou icon in the menu bar → **Settings…**

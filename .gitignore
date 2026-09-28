@@ -18,3 +18,12 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+
+# Linux / Tauri
+apps/linux/dist/
+apps/linux/src-tauri/target/
+apps/linux/node_modules/
+apps/linux/.venv-codex/
+dist/linux/
+*.AppImage
+*.deb

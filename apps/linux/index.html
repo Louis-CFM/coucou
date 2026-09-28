@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coucou</title>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="island" data-mode="hidden" data-view="overview">
+        <div class="clip">
+          <header class="hdr">
+            <div class="tabs">
+              <button class="tab on" data-go="overview" type="button" aria-label="Overview">
+                <!-- Iconsax-style: Home -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9.02 2.84l-5.39 4.2C2.73 7.74 2 9.23 2 10.36v7.41c0 2.32 1.89 4.22 4.21 4.22h11.58c2.32 0 4.21-1.9 4.21-4.21V10.5c0-1.21-.81-2.76-1.8-3.45l-6.18-4.33c-1.4-.98-3.65-.93-5 .12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 17.99v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button class="tab" data-go="prompt" type="button" aria-label="Ask">
+                <!-- Iconsax-style: Message -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8.5 19H8c-4 0-6-1-6-6V8c0-4 2-6 6-6h8c4 0 6 2 6 6v5c0 4-2 6-6 6h-.5c-.31 0-.61.15-.8.4l-1.5 2c-.66.88-1.74.88-2.4 0l-1.5-2c-.16-.22-.52-.4-.8-.4z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M7 8h10M7 12.5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <button class="tab" data-go="upload" type="button" aria-label="Drop files">
+                <!-- Iconsax-style: Add -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="r">
+              <span id="hdrCount"></span>
+              <button class="tab settings-btn" data-go="settings" type="button" aria-label="Settings" title="Settings">
+                <!-- Iconsax-style: Setting 2 -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M2 12.88v-1.76c0-1.04.85-1.9 1.9-1.9 1.81 0 2.55-1.28 1.64-2.86-.52-.9-.21-2.07.7-2.59l1.73-.99c.79-.47 1.81-.18 2.28.61l.11.19c.9 1.58 2.39 1.58 3.29 0l.11-.19c.47-.79 1.49-1.08 2.28-.61l1.73.99c.91.52 1.22 1.69.7 2.59-.91 1.57-.17 2.86 1.64 2.86 1.04 0 1.9.85 1.9 1.9v1.76c0 1.04-.85 1.9-1.9 1.9-1.81 0-2.55 1.28-1.64 2.86.52.91.21 2.07-.7 2.59l-1.73.99c-.79.47-1.81.18-2.28-.61l-.11-.19c-.9-1.58-2.39-1.58-3.29 0l-.11.19c-.47.79-1.49 1.08-2.28.61l-1.73-.99c-.91-.52-1.22-1.69-.7-2.59.91-1.57.17-2.86-1.64-2.86-1.05 0-1.9-.86-1.9-1.9z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button class="snd" id="hdrSnd" type="button" aria-label="Sound">
+                <!-- Iconsax-style: Volume High -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M2 10.16v3.68c0 1.68.84 2.24 1.87 1.24l1.95-1.89c.28-.27.7-.43 1.13-.43h1.26c1.68 0 2.24-.56 2.24-2.24V9.24c0-1.68-.56-2.24-2.24-2.24H6.95c-.43 0-.85-.16-1.13-.43L3.87 4.68C2.84 3.68 2 4.23 2 5.92" stroke="currentColor" stroke-width="1.5"/>
+                  <path class="w" d="M18.04 6.36a8.54 8.54 0 010 11.28M15.54 8.48a5.43 5.43 0 010 7.04" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="view" data-view="overview">
+            <div class="card left">
+              <div class="agentline">
+                <div class="who"><i class="dot" data-f="dot"></i><b data-f="name"></b><span data-f="tool"></span></div>
+              </div>
+              <div class="ticker"><div class="tk-in" id="tk">
+                <div class="ln"><span></span></div>
+                <div class="ln cur"><span class="txt"></span></div>
+                <div class="ln"><span></span></div>
+              </div></div>
+            </div>
+            <div class="card right"></div>
+          </div>
+
+          <div class="view" data-view="empty">
+            <div class="card wide wash soft">
+              <div class="copy empty-copy">
+                <div><div class="big">Nothing running right now.</div><div class="sub">Drop a file or ask a question.</div></div>
+                <button class="btn primary" data-act="ask" type="button">Ask anything</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="approval">
+            <div class="card full wash amber">
+              <div class="copy">
+                <div class="who"><i class="dot" data-f="dot"></i><b data-f="name"></b><span>Claude Code wants to run a command</span></div>
+                <code data-f="command"></code>
+                <div class="row">
+                  <button class="btn" data-act="deny" type="button">Deny</button>
+                  <button class="btn" data-act="always" type="button">Always allow</button>
+                  <button class="btn primary" data-act="allow" type="button">Allow</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="question">
+            <div class="card full wash cyan">
+              <div class="copy">
+                <div class="who"><i class="dot" data-f="dot"></i><b data-f="name"></b><span>Claude Code is asking a question</span></div>
+                <div class="big" data-f="question"></div>
+                <div class="row"><button class="btn" data-act="ok" type="button">OK</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="error">
+            <div class="card full wash red">
+              <div class="copy">
+                <div class="who"><i class="dot" data-f="dot"></i><b data-f="name"></b><span data-f="tool"></span></div>
+                <div class="big">Something went wrong.</div>
+                <div class="sub red" data-f="errmsg"></div>
+                <div class="row"><button class="btn primary" data-act="ok" type="button">OK</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="finished">
+            <div class="card full wash green">
+              <div class="copy">
+                <div class="who"><i class="dot" data-f="dot"></i><b data-f="name"></b><span>Claude Code finished</span></div>
+                <div class="big" data-f="finishmsg"></div>
+                <div class="row"><button class="btn primary" data-act="ok" type="button">OK</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="confused">
+            <div class="card full wash pink">
+              <div class="copy confused-copy">
+                <div class="big">Too many taps at once.</div>
+                <div class="sub">I'll shake it off and get back to work in three seconds.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="upload">
+            <div class="drop" id="drop">
+              <div class="copy drop-copy">
+                <div class="big">Drop your files here</div>
+                <div class="chips"><span class="chip">PDF</span><span class="chip">Images</span><span class="chip">Code</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="uploading">
+            <div class="card full wash green">
+              <div class="upl"><span>Uploading <b data-f="file"></b></span><span id="upPct">0 %</span></div>
+              <div class="bar"><i id="upBar"></i></div>
+            </div>
+          </div>
+
+          <div class="view" data-view="choose">
+            <div class="card full wash soft">
+              <div class="copy choose-copy">
+                <div class="big"><span data-f="file"></span> is ready.</div>
+                <div class="sub">What do you want to do with it?</div>
+                <div class="row">
+                  <button class="btn primary" data-act="file-ask" type="button">Ask a question</button>
+                  <button class="btn" data-act="close" type="button">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="prompt">
+            <div class="card full wash indigo soft-indigo">
+              <div class="copy prompt-copy">
+                <div class="row" id="ctxChips"></div>
+                <div class="chat" id="chatLog"></div>
+                <div class="prompt">
+                  <input id="promptIn" placeholder="" autocomplete="off" aria-label="Ask anything" />
+                  <button class="ibtn send" data-act="send-prompt" type="button" aria-label="Send">
+                    <svg viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="settings">
+            <div class="card full wash soft">
+              <div class="copy settings-copy">
+                <div class="big">Settings</div>
+                <div class="section-label">Cloud AI</div>
+                <div class="provider-block" id="codexBlock">
+                  <div class="who"><b>OpenAI Codex</b><span>Connect your ChatGPT cloud account</span></div>
+                  <p class="fine" id="codexStatus">Status: …</p>
+                  <p class="fine" id="codexAccount" hidden></p>
+                  <p class="fine" id="codexDevice" hidden></p>
+                  <p class="fine tip" id="codexTip">
+                    Tip: run <code>./scripts/install-linux-deps.sh</code> then
+                    <code>npm run tauri:dev</code> to sign in with ChatGPT.
+                  </p>
+                  <div class="row" id="codexActionsDisconnected">
+                    <button class="btn primary" data-act="codex-login" type="button">Sign in with ChatGPT</button>
+                    <button class="btn" data-act="codex-device" type="button">Use Device Code</button>
+                  </div>
+                  <div class="row" id="codexActionsWaiting" hidden>
+                    <span class="sub">Waiting for ChatGPT sign in…</span>
+                    <button class="btn" data-act="codex-cancel" type="button">Cancel</button>
+                  </div>
+                  <div class="row" id="codexActionsConnected" hidden>
+                    <button class="btn" data-act="codex-logout" type="button">Disconnect</button>
+                  </div>
+                  <p class="sub red" id="codexError" hidden></p>
+                </div>
+
+                <div class="section-label">Desktop control</div>
+                <p class="fine">
+                  Press <kbd>Shift</kbd>+<kbd>M</kbd> anytime — ask Coucou to open YouTube,
+                  change the song, analyze the screen, type, or press Enter.
+                </p>
+
+                <div class="section-label">Preferences</div>
+                <label class="setrow"><input type="checkbox" id="setSound" /> Sound on</label>
+                <label class="setrow">Volume <input type="range" id="setVolume" min="0" max="1" step="0.01" /></label>
+
+                <div class="section-label">Claude Code</div>
+                <div class="row hooks-row">
+                  <button class="btn" data-act="hooks-preview" type="button">Preview hooks</button>
+                  <button class="btn primary" data-act="hooks-install" type="button">Install hooks</button>
+                  <button class="btn" data-act="hooks-uninstall" type="button">Uninstall</button>
+                </div>
+                <p class="fine" id="hooksStatus"></p>
+                <div class="field"><span>API</span><input id="apiKey" type="password" placeholder="Anthropic API key" autocomplete="off" /></div>
+                <button class="btn" data-act="save-api" type="button">Save key</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="greeting">
+            <div class="card wide wash soft">
+              <div class="copy greeting-copy">
+                <div class="big">Coucou!</div>
+                <div class="sub">I'm here for your ^^.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cd" id="cd"></div>
+        </div>
+        <div class="botwrap" id="botwrap">
+          <div class="glow"></div>
+          <canvas id="botc"></canvas>
+        </div>
+        <div id="agents"></div>
+      </div>
+    </div>
+  </body>
+</html>

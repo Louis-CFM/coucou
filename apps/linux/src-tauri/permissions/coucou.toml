@@ -1,0 +1,32 @@
+[[permission]]
+identifier = "coucou-platform"
+description = "Coucou Linux platform invoke handlers"
+commands.allow = [
+  "preview_claude_hooks",
+  "write_claude_hooks",
+  "uninstall_claude_hooks",
+  "hooks_installed",
+  "permission_decision",
+  "secrets_get",
+  "secrets_set",
+  "secrets_delete",
+  "secrets_status",
+  "get_display_info",
+  "get_session_info",
+  "position_island",
+  "set_click_through",
+  "get_active_window",
+  "codex_status",
+  "codex_login_chatgpt",
+  "codex_login_device_code",
+  "codex_login_cancel",
+  "codex_logout",
+  "codex_get_auth_state",
+  "codex_run_prompt",
+  "desktop_open",
+  "desktop_type_text",
+  "desktop_key",
+  "desktop_media",
+  "desktop_screenshot",
+  "desktop_session_hint",
+]
