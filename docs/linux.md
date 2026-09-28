@@ -45,17 +45,20 @@ Uses `xdg-open`, `xdotool`/`wtype`, `playerctl`, and `grim`/`import` for screens
 
 ## Development
 
-```bash
-# UI + Claude hook socket (browser, no GTK headers required)
-./scripts/dev-linux.sh
+**Preferred — real desktop app** (hooks, Codex, secrets, Shift+M):
 
-# Or manually:
-cd apps/linux
-npm install
-npm run typecheck
-npm run dev          # Vite on http://127.0.0.1:1420
-# In another terminal (optional hooks):
-node ../../scripts/linux-hook-dev-server.mjs
+```bash
+./scripts/install-linux-deps.sh   # once
+cd apps/linux && npm install
+npm run codex:setup               # optional ChatGPT sign-in
+npm run tauri:dev
+```
+
+**Browser UI preview only** (no Codex / no native socket):
+
+```bash
+./scripts/dev-linux.sh
+# or: cd apps/linux && npm run dev   → http://127.0.0.1:1420
 ```
 
 Useful logs (dev only, not spammy):
@@ -63,13 +66,6 @@ Useful logs (dev only, not spammy):
 - Browser console: category loggers in `src/core/logger.ts`
 - Simulate a session:  
   `window.__coucou.simulateHook({ hook_event_name: "SessionStart", session_id: "dev", cwd: "/tmp/demo", term_program: "cursor" })`
-
-### Tauri window (needs system deps)
-
-```bash
-cd apps/linux
-npm run tauri:dev
-```
 
 ## Build / packaging
 
