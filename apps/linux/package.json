@@ -1,0 +1,29 @@
+{
+  "name": "coucou-linux",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "env PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
+    "tauri:build": "env PATH=\"$HOME/.cargo/bin:$PATH\" tauri build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/services/ai/event-adapter.test.ts",
+    "codex:setup": "uv venv .venv-codex && uv pip install --python .venv-codex/bin/python -r codex-bridge/requirements-codex.txt",
+    "dev:hooks": "node ../../scripts/linux-hook-dev-server.mjs"
+  },
+  "dependencies": {
+    "@openai/codex": "^0.158.0",
+    "@openai/codex-sdk": "^0.158.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
