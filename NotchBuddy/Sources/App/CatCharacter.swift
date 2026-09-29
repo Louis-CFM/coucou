@@ -30,7 +30,7 @@ private enum CatPalette {
 
 extension BotEngine {
 
-    var isCatActive: Bool { character == .cat && !isMini && bodyColor == nil }
+    var isCatActive: Bool { character == .cat && !isMini }
 
     /// Ears and tail — drawn before the body so the body covers their roots.
     func drawCatBehind(ctx: GraphicsContext, R: CGFloat) {
@@ -88,6 +88,12 @@ extension BotEngine {
             Gradient(colors: [CatPalette.furTop, CatPalette.furBottom]),
             startPoint: CGPoint(x: rx * 0.5, y: -ry * 0.9),
             endPoint: CGPoint(x: -rx * 0.4, y: ry * 0.95)))
+
+        // A focused integration's brand colour (not the default off-white) lightly tints the fur
+        if let bc = bodyColor, let comps = bc.components, comps.count >= 3,
+           min(comps[0], comps[1], comps[2]) < 0.85 {
+            c.fill(path, with: .color(Color(cgColor: bc).opacity(0.35 * Double(1 - morph))))
+        }
 
         let effectiveTint = tint * (1 - morph) * 0.4
         if effectiveTint > 0.01 {
