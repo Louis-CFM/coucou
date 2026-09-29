@@ -170,6 +170,7 @@ let BotStates: [BotState: BotStateCfg] = [
 @MainActor
 final class BotEngine: ObservableObject {
     var isMini: Bool = false
+    var character: BotCharacter = .mochi
     var bodyColor: CGColor? = nil    // override for mini bots
 
     // Animation state (mirrors prototype 's' object)
@@ -798,12 +799,19 @@ final class BotEngine: ObservableObject {
         ctx.translateBy(x: cx, y: cy)
         if tilt != 0 { ctx.rotate(by: .radians(tilt)) }
         ctx.scaleBy(x: sx, y: sy)
+        let plainCtx = ctx   // unclipped copy for cat extras that extend past the body
+        let cat = isCatActive
 
         // Body path (superellipse for Mochi, morph to rect for upload)
         let bodyPath = mochiPath(rx: rx, ry: ry, morph: morph, R: R)
 
         // Body fill
-        drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
+        if cat {
+            drawCatBehind(ctx: plainCtx, R: R)
+            drawCatBody(ctx: plainCtx, path: bodyPath, R: R, rx: rx, ry: ry)
+        } else {
+            drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
+        }
 
         // Blush — always shows a floor proportional to tint (prototype behaviour)
         let blushVal = max(blush, tint * 0.5) * (1 - morph)
@@ -811,8 +819,12 @@ final class BotEngine: ObservableObject {
             drawBlush(ctx: &ctx, path: bodyPath, rx: rx, ry: ry, R: R, blush: blushVal)
         }
 
+        if cat { drawCatMuzzle(ctx: plainCtx, path: bodyPath, R: R, rx: rx, ry: ry) }
+
         // Eyes
         drawEyes(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
+
+        if cat { drawCatWhiskers(ctx: plainCtx, R: R, rx: rx, ry: ry) }
 
         // Mouth hole — dark pill cutout inside the box face
         // Spec: left/right margins 0.10R, top margin 0.08R from box top (-0.94R)

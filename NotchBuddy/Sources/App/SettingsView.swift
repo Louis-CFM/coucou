@@ -359,6 +359,9 @@ struct SettingsView: View {
                 // MARK: Behavior
                 GroupBox("Behavior") {
                     VStack(alignment: .leading, spacing: 6) {
+                        Picker("Character", selection: $state.botCharacter) {
+                            ForEach(BotCharacter.allCases) { Text($0.label).tag($0) }
+                        }
                         Toggle("Close when clicking outside", isOn: $state.closeOnClickOutside)
                         Text("Collapses the island when you click in another app. Stays open while an approval is pending.")
                             .font(.system(size: 11))
