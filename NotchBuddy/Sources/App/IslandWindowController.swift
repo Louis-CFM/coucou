@@ -199,6 +199,15 @@ final class IslandWindowController: NSWindowController {
         RunLoop.main.add(frameTimer!, forMode: .common)
     }
 
+    /// The panel is click-through outside the island, so clicks on the island can also reach global monitors.
+    private func isMouseOverIsland() -> Bool {
+        guard let panel = window as? IslandPanel else { return false }
+        let mouse = NSEvent.mouseLocation
+        let pf = panel.frame
+        let local = CGPoint(x: mouse.x - pf.minX, y: mouse.y - pf.minY)
+        return panel.currentIslandFrame(nw: notchW, nh: notchH).insetBy(dx: -6, dy: -6).contains(local)
+    }
+
     private func pollFrame() {
         guard let panel = window as? IslandPanel else { return }
 
@@ -335,8 +344,8 @@ final class IslandWindowController: NSWindowController {
     func collapse() {
         state.isPinned = false
         finishedPinTimer?.cancel()
-        // Tell FSM we're going to compact (from home)
-        if fsm.state == .home { fsm.mouseLeft() }
+        // Keep the FSM in sync so the next click on the notch (petit → home) works
+        fsm.forceCompact()
         setMode(.compact)
         window?.resignKey()
     }
@@ -352,6 +361,18 @@ final class IslandWindowController: NSWindowController {
                         self.collapse()
                     }
                 }
+            }
+        }
+
+        // Optional: click outside the app closes the expanded island.
+        // Global monitors only receive events delivered to other apps.
+        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.state.closeOnClickOutside,
+                      self.state.mode == .expanded, !self.state.isPinned,
+                      !self.state.isDraggingBot,
+                      !self.isMouseOverIsland() else { return }
+                self.collapse()
             }
         }
 

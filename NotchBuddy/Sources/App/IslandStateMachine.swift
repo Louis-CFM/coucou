@@ -72,6 +72,13 @@ final class IslandStateMachine {
         }
     }
 
+    /// Explicit close (outside click, Escape): expanded → petit regardless of hover
+    func forceCompact() {
+        guard state == .home || state == .coucou else { return }
+        cancelTimers()
+        transition(to: .petit)
+    }
+
     /// Compact island clicked
     func click() {
         guard state == .petit else { return }

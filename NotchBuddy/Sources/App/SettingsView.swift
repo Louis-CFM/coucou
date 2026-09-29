@@ -121,6 +121,24 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
+                // MARK: Copilot CLI hooks
+                #if !APPSTORE
+                GroupBox("GitHub Copilot CLI Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(HookServer.copilotHooksURL.path)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install Copilot hooks") { installCopilotHooks() }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { uninstallCopilotHooks() }
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                    .padding(6)
+                }
+                #endif
+
                 // MARK: Integrations
                 GroupBox("Integrations") {
                     VStack(alignment: .leading, spacing: 14) {
@@ -300,6 +318,17 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
+                // MARK: Behavior
+                GroupBox("Behavior") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("Close when clicking outside", isOn: $state.closeOnClickOutside)
+                        Text("Collapses the island when you click in another app. Stays open while an approval is pending.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(6)
+                }
+
                 // MARK: Hotkey
                 GroupBox("Hotkey") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -443,6 +472,24 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    private func installCopilotHooks() {
+        do {
+            try HookServer.shared.writeCopilotHooks()
+            statusMessage = "✓ Copilot hooks written to \(HookServer.copilotHooksURL.path)"
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallCopilotHooks() {
+        do {
+            try HookServer.shared.uninstallCopilotHooks()
+            statusMessage = "✓ Copilot hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
 
     private func installHooks() {
         do {

@@ -123,7 +123,8 @@ final class HookServer: @unchecked Sendable {
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
+                       bundleId.lowercased().contains("vscode") ||
+                       payload["agent"] as? String == "copilot"
         guard isVSCode else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
@@ -193,7 +194,7 @@ final class HookServer: @unchecked Sendable {
                 self.clearPillBadge(id: "integration_claude")
             }
 
-        case "StopFailure":
+        case "StopFailure", "ErrorOccurred":
             state.updateTask(id: "integration_claude", state: .error)
             SoundEngine.shared.play("error")
             if focused {
@@ -254,7 +255,8 @@ final class HookServer: @unchecked Sendable {
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
+                       bundleId.lowercased().contains("vscode") ||
+                       payload["agent"] as? String == "copilot"
         guard isVSCode else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -555,6 +557,54 @@ final class HookServer: @unchecked Sendable {
         try newData.write(to: settingsURL, options: .atomic)
     }
 
+    // MARK: - Copilot CLI hook installer
+    // Copilot CLI loads every *.json in ~/.copilot/hooks/ (or $COPILOT_HOME/hooks/).
+    // PascalCase event names make it send Claude-compatible snake_case payloads.
+
+    static var copilotHooksURL: URL {
+        let home = ProcessInfo.processInfo.environment["COPILOT_HOME"]
+            .map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".copilot")
+        return home.appendingPathComponent("hooks/coucou.json")
+    }
+
+    func previewCopilotHooks() throws -> String {
+        String(data: try buildCopilotHooksData(), encoding: .utf8) ?? ""
+    }
+
+    func writeCopilotHooks() throws {
+        let data = try buildCopilotHooksData()
+        let url = Self.copilotHooksURL
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
+
+    func uninstallCopilotHooks() throws {
+        try? FileManager.default.removeItem(at: Self.copilotHooksURL)
+    }
+
+    private func buildCopilotHooksData() throws -> Data {
+        let hookPath = Self.hookScriptPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let command = "\"\(hookPath)\" --copilot"
+        // Approvals wait on the user, so PermissionRequest gets a long timeout (timeouts fail open).
+        let events: [(String, Int)] = [
+            ("SessionStart", 10), ("SessionEnd", 10),
+            ("UserPromptSubmit", 10),
+            ("PreToolUse", 10), ("PostToolUse", 10), ("PostToolUseFailure", 10),
+            ("PermissionRequest", 120),
+            ("Notification", 10),
+            ("Stop", 10), ("SubagentStop", 10),
+            ("ErrorOccurred", 10),
+        ]
+        var hooks: [String: Any] = [:]
+        for (event, timeout) in events {
+            hooks[event] = [["type": "command", "bash": command, "timeoutSec": timeout]]
+        }
+        let config: [String: Any] = ["version": 1, "hooks": hooks]
+        return try JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys])
+    }
+
     // MARK: - App Store: hooks via security-scoped bookmark
 
     #if APPSTORE
@@ -672,6 +722,8 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
+    agent = 'copilot' if '--copilot' in sys.argv[1:] else 'claude'
+    payload['agent'] = agent
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
@@ -702,14 +754,23 @@ def main():
             s.close()
             response = b''.join(chunks).decode().strip()
             if response and 'permissionDecision' in response:
-                sys.stdout.write(response + '\\n')
-                sys.stdout.flush()
-                sys.exit(0)
+                if agent == 'copilot':
+                    decision = json.loads(response).get('permissionDecision')
+                    if decision == 'allow':
+                        out = {'behavior': 'allow'}
+                    elif decision == 'deny':
+                        out = {'behavior': 'deny', 'message': 'Denied from Coucou'}
+                    else:
+                        out = None
+                    if out:
+                        sys.stdout.write(json.dumps(out) + '\\n')
+                        sys.stdout.flush()
+                else:
+                    sys.stdout.write(response + '\\n')
+                    sys.stdout.flush()
         except Exception:
             pass
-        # Fallback: deny if NotchBuddy unreachable or timeout
-        sys.stdout.write('{"permissionDecision":"deny"}\\n')
-        sys.stdout.flush()
+        # No output = no decision: the agent falls back to its own permission prompt
         sys.exit(0)
 
     # All other events: fire-and-forget (0.3s timeout, never blocks)
