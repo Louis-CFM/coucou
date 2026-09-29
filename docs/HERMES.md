@@ -1,6 +1,6 @@
-# bibol — talking to your own agent from the notch
+# Hermes — talking to your own agent from the notch
 
-Coucou can chat with **bibol**, an agent that runs on your VPS (Hermes Agent), and show
+Coucou can chat with **Hermes**, an agent that runs on your VPS (Hermes Agent), and show
 its alerts as a notch pill. Both live behind one small bridge on the server.
 
 Unlike the built-in providers, this is not a model endpoint: each message runs a real
@@ -12,10 +12,10 @@ Two stdlib-only Python servers (no dependencies):
 
 | File | Port | Purpose |
 |---|---|---|
-| `bibol_chat_server.py` | 8646 | `POST /chat {text, session}` → `{reply}` · `GET /chat/history` |
-| `bibol_feed_server.py` | 8645 | `GET /bibol/feed` → the alert feed the notch polls |
+| `hermes_chat_server.py` | 8646 | `POST /chat {text, session}` → `{reply}` · `GET /chat/history` |
+| `hermes_feed_server.py` | 8645 | `GET /hermes/feed` → the alert feed the notch polls |
 
-Both authenticate with an `X-Bibol-Key` header (token in `~/.hermes/coucou/token`).
+Both authenticate with an `X-Hermes-Key` header (token in `~/.hermes/coucou/token`).
 Open the ports in your firewall (`ufw allow 8645/tcp`, `8646/tcp`).
 
 The chat bridge shells out to `hermes chat -Q --continue <thread> --query-file …`,
@@ -23,23 +23,23 @@ so the thread lives server-side and survives app restarts.
 
 ## 2. App side
 
-**Settings → Chat → Provider → “bibol (agent on your VPS)”**
+**Settings → Chat → Provider → “Hermes (agent on your VPS)”**
 
 | Field | Example |
 |---|---|
 | Bridge URL | `http://<vps-ip>:8646/chat` |
-| X-Bibol-Key | the token from the server |
+| X-Hermes-Key | the token from the server |
 | Thread name | `coucou` |
 
 The alert pill reuses the same URL/key and derives the feed URL automatically
-(`/bibol/feed`); enable **bibol** under Integrations to see it.
+(`/hermes/feed`); enable **Hermes** under Integrations to see it.
 
 ## 3. Files
 
-- `LLMBackends.swift` — `ChatProvider.bibol` + `chatBibol(context:state:)`
-- `BibolPoller.swift` — polls the alert feed, raises the orange pill
+- `LLMBackends.swift` — `ChatProvider.hermes` + `chatHermes(context:state:)`
+- `HermesPoller.swift` — polls the alert feed, raises the orange pill
 - `AppDelegate.swift` — starts the poller
-- `AppState.swift` — registers the `integration_bibol` pill
+- `AppState.swift` — registers the `integration_hermes` pill
 
 ## Notes
 

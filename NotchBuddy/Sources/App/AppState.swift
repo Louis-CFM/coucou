@@ -14,13 +14,13 @@ extension AgentTask {
         AgentTask(id: "integration_notion",  name: "Notion",    color: "#8C8C8C", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_calcom",  name: "Cal.com",   color: "#C9956A", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_stripe",  name: "Stripe",    color: "#0570DE", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_bibol",   name: "bibol",     color: "#FF8C42", state: .idle, steps: [], source: .n8n, isIntegration: true),
+        AgentTask(id: "integration_hermes",  name: "Hermes",    color: "#FF8C42", state: .idle, steps: [], source: .n8n, isIntegration: true),
     ]
 
     /// IDs that can be toggled (VS Code is always on and excluded from this list)
     static let toggleableIntegrationIds: [String] = [
         "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-        "integration_notion", "integration_calcom", "integration_stripe", "integration_bibol",
+        "integration_notion", "integration_calcom", "integration_stripe", "integration_hermes",
     ]
 
 }
@@ -201,6 +201,7 @@ final class AppState: ObservableObject {
 
     private init() {
         let ud = UserDefaults.standard
+        Self.migrateBibolToHermes(ud)
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
@@ -228,6 +229,27 @@ final class AppState: ObservableObject {
 
         // Always load integration pills
         loadIntegrationTasks()
+    }
+
+    /// One-time move of the former "bibol" settings to their "hermes" names.
+    private static func migrateBibolToHermes(_ ud: UserDefaults) {
+        for (old, new) in [("bibolURL", "hermesURL"), ("bibolSession", "hermesSession")] {
+            if let v = ud.string(forKey: old) {
+                if ud.string(forKey: new) == nil { ud.set(v, forKey: new) }
+                ud.removeObject(forKey: old)
+            }
+        }
+        if let key = KeychainStore.shared.get("bibol-key") {
+            if KeychainStore.shared.get("hermes-key") == nil { KeychainStore.shared.set("hermes-key", value: key) }
+            KeychainStore.shared.remove("bibol-key")
+        }
+        if ud.string(forKey: "chatProvider") == "bibol" { ud.set("hermes", forKey: "chatProvider") }
+        if let d = ud.data(forKey: "activeIntegrations"),
+           var ids = try? JSONDecoder().decode([String].self, from: d),
+           let i = ids.firstIndex(of: "integration_bibol") {
+            ids[i] = "integration_hermes"
+            if let out = try? JSONEncoder().encode(ids) { ud.set(out, forKey: "activeIntegrations") }
+        }
     }
 
     // MARK: - Computed

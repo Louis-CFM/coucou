@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bibol chat bridge — lets Coucou chat with the Hermes agent on the VPS.
+"""Hermes chat bridge — lets Coucou chat with the Hermes agent on the VPS.
 POST /chat            {"text": "...", "session": "coucou"}  -> {"reply": "...", "session_id": "..."}
 GET  /chat/history?session_id=...   -> last N user/assistant messages of that session
-Auth: X-Bibol-Key header (same token as the feed).
+Auth: X-Hermes-Key header (same token as the feed).
 """
 import hmac, json, subprocess, tempfile, os, re, sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -57,7 +57,7 @@ def run_agent(text, session):
 
 class H(BaseHTTPRequestHandler):
     def _auth(self):
-        return hmac.compare_digest((self.headers.get("X-Bibol-Key") or "").strip(), TOKEN)
+        return hmac.compare_digest((self.headers.get("X-Hermes-Key") or "").strip(), TOKEN)
 
     def _send(self, code, payload):
         body = json.dumps(payload).encode()
@@ -105,5 +105,5 @@ class H(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"bibol chat bridge on :{PORT}", flush=True)
+    print(f"hermes chat bridge on :{PORT}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

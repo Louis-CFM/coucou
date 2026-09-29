@@ -6,7 +6,7 @@ enum ChatProvider: String, CaseIterable, Identifiable {
     case anthropic
     case openAICompatible
     case copilotCLI
-    case bibol
+    case hermes
 
     var id: String { rawValue }
 
@@ -15,7 +15,7 @@ enum ChatProvider: String, CaseIterable, Identifiable {
         case .anthropic:        return "Anthropic (Claude)"
         case .openAICompatible: return "OpenAI-compatible endpoint"
         case .copilotCLI:       return "GitHub Copilot CLI"
-        case .bibol:            return "bibol (agent on your VPS)"
+        case .hermes:           return "Hermes (agent on your VPS)"
         }
     }
 
@@ -32,8 +32,8 @@ enum ChatProvider: String, CaseIterable, Identifiable {
             #else
             return true
             #endif
-        case .bibol:
-            return !(UserDefaults.standard.string(forKey: "bibolURL") ?? "").isEmpty
+        case .hermes:
+            return !(UserDefaults.standard.string(forKey: "hermesURL") ?? "").isEmpty
         }
     }
 }
@@ -138,19 +138,19 @@ extension ClaudeService {
         #endif
     }
 
-    // MARK: bibol (Hermes agent running on your VPS)
+    // MARK: Hermes (agent running on your VPS)
 
-    /// Chats with the bibol bridge (`POST {text, session}` -> `{reply}`).
+    /// Chats with the Hermes bridge (`POST {text, session}` -> `{reply}`).
     /// The bridge runs a real agent session on the VPS, so it keeps its own thread:
     /// only the newest user turn is sent, and the reply is appended to the notch chat.
-    func chatBibol(context: PromptContext?, state: AppState) async {
-        let raw = (UserDefaults.standard.string(forKey: "bibolURL") ?? "")
+    func chatHermes(context: PromptContext?, state: AppState) async {
+        let raw = (UserDefaults.standard.string(forKey: "hermesURL") ?? "")
             .trimmingCharacters(in: CharacterSet(charactersIn: " /"))
         guard !raw.isEmpty, let url = URL(string: raw) else {
-            showError("Set the bibol bridge URL in Settings.", state: state)
+            showError("Set the Hermes bridge URL in Settings.", state: state)
             return
         }
-        let sessionRaw = UserDefaults.standard.string(forKey: "bibolSession") ?? ""
+        let sessionRaw = UserDefaults.standard.string(forKey: "hermesSession") ?? ""
         let session = sessionRaw.isEmpty ? "coucou" : sessionRaw
 
         guard let query = state.chatHistory.last(where: { $0.role == .user })?.content,
@@ -162,8 +162,8 @@ extension ClaudeService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        if let key = KeychainStore.shared.get("bibol-key"), !key.isEmpty {
-            request.setValue(key, forHTTPHeaderField: "X-Bibol-Key")
+        if let key = KeychainStore.shared.get("hermes-key"), !key.isEmpty {
+            request.setValue(key, forHTTPHeaderField: "X-Hermes-Key")
         }
         request.timeoutInterval = 200
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["text": query, "session": session])
@@ -172,13 +172,13 @@ extension ClaudeService {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 let msg = String(data: data, encoding: .utf8) ?? "unknown error"
-                showError("bibol bridge: \(String(msg.prefix(200)))", state: state)
+                showError("Hermes bridge: \(String(msg.prefix(200)))", state: state)
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let text = json["reply"] as? String,
                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                showError("Empty reply from the bibol bridge.", state: state)
+                showError("Empty reply from the Hermes bridge.", state: state)
                 return
             }
             finishChat(text, state: state)

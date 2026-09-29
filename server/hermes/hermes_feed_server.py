@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bibol feed server — serves the alert feed that Coucou's BibolPoller polls.
-GET /bibol/health          -> {"status":"ok"}            (no auth)
-GET /bibol/feed            -> feed.json                  (X-Bibol-Key required)
+"""Hermes feed server — serves the alert feed that Coucou's HermesPoller polls.
+GET /hermes/health         -> {"status":"ok"}            (no auth)
+GET /hermes/feed           -> feed.json                  (X-Hermes-Key required)
 """
 import hmac, json
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -22,14 +22,14 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _auth(self):
-        key = (self.headers.get("X-Bibol-Key") or "").strip()
+        key = (self.headers.get("X-Hermes-Key") or "").strip()
         return hmac.compare_digest(key, TOKEN)
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path == "/bibol/health":
+        if path == "/hermes/health":
             self._body(200, {"status": "ok", "items": len(_load()["items"])})
-        elif path == "/bibol/feed":
+        elif path == "/hermes/feed":
             if not self._auth():
                 self._body(401, {"error": "unauthorized"})
                 return
@@ -49,5 +49,5 @@ def _load():
 
 
 if __name__ == "__main__":
-    print(f"bibol feed on :{PORT} (token from {TOKEN})", flush=True)
+    print(f"hermes feed on :{PORT} (token from {TOKEN})", flush=True)
     HTTPServer(("0.0.0.0", PORT), H).serve_forever()

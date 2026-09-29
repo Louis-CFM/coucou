@@ -1,13 +1,13 @@
-# bibol bridge (server side)
+# Hermes bridge (server side)
 
 The two stdlib-only servers the app talks to. They run on the machine where the
 agent lives (e.g. a VPS running Hermes Agent).
 
 ```
-bibol_chat_server.py   :8646   POST /chat {text, session} -> {reply}
+hermes_chat_server.py  :8646   POST /chat {text, session} -> {reply}
                                GET  /chat/history
-bibol_feed_server.py   :8645   GET  /bibol/feed   (X-Bibol-Key)
-                               GET  /bibol/health
+hermes_feed_server.py  :8645   GET  /hermes/feed   (X-Hermes-Key)
+                               GET  /hermes/health
 ```
 
 ## Setup
@@ -17,8 +17,8 @@ mkdir -p ~/.hermes/coucou
 python3 -c "import secrets;print(secrets.token_urlsafe(24))" > ~/.hermes/coucou/token
 chmod 600 ~/.hermes/coucou/token
 
-python3 bibol_feed_server.py &     # alerts
-python3 bibol_chat_server.py &     # chat
+python3 hermes_feed_server.py &    # alerts
+python3 hermes_chat_server.py &    # chat
 ```
 
 Open the ports (`ufw allow 8645/tcp`, `ufw allow 8646/tcp`). Put it behind HTTPS
