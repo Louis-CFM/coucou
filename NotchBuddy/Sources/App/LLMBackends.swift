@@ -6,6 +6,7 @@ enum ChatProvider: String, CaseIterable, Identifiable {
     case anthropic
     case openAICompatible
     case copilotCLI
+    case bibol
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum ChatProvider: String, CaseIterable, Identifiable {
         case .anthropic:        return "Anthropic (Claude)"
         case .openAICompatible: return "OpenAI-compatible endpoint"
         case .copilotCLI:       return "GitHub Copilot CLI"
+        case .bibol:            return "bibol (agent on your VPS)"
         }
     }
 
@@ -30,6 +32,8 @@ enum ChatProvider: String, CaseIterable, Identifiable {
             #else
             return true
             #endif
+        case .bibol:
+            return !(UserDefaults.standard.string(forKey: "bibolURL") ?? "").isEmpty
         }
     }
 }
@@ -132,6 +136,55 @@ extension ClaudeService {
         case .failure(let error): showError(error.localizedDescription, state: state)
         }
         #endif
+    }
+
+    // MARK: bibol (Hermes agent running on your VPS)
+
+    /// Chats with the bibol bridge (`POST {text, session}` -> `{reply}`).
+    /// The bridge runs a real agent session on the VPS, so it keeps its own thread:
+    /// only the newest user turn is sent, and the reply is appended to the notch chat.
+    func chatBibol(context: PromptContext?, state: AppState) async {
+        let raw = (UserDefaults.standard.string(forKey: "bibolURL") ?? "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: " /"))
+        guard !raw.isEmpty, let url = URL(string: raw) else {
+            showError("Set the bibol bridge URL in Settings.", state: state)
+            return
+        }
+        let sessionRaw = UserDefaults.standard.string(forKey: "bibolSession") ?? ""
+        let session = sessionRaw.isEmpty ? "coucou" : sessionRaw
+
+        guard let query = state.chatHistory.last(where: { $0.role == .user })?.content,
+              !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            showError("Nothing to send.", state: state)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        if let key = KeychainStore.shared.get("bibol-key"), !key.isEmpty {
+            request.setValue(key, forHTTPHeaderField: "X-Bibol-Key")
+        }
+        request.timeoutInterval = 200
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["text": query, "session": session])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                let msg = String(data: data, encoding: .utf8) ?? "unknown error"
+                showError("bibol bridge: \(String(msg.prefix(200)))", state: state)
+                return
+            }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let text = json["reply"] as? String,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                showError("Empty reply from the bibol bridge.", state: state)
+                return
+            }
+            finishChat(text, state: state)
+        } catch {
+            showError("Network error: \(error.localizedDescription)", state: state)
+        }
     }
 
     #if !APPSTORE

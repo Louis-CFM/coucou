@@ -8,6 +8,9 @@ struct SettingsView: View {
     @State private var openaiBaseURL: String = UserDefaults.standard.string(forKey: "openaiBaseURL") ?? ""
     @State private var openaiModel: String = UserDefaults.standard.string(forKey: "openaiModel") ?? ""
     @State private var openaiKey: String = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var bibolURL: String = UserDefaults.standard.string(forKey: "bibolURL") ?? ""
+    @State private var bibolSession: String = UserDefaults.standard.string(forKey: "bibolSession") ?? "coucou"
+    @State private var bibolKey: String = KeychainStore.shared.get("bibol-key") ?? ""
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var copilotStatus: String = HookServer.copilotHooksInstalled ? "✓ Installed" : ""
@@ -90,6 +93,23 @@ struct SettingsView: View {
                             Text("Runs `copilot -p` with your existing login. Requires Copilot CLI access on your account.")
                                 .font(.system(size: 11)).foregroundColor(.secondary)
                             #endif
+                        case .bibol:
+                            TextField("Bridge URL  (http://<vps>:8646/chat)", text: $bibolURL)
+                                .textFieldStyle(.roundedBorder)
+                            SecureField("X-Bibol-Key", text: $bibolKey)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("Thread name", text: $bibolSession)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Chats with the agent running on your VPS. The bridge keeps its own thread, so history lives server-side and survives restarts.")
+                                .font(.system(size: 11)).foregroundColor(.secondary)
+                            Button("Save") {
+                                UserDefaults.standard.set(bibolURL, forKey: "bibolURL")
+                                UserDefaults.standard.set(bibolSession, forKey: "bibolSession")
+                                if bibolKey.isEmpty { KeychainStore.shared.remove("bibol-key") }
+                                else { KeychainStore.shared.set("bibol-key", value: bibolKey) }
+                                statusMessage = "✓ bibol settings saved."
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
                     }
                     .padding(6)

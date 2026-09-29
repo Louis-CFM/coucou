@@ -137,6 +137,7 @@ final class ClaudeService {
         case .anthropic: break
         case .openAICompatible: return await chatOpenAICompatible(context: context, state: state)
         case .copilotCLI:       return await chatCopilotCLI(context: context, state: state)
+        case .bibol:            return await chatBibol(context: context, state: state)
         }
         guard let key = apiKey, !key.isEmpty else {
             showError("API key missing. Open settings.", state: state)

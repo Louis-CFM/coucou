@@ -71,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StripePoller.shared.start()
         CalcomPoller.shared.start()
         NotionPoller.shared.start()
+        BibolPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
                                                name: .openFullSettings, object: nil)
     }
