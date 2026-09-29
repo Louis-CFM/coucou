@@ -105,6 +105,10 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(greetThresholdSeconds, forKey: "greetThreshold") }
     }
 
+    @Published var chatProvider: ChatProvider = .anthropic {
+        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+    }
+
     @Published var closeOnClickOutside: Bool = false {
         didSet { UserDefaults.standard.set(closeOnClickOutside, forKey: "closeOnClickOutside") }
     }
@@ -201,6 +205,7 @@ final class AppState: ObservableObject {
         }
         if let v = ud.object(forKey: "absenceInterval")   as? Double { absenceInterval   = v }
         if let v = ud.object(forKey: "greetThreshold")    as? Double { greetThresholdSeconds = v }
+        if let raw = ud.string(forKey: "chatProvider"), let v = ChatProvider(rawValue: raw) { chatProvider = v }
         if let v = ud.object(forKey: "closeOnClickOutside") as? Bool { closeOnClickOutside = v }
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }

@@ -2698,7 +2698,7 @@ struct SettingsIslandView: View {
     }
 
     private var apiConnected: Bool {
-        KeychainStore.shared.get("anthropic-api-key") != nil
+        state.chatProvider.isConfigured
     }
 
     var body: some View {

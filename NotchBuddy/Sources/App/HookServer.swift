@@ -568,6 +568,10 @@ final class HookServer: @unchecked Sendable {
         return home.appendingPathComponent("hooks/coucou.json")
     }
 
+    static var copilotHooksInstalled: Bool {
+        FileManager.default.fileExists(atPath: copilotHooksURL.path)
+    }
+
     func previewCopilotHooks() throws -> String {
         String(data: try buildCopilotHooksData(), encoding: .utf8) ?? ""
     }
@@ -712,6 +716,8 @@ private let nbHookScript = """
 import sys, json, os, socket
 
 def main():
+    if os.environ.get('NB_HOOK_DISABLE'):
+        return
     try:
         raw = sys.stdin.buffer.read()
         if not raw:
@@ -795,6 +801,8 @@ private let nbHookScriptAppStore = """
 import sys, json, os, socket
 
 def main():
+    if os.environ.get('NB_HOOK_DISABLE'):
+        return
     try:
         raw = sys.stdin.buffer.read()
         if not raw:

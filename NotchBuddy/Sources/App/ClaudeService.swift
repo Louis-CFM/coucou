@@ -61,7 +61,7 @@ final class KeychainStore: @unchecked Sendable {
     private let lock = NSLock()
 
     private static let allKeys = [
-        "anthropic-api-key",
+        "anthropic-api-key", "openai-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -119,7 +119,7 @@ final class ClaudeService {
         conversationMessages = []
     }
 
-    private let systemPrompt = """
+    let systemPrompt = """
     You are Mochi, Louis's personal AI assistant embedded in the notch of his Mac. \
     You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
     Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
@@ -133,8 +133,13 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        switch state.chatProvider {
+        case .anthropic: break
+        case .openAICompatible: return await chatOpenAICompatible(context: context, state: state)
+        case .copilotCLI:       return await chatCopilotCLI(context: context, state: state)
+        }
         guard let key = apiKey, !key.isEmpty else {
-            await showError("API key missing. Open settings.", state: state)
+            showError("API key missing. Open settings.", state: state)
             return
         }
 
@@ -172,7 +177,7 @@ final class ClaudeService {
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
-            await showError("Network error: \(error.localizedDescription)", state: state)
+            showError("Network error: \(error.localizedDescription)", state: state)
         }
     }
 
@@ -180,7 +185,7 @@ final class ClaudeService {
 
     func search(query: String, context: PromptContext?, state: AppState) async {
         guard let key = apiKey, !key.isEmpty else {
-            await showError("Anthropic API key missing. Open settings to configure it.", state: state)
+            showError("Anthropic API key missing. Open settings to configure it.", state: state)
             return
         }
 
@@ -223,7 +228,7 @@ final class ClaudeService {
             let result = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
             await handleResult(result, state: state)
         } catch {
-            await showError("Network error: \(error.localizedDescription)", state: state)
+            showError("Network error: \(error.localizedDescription)", state: state)
         }
     }
 
@@ -253,7 +258,7 @@ final class ClaudeService {
     private func handleChatResult(_ data: Data, state: AppState) async {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]] else {
-            await showError("Unexpected API response.", state: state)
+            showError("Unexpected API response.", state: state)
             return
         }
 
@@ -262,7 +267,7 @@ final class ClaudeService {
 
         guard let textBlock = content.first(where: { $0["type"] as? String == "text" }),
               let text = textBlock["text"] as? String, !text.isEmpty else {
-            await showError("No response text.", state: state)
+            showError("No response text.", state: state)
             return
         }
 
@@ -282,7 +287,7 @@ final class ClaudeService {
               let content = json["content"] as? [[String: Any]],
               let textBlock = content.first(where: { $0["type"] as? String == "text" }),
               let text = textBlock["text"] as? String else {
-            await showError("Unexpected API response.", state: state)
+            showError("Unexpected API response.", state: state)
             return
         }
 
@@ -325,7 +330,7 @@ final class ClaudeService {
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
     }
 
-    private func showError(_ message: String, state: AppState) async {
+    func showError(_ message: String, state: AppState) {
         state.stateOverride = .error
         state.noteMessage = message
         state.view = .note
