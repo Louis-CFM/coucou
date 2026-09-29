@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
+		0594569827F7FB8A4F1688CF /* BibolPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 035A66FEAB1929474C51AB76 /* BibolPoller.swift */; };
 		065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
@@ -39,6 +40,7 @@
 		68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		78B3C6814431B2DD9D1F4949 /* SoundEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */; };
 		78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
+		809CC60B15293598B44CB22B /* BibolPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 035A66FEAB1929474C51AB76 /* BibolPoller.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
@@ -70,6 +72,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		035A66FEAB1929474C51AB76 /* BibolPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibolPoller.swift; sourceTree = "<group>"; };
 		15A1A8206F73376F4CAF2057 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
 		192844E7299DEED5C2372067 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEngine.swift; sourceTree = "<group>"; };
@@ -110,6 +113,7 @@
 			children = (
 				192844E7299DEED5C2372067 /* AppDelegate.swift */,
 				C2E4F18AA940EFF7E047B9F7 /* AppState.swift */,
+				035A66FEAB1929474C51AB76 /* BibolPoller.swift */,
 				A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */,
 				D4540F630F8BA04AFFFA3979 /* BotEngine.swift */,
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
@@ -280,6 +284,7 @@
 			files = (
 				C940B651C6CA952D99388E04 /* AppDelegate.swift in Sources */,
 				1F11EC4E6F604C612A1ADAD1 /* AppState.swift in Sources */,
+				809CC60B15293598B44CB22B /* BibolPoller.swift in Sources */,
 				CD8DECA66B9E09C97E469DB9 /* BotCanvasView.swift in Sources */,
 				C24D863967D8D32D828ED4B1 /* BotEngine.swift in Sources */,
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
@@ -315,6 +320,7 @@
 			files = (
 				878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */,
 				61F73B27A7E3AFF584B2CC22 /* AppState.swift in Sources */,
+				0594569827F7FB8A4F1688CF /* BibolPoller.swift in Sources */,
 				651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */,
 				0E9CE475EC53C67DAB00F8E5 /* BotEngine.swift in Sources */,
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
