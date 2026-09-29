@@ -1,28 +1,28 @@
 # Hermes bridge (server side)
 
-The two stdlib-only servers the app talks to. They run on the machine where the
-agent lives (e.g. a VPS running Hermes Agent).
+Two stdlib-only Python servers the Coucou app talks to, plus an installer. They
+run on the machine where the agent lives (VPS, home server, or the Mac itself).
 
 ```
-hermes_chat_server.py  :8646   POST /chat {text, session} -> {reply}
+hermes_chat_server.py   :8646   POST /chat {text, session} -> {reply}
                                GET  /chat/history
-hermes_feed_server.py  :8645   GET  /hermes/feed   (X-Hermes-Key)
+hermes_feed_server.py   :8645   GET  /hermes/feed   (X-Hermes-Key)
                                GET  /hermes/health
 ```
 
-## Setup
+## Install
 
 ```bash
-mkdir -p ~/.hermes/coucou
-python3 -c "import secrets;print(secrets.token_urlsafe(24))" > ~/.hermes/coucou/token
-chmod 600 ~/.hermes/coucou/token
-
-python3 hermes_feed_server.py &    # alerts
-python3 hermes_chat_server.py &    # chat
+bash install.sh
 ```
 
-Open the ports (`ufw allow 8645/tcp`, `ufw allow 8646/tcp`). Put it behind HTTPS
-before exposing it to untrusted networks — the token is a bearer secret.
+That copies both servers to `~/.hermes/coucou/`, creates the key, opens the
+ports when it can, installs systemd user services (or falls back to `nohup`),
+and prints the Bridge URL + key to paste into the app. Full walkthrough:
+[`docs/HERMES.md`](../../docs/HERMES.md).
+
+Env overrides: `HERMES_COUCCO_DIR` (default `~/.hermes/coucou`),
+`HERMES_FEED_PORT` (8645), `HERMES_CHAT_PORT` (8646).
 
 ## Feed format
 
@@ -34,5 +34,12 @@ before exposing it to untrusted networks — the token is a bearer secret.
             "title": "3 new alerts", "detail": "…", "level": "info"}]}
 ```
 
-The chat bridge shells out to `hermes chat -Q --continue <thread> --query-file …`,
-so each message is a full agent run on the server, and the thread persists there.
+`id` must be unique — the poller dedupes on it and only re-alerts on change.
+
+## Notes
+
+- The chat bridge shells out to `hermes chat -Q --continue <thread> --query-file …`,
+  so each message is a full agent run and the thread persists server-side.
+- Auth is an `X-Hermes-Key` header on every request except `/hermes/health`.
+- The key is a bearer secret granting agent execution on this machine — keep it
+  out of git and put the bridge behind HTTPS before exposing it publicly.

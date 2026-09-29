@@ -8,8 +8,9 @@ import hmac, json, subprocess, tempfile, os, re, sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-TOKEN = Path("/root/.hermes/coucou/token").read_text().strip()
-PORT = 8646
+COUCCO_DIR = Path(os.environ.get("HERMES_COUCCO_DIR", Path.home() / ".hermes" / "coucou"))
+TOKEN = (COUCCO_DIR / "token").read_text().strip()
+PORT = int(os.environ.get("HERMES_CHAT_PORT", "8646"))
 HIST_LIMIT = 20
 DB = "/root/.hermes/state.db"
 

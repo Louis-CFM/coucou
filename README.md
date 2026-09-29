@@ -36,6 +36,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email (Mail.app).
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
+- 🧠 **Chat with your own agent** — point the chat at **Hermes** running on your VPS and every message becomes a real agent session, with its memory, skills and tools. Its alerts surface as a pill too. See [docs/HERMES.md](docs/HERMES.md).
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain. The app only talks to the services you plug in.
@@ -80,6 +81,7 @@ Click the Coucou icon in the menu bar → **Settings…**
 | **Claude Code hooks** | live sessions, approvals, questions | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Anthropic API key** | chat and questions about files/windows | Keychain |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain, all optional |
+| **Hermes** (agent on your VPS) | chat + alert pill from your own agent | Bridge URL + key in Settings — one-command server setup in [docs/HERMES.md](docs/HERMES.md) |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 

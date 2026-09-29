@@ -3,13 +3,14 @@
 GET /hermes/health         -> {"status":"ok"}            (no auth)
 GET /hermes/feed           -> feed.json                  (X-Hermes-Key required)
 """
-import hmac, json
+import hmac, json, os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-TOKEN = Path("/root/.hermes/coucou/token").read_text().strip()
-FEED = Path("/root/.hermes/coucou/feed.json")
-PORT = 8645
+COUCCO_DIR = Path(os.environ.get("HERMES_COUCCO_DIR", Path.home() / ".hermes" / "coucou"))
+TOKEN = (COUCCO_DIR / "token").read_text().strip()
+FEED = COUCCO_DIR / "feed.json"
+PORT = int(os.environ.get("HERMES_FEED_PORT", "8645"))
 
 
 class H(BaseHTTPRequestHandler):
