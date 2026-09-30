@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookStatus, type OpencodeStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -168,6 +168,234 @@ function claudeSection(status: HookStatus): HTMLElement {
   }
 
   draw();
+  return section;
+}
+
+// ── opencode section ────────────────────────────────────────────────────────
+
+function opencodeSection(status: OpencodeStatus): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, statusDot(status.installed), h("span", { text: "opencode" })),
+    body,
+  );
+
+  const rebuild = async () => {
+    const fresh = await Bridge.opencodeStatus();
+    if (fresh) Object.assign(status, fresh);
+    clear(body);
+    draw();
+    const head = section.querySelector("h2")!;
+    clear(head);
+    head.append(statusDot(status.installed), h("span", { text: "opencode" }));
+  };
+
+  function draw() {
+    const hint = status.installed
+      ? status.needsUpdate
+        ? `Plugin v${status.installedVersion} installed, v${status.bundledVersion} bundled — update to pick up the latest events.`
+        : "Coucou is plugged into your opencode sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
+      : "Install the plugin to see your opencode sessions in the island and approve permissions without leaving what you are doing.";
+    body.append(
+      h("div", { class: "hint", text: hint }),
+      h("div", { class: "row" },
+        h("label", { text: "Plugin" }),
+        h("span", { class: "path", text: status.pluginPath }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Relay" }),
+        h("span", { class: "path", text: status.relayReady ? "coucou-hook.exe ready" : "coucou-hook.exe missing" }),
+        statusDot(status.relayReady),
+      ),
+    );
+
+    if (!status.relayReady) {
+      body.append(h("div", {
+        class: "notice warn",
+        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+      }));
+    }
+
+    const actions = h("div", { class: "row" });
+    const install = h("button", {
+      class: "primary",
+      text: status.installed ? "Reinstall plugin…" : "Install plugin…",
+      onclick: () => showPreview(true),
+    });
+    if (!status.relayReady) {
+      install.disabled = true;
+      install.title = "The relay isn't installed yet.";
+    }
+    actions.append(install);
+    if (status.installed) {
+      actions.append(h("button", {
+        class: "danger",
+        text: "Uninstall plugin…",
+        onclick: () => showPreview(false),
+      }));
+    }
+    body.append(actions);
+  }
+
+  async function showPreview(install: boolean) {
+    let preview;
+    try {
+      preview = await Bridge.opencodePreview(install);
+    } catch (err) {
+      clear(body);
+      body.append(
+        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+        h("div", { class: "row" }, h("button", {
+          text: "Back",
+          onclick: () => { clear(body); draw(); },
+        })),
+      );
+      return;
+    }
+    if (!preview) return;
+    clear(body);
+    body.append(
+      h("div", {
+        class: "hint",
+        text: install
+          ? "This copies Coucou's plugin into opencode's global plugin directory. Project plugins are left untouched."
+          : "This removes Coucou's plugin file only. Your own plugins are left untouched.",
+      }),
+      renderDiff(preview.diff),
+      preview.backup
+        ? h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` }))
+        : h("div", {}),
+    );
+    const confirm = h("button", {
+      class: install ? "primary" : "danger",
+      text: install ? "Back up and write" : "Back up and remove",
+    });
+    confirm.addEventListener("click", async () => {
+      confirm.disabled = true;
+      try {
+        const backup = await Bridge.opencodeApply(install, preview.fingerprint);
+        clear(body);
+        body.append(h("div", {
+          class: "notice ok",
+          text: backup
+            ? `Done. Previous plugin saved as ${backup}. Restart opencode to pick it up.`
+            : "Done. Restart opencode to pick it up.",
+        }));
+        window.setTimeout(() => void rebuild(), 2600);
+      } catch (err) {
+        confirm.disabled = false;
+        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+      }
+    });
+    body.append(h("div", { class: "row" }, confirm, h("button", {
+      text: "Cancel",
+      onclick: () => { clear(body); draw(); },
+    })));
+  }
+
+  draw();
+  return section;
+}
+
+// ── Chat provider section ───────────────────────────────────────────────────
+
+function chatSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Chat" })),
+    body,
+  );
+
+  function draw(status: Awaited<ReturnType<typeof Bridge.chatStatus>> | null) {
+    const provider = settings.chatProvider === "opencode" ? "opencode" : "claude";
+
+    const claudeBtn = h("button", {
+      class: provider === "claude" ? "primary" : "",
+      text: "Claude API",
+    });
+    const opencodeBtn = h("button", {
+      class: provider === "opencode" ? "primary" : "",
+      text: "opencode CLI",
+    });
+    claudeBtn.addEventListener("click", () => {
+      settings.chatProvider = "claude";
+      void save().then(() => redraw());
+    });
+    opencodeBtn.addEventListener("click", () => {
+      settings.chatProvider = "opencode";
+      void save().then(() => redraw());
+    });
+
+    body.append(
+      h("div", {
+        class: "hint",
+        text: "Who answers from the notch: the Anthropic API (needs a key below) or your own opencode with its configured model.",
+      }),
+      h("div", { class: "row" }, claudeBtn, opencodeBtn),
+    );
+
+    if (provider === "opencode") {
+      const resolved = status?.binResolved ?? null;
+      body.append(h("div", {
+        class: resolved ? "notice ok" : "notice warn",
+        text: resolved
+          ? `Found: ${resolved}`
+          : "opencode not found on PATH. Install it (opencode.ai) or paste its path below.",
+      }));
+
+      const bin = h("input", {
+        type: "text",
+        placeholder: "opencode.exe path (optional — auto-detected)",
+        value: settings.opencodeBin,
+        style: "flex:1 1 auto;min-width:0",
+        autocomplete: "off",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+      const binSave = h("button", { text: "Save" });
+      binSave.addEventListener("click", () => {
+        settings.opencodeBin = bin.value.trim();
+        void save().then(() => redraw());
+      });
+
+      const model = h("input", {
+        type: "text",
+        placeholder: "provider/model override (optional)",
+        value: settings.opencodeModel,
+        style: "flex:1 1 auto;min-width:0",
+        autocomplete: "off",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+      model.addEventListener("change", () => {
+        settings.opencodeModel = model.value.trim();
+        void save();
+      });
+
+      body.append(
+        h("div", { class: "row" }, h("label", { text: "Binary" }), bin, binSave),
+        h("div", { class: "row" }, h("label", { text: "Model" }), model),
+        h("div", {
+          class: "hint",
+          text: "First message of each conversation says who Mochi is; follow-ups continue the same opencode session.",
+        }),
+      );
+    } else if (status && !status.claudeKeyPresent) {
+      body.append(h("div", {
+        class: "notice warn",
+        text: "No Anthropic key saved — the chat will stay silent until you save one below, or switch to opencode CLI.",
+      }));
+    }
+  }
+
+  async function redraw() {
+    clear(body);
+    draw(await Bridge.chatStatus());
+  }
+
+  void redraw();
   return section;
 }
 
@@ -428,6 +656,10 @@ async function main() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
+  const ocStatus = (await Bridge.opencodeStatus()) ?? {
+    installed: false, pluginPath: "", relayReady: false,
+    bundledVersion: 0, installedVersion: null, needsUpdate: false,
+  };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
 
@@ -442,6 +674,8 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    opencodeSection(ocStatus),
+    chatSection(),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
