@@ -68,6 +68,22 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## opencode
+
+Open **Settings… → opencode → Install plugin…**. This copies `coucou.js` (in
+`opencode-plugin/` next to the source) to
+`%USERPROFILE%\.config\opencode\plugins\coucou.js` — opencode auto-loads
+global plugins, so no `opencode.json` edit is needed. You get a preview of
+what will change, a dated backup of any previous copy, and nothing is written
+until you click. Uninstall removes only Coucou's file.
+
+The plugin forwards session, tool and permission events through the same
+`coucou-hook.exe` relay and named pipe Claude Code uses, so the island shows
+opencode sessions in their own pill with the same **Deny / Allow** approval
+card. The same guarantee holds: **an opencode session is never blocked by
+Coucou** — if nobody answers in time, opencode asks in the TUI as usual.
+Restart opencode after installing so it picks the plugin up.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
@@ -128,6 +144,7 @@ windows/
     settings/          the settings window
   src-tauri/           Rust backend: window, named pipe, Claude API, pollers
   hook/                coucou-hook.exe, the Claude Code relay
+  opencode-plugin/     coucou.js, the opencode plugin (same relay, same pipe)
   scripts/             icon generator
 ```
 
