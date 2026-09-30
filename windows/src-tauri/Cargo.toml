@@ -39,3 +39,6 @@ windows = { version = "0.61", features = [
 # Secret Service (GNOME Keyring, KWallet) over D-Bus, encrypted in transit.
 keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 libc = "0.2"
+# The GTK that Tauri already runs on, to reach its window for layer-shell and
+# the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
+gtk = "0.18"

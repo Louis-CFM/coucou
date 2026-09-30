@@ -139,6 +139,9 @@ pub fn current_user_sid() -> Option<String> {
 
 // ── Cursor ────────────────────────────────────────────────────────────────────
 
+/// The 60 Hz poll reads the cursor and flips click-through from it.
+pub const CURSOR_POLL: bool = true;
+
 /// Cursor position in physical screen pixels.
 pub fn cursor_physical() -> Option<(f64, f64)> {
     let mut p = POINT::default();
@@ -219,3 +222,6 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
     }
 }
+
+/// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
+pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}

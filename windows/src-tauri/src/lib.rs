@@ -39,6 +39,9 @@ pub struct BootInfo {
     screen: ScreenInfo,
     version: String,
     hook_path: String,
+    /// False where the OS has no global cursor (Wayland): the page then reports
+    /// the cursor from its own mouse events.
+    cursor_poll: bool,
 }
 
 #[tauri::command]
@@ -52,6 +55,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
+        cursor_poll: platform::CURSOR_POLL,
     }
 }
 
@@ -90,15 +94,18 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
-    island::set_ignore_cursor(&app, false);
-    shared.gate.forget_ignore_state();
+    island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
-fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
+fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    // Without the cursor poll the input region is the click-through: it follows the island.
+    if !platform::CURSOR_POLL {
+        island::refresh_click_through(&app, &shared.gate);
+    }
 }
 
 #[tauri::command]
@@ -396,6 +403,11 @@ pub fn run() {
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);
+            // Nothing drawn yet, so nothing takes the mouse until the page
+            // reports the island's shape.
+            if !platform::CURSOR_POLL {
+                island::refresh_click_through(&handle, &gate);
+            }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
