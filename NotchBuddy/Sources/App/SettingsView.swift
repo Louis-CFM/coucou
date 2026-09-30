@@ -233,8 +233,17 @@ struct SettingsView: View {
                                 Circle().fill(Color(hex: "#F4505E")).frame(width: 8, height: 8)
                                 Text("GitHub").font(.system(size: 12, weight: .semibold))
                             }
+                            Text(githubStatus)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(state.githubError == nil ? .secondary : .orange)
+                                .lineLimit(2)
+                            #if APPSTORE
                             SecureField("Personal Access Token", text: $githubToken)
                                 .textFieldStyle(.roundedBorder)
+                            #else
+                            SecureField("Personal Access Token (optional — overrides gh)", text: $githubToken)
+                                .textFieldStyle(.roundedBorder)
+                            #endif
                         }
 
                         // Stripe
@@ -595,7 +604,26 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        GithubPoller.shared.pollNow()
         statusMessage = "✓ Integration keys saved."
+    }
+
+    /// Which GitHub login the pill uses, or why there isn't one.
+    private var githubStatus: String {
+        let who = state.githubSummary.map { " as \($0.login)" } ?? ""
+        let source: String
+        switch state.githubAuthSource {
+        case .gh:     source = "Using gh login\(who)"
+        case .manual: source = "Using the token below\(who)"
+        case nil:
+            #if APPSTORE
+            return "Paste a token to connect."
+            #else
+            return "gh not found or not logged in — run gh auth login, or paste a token."
+            #endif
+        }
+        if let err = state.githubError { return "\(source) — \(err)" }
+        return source
     }
 
     /// Saves non-empty value; removes only if key was previously set (explicit user clear).

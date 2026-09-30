@@ -117,6 +117,18 @@ enum LocalCLI {
         }
     }
 
+    /// Runs a short command and returns its trimmed stdout, or nil if it failed.
+    /// Blocking — call off main.
+    static func capture(_ executable: String, _ args: [String], timeout: TimeInterval = 10) -> String? {
+        let r = runBlocking(executable, args, cwd: URL(fileURLWithPath: NSHomeDirectory()),
+                            stdin: nil, env: childEnvironment(), timeout: timeout)
+        guard r.status == 0, !r.timedOut,
+              let s = String(data: r.stdout, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !s.isEmpty else { return nil }
+        return s
+    }
+
     /// Environment for the chat CLIs: the login PATH, and nothing that would make
     /// Coucou's own hooks mistake this run for a VS Code session.
     private static func childEnvironment() -> [String: String] {
