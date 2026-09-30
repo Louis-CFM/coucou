@@ -4,7 +4,7 @@
 
 # Coucou
 
-**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
+**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code and Codex sessions.**
 
 Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
 
@@ -31,7 +31,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 ## Features
 
-- 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
+ 🟢 **Codex, live too** — the same live session view and notch approvals for Codex, next to Claude Code. Install the hooks, trust them once with `/hooks`, done.
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Ask Claude anything** — built-in chat, straight from the notch.
@@ -99,7 +99,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 
 | What | Why | Where the key goes |
 |---|---|---|
-| **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
+| **Codex hooks** | live Codex sessions and approvals | **Install hooks** — Coucou backs up `~/.codex/hooks.json`, merges its hooks, shows you the diff, then run `/hooks` in Codex to trust them |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
@@ -123,7 +123,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 
 - **Island**: a borderless `NSPanel` hugging the notch, driven by a small state machine (`hidden → petit → home`).
 - **Character**: drawn in SwiftUI `Canvas` + `TimelineView` at 60 fps — squircle body, eyes projected on a sphere, spring animations. No Rive, no Lottie, no images.
-- **Claude Code**: a tiny `nb-hook` script receives hook events and forwards them over a Unix socket to the app. For approvals it waits for your click, then answers the hook.
+ **Claude Code and Codex**: a tiny `nb-hook` script receives hook events and forwards them over a Unix socket to the app. For approvals it waits for your click, then answers the hook. Claude Code hooks live in `~/.claude/settings.json`, Codex hooks in `~/.codex/hooks.json`.
 - **Integrations**: lightweight pollers, paused when nothing is watching.
 - **Sounds**: 28 short WAVs played through preloaded `AVAudioPlayer`s.
 

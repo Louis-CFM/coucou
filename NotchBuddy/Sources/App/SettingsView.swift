@@ -10,8 +10,11 @@ struct SettingsView: View {
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
+    @State private var showCodexDiff: Bool = false
+    @State private var pendingCodexJSON: String = ""
     #if APPSTORE
     @State private var claudeAccessGranted: Bool = (UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") != nil)
+    @State private var codexAccessGranted: Bool = (UserDefaults.standard.data(forKey: "codexDirectoryBookmark") != nil)
     #endif
 
     // Integration keys
@@ -129,6 +132,69 @@ struct SettingsView: View {
                                     .buttonStyle(.borderedProminent)
                                 #endif
                                 Button("Cancel") { showDiff = false; pendingHookJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+
+                // MARK: Codex Hooks
+                GroupBox("Codex Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        #if APPSTORE
+                        if codexAccessGranted {
+                            Text("~/.codex/coucou/nb-hook")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 10) {
+                                Button("Install hooks") { installCodexHooksAppStore() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Uninstall") { uninstallCodexHooksAppStore() }
+                                    .buttonStyle(.bordered)
+                            }
+                        } else {
+                            Text("Choose your ~/.codex folder so Coucou can add its hooks.")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            Button("Choose .codex folder…") { chooseCodexFolder() }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        #else
+                        Text("hooks.json : \(HookServer.codexHooksURL.path)")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { installCodexHooks() }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { uninstallCodexHooks() }
+                                .buttonStyle(.bordered)
+                        }
+                        #endif
+
+                        Text("Codex asks you to trust new hooks once — run /hooks in Codex, review and trust them.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+
+                        if showCodexDiff {
+                            ScrollView {
+                                Text(pendingCodexJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+
+                            HStack {
+                                #if APPSTORE
+                                Button("Confirm & write") { confirmInstallCodexAppStore() }
+                                    .buttonStyle(.borderedProminent)
+                                #else
+                                Button("Confirm & write") { confirmInstallCodex() }
+                                    .buttonStyle(.borderedProminent)
+                                #endif
+                                Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
                                     .buttonStyle(.bordered)
                             }
                         }
@@ -458,6 +524,90 @@ struct SettingsView: View {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
+
+    private func chooseCodexFolder() {
+        let panel = NSOpenPanel()
+        panel.message = "Choose your .codex folder so Coucou can add its hooks"
+        panel.prompt = "Choose"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let data = try url.bookmarkData(
+                    options: .withSecurityScope,
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                )
+                UserDefaults.standard.set(data, forKey: "codexDirectoryBookmark")
+                codexAccessGranted = true
+                statusMessage = "✓ .codex folder access granted."
+            } catch {
+                statusMessage = "❌ Bookmark error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func resolveCodexBookmark() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: "codexDirectoryBookmark") else { return nil }
+        var isStale = false
+        guard let url = try? URL(resolvingBookmarkData: data,
+                                  options: .withSecurityScope,
+                                  relativeTo: nil,
+                                  bookmarkDataIsStale: &isStale) else { return nil }
+        if isStale {
+            codexAccessGranted = false
+            UserDefaults.standard.removeObject(forKey: "codexDirectoryBookmark")
+            return nil
+        }
+        return url
+    }
+
+    private func installCodexHooksAppStore() {
+        guard let codexURL = resolveCodexBookmark() else {
+            codexAccessGranted = false
+            statusMessage = "❌ .codex folder access lost — choose the folder again."
+            return
+        }
+        do {
+            pendingCodexJSON = try HookServer.shared.previewCodexHooksAppStore(codexURL: codexURL)
+            showCodexDiff = true
+            statusMessage = "Review the hooks.json below before confirming."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmInstallCodexAppStore() {
+        guard let codexURL = resolveCodexBookmark() else {
+            codexAccessGranted = false
+            statusMessage = "❌ .codex folder access lost."
+            return
+        }
+        do {
+            try HookServer.shared.writeCodexHooksAppStore(codexURL: codexURL)
+            showCodexDiff = false
+            pendingCodexJSON = ""
+            statusMessage = "✓ Codex hooks installed in ~/.codex/hooks.json"
+        } catch {
+            statusMessage = "❌ Write error: \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallCodexHooksAppStore() {
+        guard let codexURL = resolveCodexBookmark() else {
+            codexAccessGranted = false
+            statusMessage = "❌ .codex folder access lost."
+            return
+        }
+        do {
+            try HookServer.shared.uninstallCodexHooksAppStore(codexURL: codexURL)
+            statusMessage = "✓ Codex hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
     #endif
 
     private func installHooks() {
@@ -486,6 +636,38 @@ struct SettingsView: View {
         do {
             try HookServer.shared.uninstallClaudeHooks()
             statusMessage = "✓ Hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Codex hooks (dev build: ~/.codex is reachable directly)
+
+    private func installCodexHooks() {
+        do {
+            pendingCodexJSON = try HookServer.shared.previewCodexHooks()
+            showCodexDiff = true
+            statusMessage = "Review the hooks.json below before confirming."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmInstallCodex() {
+        do {
+            try HookServer.shared.writeCodexHooks()
+            showCodexDiff = false
+            pendingCodexJSON = ""
+            statusMessage = "✓ Codex hooks installed — run /hooks in Codex to trust them."
+        } catch {
+            statusMessage = "❌ Write error: \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallCodexHooks() {
+        do {
+            try HookServer.shared.uninstallCodexHooks()
+            statusMessage = "✓ Codex hooks removed."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }

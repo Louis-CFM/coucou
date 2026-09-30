@@ -59,7 +59,8 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .layoutPriority(1)
-                                Text(agent.source == .claudeCode ? "Claude Code" : "n8n")
+                                Text(agent.source == .claudeCode ? "Claude Code"
+                                     : agent.source == .codex ? "Codex" : "n8n")
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
@@ -123,6 +124,8 @@ struct OverviewView: View {
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
             }
+        case "integration_codex":
+            openCodexTarget()
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
@@ -283,7 +286,8 @@ struct FinishedView: View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(task: state.focusTask,
+                         label: state.focusTask?.source == .codex ? "Codex finished" : "Claude Code finished")
                 Text(state.focusTask?.steps.last ?? "Session finished")
                     .font(.system(size: 15, weight: .semibold))
                 HStack(spacing: 8) {
@@ -966,6 +970,7 @@ struct IntegrationCardView: View {
             return ss.contains { ($0["hooks"] as? [[String: Any]])?.contains {
                 ($0["command"] as? String)?.contains("NotchBuddy") == true
             } ?? false }
+        case "integration_codex":   return HookServer.codexHooksInstalled()
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -975,6 +980,25 @@ struct IntegrationCardView: View {
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
         default: return false
         }
+    }
+
+    /// Status line shown when the integration has no live data to display.
+    private var idleStatusLabel: String {
+        switch task.id {
+        case "integration_stripe": if let e = appState.stripeError { return e }
+        case "integration_calcom": if let e = appState.calcomError { return e }
+        default: break
+        }
+        // Codex has no API key here — its card reports hook installation instead
+        if task.id == "integration_codex" {
+            return isConfigured ? "Hooks installed · waiting for a session" : "Hooks not installed"
+        }
+        return isConfigured ? "Connected · loading…" : "Key not configured"
+    }
+
+    // Claude Code / Codex session with a step log to inspect
+    private var agentHasSteps: Bool {
+        (task.id == "integration_claude" || task.id == "integration_codex") && !task.steps.isEmpty
     }
 
     private var openURL: URL? {
@@ -993,9 +1017,10 @@ struct IntegrationCardView: View {
         }
     }
 
-    // VS Code with active session: show ticker layout (same as overview)
-    private var vsCodeSessionActive: Bool {
-        task.id == "integration_claude" && (task.state != .idle || !task.steps.isEmpty)
+    // Agent pill with a live session: show the ticker layout (same as overview)
+    private var agentSessionActive: Bool {
+        (task.id == "integration_claude" || task.id == "integration_codex")
+            && (task.state != .idle || !task.steps.isEmpty)
     }
 
     // n8n with a finished execution: show result row instead of "Open n8n" button
@@ -1035,7 +1060,11 @@ struct IntegrationCardView: View {
     }
 
     var body: some View {
-        if showingDetail && n8nHasActivity {
+        if showingDetail && agentHasSteps {
+            AgentStepsDetailView(task: task) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+            }
+        } else if showingDetail && n8nHasActivity {
             N8nDetailView(task: task) {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
             }
@@ -1065,7 +1094,7 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
-        } else if vsCodeSessionActive {
+        } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
@@ -1077,7 +1106,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text("Claude Code")
+                    Text(task.source == .codex ? "Codex" : "Claude Code")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -1093,11 +1122,19 @@ struct IntegrationCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                TickerView(task: task)
-                    .frame(height: 44)
-                    .padding(.top, 6)
-                    .padding(.leading, 108)
-                    .padding(.trailing, 12)
+                // Tap the ticker to open the full step log
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                }) {
+                    TickerView(task: task)
+                        .frame(height: 44)
+                        .padding(.top, 6)
+                        .padding(.leading, 108)
+                        .padding(.trailing, 12)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .help("Show the full step log")
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(.top, 4)
@@ -1108,7 +1145,8 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? "VS Code" : task.name)
+                    Text(task.id == "integration_claude" ? "VS Code"
+                         : task.id == "integration_codex" ? "Codex" : task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text("Integration")
@@ -1127,7 +1165,7 @@ struct IntegrationCardView: View {
                     let dot = stripeErr != nil ? Color(hex: "#F4505E")
                             : isConfigured    ? Color(hex: "#22C55E")
                             :                   Color(hex: "#F4505E")
-                    let label = stripeErr ?? (isConfigured ? "Connected · loading…" : "Key not configured")
+                    let label = idleStatusLabel
                     Circle().fill(dot).frame(width: 5, height: 5)
                     Text(label)
                         .font(.system(size: 11))
@@ -1139,6 +1177,11 @@ struct IntegrationCardView: View {
                 HStack(spacing: 8) {
                     if task.id == "integration_claude" {
                         Button("Open Visual Studio Code") { openVSCode() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.7))
+                            .buttonStyle(.plain)
+                    } else if task.id == "integration_codex" {
+                        Button("Open Codex") { openCodexTarget() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -1229,6 +1272,28 @@ struct IntegrationCardView: View {
             NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
         }
     }
+
+}
+
+// MARK: - Codex
+
+/// Codex has no IDE to jump into: activate a running Codex app, else fall back to the terminal.
+func openCodexTarget() {
+    if let app = NSWorkspace.shared.runningApplications.first(where: {
+        ($0.bundleIdentifier ?? "").lowercased().contains("codex")
+    }) {
+        app.activate()
+        return
+    }
+    let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                             "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+    if let hit = terminalBundleIds.compactMap({ id in
+        NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+    }).first {
+        hit.activate()
+        return
+    }
+    NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
 }
 
 // MARK: - Vercel Deployment List View
@@ -2050,6 +2115,110 @@ struct N8nDetailView: View {
     }
 }
 
+// MARK: - Agent steps detail (full Claude Code / Codex step log)
+
+struct AgentStepsDetailView: View {
+    let task: AgentTask
+    let onClose: () -> Void
+
+    private var agentLabel: String { task.source == .codex ? "Codex" : "Claude Code" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+
+            // Header: back button + project + agent + step count
+            HStack(spacing: 7) {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(width: 28, height: 28)   // large hit area
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Circle().fill(Color(hex: task.color)).frame(width: 6, height: 6)
+
+                Text(task.name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                    .lineLimit(1).truncationMode(.tail)
+                    .layoutPriority(1)
+
+                Text(agentLabel)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#8E939C"))
+
+                Spacer(minLength: 2)
+
+                Text("\(task.steps.count) steps")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(Color(hex: "#9398A1"))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Color.white.opacity(0.07))
+                    .clipShape(Capsule())
+            }
+
+            // The log: oldest first, current step highlighted
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(task.steps.enumerated()), id: \.offset) { index, step in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(step)
+                                .font(.system(size: 10.5, design: .monospaced))
+                                .foregroundColor(Color(hex: index == task.steps.count - 1 ? "#F5F6F8" : "#9398A1"))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                            if index < task.stepNotes.count, !task.stepNotes[index].isEmpty {
+                                StepNoteView(note: task.stepNotes[index])
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 4)
+            }
+            .frame(maxHeight: 88)
+        }
+        .padding(.top, 8)
+        .padding(.leading, 108)
+        .padding(.trailing, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())   // prevent taps falling through transparent areas
+    }
+}
+
+/// The full command or patch behind a step. Diff lines keep their colour.
+struct StepNoteView: View {
+    let note: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundColor(color(for: line))
+                    .lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.leading, 10)
+    }
+
+    private var lines: [String] {
+        note.split(separator: "\n", omittingEmptySubsequences: false)
+            .prefix(10)
+            .map(String.init)
+    }
+
+    private func color(for line: String) -> Color {
+        if line.hasPrefix("*** ") { return Color(hex: "#8E939C") }
+        if line.hasPrefix("+") { return Color(hex: "#22C55E") }
+        if line.hasPrefix("-") { return Color(hex: "#F4505E") }
+        return Color(hex: "#6B7079")
+    }
+}
+
 // MARK: - Ticker (overview scrolling task steps) V2
 
 struct TickerView: View {
@@ -2076,6 +2245,15 @@ struct TickerView: View {
         return raw.isEmpty ? ["…"] : raw
     }
 
+    /// Row B only settles when a new step arrives, so the last step of a finished session kept
+    /// shimmering forever and read as "still running". Settle it once the task is no longer working.
+    private var settled: Bool {
+        guard let task else { return true }
+        return task.state == .idle || task.state == .finished
+    }
+
+    private var phaseB: Double { settled ? 1.0 : rowBPhase }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
@@ -2087,9 +2265,9 @@ struct TickerView: View {
                 .opacity(rowAOpacity)
 
             // Row B: current step → animates diagonally up-left, phase 0→1, scale 1→completedScale
-            TickerRowView(text: rowB, phase: rowBPhase)
-                .scaleEffect(1 - rowBPhase * (1 - completedScale), anchor: .leading)
-                .offset(x: -rowBPhase * 10, y: rowBOffset)
+            TickerRowView(text: rowB, phase: phaseB)
+                .scaleEffect(1 - phaseB * (1 - completedScale), anchor: .leading)
+                .offset(x: -phaseB * 10, y: rowBOffset)
 
             // Row C: incoming new step — slides in from below at phase=0
             TickerRowView(text: rowC, phase: 0.0)
@@ -2232,7 +2410,11 @@ struct AgentPillsView: View {
     @State private var swapping = false
 
     private var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
+        let rest = state.tasks.filter { $0.id != state.focusId }
+        // Agent pills (Claude Code, Codex) come first so the grid never hides them
+        let agents = rest.filter { $0.source == .claudeCode || $0.source == .codex }
+        let integrations = rest.filter { $0.source != .claudeCode && $0.source != .codex }
+        return agents + integrations
     }
 
     private var displayTasks: [AgentTask] {
@@ -2273,7 +2455,8 @@ struct AgentPill: View {
 
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? "VS Code"
+            : task.id == "integration_codex" ? "Codex" : task.name
     }
 
     var body: some View {
@@ -2699,6 +2882,10 @@ struct SettingsIslandView: View {
         KeychainStore.shared.get("anthropic-api-key") != nil
     }
 
+    private var codexConnected: Bool {
+        HookServer.codexHooksInstalled()
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: nil)
@@ -2746,6 +2933,7 @@ struct SettingsIslandView: View {
                 // Connection status
                 HStack(spacing: 14) {
                     StatusBadge(label: "Claude Code", ok: claudeConnected)
+                    StatusBadge(label: "Codex", ok: codexConnected)
                     StatusBadge(label: "API", ok: apiConnected)
                     Spacer()
                     Button("Settings…") {
