@@ -143,8 +143,8 @@ export class Island {
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        State.updateTask(req.agentId, "working");
+        State.setPillBadge(req.agentId, null);
         this.setView(State.defaultView());
       },
       toggleSound: () => {

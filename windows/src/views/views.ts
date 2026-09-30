@@ -59,9 +59,23 @@ function btn(
   );
 }
 
+/** Human label for an agent source. */
+function sourceLabel(source: AgentTask["source"]): string {
+  switch (source) {
+    case "claudeCode": return "Claude Code";
+    case "opencode": return "opencode";
+    default: return "n8n";
+  }
+}
+
+/** "Claude Code" / "opencode" for the focused agent pill. */
+function agentName(task: AgentTask | null): string {
+  if (!task) return "Claude Code";
+  return sourceLabel(task.source);
+}
+
 /** AgentWho — coloured dot + task name + grey label. */
-function agentWho(task: AgentTask | null, label: string): HTMLElement {
-  const row = h("div", { class: "who-row" });
+function agentWho(task: AgentTask | null, label: string): HTMLElement {  const row = h("div", { class: "who-row" });
   if (task) {
     row.append(dot(task.color, 8), h("span", { class: "n", text: task.name }));
   }
@@ -172,10 +186,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
+      // A coding-agent pill with a live session keeps the ticker; every other
       // pill shows its own card, exactly like IntegrationCardView.
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        (task?.id === "integration_claude" || task?.id === "integration_opencode") &&
+        (task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +203,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: sourceLabel(task.source) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -328,7 +343,7 @@ function buildQuestion(): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
+      who.append(agentWho(State.focusTask, `${agentName(State.focusTask)} is asking a question`));
       const task = State.focusTask;
       title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
       clear(row);
@@ -353,7 +368,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, sourceLabel(task?.source ?? "n8n")));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -374,7 +389,7 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      who.append(agentWho(State.focusTask, `${agentName(State.focusTask)} finished`));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };
