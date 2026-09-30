@@ -1,6 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "resources": []
+    "resources": {
+      "../target/release/coucou-hook.exe": null,
+      "../target/release/coucou-hook": "coucou-hook"
+    }
   }
 }

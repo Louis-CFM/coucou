@@ -56,6 +56,20 @@ pub fn local_time() -> LocalTime {
     }
 }
 
+/// Where coucou-hook finds us: `$XDG_RUNTIME_DIR/coucou.sock`, or
+/// `/run/user/<uid>/coucou.sock` when the variable is missing. Must match
+/// `socket_path()` in hook/src/unix.rs exactly.
+pub fn relay_socket_path() -> Option<PathBuf> {
+    let dir = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| {
+            let p = PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() }));
+            p.is_dir().then_some(p)
+        })?;
+    Some(dir.join("coucou.sock"))
+}
+
 // ── Processes ─────────────────────────────────────────────────────────────────
 
 /// Nothing to hide: a spawned process only gets a terminal if it asks for one.
