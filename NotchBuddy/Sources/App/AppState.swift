@@ -74,6 +74,12 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
+    // Claude model used by the chat and the search — persisted
+    static let defaultClaudeModel = "claude-opus-5-5"
+    @Published var claudeModel: String = AppState.defaultClaudeModel {
+        didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
+    }
+
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
     @Published var soundVolume: Double = 0.12 {
         didSet {
@@ -188,6 +194,8 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
+        if let v = ud.string(forKey: "claudeModel"),
+           !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v

@@ -108,7 +108,11 @@ final class ClaudeService {
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let anthropicVersion = "2023-06-01"
-    private let model = "claude-sonnet-4-6"
+    /// Chosen in Settings; falls back to the default when the field is left empty.
+    private var model: String {
+        let m = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        return m.isEmpty ? AppState.defaultClaudeModel : m
+    }
 
     var apiKey: String? { KeychainStore.shared.get("anthropic-api-key") }
 

@@ -5,6 +5,23 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+
+    // Claude model — presets plus a free field for any other model ID
+    private static let modelPresets: [(id: String, label: String)] = [
+        ("claude-opus-5-5",   "Claude Opus 5.5"),
+        ("claude-fable-5-1",  "Claude Fable 5.1"),
+        ("claude-sonnet-5-5", "Claude Sonnet 5.5"),
+        ("claude-haiku-4-5",  "Claude Haiku 4.5"),
+    ]
+    private static let customModelTag = "__custom__"
+    @State private var modelChoice: String = {
+        let m = AppState.shared.claudeModel
+        return SettingsView.modelPresets.contains { $0.id == m } ? m : SettingsView.customModelTag
+    }()
+    @State private var customModel: String = {
+        let m = AppState.shared.claudeModel
+        return SettingsView.modelPresets.contains { $0.id == m } ? "" : m
+    }()
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
@@ -56,6 +73,32 @@ struct SettingsView: View {
                             statusMessage = "✓ Key saved."
                         }
                         .buttonStyle(.borderedProminent)
+
+                        Divider().padding(.vertical, 2)
+
+                        Picker("Model", selection: $modelChoice) {
+                            ForEach(Self.modelPresets, id: \.id) { preset in
+                                Text(preset.label).tag(preset.id)
+                            }
+                            Text("Custom…").tag(Self.customModelTag)
+                        }
+                        .onChange(of: modelChoice) { _, choice in
+                            if choice != Self.customModelTag {
+                                state.claudeModel = choice
+                            } else {
+                                applyCustomModel(customModel)
+                            }
+                        }
+
+                        if modelChoice == Self.customModelTag {
+                            TextField("Model ID (e.g. claude-opus-5-5)", text: $customModel)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: customModel) { _, value in applyCustomModel(value) }
+                        }
+
+                        Text("Used by the chat and the search. Fable needs access on your API account.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
                     }
                     .padding(6)
                 }
@@ -343,6 +386,11 @@ struct SettingsView: View {
     }
 
     // MARK: - Actions
+
+    private func applyCustomModel(_ value: String) {
+        let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !id.isEmpty { state.claudeModel = id }
+    }
 
     private func toggleStartup(_ on: Bool) {
         do {
