@@ -71,6 +71,17 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── opencode plugin ─────────────────────────────────────────────────────
+  opencodeStatus: () => call<OpencodeStatus>("opencode_status"),
+  /** Diff to show before anything is written. `install: false` previews removal. */
+  opencodePreview: (install: boolean) => callOrThrow<OpencodePreview>("opencode_preview", { install }),
+  /**
+   * Writes ~/.config/opencode/plugins/coucou.js — only ever after an explicit
+   * click, and only when the file still matches the preview the user looked at.
+   */
+  opencodeApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("opencode_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -83,6 +94,8 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** Resolved opencode binary + key presence for the Settings → Chat section. */
+  chatStatus: () => call<ChatStatus>("chat_status"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -116,6 +129,12 @@ export interface DroppedFile {
   size: number;
 }
 
+export interface ChatStatus {
+  binConfigured: string;
+  binResolved: string | null;
+  claudeKeyPresent: boolean;
+}
+
 export interface HookStatus {
   installed: boolean;
   settingsPath: string;
@@ -128,6 +147,23 @@ export interface HookPreview {
   backup: string;
   settingsPath: string;
   /** Hand back to hooksApply so only the reviewed diff is ever written. */
+  fingerprint: string;
+}
+
+export interface OpencodeStatus {
+  installed: boolean;
+  pluginPath: string;
+  relayReady: boolean;
+  bundledVersion: number;
+  installedVersion: number | null;
+  needsUpdate: boolean;
+}
+
+export interface OpencodePreview {
+  diff: string;
+  backup: string;
+  pluginPath: string;
+  /** Hand back to opencodeApply so only the reviewed diff is ever written. */
   fingerprint: string;
 }
 

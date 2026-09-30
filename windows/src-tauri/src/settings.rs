@@ -20,6 +20,19 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Chat backend: "claude" (Anthropic API) or "opencode" (local CLI).
+    #[serde(default = "default_chat_provider")]
+    pub chat_provider: String,
+    /// Optional explicit path to opencode.exe; empty = auto-detect.
+    #[serde(default)]
+    pub opencode_bin: String,
+    /// Optional `provider/model` override for opencode chat; empty = its default.
+    #[serde(default)]
+    pub opencode_model: String,
+}
+
+fn default_chat_provider() -> String {
+    "claude".into()
 }
 
 fn default_model() -> String {
@@ -43,6 +56,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: default_chat_provider(),
+            opencode_bin: String::new(),
+            opencode_model: String::new(),
         }
     }
 }

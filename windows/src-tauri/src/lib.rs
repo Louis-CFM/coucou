@@ -6,6 +6,8 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod opencode;
+mod opencode_chat;
 mod pipe;
 mod secrets;
 mod settings;
@@ -25,6 +27,7 @@ use claude::{Chat, ChatContext, ChatReply};
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
+use opencode::{OpencodePreview, OpencodeStatus};
 use pipe::Pending;
 use settings::Settings;
 
@@ -158,7 +161,7 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
 /// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
 /// spawning `code.cmd` directly is safe.
-fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
+pub(crate) fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
     let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
     let dirs = std::env::var_os("PATH")?;
     for dir in std::env::split_paths(&dirs) {
@@ -218,11 +221,29 @@ fn hooks_apply(
     Ok(backup)
 }
 
+// ── opencode plugin ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn opencode_status() -> OpencodeStatus {
+    opencode::status()
+}
+
+/// Returns the diff the user has to look at before anything is written.
+#[tauri::command]
+fn opencode_preview(install: bool) -> Result<OpencodePreview, String> {
+    opencode::preview(install)
+}
+
+/// Only ever called from an explicit click in the settings window.
+#[tauri::command]
+fn opencode_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    opencode::write(install, &fingerprint)
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
 }
-
 /// The island has the card on screen, so the long wait for a human may begin.
 /// Until this arrives the relay only waits a few hundred milliseconds, which is
 /// what stops a paused or unresponsive island from freezing Claude Code.
@@ -241,20 +262,47 @@ fn approval_decline(app: AppHandle, request_id: String) {
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
+/// Routes to the user's opencode when Settings → Chat says so.
 #[tauri::command]
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    ochat: State<'_, opencode_chat::OpencodeChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, model, bin, omodel) = {
+        let s = shared.settings.lock().unwrap();
+        (
+            s.chat_provider.clone(),
+            s.model.clone(),
+            s.opencode_bin.clone(),
+            s.opencode_model.clone(),
+        )
+    };
+    if provider == "opencode" {
+        opencode_chat::send(&ochat, &bin, &omodel, query, context).await
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, ochat: State<opencode_chat::OpencodeChat>) {
     chat.reset();
+    ochat.reset();
+}
+
+/// What the Settings → Chat section shows: resolved binary, key presence.
+#[tauri::command]
+fn chat_status(shared: State<Shared>) -> opencode_chat::ChatStatus {
+    let s = shared.settings.lock().unwrap();
+    opencode_chat::ChatStatus {
+        bin_configured: s.opencode_bin.clone(),
+        bin_resolved: opencode_chat::resolve_bin(&s.opencode_bin)
+            .map(|p| p.to_string_lossy().to_string()),
+        claude_key_present: secrets::present("anthropic-api-key"),
+    }
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -380,6 +428,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(opencode_chat::OpencodeChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,12 +442,16 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            opencode_status,
+            opencode_preview,
+            opencode_apply,
             approval_decision,
             approval_ack,
             approval_decline,
             log_line,
             chat_send,
             chat_reset,
+            chat_status,
             ingest_file,
             secret_present,
             secret_set,
@@ -425,6 +478,7 @@ pub fn run() {
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
+            opencode::ensure_plugin();
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             Ok(())
