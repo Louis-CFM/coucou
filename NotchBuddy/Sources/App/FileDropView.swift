@@ -40,6 +40,60 @@ final class FileDropNSView: NSView {
     }
 }
 
+// MARK: - Inbox
+// Dropped files are copied into Application Support/NotchBuddy/inbox so the original is never
+// touched and the copy survives the drag source going away. Copies are kept for a week, then
+// swept — same policy as windows/src-tauri/src/files.rs.
+
+enum FileInbox {
+    static let keepFor: TimeInterval = 7 * 24 * 60 * 60
+
+    /// Copies `source` into `dir` and returns the copy, or nil if nothing was copied.
+    /// Folders are not copied (a recursive copy of a dropped folder could be huge and
+    /// would sit on disk for a week); a same-named earlier copy is never overwritten.
+    static func ingest(_ source: URL, into dir: URL) -> URL? {
+        let fm = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: source.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+            return nil
+        }
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let name = source.lastPathComponent
+        var dest = dir.appendingPathComponent(name)
+        if fm.fileExists(atPath: dest.path) {
+            let stem = source.deletingPathExtension().lastPathComponent
+            let ext = source.pathExtension.isEmpty ? "" : ".\(source.pathExtension)"
+            for i in 2..<1000 {
+                let candidate = dir.appendingPathComponent("\(stem) (\(i))\(ext)")
+                if !fm.fileExists(atPath: candidate.path) { dest = candidate; break }
+            }
+        }
+        guard (try? fm.copyItem(at: source, to: dest)) != nil else { return nil }
+        // copyItem keeps the source's dates, so a file last edited long ago would arrive
+        // already older than the sweep window. The inbox ages from when we copied it.
+        try? fm.setAttributes([.modificationDate: Date()], ofItemAtPath: dest.path)
+        sweep(dir)
+        return dest
+    }
+
+    /// Removes anything copied here more than `keepFor` ago.
+    static func sweep(_ dir: URL, now: Date = Date()) {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]) else {
+            return
+        }
+        for entry in entries {
+            guard let copied = (try? entry.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else {
+                continue
+            }
+            if now.timeIntervalSince(copied) > keepFor {
+                try? fm.removeItem(at: entry)
+            }
+        }
+    }
+}
+
 // MARK: - File drop handler
 
 enum FileDropHandler {
@@ -61,10 +115,7 @@ enum FileDropHandler {
         // Copy to inbox in background — update state when done
         let inbox = HookServer.supportDir.appendingPathComponent("inbox")
         Task.detached {
-            try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
-            let dest = inbox.appendingPathComponent(name)
-            try? FileManager.default.removeItem(at: dest)
-            if (try? FileManager.default.copyItem(at: url, to: dest)) != nil {
+            if let dest = FileInbox.ingest(url, into: inbox) {
                 await MainActor.run {
                     state.droppedFile = DroppedFile(url: dest, name: name)
                     state.promptContext = .file(name: name, fileURL: dest)

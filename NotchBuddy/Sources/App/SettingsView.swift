@@ -422,7 +422,7 @@ struct SettingsView: View {
             defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
             pendingHookJSON = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL)
             showDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = "Review the changes to ~/.claude/settings.json below before confirming."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -464,7 +464,7 @@ struct SettingsView: View {
         do {
             pendingHookJSON = try HookServer.shared.previewClaudeHooks()
             showDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = "Review the changes to ~/.claude/settings.json below before confirming."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
