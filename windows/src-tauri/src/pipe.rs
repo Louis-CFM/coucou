@@ -17,6 +17,10 @@
 // documented hookSpecificOutput JSON is coucou-hook's job, so the wire format
 // Claude Code expects lives in exactly one place.
 
+// Until the Linux transport lands, the shared request/decision half of this
+// file has no caller there.
+#![cfg_attr(not(windows), allow(dead_code, unused_imports))]
+
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -24,7 +28,9 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
+#[cfg(windows)]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::sync::mpsc;
 
@@ -57,12 +63,14 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
+#[cfg(windows)]
 pub fn pipe_name() -> String {
-    let key = crate::win_user::current_user_sid()
+    let key = crate::platform::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
     format!(r"\\.\pipe\coucou-{key}")
 }
 
+#[cfg(windows)]
 pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let name = pipe_name();
@@ -95,6 +103,14 @@ pub fn start(app: AppHandle) {
     });
 }
 
+/// The relay transport on Linux is not written yet; until it is, hook events
+/// never reach the island and Claude Code carries on as if Coucou were closed.
+#[cfg(target_os = "linux")]
+pub fn start(_app: AppHandle) {
+    log::line("relay transport not available on this platform yet — hooks are inactive");
+}
+
+#[cfg(windows)]
 async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
