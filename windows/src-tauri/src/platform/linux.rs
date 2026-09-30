@@ -30,7 +30,8 @@ pub const HOME_VAR: &str = "HOME";
 
 // ── Files ─────────────────────────────────────────────────────────────────────
 
-/// `$XDG_CONFIG_HOME`, or `~/.config` when it is unset or not absolute.
+/// An XDG base directory (`$XDG_CONFIG_HOME` …), or its fallback under the home
+/// directory when it is unset or not absolute.
 fn xdg(var: &str, fallback: &str) -> PathBuf {
     std::env::var_os(var)
         .map(PathBuf::from)
@@ -48,6 +49,24 @@ pub fn config_dir() -> PathBuf {
 /// every launch.
 pub fn local_dir() -> PathBuf {
     xdg("XDG_DATA_HOME", ".local/share").join("coucou")
+}
+
+/// Environment the webview must inherit, set before any thread or process
+/// starts.
+///
+/// Inside an AppImage, WebKit uses the GStreamer bundled with it, and GStreamer
+/// keeps its plugin registry in ~/.cache/gstreamer-1.0 by default — the same
+/// file the system's GStreamer uses. The AppImage is mounted somewhere new on
+/// every launch, so each launch would rewrite the system's registry with
+/// plugin paths that vanish once Coucou quits. Give ours its own file.
+pub fn prepare_environment() {
+    if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
+        return;
+    }
+    let cache = xdg("XDG_CACHE_HOME", ".cache").join("coucou");
+    if std::fs::create_dir_all(&cache).is_ok() {
+        std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
+    }
 }
 
 pub fn local_time() -> LocalTime {

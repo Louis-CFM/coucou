@@ -349,6 +349,7 @@ fn open_settings_window(app: AppHandle) {
 }
 
 pub fn run() {
+    platform::prepare_environment();
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
 

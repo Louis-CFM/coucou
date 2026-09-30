@@ -49,6 +49,9 @@ pub fn local_dir() -> PathBuf {
     base.join("Coucou")
 }
 
+/// Nothing to set up before the webview starts.
+pub fn prepare_environment() {}
+
 pub fn local_time() -> LocalTime {
     let t = unsafe { GetLocalTime() };
     LocalTime {
