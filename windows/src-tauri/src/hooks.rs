@@ -5,9 +5,10 @@
 // touching anybody else's hooks, show the diff, and write only after an explicit
 // click. Uninstall removes Coucou's entries and nothing else.
 //
-// Commands use a quoted executable path in forward slashes, an explicit provider,
-// and the event name. Claude Code runs commands through Git Bash, so shell
-// wrappers are deliberately avoided.
+// Portable command markers use a quoted executable path in forward slashes, an
+// explicit provider, and the event name. Claude Code runs commands through Git
+// Bash. Codex's Windows override uses encoded PowerShell so the relay launches
+// correctly under either supported Windows shell.
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -199,8 +200,34 @@ fn hook_command(provider: Provider, event: &str) -> String {
 
 fn hook_command_windows(provider: Provider, event: &str) -> String {
     let path = settings::hook_exe_path();
-    let exe = path.to_string_lossy();
-    format!("\"{exe}\" {} {event}", provider.name())
+    hook_command_windows_for_exe(&path.to_string_lossy(), provider, event)
+}
+
+fn powershell_hook_script(executable: &str, provider: Provider, event: &str) -> String {
+    // Codex executes commandWindows through its configured shell. A quoted
+    // executable is an expression in PowerShell, so it needs the call operator
+    // to invoke Coucou's relay. Keep the path inside a single-quoted PowerShell
+    // string and double any embedded apostrophes.
+    let executable = executable.replace('\'', "''");
+    format!(
+        "$utf8 = [System.Text.UTF8Encoding]::new($false); [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8; $OutputEncoding = $utf8; & '{executable}' {} {event}; exit $LASTEXITCODE",
+        provider.name()
+    )
+}
+
+fn hook_command_windows_for_exe(executable: &str, provider: Provider, event: &str) -> String {
+    // -EncodedCommand always expects Base64 over UTF-16LE, independent of the
+    // active shell or the system's legacy code page. This makes paths with
+    // spaces, apostrophes, and non-ASCII characters safe in both cmd and
+    // PowerShell command runners.
+    let bytes: Vec<u8> = powershell_hook_script(executable, provider, event)
+        .encode_utf16()
+        .flat_map(u16::to_le_bytes)
+        .collect();
+    format!(
+        "powershell.exe -NoProfile -NonInteractive -EncodedCommand {}",
+        crate::claude::base64_for(&bytes)
+    )
 }
 
 /// Split a hook command into its executable and whitespace-delimited arguments.
@@ -222,12 +249,6 @@ fn hook_command_parts(command: &str) -> Option<(&str, Vec<&str>)> {
         }
     };
     Some((executable, rest.split_whitespace().collect()))
-}
-
-/// Kept as a small helper for tests that verify generated Windows commands.
-#[cfg(test)]
-fn hook_args(command: &str) -> Option<Vec<&str>> {
-    hook_command_parts(command).map(|(_, args)| args)
 }
 
 fn is_coucou_hook_executable(executable: &str) -> bool {
@@ -758,6 +779,7 @@ fn unified_diff(before: &str, after: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::{Command, Output, Stdio};
 
     const WHERE: &str = "settings.json";
 
@@ -908,6 +930,110 @@ mod tests {
     }
 
     #[test]
+    fn codex_windows_command_uses_a_utf16_powershell_call_script() {
+        let executable = r"C:\Program Files\Can's Tools\coucou-hook.exe";
+        let script = powershell_hook_script(executable, Provider::Codex, "PreToolUse");
+        assert_eq!(
+            script,
+            "$utf8 = [System.Text.UTF8Encoding]::new($false); [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8; $OutputEncoding = $utf8; & 'C:\\Program Files\\Can''s Tools\\coucou-hook.exe' codex PreToolUse; exit $LASTEXITCODE"
+        );
+
+        let command = hook_command_windows_for_exe(executable, Provider::Codex, "PreToolUse");
+        let encoded = command
+            .strip_prefix("powershell.exe -NoProfile -NonInteractive -EncodedCommand ")
+            .expect("Codex should launch PowerShell with the encoded script");
+        let script_utf16le: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
+        assert_eq!(encoded, crate::claude::base64_for(&script_utf16le));
+
+        // The portable ownership marker remains a direct quoted executable;
+        // only commandWindows is wrapped for PowerShell's invocation syntax.
+        let marker = hook_command(Provider::Codex, "PreToolUse");
+        assert_eq!(
+            hook_command_parts(&marker).unwrap().1,
+            vec!["codex", "PreToolUse"]
+        );
+    }
+
+    #[test]
+    fn generated_codex_command_runs_through_cmd_and_pwsh_with_stdin_and_exit_code() {
+        use std::os::windows::process::CommandExt;
+
+        let unique = unique_temp_dir();
+        let directory = std::env::temp_dir().join(format!(
+            "coucou hooks-Can's-é-{}",
+            unique.file_name().unwrap().to_string_lossy()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let fixture = directory.join("relay fixture.cmd");
+        std::fs::write(
+            &fixture,
+            "@echo off\r\nsetlocal\r\nchcp 65001 >nul\r\nset /p \"payload=\"\r\necho relay:%1:%2:%payload%:café-猫\r\nexit /b 23\r\n",
+        )
+        .unwrap();
+
+        let generated = hook_command_windows_for_exe(
+            &fixture.to_string_lossy(),
+            Provider::Codex,
+            "SessionStart",
+        );
+        let stdin = "{\"message\":\"hello-é\"}\r\n".as_bytes();
+
+        let mut cmd = Command::new("cmd.exe");
+        cmd.args(["/d", "/s", "/c"])
+            // cmd.exe's /S /C rules require the command to arrive with its
+            // outer quotes intact. The command itself is fixed ASCII plus a
+            // Base64 payload, so raw_arg avoids a second layer of escaping.
+            .raw_arg(format!(" \"{generated}\""));
+        let output = run_with_stdin(cmd, stdin).expect("cmd.exe should launch");
+        assert_hook_process_output(&output, stdin);
+
+        let expression = format!("& {{ {generated}; exit $LASTEXITCODE }}");
+        let mut pwsh = Command::new("pwsh.exe");
+        pwsh.args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command"])
+            .arg(expression);
+        match run_with_stdin(pwsh, stdin) {
+            Ok(output) => assert_hook_process_output(&output, stdin),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!("pwsh.exe is unavailable; skipped the pwsh process check");
+            }
+            Err(error) => panic!("could not run generated command through pwsh.exe: {error}"),
+        }
+
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    fn run_with_stdin(mut command: Command, stdin: &[u8]) -> std::io::Result<Output> {
+        let mut child = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        child
+            .stdin
+            .as_mut()
+            .expect("child stdin was piped")
+            .write_all(stdin)?;
+        drop(child.stdin.take());
+        child.wait_with_output()
+    }
+
+    fn assert_hook_process_output(output: &Output, stdin: &[u8]) {
+        assert_eq!(
+            output.status.code(),
+            Some(23),
+            "the relay's exit code must reach the outer shell; stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let payload = std::str::from_utf8(stdin).unwrap().trim();
+        assert!(
+            stdout.contains(&format!("relay:codex:SessionStart:{payload}:café-猫")),
+            "hook stdin, arguments, and UTF-8 output should survive both shells; stdout: {stdout:?}; stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
     fn a_fingerprint_notices_any_change() {
         assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
         assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
@@ -1003,7 +1129,21 @@ mod tests {
                 .find(|entry| entry_is_ours(entry, Provider::Codex))
                 .expect("Codex event should have a Coucou hook");
             let windows_command = entry["hooks"][0]["commandWindows"].as_str().unwrap();
-            assert_eq!(hook_args(windows_command).unwrap(), vec!["codex", event]);
+            assert!(windows_command
+                .starts_with("powershell.exe -NoProfile -NonInteractive -EncodedCommand "));
+            let expected_script = powershell_hook_script(
+                &settings::hook_exe_path().to_string_lossy(),
+                Provider::Codex,
+                event,
+            );
+            let expected_bytes: Vec<u8> = expected_script
+                .encode_utf16()
+                .flat_map(u16::to_le_bytes)
+                .collect();
+            assert_eq!(
+                windows_command.rsplit_once(' ').unwrap().1,
+                crate::claude::base64_for(&expected_bytes)
+            );
         }
         let removed = without_ours(&installed, Provider::Codex);
         assert!(removed["hooks"]["PreToolUse"]

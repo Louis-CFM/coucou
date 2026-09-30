@@ -4,6 +4,7 @@ import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./l
 import type { EyeShape } from "../mochi/engine";
 
 export type CodeProvider = "claude" | "codex";
+export type CodexAuthMode = "subscription" | "api";
 export type AgentSource = "claudeCode" | "codex" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 
@@ -100,6 +101,8 @@ export interface Settings {
   /** Claude model used by the chat. */
   model: string;
   chatProvider: CodeProvider;
+  /** Codex CLI login to use for chat; subscription-backed by default. */
+  codexAuthMode: CodexAuthMode;
   /** Empty means use the Codex CLI's configured default model. */
   codexModel: string;
 }
@@ -117,6 +120,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hooksInstalled: false,
   model: "claude-opus-5",
   chatProvider: "claude",
+  codexAuthMode: "subscription",
   codexModel: "",
 };
 

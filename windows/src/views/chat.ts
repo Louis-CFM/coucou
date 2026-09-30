@@ -102,6 +102,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     activeGeneration = generation;
     const chatProvider = State.settings.chatProvider;
     const model = currentModel(chatProvider);
+    const authMode = State.settings.codexAuthMode;
     Sound.play("send");
 
     const userMessage = { id: nextId++, role: "user" as const, content: query };
@@ -117,7 +118,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       await waitForChatSessionReady();
       if (generation !== State.chatGeneration) return;
-      const reply = await Bridge.chatSend(query, context, chatProvider, model);
+      const reply = await Bridge.chatSend(query, context, chatProvider, model, authMode);
       if (generation !== State.chatGeneration) return;
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;

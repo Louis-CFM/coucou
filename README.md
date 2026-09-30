@@ -100,7 +100,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Codex hooks (Windows)** | live Codex sessions and approvals | **Install hooks** — Coucou previews and backs up the Codex hook config. After install, review and trust Coucou's hook in Codex CLI with `/hooks` |
-| **Chat provider** | built-in chat | Claude uses an Anthropic API key. Codex uses the local Codex CLI sign-in; run `codex login` and choose ChatGPT sign-in to use your eligible ChatGPT plan. |
+| **Chat provider** | built-in chat | Claude uses an Anthropic API key. Codex uses a saved CLI login: ChatGPT subscription by default, or explicitly selected OpenAI API mode with separate usage billing. See the [Windows setup](windows/README.md#codex). |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code and Codex keep their normal terminal approval flow.** Codex also requires you to trust Coucou's current hook definition in `/hooks`; a changed definition needs review again.

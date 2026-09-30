@@ -29,7 +29,7 @@ await build({
         contents: `
           export const Bridge = {
             async saveSettings(settings) {
-              globalThis.__coucouChatSessionTest.calls.push(["saveSettings", settings.chatProvider, settings.codexModel]);
+              globalThis.__coucouChatSessionTest.calls.push(["saveSettings", settings.chatProvider, settings.codexModel, settings.codexAuthMode]);
               if (globalThis.__coucouChatSessionTest.failSave) throw new Error("settings write failed");
             },
             async chatReset(provider, model) {
@@ -74,7 +74,7 @@ test("settings persistence failure does not retry per frame and retries on expli
   reconcileChatSession(true);
 
   await assert.rejects(waitForChatSessionReady(), /settings write failed/);
-  assert.deepEqual(bridgeState.calls, [["saveSettings", "codex", ""]]);
+  assert.deepEqual(bridgeState.calls, [["saveSettings", "codex", "", "subscription"]]);
 
   bridgeState.calls.length = 0;
   bridgeState.failSave = false;
@@ -85,7 +85,7 @@ test("settings persistence failure does not retry per frame and retries on expli
   reconcileChatSession(false, true);
   await waitForChatSessionReady();
   assert.deepEqual(bridgeState.calls, [
-    ["saveSettings", "codex", ""],
+    ["saveSettings", "codex", "", "subscription"],
     ["chatReset", "codex", ""],
   ]);
 });
@@ -98,7 +98,7 @@ test("backend reset failure propagates and a later config transition can recover
 
   await assert.rejects(waitForChatSessionReady(), /backend reset failed/);
   assert.deepEqual(bridgeState.calls, [
-    ["saveSettings", "codex", ""],
+    ["saveSettings", "codex", "", "subscription"],
     ["chatReset", "codex", ""],
   ]);
 
@@ -108,7 +108,27 @@ test("backend reset failure propagates and a later config transition can recover
   reconcileChatSession(true);
   await waitForChatSessionReady();
   assert.deepEqual(bridgeState.calls, [
-    ["saveSettings", "codex", "gpt-5-codex"],
+    ["saveSettings", "codex", "gpt-5-codex", "subscription"],
     ["chatReset", "codex", "gpt-5-codex"],
+  ]);
+});
+
+test("switching Codex authentication mode clears history and crosses the save/reset barrier", async () => {
+  State.settings = { ...State.settings, chatProvider: "codex" };
+  State.chatHistory = [{ id: 1, role: "assistant", content: "subscription reply" }];
+  reconcileChatSession(true);
+  await waitForChatSessionReady();
+  bridgeState.calls.length = 0;
+
+  const previousGeneration = State.chatGeneration;
+  State.settings = { ...State.settings, codexAuthMode: "api" };
+  reconcileChatSession(true);
+
+  assert.equal(State.chatGeneration, previousGeneration + 1);
+  assert.deepEqual(State.chatHistory, []);
+  await waitForChatSessionReady();
+  assert.deepEqual(bridgeState.calls, [
+    ["saveSettings", "codex", "", "api"],
+    ["chatReset", "codex", ""],
   ]);
 });

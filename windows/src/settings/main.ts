@@ -100,7 +100,7 @@ function hooksSection(provider: "claude" | "codex", status: HookStatus, initialC
         h("div", { class: cli?.authenticated ? "notice ok" : "notice warn", text: cliText }),
         h("div", {
           class: "hint",
-          text: "Sign in from a terminal with `codex login`. Hook trust is reviewed in Codex with `/hooks`. The local Codex login uses your Codex subscription when available; the Claude API key above is a separate service and billing path.",
+          text: "Sign in from a terminal with `codex login`. Hook trust is reviewed in Codex with `/hooks`. Codex chat uses the authentication and billing mode selected below; API-key login is billed separately through the OpenAI API. The Claude API key above is a separate service.",
         }),
       );
       if (cli?.error) body.append(h("div", { class: "notice err", text: cli.error }));
@@ -286,6 +286,14 @@ function chatEngineSection(): HTMLElement {
   );
   provider.value = settings.chatProvider;
 
+  const authMode = h("select", { "aria-label": "Codex authentication and billing" }) as HTMLSelectElement;
+  authMode.append(
+    h("option", { value: "subscription", text: "ChatGPT subscription" }),
+    h("option", { value: "api", text: "OpenAI API (separate billing)" }),
+  );
+  authMode.value = settings.codexAuthMode;
+  const authModeRow = h("div", { class: "row" }, h("label", { text: "Authentication & billing" }), authMode);
+
   const model = h("input", {
     type: "text",
     value: settings.codexModel,
@@ -295,19 +303,41 @@ function chatEngineSection(): HTMLElement {
     style: "flex:1 1 auto;min-width:180px",
   }) as HTMLInputElement;
   const modelRow = h("div", { class: "row" }, h("label", { text: "Codex model override" }), model);
-  const hint = h("div", {
-    class: "hint",
-    text: "Codex chat runs through the local Codex CLI login. Leave the model blank to use its default. Text files up to 200 KB and images are supported; PDF context is not available yet. Claude chat uses the Anthropic API key configured below.",
-  });
+  const hint = h("div", { class: "hint" });
+  const apiSetup = h("div", { class: "notice warn" });
+
+  const updateModeHelp = () => {
+    if (provider.value !== "codex") {
+      hint.textContent = "Claude chat uses the Anthropic API key configured below.";
+      apiSetup.textContent = "";
+      apiSetup.style.display = "none";
+    } else if (authMode.value === "api") {
+      hint.textContent = "Codex API mode uses the API-key login saved by the local Codex CLI. API usage is billed separately through your OpenAI API account. Coucou uses only the saved CLI login matching your choice and never asks for or stores the API key.";
+      apiSetup.textContent = "To set up API login, run `codex login --with-api-key` in a terminal and provide the key through stdin. Do not paste the key into Coucou.";
+      apiSetup.style.display = "";
+    } else {
+      hint.textContent = "Codex chat uses the saved ChatGPT subscription login. Leave the model blank to use the Codex CLI default. Text files up to 200 KB and images are supported; PDF context is not available yet.";
+      apiSetup.textContent = "";
+      apiSetup.style.display = "none";
+    }
+  };
 
   const persist = async () => {
     settings.chatProvider = provider.value as Settings["chatProvider"];
+    settings.codexAuthMode = authMode.value as Settings["codexAuthMode"];
     settings.codexModel = model.value.trim();
     await save();
   };
-  const updateModelVisibility = () => { modelRow.style.display = provider.value === "codex" ? "" : "none"; };
+  const updateModelVisibility = () => {
+    const codex = provider.value === "codex";
+    modelRow.style.display = codex ? "" : "none";
+    authModeRow.style.display = codex ? "" : "none";
+    apiSetup.style.display = codex && authMode.value === "api" ? "" : "none";
+  };
+  updateModeHelp();
   updateModelVisibility();
-  provider.addEventListener("change", () => { updateModelVisibility(); void persist(); });
+  provider.addEventListener("change", () => { updateModeHelp(); updateModelVisibility(); void persist(); });
+  authMode.addEventListener("change", () => { updateModeHelp(); updateModelVisibility(); void persist(); });
   model.addEventListener("change", () => void persist());
 
   return h(
@@ -315,8 +345,10 @@ function chatEngineSection(): HTMLElement {
     {},
     h("h2", {}, h("span", { text: "Chat provider" })),
     h("div", { class: "row" }, h("label", { text: "Use for chat" }), provider),
+    authModeRow,
     modelRow,
     hint,
+    apiSetup,
   );
 }
 

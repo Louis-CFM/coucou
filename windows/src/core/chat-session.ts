@@ -11,7 +11,7 @@ let transitionRevision = 0;
 let lastFailure: { config: string; persist: boolean } | null = null;
 
 function configKey(settings: Settings): string {
-  return `${settings.chatProvider}\n${settings.codexModel}\n${settings.model}`;
+  return `${settings.chatProvider}\n${settings.codexModel}\n${settings.model}\n${settings.codexAuthMode}`;
 }
 
 function queueTransition(settings: Settings, persist: boolean) {

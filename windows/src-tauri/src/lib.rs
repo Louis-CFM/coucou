@@ -76,6 +76,7 @@ fn save_settings(
         if current.chat_provider != settings.chat_provider
             || current.model != settings.model
             || current.codex_model != settings.codex_model
+            || current.codex_auth_mode != settings.codex_auth_mode
         {
             chat.reset();
             codex_chat.reset();
@@ -278,6 +279,7 @@ async fn chat_send(
     context: Option<ChatContext>,
     provider: Option<String>,
     model: Option<String>,
+    auth_mode: Option<String>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
     let selected_model = match settings.chat_provider {
@@ -291,9 +293,25 @@ async fn chat_send(
     {
         return Err("Chat settings changed. Try sending your message again.".into());
     }
+    if settings.chat_provider == ChatProvider::Codex
+        && auth_mode
+            .as_deref()
+            .is_some_and(|mode| mode != settings.codex_auth_mode.as_str())
+    {
+        return Err("Chat settings changed. Try sending your message again.".into());
+    }
     match settings.chat_provider {
         ChatProvider::Claude => claude::send(&chat, &selected_model, query, context).await,
-        ChatProvider::Codex => codex::send(&codex_chat, &selected_model, query, context).await,
+        ChatProvider::Codex => {
+            codex::send(
+                &codex_chat,
+                &selected_model,
+                settings.codex_auth_mode,
+                query,
+                context,
+            )
+            .await
+        }
     }
 }
 

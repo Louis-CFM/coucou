@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { CodeProvider, Settings } from "./state";
+import type { CodeProvider, CodexAuthMode, Settings } from "./state";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -83,9 +83,9 @@ export const Bridge = {
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
-  /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null, provider: CodeProvider, model: string) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context, provider, model }),
+  /** One chat turn. API keys and file bytes never leave Rust. */
+  chatSend: (query: string, context: ChatContext | null, provider: CodeProvider, model: string, authMode?: CodexAuthMode) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, provider, model, authMode }),
   chatReset: (provider?: CodeProvider, model?: string) => IS_TAURI
     ? callOrThrow<void>("chat_reset", provider ? { provider, model } : undefined) : Promise.resolve(),
   /** Copies a dropped file into the inbox. */

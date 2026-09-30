@@ -112,6 +112,19 @@ pub async fn send(
     let key = secrets::get("anthropic-api-key")
         .ok_or_else(|| "API key missing. Open settings.".to_string())?;
 
+    send_with_key(chat, model, query, context, &key, ENDPOINT).await
+}
+
+/// Keep the production credential and endpoint fixed in `send`; this private
+/// seam lets the HTTP flow be exercised against a local mock server.
+async fn send_with_key(
+    chat: &Chat,
+    model: &str,
+    query: String,
+    context: Option<ChatContext>,
+    key: &str,
+    endpoint: &str,
+) -> Result<ChatReply, String> {
     let mut content: Vec<Value> = Vec::new();
 
     // File / window context rides along with the first message only, exactly
@@ -151,7 +164,7 @@ pub async fn send(
         "messages": messages,
     });
 
-    let response = match call(&key, &body).await {
+    let response = match call(key, endpoint, &body).await {
         Ok(v) => v,
         Err(err) => {
             chat.rollback(generation); // never alter a newer conversation
@@ -198,14 +211,14 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
+async fn call(key: &str, endpoint: &str, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(90))
         .build()
         .map_err(|e| e.to_string())?;
 
     let response = client
-        .post(ENDPOINT)
+        .post(endpoint)
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)
         .header("anthropic-beta", FALLBACK_BETA)
@@ -301,8 +314,81 @@ fn base64(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{base64, Chat};
+    use super::{base64, send_with_key, Chat, ChatContext, ANTHROPIC_VERSION, FALLBACK_BETA};
     use serde_json::json;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::thread::{self, JoinHandle};
+
+    struct MockRequest {
+        headers: std::collections::HashMap<String, String>,
+        body: serde_json::Value,
+    }
+
+    fn mock_server(
+        responses: Vec<(u16, serde_json::Value)>,
+    ) -> (String, JoinHandle<Vec<MockRequest>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = thread::spawn(move || {
+            responses
+                .into_iter()
+                .map(|(status, response)| {
+                    let (mut stream, _) = listener.accept().unwrap();
+                    let request = read_request(&mut stream);
+                    let body = serde_json::to_vec(&response).unwrap();
+                    let reason = if status == 200 { "OK" } else { "Unauthorized" };
+                    write!(
+                        stream,
+                        "HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    )
+                    .unwrap();
+                    stream.write_all(&body).unwrap();
+                    request
+                })
+                .collect()
+        });
+        (endpoint, server)
+    }
+
+    fn read_request(stream: &mut TcpStream) -> MockRequest {
+        let mut bytes = Vec::new();
+        let mut chunk = [0_u8; 4096];
+        let header_end = loop {
+            let count = stream.read(&mut chunk).unwrap();
+            assert_ne!(count, 0, "client closed before sending request headers");
+            bytes.extend_from_slice(&chunk[..count]);
+            if let Some(index) = bytes.windows(4).position(|part| part == b"\r\n\r\n") {
+                break index + 4;
+            }
+        };
+
+        let header_text = String::from_utf8(bytes[..header_end].to_vec()).unwrap();
+        let headers = header_text
+            .lines()
+            .skip(1)
+            .filter_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                Some((name.trim().to_ascii_lowercase(), value.trim().to_string()))
+            })
+            .collect::<std::collections::HashMap<_, _>>();
+        let content_length = headers
+            .get("content-length")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        while bytes.len() - header_end < content_length {
+            let count = stream.read(&mut chunk).unwrap();
+            assert_ne!(
+                count, 0,
+                "client closed before sending the full request body"
+            );
+            bytes.extend_from_slice(&chunk[..count]);
+        }
+        let body = serde_json::from_slice(&bytes[header_end..header_end + content_length]).unwrap();
+        MockRequest { headers, body }
+    }
 
     #[test]
     fn base64_matches_rfc4648_vectors() {
@@ -369,6 +455,136 @@ mod tests {
         }
 
         chat.rollback(generation);
+        let state = chat.state.lock().unwrap();
+        assert!(state.messages.is_empty());
+        assert!(!state.in_flight);
+    }
+
+    #[tokio::test]
+    async fn send_posts_provider_headers_and_preserves_history_across_turns() {
+        let assistant_blocks = json!([
+            { "type": "text", "text": "I found the page." },
+            { "type": "server_tool_use", "id": "srvtoolu_1", "name": "web_search", "input": { "query": "Mochi" } },
+            { "type": "web_search_tool_result", "tool_use_id": "srvtoolu_1", "content": [{ "type": "web_search_result", "title": "Mochi", "url": "https://example.test/mochi" }] }
+        ]);
+        let (endpoint, server) = mock_server(vec![
+            (
+                200,
+                json!({ "content": assistant_blocks, "stop_reason": "end_turn" }),
+            ),
+            (
+                200,
+                json!({ "content": [{ "type": "text", "text": "It describes Mochi." }], "stop_reason": "end_turn" }),
+            ),
+        ]);
+        let chat = Chat::default();
+
+        let first = send_with_key(
+            &chat,
+            "claude-test-model",
+            "Find the Mochi page".into(),
+            Some(ChatContext::Window {
+                app_name: "Browser".into(),
+                title: "Search tab".into(),
+                url: Some("https://example.test".into()),
+            }),
+            "unit-test-key",
+            &endpoint,
+        )
+        .await
+        .unwrap();
+        assert_eq!(first.text, "I found the page.");
+
+        let second = send_with_key(
+            &chat,
+            "claude-test-model",
+            "What does it say?".into(),
+            None,
+            "unit-test-key",
+            &endpoint,
+        )
+        .await
+        .unwrap();
+        assert_eq!(second.text, "It describes Mochi.");
+
+        let requests = server.join().unwrap();
+        assert_eq!(requests.len(), 2);
+        for request in &requests {
+            assert_eq!(request.headers.get("x-api-key").unwrap(), "unit-test-key");
+            assert_eq!(
+                request.headers.get("anthropic-version").unwrap(),
+                ANTHROPIC_VERSION
+            );
+            assert_eq!(
+                request.headers.get("anthropic-beta").unwrap(),
+                FALLBACK_BETA
+            );
+            assert_eq!(
+                request.headers.get("content-type").unwrap(),
+                "application/json"
+            );
+            assert_eq!(request.body["model"], "claude-test-model");
+            assert_eq!(request.body["max_tokens"], 4096);
+        }
+
+        assert_eq!(
+            requests[0].body["messages"],
+            json!([{
+                "role": "user",
+                "content": [
+                    { "type": "text", "text": "Context — App: Browser, Window: Search tab, URL: https://example.test" },
+                    { "type": "text", "text": "Find the Mochi page" }
+                ]
+            }])
+        );
+        assert_eq!(
+            requests[1].body["messages"],
+            json!([
+                {
+                    "role": "user",
+                    "content": [
+                        { "type": "text", "text": "Context — App: Browser, Window: Search tab, URL: https://example.test" },
+                        { "type": "text", "text": "Find the Mochi page" }
+                    ]
+                },
+                { "role": "assistant", "content": assistant_blocks },
+                {
+                    "role": "user",
+                    "content": [{ "type": "text", "text": "What does it say?" }]
+                }
+            ])
+        );
+        let state = chat.state.lock().unwrap();
+        assert_eq!(state.messages.len(), 4);
+        assert!(!state.in_flight);
+    }
+
+    #[tokio::test]
+    async fn send_rolls_back_user_message_after_api_error() {
+        let (endpoint, server) = mock_server(vec![(
+            401,
+            json!({ "type": "error", "error": { "type": "authentication_error", "message": "invalid test key" } }),
+        )]);
+        let chat = Chat::default();
+
+        let error = match send_with_key(
+            &chat,
+            "claude-test-model",
+            "This request will fail".into(),
+            None,
+            "unit-test-key",
+            &endpoint,
+        )
+        .await
+        {
+            Ok(_) => panic!("mock API failure should be returned to the caller"),
+            Err(error) => error,
+        };
+
+        assert!(error.contains("Claude API 401"));
+        assert!(error.contains("invalid test key"));
+        let requests = server.join().unwrap();
+        assert_eq!(requests.len(), 1);
         let state = chat.state.lock().unwrap();
         assert!(state.messages.is_empty());
         assert!(!state.in_flight);

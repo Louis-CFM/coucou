@@ -85,8 +85,13 @@ codex login
 
 Choose **Sign in with ChatGPT** in the browser flow to use an eligible ChatGPT
 plan for Codex. Coucou uses the saved local CLI sign-in, so Codex chat does not
-need an OpenAI API key. API-key sign-in uses separate, usage-based billing and
-is not the ChatGPT-plan route. The first verified Coucou CLI version is 0.151.0;
+need an OpenAI API key. Optionally select **OpenAI API (separate billing)** under
+**Settings → Chat provider → Authentication & billing** and use
+`codex login --with-api-key` in a terminal, providing the key through stdin.
+Coucou uses the saved CLI login and does not store the OpenAI key. API requests
+are billed separately from a ChatGPT plan. A login that does not match the
+selected mode is rejected; Coucou never automatically falls back between them.
+The first verified Coucou CLI version is 0.151.0;
 use that version or newer.
 
 Open **Settings… → Codex → Install hooks…** to preview the change and backup for

@@ -1,4 +1,4 @@
-//! Subscription-backed, isolated Codex chat. No shell, token-file reads or daemon.
+//! Isolated Codex chat using the saved Codex CLI login. No shell, token-file reads, or daemon.
 //! Each turn replays our bounded history into an ephemeral read-only exec run.
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -12,6 +12,7 @@ use tokio::process::Command;
 use tokio::sync::watch;
 
 use crate::claude::{ChatContext, ChatReply};
+use crate::settings::CodexAuthMode;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const MIN_VERSION: (u32, u32, u32) = (0, 151, 0);
@@ -78,7 +79,11 @@ pub fn executable() -> Option<PathBuf> {
 
 fn command(exe: &Path) -> Command {
     let mut cmd = Command::new(exe);
-    cmd.creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);
+    cmd.creation_flags(CREATE_NO_WINDOW)
+        .kill_on_drop(true)
+        // Codex status and chat must both reflect the saved CLI login.
+        .env_remove("CODEX_API_KEY")
+        .env_remove("OPENAI_API_KEY");
     cmd
 }
 
@@ -191,8 +196,8 @@ pub async fn status() -> Status {
         Ok((ok, text)) => {
             result.auth_mode = auth_mode(&text, ok);
             result.authenticated = result.auth_mode.is_some();
-            if result.auth_mode.as_deref() != Some("chatgpt") {
-                result.error = Some("Run codex login and sign in with ChatGPT to use your Codex subscription. API-key login is not used by Coucou's Codex chat.".into());
+            if result.auth_mode.is_none() {
+                result.error = Some("Sign in to the Codex CLI first. Run `codex login` for your ChatGPT subscription, or `codex login --with-api-key` to use a saved API-key login.".into());
             }
         }
         Err(err) => result.error = Some(err),
@@ -207,6 +212,7 @@ struct Conversation {
     generation: u64,
     cancel: Option<watch::Sender<bool>>,
     model: String,
+    auth_mode: Option<CodexAuthMode>,
 }
 
 #[derive(Clone)]
@@ -230,6 +236,7 @@ impl Chat {
         state.history.clear();
         state.context = None;
         state.model.clear();
+        state.auth_mode = None;
     }
 }
 
@@ -237,7 +244,10 @@ fn attachment(context: Option<ChatContext>) -> Result<Option<Attachment>, String
     attachment_in(context, &crate::files::inbox_dir())
 }
 
-fn attachment_in(context: Option<ChatContext>, inbox_path: &Path) -> Result<Option<Attachment>, String> {
+fn attachment_in(
+    context: Option<ChatContext>,
+    inbox_path: &Path,
+) -> Result<Option<Attachment>, String> {
     match context {
         None => Ok(None),
         Some(ChatContext::Window {
@@ -385,7 +395,13 @@ impl Drop for ProcessJob {
     }
 }
 
-fn exec_command(exe: &Path, cwd: &Path, model: &str, context: Option<&Attachment>) -> Command {
+fn exec_command(
+    exe: &Path,
+    cwd: &Path,
+    model: &str,
+    context: Option<&Attachment>,
+    auth_mode: CodexAuthMode,
+) -> Command {
     let mut cmd = command(exe);
     cmd.args([
         "exec",
@@ -405,6 +421,10 @@ fn exec_command(exe: &Path, cwd: &Path, model: &str, context: Option<&Attachment
         "-c",
         "features.plugins=false",
     ]);
+    cmd.arg("-c").arg(format!(
+        "forced_login_method=\"{}\"",
+        auth_mode.forced_login_method()
+    ));
     if !model.is_empty() {
         cmd.arg("--model").arg(model);
     }
@@ -416,9 +436,8 @@ fn exec_command(exe: &Path, cwd: &Path, model: &str, context: Option<&Attachment
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    // Saved ChatGPT auth remains under CODEX_HOME; inherited API keys never
-    // silently change the billing route of this subscription-only feature.
-    cmd.env_remove("CODEX_API_KEY").env_remove("OPENAI_API_KEY");
+    // Saved Codex auth remains under CODEX_HOME. Inherited API keys never
+    // silently change the billing route selected in Coucou.
     cmd
 }
 
@@ -427,6 +446,7 @@ async fn execute(
     model: &str,
     input: &str,
     context: Option<&Attachment>,
+    auth_mode: CodexAuthMode,
     mut cancel: watch::Receiver<bool>,
 ) -> Result<String, String> {
     if *cancel.borrow() {
@@ -434,7 +454,7 @@ async fn execute(
     }
     let cwd = crate::settings::local_dir().join("codex-chat");
     std::fs::create_dir_all(&cwd).map_err(|e| e.to_string())?;
-    let mut cmd = exec_command(exe, &cwd, model, context);
+    let mut cmd = exec_command(exe, &cwd, model, context, auth_mode);
     run_command(&mut cmd, input, &mut cancel, RUN_TIMEOUT).await
 }
 
@@ -480,6 +500,7 @@ async fn run_command(
 pub async fn send(
     chat: &Chat,
     model: &str,
+    auth_mode: CodexAuthMode,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
@@ -497,6 +518,13 @@ pub async fn send(
         }
         if state.model != model && !state.history.is_empty() {
             return Err("The model changed. Start a new chat.".into());
+        }
+        if state
+            .auth_mode
+            .is_some_and(|existing| existing != auth_mode)
+            && !state.history.is_empty()
+        {
+            return Err("The Codex sign-in mode changed. Start a new chat.".into());
         }
         let (sender, receiver) = watch::channel(false);
         state.cancel = Some(sender);
@@ -518,11 +546,9 @@ pub async fn send(
         if let Some(err) = health.error {
             return Err(err);
         }
-        if health.auth_mode.as_deref() != Some("chatgpt") {
-            return Err("Sign in to Codex with ChatGPT first.".into());
-        }
+        validate_saved_auth(auth_mode, health.auth_mode.as_deref())?;
         let exe = executable().ok_or("Codex CLI is no longer available.")?;
-        let text = execute(&exe, model, &input, context.as_ref(), receiver).await?;
+        let text = execute(&exe, model, &input, context.as_ref(), auth_mode, receiver).await?;
         Ok::<_, String>((text, context))
     }
     .await;
@@ -535,7 +561,34 @@ pub async fn send(
     state.history.push((query, text.clone()));
     state.context = context;
     state.model = model.to_string();
+    state.auth_mode = Some(auth_mode);
     Ok(ChatReply { text })
+}
+
+fn validate_saved_auth(selected: CodexAuthMode, saved: Option<&str>) -> Result<(), String> {
+    let Some(saved) = saved else {
+        let message = match selected {
+            CodexAuthMode::Subscription => {
+                "Codex CLI is signed out. Run `codex login` and sign in with ChatGPT, then retry."
+            }
+            CodexAuthMode::Api => {
+                "Codex CLI is signed out. Run `codex login --with-api-key` and provide your API key through the CLI, then retry."
+            }
+        };
+        return Err(message.into());
+    };
+    let expected = match selected {
+        CodexAuthMode::Subscription => "chatgpt",
+        CodexAuthMode::Api => "apiKey",
+    };
+    if saved == expected {
+        return Ok(());
+    }
+    let message = match selected {
+        CodexAuthMode::Subscription => "Codex is signed in with an API key, but subscription mode is selected. Run `codex login` and sign in with ChatGPT, then retry. No request was sent.",
+        CodexAuthMode::Api => "Codex is signed in with ChatGPT, but API-key mode is selected. Run `codex login --with-api-key` in a terminal, then retry. No request was sent.",
+    };
+    Err(message.into())
 }
 
 #[cfg(test)]
@@ -545,14 +598,20 @@ mod tests {
     struct Scratch(PathBuf);
     impl Scratch {
         fn new() -> Self {
-            let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-            let path = std::env::temp_dir().join(format!("coucou-codex-test-{}-{stamp}", std::process::id()));
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let path = std::env::temp_dir()
+                .join(format!("coucou-codex-test-{}-{stamp}", std::process::id()));
             std::fs::create_dir_all(&path).unwrap();
             Self(path)
         }
     }
     impl Drop for Scratch {
-        fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); }
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
     }
 
     #[test]
@@ -571,12 +630,20 @@ mod tests {
         let temp = Scratch::new();
         let inbox = temp.0.join("inbox");
         std::fs::create_dir_all(&inbox).unwrap();
-        let attach = |path: &Path| attachment_in(Some(ChatContext::File {
-            name: "fixture".into(), path: path.to_string_lossy().into_owned(),
-        }), &inbox);
+        let attach = |path: &Path| {
+            attachment_in(
+                Some(ChatContext::File {
+                    name: "fixture".into(),
+                    path: path.to_string_lossy().into_owned(),
+                }),
+                &inbox,
+            )
+        };
         let text = inbox.join("sample.txt");
         std::fs::write(&text, "Türkçe fixture").unwrap();
-        assert!(matches!(attach(&text).unwrap(), Some(Attachment::Text(s)) if s.contains("Türkçe fixture")));
+        assert!(
+            matches!(attach(&text).unwrap(), Some(Attachment::Text(s)) if s.contains("Türkçe fixture"))
+        );
         let outside = temp.0.join("outside.txt");
         std::fs::write(&outside, "private fixture").unwrap();
         assert!(attach(&outside).is_err());
@@ -585,12 +652,21 @@ mod tests {
         assert!(attach(&pdf).err().unwrap().contains("PDF"));
         std::fs::write(&text, [0xff, 0xfe]).unwrap();
         assert!(attach(&text).err().unwrap().contains("UTF-8"));
-        std::fs::File::create(&text).unwrap().set_len(MAX_TEXT + 1).unwrap();
+        std::fs::File::create(&text)
+            .unwrap()
+            .set_len(MAX_TEXT + 1)
+            .unwrap();
         assert!(attach(&text).err().unwrap().contains("200 KB"));
         let image = inbox.join("image.png");
         std::fs::write(&image, b"fixture").unwrap();
-        assert!(matches!(attach(&image).unwrap(), Some(Attachment::Image(_))));
-        std::fs::File::create(&image).unwrap().set_len(20 * 1024 * 1024 + 1).unwrap();
+        assert!(matches!(
+            attach(&image).unwrap(),
+            Some(Attachment::Image(_))
+        ));
+        std::fs::File::create(&image)
+            .unwrap()
+            .set_len(20 * 1024 * 1024 + 1)
+            .unwrap();
         assert!(attach(&image).err().unwrap().contains("20 MB"));
     }
 
@@ -613,6 +689,25 @@ mod tests {
             Some("apiKey")
         );
         assert_eq!(auth_mode("Logged in using ChatGPT", false), None);
+    }
+
+    #[test]
+    fn saved_login_must_match_the_selected_billing_mode() {
+        assert!(validate_saved_auth(CodexAuthMode::Subscription, Some("chatgpt")).is_ok());
+        assert!(validate_saved_auth(CodexAuthMode::Api, Some("apiKey")).is_ok());
+        let subscription_error =
+            validate_saved_auth(CodexAuthMode::Subscription, Some("apiKey")).unwrap_err();
+        assert!(subscription_error.contains("codex login"));
+        assert!(subscription_error.contains("No request was sent"));
+        let api_error = validate_saved_auth(CodexAuthMode::Api, Some("chatgpt")).unwrap_err();
+        assert!(api_error.contains("codex login --with-api-key"));
+        assert!(api_error.contains("No request was sent"));
+        assert!(validate_saved_auth(CodexAuthMode::Subscription, None)
+            .unwrap_err()
+            .contains("Codex CLI is signed out"));
+        assert!(validate_saved_auth(CodexAuthMode::Api, None)
+            .unwrap_err()
+            .contains("Codex CLI is signed out"));
     }
 
     #[test]
@@ -666,6 +761,7 @@ mod tests {
             Path::new("C:/chat"),
             "model & echo secret",
             None,
+            CodexAuthMode::Subscription,
         );
         let std = cmd.as_std();
         assert_eq!(std.get_program(), "C:/codex.exe");
@@ -673,7 +769,33 @@ mod tests {
         assert!(args.contains(&"read-only"));
         assert!(args.contains(&"features.hooks=false"));
         assert!(args.contains(&"model & echo secret"));
+        assert!(args.contains(&"forced_login_method=\"chatgpt\""));
         assert_eq!(args.last(), Some(&"-"));
+    }
+
+    #[test]
+    fn each_billing_mode_pins_cli_auth_and_strips_inherited_keys() {
+        for (mode, forced_method) in [
+            (CodexAuthMode::Subscription, "chatgpt"),
+            (CodexAuthMode::Api, "api"),
+        ] {
+            let cmd = exec_command(
+                Path::new("C:/codex.exe"),
+                Path::new("C:/chat"),
+                "",
+                None,
+                mode,
+            );
+            let std = cmd.as_std();
+            let args: Vec<_> = std.get_args().map(|v| v.to_str().unwrap()).collect();
+            assert!(args.contains(&format!("forced_login_method=\"{forced_method}\"").as_str()));
+            let envs: Vec<_> = std
+                .get_envs()
+                .filter(|(key, _)| *key == "OPENAI_API_KEY" || *key == "CODEX_API_KEY")
+                .collect();
+            assert_eq!(envs.len(), 2);
+            assert!(envs.iter().all(|(_, value)| value.is_none()));
+        }
     }
 
     #[tokio::test]
@@ -774,7 +896,10 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(200)).await;
             sender.send(true).unwrap();
         };
-        let (result, ()) = tokio::join!(run_command(&mut cmd, "q", &mut receiver, Duration::from_secs(10)), cancellation);
+        let (result, ()) = tokio::join!(
+            run_command(&mut cmd, "q", &mut receiver, Duration::from_secs(10)),
+            cancellation
+        );
         assert!(result.unwrap_err().contains("cancelled"));
     }
 
@@ -803,6 +928,7 @@ mod tests {
         let reply = send(
             &chat,
             "",
+            CodexAuthMode::Subscription,
             "Reply exactly COUCOU_CODEX_OK. Do not use tools.".into(),
             None,
         )
