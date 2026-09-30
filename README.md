@@ -4,12 +4,13 @@
 
 # Coucou
 
-**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your AI coding agent sessions.**
+**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions.**
 
 Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-AppImage%20%7C%20deb%20%7C%20rpm-FCC624?logo=linux&logoColor=black)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -40,9 +41,9 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
-- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
+- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
 - 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
-- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
+- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux Secret Service (GNOME Keyring, KWallet). The app only talks to the services you plug in.
 
 <table>
 <tr>
@@ -74,6 +75,18 @@ There is no notch on a PC, so the island slides out of the top edge of the scree
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
 rest of the differences.
 
+### Linux
+
+Grab a package from [Releases](https://github.com/Louis-CFM/coucou/releases):
+
+- **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
+- **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
+- **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
+
+The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
+Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
+so there it opens as a regular window. See [`windows/README.md`](windows/README.md#linux).
+
 ### Build from source
 
 **macOS** — requirements: macOS 15+, Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
@@ -95,20 +108,32 @@ npm install
 npm run pack                # installer lands in windows/release/
 ```
 
+**Linux** — requirements: [Rust](https://rustup.rs), Node 20+, and the WebKitGTK,
+gtk-layer-shell and appindicator development packages (Debian/Ubuntu names below).
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libgtk-layer-shell-dev \
+  libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/windows
+npm install
+npm run pack                # AppImage, .deb and .rpm land in windows/release/
+```
+
 ## Setup
 
-Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) → **Settings…**
+Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Linux) → **Settings…**
 
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Gemini CLI hooks** *(macOS)* | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
 | **Antigravity (agy) hooks** *(macOS)* | agy sessions in the island | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json` |
-| **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager |
+| **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
 | **Google AI API key** *(macOS)* | chat with Google AI (Gemini) | Settings → Chat — other providers · Keychain |
 | **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |
 | **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
-| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager, all optional |
+| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 
@@ -143,6 +168,13 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 - A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
 - Claude Code hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager.
 - Details and differences in [`windows/README.md`](windows/README.md).
+
+**Linux**
+
+- The same Tauri app as Windows. On Wayland the island is a gtk-layer-shell
+  overlay anchored to the top edge, and click-through is its input region.
+- Claude Code hooks go through the same `coucou-hook`, over a Unix socket in
+  `$XDG_RUNTIME_DIR`; keys live in the Secret Service.
 
 ## Contributing
 

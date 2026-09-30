@@ -146,3 +146,36 @@ problems. It stays on your machine.
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+
+## Linux
+
+The same app builds for Linux: everything that differs lives in
+`src-tauri/src/platform/`, and the relay's transport in `hook/src/unix.rs`.
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libgtk-layer-shell-dev \
+  libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+npm install
+npm run tauri dev      # live-reloading development build
+npm run pack           # AppImage, .deb and .rpm in windows/release/
+```
+
+What changes on Linux:
+
+- **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
+  top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
+  and other wlroots compositors. GNOME has no layer-shell, so there the island
+  is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **Click-through** is the window's input region, kept equal to the island
+  shape, so the compositor sends every other click to what is underneath.
+- **Mochi's eyes** follow the pointer only while it is over the island: Wayland
+  gives no app the cursor position anywhere else.
+- **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
+  Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
+  runs as the same user.
+- **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Files**: preferences in `~/.config/coucou/`, the log at
+  `~/.local/share/coucou/coucou.log`.
+- What the Windows build leaves out, this one does too: sending a file by
+  email, dragging Mochi onto a window, and jumping to a specific terminal
+  window — "Open terminal" opens the folder in VS Code.
