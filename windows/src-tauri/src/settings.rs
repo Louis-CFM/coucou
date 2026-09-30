@@ -20,6 +20,32 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "anthropic" = the official Claude API, "custom" = any compatible
+    /// endpoint (proxy, gateway, local server) configured below.
+    #[serde(default)]
+    pub provider_mode: String,
+    /// Base URL of the custom endpoint, e.g. "http://127.0.0.1:20128".
+    #[serde(default)]
+    pub custom_base_url: String,
+    /// Dialect of the custom endpoint: "anthropic" (Messages) or "openai"
+    /// (Chat Completions).
+    #[serde(default)]
+    pub custom_api_style: String,
+    /// Model name for the custom endpoint; empty = fall back to `model`.
+    #[serde(default)]
+    pub custom_model: String,
+}
+
+impl Settings {
+    /// The model actually sent to the API: the custom one when a custom
+    /// provider names one, otherwise the regular Claude model.
+    pub fn resolved_model(&self) -> String {
+        if self.provider_mode == "custom" && !self.custom_model.trim().is_empty() {
+            self.custom_model.trim().to_string()
+        } else {
+            self.model.clone()
+        }
+    }
 }
 
 fn default_model() -> String {
@@ -43,6 +69,10 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            provider_mode: "anthropic".into(),
+            custom_base_url: String::new(),
+            custom_api_style: "anthropic".into(),
+            custom_model: String::new(),
         }
     }
 }

@@ -110,6 +110,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ## 5. API Claude (recherche)
 
+- Fournisseur choisi dans les réglages (« AI Provider ») : API officielle Anthropic (défaut, web search activé, clé obligatoire) **ou** endpoint personnalisé — base URL + style (Messages Anthropic ou Chat Completions OpenAI) + modèle + clé optionnelle (les gateways locaux n'en demandent souvent pas). Le web search n'est envoyé que sur l'API officielle ; le dialecte OpenAI n'a pas d'équivalent portable.
 - `POST https://api.anthropic.com/v1/messages`, en-têtes `x-api-key`, `anthropic-version`, `content-type: application/json` (versions à vérifier dans la doc).
 - Modèle par défaut : `claude-sonnet-5`, réglable dans les réglages. Vérifier la liste des modèles disponibles dans la doc.
 - Outil de recherche web côté serveur de l'API : l'identifiant de type à jour est dans la doc (au moment d'écrire, `web_search_20250305`) ; `max_uses` 5.

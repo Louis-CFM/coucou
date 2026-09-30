@@ -5,6 +5,12 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+    // AI provider (UserDefaults — read by ClaudeService on every call)
+    @State private var providerMode: String = UserDefaults.standard.string(forKey: "providerMode") ?? "anthropic"
+    @State private var customBaseUrl: String = UserDefaults.standard.string(forKey: "customBaseUrl") ?? ""
+    @State private var customApiStyle: String = UserDefaults.standard.string(forKey: "customApiStyle") ?? "anthropic"
+    @State private var customModel: String = UserDefaults.standard.string(forKey: "customModel") ?? ""
+    @State private var customApiKey: String = KeychainStore.shared.get("custom-api-key") ?? ""
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
@@ -49,16 +55,66 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
 
-                // MARK: API
-                GroupBox("Anthropic API") {
+                // MARK: AI provider
+                GroupBox("AI Provider") {
                     VStack(alignment: .leading, spacing: 8) {
-                        SecureField("API key (sk-ant-…)", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                            statusMessage = "✓ Key saved."
+                        Picker("Provider", selection: $providerMode) {
+                            Text("Claude (official)").tag("anthropic")
+                            Text("Custom endpoint").tag("custom")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .onChange(of: providerMode) { _, mode in
+                            UserDefaults.standard.set(mode, forKey: "providerMode")
+                            ClaudeService.shared.clearConversation()
+                        }
+
+                        if providerMode == "anthropic" {
+                            SecureField("API key (sk-ant-…)", text: $apiKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Save") {
+                                KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+                                statusMessage = "✓ Key saved."
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Text("API usage is billed by Anthropic.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        } else {
+                            TextField("Base URL (e.g. http://127.0.0.1:20128)", text: $customBaseUrl)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: customBaseUrl) { _, v in
+                                    UserDefaults.standard.set(v.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "customBaseUrl")
+                                    ClaudeService.shared.clearConversation()
+                                }
+                            Picker("API style", selection: $customApiStyle) {
+                                Text("Anthropic Messages").tag("anthropic")
+                                Text("OpenAI Chat Completions").tag("openai")
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .onChange(of: customApiStyle) { _, v in
+                                UserDefaults.standard.set(v, forKey: "customApiStyle")
+                                ClaudeService.shared.clearConversation()
+                            }
+                            TextField("Model (e.g. gpt-4o-mini)", text: $customModel)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: customModel) { _, v in
+                                    UserDefaults.standard.set(v.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "customModel")
+                                }
+                            SecureField("API key (optional for local gateways)", text: $customApiKey)
+                                .textFieldStyle(.roundedBorder)
+                            HStack {
+                                Button("Save key") {
+                                    KeychainStore.shared.set("custom-api-key", value: customApiKey)
+                                    statusMessage = "✓ Key saved."
+                                }
+                                .buttonStyle(.borderedProminent)
+                                Text("Web search needs the official API.")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                     .padding(6)
                 }

@@ -2696,7 +2696,12 @@ struct SettingsIslandView: View {
     }
 
     private var apiConnected: Bool {
-        KeychainStore.shared.get("anthropic-api-key") != nil
+        if UserDefaults.standard.string(forKey: "providerMode") == "custom" {
+            let base = (UserDefaults.standard.string(forKey: "customBaseUrl") ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return !base.isEmpty
+        }
+        return KeychainStore.shared.get("anthropic-api-key") != nil
     }
 
     var body: some View {

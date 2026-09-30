@@ -70,9 +70,17 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+**Settings… → AI provider** picks where the chat goes: the official Claude API
+(Anthropic key plus model picker), or a **custom endpoint** — any Anthropic- or
+OpenAI-compatible base URL (LiteLLM, gateways such as 9router, local servers).
+For a custom endpoint you configure the base URL, the API style (Anthropic
+Messages or OpenAI Chat Completions), the model name, and optionally an API
+key — local gateways often need none. Web search is only available with the
+official Claude API.
+
+Keys live in the **Windows Credential Manager**, never on disk and never in
+the interface — the island can only ask whether a key exists. Same for every
+integration key.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.

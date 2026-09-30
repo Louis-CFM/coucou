@@ -62,6 +62,7 @@ final class KeychainStore: @unchecked Sendable {
 
     private static let allKeys = [
         "anthropic-api-key",
+        "custom-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -106,11 +107,75 @@ final class KeychainStore: @unchecked Sendable {
 final class ClaudeService {
     static let shared = ClaudeService()
 
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let anthropicVersion = "2023-06-01"
-    private let model = "claude-sonnet-4-6"
+    private let officialModel = "claude-sonnet-4-6"
 
-    var apiKey: String? { KeychainStore.shared.get("anthropic-api-key") }
+    // MARK: Provider configuration (UserDefaults, edited in Settings)
+
+    /// Custom mode = any endpoint the user configured; otherwise the official API.
+    var isCustom: Bool { UserDefaults.standard.string(forKey: "providerMode") == "custom" }
+
+    private var customBase: String {
+        (UserDefaults.standard.string(forKey: "customBaseUrl") ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// true = OpenAI Chat Completions dialect, false = Anthropic Messages.
+    private var customOpenAI: Bool {
+        UserDefaults.standard.string(forKey: "customApiStyle") == "openai"
+    }
+
+    /// Web search is an Anthropic server-side tool — official API only.
+    private var webSearchEnabled: Bool { !isCustom }
+
+    private var activeModel: String {
+        guard isCustom else { return officialModel }
+        let m = (UserDefaults.standard.string(forKey: "customModel") ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return m.isEmpty ? officialModel : m
+    }
+
+    /// The official API requires a key; local gateways often need none.
+    var activeKey: String? {
+        isCustom ? KeychainStore.shared.get("custom-api-key")
+                 : KeychainStore.shared.get("anthropic-api-key")
+    }
+
+    private var endpoint: URL {
+        guard isCustom else {
+            return URL(string: "https://api.anthropic.com/v1/messages")!
+        }
+        return Self.customEndpoint(from: customBase, openai: customOpenAI)
+    }
+
+    /// Root or "/v1" base → full endpoint; a complete path is used as-is.
+    static func customEndpoint(from base: String, openai: Bool) -> URL {
+        var b = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        while b.hasSuffix("/") { b.removeLast() }
+        let full: String
+        if openai {
+            full = b.hasSuffix("/chat/completions") ? b
+                 : b.hasSuffix("/v1") ? b + "/chat/completions"
+                 : b + "/v1/chat/completions"
+        } else {
+            full = b.hasSuffix("/messages") ? b
+                 : b.hasSuffix("/v1") ? b + "/messages"
+                 : b + "/v1/messages"
+        }
+        // chat()/search() call providerError() first, so base is never empty here.
+        return URL(string: full) ?? URL(string: "https://api.anthropic.com/v1/messages")!
+    }
+
+    /// Non-nil when the provider cannot be called; nil when ready.
+    func providerError() -> String? {
+        if isCustom {
+            if customBase.isEmpty { return "Custom base URL missing. Open settings." }
+        } else {
+            let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
+            if key.isEmpty { return "API key missing. Open settings." }
+        }
+        return nil
+    }
 
     // Multi-turn conversation messages (for API)
     private var conversationMessages: [[String: Any]] = []
@@ -119,9 +184,16 @@ final class ClaudeService {
         conversationMessages = []
     }
 
-    private let systemPrompt = """
+    private let systemPromptSearch = """
     You are Mochi, Louis's personal AI assistant embedded in the notch of his Mac. \
     You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
+    Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
+    No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.
+    """
+
+    private let systemPromptPlain = """
+    You are Mochi, Louis's personal AI assistant embedded in the notch of his Mac. \
+    You can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
     Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
     No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.
     """
@@ -133,8 +205,8 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
-            await showError("API key missing. Open settings.", state: state)
+        if let err = providerError() {
+            await showError(err, state: state)
             return
         }
 
@@ -159,16 +231,30 @@ final class ClaudeService {
 
         conversationMessages.append(["role": "user", "content": userContent])
 
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 4096,
-            "tools": webSearchTools,
-            "system": systemPrompt,
-            "messages": conversationMessages,
-        ]
+        let body: [String: Any]
+        if isCustom && customOpenAI {
+            body = [
+                "model": activeModel,
+                "max_tokens": 4096,
+                "messages": openaiMessages(from: conversationMessages, system: systemPromptPlain),
+            ]
+        } else {
+            var b: [String: Any] = [
+                "model": activeModel,
+                "max_tokens": 4096,
+                "system": webSearchEnabled ? systemPromptSearch : systemPromptPlain,
+                "messages": conversationMessages,
+            ]
+            if webSearchEnabled { b["tools"] = webSearchTools }
+            body = b
+        }
 
         do {
-            let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            let data = try await callAPI(
+                body: body,
+                key: activeKey,
+                beta: webSearchEnabled ? "web-search-2025-03-05" : nil
+            )
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
@@ -179,8 +265,8 @@ final class ClaudeService {
     // MARK: - Structured search (M8 — window attach + web search)
 
     func search(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
-            await showError("Anthropic API key missing. Open settings to configure it.", state: state)
+        if let err = providerError() {
+            await showError(err, state: state)
             return
         }
 
@@ -211,16 +297,33 @@ final class ClaudeService {
             ["type": "web_search_20250305", "name": "web_search", "max_uses": 3]
         ]
 
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 1024,
-            "tools": tools,
-            "system": system,
-            "messages": [["role": "user", "content": userContent]],
-        ]
+        let body: [String: Any]
+        if isCustom && customOpenAI {
+            body = [
+                "model": activeModel,
+                "max_tokens": 1024,
+                "messages": openaiMessages(
+                    from: [["role": "user", "content": userContent]],
+                    system: system
+                ),
+            ]
+        } else {
+            var b: [String: Any] = [
+                "model": activeModel,
+                "max_tokens": 1024,
+                "system": system,
+                "messages": [["role": "user", "content": userContent]],
+            ]
+            if webSearchEnabled { b["tools"] = tools }
+            body = b
+        }
 
         do {
-            let result = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            let result = try await callAPI(
+                body: body,
+                key: activeKey,
+                beta: webSearchEnabled ? "web-search-2025-03-05" : nil
+            )
             await handleResult(result, state: state)
         } catch {
             await showError("Network error: \(error.localizedDescription)", state: state)
@@ -229,13 +332,23 @@ final class ClaudeService {
 
     // MARK: - API call
 
-    private func callAPI(body: [String: Any], key: String, beta: String? = nil) async throws -> Data {
+    private func callAPI(body: [String: Any], key: String?, beta: String? = nil) async throws -> Data {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        if let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
+        if isCustom && customOpenAI {
+            // OpenAI dialect: one Bearer header, and only when a key exists —
+            // local gateways often authenticate nothing.
+            if let key, !key.isEmpty {
+                request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+            }
+        } else {
+            if let key, !key.isEmpty {
+                request.setValue(key, forHTTPHeaderField: "x-api-key")
+            }
+            request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
+            if let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 45
 
@@ -251,6 +364,27 @@ final class ClaudeService {
     // MARK: - Chat result handler
 
     private func handleChatResult(_ data: Data, state: AppState) async {
+        if isCustom && customOpenAI {
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let message = choices.first?["message"] as? [String: Any],
+                  let raw = message["content"] as? String else {
+                await showError("Unexpected API response.", state: state)
+                return
+            }
+            let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Stored Anthropic-shaped so a later style switch keeps working.
+            conversationMessages.append(["role": "assistant", "content": [["type": "text", "text": text]]])
+            guard !text.isEmpty else {
+                await showError("No response text.", state: state)
+                return
+            }
+            state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            return
+        }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]] else {
             await showError("Unexpected API response.", state: state)
@@ -277,11 +411,8 @@ final class ClaudeService {
     // MARK: - Structured result handler
 
     private func handleResult(_ data: Data, state: AppState) async {
-        // Extract text from Anthropic response (may contain tool_use / web_search_tool_result blocks)
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let textBlock = content.first(where: { $0["type"] as? String == "text" }),
-              let text = textBlock["text"] as? String else {
+        // Text from either dialect (the Anthropic one may carry tool blocks).
+        guard let text = responseText(from: data) else {
             await showError("Unexpected API response.", state: state)
             return
         }
@@ -323,6 +454,69 @@ final class ClaudeService {
         state.stateOverride = nil
         state.view = .result
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
+    }
+
+    // MARK: - Dialect helpers
+
+    /// The stored Anthropic-shaped history → OpenAI Chat Completions messages.
+    /// Images become data URIs; PDF blocks are skipped (no portable equivalent).
+    private func openaiMessages(from messages: [[String: Any]], system: String) -> [[String: Any]] {
+        var out: [[String: Any]] = [["role": "system", "content": system]]
+        for m in messages {
+            let role = m["role"] as? String ?? "user"
+            if let text = m["content"] as? String {
+                out.append(["role": role, "content": text])
+                continue
+            }
+            guard let blocks = m["content"] as? [[String: Any]] else { continue }
+            if role == "assistant" {
+                let text = blocks
+                    .filter { $0["type"] as? String == "text" }
+                    .compactMap { $0["text"] as? String }
+                    .joined(separator: "\n")
+                out.append(["role": role, "content": text])
+            } else {
+                var parts: [[String: Any]] = []
+                for b in blocks {
+                    switch b["type"] as? String {
+                    case .some("text"):
+                        if let t = b["text"] as? String {
+                            parts.append(["type": "text", "text": t])
+                        }
+                    case .some("image"):
+                        if let src = b["source"] as? [String: Any],
+                           let media = src["media_type"] as? String,
+                           let data = src["data"] as? String {
+                            parts.append(["type": "image_url",
+                                          "image_url": ["url": "data:\(media);base64,\(data)"]])
+                        }
+                    default:
+                        break // PDFs have no portable OpenAI-shaped equivalent
+                    }
+                }
+                if !parts.isEmpty {
+                    out.append(["role": role, "content": parts])
+                }
+            }
+        }
+        return out
+    }
+
+    /// Plain response text from either dialect.
+    private func responseText(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if isCustom && customOpenAI {
+            guard let choices = json["choices"] as? [[String: Any]],
+                  let message = choices.first?["message"] as? [String: Any],
+                  let content = message["content"] as? String else { return nil }
+            return content
+        }
+        guard let content = json["content"] as? [[String: Any]],
+              let textBlock = content.first(where: { $0["type"] as? String == "text" }),
+              let text = textBlock["text"] as? String else { return nil }
+        return text
     }
 
     private func showError(_ message: String, state: AppState) async {
