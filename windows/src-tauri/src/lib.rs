@@ -2,6 +2,7 @@
 
 mod claude;
 mod files;
+mod gemini;
 mod hooks;
 mod integrations;
 mod island;
@@ -22,6 +23,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
+use gemini::GeminiChat;
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -191,6 +193,20 @@ fn hooks_status() -> HookStatus {
     hooks::status()
 }
 
+#[tauri::command]
+fn gemini_hooks_status() -> HookStatus {
+    hooks::gemini_status()
+}
+
+#[tauri::command]
+fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::gemini_preview(install)
+}
+
+#[tauri::command]
+fn gemini_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::gemini_write(install, &fingerprint)
+}
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
 fn hooks_preview(install: bool) -> Result<HookPreview, String> {
@@ -241,20 +257,37 @@ fn approval_decline(app: AppHandle, request_id: String) {
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
+/// Routes to Claude or Gemini based on settings.chat_provider.
 #[tauri::command]
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    gchat: State<'_, GeminiChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, model, gemini_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.chat_provider.clone(), s.model.clone(), s.gemini_model.clone())
+    };
+    if provider == "gemini" {
+        let gctx = context.map(|c| match c {
+            ChatContext::File { name, path } => gemini::GeminiContext::File { name, path },
+            ChatContext::Window { app_name, title, url } => {
+                gemini::GeminiContext::Window { app_name, title, url }
+            }
+        });
+        let reply = gemini::send(&gchat, &gemini_model, query, gctx).await?;
+        Ok(ChatReply { text: reply.text })
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, gchat: State<GeminiChat>) {
     chat.reset();
+    gchat.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -380,6 +413,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(GeminiChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +427,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            gemini_hooks_status,
+            gemini_hooks_preview,
+            gemini_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,

@@ -127,8 +127,12 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
-        else if (task.id === "integration_n8n") void Bridge.openN8n();
+        if (task.id === "integration_claude" || task.source === "claudeCode") {
+          void Bridge.openInVSCode(task.sessionCwd ?? null);
+        } else if (task.source === "geminiCli" || task.source === "opencode" || task.source === "genericCli") {
+          // No per-terminal jump on Windows — open the working folder like VS Code.
+          void Bridge.openInVSCode(task.sessionCwd ?? null);
+        } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -143,8 +147,9 @@ export class Island {
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        const focusId = State.focusId ?? "integration_claude";
+        State.updateTask(focusId, "working");
+        State.setPillBadge(focusId, null);
         this.setView(State.defaultView());
       },
       toggleSound: () => {

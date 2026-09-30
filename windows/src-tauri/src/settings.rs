@@ -20,6 +20,20 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Chat provider: "claude" (Anthropic, default) or "gemini".
+    #[serde(default = "default_chat_provider")]
+    pub chat_provider: String,
+    /// Gemini model used when chat_provider == "gemini".
+    #[serde(default = "default_gemini_model")]
+    pub gemini_model: String,
+}
+
+fn default_chat_provider() -> String {
+    "claude".to_string()
+}
+
+fn default_gemini_model() -> String {
+    "gemini-2.5-flash".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +57,8 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: default_chat_provider(),
+            gemini_model: default_gemini_model(),
         }
     }
 }

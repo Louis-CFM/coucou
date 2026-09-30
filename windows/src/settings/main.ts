@@ -179,7 +179,13 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
+const GEMINI_MODELS: [string, string][] = [
+  ["gemini-2.5-flash", "Gemini 2.5 Flash"],
+  ["gemini-2.5-pro", "Gemini 2.5 Pro"],
+  ["gemini-2.0-flash", "Gemini 2.0 Flash"],
+];
+
+function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
   const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
 
@@ -243,15 +249,153 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  // Provider + Gemini model
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(h("option", { value: "claude", text: "Claude (Anthropic)" }));
+  provider.append(h("option", { value: "gemini", text: "Gemini (Google)" }));
+  provider.value = settings.chatProvider ?? "claude";
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value;
+    void save();
+    geminiModelRow.style.display = provider.value === "gemini" ? "" : "none";
+  });
+
+  const geminiField = h("input", {
+    type: "password",
+    placeholder: hasGeminiKey ? "••••••••••••  (stored)" : "AIza…",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const geminiSave = h("button", { class: "primary", text: "Save" });
+  const geminiClear = h("button", { class: "danger", text: "Remove" });
+  geminiSave.addEventListener("click", async () => {
+    const value = geminiField.value.trim();
+    if (!value) return;
+    try {
+      await Bridge.secretSet("gemini-api-key", value);
+      geminiField.value = "";
+      feedback.append(h("div", { class: "notice ok", text: "Gemini key saved." }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+  geminiClear.addEventListener("click", async () => {
+    try {
+      await Bridge.secretClear("gemini-api-key");
+      feedback.append(h("div", { class: "notice ok", text: "Gemini key removed." }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  const geminiModel = h("select", {}) as HTMLSelectElement;
+  for (const [id, label] of GEMINI_MODELS) geminiModel.append(h("option", { value: id, text: label }));
+  if (!GEMINI_MODELS.some(([id]) => id === settings.geminiModel)) {
+    geminiModel.append(h("option", { value: settings.geminiModel, text: settings.geminiModel }));
+  }
+  geminiModel.value = settings.geminiModel ?? "gemini-2.5-flash";
+  geminiModel.addEventListener("change", () => {
+    settings.geminiModel = geminiModel.value;
+    void save();
+  });
+  const geminiModelRow = h("div", { class: "row" }, h("label", { text: "Gemini model" }), geminiModel);
+  geminiModelRow.style.display = provider.value === "gemini" ? "" : "none";
+
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Chat AI" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
+    h("div", { class: "row" }, h("label", { text: "Claude key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: "Gemini key" }), geminiField, geminiSave, geminiClear),
+    geminiModelRow,
     feedback,
   );
+}
+
+// ── Gemini CLI hooks section ──────────────────────────────────────────────────
+
+function geminiSection(status: HookStatus): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, statusDot(status.installed), h("span", { text: "Gemini CLI" })),
+    body,
+  );
+
+  function draw() {
+    body.append(
+      h("div", {
+        class: "hint",
+        text: status.installed
+          ? "Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude."
+          : "Install the hooks to see your Gemini CLI sessions in the island next to Claude Code.",
+      }),
+      h("div", { class: "row" },
+        h("label", { text: "settings.json" }),
+        h("span", { class: "path", text: status.settingsPath }),
+      ),
+    );
+    const actions = h("div", { class: "row" });
+    actions.append(h("button", {
+      class: "primary",
+      text: status.installed ? "Reinstall Gemini hooks…" : "Install Gemini hooks…",
+      onclick: () => showPreview(true),
+    }));
+    if (status.installed) {
+      actions.append(h("button", {
+        class: "danger",
+        text: "Uninstall…",
+        onclick: () => showPreview(false),
+      }));
+    }
+    body.append(actions);
+  }
+
+  async function showPreview(install: boolean) {
+    let preview;
+    try {
+      preview = await Bridge.geminiHooksPreview(install);
+    } catch (err) {
+      clear(body);
+      body.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+      return;
+    }
+    if (!preview) return;
+    clear(body);
+    body.append(
+      h("div", { class: "hint", text: "Gemini settings use timeouts in ms. Your own hooks are left untouched." }),
+      renderDiff(preview.diff),
+      h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
+    );
+    const confirm = h("button", { class: install ? "primary" : "danger", text: install ? "Back up and write" : "Back up and remove" });
+    confirm.addEventListener("click", async () => {
+      confirm.disabled = true;
+      try {
+        const backup = await Bridge.geminiHooksApply(install, preview.fingerprint);
+        clear(body);
+        body.append(h("div", { class: "notice ok", text: `Done. Backup: ${backup}.` }));
+        window.setTimeout(async () => {
+          const fresh = await Bridge.geminiHooksStatus();
+          if (fresh) Object.assign(status, fresh);
+          clear(body); draw();
+        }, 2000);
+      } catch (err) {
+        confirm.disabled = false;
+        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+      }
+    });
+    body.append(h("div", { class: "row" }, confirm, h("button", {
+      text: "Cancel", onclick: () => { clear(body); draw(); },
+    })));
+  }
+
+  draw();
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -430,6 +574,10 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasGeminiKey = (await Bridge.secretPresent("gemini-api-key")) ?? false;
+  const geminiStatus = (await Bridge.geminiHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -442,7 +590,15 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    geminiSection(geminiStatus),
+    h("section", {},
+      h("h2", {}, h("span", { text: "opencode" })),
+      h("div", {
+        class: "hint",
+        text: "opencode has no settings.json hooks. Copy windows/opencode-plugin/coucou.ts to ~/.config/opencode/plugins/ (or .opencode/plugins/) — it forwards session/tool events to the same island pipe. Gemini + opencode appear as separate pills next to Claude.",
+      }),
+    ),
+    apiSection(hasKey, hasGeminiKey),
     integrationsSection(present),
     generalSection(),
     h("div", {

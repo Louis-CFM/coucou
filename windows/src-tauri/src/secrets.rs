@@ -8,6 +8,7 @@ const SERVICE: &str = "fr.louisraille.coucou";
 /// Every key Coucou may store. Anything outside this list is refused.
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
+    "gemini-api-key",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",

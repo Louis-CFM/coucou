@@ -68,9 +68,23 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Other CLIs: Gemini + opencode
+
+Claude is the default, but the island watches the other two side by side:
+
+- **Gemini CLI** — open **Settings… → Gemini CLI → Install Gemini hooks…**. This merges Coucou's relay into `%USERPROFILE%\.gemini\settings.json` (dated backup + diff preview, your own hooks untouched) for `SessionStart/SessionEnd/BeforeTool/AfterTool/AfterModel/BeforeAgent/AfterAgent`. Timeouts are in ms. Gemini sessions appear as blue `Gemini · <folder>` pills with their own steps. Approvals stay in the terminal — Gemini has no blocking permission hook, so the island only shows activity.
+- **opencode** — copy `windows/opencode-plugin/coucou.ts` to `~/.config/opencode/plugins/coucou.ts` (or `<project>/.opencode/plugins/coucou.ts`) and restart opencode. The plugin forwards `session.created/deleted/idle/error` and `tool.execute.before/after` (+ `permission.asked` as activity) to the same island pipe. opencode sessions appear as purple `opencode · <folder>` pills. Fire-and-forget: if Coucou is closed the plugin silently does nothing and never blocks your session.
+
+Each CLI gets its own task (no more single-task overwrite): the most recently active one takes focus, `Stop` toasts 5.2 s, then ephemeral Gemini/opencode tasks disappear while Claude's pill persists.
+
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
+**Settings… → Chat AI** takes your keys and lets you pick the provider:
+
+- **Claude (Anthropic)** — `sk-ant-…` key, models Opus 5 / Sonnet 5 / Haiku 4.5, with web search.
+- **Gemini (Google)** — `AIza…` key from [Google AI Studio](https://aistudio.google.com/apikey), models 2.5 Flash / 2.5 Pro / 2.0 Flash, plain chat for now (no web search yet).
+
+Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 

@@ -1,11 +1,20 @@
-// Claude Code hook events → island state.
-// Port of HookServer.processEvent / processPermissionRequest from the macOS app.
+// Multi-CLI hook events → island state.
+// Port of HookServer.processEvent / processPermissionRequest from the macOS app,
+// extended: Claude Code + Gemini CLI + opencode (+ generic CLI) side by side.
 // Difference from macOS: no terminal filter. On Windows the hook fires from any
 // terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
+//
+// Routing:
+// - source == "claudeCode" (or missing, legacy) → integration_claude pill.
+// - source == "geminiCli" → ephemeral cli_gemini_<session> task.
+// - source == "opencode"   → ephemeral cli_opencode_<session> task.
+// - anything else          → ephemeral cli_<session> task.
+// Only Claude PermissionRequest blocks for a decision; Gemini/opencode events
+// are fire-and-forget (their CLIs have no compatible blocking approval).
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type AgentSource } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -17,6 +26,7 @@ interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
   session_id?: string;
+  source?: string;
   cwd?: string;
   message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
@@ -41,7 +51,7 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
+/** frenchStep() — same labels as the macOS app, plus Gemini CLI tool names. */
 const TOOL_LABELS: Record<string, string> = {
   Bash: "Exécute",
   Read: "Lit",
@@ -57,14 +67,27 @@ const TOOL_LABELS: Record<string, string> = {
   MultiEdit: "Modifie",
   NotebookEdit: "Notebook",
   PowerShell: "Exécute",
+  // Gemini CLI
+  write_file: "Écrit",
+  read_file: "Lit",
+  replace: "Modifie",
+  run_shell_command: "Exécute",
+  web_search: "Recherche web",
+  web_fetch: "Récupère",
+  glob: "Cherche",
+  grep: "Recherche",
+  list_directory: "Liste",
+  // opencode
+  "task": "Agent",
+  "bash": "Exécute",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ?? tool;
+  const label = TOOL_LABELS[tool] ?? TOOL_LABELS[tool.toLowerCase()] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
-  const path = str("path");
+  const path = str("path") ?? str("absolute_path") ?? str("file") ?? str("filename");
   if (path) return `${label} · ${lastPathComponent(path)}`;
   const file = str("file_path");
   if (file) return `${label} · ${lastPathComponent(file)}`;
@@ -82,8 +105,9 @@ function stepLabel(tool: string, input: Record<string, unknown>): string {
  * whatever identifying string it carries instead of falling back to its name.
  */
 const APPROVAL_FIELDS = [
-  "command", // Bash, PowerShell
+  "command", // Bash, PowerShell, run_shell_command
   "file_path", // Write, Edit, MultiEdit, NotebookEdit
+  "absolute_path", // Gemini write_file/replace
   "path", // Read, LS
   "url", // WebFetch
   "query", // WebSearch
@@ -101,14 +125,72 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string) {
+function normalizeSource(raw: string | undefined): AgentSource {
+  switch ((raw ?? "").toLowerCase()) {
+    case "geminicli":
+    case "gemini":
+    case "gemini-cli":
+      return "geminiCli";
+    case "opencode":
+    case "open-code":
+      return "opencode";
+    case "genericcli":
+    case "generic":
+    case "cli":
+      return "genericCli";
+    case "claudecode":
+    case "claude":
+    case "":
+      return "claudeCode";
+    default:
+      return "genericCli";
+  }
+}
+
+const SOURCE_META: Record<AgentSource, { prefix: string; color: string; label: string }> = {
+  claudeCode: { prefix: "integration_claude", color: "#F5F6F8", label: "Claude" },
+  geminiCli: { prefix: "cli_gemini_", color: "#38BDF8", label: "Gemini" },
+  opencode: { prefix: "cli_opencode_", color: "#A78BFA", label: "opencode" },
+  genericCli: { prefix: "cli_", color: "#22C55E", label: "CLI" },
+  n8n: { prefix: "integration_", color: "#F29B38", label: "n8n" },
+};
+
+function shortId(sessionId: string | undefined, cwd: string): string {
+  if (sessionId && sessionId !== "unknown") return sessionId.slice(0, 8).replace(/[^a-zA-Z0-9]/g, "");
+  // Stable fallback from cwd so a CLI without session_id still gets one task.
+  let h = 0;
+  for (let i = 0; i < cwd.length; i++) h = (h * 31 + cwd.charCodeAt(i)) >>> 0;
+  return h.toString(36).slice(0, 8) || "local";
+}
+
+/** Resolve (or create) the task id for this event. Claude stays on the legacy pill. */
+function resolveTaskId(source: AgentSource, payload: HookPayload, projectName: string, cwd: string): string {
+  if (source === "claudeCode") {
+    upsertClaude(projectName, cwd);
+    return CLAUDE_ID;
+  }
+  const meta = SOURCE_META[source];
+  const id = `${meta.prefix}${shortId(payload.session_id, cwd)}`;
+  const display = `${meta.label} · ${projectName}`;
+  State.ensureCliTask(id, display, meta.color, source);
+  const t = State.tasks.find((x) => x.id === id);
+  if (t && cwd) t.sessionCwd = cwd;
+  // Steer focus to the most recently active CLI so Gemini + opencode side by
+  // side don't fight silently — last event wins, like the Mac focus rule.
+  if (State.focusId !== id && (t?.state === "idle" || State.focusTask?.state === "idle")) {
+    State.focusId = id;
+  }
+  return id;
+}
+
+function upsertClaude(projectName: string, cwd: string) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
 }
 
-function clearSession() {
+function clearClaudeSession() {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.steps = [];
@@ -131,10 +213,12 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
+  const source = normalizeSource(payload.source);
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
-  const focused = State.focusId === CLAUDE_ID;
+  const taskId = resolveTaskId(source, payload, projectName, cwd);
+  const focused = State.focusId === taskId;
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -149,85 +233,101 @@ function handleHook(island: Island, payload: HookPayload) {
 
   switch (name) {
     case "SessionStart":
-      upsert(projectName, cwd);
       surface("overview", false);
       Sound.play("work");
       break;
 
     case "UserPromptSubmit": {
-      upsert(projectName, cwd);
-      State.updateTask(CLAUDE_ID, "thinking");
+      State.updateTask(taskId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(CLAUDE_ID, asked.slice(0, 60));
+      if (asked) State.appendStep(taskId, `[${SOURCE_META[source].label}] ${asked.slice(0, 50)}`);
+      else State.appendStep(taskId, `[${SOURCE_META[source].label}] prompt`);
       surface("overview", false);
       break;
     }
 
     case "PreToolUse": {
-      upsert(projectName, cwd);
-      State.updateTask(CLAUDE_ID, "working");
+      State.updateTask(taskId, "working");
       const tool = payload.tool_name ?? "Tool";
-      State.appendStep(CLAUDE_ID, stepLabel(tool, payload.tool_input ?? {}));
+      State.appendStep(taskId, stepLabel(tool, payload.tool_input ?? {}));
       surface("overview", false);
       break;
     }
 
     case "PostToolUse":
-      State.updateTask(CLAUDE_ID, "working");
+      State.updateTask(taskId, "working");
       break;
 
     case "PostToolUseFailure":
-      State.updateTask(CLAUDE_ID, "working");
-      State.appendStep(CLAUDE_ID, "⚠ failed");
+      State.updateTask(taskId, "working");
+      State.appendStep(taskId, "⚠ failed");
       break;
 
     case "Notification": {
       const message = payload.message ?? "";
       const lower = message.toLowerCase();
       if (lower.includes("rate limit") || lower.includes("limite d")) {
-        State.updateTask(CLAUDE_ID, "ratelimit");
+        State.updateTask(taskId, "ratelimit");
         Sound.play("rate");
       } else if (message.endsWith("?")) {
-        State.updateTask(CLAUDE_ID, "question");
-        State.appendStep(CLAUDE_ID, message);
+        State.updateTask(taskId, "question");
+        State.appendStep(taskId, message);
       }
       break;
     }
 
     case "Stop":
-      State.updateTask(CLAUDE_ID, "finished");
-      if (payload.message) State.appendStep(CLAUDE_ID, payload.message.slice(0, 60));
+      State.updateTask(taskId, "finished");
+      if (payload.message) State.appendStep(taskId, payload.message.slice(0, 60));
       Sound.play("finish");
       if (focused) surface("finished", true);
-      else State.setPillBadge(CLAUDE_ID, "finished");
+      else State.setPillBadge(taskId, "finished");
       window.setTimeout(() => {
-        State.updateTask(CLAUDE_ID, "idle");
-        State.setPillBadge(CLAUDE_ID, null);
+        if (taskId === CLAUDE_ID) {
+          State.updateTask(taskId, "idle");
+          State.setPillBadge(taskId, null);
+        } else {
+          // Ephemeral CLI tasks disappear after the finished toast, like Mac Stop.
+          State.removeCliTask(taskId);
+        }
       }, 5200);
       break;
 
     case "StopFailure":
-      State.updateTask(CLAUDE_ID, "error");
+      State.updateTask(taskId, "error");
       Sound.play("error");
       if (focused) surface("error", true);
-      else State.setPillBadge(CLAUDE_ID, "error");
+      else State.setPillBadge(taskId, "error");
       break;
 
     case "SessionEnd":
-      State.updateTask(CLAUDE_ID, "idle");
-      clearSession();
+      if (taskId === CLAUDE_ID) {
+        State.updateTask(taskId, "idle");
+        clearClaudeSession();
+      } else {
+        State.removeCliTask(taskId);
+      }
       break;
 
     case "SubagentStart":
-      State.appendStep(CLAUDE_ID, "+ subagent");
+      State.appendStep(taskId, "+ subagent");
       break;
 
     case "SubagentStop":
-      State.appendStep(CLAUDE_ID, "• subagent done");
+      State.appendStep(taskId, "• subagent done");
       break;
 
     case "PermissionRequest": {
+      // Only Claude blocks for a decision. Gemini/opencode relays are
+      // fire-and-forget — show the request as activity, don't hold the card.
+      if (source !== "claudeCode") {
+        State.updateTask(taskId, "working");
+        const tool = payload.tool_name ?? "Tool";
+        State.appendStep(taskId, stepLabel(tool, payload.tool_input ?? {}));
+        surface("overview", false);
+        break;
+      }
       const requestId = payload.request_id ?? "";
       // One card, one request. A second one must never quietly replace the first
       // — that would leave a human staring at request B while request A waits for
@@ -236,7 +336,6 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
@@ -249,7 +348,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
+      State.updateTask(taskId, "approval");
       State.isPinned = true;
       Sound.play("approval");
       if (focused) {
@@ -258,7 +357,7 @@ function handleHook(island: Island, payload: HookPayload) {
         // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
         // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
+        State.setPillBadge(taskId, "approval");
         island.reveal();
       }
       // Coucou answers within 108 s or not at all; after that the terminal has
@@ -269,8 +368,8 @@ function handleHook(island: Island, payload: HookPayload) {
         State.pendingApproval = null;
         State.isPinned = false;
         island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
+        State.updateTask(taskId, "working");
+        State.setPillBadge(taskId, null);
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);

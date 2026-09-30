@@ -113,6 +113,38 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
+/// Normalize Gemini CLI / opencode event names to the Claude-like names the
+/// island already handles. Claude names pass through unchanged.
+fn normalize_event(name: &str) -> String {
+    match name {
+        // Gemini CLI
+        "BeforeTool" | "BeforeToolSelection" => "PreToolUse".to_string(),
+        "AfterTool" => "PostToolUse".to_string(),
+        "AfterModel" => "PostToolUse".to_string(),
+        "BeforeAgent" | "AfterAgent" => "SubagentStop".to_string(),
+        "SessionStart" | "startup" => "SessionStart".to_string(),
+        "SessionEnd" | "exit" => "SessionEnd".to_string(),
+        // opencode plugin (already normalized by the plugin, kept for safety)
+        "session.created" => "SessionStart".to_string(),
+        "session.deleted" => "SessionEnd".to_string(),
+        "session.idle" => "Stop".to_string(),
+        "session.error" => "StopFailure".to_string(),
+        "tool.execute.before" | "permission.asked" => "PreToolUse".to_string(),
+        "tool.execute.after" => "PostToolUse".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn normalize_source(source: &str) -> String {
+    match source.to_lowercase().as_str() {
+        "gemini" | "geminicli" | "gemini-cli" => "geminiCli".to_string(),
+        "opencode" | "open-code" => "opencode".to_string(),
+        "generic" | "genericcli" | "cli" => "genericCli".to_string(),
+        "claude" | "claudecode" | "claude-code" | "" => "claudeCode".to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -129,14 +161,31 @@ fn read_event() -> Option<(String, String)> {
 
     // The event name is passed as argv[1] by the hook command; the JSON usually
     // carries it too. Trust argv when the JSON is missing it.
-    let arg_event = std::env::args().nth(1).unwrap_or_default();
-    let event = map
+    // argv[2] (optional) is the source: "claude" (default), "gemini", "opencode".
+    // Env COUCOU_SOURCE overrides argv — useful for Gemini matchers that share
+    // the same command line.
+    let args: Vec<String> = std::env::args().collect();
+    let arg_event = args.get(1).cloned().unwrap_or_default();
+    let arg_source = args.get(2).cloned().unwrap_or_default();
+    let mut event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
+    // Normalize Gemini CLI event names to the Claude-like names the island
+    // already understands. Unknown names pass through untouched.
+    event = normalize_event(&event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
+
+    if !map.contains_key("source") {
+        let source = std::env::var("COUCOU_SOURCE")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or(arg_source);
+        let source = normalize_source(&source);
+        map.insert("source".into(), serde_json::Value::String(source));
+    }
 
     for field in DROPPED_FIELDS {
         map.remove(*field);

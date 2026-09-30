@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type AgentSource = "claudeCode" | "geminiCli" | "opencode" | "genericCli" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -92,6 +92,10 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Chat provider: "claude" | "gemini". */
+  chatProvider: string;
+  /** Gemini model used when chatProvider == "gemini". */
+  geminiModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +110,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  geminiModel: "gemini-2.5-flash",
 };
 
 type Listener = () => void;
@@ -230,6 +236,38 @@ class AppState {
 
   defaultView(): IslandViewName {
     return this.tasks.length === 0 ? "empty" : "overview";
+  }
+
+  // ── Multi-CLI tasks (Claude + Gemini + opencode side by side) ─────────────
+  // integration_claude stays as the legacy Claude pill. Extra CLI sessions get
+  // ephemeral tasks `cli_<source>_<shortid>` so two CLIs never overwrite each
+  // other like the old single-task upsert did.
+
+  ensureCliTask(id: string, name: string, color: string, source: AgentSource): AgentTask {
+    let t = this.tasks.find((x) => x.id === id);
+    if (!t) {
+      t = {
+        id, name, color, state: "idle", stepIndex: 0, steps: [],
+        source, isIntegration: false,
+      };
+      this.tasks.push(t);
+      if (!this.focusId) this.focusId = id;
+      this.notify();
+    } else {
+      if (t.name !== name) { t.name = name; this.notify(); }
+    }
+    return t;
+  }
+
+  removeCliTask(id: string) {
+    // Never remove the persistent integration pills here.
+    if (id.startsWith("integration_")) return;
+    const idx = this.tasks.findIndex((x) => x.id === id);
+    if (idx >= 0) {
+      this.tasks.splice(idx, 1);
+      if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+      this.notify();
+    }
   }
 }
 
