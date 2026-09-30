@@ -75,6 +75,30 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Codex CLI
+
+Coucou can also follow the OpenAI Codex CLI on Windows. In **Settings… → Codex CLI**,
+click **Install Codex hook…**, review the diff, and confirm the dated backup. This
+merges `hooks.json` under `%CODEX_HOME%` (or `%USERPROFILE%\.codex\hooks.json`)
+without replacing your existing hooks. Then open Codex, run `/hooks`, and trust the
+new Coucou command when Codex asks. Codex's hook trust is a required safety step;
+Coucou does not bypass it.
+
+Codex and Claude use the same relay executable. Session, tool, prompt, stop and
+compact/interrupt lifecycle events plus `PermissionRequest` are forwarded to Mochi.
+Allow/Deny works for Codex
+approval prompts because Codex documents the `PermissionRequest` response
+`hookSpecificOutput.decision.behavior` with `allow` or `deny`. If the hook is
+untrusted, disabled, unavailable, or times out, Codex keeps its normal approval
+prompt. Coucou cannot answer approvals for tools that do not emit
+`PermissionRequest`, and it never simulates keyboard input.
+
+Codex CLI must be installed and signed in separately. The supported local hook
+configuration is available in current Codex releases; verify with `codex --version`
+and `/hooks`. Project-local hooks may be ignored until that project is trusted, so
+the Coucou installer intentionally uses the user-level file. `CODEX_HOME`, when
+set, takes precedence over `%USERPROFILE%\.codex`.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

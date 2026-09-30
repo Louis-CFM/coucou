@@ -67,7 +67,32 @@ Demande l'autorisation Automatisation la première fois (normal).
 
 ---
 
-## 2. n8n (workflows de Louis)
+## 2. Codex CLI
+
+Windows uses the same named-pipe relay as Claude Code, but installs a separate
+user-level `%CODEX_HOME%\hooks.json` (or `%USERPROFILE%\.codex\hooks.json`).
+The installer merges `SessionStart`, `SessionEnd`, `UserPromptSubmit`,
+`PreToolUse`, `PermissionRequest`, `PostToolUse`, `SubagentStart`,
+`SubagentStop`, `PreCompact`, `PostCompact`, `Interrupt` and `Stop`, preserving
+unrelated hooks and taking a dated backup.
+
+The current Codex hook contract supports `PermissionRequest` decisions through:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": { "behavior": "allow" }
+  }
+}
+```
+
+The relay maps Mochi's Allow/Deny buttons to that documented response. Codex
+still requires the user to review and trust the command in `/hooks`; Coucou does
+not bypass that trust gate. Events that do not produce `PermissionRequest` cannot
+be approved from Mochi, and no keyboard simulation is used as a fallback.
+
+## 3. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.
 - Le Mac joint n8n, pas l'inverse : **polling** toutes les 5 s de l'API publique :

@@ -70,6 +70,11 @@ export const Bridge = {
    */
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
+  codexHooksStatus: () => call<CodexHookStatus>("codex_hooks_status"),
+  codexHooksPreview: (install: boolean) =>
+    callOrThrow<CodexHookPreview>("codex_hooks_preview", { install }),
+  codexHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("codex_hooks_apply", { install, fingerprint }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -128,6 +133,20 @@ export interface HookPreview {
   backup: string;
   settingsPath: string;
   /** Hand back to hooksApply so only the reviewed diff is ever written. */
+  fingerprint: string;
+}
+
+export interface CodexHookStatus {
+  installed: boolean;
+  settingsPath: string;
+  hookPath: string;
+  hookReady: boolean;
+}
+
+export interface CodexHookPreview {
+  diff: string;
+  backup: string;
+  settingsPath: string;
   fingerprint: string;
 }
 
