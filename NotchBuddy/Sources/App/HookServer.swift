@@ -1,6 +1,7 @@
 import Foundation
 import Darwin
 import AppKit
+import CryptoKit
 
 // MARK: - HookServer
 // Listens on a Unix domain socket for events from nb-hook (Claude Code hooks).
@@ -17,9 +18,9 @@ final class HookServer: @unchecked Sendable {
     static var socketPath: String { supportDir.appendingPathComponent("nb.sock").path }
     static var hookScriptPath: String {
         #if APPSTORE
-        // Written to ~/.claude/coucou/nb-hook via security-scoped bookmark during hook installation
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/coucou/nb-hook").path
+        // Written to ~/.claude/coucou/nb-hook via security-scoped bookmark during hook installation.
+        // Real home, not the sandbox container that homeDirectoryForCurrentUser returns here.
+        return defaultClaudeDirectory.appendingPathComponent("coucou/nb-hook").path
         #else
         return supportDir.appendingPathComponent("nb-hook").path
         #endif
@@ -30,6 +31,14 @@ final class HookServer: @unchecked Sendable {
     private var serverFD: Int32 = -1
     private var pendingApprovalFD: Int32 = -1   // held open while user decides
     private var activeSessionId: String? = nil  // current Claude Code session
+
+    // Socket limits. nb-hook sends one short JSON line and nothing else, so anything
+    // bigger, slower or more numerous than this is not a hook and gets dropped.
+    private static let maxPayload = 1 << 20          // 1 MiB, same cap as the Windows pipe
+    private static let receiveTimeoutSeconds = 5
+    private static let maxConcurrentClients = 32
+    private let clientsLock = NSLock()
+    private var activeClients = 0
 
     private init() {}
 
@@ -46,6 +55,12 @@ final class HookServer: @unchecked Sendable {
 
     private func serverThread() {
         let path = Self.socketPath
+        // Owner-only folder: other accounts on this Mac must never reach the socket,
+        // whatever the umask was when the folder or the socket was created.
+        let dir = Self.supportDir
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
+                                                 attributes: [.posixPermissions: 0o700])
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         try? FileManager.default.removeItem(atPath: path)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
@@ -63,19 +78,59 @@ final class HookServer: @unchecked Sendable {
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
         guard bindRC == 0 else { close(fd); return }
+        chmod(path, 0o600)
         guard Darwin.listen(fd, 10) == 0 else { close(fd); return }
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
             guard clientFD >= 0 else { break }
-            Thread.detachNewThread { self.handleClient(fd: clientFD) }
+            // Only processes running as this user may talk to us.
+            guard Self.peerIsCurrentUser(clientFD), reserveClientSlot() else {
+                close(clientFD)
+                continue
+            }
+            Thread.detachNewThread {
+                defer { self.releaseClientSlot() }
+                self.handleClient(fd: clientFD)
+            }
         }
+    }
+
+    private static func peerIsCurrentUser(_ fd: Int32) -> Bool {
+        var uid: uid_t = 0
+        var gid: gid_t = 0
+        return getpeereid(fd, &uid, &gid) == 0 && uid == getuid()
+    }
+
+    private func reserveClientSlot() -> Bool {
+        clientsLock.withLock {
+            guard activeClients < Self.maxConcurrentClients else { return false }
+            activeClients += 1
+            return true
+        }
+    }
+
+    private func releaseClientSlot() {
+        clientsLock.withLock { activeClients -= 1 }
+    }
+
+    /// True when the other end of a held connection has gone away (nb-hook killed or timed out).
+    private static func peerHasClosed(_ fd: Int32) -> Bool {
+        var byte: UInt8 = 0
+        let n = recv(fd, &byte, 1, MSG_PEEK | MSG_DONTWAIT)
+        if n == 0 { return true }                       // orderly shutdown
+        if n < 0 { return errno != EAGAIN && errno != EWOULDBLOCK }
+        return false
     }
 
     // MARK: - Client handler (background thread)
 
     private func handleClient(fd: Int32) {
-        // Read newline-delimited JSON
+        // A client that connects and never sends must not hold a thread forever.
+        var timeout = timeval(tv_sec: Self.receiveTimeoutSeconds, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+
+        // Read one newline-delimited JSON line, up to maxPayload bytes.
         var raw = Data()
         var buf = [UInt8](repeating: 0, count: 4096)
         outer: while true {
@@ -84,6 +139,10 @@ final class HookServer: @unchecked Sendable {
             for i in 0..<n {
                 if buf[i] == UInt8(ascii: "\n") { break outer }
                 raw.append(buf[i])
+            }
+            if raw.count > Self.maxPayload {
+                close(fd)
+                return
             }
         }
 
@@ -157,7 +216,8 @@ final class HookServer: @unchecked Sendable {
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
             appendStep(id: "integration_claude", step: step)
-            nbLog("PreToolUse \(step)")
+            // Tool name only: commands and paths can carry secrets and must not reach the log.
+            nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
             state.updateTask(id: "integration_claude", state: .working)
@@ -264,18 +324,25 @@ final class HookServer: @unchecked Sendable {
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
-        var command = tool
-        if let input = payload["tool_input"] as? [String: Any] {
-            command = input["command"] as? String ?? tool
-        }
-        nbLog("PermissionRequest \(tool): \(command)")
+        let input = payload["tool_input"] as? [String: Any] ?? [:]
+        let target = Self.approvalTarget(tool: tool, input: input)
+        // Tool name only: the command itself can carry secrets.
+        nbLog("PermissionRequest \(tool)")
 
+        // One card, one request. A second request must never quietly replace the first
+        // (the user would be deciding on B while A waits); hand it back to the terminal.
+        // The exception is a pending request whose nb-hook has already gone away.
         if pendingApprovalFD >= 0 {
-            let old = pendingApprovalFD
-            Task.detached { [weak self] in
-                // "ask" → nb-hook outputs nothing → Claude Code re-asks
-                self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                close(old)
+            if Self.peerHasClosed(pendingApprovalFD) {
+                close(pendingApprovalFD)
+                pendingApprovalFD = -1
+            } else {
+                Task.detached { [weak self] in
+                    // "ask" → nb-hook outputs nothing → Claude Code asks in the terminal
+                    self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                    close(fd)
+                }
+                return
             }
         }
         pendingApprovalFD = fd
@@ -283,7 +350,7 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(projectName: projectName, cwd: cwd)
         state.updateTask(id: "integration_claude", state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
+        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: target)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -305,12 +372,13 @@ final class HookServer: @unchecked Sendable {
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
 
+        // There is no "always" any more: remembering a rule the user never saw is exactly
+        // what the approval card must not do. A stray "always" is a plain allow.
         let json: String
         switch decision {
-        case "allow":  json = #"{"permissionDecision":"allow"}"#
-        case "always": json = #"{"permissionDecision":"always"}"#
-        case "ask":    json = #"{"permissionDecision":"ask"}"#
-        default:       json = #"{"permissionDecision":"deny"}"#
+        case "allow", "always": json = #"{"permissionDecision":"allow"}"#
+        case "ask":             json = #"{"permissionDecision":"ask"}"#
+        default:                json = #"{"permissionDecision":"deny"}"#
         }
 
         if fd >= 0 {
@@ -384,6 +452,21 @@ final class HookServer: @unchecked Sendable {
         return aliases[name.lowercased()] ?? name
     }
 
+    // MARK: - Approval target
+
+    /// What the approval card shows: the command, file, URL or pattern being authorised,
+    /// not just the name of the tool asking. Same field order as the Windows island.
+    static func approvalTarget(tool: String, input: [String: Any]) -> String {
+        let fields = ["command", "file_path", "notebook_path", "path", "url", "query", "pattern", "prompt"]
+        for field in fields {
+            if let value = input[field] as? String {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return "\(tool) · \(trimmed)" }
+            }
+        }
+        return tool
+    }
+
     // MARK: - French step labels
 
     private func frenchStep(tool: String, input: [String: Any]) -> String {
@@ -419,23 +502,7 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Logging
 
     private func nbLog(_ message: String) {
-        let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs/NotchBuddy")
-        try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
-        let logFile = logsDir.appendingPathComponent("nb.log")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let line = "\(formatter.string(from: Date())) \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
-        if FileManager.default.fileExists(atPath: logFile.path) {
-            if let handle = try? FileHandle(forWritingTo: logFile) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                try? handle.close()
-            }
-        } else {
-            try? data.write(to: logFile)
-        }
+        appendAppLog("nb.log", message)
     }
 
     private func sendLine(fd: Int32, text: String) {
@@ -458,7 +525,8 @@ final class HookServer: @unchecked Sendable {
         // (requires a security-scoped bookmark to ~/.claude chosen by the user)
         #else
         let dir = Self.supportDir
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
+                                                 attributes: [.posixPermissions: 0o700])
         let scriptURL = URL(fileURLWithPath: Self.hookScriptPath)
         try? nbHookScript.write(to: scriptURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes(
@@ -470,23 +538,29 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Outdated hook detection
 
-    /// Returns true if settings.json has a Coucou PermissionRequest hook with timeout < 120s.
+    /// Returns true if settings.json has a Coucou hook that must be rewritten: a
+    /// PermissionRequest timeout under 120 s, or the old App Store command that ran the
+    /// Python relay through /bin/sh.
     static func hooksNeedUpdate() -> Bool {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: settingsURL),
-              let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = settings["hooks"] as? [String: Any],
-              let permReqHooks = hooks["PermissionRequest"] as? [[String: Any]] else {
+        #if APPSTORE
+        guard let claudeURL = resolvedClaudeBookmark() else { return false }
+        let accessing = claudeURL.startAccessingSecurityScopedResource()
+        defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
+        let settingsURL = claudeURL.appendingPathComponent("settings.json")
+        #else
+        let settingsURL = defaultClaudeDirectory.appendingPathComponent("settings.json")
+        #endif
+        guard let settings = try? readSettings(at: settingsURL).object,
+              let hooks = settings["hooks"] as? [String: Any] else {
             return false
         }
-        for matcher in permReqHooks {
-            if let hookList = matcher["hooks"] as? [[String: Any]] {
-                for hook in hookList {
-                    if let cmd = hook["command"] as? String,
-                       (cmd.contains("NotchBuddy") || cmd.contains("coucou")),
-                       let timeout = hook["timeout"] as? Int,
-                       timeout < 120 {
+        for (event, value) in hooks {
+            for entry in value as? [Any] ?? [] {
+                guard let entry = entry as? [String: Any] else { continue }
+                for hook in entry["hooks"] as? [[String: Any]] ?? [] {
+                    guard let cmd = hook["command"] as? String, isCoucouHookCommand(cmd) else { continue }
+                    if cmd.hasPrefix("/bin/sh ") { return true }
+                    if event == "PermissionRequest", let timeout = hook["timeout"] as? Int, timeout < 120 {
                         return true
                     }
                 }
@@ -496,107 +570,333 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Claude Code settings.json hook installer
+    //
+    // Rule from CLAUDE.md: read settings.json, take a dated backup, merge without touching
+    // anybody else's settings, show the diff, and write only after an explicit click.
+    // Same semantics (and failure modes) as windows/src-tauri/src/hooks.rs.
 
-    private var _pendingHooksData: Data?
+    /// Why an install/uninstall refused to touch settings.json.
+    enum HookInstallError: LocalizedError {
+        case unreadable(path: String, reason: String)
+        case invalidJSON(path: String, reason: String)
+        case notAnObject(path: String)
+        case changedSincePreview(path: String)
+        case backupFailed(reason: String)
+        case nothingToWrite
 
-    /// Returns preview JSON without writing — call writeClaudeHooks() to confirm.
-    func previewClaudeHooks() throws -> String {
-        let data = try buildHooksData()
-        _pendingHooksData = data
-        return String(data: data, encoding: .utf8) ?? ""
+        var errorDescription: String? {
+            switch self {
+            case .unreadable(let path, let reason):
+                return "Can't read \(path): \(reason). Nothing was written."
+            case .invalidJSON(let path, let reason):
+                return "\(path) isn't valid JSON (\(reason)). Fix or move it, then try again — Coucou won't overwrite it."
+            case .notAnObject(let path):
+                return "\(path) isn't a JSON object — Coucou won't touch it."
+            case .changedSincePreview(let path):
+                return "\(path) changed since the preview. Nothing was written — review the new diff."
+            case .backupFailed(let reason):
+                return "Backup of settings.json failed (\(reason)). Nothing was written."
+            case .nothingToWrite:
+                return "Nothing to confirm — preview the change again."
+            }
+        }
     }
 
-    /// Writes the hooks to disk (call after user confirms preview).
-    func writeClaudeHooks() throws {
-        guard let data = _pendingHooksData else { return }
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        // Backup first
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmm"
-        let stamp = formatter.string(from: Date())
-        let backupURL = settingsURL.deletingLastPathComponent()
-            .appendingPathComponent("settings.json.bak-\(stamp)")
-        try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
-        try? FileManager.default.createDirectory(at: settingsURL.deletingLastPathComponent(),
-                                                  withIntermediateDirectories: true)
+    /// Every event the island reacts to, with the timeout written to settings.json.
+    /// PermissionRequest waits for a human, so it gets 120 s.
+    static let hookEvents: [(String, Int)] = [
+        ("SessionStart", 10), ("SessionEnd", 10),
+        ("UserPromptSubmit", 10),
+        ("PreToolUse", 10), ("PostToolUse", 10), ("PostToolUseFailure", 10),
+        ("PermissionRequest", 120),
+        ("Notification", 10),
+        ("Stop", 10), ("StopFailure", 10),
+        ("SubagentStart", 10), ("SubagentStop", 10),
+    ]
+
+    /// What the preview showed, and a fingerprint of the exact bytes it was computed from.
+    private struct PendingHookWrite {
+        let settingsURL: URL
+        let data: Data
+        let fingerprint: String
+    }
+    private var pendingHookWrite: PendingHookWrite?
+
+    /// The user's real home folder. In the App Store sandbox homeDirectoryForCurrentUser is
+    /// the app container, which is not where Claude Code looks.
+    static var realHomeDirectory: URL {
+        if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: dir), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    static var defaultClaudeDirectory: URL {
+        realHomeDirectory.appendingPathComponent(".claude", isDirectory: true)
+    }
+
+    /// Reads settings.json. The only thing that means "start from nothing" is the file not
+    /// existing: an unreadable file or JSON we can't parse is an error, because treating it
+    /// as empty and writing that back would wipe the user's permissions and other hooks.
+    static func readSettings(at url: URL) throws -> (object: [String: Any], raw: Data) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return ([:], Data()) }
+        let raw: Data
+        do {
+            raw = try Data(contentsOf: url)
+        } catch {
+            throw HookInstallError.unreadable(path: url.path, reason: error.localizedDescription)
+        }
+        // Some editors and PowerShell write a UTF-8 BOM, which JSONSerialization rejects.
+        var text = raw
+        if text.starts(with: [0xEF, 0xBB, 0xBF]) { text = text.dropFirst(3) }
+        if text.allSatisfy({ $0 == 0x20 || $0 == 0x09 || $0 == 0x0A || $0 == 0x0D }) {
+            return ([:], raw)
+        }
+        let parsed: Any
+        do {
+            parsed = try JSONSerialization.jsonObject(with: text)
+        } catch {
+            throw HookInstallError.invalidJSON(path: url.path, reason: error.localizedDescription)
+        }
+        guard let object = parsed as? [String: Any] else {
+            throw HookInstallError.notAnObject(path: url.path)
+        }
+        return (object, raw)
+    }
+
+    static func fingerprint(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// A hook command Coucou wrote: the nb-hook relay under NotchBuddy/ or .claude/coucou/.
+    /// Another tool whose command merely mentions "coucou" is left alone.
+    static func isCoucouHookCommand(_ command: String) -> Bool {
+        command.contains("nb-hook") && (command.contains("NotchBuddy") || command.contains("coucou"))
+    }
+
+    private static func entryIsOurs(_ entry: Any) -> Bool {
+        guard let entry = entry as? [String: Any],
+              let hooks = entry["hooks"] as? [[String: Any]] else { return false }
+        return hooks.contains { ($0["command"] as? String).map(isCoucouHookCommand) ?? false }
+    }
+
+    /// Settings with Coucou's hooks added; everything else is left untouched.
+    static func merged(_ settings: [String: Any], command: String) -> [String: Any] {
+        var root = settings
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for (event, timeout) in hookEvents {
+            var list = hooks[event] as? [Any] ?? []
+            list.removeAll(where: entryIsOurs)
+            list.append(["hooks": [["type": "command", "command": command, "timeout": timeout]]])
+            hooks[event] = list
+        }
+        root["hooks"] = hooks
+        return root
+    }
+
+    /// Settings with every Coucou entry removed, and nothing else changed.
+    static func withoutOurs(_ settings: [String: Any]) -> [String: Any] {
+        var root = settings
+        guard let hooks = root["hooks"] as? [String: Any] else { return root }
+        var out: [String: Any] = [:]
+        for (event, value) in hooks {
+            if let list = value as? [Any] {
+                let kept = list.filter { !entryIsOurs($0) }
+                if !kept.isEmpty { out[event] = kept }
+            } else {
+                out[event] = value
+            }
+        }
+        if out.isEmpty { root.removeValue(forKey: "hooks") } else { root["hooks"] = out }
+        return root
+    }
+
+    static func prettyJSON(_ object: [String: Any]) throws -> Data {
+        var data = try JSONSerialization.data(withJSONObject: object,
+                                              options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        data.append(0x0A)
+        return data
+    }
+
+    /// Computes the change and returns the diff the user has to look at before anything
+    /// is written. applyPendingHooks() writes exactly this, or nothing.
+    private func previewHooks(install: Bool, settingsURL: URL, command: String) throws -> String {
+        pendingHookWrite = nil
+        let current = try Self.readSettings(at: settingsURL)
+        let next = install ? Self.merged(current.object, command: command) : Self.withoutOurs(current.object)
+        let before = String(decoding: try Self.prettyJSON(current.object), as: UTF8.self)
+        let afterData = try Self.prettyJSON(next)
+        pendingHookWrite = PendingHookWrite(settingsURL: settingsURL, data: afterData,
+                                            fingerprint: Self.fingerprint(current.raw))
+        return Self.unifiedDiff(before, String(decoding: afterData, as: UTF8.self))
+    }
+
+    /// Writes what the preview showed, after a dated backup — only if settings.json is still
+    /// byte-for-byte the file the preview was computed from. Another tool, the user's editor
+    /// or Claude Code itself (a "don't ask again" rule) may have changed it in between.
+    @discardableResult
+    private func applyPendingHooks() throws -> URL? {
+        guard let pending = pendingHookWrite else { throw HookInstallError.nothingToWrite }
+        let url = pending.settingsURL
+        // Unreadable now → abort before the backup, before anything is touched.
+        let current = try Self.readSettings(at: url)
+        guard Self.fingerprint(current.raw) == pending.fingerprint else {
+            pendingHookWrite = nil
+            throw HookInstallError.changedSincePreview(path: url.path)
+        }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        let backup = try Self.backUp(url)
+        try pending.data.write(to: url, options: .atomic)
+        pendingHookWrite = nil
+        return backup
+    }
+
+    /// Removes Coucou's entries (and only those), after a dated backup.
+    private func removeHooks(settingsURL: URL) throws {
+        let current = try Self.readSettings(at: settingsURL)
+        let next = Self.withoutOurs(current.object)
+        guard !NSDictionary(dictionary: next).isEqual(to: current.object) else { return }
+        let data = try Self.prettyJSON(next)
+        // Re-check right before writing so a concurrent edit is never reverted.
+        guard Self.fingerprint(try Self.readSettings(at: settingsURL).raw) == Self.fingerprint(current.raw) else {
+            throw HookInstallError.changedSincePreview(path: settingsURL.path)
+        }
+        _ = try Self.backUp(settingsURL)
         try data.write(to: settingsURL, options: .atomic)
-        _pendingHooksData = nil
     }
 
-    private func buildHooksData() throws -> Data {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        var settings: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            settings = parsed
+    /// Copies settings.json to settings.json.bak-yyyyMMdd-HHmmss (plus a counter if that
+    /// name is taken). Returns nil when there is no file yet; throws if the copy fails, so
+    /// nothing is ever written without a backup.
+    private static func backUp(_ url: URL) throws -> URL? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let dir = url.deletingLastPathComponent()
+        let base = "\(url.lastPathComponent).bak-\(formatter.string(from: Date()))"
+        var backup = dir.appendingPathComponent(base)
+        var n = 2
+        while FileManager.default.fileExists(atPath: backup.path) {
+            backup = dir.appendingPathComponent("\(base)-\(n)")
+            n += 1
         }
-        let hookPath = Self.hookScriptPath
-        #if APPSTORE
-        // Sandboxed apps create quarantined files; /bin/sh bypasses the quarantine flag
-        let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        #else
-        let quotedCmd = "\"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        #endif
-        let events: [(String, Int)] = [
-            ("SessionStart", 10), ("SessionEnd", 10),
-            ("UserPromptSubmit", 10),
-            ("PreToolUse", 10), ("PostToolUse", 10), ("PostToolUseFailure", 10),
-            ("PermissionRequest", 120),
-            ("Notification", 10),
-            ("Stop", 10), ("StopFailure", 10),
-            ("SubagentStart", 10), ("SubagentStop", 10),
-        ]
-        var hooks = settings["hooks"] as? [String: Any] ?? [:]
-        for (event, timeout) in events {
-            var existing = hooks[event] as? [[String: Any]] ?? []
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
-            existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
-            hooks[event] = existing
+        do {
+            try FileManager.default.copyItem(at: url, to: backup)
+        } catch {
+            throw HookInstallError.backupFailed(reason: error.localizedDescription)
         }
-        settings["hooks"] = hooks
-        return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return backup
+    }
+
+    /// Minimal line diff (LCS) with three lines of context. settings.json is short, so the
+    /// plain O(n·m) table is the simplest honest diff. Port of unified_diff in hooks.rs.
+    static func unifiedDiff(_ before: String, _ after: String) -> String {
+        func lines(_ s: String) -> [String] {
+            var l = s.components(separatedBy: "\n")
+            if l.last == "" { l.removeLast() }
+            return l
+        }
+        let a = lines(before), b = lines(after)
+        let n = a.count, m = b.count
+        var lcs = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            for j in stride(from: m - 1, through: 0, by: -1) {
+                lcs[i][j] = a[i] == b[j] ? lcs[i + 1][j + 1] + 1 : max(lcs[i + 1][j], lcs[i][j + 1])
+            }
+        }
+        var out: [String] = []
+        var i = 0, j = 0
+        while i < n && j < m {
+            if a[i] == b[j] {
+                out.append("  " + a[i]); i += 1; j += 1
+            } else if lcs[i + 1][j] >= lcs[i][j + 1] {
+                out.append("- " + a[i]); i += 1
+            } else {
+                out.append("+ " + b[j]); j += 1
+            }
+        }
+        while i < n { out.append("- " + a[i]); i += 1 }
+        while j < m { out.append("+ " + b[j]); j += 1 }
+
+        let changed = out.indices.filter { out[$0].hasPrefix("+ ") || out[$0].hasPrefix("- ") }
+        guard !changed.isEmpty else { return "No change." }
+        var keep = Array(repeating: false, count: out.count)
+        for idx in changed {
+            for k in max(0, idx - 3)..<min(out.count, idx + 4) { keep[k] = true }
+        }
+        var result = ""
+        var gap = false
+        for (idx, line) in out.enumerated() {
+            if keep[idx] {
+                result += line + "\n"
+                gap = false
+            } else if !gap {
+                result += "  …\n"
+                gap = true
+            }
+        }
+        return result
+    }
+
+    // MARK: - Developer ID build: ~/.claude/settings.json
+
+    /// The command written to settings.json: the relay's quoted path (its shebang runs python3).
+    private static var hookCommand: String {
+        "\"\(hookScriptPath.replacingOccurrences(of: "\"", with: "\\\""))\""
+    }
+
+    private static var defaultSettingsURL: URL {
+        defaultClaudeDirectory.appendingPathComponent("settings.json")
+    }
+
+    /// Returns the diff to review — call writeClaudeHooks() to confirm.
+    func previewClaudeHooks() throws -> String {
+        try previewHooks(install: true, settingsURL: Self.defaultSettingsURL, command: Self.hookCommand)
+    }
+
+    /// Writes the previewed change (call after the user confirms the diff).
+    func writeClaudeHooks() throws {
+        try applyPendingHooks()
     }
 
     func uninstallClaudeHooks() throws {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: settingsURL),
-              var settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var hooks = settings["hooks"] as? [String: Any] else { return }
-
-        for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
-                    } ?? false
-                }
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
-            }
-        }
-        settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: settingsURL, options: .atomic)
+        try removeHooks(settingsURL: Self.defaultSettingsURL)
     }
 
     // MARK: - App Store: hooks via security-scoped bookmark
 
     #if APPSTORE
-    /// App Store variant — needs a security-scoped bookmark URL pointing to ~/.claude
+    /// The ~/.claude folder the user granted, if the bookmark still resolves.
+    static func resolvedClaudeBookmark() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") else { return nil }
+        var isStale = false
+        guard let url = try? URL(resolvingBookmarkData: data, options: .withSecurityScope,
+                                 relativeTo: nil, bookmarkDataIsStale: &isStale),
+              !isStale else { return nil }
+        return url
+    }
+
+    /// The relay lives in the granted folder, so the command is built from that folder's real
+    /// path (not the sandbox container), and runs the Python interpreter explicitly: the
+    /// sandbox leaves the script quarantined, and /bin/sh would parse the Python as shell and
+    /// exit 2 — which Claude Code treats as "block this prompt / tool call".
+    static func appStoreHookCommand(claudeURL: URL) -> String {
+        let path = claudeURL.appendingPathComponent("coucou/nb-hook").path
+        return "/usr/bin/python3 \"\(path.replacingOccurrences(of: "\"", with: "\\\""))\""
+    }
+
     func previewClaudeHooksAppStore(claudeURL: URL) throws -> String {
         let accessing = claudeURL.startAccessingSecurityScopedResource()
         defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
-        let data = try buildHooksData(claudeURL: claudeURL)
-        _pendingHooksData = data
-        return String(data: data, encoding: .utf8) ?? ""
+        return try previewHooks(install: true,
+                                settingsURL: claudeURL.appendingPathComponent("settings.json"),
+                                command: Self.appStoreHookCommand(claudeURL: claudeURL))
     }
 
     func writeClaudeHooksAppStore(claudeURL: URL) throws {
-        guard let data = _pendingHooksData else { return }
+        guard pendingHookWrite != nil else { throw HookInstallError.nothingToWrite }
         let accessing = claudeURL.startAccessingSecurityScopedResource()
         defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
 
@@ -607,72 +907,67 @@ final class HookServer: @unchecked Sendable {
         try nbHookScriptAppStore.write(to: scriptURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: scriptURL.path)
 
-        // Write settings.json (with backup)
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmm"
-        let backupURL = claudeURL.appendingPathComponent("settings.json.bak-\(formatter.string(from: Date()))")
-        try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
-        try data.write(to: settingsURL, options: .atomic)
-        _pendingHooksData = nil
+        try applyPendingHooks()
     }
 
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
         let accessing = claudeURL.startAccessingSecurityScopedResource()
         defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        guard let data = try? Data(contentsOf: settingsURL),
-              var settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var hooks = settings["hooks"] as? [String: Any] else { return }
-        for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
-            }
-        }
-        settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: settingsURL, options: .atomic)
-    }
-
-    private func buildHooksData(claudeURL: URL) throws -> Data {
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        var settings: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            settings = parsed
-        }
-        let hookPath = Self.hookScriptPath
-        let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        let events: [(String, Int)] = [
-            ("SessionStart", 10), ("SessionEnd", 10),
-            ("UserPromptSubmit", 10),
-            ("PreToolUse", 10), ("PostToolUse", 10), ("PostToolUseFailure", 10),
-            ("PermissionRequest", 120),
-            ("Notification", 10),
-            ("Stop", 10), ("StopFailure", 10),
-            ("SubagentStart", 10), ("SubagentStop", 10),
-        ]
-        var hooks = settings["hooks"] as? [String: Any] ?? [:]
-        for (event, timeout) in events {
-            var existing = hooks[event] as? [[String: Any]] ?? []
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
-            existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
-            hooks[event] = existing
-        }
-        settings["hooks"] = hooks
-        return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        try removeHooks(settingsURL: claudeURL.appendingPathComponent("settings.json"))
     }
     #endif
+}
+
+// MARK: - Local log files
+
+private let appLogMaxBytes: UInt64 = 1_000_000
+
+/// Appends one line to ~/Library/Logs/NotchBuddy/<fileName>. Nothing leaves the machine,
+/// but these files end up in bug reports: never pass secrets, commands or response bodies.
+/// Control characters are escaped so a logged value can't forge extra lines, and the file
+/// starts over past ~1 MB so it can't grow forever (same policy as the Windows log).
+func appendAppLog(_ fileName: String, _ message: String, timestampFormat: String = "yyyy-MM-dd HH:mm:ss") {
+    let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("Logs/NotchBuddy")
+    try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
+    let logFile = logsDir.appendingPathComponent(fileName)
+
+    if let size = (try? FileManager.default.attributesOfItem(atPath: logFile.path))?[.size] as? UInt64,
+       size > appLogMaxBytes {
+        try? FileManager.default.removeItem(at: logFile)
+    }
+
+    let formatter = DateFormatter()
+    formatter.dateFormat = timestampFormat
+    let line = "\(formatter.string(from: Date())) \(escapedForLog(message))\n"
+    guard let data = line.data(using: .utf8) else { return }
+    if FileManager.default.fileExists(atPath: logFile.path) {
+        if let handle = try? FileHandle(forWritingTo: logFile) {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            try? handle.close()
+        }
+    } else {
+        try? data.write(to: logFile)
+    }
+}
+
+func escapedForLog(_ message: String) -> String {
+    var out = String.UnicodeScalarView()
+    for scalar in message.unicodeScalars {
+        switch scalar {
+        case "\n": out.append(contentsOf: "\\n".unicodeScalars)
+        case "\r": out.append(contentsOf: "\\r".unicodeScalars)
+        case "\t": out.append(" ")
+        default:
+            if scalar.properties.generalCategory == .control {
+                out.append("\u{FFFD}")
+            } else {
+                out.append(scalar)
+            }
+        }
+    }
+    return String(out)
 }
 
 // MARK: - Notification names for hook server → controller communication
@@ -735,15 +1030,10 @@ def main():
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
-                if decision == 'allow':
+                # A plain allow. Never echo permission_suggestions as updatedPermissions:
+                # that would persist rules or mode changes the user never saw.
+                if decision in ('allow', 'always'):
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'always':
-                    # Let Claude Code persist the rule via updatedPermissions
-                    suggestions = payload.get('permission_suggestions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -826,15 +1116,10 @@ def main():
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
-                if decision == 'allow':
+                # A plain allow. Never echo permission_suggestions as updatedPermissions:
+                # that would persist rules or mode changes the user never saw.
+                if decision in ('allow', 'always'):
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'always':
-                    # Let Claude Code persist the rule via updatedPermissions
-                    suggestions = payload.get('permission_suggestions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
