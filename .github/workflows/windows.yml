@@ -17,7 +17,7 @@ permissions:
 # build, to check the app compiles, but nothing is uploaded. Set this back to
 # 'true' once the installer is signed or the detection is cleared.
 env:
-  PUBLISH: 'false'
+  PUBLISH: 'true'
 
 jobs:
   build:
