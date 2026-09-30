@@ -4,9 +4,9 @@
 
 # Coucou
 
-**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
+**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your coding sessions. Claude Code on macOS; Claude Code and Codex on Windows.**
 
-Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
+Approve permissions, watch your agents work, drop a file, chat with Claude or Codex — all without leaving what you're doing.
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
@@ -27,14 +27,14 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 Some studios showed off gorgeous notch companions… and never let anyone use them.
 **Coucou is the open version.** Every line of code, every animation, every sound — free to use, read, fork and remix.
 
-Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
+Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment your coding agent needs you.
 
 ## Features
 
-- 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
-- ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
+- 🤖 **Coding sessions, live** — see Claude Code sessions on macOS and Windows, plus Codex sessions on Windows: what each agent reads, edits and runs, step by step.
+- ✅ **Approve from the notch** — Claude Code and Codex permission requests show up on Windows with **Allow / Deny**. One click, back to work.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
-- 💬 **Ask Claude anything** — built-in chat, straight from the notch.
+- 💬 **Ask Claude or Codex** — built-in chat from the notch. Windows can use your signed-in Codex CLI; macOS keeps its Claude chat.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
@@ -99,10 +99,11 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
-| **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
+| **Codex hooks (Windows)** | live Codex sessions and approvals | **Install hooks** — Coucou previews and backs up the Codex hook config. After install, review and trust Coucou's hook in Codex CLI with `/hooks` |
+| **Chat provider** | built-in chat | Claude uses an Anthropic API key. Codex uses the local Codex CLI sign-in; run `codex login` and choose ChatGPT sign-in to use your eligible ChatGPT plan. |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
-If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
+If Coucou isn't running, the hook exits immediately: **Claude Code and Codex keep their normal terminal approval flow.** Codex also requires you to trust Coucou's current hook definition in `/hooks`; a changed definition needs review again.
 
 ## Things to try
 
@@ -131,7 +132,7 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 **Windows**
 
 - A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
-- Claude Code hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager.
+- Claude Code and Codex hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager. Codex chat runs the local CLI with your saved ChatGPT sign-in.
 - Details and differences in [`windows/README.md`](windows/README.md).
 
 ## Contributing

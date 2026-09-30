@@ -21,3 +21,7 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_Threading",
 ] }
+
+[target.'cfg(windows)'.dev-dependencies]
+# Create a unique mock named pipe in relay integration tests.
+windows = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_IO"] }

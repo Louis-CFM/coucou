@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"test-thread-003"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item-003","type":"agent_message","text":"This text must not be returned as a successful answer without turn.completed."}}

@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"test-thread-005"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item-005","type":"agent_message","text":"Must not be accepted if a later JSONL record is malformed."}}
+{this is not valid JSON
+{"type":"turn.completed"}

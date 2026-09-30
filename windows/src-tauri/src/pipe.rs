@@ -5,7 +5,7 @@
 // that keeps its connection open: it waits for the island's decision and writes
 // it back on the same pipe, which is how approving from the island works.
 //
-// Claude Code is never blocked by us. Three things guarantee it:
+// The provider is never blocked by us. Three things guarantee it:
 //   * coucou-hook gives the connection 300 ms and exits cleanly if we are closed;
 //   * we only wait for a human once the island has *confirmed* the card is on
 //     screen, so a paused island or a webview that is not listening costs a few
@@ -13,9 +13,8 @@
 //   * whatever happens we drop the connection after the decision timeout, and
 //     the terminal takes over.
 //
-// What we write back is the bare word `allow` or `deny`. Turning that into the
-// documented hookSpecificOutput JSON is coucou-hook's job, so the wire format
-// Claude Code expects lives in exactly one place.
+// What we write back is the bare choice. Turning it into provider-specific hook
+// JSON is coucou-hook's job, so wire formats live in exactly one place.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -114,7 +113,9 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
+    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else {
+        return;
+    };
     if !payload.is_object() {
         return;
     }
@@ -132,7 +133,11 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         return;
     }
 
-    let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+    let id = format!(
+        "{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
     let (tx, mut rx) = mpsc::channel::<Reply>(4);
     {
         let pending = app.state::<Pending>();
@@ -169,7 +174,9 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
         Ok(None) => return None,
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
+            log::line(format!(
+                "hook id={id} island never acknowledged — terminal takes over"
+            ));
             return None;
         }
     }
@@ -194,7 +201,11 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
     let sender = {
         let pending = app.state::<Pending>();
         let mut map = pending.0.lock().unwrap();
-        if keep { map.get(request_id).cloned() } else { map.remove(request_id) }
+        if keep {
+            map.get(request_id).cloned()
+        } else {
+            map.remove(request_id)
+        }
     };
     match sender {
         Some(tx) => {
@@ -218,10 +229,31 @@ pub fn decline(app: &AppHandle, request_id: &str) {
 /// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
 /// it into Claude Code's JSON is coucou-hook's job.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
-    let word = match decision {
-        "allow" | "always" => "allow",
-        _ => "deny",
-    };
+    let word = decision_word(decision);
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// Preserve the island's Always action until the provider-specific relay can
+/// interpret it. Claude treats it as a one-request allow; Codex currently does
+/// not support persistent permission updates and must fall back to its prompt.
+fn decision_word(decision: &str) -> &'static str {
+    match decision {
+        "allow" => "allow",
+        "always" => "always",
+        _ => "deny",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decision_word;
+
+    #[test]
+    fn permission_choice_is_preserved_for_provider_specific_validation() {
+        assert_eq!(decision_word("allow"), "allow");
+        assert_eq!(decision_word("always"), "always");
+        assert_eq!(decision_word("deny"), "deny");
+        assert_eq!(decision_word("unexpected"), "deny");
+    }
 }

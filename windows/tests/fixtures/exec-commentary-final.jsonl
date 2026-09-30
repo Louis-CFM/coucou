@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"test-thread-004"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item-004a","type":"agent_message","text":"I am checking the request."}}
+{"type":"item.completed","item":{"id":"item-004b","type":"command_execution","command":"echo test","aggregated_output":"test","exit_code":0}}
+{"type":"item.completed","item":{"id":"item-004c","type":"agent_message","text":"The final answer is available after the successful turn."}}
+{"type":"turn.completed","usage":{"input_tokens":57,"output_tokens":12,"reasoning_output_tokens":0}}

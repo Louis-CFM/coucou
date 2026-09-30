@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"test-thread-001"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item-001","type":"agent_message","text":"Codex reply from a successful completed turn."}}
+{"type":"turn.completed","usage":{"input_tokens":31,"output_tokens":8,"reasoning_output_tokens":0}}

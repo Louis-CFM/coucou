@@ -3,7 +3,8 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type CodeProvider = "claude" | "codex";
+export type AgentSource = "claudeCode" | "codex" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -15,6 +16,9 @@ export interface AgentTask {
   steps: string[];
   source: AgentSource;
   isIntegration: boolean;
+  /** Provider/session identity for dynamically-created coding sessions. */
+  provider?: CodeProvider;
+  sessionId?: string;
   emote?: BotEmoteName | null;
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
@@ -24,6 +28,8 @@ export interface AgentTask {
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
+  taskId: string;
+  provider: CodeProvider;
   tool: string;
   command: string;
 }
@@ -53,12 +59,13 @@ export interface SearchResult {
 const task = (
   id: string, name: string, color: string, source: AgentSource,
 ): AgentTask => ({
-  id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
+  id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true, pillBadge: null,
 });
 
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_codex", "Codex", "#35A67A", "codex"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -92,6 +99,9 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  chatProvider: CodeProvider;
+  /** Empty means use the Codex CLI's configured default model. */
+  codexModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +116,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  codexModel: "",
 };
 
 type Listener = () => void;
@@ -136,6 +148,8 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** Incremented whenever the provider/model changes; old replies are discarded. */
+  chatGeneration = 0;
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
@@ -199,24 +213,73 @@ class AppState {
     this.notify();
   }
 
+  upsertCodeSession(provider: CodeProvider, sessionId: string, name: string, cwd: string): string {
+    const id = codeSessionTaskId(provider, sessionId);
+    let task = this.tasks.find((x) => x.id === id);
+    if (!task) {
+      task = {
+        id,
+        name,
+        color: provider === "codex" ? "#35A67A" : "#F5F6F8",
+        state: "idle",
+        stepIndex: 0,
+        steps: [],
+        source: provider === "codex" ? "codex" : "claudeCode",
+        isIntegration: false,
+        pillBadge: null,
+        provider,
+        sessionId,
+      };
+      this.tasks.push(task);
+    }
+    if (cwd && name) task.name = name;
+    task.sessionCwd = cwd || task.sessionCwd;
+    this.notify();
+    return id;
+  }
+
+  removeCodeSession(provider: CodeProvider, sessionId: string) {
+    const id = codeSessionTaskId(provider, sessionId);
+    const index = this.tasks.findIndex((x) => x.id === id);
+    if (index < 0) return;
+    this.tasks.splice(index, 1);
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? null;
+    this.notify();
+  }
+
+  clearChatForConfigChange() {
+    this.chatGeneration++;
+    this.chatHistory = [];
+    if (this.stateOverride === "thinking") this.stateOverride = null;
+    this.notify();
+  }
+
   /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        proto.id === "integration_claude" || proto.id === "integration_codex" ||
+        this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
+    // Session tasks are live hook sessions, not integration pollers. Preserve
+    // them when settings are reloaded and keep them ahead of optional services.
+    const sessions = this.tasks.filter((t) => !t.isIntegration);
     // Keep the declared order so pills never shuffle.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    if (!this.focusId) this.focusId = "integration_claude";
+    this.tasks = [...sessions, ...this.tasks.filter((t) => t.isIntegration)].sort((a, b) => {
+      if (!a.isIntegration && b.isIntegration) return -1;
+      if (a.isIntegration && !b.isIntegration) return 1;
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = "integration_claude";
     this.notify();
   }
 
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    if (id === "integration_claude" || id === "integration_codex") return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);
@@ -231,6 +294,12 @@ class AppState {
   defaultView(): IslandViewName {
     return this.tasks.length === 0 ? "empty" : "overview";
   }
+}
+
+export function codeSessionTaskId(provider: CodeProvider, sessionId: string): string {
+  // Base64-free stable encoding: session IDs can contain colons, slashes or
+  // spaces and must never collide across providers.
+  return `session_${provider}_${encodeURIComponent(sessionId)}`;
 }
 
 export const State = new AppState();
