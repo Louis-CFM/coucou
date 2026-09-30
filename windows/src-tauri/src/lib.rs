@@ -207,6 +207,21 @@ fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
 fn gemini_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
     hooks::gemini_write(install, &fingerprint)
 }
+
+#[tauri::command]
+fn agy_hooks_status() -> HookStatus {
+    hooks::agy_status()
+}
+
+#[tauri::command]
+fn agy_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::agy_preview(install)
+}
+
+#[tauri::command]
+fn agy_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::agy_write(install, &fingerprint)
+}
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
 fn hooks_preview(install: bool) -> Result<HookPreview, String> {
@@ -430,6 +445,9 @@ pub fn run() {
             gemini_hooks_status,
             gemini_hooks_preview,
             gemini_hooks_apply,
+            agy_hooks_status,
+            agy_hooks_preview,
+            agy_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,

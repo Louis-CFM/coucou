@@ -77,6 +77,13 @@ const TOOL_LABELS: Record<string, string> = {
   glob: "Cherche",
   grep: "Recherche",
   list_directory: "Liste",
+  // Antigravity CLI (`agy`, Go binary)
+  run_command: "Exécute",
+  view_file: "Lit",
+  write_file_content: "Écrit",
+  edit_file: "Modifie",
+  list_files: "Liste",
+  search_files: "Recherche",
   // opencode
   "task": "Agent",
   "bash": "Exécute",
@@ -131,6 +138,10 @@ function normalizeSource(raw: string | undefined): AgentSource {
     case "gemini":
     case "gemini-cli":
       return "geminiCli";
+    case "agy":
+    case "antigravity":
+    case "antigravity-cli":
+      return "antigravity";
     case "opencode":
     case "open-code":
       return "opencode";
@@ -150,6 +161,7 @@ function normalizeSource(raw: string | undefined): AgentSource {
 const SOURCE_META: Record<AgentSource, { prefix: string; color: string; label: string }> = {
   claudeCode: { prefix: "integration_claude", color: "#F5F6F8", label: "Claude" },
   geminiCli: { prefix: "cli_gemini_", color: "#38BDF8", label: "Gemini" },
+  antigravity: { prefix: "cli_agy_", color: "#F472B6", label: "agy" },
   opencode: { prefix: "cli_opencode_", color: "#A78BFA", label: "opencode" },
   genericCli: { prefix: "cli_", color: "#22C55E", label: "CLI" },
   n8n: { prefix: "integration_", color: "#F29B38", label: "n8n" },

@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "geminiCli" | "opencode" | "genericCli" | "n8n";
+export type AgentSource = "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {

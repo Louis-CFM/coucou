@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -316,34 +316,44 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
   );
 }
 
-// ── Gemini CLI hooks section ──────────────────────────────────────────────────
+// ── External CLI hooks sections (Gemini CLI, Antigravity `agy`) ───────────────
 
-function geminiSection(status: HookStatus): HTMLElement {
+interface CliHooksBackend {
+  status: () => Promise<HookStatus | null>;
+  preview: (install: boolean) => Promise<HookPreview>;
+  apply: (install: boolean, fingerprint: string) => Promise<string>;
+}
+
+function cliHooksSection(opts: {
+  title: string;
+  fileLabel: string;
+  hintOn: string;
+  hintOff: string;
+  previewHint: string;
+  backend: CliHooksBackend;
+  initial: HookStatus;
+}): HTMLElement {
+  const status = opts.initial;
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
   const section = h(
     "section",
     {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Gemini CLI" })),
+    h("h2", {}, statusDot(status.installed), h("span", { text: opts.title })),
     body,
   );
 
   function draw() {
     body.append(
-      h("div", {
-        class: "hint",
-        text: status.installed
-          ? "Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude."
-          : "Install the hooks to see your Gemini CLI sessions in the island next to Claude Code.",
-      }),
+      h("div", { class: "hint", text: status.installed ? opts.hintOn : opts.hintOff }),
       h("div", { class: "row" },
-        h("label", { text: "settings.json" }),
+        h("label", { text: opts.fileLabel }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
     );
     const actions = h("div", { class: "row" });
     actions.append(h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall Gemini hooks…" : "Install Gemini hooks…",
+      text: status.installed ? `Reinstall ${opts.title} hooks…` : `Install ${opts.title} hooks…`,
       onclick: () => showPreview(true),
     }));
     if (status.installed) {
@@ -359,7 +369,7 @@ function geminiSection(status: HookStatus): HTMLElement {
   async function showPreview(install: boolean) {
     let preview;
     try {
-      preview = await Bridge.geminiHooksPreview(install);
+      preview = await opts.backend.preview(install);
     } catch (err) {
       clear(body);
       body.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
@@ -368,7 +378,7 @@ function geminiSection(status: HookStatus): HTMLElement {
     if (!preview) return;
     clear(body);
     body.append(
-      h("div", { class: "hint", text: "Gemini settings use timeouts in ms. Your own hooks are left untouched." }),
+      h("div", { class: "hint", text: opts.previewHint }),
       renderDiff(preview.diff),
       h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
     );
@@ -376,11 +386,11 @@ function geminiSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.geminiHooksApply(install, preview.fingerprint);
+        const backup = await opts.backend.apply(install, preview.fingerprint);
         clear(body);
-        body.append(h("div", { class: "notice ok", text: `Done. Backup: ${backup}.` }));
+        body.append(h("div", { class: "notice ok", text: `Done. Backup: ${backup}. Open a new session to pick the hooks up.` }));
         window.setTimeout(async () => {
-          const fresh = await Bridge.geminiHooksStatus();
+          const fresh = await opts.backend.status();
           if (fresh) Object.assign(status, fresh);
           clear(body); draw();
         }, 2000);
@@ -396,6 +406,38 @@ function geminiSection(status: HookStatus): HTMLElement {
 
   draw();
   return section;
+}
+
+function geminiSection(status: HookStatus): HTMLElement {
+  return cliHooksSection({
+    title: "Gemini CLI",
+    fileLabel: "settings.json",
+    hintOn: "Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude.",
+    hintOff: "Install the hooks to see your Gemini CLI sessions in the island next to Claude Code. Note: since June 2026 new installs use Antigravity (`agy`) instead — see below.",
+    previewHint: "Gemini settings use timeouts in ms. Your own hooks are left untouched.",
+    backend: {
+      status: () => Bridge.geminiHooksStatus(),
+      preview: (install) => Bridge.geminiHooksPreview(install),
+      apply: (install, fp) => Bridge.geminiHooksApply(install, fp),
+    },
+    initial: status,
+  });
+}
+
+function agySection(status: HookStatus): HTMLElement {
+  return cliHooksSection({
+    title: "Antigravity (agy)",
+    fileLabel: "hooks.json",
+    hintOn: "Coucou is hooked into your Antigravity sessions (Pre/PostToolUse, invocations, Stop). Approvals stay in the terminal — activity shows in the island as pink agy pills.",
+    hintOff: "Install the hooks to see your `agy` sessions in the island. Writes to %USERPROFILE%\\.gemini\\config\\hooks.json under the \"coucou\" key.",
+    previewHint: "Antigravity timeouts are in seconds. Your other hooks are left untouched.",
+    backend: {
+      status: () => Bridge.agyHooksStatus(),
+      preview: (install) => Bridge.agyHooksPreview(install),
+      apply: (install, fp) => Bridge.agyHooksApply(install, fp),
+    },
+    initial: status,
+  });
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -578,6 +620,9 @@ async function main() {
   const geminiStatus = (await Bridge.geminiHooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
+  const agyStatus = (await Bridge.agyHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -591,6 +636,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     geminiSection(geminiStatus),
+    agySection(agyStatus),
     h("section", {},
       h("h2", {}, h("span", { text: "opencode" })),
       h("div", {

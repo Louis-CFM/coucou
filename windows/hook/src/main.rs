@@ -113,8 +113,8 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
-/// Normalize Gemini CLI / opencode event names to the Claude-like names the
-/// island already handles. Claude names pass through unchanged.
+/// Normalize Gemini CLI / Antigravity / opencode event names to the Claude-like
+/// names the island already handles. Claude names pass through unchanged.
 fn normalize_event(name: &str) -> String {
     match name {
         // Gemini CLI
@@ -124,6 +124,10 @@ fn normalize_event(name: &str) -> String {
         "BeforeAgent" | "AfterAgent" => "SubagentStop".to_string(),
         "SessionStart" | "startup" => "SessionStart".to_string(),
         "SessionEnd" | "exit" => "SessionEnd".to_string(),
+        // Antigravity CLI (`agy`): Pre/PostToolUse and Stop already match;
+        // invocations map to prompt/activity so the pill breathes per turn.
+        "PreInvocation" => "UserPromptSubmit".to_string(),
+        "PostInvocation" => "PostToolUse".to_string(),
         // opencode plugin (already normalized by the plugin, kept for safety)
         "session.created" => "SessionStart".to_string(),
         "session.deleted" => "SessionEnd".to_string(),
@@ -138,10 +142,65 @@ fn normalize_event(name: &str) -> String {
 fn normalize_source(source: &str) -> String {
     match source.to_lowercase().as_str() {
         "gemini" | "geminicli" | "gemini-cli" => "geminiCli".to_string(),
+        "agy" | "antigravity" | "antigravity-cli" => "antigravity".to_string(),
         "opencode" | "open-code" => "opencode".to_string(),
         "generic" | "genericcli" | "cli" => "genericCli".to_string(),
         "claude" | "claudecode" | "claude-code" | "" => "claudeCode".to_string(),
         other => other.to_string(),
+    }
+}
+
+/// Antigravity wraps tool data as `toolCall: {name, args}` and identifies the
+/// session as `conversationId`. Map both onto the Claude-like fields the
+/// island reads (`tool_name`, `tool_input`, `session_id`); existing fields win.
+fn normalize_tool_fields(map: &mut serde_json::Map<String, serde_json::Value>) {
+    use serde_json::Value;
+    if map.contains_key("tool_name") {
+        return;
+    }
+    let tool = map.get("toolCall").cloned().unwrap_or(Value::Null);
+    let name = tool
+        .get("name")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| {
+            map.get("tool")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        });
+    if let Some(name) = name.filter(|s| !s.is_empty()) {
+        map.insert("tool_name".into(), Value::String(name));
+    }
+    if !map.contains_key("tool_input") {
+        if let Some(args) = tool.get("args").cloned().filter(|a| a.is_object()) {
+            // Flatten the args Antigravity tools actually use so the island's
+            // step label finds them: run_command's CommandLine → command.
+            let mut flat = serde_json::Map::new();
+            for (k, v) in args.as_object().unwrap() {
+                flat.insert(k.clone(), v.clone());
+            }
+            for (k, v) in [
+                ("CommandLine", "command"),
+                ("FilePath", "file_path"),
+                ("Path", "path"),
+                ("Url", "url"),
+                ("Query", "query"),
+                ("Pattern", "pattern"),
+            ] {
+                if let Some(val) = args.get(k).cloned() {
+                    flat.insert(v.to_string(), val);
+                }
+            }
+            map.insert("tool_input".into(), Value::Object(flat));
+        }
+    }
+    if !map.contains_key("session_id") {
+        for key in ["conversationId", "conversation_id", "sessionId", "GEMINI_SESSION_ID"] {
+            if let Some(id) = map.get(key).and_then(Value::as_str).filter(|s| !s.is_empty()) {
+                map.insert("session_id".into(), Value::String(id.to_string()));
+                break;
+            }
+        }
     }
 }
 
@@ -161,9 +220,9 @@ fn read_event() -> Option<(String, String)> {
 
     // The event name is passed as argv[1] by the hook command; the JSON usually
     // carries it too. Trust argv when the JSON is missing it.
-    // argv[2] (optional) is the source: "claude" (default), "gemini", "opencode".
-    // Env COUCOU_SOURCE overrides argv — useful for Gemini matchers that share
-    // the same command line.
+    // argv[2] (optional) is the source: "claude" (default), "gemini", "agy",
+    // "opencode". Env COUCOU_SOURCE overrides argv — useful for matchers that
+    // share the same command line.
     let args: Vec<String> = std::env::args().collect();
     let arg_event = args.get(1).cloned().unwrap_or_default();
     let arg_source = args.get(2).cloned().unwrap_or_default();
@@ -177,6 +236,9 @@ fn read_event() -> Option<(String, String)> {
     // already understands. Unknown names pass through untouched.
     event = normalize_event(&event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
+
+    // Antigravity/Gemini field shapes → island field shapes.
+    normalize_tool_fields(map);
 
     if !map.contains_key("source") {
         let source = std::env::var("COUCOU_SOURCE")
@@ -213,10 +275,14 @@ fn read_event() -> Option<(String, String)> {
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // Gemini/Antigravity expose the session id via environment.
+        ("session_id", "GEMINI_SESSION_ID"),
     ] {
         if !map.contains_key(key) {
             let value = std::env::var(var).unwrap_or_default();
-            map.insert(key.into(), serde_json::Value::String(value));
+            if !value.is_empty() {
+                map.insert(key.into(), serde_json::Value::String(value));
+            }
         }
     }
 

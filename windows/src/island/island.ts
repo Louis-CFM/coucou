@@ -129,7 +129,7 @@ export class Island {
         };
         if (task.id === "integration_claude" || task.source === "claudeCode") {
           void Bridge.openInVSCode(task.sessionCwd ?? null);
-        } else if (task.source === "geminiCli" || task.source === "opencode" || task.source === "genericCli") {
+        } else if (task.source === "geminiCli" || task.source === "antigravity" || task.source === "opencode" || task.source === "genericCli") {
           // No per-terminal jump on Windows — open the working folder like VS Code.
           void Bridge.openInVSCode(task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();

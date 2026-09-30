@@ -52,6 +52,21 @@ pub const GEMINI_HOOK_EVENTS: &[(&str, &str, u64)] = &[
     ("AfterAgent", "SubagentStop", 5000),
 ];
 
+/// Antigravity CLI events → (argv event, timeout in SECONDS).
+/// `agy` already uses Claude-like names (PreToolUse/PostToolUse/Stop); the
+/// relay maps PreInvocation→UserPromptSubmit and PostInvocation→PostToolUse.
+/// No SessionStart/SessionEnd exists — first PreInvocation opens the pill.
+pub const AGY_HOOK_EVENTS: &[(&str, u64)] = &[
+    ("PreToolUse", 10),
+    ("PostToolUse", 10),
+    ("PreInvocation", 10),
+    ("PostInvocation", 10),
+    ("Stop", 10),
+];
+
+/// Top-level key holding Coucou's entries inside Antigravity's hooks.json.
+const AGY_KEY: &str = "coucou";
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HookStatus {
@@ -84,6 +99,13 @@ pub fn settings_path() -> PathBuf {
 
 pub fn gemini_settings_path() -> PathBuf {
     home().join(".gemini").join("settings.json")
+}
+
+/// Antigravity CLI (`agy`, the Go successor of Gemini CLI) keeps its own
+/// hooks file: `%USERPROFILE%\.gemini\config\hooks.json`, with hook names as
+/// top-level keys (ours is "coucou") and timeouts in SECONDS.
+pub fn agy_hooks_path() -> PathBuf {
+    home().join(".gemini").join("config").join("hooks.json")
 }
 
 /// Reads `~/.claude/settings.json`.
@@ -141,6 +163,13 @@ fn gemini_hook_command(normalized_event: &str) -> String {
     // but argv is the reliable channel on Windows (Git Bash).
     let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
     format!("\"{exe}\" {normalized_event} gemini")
+}
+
+fn agy_hook_command(event: &str) -> String {
+    // Antigravity runs `command` through the shell; quoted forward-slash exe
+    // path works in cmd and PowerShell. argv[2] tags the source as agy.
+    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
+    format!("\"{exe}\" {event} agy")
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -443,6 +472,124 @@ pub fn gemini_write(install: bool, fingerprint: &str) -> Result<String, String> 
     }
 
     let next = if install { merged_gemini(&current) } else { without_ours(&current) };
+    let mut text = pretty(&next);
+    text.push('\n');
+
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
+    if let Err(err) = std::fs::rename(&temp, &path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    Ok(backup.to_string_lossy().to_string())
+}
+
+// ── Antigravity CLI hooks (%USERPROFILE%\.gemini\config\hooks.json) ──────────
+// Schema differs from both Claude and old Gemini: hook names are top-level
+// keys, timeouts are SECONDS, events are PreToolUse/PostToolUse/PreInvocation/
+// PostInvocation/Stop. Ours lives under the "coucou" key; everything else is
+// left untouched, and uninstall removes only that key.
+
+fn read_agy_hooks() -> Result<Value, String> {
+    let path = agy_hooks_path();
+    match std::fs::read(&path) {
+        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
+        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+    }
+}
+
+fn read_agy_hooks_lossy() -> Value {
+    read_agy_hooks().unwrap_or_else(|_| json!({}))
+}
+
+fn agy_current_fingerprint() -> String {
+    match std::fs::read(agy_hooks_path()) {
+        Ok(bytes) => fingerprint(&bytes),
+        Err(_) => fingerprint(b""),
+    }
+}
+
+fn agy_backup_path() -> PathBuf {
+    let p = agy_hooks_path();
+    p.with_file_name(format!("hooks.json.bak-{}", stamp()))
+}
+
+fn merged_agy(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    let mut ours = Map::new();
+    for (event, timeout_s) in AGY_HOOK_EVENTS {
+        ours.insert(
+            (*event).to_string(),
+            json!([{
+                "matcher": "*",
+                "hooks": [{
+                    "type": "command",
+                    "command": agy_hook_command(event),
+                    "timeout": timeout_s,
+                }]
+            }]),
+        );
+    }
+    root.insert(AGY_KEY.into(), Value::Object(ours));
+    Value::Object(root)
+}
+
+fn without_agy(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    root.remove(AGY_KEY);
+    Value::Object(root)
+}
+
+fn agy_installed_in(value: &Value) -> bool {
+    value
+        .get(AGY_KEY)
+        .and_then(|v| serde_json::to_string(v).ok())
+        .map(|s| s.contains(MARKER))
+        .unwrap_or(false)
+}
+
+pub fn agy_status() -> HookStatus {
+    let current = read_agy_hooks_lossy();
+    let hook_path = settings::hook_exe_path();
+    HookStatus {
+        installed: agy_installed_in(&current),
+        settings_path: agy_hooks_path().to_string_lossy().to_string(),
+        hook_ready: hook_path.exists(),
+        hook_path: hook_path.to_string_lossy().to_string(),
+    }
+}
+
+pub fn agy_preview(install: bool) -> Result<HookPreview, String> {
+    let current = read_agy_hooks()?;
+    let next = if install { merged_agy(&current) } else { without_agy(&current) };
+    Ok(HookPreview {
+        diff: unified_diff(&pretty(&current), &pretty(&next)),
+        backup: agy_backup_path().to_string_lossy().to_string(),
+        settings_path: agy_hooks_path().to_string_lossy().to_string(),
+        fingerprint: agy_current_fingerprint(),
+    })
+}
+
+pub fn agy_write(install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = agy_hooks_path();
+    let dir = path.parent().unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+
+    let current = read_agy_hooks()?;
+    if agy_current_fingerprint() != fingerprint {
+        return Err(format!(
+            "{} changed since the preview. Nothing was written — review the new diff.",
+            path.display()
+        ));
+    }
+
+    let backup = agy_backup_path();
+    if path.exists() {
+        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+    }
+
+    let next = if install { merged_agy(&current) } else { without_agy(&current) };
     let mut text = pretty(&next);
     text.push('\n');
 

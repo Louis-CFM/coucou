@@ -32,7 +32,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 ## Features
 
 - 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
-- ♊ **Gemini CLI + opencode, side by side** *(Windows)* — Gemini sessions (via `~/.gemini/settings.json` hooks) and opencode sessions (via the bundled plugin in `windows/opencode-plugin/`) show up as their own pills next to Claude, each with its own steps and working folder. Approvals from the notch stay Claude-only for now.
+- ♊ **Gemini CLI + Antigravity (`agy`) + opencode, side by side** *(Windows)* — Gemini sessions (via `~/.gemini/settings.json` hooks), Antigravity sessions (via `~/.gemini/config/hooks.json`, pink `agy` pills) and opencode sessions (via the bundled plugin in `windows/opencode-plugin/`) show up as their own pills next to Claude, each with its own steps and working folder. Approvals from the notch stay Claude-only for now.
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Ask Claude or Gemini anything** — built-in chat, straight from the notch. Pick the provider in Settings (Anthropic key or Google `AIza…` key).
