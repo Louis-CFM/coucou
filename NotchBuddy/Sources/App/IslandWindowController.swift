@@ -830,6 +830,7 @@ extension Notification.Name {
     static let botDizzy         = Notification.Name("notchBuddy.botDizzy")
     static let botGreet         = Notification.Name("notchBuddy.botGreet")
     static let botBlink         = Notification.Name("notchBuddy.botBlink")
+    static let botApprovalAlert = Notification.Name("notchBuddy.botApprovalAlert")
     static let botSetTgEs       = Notification.Name("notchBuddy.botSetTgEs")
     static let botGulp          = Notification.Name("notchBuddy.botGulp")
     static let botMorphTo       = Notification.Name("notchBuddy.botMorphTo")

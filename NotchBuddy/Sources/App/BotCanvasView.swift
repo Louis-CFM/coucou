@@ -68,6 +68,9 @@ struct BotCanvasView: View {
         .onReceive(NotificationCenter.default.publisher(for: .botBlink)) { _ in
             engine.blink()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .botApprovalAlert)) { _ in
+            engine.approvalJump()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .botSetTgEs)) { notif in
             if let v = notif.object as? CGFloat {
                 engine.tgEs = v

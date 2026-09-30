@@ -283,6 +283,7 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(projectName: projectName, cwd: cwd)
         state.updateTask(id: "integration_claude", state: .approval)
+        NotificationCenter.default.post(name: .botApprovalAlert, object: nil)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
         state.isPinned = true
         SoundEngine.shared.play("approval")

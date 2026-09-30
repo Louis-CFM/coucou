@@ -278,11 +278,6 @@ final class BotEngine: ObservableObject {
                 TweenKey(target: 0.05,  duration: 70,  ease: Ease.inOut),
                 TweenKey(target: 0,     duration: 90,  ease: Ease.out),
             ])
-        case .approval:
-            anim("oy", keys: [
-                TweenKey(target: -0.2, duration: 150, ease: Ease.out),
-                TweenKey(target: 0,    duration: 300, ease: Ease.back),
-            ])
         case .dizzy:
             doRoll(duration: 1300, turns: 2)
         case .question:
@@ -292,6 +287,13 @@ final class BotEngine: ObservableObject {
         default:
             if prev != .idle || newState != .idle { blink() }
         }
+    }
+
+    func approvalJump() {
+        anim("oy", keys: [
+            TweenKey(target: -0.36, duration: 140, ease: Ease.out),
+            TweenKey(target: 0,     duration: 420, ease: Ease.back),
+        ])
     }
 
     func setBadge(_ b: BadgeType?) {
