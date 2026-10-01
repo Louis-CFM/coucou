@@ -22,6 +22,16 @@ async function main() {
 
   void Sound.preload();
 
+  // Before the island exists: its canvases size their bitmaps from the pixel
+  // ratio once, so the zoom correction has to land first. WebView2 applies the
+  // zoom a moment later; wait until the ratio has moved (or give up after a
+  // second) so nothing is sized against the stale value.
+  const dprBefore = window.devicePixelRatio || 1;
+  await Bridge.fitZoom(dprBefore);
+  for (let i = 0; i < 40 && window.devicePixelRatio === dprBefore; i++) {
+    await new Promise((r) => setTimeout(r, 25));
+  }
+
   const island = new Island(root);
 
   const boot = await Bridge.boot();

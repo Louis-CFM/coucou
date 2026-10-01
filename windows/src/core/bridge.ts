@@ -47,6 +47,7 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 
   reposition: () => call<void>("reposition"),
+  fitZoom: (dpr: number) => call<void>("fit_zoom", { dpr }),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
