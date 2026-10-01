@@ -26,10 +26,14 @@ export interface ViewActions {
   setAutoClose(seconds: number): void;
   /** Seconds from compact to fully reduced; 0 = never fully reduce. */
   setAbsence(seconds: number): void;
+  /** Seconds from fully compact to off-screen. */
+  setAutoCloseDelay(seconds: number): void;
   /** Pins the island open (ignores outside clicks, Escape and auto-close). */
   togglePin(): void;
   /** Whether the reduced island wakes on hover or only on a click. */
   toggleWakeOnHover(): void;
+  /** Brings the island back when it has gone off-screen. */
+  toggleHoverRestore(): void;
   openSettingsWindow(): void;
   blip(): void;
 }
@@ -462,46 +466,94 @@ function buildSettings(actions: ViewActions): ViewHost {
     type: "range", min: "0", max: "0.2", step: "0.005",
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
-  const autoLabel = h("span", {});
-  // 0 is "Off": the island stays open until it is dismissed.
-  const AUTO_VALUES = [0, 10, 30, 60];
-  const segButtons = AUTO_VALUES.map((s) =>
-    h("button", { onclick: () => actions.setAutoClose(s) }, s === 0 ? "Off" : `${s}s`),
-  );
-  const fullLabel = h("span", {});
-  const FULL_VALUES = [0, 15, 30];
-  const fullButtons = FULL_VALUES.map((s) =>
-    h("button", { onclick: () => actions.setAbsence(s) }, s === 0 ? "Never" : `${s}s`),
-  );
-  // Free-form slider for any delay between 5s and 5m; "Never" (0) is off the
-  // left end so the bar always shows a real, movable time.
-  const fullSlider = h("input", {
-    type: "range", min: "5", max: "300", step: "5",
-    style: "width:96px",
-    oninput: (e: Event) => actions.setAbsence(Number((e.target as HTMLInputElement).value)),
-  }) as HTMLInputElement;
+  // Three resting steps, each with its own delay: compact to the bar, auto-hide to
+  // a single Mochi, auto-close off-screen. Every one starts at Off/Never, tops out
+  // at a minute, and carries the same free-form slider alongside its presets.
+  const stepRow = (
+    label: () => string,
+    off: string,
+    values: number[],
+    get: () => number,
+    set: (v: number) => void,
+  ) => {
+    const lab = h("span", {});
+    const slider = h("input", {
+      type: "range", min: "5", max: "60", step: "5",
+      style: "width:96px",
+      oninput: (e: Event) => set(Number((e.target as HTMLInputElement).value)),
+    }) as HTMLInputElement;
+    const buttons = values.map((v) =>
+      h("button", { onclick: () => set(v) }, v === 0 ? off : `${v}s`),
+    );
+    const row = h(
+      "div",
+      { class: "settings-row" },
+      svg(ICONS.timer, 12),
+      lab,
+      slider,
+      h("div", { class: "seg" }, ...buttons),
+    );
+    return {
+      row,
+      sync() {
+        const v = get();
+        lab.textContent = label();
+        buttons.forEach((b, i) => b.classList.toggle("on", v === values[i]));
+        // Off/Never has no position on the bar, so the slider parks at the left.
+        if (document.activeElement !== slider) slider.value = String(Math.max(5, v || 5));
+        slider.style.opacity = v > 0 ? "1" : "0.45";
+      },
+    };
+  };
+
+const compactRow = stepRow(
+      () => (State.settings.absenceInterval > 0
+      ? `Compact · ${formatSpan(State.settings.absenceInterval)}`
+      : "Compact · Never"),
+      "Never",
+      [0, 5, 15, 30, 60],
+      () => State.settings.absenceInterval,
+      (v) => actions.setAbsence(v),
+    );
+const hideRow = stepRow(
+      () => (State.settings.autoCloseDelay > 0
+      ? `Auto-hide · ${formatSpan(State.settings.autoCloseDelay)}`
+      : "Auto-hide · Never"),
+      "Never",
+      [0, 5, 15, 30, 60],
+      () => State.settings.autoCloseDelay,
+      (v) => actions.setAutoCloseDelay(v),
+    );
+const closeRow = stepRow(
+      () => (State.settings.autoCloseInterval > 0
+      ? `Auto-close · ${Math.round(State.settings.autoCloseInterval)}s`
+      : "Auto-close · Off"),
+      "Off",
+      [0, 5, 10, 30, 60],
+      () => State.settings.autoCloseInterval,
+      (v) => actions.setAutoClose(v),
+    );
   const hoverSwitch = h("button", { class: "switch", onclick: () => actions.toggleWakeOnHover() });
+  // Undoes the auto-hide step: bring the fully-compact bar back by hovering it.
+  const restoreSwitch = h("button", { class: "switch", onclick: () => actions.toggleHoverRestore() });
   const claudeBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
+  const ocBadge = h("span", { class: "status-badge" });
 
   const rows = h(
     "div",
     { class: "settings-rows" },
     h("div", { class: "settings-row" }, soundSwitch, h("span", { text: "Sound" }), volume),
+    closeRow.row,
+    compactRow.row,
+    hideRow.row,
     h(
       "div",
       { class: "settings-row" },
-      svg(ICONS.timer, 12),
-      autoLabel,
-      h("div", { class: "seg" }, ...segButtons),
-    ),
-    h(
-      "div",
-      { class: "settings-row" },
-      svg(ICONS.timer, 12),
-      fullLabel,
-      fullSlider,
-      h("div", { class: "seg" }, ...fullButtons),
+      svg(ICONS.chevronDown, 12),
+      h("span", { text: "Hover to restore" }),
+      h("div", { class: "grow" }),
+      restoreSwitch,
     ),
     h(
       "div",
@@ -516,6 +568,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
       apiBadge,
+      ocBadge,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -536,17 +589,9 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
-      autoLabel.textContent =
-        s.autoCloseInterval > 0 ? `Auto-close · ${Math.round(s.autoCloseInterval)}s` : "Auto-close · Off";
-      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === AUTO_VALUES[i]));
-      fullLabel.textContent =
-        s.absenceInterval > 0 ? `Fully compact · ${formatSpan(s.absenceInterval)}` : "Fully compact · Never";
-      fullButtons.forEach((b, i) => b.classList.toggle("on", s.absenceInterval === FULL_VALUES[i]));
-      // Never has no position on the bar; park it at the left end.
-      if (document.activeElement !== fullSlider) {
-        fullSlider.value = String(Math.max(5, s.absenceInterval || 5));
-      }
-      fullSlider.style.opacity = s.absenceInterval > 0 ? "1" : "0.45";
+      compactRow.sync();
+      hideRow.sync();
+      closeRow.sync();
       hoverSwitch.classList.toggle("on", s.wakeOnHover);
       clear(claudeBadge);
       claudeBadge.append(
@@ -555,6 +600,16 @@ function buildSettings(actions: ViewActions): ViewHost {
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      restoreSwitch.classList.toggle("on", s.hoverRestore);
+      // Hover to restore is tied to auto-hide: it is the gesture that brings the island
+      // back from off-screen, so with auto-hide on Never it has nothing to act on.
+      restoreSwitch.disabled = !(s.autoCloseDelay > 0);
+      restoreSwitch.style.opacity = s.autoCloseDelay > 0 ? "1" : "0.4";
+      clear(ocBadge);
+      ocBadge.append(
+        dot(s.opencodeBin || s.chatViaServer ? "#22C55E" : "#8e939c", 6),
+        h("span", { text: "opencode" }),
+      );
     },
   };
 }

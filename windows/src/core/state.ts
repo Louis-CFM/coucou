@@ -91,12 +91,16 @@ export interface Settings {
   autoCloseInterval: number;
   /** Seconds from compact to fully reduced. 0 = never fully reduce. */
   absenceInterval: number;
+  /** Seconds from fully reduced to off-screen. 0 = never leave the screen. */
+  autoCloseDelay: number;
   /** Pinned: ignores outside clicks, Escape and the auto-close timer. */
   pinIsland: boolean;
   /** Wake the reduced island on hover. When false it waits to be clicked. */
   wakeOnHover: boolean;
+  /** Bring back an island that auto-close took off-screen. Off-screen only. */
+  hoverRestore: boolean;
   activeIntegrations: string[];
-  screen: "primary" | "cursor";
+  screen: "primary" | "cursor" | "secondary";
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
@@ -118,8 +122,10 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
+  autoCloseDelay: 0,
   pinIsland: false,
   wakeOnHover: true,
+  hoverRestore: true,
   activeIntegrations: [],
   screen: "primary",
   autostart: false,

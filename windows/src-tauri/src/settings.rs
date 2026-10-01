@@ -13,8 +13,14 @@ pub struct Settings {
     pub sound_volume: f64,
     #[serde(default = "default_auto_close_interval")]
     pub auto_close_interval: f64,
+    /// Seconds from compact to fully reduced. 0 = never fully reduce.
     #[serde(default = "default_absence_interval")]
     pub absence_interval: f64,
+    /// Seconds from fully reduced to off-screen. 0 = never leave the screen.
+    /// The last of the three resting steps; `auto_close_interval` compacts the
+    /// island to the bar and `absence_interval` takes it to a single Mochi.
+    #[serde(default)]
+    pub auto_close_delay: f64,
     /// Pinned by the user from the island header: the island then ignores
     /// outside clicks, Escape and the auto-close timer until unpinned.
     #[serde(default)]
@@ -26,7 +32,8 @@ pub struct Settings {
     /// coding-agent pills rather than every integration that has no key.
     #[serde(default)]
     pub active_integrations: Vec<String>,
-    /// "primary" = the main display, "cursor" = whichever display the mouse is on.
+    /// "primary" = the main display, "cursor" = whichever display the mouse is on,
+    /// "secondary" = the first non-primary display.
     #[serde(default = "default_screen")]
     pub screen: String,
     #[serde(default)]
@@ -51,6 +58,10 @@ pub struct Settings {
     /// message, each booting a throwaway server of its own.
     #[serde(default)]
     pub chat_via_server: bool,
+    /// Whether hovering the top edge brings back an island that auto-close took
+    /// off-screen. Governs off-screen only; wake_on_hover is for the parked bar.
+    #[serde(default = "default_true")]
+    pub hover_restore: bool,
     /// Horizontal resting place of the compact island, normalised 0..=1 across
     /// the target display: 0 = flush left, 0.5 = centred, 1 = flush right.
     /// Stored as a fraction so a drag can land anywhere while the presets still
@@ -61,6 +72,11 @@ pub struct Settings {
 
 fn default_notch_position() -> f64 {
     0.5
+}
+
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_chat_provider() -> String {
@@ -105,6 +121,7 @@ impl Default for Settings {
             sound_volume: default_sound_volume(),
             auto_close_interval: default_auto_close_interval(),
             absence_interval: default_absence_interval(),
+            auto_close_delay: 0.0,
             pin_island: false,
             wake_on_hover: default_wake_on_hover(),
             // Opt-in only: the coding-agent pills are always loaded, so starting
@@ -118,6 +135,7 @@ impl Default for Settings {
             opencode_bin: String::new(),
             opencode_model: String::new(),
             chat_via_server: false,
+            hover_restore: true,
             notch_position: default_notch_position(),
         }
     }

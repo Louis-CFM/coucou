@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NO_NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, COMPACT_W, NO_NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
@@ -65,7 +65,11 @@ export class Island {
   private dirty = true;
   private canvasPx = 0;
 
-  // Rust starts the window at full size so the launch greeting has room.
+// Rust starts the window at full size so the launch greeting has room.
+  // "Wake on hover": the widening of the fully-compact bar into the retracted one.
+  // A bar state only — it never opens the panel, and it never brings the island
+  // back from off-screen, which is what "hover to restore" is for.
+  private barHover = false;
   private collapsed = false;
   private collapseTimer: number | null = null;
   private wasInIsland = false;
@@ -174,6 +178,17 @@ export class Island {
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
+      setAutoCloseDelay: (s) => {
+        State.settings.autoCloseDelay = s;
+        this.fsm.hiddenToGoneDelay = s;
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      toggleHoverRestore: () => {
+        State.settings.hoverRestore = !State.settings.hoverRestore;
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
       togglePin: () => {
         const next = !State.settings.pinIsland;
         State.settings.pinIsland = next;
@@ -249,6 +264,7 @@ export class Island {
     this.fsm.onTransition = (from, to) => {
       switch (to) {
         case "hidden":
+        case "gone":
           this.setMode("hidden");
           break;
         case "petit":
@@ -270,10 +286,13 @@ export class Island {
           this.expand("greeting");
           this.greeting.start();
           break;
-      }
-      State.notify();
-    };
-  }
+}
+        void Bridge.debugLog(
+          `from=${from} to=${to} mode=${State.mode} compact=${this.fsm.homeToPetitDelay} autoClose=${this.fsm.petitToHiddenDelay}`,
+        );
+        State.notify();
+      };
+    }
 
   launch() {
     this.fsm.launch();
@@ -381,7 +400,7 @@ private outsideClicks: number[] = [];
 
     // The bar is the island's own width in whichever resting mode we are in, so
     // the draggable span depends on it.
-    const barW = islandSize(State.mode, State.view).w;
+    const barW = islandSize(State.mode, State.view, 0, this.hidesOffscreen()).w;
 
     this.dragStartX = e.screenX;
     this.dragStartPosition = State.settings.notchPosition;
@@ -457,24 +476,35 @@ dismissOutside() {
 
   this.outsideClicks = this.outsideClicks.filter((t) => now - t < Island.DOUBLE_MS);
 
-  // Double-click near the island while it is reduced: wake it back to the bar.
-  if (State.mode === "hidden" && near && this.outsideClicks.length > 0) {
-    this.outsideClicks = [];
-    this.fsm.mouseEntered();
+// Reduced, whether that is the docked bar or off-screen: only a deliberate
+  // double-click near the island opens it, and all the way to the full panel.
+  // `click()` takes the docked bar and the off-screen island straight to open.
+  // One click on its own does nothing, otherwise every stray click on the desktop
+  // would toggle the island.
+  if (State.mode === "compact" || State.mode === "hidden") {
+    if (near && this.outsideClicks.length > 0) {
+      this.outsideClicks = [];
+      // A double-click near the bar expands it to the full 240pt retracted bar, from
+      // either resting width. This is a real state change rather than the visual
+      // widening "wake on hover" uses, so the bar stays at 240 when the cursor leaves
+      // and the Compact timer takes it down to 80 from there. It never opens the panel
+      // and does not recall the island from off-screen.
+      if (this.fsm.state !== "gone" || State.settings.hoverRestore) this.fsm.mouseEntered();
+      return;
+    }
+    this.outsideClicks.push(now);
+    // A second click beside the bar takes it the rest of the way down to the
+    // fully-compact 80pt bar: 640 → 240 on the first click, 240 → 80 on the next.
+    // Compact on Never means the 80pt bar is never reached by any route.
+    if (this.fsm.state === "petit" && State.settings.absenceInterval > 0) this.fsm.forceHidden();
     return;
   }
-  this.outsideClicks.push(now);
-
-  // Reduced with nothing showing: a lone click is inert, otherwise every stray
-  // click on the desktop would toggle the island.
-  if (State.mode === "hidden") return;
 
   this.outsideClicks = [];
-  // Already resting on the bar: this extra click skips the wait and reduces now.
-  // `collapse()` would be a no-op here — the state machine ignores a transition
-  // to the state it is already in.
-  if (State.mode === "compact") this.fsm.forceHidden();
-  else this.collapse();
+  // Open: the first outside click compacts to the 240pt bar, and the island stays
+  // docked. Auto-close owns that step's timer; clicking again beside the bar is
+  // what takes it down to the fully-compact one.
+  this.collapse();
 }
 
 /** True when the cursor is within NEAR_RADIUS of the island's painted rect. */
@@ -611,10 +641,35 @@ private isNearIsland(): boolean {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+/** Whether the island has gone off-screen, which is its own resting state.
+   *
+   *  Reached from the fully-compact bar by the auto-close delay. Before that step
+   *  it keeps the parked bar from before the feature existed.
+   */
+  private hidesOffscreen(): boolean {
+    return this.fsm.state === "gone";
+  }
+
+
+  // Wakes the fully-compact bar: it widens to the retracted width and shows the agent
+  // pills, without opening the panel and without touching the off-screen state.
+  // Both ways of asking for it end up here — hovering it when "wake on hover" is on,
+  // and a double-click beside it — so the two behave identically.
+  private setBarHover(on: boolean) {
+    if (this.barHover === on) return;
+    this.barHover = on;
+    // Waking grows the bar, so it springs rather than curves.
+    this.animateGeometry(!on);
+    this.dirty = true;
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.hidesOffscreen());
+    // The fully-compact bar is a single centred Mochi; waking widens it to the
+    // retracted width, which is the one gesture both hover and a double-click do.
+    const width = State.mode === "hidden" && this.barHover ? COMPACT_W : w;
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
-    return { w, h, r };
+    return { w: width, h, r };
   }
 
   private animateGeometry(shrinking: boolean) {
@@ -660,11 +715,18 @@ private isNearIsland(): boolean {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    // Auto-hide has to take the entire bar with it, not just the Mochi: the bot
+    // already fades itself through `botPosition`'s opacity, but the bar's own
+    // background outlived the zero-height animation and stayed on screen. Fading
+    // the island is the only gate that covers the background, the pills and the bot
+    // in one place. Left clickable, so "hover to restore" can still find it.
+    this.islandEl.style.opacity = this.hidesOffscreen() ? "0" : "1";
     this.islandEl.style.transform = `translateX(${offsetX}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    // The pill grid is centred in the bar's right end and shrinks with it, so a
-    // 24px-tall bar never crops it (PR #22 scales the grid to the resting height).
+    // The pill grid sits in the right end of the expanded panel and shrinks with the
+    // bar, so a 24px-tall bar never crops it (PR #22 scales the grid to the resting
+    // height). Left as the draft had it now that the pills only appear expanded.
     const gridScale = Math.min(1, Math.max(0, hh - 4) / 28);
     const grid = 29 * gridScale;
     this.miniGrid.style.transform = `scale(${gridScale})`;
@@ -770,12 +832,20 @@ private isNearIsland(): boolean {
       // This is the poll-driven hover path and it is the one that actually wakes
       // the island on Windows, so the "wake on hover" setting has to be honoured
       // here too — gating only the DOM mouseenter left the setting inert.
-      if (this.fsm.state !== "hidden" || State.settings.wakeOnHover) {
+      // "Wake on hover" widens the fully-compact bar into the retracted one, pills and
+      // all. "Hover to restore" is the only thing that brings the island back from
+      // off-screen. They are different gestures on different states and neither
+      // opens the panel.
+      if (this.fsm.state === "hidden") {
+        if (State.settings.wakeOnHover) this.setBarHover(true);
+      } else if (this.fsm.state !== "gone" || State.settings.hoverRestore) {
         this.fsm.mouseEntered();
       }
       this.homeCollapseAt = null;
     }
     if (!inIsland && this.wasInIsland) {
+      // Leaving shrinks a woken bar back to the single centred Mochi.
+      if (this.fsm.state === "hidden") this.setBarHover(false);
       this.fsm.mouseLeft();
       if (this.fsm.state === "home" && !this.staysOpen && State.settings.autoCloseInterval > 0) {
         this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
@@ -878,6 +948,9 @@ private isNearIsland(): boolean {
     }
 
     this.updateBotTargets();
+// Mochi sits at the left of the woken bar, with the pills filling the right end,
+    // and dead centre in the resting 80pt bar. Both are x=40, so one value covers
+    // them; the pills only appear in the wider one.
     this.botCx.step(dt);
     this.botCy.step(dt);
     this.botSize.step(dt);
@@ -929,7 +1002,7 @@ private isNearIsland(): boolean {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress, this.hidesOffscreen());
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1045,10 +1118,31 @@ private isNearIsland(): boolean {
       }
     }
 
-    // Compact mini grid
-    const showGrid = State.mode === "compact";
+    // The agent pills belong to a woken resting bar and nowhere else — Mochi to the
+    // left, pills to the right end, as the draft had it. They are deliberately not
+    // shown in the expanded panel: the grid is a child of the island, so leaving
+    // it visible there painted mini Mochis over the settings view and every other
+    // full-screen view.
+    // `State.mode` has no "petit": that FSM state is the compact mode. So the bar is
+    // either the resting 80pt one or the woken 240pt one.
+    // The agent pills belong to a bar wide enough to hold them — the 240pt retracted
+    // bar, whether it was reached by the Compact timer or by "wake on hover"
+    // widening the fully-compact one — and never to the expanded panel: the grid is
+    // a child of the island, so leaving it visible there painted mini Mochis over the
+    // settings view and every other full-screen view. The fully-compact bar is the
+    // single centred Mochi with nothing beside it.
+    const showGrid = State.mode === "compact" || (State.mode === "hidden" && this.barHover);
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
-    if (showGrid) {
+    // Emptied when hidden, not just made transparent. A transparent grid still
+    // occupies the island and its children still render, which is how a second
+    // Mochi appeared over the first whenever the cursor came near.
+    if (!showGrid) {
+      if (this.miniGrid.dataset.key !== "") {
+        this.miniGrid.dataset.key = "";
+        this.miniGrid.replaceChildren();
+        pruneMiniBots();
+      }
+    } else {
       const others = State.otherTasks.slice(0, 4);
       const key = others.map((t) => t.id).join("|");
       if (this.miniGrid.dataset.key !== key) {
@@ -1071,6 +1165,7 @@ private isNearIsland(): boolean {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.petitToHiddenDelay = State.settings.absenceInterval;
+    this.fsm.hiddenToGoneDelay = State.settings.autoCloseDelay;
     // A pin saved last session keeps the island open across a restart.
     State.isPinned = State.settings.pinIsland;
     this.fsm.pinned = State.settings.pinIsland;

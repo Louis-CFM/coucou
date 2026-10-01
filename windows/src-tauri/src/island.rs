@@ -215,6 +215,18 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
             }
         }
     }
+    // "secondary" = the first non-primary display, in the order the OS reports them.
+    // A machine with only one monitor falls through to the primary one below rather
+    // than ending up with nowhere to draw.
+    if pref == "secondary" {
+        let primary = app.primary_monitor().ok().flatten();
+        if let Some(m) = monitors
+            .iter()
+            .find(|m| primary.as_ref().map(|p| p.name() != m.name()).unwrap_or(true))
+        {
+            return Some(m.clone());
+        }
+    }
     app.primary_monitor()
         .ok()
         .flatten()
@@ -432,7 +444,15 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives.
-                let accept = on_island || captured;
+                // While reduced the window is only 80x24, so it always takes the mouse. Relying on
+                // the poll's own hit test alone is what #28 is about: this setter goes
+                // through the event-loop queue, so a collapse on the main thread and the
+                // last poll tick can land in either order and leave the window
+                // click-through with nothing left to click on. While collapsed the answer
+                // does not depend on ordering at all.
+                let accept = on_island
+                    || captured
+                    || gate.collapsed.load(Ordering::Relaxed);
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);

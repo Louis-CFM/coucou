@@ -407,6 +407,11 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
 
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
+fn debug_log(line: String) {
+    crate::log::line(&format!("[island] {line}"));
+}
+
+#[tauri::command]
 fn secret_present(key: String) -> bool {
     secrets::present(&key)
 }
@@ -564,6 +569,7 @@ chat_send,
         opencode_server_url,
             ingest_file,
             secret_present,
+            debug_log,
             secret_set,
             secret_clear,
             refresh_integration,

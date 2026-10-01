@@ -634,6 +634,7 @@ function generalSection(): HTMLElement {
   screen.append(
     h("option", { value: "primary", text: "Main display" }),
     h("option", { value: "cursor", text: "Display under the cursor" }),
+    h("option", { value: "secondary", text: "Secondary display" }),
   );
   screen.value = settings.screen;
   screen.addEventListener("change", () => {

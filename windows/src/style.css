@@ -1490,3 +1490,11 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
   min-width: 0;
 }
+
+/* Quieter second label on a settings row, used to say which mode a
+   preference applies to. */
+.settings-sub {
+  font: 400 10.5px var(--font);
+  color: #767b84;
+  flex: 0 0 auto;
+}
