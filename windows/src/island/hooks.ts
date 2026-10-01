@@ -142,6 +142,9 @@ export function registerHookHandlers(island: Island) {
 
 function handleHook(island: Island, payload: HookPayload) {
   if (State.paused) {
+    // Silence here used to cost Claude Code nearly two minutes: the relay waited
+    // for a decision from an island that had already decided not to look. Say so,
+    // and the terminal takes the question immediately.
     if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
     return;
   }
@@ -189,6 +192,7 @@ function handleHook(island: Island, payload: HookPayload) {
     case "UserPromptSubmit": {
       ensurePill();
       State.updateTask(agentId, "thinking");
+      // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
       if (asked) State.appendStep(agentId, asked.slice(0, 60));
       surface("overview", false);
@@ -269,14 +273,16 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PermissionRequest": {
       // External agents do not get an approval card — showing one would look like
       // a Claude Code request. Decline immediately so the agent re-asks in its
-      // terminal. Approval support for other agents will come with Codex (n°20).
+      // terminal. Approval support for other agents will come with Codex support.
       if (isExternalAgent) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
 
       const requestId = payload.request_id ?? "";
-      // One card, one request. A second one must never quietly replace the first.
+      // One card, one request. A second one must never quietly replace the first
+      // — that would leave a human staring at request B while request A waits for
+      // a decision nobody can give. Hand it straight back to the terminal.
       if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
@@ -291,6 +297,8 @@ function handleHook(island: Island, payload: HookPayload) {
         tool,
         command: approvalTarget(tool, input),
       };
+      // The relay's short ack window closes in 800 ms; everything below this
+      // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
       State.updateTask(CLAUDE_ID, "approval");
       State.isPinned = true;
@@ -298,9 +306,14 @@ function handleHook(island: Island, payload: HookPayload) {
       if (focused) {
         island.alert("approval");
       } else {
+        // Another agent holds the view, so the card would yank it away. The badge
+        // is the signal instead — but it has to be on screen for that to mean
+        // anything, hence the reveal. We just told the relay a human can act.
         State.setPillBadge(CLAUDE_ID, "approval");
         island.reveal();
       }
+      // Coucou answers within 108 s or not at all; after that the terminal has
+      // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {
         pendingTimeout = null;
         if (!State.pendingApproval) return;

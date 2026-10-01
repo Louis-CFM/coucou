@@ -346,7 +346,7 @@ final class HookServer: @unchecked Sendable {
         // External agents (coucou_agent) do not yet get an approval card — answering
         // would show a card that looks like a Claude Code request. Reply immediately
         // with no decision so the relay writes nothing and the agent re-asks in its
-        // terminal. Approval support for other agents will come with Codex (n°20).
+        // terminal. Approval support for other agents will come with Codex support.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         if Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
