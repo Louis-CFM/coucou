@@ -38,6 +38,7 @@
 		62C4EE3F74DAA59764729E62 /* UploadCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */; };
 		651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */; };
 		68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
+		6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
 		78B3C6814431B2DD9D1F4949 /* SoundEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */; };
 		78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
@@ -65,6 +66,7 @@
 		F06EE0A97CB77096A337AA8B /* sounds in Resources */ = {isa = PBXBuildFile; fileRef = C066E2B991AA4F56B2724263 /* sounds */; };
 		FAD78D74C6906D4EC8AA4101 /* UploadSequenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */; };
 		FBBC4CDE82B5886A83A27D7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 506824380E9C80B9BC6DCE72 /* Assets.xcassets */; };
+		FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +90,7 @@
 		A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCanvasView.swift; sourceTree = "<group>"; };
 		A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
 		B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadCanvasView.swift; sourceTree = "<group>"; };
+		B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeWebURL.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
 		BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionPoller.swift; sourceTree = "<group>"; };
 		C066E2B991AA4F56B2724263 /* sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sounds; path = Resources/sounds; sourceTree = SOURCE_ROOT; };
@@ -125,6 +128,7 @@
 				F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */,
 				BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */,
 				61B5FDDE03F5F711146937E2 /* ResendPoller.swift */,
+				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
 				7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */,
 				1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */,
 				2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */,
@@ -294,6 +298,7 @@
 				06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */,
 				2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */,
 				967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */,
+				6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */,
 				56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */,
 				60E361FFE84C387E5E3ED1AA /* SoundEngine.swift in Sources */,
 				1558BB00C530B721172F6E65 /* StripePoller.swift in Sources */,
@@ -328,6 +333,7 @@
 				DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */,
 				78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */,
 				EB23ED9F1C12EA8B54A76A91 /* ResendPoller.swift in Sources */,
+				FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */,
 				8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */,
 				78B3C6814431B2DD9D1F4949 /* SoundEngine.swift in Sources */,
 				E4B9986674F4D425826F15A8 /* StripePoller.swift in Sources */,
