@@ -819,6 +819,16 @@ struct PromptView: View {
         }
         .padding(.bottom, 10)
         .onAppear { focused = true }
+        .onChange(of: state.view) { _, view in
+            if view == .prompt {
+                state.fetchModelsIfNeeded(for: state.chatProvider)
+            }
+        }
+        .onChange(of: state.chatProvider) { _, provider in
+            if state.view == .prompt {
+                state.fetchModelsIfNeeded(for: provider)
+            }
+        }
     }
 
     private func sendMessage() {
@@ -880,44 +890,72 @@ struct ModelPickerView: View {
 
             Divider().opacity(0.2)
 
-            // Model list for current provider
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(state.chatProvider.staticModels, id: \.self) { model in
-                    Button {
-                        switch state.chatProvider {
-                        case .anthropic: state.claudeModel = model
-                        case .google:    state.googleChatModel = model
-                        case .openai:    state.openAIChatModel = model
-                        }
-                        isPresented = false
-                        SoundEngine.shared.play("blip")
-                    } label: {
-                        HStack {
-                            Text(model)
-                                .font(.system(size: 12))
-                                .foregroundColor(state.activeChatModel == model
-                                                 ? Color(hex: state.chatProvider.accentHex)
-                                                 : Color(hex: "#C8CDD4"))
-                            Spacer()
-                            if state.activeChatModel == model {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(Color(hex: state.chatProvider.accentHex))
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(state.activeChatModel == model
-                                    ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
-                                    : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            // Model list for current provider — fetched dynamically
+            modelListView
+                .frame(height: 260, alignment: .top)
         }
         .padding(14)
         .background(Color(hex: "#16171B"))
+        .onAppear { state.fetchModelsIfNeeded(for: state.chatProvider) }
+        .onChange(of: state.chatProvider) { _, provider in
+            state.fetchModelsIfNeeded(for: provider)
+        }
+    }
+
+    @ViewBuilder
+    private var modelListView: some View {
+        if state.loadingProviderModels.contains(state.chatProvider) {
+            HStack(spacing: 8) {
+                ProgressView().scaleEffect(0.7)
+                Text("Loading models…")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "#8A8F98"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        } else if let error = state.providerModelFetchError[state.chatProvider] {
+            Text(error)
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8A8F98"))
+                .padding(.vertical, 4)
+        } else if let models = state.fetchedProviderModels[state.chatProvider] {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(models, id: \.id) { model in
+                        Button {
+                            switch state.chatProvider {
+                            case .anthropic: state.claudeModel = model.id
+                            case .google:    state.googleChatModel = model.id
+                            case .openai:    state.openAIChatModel = model.id
+                            }
+                            isPresented = false
+                            SoundEngine.shared.play("blip")
+                        } label: {
+                            HStack {
+                                Text(model.label)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(state.activeChatModel == model.id
+                                                     ? Color(hex: state.chatProvider.accentHex)
+                                                     : Color(hex: "#C8CDD4"))
+                                Spacer()
+                                if state.activeChatModel == model.id {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(Color(hex: state.chatProvider.accentHex))
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(state.activeChatModel == model.id
+                                        ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
+                                        : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 }
 

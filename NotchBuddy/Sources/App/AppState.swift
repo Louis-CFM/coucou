@@ -91,6 +91,54 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
     }
 
+    // Dynamically fetched model lists for the in-chat picker (keyed by provider)
+    @Published var fetchedProviderModels: [ChatProvider: [(id: String, label: String)]] = [:]
+    @Published var providerModelFetchError: [ChatProvider: String] = [:]
+    @Published var loadingProviderModels: Set<ChatProvider> = []
+
+    /// Fetches models for `provider` if not already loaded or loading.
+    /// Sets `providerModelFetchError` if the key is absent or the request fails.
+    func fetchModelsIfNeeded(for provider: ChatProvider) {
+        guard !loadingProviderModels.contains(provider),
+              fetchedProviderModels[provider] == nil else { return }
+        guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
+            providerModelFetchError[provider] = "No API key — add it in Settings."
+            return
+        }
+        loadingProviderModels.insert(provider)
+        providerModelFetchError.removeValue(forKey: provider)
+        Task {
+            let models: [(id: String, label: String)]
+            switch provider {
+            case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
+            case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
+            case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            }
+            loadingProviderModels.remove(provider)
+            if models.isEmpty {
+                providerModelFetchError[provider] = "Failed to load models. Check your API key."
+            } else {
+                fetchedProviderModels[provider] = models
+                // If the saved model isn't in the fetched list, pick a sensible default:
+                // prefer "sonnet" (Anthropic), "flash" (Google), "mini" (OpenAI); else first.
+                switch provider {
+                case .anthropic:
+                    if !models.contains(where: { $0.id == claudeModel }) {
+                        claudeModel = models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
+                    }
+                case .google:
+                    if !models.contains(where: { $0.id == googleChatModel }) {
+                        googleChatModel = models.first(where: { $0.id.contains("flash") })?.id ?? models.first!.id
+                    }
+                case .openai:
+                    if !models.contains(where: { $0.id == openAIChatModel }) {
+                        openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
+                    }
+                }
+            }
+        }
+    }
+
     /// The model currently active for chat (provider-aware).
     var activeChatModel: String {
         switch chatProvider {

@@ -94,14 +94,6 @@ enum ChatProvider: String, CaseIterable, Codable {
         }
     }
 
-    var staticModels: [String] {
-        switch self {
-        case .anthropic: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"]
-        case .google:    ["gemini-2.5-pro-preview", "gemini-2.0-flash", "gemini-1.5-pro"]
-        case .openai:    ["gpt-4o", "gpt-4o-mini", "o3", "o4-mini"]
-        }
-    }
-
     var keychainKey: String {
         switch self {
         case .anthropic: "anthropic-api-key"

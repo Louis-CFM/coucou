@@ -130,6 +130,51 @@ final class ClaudeService {
             return (id: id, label: name)
         }
     }
+
+    /// Fetches Gemini models via the OpenAI-compatible endpoint.
+    /// Strips the "models/" prefix that the API sometimes returns and filters non-chat models.
+    static func fetchGoogleModels(apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        let excluded = ["embed", "imagen", "veo", "aqa", "tts", "audio", "live"]
+        return items.compactMap { item in
+            guard let raw = item["id"] as? String else { return nil }
+            let id = raw.hasPrefix("models/") ? String(raw.dropFirst(7)) : raw
+            let lower = id.lowercased()
+            guard !excluded.contains(where: { lower.contains($0) }) else { return nil }
+            return (id: id, label: id)
+        }
+    }
+
+    /// Fetches chat models from the OpenAI API, sorted newest-first by creation date.
+    /// Excludes non-chat model families.
+    static func fetchOpenAIModels(apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "https://api.openai.com/v1/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        let excluded = ["embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat",
+                        "codex", "computer-use", "transcribe", "image", "sora",
+                        "babbage", "davinci", "instruct"]
+        return items
+            .compactMap { item -> (id: String, created: Int)? in
+                guard let id = item["id"] as? String else { return nil }
+                let lower = id.lowercased()
+                guard !excluded.contains(where: { lower.contains($0) }) else { return nil }
+                return (id: id, created: item["created"] as? Int ?? 0)
+            }
+            .sorted { $0.created > $1.created }
+            .map { (id: $0.id, label: $0.id) }
+    }
+
     /// Chosen in Settings; falls back to the default when the field is left empty.
     private var model: String {
         let m = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)

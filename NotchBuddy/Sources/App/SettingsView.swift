@@ -123,9 +123,9 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
-                GroupBox("Chat — autres fournisseurs") {
+                GroupBox("Chat — other providers") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Pour utiliser Google Gemini ou OpenAI depuis le chat. Les clés sont stockées dans le Trousseau.")
+                        Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
 
@@ -133,11 +133,11 @@ struct SettingsView: View {
                             Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
                             Text("Google AI").font(.system(size: 12, weight: .semibold))
                         }
-                        SecureField("Clé API Google (AI Studio)", text: $googleKey)
+                        SecureField("API key (AI Studio)", text: $googleKey)
                             .textFieldStyle(.roundedBorder)
-                        Button("Enregistrer") {
+                        Button("Save") {
                             KeychainStore.shared.set("google-api-key", value: googleKey)
-                            statusMessage = "✓ Clé Google enregistrée."
+                            statusMessage = "✓ Google key saved."
                         }
                         .buttonStyle(.borderedProminent)
 
@@ -147,11 +147,11 @@ struct SettingsView: View {
                             Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
                             Text("OpenAI").font(.system(size: 12, weight: .semibold))
                         }
-                        SecureField("Clé API OpenAI (sk-…)", text: $openAIKey)
+                        SecureField("API key (sk-…)", text: $openAIKey)
                             .textFieldStyle(.roundedBorder)
-                        Button("Enregistrer") {
+                        Button("Save") {
                             KeychainStore.shared.set("openai-api-key", value: openAIKey)
-                            statusMessage = "✓ Clé OpenAI enregistrée."
+                            statusMessage = "✓ OpenAI key saved."
                         }
                         .buttonStyle(.borderedProminent)
                     }
