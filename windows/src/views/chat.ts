@@ -4,9 +4,10 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
+import { t } from "../core/i18n";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
-import type { ViewHost } from "./views";
+import type { ViewActions, ViewHost } from "./views";
 
 let nextId = 1;
 
@@ -36,7 +37,7 @@ function contextChip(label: string): HTMLElement {
   return chip;
 }
 
-export function buildPrompt(onHeightChange: () => void): ViewHost {
+export function buildPrompt(actions: ViewActions, onHeightChange: () => void): ViewHost {
   const chipRow = h("div", { class: "chip-row" });
   const log = h("div", { class: "chat-log" });
   const input = h("input", {
@@ -45,8 +46,18 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     placeholder: "Ask me anything…",
     spellcheck: "false",
   }) as HTMLInputElement;
-  const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  const send = h("button", { class: "send-btn", title: t("Send") }, svg(ICONS.arrowUp, 11));
+  // Ends this conversation (and detaches any file) so the next drop starts
+  // clean — no restart needed. Only shown once there is something to clear.
+  const fresh = h("button", {
+    class: "link-btn",
+    style: "color:#8e939c",
+    title: t("New chat"),
+    text: t("New chat"),
+    onclick: () => actions.newChat(),
+  });
+  fresh.style.display = "none";
+  const bar = h("div", { class: "chat-bar" }, input, send, fresh);
 
   const el = h(
     "div",
@@ -75,7 +86,14 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      // Backend has its own 90s HTTP timeout, but a hung invoke must never
+      // leave the typing dots forever: race it against a 60s fuse.
+      const reply = await Promise.race([
+        Bridge.chatSend(query, context),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error("Timed out talking to the model — try again.")), 60_000),
+        ),
+      ]);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
@@ -122,8 +140,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         log.scrollTop = log.scrollHeight;
       }
 
-      input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
+      input.placeholder = State.chatHistory.length === 0 ? t("Ask me anything…") : t("Continue…");
       input.disabled = sending;
+      fresh.style.display = State.chatHistory.length > 0 || State.droppedFile ? "" : "none";
     },
     focus() {
       input.focus();

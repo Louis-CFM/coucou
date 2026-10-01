@@ -38,6 +38,35 @@ pub const HOOK_EVENTS: &[(&str, u64)] = &[
 /// Marker that identifies a Coucou entry inside settings.json.
 const MARKER: &str = "coucou-hook";
 
+/// Gemini CLI events → (Claude-normalized event for argv, timeout in ms).
+/// Gemini `settings.json` uses milliseconds; 10s Claude == 10000ms Gemini.
+/// Only non-blocking events are installed — Gemini has no PermissionRequest
+/// equivalent, approvals stay terminal-side.
+pub const GEMINI_HOOK_EVENTS: &[(&str, &str, u64)] = &[
+    ("SessionStart", "SessionStart", 10000),
+    ("SessionEnd", "SessionEnd", 10000),
+    ("BeforeTool", "PreToolUse", 5000),
+    ("AfterTool", "PostToolUse", 5000),
+    ("AfterModel", "PostToolUse", 5000),
+    ("BeforeAgent", "SubagentStart", 5000),
+    ("AfterAgent", "SubagentStop", 5000),
+];
+
+/// Antigravity CLI events → (argv event, timeout in SECONDS).
+/// `agy` already uses Claude-like names (PreToolUse/PostToolUse/Stop); the
+/// relay maps PreInvocation→UserPromptSubmit and PostInvocation→PostToolUse.
+/// No SessionStart/SessionEnd exists — first PreInvocation opens the pill.
+pub const AGY_HOOK_EVENTS: &[(&str, u64)] = &[
+    ("PreToolUse", 10),
+    ("PostToolUse", 10),
+    ("PreInvocation", 10),
+    ("PostInvocation", 10),
+    ("Stop", 10),
+];
+
+/// Top-level key holding Coucou's entries inside Antigravity's hooks.json.
+const AGY_KEY: &str = "coucou";
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HookStatus {
@@ -66,6 +95,17 @@ fn home() -> PathBuf {
 
 pub fn settings_path() -> PathBuf {
     home().join(".claude").join("settings.json")
+}
+
+pub fn gemini_settings_path() -> PathBuf {
+    home().join(".gemini").join("settings.json")
+}
+
+/// Antigravity CLI (`agy`, the Go successor of Gemini CLI) keeps its own
+/// hooks file: `%USERPROFILE%\.gemini\config\hooks.json`, with hook names as
+/// top-level keys (ours is "coucou") and timeouts in SECONDS.
+pub fn agy_hooks_path() -> PathBuf {
+    home().join(".gemini").join("config").join("hooks.json")
 }
 
 /// Reads `~/.claude/settings.json`.
@@ -114,6 +154,22 @@ fn read_settings_lossy() -> Value {
 fn hook_command(event: &str) -> String {
     let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
     format!("\"{exe}\" {event}")
+}
+
+fn gemini_hook_command(normalized_event: &str) -> String {
+    // argv[1] = normalized event, argv[2] = source. Relay normalizes again,
+    // so Gemini's BeforeTool/AfterTool payloads land as Pre/PostToolUse.
+    // COUCOU_SOURCE is also set via env expansion where the shell supports it,
+    // but argv is the reliable channel on Windows (Git Bash).
+    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
+    format!("\"{exe}\" {normalized_event} gemini")
+}
+
+fn agy_hook_command(event: &str) -> String {
+    // Antigravity runs `command` through the shell; quoted forward-slash exe
+    // path works in cmd and PowerShell. argv[2] tags the source as agy.
+    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
+    format!("\"{exe}\" {event} agy")
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -294,6 +350,253 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 
     // Write beside the target and rename over it: a crash or a full disk leaves
     // the original settings.json intact rather than half a file.
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
+    if let Err(err) = std::fs::rename(&temp, &path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    Ok(backup.to_string_lossy().to_string())
+}
+
+// ── Gemini CLI hooks (%USERPROFILE%\.gemini\settings.json) ────────────────────
+// Same safety rules as Claude: dated backup, merge without touching foreign
+// hooks, preview diff + fingerprint before write.
+
+fn read_gemini_settings() -> Result<Value, String> {
+    let path = gemini_settings_path();
+    match std::fs::read(&path) {
+        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
+        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+    }
+}
+
+fn read_gemini_settings_lossy() -> Value {
+    read_gemini_settings().unwrap_or_else(|_| json!({}))
+}
+
+fn gemini_current_fingerprint() -> String {
+    match std::fs::read(gemini_settings_path()) {
+        Ok(bytes) => fingerprint(&bytes),
+        Err(_) => fingerprint(b""),
+    }
+}
+
+fn gemini_backup_path() -> PathBuf {
+    let p = gemini_settings_path();
+    p.with_file_name(format!("settings.json.bak-{}", stamp()))
+}
+
+/// Gemini entries carry a matcher + timeout in ms. Removal reuses
+/// entry_is_ours (same MARKER), so uninstall cleans both worlds.
+fn merged_gemini(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    let mut hooks = root
+        .get("hooks")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_else(Map::new);
+
+    for (gemini_event, normalized, timeout_ms) in GEMINI_HOOK_EVENTS {
+        let mut list = hooks
+            .get(*gemini_event)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        list.retain(|entry| !entry_is_ours(entry));
+        list.push(json!({
+            "matcher": "*",
+            "hooks": [{
+                "name": "coucou",
+                "type": "command",
+                "command": gemini_hook_command(normalized),
+                "timeout": timeout_ms,
+            }]
+        }));
+        hooks.insert((*gemini_event).to_string(), Value::Array(list));
+    }
+
+    root.insert("hooks".into(), Value::Object(hooks));
+    Value::Object(root)
+}
+
+pub fn gemini_status() -> HookStatus {
+    let current = read_gemini_settings_lossy();
+    let installed = current
+        .get("hooks")
+        .and_then(Value::as_object)
+        .map(|hooks| {
+            hooks
+                .values()
+                .filter_map(Value::as_array)
+                .flatten()
+                .any(entry_is_ours)
+        })
+        .unwrap_or(false);
+    let hook_path = settings::hook_exe_path();
+    HookStatus {
+        installed,
+        settings_path: gemini_settings_path().to_string_lossy().to_string(),
+        hook_ready: hook_path.exists(),
+        hook_path: hook_path.to_string_lossy().to_string(),
+    }
+}
+
+pub fn gemini_preview(install: bool) -> Result<HookPreview, String> {
+    let current = read_gemini_settings()?;
+    let next = if install { merged_gemini(&current) } else { without_ours(&current) };
+    Ok(HookPreview {
+        diff: unified_diff(&pretty(&current), &pretty(&next)),
+        backup: gemini_backup_path().to_string_lossy().to_string(),
+        settings_path: gemini_settings_path().to_string_lossy().to_string(),
+        fingerprint: gemini_current_fingerprint(),
+    })
+}
+
+pub fn gemini_write(install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = gemini_settings_path();
+    let dir = path.parent().unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+
+    let current = read_gemini_settings()?;
+    if gemini_current_fingerprint() != fingerprint {
+        return Err(format!(
+            "{} changed since the preview. Nothing was written — review the new diff.",
+            path.display()
+        ));
+    }
+
+    let backup = gemini_backup_path();
+    if path.exists() {
+        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+    }
+
+    let next = if install { merged_gemini(&current) } else { without_ours(&current) };
+    let mut text = pretty(&next);
+    text.push('\n');
+
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
+    if let Err(err) = std::fs::rename(&temp, &path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    Ok(backup.to_string_lossy().to_string())
+}
+
+// ── Antigravity CLI hooks (%USERPROFILE%\.gemini\config\hooks.json) ──────────
+// Schema differs from both Claude and old Gemini: hook names are top-level
+// keys, timeouts are SECONDS, events are PreToolUse/PostToolUse/PreInvocation/
+// PostInvocation/Stop. Ours lives under the "coucou" key; everything else is
+// left untouched, and uninstall removes only that key.
+
+fn read_agy_hooks() -> Result<Value, String> {
+    let path = agy_hooks_path();
+    match std::fs::read(&path) {
+        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
+        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+    }
+}
+
+fn read_agy_hooks_lossy() -> Value {
+    read_agy_hooks().unwrap_or_else(|_| json!({}))
+}
+
+fn agy_current_fingerprint() -> String {
+    match std::fs::read(agy_hooks_path()) {
+        Ok(bytes) => fingerprint(&bytes),
+        Err(_) => fingerprint(b""),
+    }
+}
+
+fn agy_backup_path() -> PathBuf {
+    let p = agy_hooks_path();
+    p.with_file_name(format!("hooks.json.bak-{}", stamp()))
+}
+
+fn merged_agy(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    let mut ours = Map::new();
+    // Explicit enabled:true — agy defaults to true, but a named key with an
+    // explicit flag can never be mistaken for a disabled entry.
+    ours.insert("enabled".into(), Value::Bool(true));
+    for (event, timeout_s) in AGY_HOOK_EVENTS {
+        ours.insert(
+            (*event).to_string(),
+            json!([{
+                "matcher": "*",
+                "hooks": [{
+                    "type": "command",
+                    "command": agy_hook_command(event),
+                    "timeout": timeout_s,
+                }]
+            }]),
+        );
+    }
+    root.insert(AGY_KEY.into(), Value::Object(ours));
+    Value::Object(root)
+}
+
+fn without_agy(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    root.remove(AGY_KEY);
+    Value::Object(root)
+}
+
+fn agy_installed_in(value: &Value) -> bool {
+    value
+        .get(AGY_KEY)
+        .and_then(|v| serde_json::to_string(v).ok())
+        .map(|s| s.contains(MARKER))
+        .unwrap_or(false)
+}
+
+pub fn agy_status() -> HookStatus {
+    let current = read_agy_hooks_lossy();
+    let hook_path = settings::hook_exe_path();
+    HookStatus {
+        installed: agy_installed_in(&current),
+        settings_path: agy_hooks_path().to_string_lossy().to_string(),
+        hook_ready: hook_path.exists(),
+        hook_path: hook_path.to_string_lossy().to_string(),
+    }
+}
+
+pub fn agy_preview(install: bool) -> Result<HookPreview, String> {
+    let current = read_agy_hooks()?;
+    let next = if install { merged_agy(&current) } else { without_agy(&current) };
+    Ok(HookPreview {
+        diff: unified_diff(&pretty(&current), &pretty(&next)),
+        backup: agy_backup_path().to_string_lossy().to_string(),
+        settings_path: agy_hooks_path().to_string_lossy().to_string(),
+        fingerprint: agy_current_fingerprint(),
+    })
+}
+
+pub fn agy_write(install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = agy_hooks_path();
+    let dir = path.parent().unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+
+    let current = read_agy_hooks()?;
+    if agy_current_fingerprint() != fingerprint {
+        return Err(format!(
+            "{} changed since the preview. Nothing was written — review the new diff.",
+            path.display()
+        ));
+    }
+
+    let backup = agy_backup_path();
+    if path.exists() {
+        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+    }
+
+    let next = if install { merged_agy(&current) } else { without_agy(&current) };
+    let mut text = pretty(&next);
+    text.push('\n');
+
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
     if let Err(err) = std::fs::rename(&temp, &path) {

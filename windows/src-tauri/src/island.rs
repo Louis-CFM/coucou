@@ -13,11 +13,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
 use windows::Win32::Foundation::{HWND, POINT};
-use windows::core::BOOL;
-use windows::Win32::Foundation::LPARAM;
-use windows::Win32::System::Ole::RevokeDragDrop;
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
-use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW,
@@ -40,6 +36,9 @@ const HIT_MARGIN: f64 = 14.0;
 pub struct CursorPayload {
     pub x: f64,
     pub y: f64,
+    /// True while the left mouse button is held. Lets the island tell a click
+    /// on Mochi apart from the start of a drag-out (window attach).
+    pub down: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -62,9 +61,14 @@ pub struct IslandRect {
     pub h: f64,
 }
 
-/// Wakes / parks the cursor poll thread so a hidden island costs literally nothing.
+/// Wakes / parks the cursor poll thread. Full speed (60 Hz + cursor events)
+/// while visible; when collapsed the thread drops to a 5 Hz watch that only
+/// keeps the wake strip droppable — a hidden island must cost ~nothing, but a
+/// file drag arriving at the strip has to find a live drop target instead of
+/// the "prohibited" cursor.
 pub struct PollGate {
     active: Mutex<bool>,
+    slow: AtomicBool,
     cv: Condvar,
     pub collapsed: AtomicBool,
     pub rect: Mutex<IslandRect>,
@@ -76,6 +80,7 @@ impl PollGate {
     pub fn new() -> Self {
         Self {
             active: Mutex::new(false),
+            slow: AtomicBool::new(false),
             cv: Condvar::new(),
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
@@ -92,21 +97,30 @@ impl PollGate {
         self.ignoring.store(false, Ordering::Relaxed);
     }
 
-    pub fn set_active(&self, on: bool) {
-        let mut guard = self.active.lock().unwrap();
-        *guard = on;
+    /// Expanded island → full poll; collapsed → slow strip watch.
+    pub fn set_collapsed(&self, collapsed: bool) {
+        {
+            let mut guard = self.active.lock().unwrap();
+            *guard = !collapsed;
+        }
+        self.slow.store(collapsed, Ordering::Relaxed);
         self.cv.notify_all();
     }
 
-    fn wait_until_active(&self) {
-        let mut guard = self.active.lock().unwrap();
-        while !*guard {
+    fn wait_until_enabled(&self) {
+        let guard = self.active.lock().unwrap();
+        let mut guard = guard;
+        while !*guard && !self.slow.load(Ordering::Relaxed) {
             guard = self.cv.wait(guard).unwrap();
         }
     }
 
     fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
+    }
+
+    fn is_enabled(&self) -> bool {
+        *self.active.lock().unwrap() || self.slow.load(Ordering::Relaxed)
     }
 }
 
@@ -120,37 +134,11 @@ fn cursor_physical() -> Option<(f64, f64)> {
     Some((p.x as f64, p.y as f64))
 }
 
-/// Lets dropped files reach the app again.
-///
-/// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
-/// later and registers its own target on it; being the innermost window, that one
-/// wins, and since the page has no HTML5 drop handler it refuses everything — the
-/// "no drop" cursor, with nothing reaching Tauri. Revoking it makes OLE fall
-/// through to the target wry registered on the parent widget, which is the one
-/// that feeds Tauri's drag events.
-///
-/// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+/// Lets dropped files reach the app again. Delegates to droptarget, which
+/// owns an IDropTarget on every descendant window: revoking proved
+/// unreliable (foreign COM apartments refuse it), owning the target does not.
 pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
-        }
-    }
-}
-
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
-        }
-    }
-    true.into()
+    crate::droptarget::ensure_all(app);
 }
 
 /// True while the left mouse button is held — the only signal we get that a
@@ -271,19 +259,28 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
-/// visible. Parked on a condvar the rest of the time.
+/// visible. Collapsed, it drops to a 5 Hz strip watch (no events, just the
+/// drop target + click-through flag) so a file drag can land on the hidden
+/// island instead of meeting the "prohibited" cursor.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
+        // Last unblock while a button is held inside the window: WebView2 may
+        // re-register its inner drop target mid-drag, so the revoke is
+        // refreshed instead of trusted once.
+        let mut last_unblock = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(10))
+            .unwrap_or_else(std::time::Instant::now);
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
         loop {
-            gate.wait_until_active();
+            gate.wait_until_enabled();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
-            while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+            while gate.is_enabled() {
+                let slow = !gate.is_active();
+                std::thread::sleep(Duration::from_millis(if slow { 200 } else { 16 }));
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -312,7 +309,42 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+
+                let down = left_button_down();
+                // Button released anywhere (usually outside our window, at the
+                // end of a Mochi drag-out): the page never sees a DOM mouseup
+                // out there, so the release is delivered as an event even when
+                // the cursor itself did not move.
+                if was_down && !down {
+                    let _ = win.emit("mouse-up", CursorPayload { x, y, down });
+                }
+
+                if slow {
+                    // Strip watch: the collapsed window is a 240×6 target that
+                    // must take the mouse and own its drop target, or file
+                    // drags die on it with the "prohibited" cursor. No cursor
+                    // events down here — the DOM wake strip handles hover.
+                    let in_window =
+                        x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1;
+                    if down && in_window {
+                        if gate.ignoring.load(Ordering::Relaxed) {
+                            gate.ignoring.store(false, Ordering::Relaxed);
+                            let _ = win.set_ignore_cursor_events(false);
+                        }
+                        if last_unblock.elapsed() >= std::time::Duration::from_secs(2) {
+                            last_unblock = std::time::Instant::now();
+                            let handle = app.clone();
+                            let _ = app.run_on_main_thread(move || {
+                                unblock_webview_drops(&handle)
+                            });
+                        }
+                    }
+                    was_down = down;
+                    continue;
+                }
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
+                    was_down = down;
                     continue;
                 }
                 last = (x, y);
@@ -335,27 +367,46 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
+                // ours before the file arrives. (`down` was read above, before
+                // the movement check, so a press without movement still lands.)
+                // While the button stays held inside the window a file drag may
+                // be in flight: refresh the revoke every ~500 ms in case
+                // WebView2 re-registered its inner target since the edge.
+                let in_window = x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1;
+                if down && in_window
+                    && (!was_down
+                        || last_unblock.elapsed() >= std::time::Duration::from_millis(500))
+                {
+                    last_unblock = std::time::Instant::now();
                     let handle = app.clone();
                     let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
                 }
                 was_down = down;
 
-                let dragging = down
-                    && x >= 0.0
-                    && x <= size.0
-                    && y >= 0.0
-                    && y <= size.1;
+                let dragging = down && in_window;
 
-                let accept = on_island || dragging;
-                if gate.ignoring.load(Ordering::Relaxed) == accept {
-                    gate.ignoring.store(!accept, Ordering::Relaxed);
-                    let _ = win.set_ignore_cursor_events(!accept);
+                // While ANY button is held, never go transparent: flipping
+                // WS_EX_TRANSPARENT mid-drag makes Explorer drop the target and
+                // show "prohibited" for the rest of the drag — the refusal the
+                // log kept showing as take/ignore flapping. The flag is
+                // re-evaluated on release.
+                if down {
+                    if gate.ignoring.load(Ordering::Relaxed) {
+                        gate.ignoring.store(false, Ordering::Relaxed);
+                        crate::log::line(format!(
+                            "drop target take (on_island={on_island} dragging={dragging})"
+                        ));
+                        let _ = win.set_ignore_cursor_events(false);
+                    }
+                } else {
+                    let accept = on_island;
+                    if gate.ignoring.load(Ordering::Relaxed) == accept {
+                        gate.ignoring.store(!accept, Ordering::Relaxed);
+                        let _ = win.set_ignore_cursor_events(!accept);
+                    }
                 }
 
-                let _ = win.emit("cursor", CursorPayload { x, y });
+                let _ = win.emit("cursor", CursorPayload { x, y, down });
             }
         }
     });

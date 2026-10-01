@@ -67,7 +67,69 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     })
 }
 
-/// Drops anything copied here more than a week ago. `ingest` stamps every copy
+/// DOM-drop fallback for `ingest`: the page reads the dropped file itself
+/// (FileReader) and hands over base64. Used when the OS-level OLE target never
+/// delivers — e.g. WebView2 keeps its own drop target and the page has no
+/// handler, which surfaces as the "prohibited" cursor. Content is identical;
+/// only the transport differs. Capped so one monster file cannot wedge IPC.
+pub fn ingest_bytes(name: &str, base64_data: &str) -> Result<DroppedFile, String> {
+    use base64::Engine as _;
+    const MAX_BYTES: usize = 25 * 1024 * 1024;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64_data.trim())
+        .map_err(|e| format!("cannot decode drop: {e}"))?;
+    if bytes.len() > MAX_BYTES {
+        return Err("file too large (25 MB max)".into());
+    }
+    // Never trust the sender's path: keep the file name only.
+    let safe = Path::new(name)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty() && n != "." && n != "..")
+        .unwrap_or_else(|| "file".into());
+
+    let dir = inbox_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let mut dest = dir.join(&safe);
+    if dest.exists() {
+        let stem = Path::new(&safe)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = Path::new(&safe)
+            .extension()
+            .map(|s| format!(".{}", s.to_string_lossy()))
+            .unwrap_or_default();
+        let mut placed = false;
+        for i in 2..1000 {
+            let candidate = dir.join(format!("{stem} ({i}){ext}"));
+            if !candidate.exists() {
+                dest = candidate;
+                placed = true;
+                break;
+            }
+        }
+        if !placed {
+            return Err("inbox is full of same-named files".into());
+        }
+    }
+
+    std::fs::write(&dest, &bytes).map_err(|e| format!("cannot store drop: {e}"))?;
+    if let Ok(file) = std::fs::File::options().write(true).open(&dest) {
+        let _ = file.set_modified(SystemTime::now());
+    }
+    sweep(&dir);
+
+    Ok(DroppedFile {
+        name: dest
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or(safe),
+        path: dest.to_string_lossy().to_string(),
+        size: bytes.len() as u64,
+    })
+}
+/// Drops anything copied here more than a week ago. Every copy is stamped
 /// with the time it landed, so this really is the age of the copy and not the
 /// age of whatever the user happened to drag in.
 fn sweep(dir: &Path) {

@@ -229,6 +229,19 @@ body {
   color: var(--ink);
 }
 
+/* Language badge: same row, deliberately quiet and small. */
+.tab.lang-badge {
+  width: auto;
+  height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  align-self: center;
+}
+
 .header-actions {
   margin-left: auto;
   display: flex;
@@ -1357,4 +1370,73 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Island themes ────────────────────────────────────────────────────────── */
+
+/* Embasa brand rule: a quiet 3px signature floating just above the island's
+   bottom edge, only while expanded (in the compact pill it would sit on
+   Mochi). Inset so it never touches the animated corners. */
+#embasa-rule {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    #305fa6 0%, #305fa6 30%,
+    #2a82c3 30%, #2a82c3 48%,
+    #6ebabc 48%, #6ebabc 64%,
+    #4d9451 64%, #4d9451 80%,
+    #85b64c 80%, #85b64c 92%,
+    #e8a033 92%, #e8a033 100%);
+  opacity: 0.85;
+  pointer-events: none;
+  display: none;
+}
+
+#island.expanded #embasa-rule {
+  display: block;
+}
+
+/* Ice — minimalist frost white. */
+#root[data-theme="ice"] {
+  color-scheme: light;
+  --ink: #182430;
+  --ink-2: #22303d;
+  --dim: #51606f;
+  --dim-2: #5d6b7a;
+  --dim-3: #707b89;
+  --dim-4: #85909c;
+  --dim-5: #98a2ad;
+  --card: #ffffff;
+  --card-flat: #edf1f5;
+  --tab-on: #dde5ec;
+  --hairline: rgba(25, 50, 75, 0.09);
+}
+
+#root[data-theme="ice"] #island {
+  background: #e9eef3;
+}
+
+/* Frost — low-opacity blue over whatever is behind the island. */
+#root[data-theme="frost"] {
+  color-scheme: dark;
+  --ink: #eef4fb;
+  --ink-2: #e6eef7;
+  --dim: #a9bdd1;
+  --dim-2: #9db1c6;
+  --dim-3: #8598ad;
+  --dim-4: #718399;
+  --dim-5: #5f7185;
+  --card: rgba(22, 48, 84, 0.55);
+  --card-flat: rgba(16, 38, 70, 0.6);
+  --tab-on: rgba(110, 186, 188, 0.22);
+  --hairline: rgba(150, 205, 235, 0.12);
+}
+
+#root[data-theme="frost"] #island {
+  background: rgba(43, 94, 158, 0.3);
+  backdrop-filter: blur(16px) saturate(1.25);
 }

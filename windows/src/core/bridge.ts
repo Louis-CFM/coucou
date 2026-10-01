@@ -71,6 +71,18 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  geminiHooksStatus: () => call<HookStatus>("gemini_hooks_status"),
+  geminiHooksPreview: (install: boolean) =>
+    callOrThrow<HookPreview>("gemini_hooks_preview", { install }),
+  geminiHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("gemini_hooks_apply", { install, fingerprint }),
+
+  agyHooksStatus: () => call<HookStatus>("agy_hooks_status"),
+  agyHooksPreview: (install: boolean) =>
+    callOrThrow<HookPreview>("agy_hooks_preview", { install }),
+  agyHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("agy_hooks_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -85,6 +97,11 @@ export const Bridge = {
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Stores a page-read file (base64) into the inbox. */
+  ingestBytes: (name: string, base64Data: string) =>
+    callOrThrow<DroppedFile>("ingest_bytes", { name, base64Data }),
+  /** Captures the window under the cursor (Mochi drag-out). */
+  attachWindow: () => callOrThrow<AttachedWindow>("attach_window"),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -92,6 +109,18 @@ export const Bridge = {
 
   // ── Integrations ──────────────────────────────────────────────────────────
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
+  /** System-wide media key: playpause | next | prev. */
+  mediaKey: (action: string) => call<void>("media_key", { action }),
+  /** Gmail OAuth: opens the browser, waits for consent, returns the address. */
+  gmailSignin: (clientId: string, clientSecret: string) =>
+    callOrThrow<string>("gmail_signin", { clientId, clientSecret }),
+  gmailSignout: () => callOrThrow<void>("gmail_signout"),
+  /** Outlook device flow step 1: returns the code + URL to approve. */
+  outlookDeviceBegin: (clientId: string) =>
+    callOrThrow<{ userCode: string; verificationUrl: string }>("outlook_device_begin", { clientId }),
+  /** Outlook device flow step 2: waits for the approval (up to ~3 min). */
+  outlookDevicePoll: () => callOrThrow<void>("outlook_device_poll"),
+  outlookSignout: () => callOrThrow<void>("outlook_signout"),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
@@ -138,10 +167,19 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 export type BridgeEvent =
-  | { name: "cursor"; payload: { x: number; y: number } }
+  | { name: "cursor"; payload: { x: number; y: number; down: boolean } }
+  | { name: "mouse-up"; payload: { x: number; y: number; down: boolean } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null };
+
+export interface AttachedWindow {
+  name: string;
+  path: string;
+  size: number;
+  appName: string;
+  title: string;
+}
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

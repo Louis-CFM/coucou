@@ -3,8 +3,9 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { t } from "../core/i18n";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -67,15 +68,15 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+          ? t("Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
+          : t("Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing."),
       }),
       h("div", { class: "row" },
         h("label", { text: "settings.json" }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
       h("div", { class: "row" },
-        h("label", { text: "Relay" }),
+        h("label", { text: t("Relay") }),
         h("span", { class: "path", text: status.hookPath }),
         statusDot(status.hookReady),
       ),
@@ -84,14 +85,14 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: t("coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`."),
       }));
     }
 
     const actions = h("div", { class: "row" });
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
+      text: status.installed ? t("Reinstall hooks…") : t("Install hooks…"),
       onclick: () => showPreview(true),
     });
     // Writing hook commands that point at a relay which isn't there would give
@@ -104,7 +105,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (status.installed) {
       actions.append(h("button", {
         class: "danger",
-        text: "Uninstall hooks…",
+        text: t("Uninstall hooks…"),
         onclick: () => showPreview(false),
       }));
     }
@@ -122,7 +123,7 @@ function claudeSection(status: HookStatus): HTMLElement {
       body.append(
         h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
         h("div", { class: "row" }, h("button", {
-          text: "Back",
+          text: t("Back"),
           onclick: () => { clear(body); draw(); },
         })),
       );
@@ -134,8 +135,8 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+          ? t("This is exactly what will change in your settings.json. Your own hooks are left untouched.")
+          : t("This removes Coucou's entries only. Your own hooks are left untouched."),
       }),
       renderDiff(preview.diff),
       h("div", { class: "row" },
@@ -144,7 +145,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     );
     const confirm = h("button", {
       class: install ? "primary" : "danger",
-      text: install ? "Back up and write" : "Back up and remove",
+      text: install ? t("Back up and write") : t("Back up and remove"),
     });
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
@@ -153,16 +154,16 @@ function claudeSection(status: HookStatus): HTMLElement {
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: `${t("Done. Previous settings saved as")} ${backup}. ${t("Open a new session to pick the hooks up.")}`,
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
         confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+        body.append(h("div", { class: "notice err", text: `${t("Could not write")}: ${String(err)}` }));
       }
     });
     body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
+      text: t("Cancel"),
       onclick: () => { clear(body); draw(); },
     })));
   }
@@ -179,9 +180,20 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+const GEMINI_MODELS: [string, string][] = [
+  ["gemini-3.5-flash", "Gemini 3.5 Flash"],
+  ["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite"],
+  ["gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite"],
+];
+
+function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
+  const dot = statusDot(hasKey || hasGeminiKey);
+  const state = h("span", {
+    class: "hint",
+    text: (hasKey || hasGeminiKey)
+      ? t("Key saved in the Windows Credential Manager.")
+      : t("No key yet — the chat needs one."),
+  });
 
   const field = h("input", {
     type: "password",
@@ -191,8 +203,8 @@ function apiSection(hasKey: boolean): HTMLElement {
     spellcheck: "false",
   }) as HTMLInputElement;
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const saveBtn = h("button", { class: "primary", text: t("Save key") });
+  const clearBtn = h("button", { class: "danger", text: t("Remove") });
   const feedback = h("div", {});
 
   async function refresh() {
@@ -212,10 +224,10 @@ function apiSection(hasKey: boolean): HTMLElement {
     try {
       await Bridge.secretSet("anthropic-api-key", value);
       field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
     }
   });
 
@@ -223,10 +235,10 @@ function apiSection(hasKey: boolean): HTMLElement {
     clear(feedback);
     try {
       await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Key removed.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
     }
   });
 
@@ -243,15 +255,209 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  // Provider + Gemini model
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(h("option", { value: "claude", text: t("Claude (Anthropic)") }));
+  provider.append(h("option", { value: "gemini", text: t("Gemini (Google)") }));
+  provider.value = settings.chatProvider ?? "claude";
+  const applyProvider = () => {
+    const isGemini = provider.value === "gemini";
+    claudeRows.style.display = isGemini ? "none" : "";
+    geminiRows.style.display = isGemini ? "" : "none";
+    geminiModelRow.style.display = isGemini ? "" : "none";
+  };
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value;
+    void save();
+    applyProvider();
+  });
+
+  const geminiField = h("input", {
+    type: "password",
+    placeholder: hasGeminiKey ? "••••••••••••  (stored)" : "AIza…",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const geminiSave = h("button", { class: "primary", text: t("Save") });
+  const geminiClear = h("button", { class: "danger", text: t("Remove") });
+  geminiSave.addEventListener("click", async () => {
+    const value = geminiField.value.trim();
+    if (!value) return;
+    try {
+      await Bridge.secretSet("gemini-api-key", value);
+      geminiField.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Gemini key saved.") }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
+    }
+  });
+  geminiClear.addEventListener("click", async () => {
+    try {
+      await Bridge.secretClear("gemini-api-key");
+      feedback.append(h("div", { class: "notice ok", text: t("Gemini key removed.") }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
+    }
+  });
+
+  const geminiModel = h("select", {}) as HTMLSelectElement;
+  for (const [id, label] of GEMINI_MODELS) geminiModel.append(h("option", { value: id, text: label }));
+  if (!GEMINI_MODELS.some(([id]) => id === settings.geminiModel)) {
+    geminiModel.append(h("option", { value: settings.geminiModel, text: settings.geminiModel }));
+  }
+  geminiModel.value = settings.geminiModel ?? "gemini-3.5-flash";
+  geminiModel.addEventListener("change", () => {
+    settings.geminiModel = geminiModel.value;
+    void save();
+  });
+  const geminiModelRow = h("div", { class: "row" }, h("label", { text: t("Gemini model") }), geminiModel);
+
+  // Provider → model → key, one provider visible at a time.
+  const claudeRows = h("div", { style: "display:flex;flex-direction:column;gap:12px" },
+    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    h("div", { class: "row" }, h("label", { text: t("Claude key") }), field, saveBtn, clearBtn),
+  );
+  const geminiRows = h("div", { style: "display:flex;flex-direction:column;gap:12px" },
+    geminiModelRow,
+    h("div", { class: "row" }, h("label", { text: t("Gemini key") }), geminiField, geminiSave, geminiClear),
+  );
+  applyProvider();
+
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: t("Chat AI") })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: t("Provider") }), provider),
+    claudeRows,
+    geminiRows,
     feedback,
   );
+}
+
+// ── External CLI hooks sections (Gemini CLI, Antigravity `agy`) ───────────────
+
+interface CliHooksBackend {
+  status: () => Promise<HookStatus | null>;
+  preview: (install: boolean) => Promise<HookPreview>;
+  apply: (install: boolean, fingerprint: string) => Promise<string>;
+}
+
+function cliHooksSection(opts: {
+  title: string;
+  fileLabel: string;
+  hintOn: string;
+  hintOff: string;
+  previewHint: string;
+  backend: CliHooksBackend;
+  initial: HookStatus;
+}): HTMLElement {
+  const status = opts.initial;
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, statusDot(status.installed), h("span", { text: opts.title })),
+    body,
+  );
+
+  function draw() {
+    body.append(
+      h("div", { class: "hint", text: status.installed ? opts.hintOn : opts.hintOff }),
+      h("div", { class: "row" },
+        h("label", { text: opts.fileLabel }),
+        h("span", { class: "path", text: status.settingsPath }),
+      ),
+    );
+    const actions = h("div", { class: "row" });
+    actions.append(h("button", {
+      class: "primary",
+      text: status.installed ? t(`Reinstall ${opts.title} hooks…`) : t(`Install ${opts.title} hooks…`),
+      onclick: () => showPreview(true),
+    }));
+    if (status.installed) {
+      actions.append(h("button", {
+        class: "danger",
+        text: t("Uninstall…"),
+        onclick: () => showPreview(false),
+      }));
+    }
+    body.append(actions);
+  }
+
+  async function showPreview(install: boolean) {
+    let preview;
+    try {
+      preview = await opts.backend.preview(install);
+    } catch (err) {
+      clear(body);
+      body.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+      return;
+    }
+    if (!preview) return;
+    clear(body);
+    body.append(
+      h("div", { class: "hint", text: opts.previewHint }),
+      renderDiff(preview.diff),
+      h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
+    );
+    const confirm = h("button", { class: install ? "primary" : "danger", text: install ? "Back up and write" : "Back up and remove" });
+    confirm.addEventListener("click", async () => {
+      confirm.disabled = true;
+      try {
+        const backup = await opts.backend.apply(install, preview.fingerprint);
+        clear(body);
+        body.append(h("div", { class: "notice ok", text: `${t("Done. Backup:")} ${backup}. ${t("Open a new session to pick the hooks up.")}` }));
+        window.setTimeout(async () => {
+          const fresh = await opts.backend.status();
+          if (fresh) Object.assign(status, fresh);
+          clear(body); draw();
+        }, 2000);
+      } catch (err) {
+        confirm.disabled = false;
+        body.append(h("div", { class: "notice err", text: `${t("Could not write")}: ${String(err)}` }));
+      }
+    });
+    body.append(h("div", { class: "row" }, confirm, h("button", {
+      text: t("Cancel"), onclick: () => { clear(body); draw(); },
+    })));
+  }
+
+  draw();
+  return section;
+}
+
+function geminiSection(status: HookStatus): HTMLElement {
+  return cliHooksSection({
+    title: "Gemini CLI",
+    fileLabel: "settings.json",
+    hintOn: t("Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude."),
+    hintOff: t("Install the hooks to see your Gemini CLI sessions in the island next to Claude Code. Note: since June 2026 new installs use Antigravity (`agy`) instead — see below."),
+    previewHint: t("Gemini settings use timeouts in ms. Your own hooks are left untouched."),
+    backend: {
+      status: () => Bridge.geminiHooksStatus(),
+      preview: (install) => Bridge.geminiHooksPreview(install),
+      apply: (install, fp) => Bridge.geminiHooksApply(install, fp),
+    },
+    initial: status,
+  });
+}
+
+function agySection(status: HookStatus): HTMLElement {
+  return cliHooksSection({
+    title: "Antigravity (agy)",
+    fileLabel: "hooks.json",
+    hintOn: t("Coucou is hooked into your Antigravity sessions (Pre/PostToolUse, invocations, Stop). Approvals stay in the terminal — activity shows in the island as pink agy pills."),
+    hintOff: t("Install the hooks to see your `agy` sessions in the island. Writes to %USERPROFILE%\\.gemini\\config\\hooks.json under the \"coucou\" key."),
+    previewHint: t("Antigravity timeouts are in seconds. Your other hooks are left untouched."),
+    backend: {
+      status: () => Bridge.agyHooksStatus(),
+      preview: (install) => Bridge.agyHooksPreview(install),
+      apply: (install, fp) => Bridge.agyHooksApply(install, fp),
+    },
+    initial: status,
+  });
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -282,7 +488,256 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: "Integration token", placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
+  { id: "integration_spotify", name: "Spotify", color: "#1DB954",
+    fields: [] }, // no key — reads the desktop app's window title
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366",
+    fields: [] }, // no key — reads the Web tab's title unread count
 ];
+
+// ── Outlook section (OAuth device flow + IMAP fallback fields) ───────────────
+
+function outlookSection(present: Record<string, boolean>): HTMLElement {
+  const dotEl = statusDot(present["outlook-oauth"] || present["outlook-app-password"] || false);
+  const state = h("span", {
+    class: "hint",
+    text: t("Sign in with Microsoft (works when app passwords are blocked), or use an app password."),
+  });
+
+  const email = h("input", {
+    type: "text", placeholder: "you@outlook.com", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const appPass = h("input", {
+    type: "password", placeholder: "••••••••", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientId = h("input", {
+    type: "text", placeholder: t("Application (client) ID"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const oauth = (await Bridge.secretPresent("outlook-oauth")) ?? false;
+    const imap = (await Bridge.secretPresent("outlook-app-password")) ?? false;
+    present["outlook-oauth"] = oauth;
+    present["outlook-app-password"] = imap;
+    dotEl.style.background = oauth || imap ? "#22c55e" : "#f4505e";
+    state.textContent = oauth
+      ? t("Signed in with Microsoft.")
+      : imap
+        ? t("App password saved (IMAP fallback).")
+        : t("Sign in with Microsoft (works when app passwords are blocked), or use an app password.");
+  }
+
+  const saveMail = h("button", { text: t("Save") });
+  saveMail.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      if (email.value.trim()) await Bridge.secretSet("outlook-email", email.value.trim());
+      if (appPass.value.trim()) await Bridge.secretSet("outlook-app-password", appPass.value.trim());
+      email.value = "";
+      appPass.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
+    }
+  });
+
+  const signin = h("button", { class: "primary", text: t("Sign in with Microsoft") });
+  signin.addEventListener("click", async () => {
+    clear(feedback);
+    const id = clientId.value.trim();
+    if (!id) {
+      feedback.append(h("div", { class: "notice err", text: t("Paste the application (client) ID first.") }));
+      return;
+    }
+    signin.disabled = true;
+    try {
+      const challenge = await Bridge.outlookDeviceBegin(id);
+      feedback.append(h("div", {
+        class: "notice",
+        text: `${t("Approve in the browser with code")} ${challenge.userCode}`,
+      }));
+      void Bridge.openUrl(challenge.verificationUrl);
+      await Bridge.outlookDevicePoll();
+      clientId.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Signed in with Microsoft.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    } finally {
+      signin.disabled = false;
+    }
+  });
+
+  const signout = h("button", { class: "danger", text: t("Sign out") });
+  signout.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.outlookSignout();
+      feedback.append(h("div", { class: "notice ok", text: t("Signed out.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
+    }
+  });
+
+  const sw = h("button", { class: settings.activeIntegrations.includes("integration_outlook") ? "switch on" : "switch" });
+  sw.addEventListener("click", () => {
+    const on = settings.activeIntegrations.includes("integration_outlook");
+    if (on) {
+      settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== "integration_outlook");
+    } else {
+      if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+      settings.activeIntegrations = [...settings.activeIntegrations, "integration_outlook"];
+    }
+    sw.classList.toggle("on", !on);
+    void save();
+  });
+
+  return h("section", {},
+    h("h2", {}, dotEl, h("span", { text: "Outlook" })),
+    state,
+    h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+        sw,
+        h("i", { class: "dot", style: "background:#0078D4" }),
+        h("span", { style: "font-size:12.5px", text: "Outlook" }),
+      ),
+      h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" },
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Email address") }), email,
+          h("label", { style: "min-width:104px", text: t("App password") }), appPass, saveMail),
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Application (client) ID") }), clientId),
+        h("div", { class: "row" }, signin, signout, feedback),
+      ),
+    ),
+  );
+}
+
+function gmailSection(present: Record<string, boolean>): HTMLElement {
+  const dotEl = statusDot(present["gmail-oauth"] || present["gmail-app-password"] || false);
+  const state = h("span", { class: "hint", text: t("Sign in with Google (works behind firewalls), or use an app password.") });
+
+  const email = h("input", {
+    type: "text", placeholder: "you@gmail.com", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const appPass = h("input", {
+    type: "password", placeholder: "xxxx xxxx xxxx xxxx", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientId = h("input", {
+    type: "text", placeholder: t("OAuth client ID"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientSecret = h("input", {
+    type: "password", placeholder: t("OAuth client secret"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const oauth = (await Bridge.secretPresent("gmail-oauth")) ?? false;
+    const imap = (await Bridge.secretPresent("gmail-app-password")) ?? false;
+    present["gmail-oauth"] = oauth;
+    present["gmail-app-password"] = imap;
+    dotEl.style.background = oauth || imap ? "#22c55e" : "#f4505e";
+    state.textContent = oauth
+      ? t("Signed in with Google.")
+      : imap
+        ? t("App password saved (IMAP fallback).")
+        : t("Sign in with Google (works behind firewalls), or use an app password.");
+  }
+
+  const saveMail = h("button", { text: t("Save") });
+  saveMail.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      if (email.value.trim()) await Bridge.secretSet("gmail-email", email.value.trim());
+      if (appPass.value.trim()) await Bridge.secretSet("gmail-app-password", appPass.value.trim());
+      email.value = "";
+      appPass.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
+    }
+  });
+
+  const signin = h("button", { class: "primary", text: t("Sign in with Google") });
+  signin.addEventListener("click", async () => {
+    clear(feedback);
+    const id = clientId.value.trim();
+    const secret = clientSecret.value.trim();
+    if (!id || !secret) {
+      feedback.append(h("div", { class: "notice err", text: t("Paste the OAuth client ID and secret first.") }));
+      return;
+    }
+    signin.disabled = true;
+    feedback.append(h("div", { class: "notice", text: t("Browser opened — approve, then come back.") }));
+    try {
+      const address = await Bridge.gmailSignin(id, secret);
+      clientId.value = "";
+      clientSecret.value = "";
+      feedback.append(h("div", { class: "notice ok", text: `${t("Signed in as")} ${address}` }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    } finally {
+      signin.disabled = false;
+    }
+  });
+
+  const signout = h("button", { class: "danger", text: t("Sign out") });
+  signout.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.gmailSignout();
+      feedback.append(h("div", { class: "notice ok", text: t("Signed out.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
+    }
+  });
+
+  const sw = h("button", { class: settings.activeIntegrations.includes("integration_gmail") ? "switch on" : "switch" });
+  sw.addEventListener("click", () => {
+    const on = settings.activeIntegrations.includes("integration_gmail");
+    if (on) {
+      settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== "integration_gmail");
+    } else {
+      if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+      settings.activeIntegrations = [...settings.activeIntegrations, "integration_gmail"];
+    }
+    sw.classList.toggle("on", !on);
+    void save();
+  });
+
+  return h("section", {},
+    h("h2", {}, dotEl, h("span", { text: "Gmail" })),
+    state,
+    h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+        sw,
+        h("i", { class: "dot", style: "background:#EA4335" }),
+        h("span", { style: "font-size:12.5px", text: "Gmail" }),
+      ),
+      h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" },
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Email address") }), email,
+          h("label", { style: "min-width:104px", text: t("App password") }), appPass, saveMail),
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Client ID") }), clientId,
+          h("label", { style: "min-width:104px", text: t("Client secret") }), clientSecret),
+        h("div", { class: "row" }, signin, signout, feedback),
+      ),
+    ),
+  );
+}
 
 const MAX_ACTIVE = 4;
 
@@ -292,7 +747,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = t("Pick up to {n} pills to show next to Mochi — {used}/{n} in use. Keys are stored in the Windows Credential Manager, never on disk.")
+      .replaceAll("{n}", String(MAX_ACTIVE))
+      .replace("{used}", String(used));
   }
 
   for (const def of INTEGRATIONS) {
@@ -320,7 +777,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         spellcheck: "false",
         style: "flex:1 1 auto;min-width:0",
       }) as HTMLInputElement;
-      const saveBtn = h("button", { text: "Save" });
+      const saveBtn = h("button", { text: t("Save") });
       const dotEl = statusDot(present[field.key] ?? false);
       saveBtn.addEventListener("click", async () => {
         const value = input.value.trim();
@@ -336,7 +793,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       });
       rows.append(
         h("div", { class: "row" },
-          h("label", { style: "min-width:104px", text: field.label }),
+          h("label", { style: "min-width:104px", text: t(field.label) }),
           input, saveBtn, dotEl,
         ),
       );
@@ -355,7 +812,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   }
 
   updateNote();
-  return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
+  return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -383,8 +840,8 @@ function generalSection(): HTMLElement {
 
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
-    h("option", { value: "primary", text: "Main display" }),
-    h("option", { value: "cursor", text: "Display under the cursor" }),
+    h("option", { value: "primary", text: t("Main display") }),
+    h("option", { value: "cursor", text: t("Display under the cursor") }),
   );
   screen.value = settings.screen;
   screen.addEventListener("change", () => {
@@ -392,26 +849,61 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const language = h("select", {}) as HTMLSelectElement;
+  language.append(
+    h("option", { value: "en", text: t("English") }),
+    h("option", { value: "pt-BR", text: t("Portuguese (Brazil)") }),
+  );
+  language.value = settings.language ?? "en";
+  language.addEventListener("change", async () => {
+    settings.language = language.value as Settings["language"];
+    await save();
+    // Static labels are built once: reload so the whole window speaks it.
+    // The island rebuilds live via settings-changed, no restart needed there.
+    location.reload();
+  });
+
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "onyx", text: t("Onyx (black)") }),
+    h("option", { value: "ice", text: t("Ice (frost white)") }),
+    h("option", { value: "frost", text: t("Frost (translucent blue)") }),
+  );
+  theme.value = settings.theme ?? "onyx";
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    document.documentElement.dataset.theme = settings.theme;
+    void save();
+  });
+
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "General" })),
+    h("h2", {}, h("span", { text: t("General") })),
     h("div", { class: "row" },
-      h("label", { text: "Sound" }),
+      h("label", { text: t("Language") }),
+      language,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Theme") }),
+      theme,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Sound") }),
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
+      h("label", { text: t("Auto-close") }),
       autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+      h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
     h("div", { class: "row" },
-      h("label", { text: "Island lives on" }),
+      h("label", { text: t("Island lives on") }),
       screen,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Launch at startup" }),
+      h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
   );
@@ -425,15 +917,25 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  document.documentElement.dataset.theme = settings.theme ?? "onyx";
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasGeminiKey = (await Bridge.secretPresent("gemini-api-key")) ?? false;
+  const geminiStatus = (await Bridge.geminiHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
+  const agyStatus = (await Bridge.agyHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gmail-email", "gmail-app-password", "gmail-oauth",
+    "outlook-email", "outlook-app-password", "outlook-oauth",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -442,12 +944,23 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    geminiSection(geminiStatus),
+    agySection(agyStatus),
+    h("section", {},
+      h("h2", {}, h("span", { text: "opencode" })),
+      h("div", {
+        class: "hint",
+        text: t("opencode has no settings.json hooks. Copy windows/opencode-plugin/coucou.ts to ~/.config/opencode/plugins/ (or .opencode/plugins/) — it forwards session/tool events to the same island pipe. Gemini + opencode appear as separate pills next to Claude."),
+      }),
+    ),
+    apiSection(hasKey, hasGeminiKey),
+    gmailSection(present),
+    outlookSection(present),
     integrationsSection(present),
     generalSection(),
     h("div", {
       class: "hint",
-      text: "No telemetry. Network requests only go to the services you configure yourself.",
+      text: t("No telemetry. Network requests only go to the services you configure yourself."),
     }),
   );
 

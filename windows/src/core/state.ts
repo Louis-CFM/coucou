@@ -3,8 +3,12 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n" | "agent";
+export type AgentSource =
+  | "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli"
+  | "media" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
+export type Lang = "en" | "pt-BR";
+export type IslandTheme = "onyx" | "ice" | "frost";
 
 export interface AgentTask {
   id: string;
@@ -66,11 +70,16 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_notion", "Notion", "#8C8C8C", "n8n"),
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
+  task("integration_spotify", "Spotify", "#1DB954", "media"),
+  task("integration_whatsapp", "WhatsApp", "#25D366", "media"),
+  task("integration_gmail", "Gmail", "#EA4335", "n8n"),
+  task("integration_outlook", "Outlook", "#0078D4", "n8n"),
 ];
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
+  "integration_notion", "integration_calcom", "integration_stripe", "integration_spotify",
+  "integration_whatsapp", "integration_gmail", "integration_outlook",
 ];
 
 /** What an integration poller last reported. */
@@ -92,6 +101,14 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Chat provider: "claude" | "gemini". */
+  chatProvider: string;
+  /** Gemini model used when chatProvider == "gemini". */
+  geminiModel: string;
+  /** UI language: "en" | "pt-BR". */
+  language: Lang;
+  /** Island theme: "onyx" | "ice" | "frost". */
+  theme: IslandTheme;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +123,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  geminiModel: "gemini-3.5-flash",
+  language: "en",
+  theme: "onyx",
 };
 
 type Listener = () => void;
@@ -208,19 +229,19 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
-    // then other integrations in declaration order.
+    // Order: integration_claude first, then dynamic CLI/agent pills (visible
+    // in slice(0,4)), then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => {
-      const isAgentA = a.id.startsWith("agent_");
-      const isAgentB = b.id.startsWith("agent_");
+      const isDynA = a.id.startsWith("agent_") || a.id.startsWith("cli_");
+      const isDynB = b.id.startsWith("agent_") || b.id.startsWith("cli_");
       // integration_claude always first
       if (a.id === "integration_claude") return -1;
       if (b.id === "integration_claude") return 1;
-      // agent_* before other integrations; preserve insertion order among themselves
-      if (isAgentA && !isAgentB) return -1;
-      if (isAgentB && !isAgentA) return 1;
-      if (isAgentA && isAgentB) return 0;
+      // dynamic pills before other integrations; preserve insertion order
+      if (isDynA && !isDynB) return -1;
+      if (isDynB && !isDynA) return 1;
+      if (isDynA && isDynB) return 0;
       // both known integrations → declaration order
       return order.indexOf(a.id) - order.indexOf(b.id);
     });
@@ -265,6 +286,38 @@ class AppState {
 
   defaultView(): IslandViewName {
     return this.tasks.length === 0 ? "empty" : "overview";
+  }
+
+  // ── Multi-CLI tasks (Claude + Gemini + opencode side by side) ─────────────
+  // integration_claude stays as the legacy Claude pill. Extra CLI sessions get
+  // ephemeral tasks `cli_<source>_<shortid>` so two CLIs never overwrite each
+  // other like the old single-task upsert did.
+
+  ensureCliTask(id: string, name: string, color: string, source: AgentSource): AgentTask {
+    let t = this.tasks.find((x) => x.id === id);
+    if (!t) {
+      t = {
+        id, name, color, state: "idle", stepIndex: 0, steps: [],
+        source, isIntegration: false,
+      };
+      this.tasks.push(t);
+      if (!this.focusId) this.focusId = id;
+      this.notify();
+    } else {
+      if (t.name !== name) { t.name = name; this.notify(); }
+    }
+    return t;
+  }
+
+  removeCliTask(id: string) {
+    // Never remove the persistent integration pills here.
+    if (id.startsWith("integration_")) return;
+    const idx = this.tasks.findIndex((x) => x.id === id);
+    if (idx >= 0) {
+      this.tasks.splice(idx, 1);
+      if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+      this.notify();
+    }
   }
 }
 

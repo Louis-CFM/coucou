@@ -1,7 +1,15 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod capture;
+mod droptarget;
 mod files;
+mod gemini;
+mod gmail;
+mod jump;
+mod mail;
+mod media;
+mod outlook;
 mod hooks;
 mod integrations;
 mod island;
@@ -22,6 +30,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
+use gemini::GeminiChat;
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -96,7 +105,8 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::set_ignore_cursor(&app, false);
     shared.gate.forget_ignore_state();
-    shared.gate.set_active(!collapsed);
+    // Expanded → full poll; collapsed → slow strip watch (drops still land).
+    shared.gate.set_collapsed(collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
@@ -132,10 +142,24 @@ fn open_url(url: String) {
         .spawn();
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to Explorer otherwise.
+/// "Open terminal" — best effort, in order:
+/// 1. Focus the visible console whose title shows the project folder
+///    (PowerShell/CMD/Windows Terminal all put cwd in the title).
+/// 2. Open the folder in VS Code when `code` is on PATH.
+/// 3. Fall back to Explorer.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
+    if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+        let folder = p.replace('/', "\\");
+        let name = folder
+            .trim_end_matches('\\')
+            .rsplit('\\')
+            .next()
+            .unwrap_or("");
+        if jump::focus_window_for_folder(name) {
+            return true;
+        }
+    }
     // No `cmd /C` anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
     // in a folder name as syntax. Finding the launcher ourselves and handing the
@@ -191,6 +215,35 @@ fn hooks_status() -> HookStatus {
     hooks::status()
 }
 
+#[tauri::command]
+fn gemini_hooks_status() -> HookStatus {
+    hooks::gemini_status()
+}
+
+#[tauri::command]
+fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::gemini_preview(install)
+}
+
+#[tauri::command]
+fn gemini_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::gemini_write(install, &fingerprint)
+}
+
+#[tauri::command]
+fn agy_hooks_status() -> HookStatus {
+    hooks::agy_status()
+}
+
+#[tauri::command]
+fn agy_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::agy_preview(install)
+}
+
+#[tauri::command]
+fn agy_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::agy_write(install, &fingerprint)
+}
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
 fn hooks_preview(install: bool) -> Result<HookPreview, String> {
@@ -241,26 +294,88 @@ fn approval_decline(app: AppHandle, request_id: String) {
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
+/// Routes to Claude or Gemini based on settings.chat_provider.
 #[tauri::command]
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    gchat: State<'_, GeminiChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, model, gemini_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.chat_provider.clone(), s.model.clone(), s.gemini_model.clone())
+    };
+    if provider == "gemini" {
+        let gctx = context.map(|c| match c {
+            ChatContext::File { name, path } => gemini::GeminiContext::File { name, path },
+            ChatContext::Window { app_name, title, url } => {
+                gemini::GeminiContext::Window { app_name, title, url }
+            }
+        });
+        let reply = gemini::send(&gchat, &gemini_model, query, gctx).await?;
+        Ok(ChatReply { text: reply.text })
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, gchat: State<GeminiChat>) {
     chat.reset();
+    gchat.reset();
+}
+
+/// Gmail OAuth sign-in: opens the browser, waits for consent, stores tokens.
+/// Returns the account address on success.
+#[tauri::command]
+async fn gmail_signin(client_id: String, client_secret: String) -> Result<String, String> {
+    gmail::signin(client_id, client_secret).await
+}
+
+/// Forgets the Gmail OAuth tokens (IMAP fallback keeps working if set).
+#[tauri::command]
+fn gmail_signout() -> Result<(), String> {
+    gmail::signout()
+}
+
+/// Outlook device-flow step 1: returns the user code + URL to approve.
+#[tauri::command]
+async fn outlook_device_begin(client_id: String) -> Result<outlook::DeviceChallenge, String> {
+    outlook::begin_device(client_id).await
+}
+
+/// Outlook device-flow step 2: waits for the approval, stores the tokens.
+#[tauri::command]
+async fn outlook_device_poll() -> Result<(), String> {
+    outlook::poll_device().await
+}
+
+/// Forgets the Outlook OAuth tokens (IMAP fallback keeps working if set).
+#[tauri::command]
+fn outlook_signout() -> Result<(), String> {
+    outlook::signout()
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
+}
+
+/// DOM-drop fallback: the page read the file itself (base64) because the
+/// OS-level drop target never delivered. Same inbox, same shape back.
+#[tauri::command]
+fn ingest_bytes(name: String, base64_data: String) -> Result<DroppedFile, String> {
+    files::ingest_bytes(&name, &base64_data)
+}
+
+/// Mochi drag-out: captures the window under the cursor into the inbox.
+/// The cursor is read server-side — the release happens outside our window.
+#[tauri::command]
+fn attach_window(app: AppHandle) -> Result<capture::AttachedWindow, String> {
+    capture::attach(&app)
 }
 
 /// The island may only ask whether a key exists — never read it.
@@ -291,6 +406,13 @@ fn open_n8n() {
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
+}
+
+/// Media keys for the Spotify card (play/pause/next/prev). System-wide: they
+/// reach the desktop app or a browser tab, whichever is playing.
+#[tauri::command]
+fn media_key(action: String) -> Result<(), String> {
+    media::press(&action)
 }
 
 /// Lets the island write to the same log as the Rust side.
@@ -380,6 +502,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(GeminiChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +516,12 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            gemini_hooks_status,
+            gemini_hooks_preview,
+            gemini_hooks_apply,
+            agy_hooks_status,
+            agy_hooks_preview,
+            agy_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,
@@ -400,10 +529,18 @@ pub fn run() {
             chat_send,
             chat_reset,
             ingest_file,
+            ingest_bytes,
+            gmail_signin,
+            gmail_signout,
+            outlook_device_begin,
+            outlook_device_poll,
+            outlook_signout,
+            attach_window,
             secret_present,
             secret_set,
             secret_clear,
             refresh_integration,
+            media_key,
             open_n8n,
             open_settings_window,
             set_paused,
@@ -420,11 +557,14 @@ pub fn run() {
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);
-            gate.set_active(true);
+            gate.set_collapsed(false);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
+            // Own the drop targets early (the poll refresh keeps them ours as
+            // late WebView2 widgets appear).
+            crate::droptarget::ensure_all(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             Ok(())

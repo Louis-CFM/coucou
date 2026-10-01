@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -49,6 +49,8 @@ export class Island {
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
+  private actions!: ViewActions;
+  private lastLang: string = "en";
   private uploadCanvas!: UploadCanvas;
 
   private width = new Tracked(NOTCH_W);
@@ -80,6 +82,13 @@ export class Island {
   private lastLoveTime = 0;
   private botHoverStart = { x: 0, y: 0 };
 
+  // Mochi drag-out → window attach (macOS: drag Mochi onto any window).
+  // Press is recorded on mousedown; the slap is deferred until release so a
+  // press that turns into a drag (> 7pt) becomes a ghost instead of a slap.
+  private botPress: { x: number; y: number } | null = null;
+  private draggingGhost = false;
+  private ghostEl!: HTMLElement;
+
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
@@ -107,6 +116,16 @@ export class Island {
     const actions: ViewActions = {
       setView: (v) => this.setView(v),
       collapse: () => this.collapse(),
+      newChat: () => {
+        State.chatHistory = [];
+        State.droppedFile = null;
+        State.promptContext = null;
+        State.stateOverride = null;
+        State.noteMessage = null;
+        void Bridge.chatReset();
+        Sound.play("blip");
+        this.setView(State.defaultView());
+      },
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
@@ -126,9 +145,17 @@ export class Island {
           integration_stripe: "https://dashboard.stripe.com/payments",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
+          integration_spotify: "https://open.spotify.com",
+          integration_whatsapp: "https://web.whatsapp.com",
+          integration_gmail: "https://mail.google.com",
+          integration_outlook: "https://outlook.live.com",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
-        else if (task.id === "integration_n8n") void Bridge.openN8n();
+        if (task.id === "integration_claude" || task.source === "claudeCode") {
+          void Bridge.openInVSCode(task.sessionCwd ?? null);
+        } else if (task.source === "geminiCli" || task.source === "antigravity" || task.source === "opencode" || task.source === "genericCli") {
+          // No per-terminal jump on Windows — open the working folder like VS Code.
+          void Bridge.openInVSCode(task.sessionCwd ?? null);
+        } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -143,8 +170,9 @@ export class Island {
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        const focusId = State.focusId ?? "integration_claude";
+        State.updateTask(focusId, "working");
+        State.setPillBadge(focusId, null);
         this.setView(State.defaultView());
       },
       toggleSound: () => {
@@ -172,6 +200,7 @@ export class Island {
     this.wakeStrip = h("div", { id: "wake-strip" });
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
+    this.ghostEl = this.buildGhost();
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
@@ -181,6 +210,7 @@ export class Island {
     this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
+    this.actions = actions;
 
     // The drop sequence draws the card, the bar and its own Mochi. It sits under
     // the header, which stays visible on top of it exactly as on macOS.
@@ -209,6 +239,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      h("div", { id: "embasa-rule" }),
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -217,8 +248,106 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.ghostEl);
     this.applyGeometry();
+  }
+
+  /**
+   * Rebuilds header + views so a language switch re-renders every static
+   * label immediately (buttons built once would otherwise stay in the old
+   * language until restart). State (tasks, chat, focus) is untouched.
+   */
+  private rebuildChrome() {
+    const old = this.contentEl;
+    this.header = buildHeader(this.actions);
+    this.views = buildViews(this.actions, () => this.animateGeometry(false));
+    this.viewsEl = h("div", { id: "views" });
+    for (const v of this.views.values()) this.viewsEl.append(v.el);
+    this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
+    old.replaceWith(this.contentEl);
+    this.lastSyncedView = null;
+    this.dirty = true;
+    this.ensureRunning();
+  }
+
+  /**
+   * The drag ghost: a simple CSS Mochi (cream squircle + two eyes) that follows
+   * the cursor while dragging the bot out. The real canvas keeps rendering
+   * underneath but is hidden until the drop, so no engine coupling is needed.
+   */
+  private buildGhost(): HTMLElement {
+    const eye = (left: string) => h("div", {
+      style: `position:absolute;top:20px;left:${left};width:9px;height:11px;border-radius:50%;background:#1A1412`,
+    });
+    const ghost = h("div", {
+      id: "bot-ghost",
+      style: "position:absolute;display:none;width:54px;height:48px;border-radius:46% 46% 48% 48%/58% 58% 42% 42%;background:radial-gradient(circle at 68% 22%,#FFFAF5 0%,#EAD9CC 78%,#DDCCBF 100%);box-shadow:0 6px 22px rgba(0,0,0,.5);z-index:60;pointer-events:none",
+    }, eye("15px"), eye("30px"));
+    return ghost;
+  }
+
+  // ── Mochi drag-out → window attach ────────────────────────────────────────
+
+  private startGhost(x: number, y: number) {
+    this.draggingGhost = true;
+    this.botPress = null;
+    this.cancelBotHover();
+    this.botHovering = false;
+    this.engine.triggerEmote("surprised");
+    Sound.play("pop");
+    this.botCanvas.style.opacity = "0";
+    this.moveGhost(x, y);
+    this.ghostEl.style.display = "block";
+    void Bridge.log("attach drag started");
+  }
+
+  private moveGhost(x: number, y: number) {
+    this.ghostEl.style.left = `${x - 27}px`;
+    this.ghostEl.style.top = `${y - 30}px`;
+  }
+
+  private endGhostHidden() {
+    this.draggingGhost = false;
+    this.ghostEl.style.display = "none";
+    this.ensureRunning();
+  }
+
+  /** Release of the left button anywhere (Rust `mouse-up` or DOM fallback). */
+  onMouseUp(x: number, y: number) {
+    if (this.draggingGhost) {
+      const rect = this.islandRect();
+      const overIsland =
+        x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
+        y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
+      this.endGhostHidden();
+      if (overIsland) return; // dropped back home: silent cancel
+      void Bridge.log("attach capture");
+      void Bridge.attachWindow()
+        .then((win) => {
+          const label = win.title || win.appName || win.name;
+          State.droppedFile = { name: win.name, path: win.path };
+          State.promptContext = { kind: "file", name: win.name, path: win.path };
+          State.chatHistory = [];
+          void Bridge.chatReset();
+          void Bridge.log(`attach captured ${win.appName} ${label.slice(0, 40)}`);
+          Sound.play("attach");
+          this.engine.triggerEmote("wink");
+          this.setView("prompt");
+        })
+        .catch((err) => {
+          State.noteMessage = String(err).replace(/^Error:\s*/, "");
+          this.setView("note");
+          Sound.play("error");
+          window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        });
+      return;
+    }
+    if (this.botPress) {
+      // Plain click on Mochi: the deferred slap.
+      this.botPress = null;
+      this.cancelBotHover();
+      this.engine.slap();
+    }
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -288,8 +417,26 @@ export class Island {
     if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) UploadSeq.deactivate();
   }
 
+  /**
+   * Drop views pin the island: the user opened the Drop tab and is about to
+   * fetch a file from Explorer, which always takes longer than the auto-close
+   * delay. Without this the island retracts to its 6px strip mid-drag and the
+   * OS refuses the drop ("prohibited" cursor) — the #1 drop complaint.
+   * A prompt WITH an attached file pins too, so a second drop right after the
+   * first chat lands on an open island instead of a hidden strip. Approval
+   * pins win over everything; leaving the flow unpins unless a decision
+   * is still pending.
+   */
+  private pinUploadIfNeeded(view: IslandViewName) {
+    if (State.pendingApproval) return; // approval owns the pin
+    const pinned = UPLOAD_VIEWS.has(view) || (view === "prompt" && State.promptContext != null);
+    State.isPinned = pinned;
+    this.fsm.pinned = pinned;
+  }
+
   expand(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.pinUploadIfNeeded(view);
     State.view = view;
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
@@ -300,6 +447,7 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.pinUploadIfNeeded(view);
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -341,6 +489,9 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
+  /** Guards the two drop transports (OS-level + DOM fallback) firing twice. */
+  private lastSwallowAt = 0;
+
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
@@ -373,10 +524,76 @@ export class Island {
           this.setView(State.defaultView());
           return;
         }
-        this.swallow(path);
+        this.swallowPath(path);
         break;
       }
     }
+  }
+
+  /**
+   * DOM fallback for drops WebView2 swallows itself: when its inner render
+   * target keeps the drop, the OS transport never fires and the cursor reads
+   * "prohibited" — but the page still gets HTML5 drop events with the file
+   * CONTENT (paths stay hidden). We read the bytes ourselves and hand them to
+   * `ingest_bytes`, so a drop works whichever target wins.
+   */
+  private wireDomDrop() {
+    document.addEventListener("dragover", (e) => {
+      if (State.paused) return;
+      if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes("Files")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!State.fileDragOver && State.mode === "expanded") {
+        State.fileDragOver = true;
+        this.engine.animateMorph(1);
+        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        this.alert("upload");
+      }
+    });
+    document.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget) return;
+      if (!State.fileDragOver) return;
+      State.fileDragOver = false;
+      this.engine.animateMorph(0);
+      UploadSeq.exitZone();
+      State.notify();
+    });
+    document.addEventListener("drop", (e) => {
+      if (State.paused) return;
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      e.preventDefault();
+      State.fileDragOver = false;
+      const file = files[0];
+      void Bridge.log(`dom-drop ${file.name} ${file.size}b`);
+      if (file.size > 25 * 1024 * 1024) {
+        State.noteMessage = "File too large (25 MB max).";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = String(reader.result ?? "");
+        const b64 = url.includes(",") ? url.split(",")[1] : "";
+        if (!b64) {
+          State.noteMessage = "Could not read that file.";
+          this.setView("note");
+          Sound.play("error");
+          window.setTimeout(() => this.setView(State.defaultView()), 2400);
+          return;
+        }
+        this.swallowBytes(file.name, b64);
+      };
+      reader.onerror = () => {
+        State.noteMessage = "Could not read that file.";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   /**
@@ -384,8 +601,29 @@ export class Island {
    * the inbox runs in the background and swaps the path in when it lands, so a
    * slow disk can never stall the animation — same as FileDropHandler on macOS.
    */
-  private swallow(path: string) {
+  private swallowPath(path: string) {
     const name = path.split(/[\\/]/).pop() || "file";
+    if (!this.beginSwallow(name, path)) return;
+    void Bridge.ingestFile(path).then(
+      (file) => this.finishSwallow(file.name, file.path),
+      (err) => this.failSwallow(err),
+    );
+  }
+
+  /** DOM transport: bytes already read by the page (see wireDomDrop). */
+  private swallowBytes(name: string, base64Data: string) {
+    if (!this.beginSwallow(name, name)) return;
+    void Bridge.ingestBytes(name, base64Data).then(
+      (file) => this.finishSwallow(file.name, file.path),
+      (err) => this.failSwallow(err),
+    );
+  }
+
+  /** Shared opening choreography. False = duplicate of a swallow in flight. */
+  private beginSwallow(name: string, path: string): boolean {
+    const now = performance.now();
+    if (now - this.lastSwallowAt < 1500) return false;
+    this.lastSwallowAt = now;
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
@@ -403,21 +641,35 @@ export class Island {
     State.uploadProgress = 0;
     this.setView("uploading");
     this.ensureRunning();
+    // Absolute fallback: whatever happens to the ingest promise or the frame
+    // loop, the uploading view must never trap the user. If we are still here
+    // past the choreography + margin, move on (paths swap in whenever the
+    // copy actually lands).
+    window.setTimeout(() => {
+      if (State.view === "uploading") {
+        void Bridge.log("swallow watchdog: forcing choose");
+        this.setView("choose");
+      }
+    }, (PRE_PROGRESS + State.uploadDuration + 1 + 4) * 1000);
+    return true;
+  }
 
-    void Bridge.ingestFile(path)
-      .then((file) => {
-        State.droppedFile = { name: file.name, path: file.path };
-        State.promptContext = { kind: "file", name: file.name, path: file.path };
-        State.notify();
-      })
-      .catch((err) => {
-        UploadSeq.deactivate();
-        State.noteMessage = String(err).replace(/^Error:\s*/, "");
-        this.engine.animateMorph(0);
-        this.setView("note");
-        Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
-      });
+  private finishSwallow(name: string, path: string) {
+    State.droppedFile = { name, path };
+    State.promptContext = { kind: "file", name, path };
+    void Bridge.log(`swallow done ${name}`);
+    State.notify();
+  }
+
+  private failSwallow(err: unknown) {
+    UploadSeq.deactivate();
+    const message = String(err).replace(/^Error:\s*/, "");
+    void Bridge.log(`swallow failed ${message.slice(0, 120)}`);
+    State.noteMessage = message;
+    this.engine.animateMorph(0);
+    this.setView("note");
+    Sound.play("error");
+    window.setTimeout(() => this.setView(State.defaultView()), 2400);
   }
 
   /**
@@ -429,6 +681,13 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+
+    // The uploading card reads State.uploadProgress — nothing else ever writes
+    // it, so without this the bar sits at 0% and the drop looks frozen.
+    if (State.uploadProgress !== p) {
+      State.uploadProgress = p;
+      this.dirty = true;
+    }
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
@@ -485,10 +744,16 @@ export class Island {
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    // While a Drop view is up the whole window takes the mouse: a file drag
+    // must see one stable target from approach to release. Flipping
+    // click-through mid-drag is what makes Explorer cache "no drop" and show
+    // the prohibited cursor on the second and later drags.
+    const dropOpen = State.mode === "expanded" && UPLOAD_VIEWS.has(State.view);
+    const hit = dropOpen ? { x: 0, y: 0, w: PANEL_W, h: PANEL_H } : rect;
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
-      this.pushedRect = rect;
-      void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
+    if (Math.abs(p.x - hit.x) > 0.5 || Math.abs(p.w - hit.w) > 0.5 || Math.abs(p.h - hit.h) > 0.5) {
+      this.pushedRect = hit;
+      void Bridge.setIslandRect(hit.x, hit.y, hit.w, hit.h);
     }
   }
 
@@ -539,17 +804,28 @@ export class Island {
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
-        this.cancelBotHover();
-        this.engine.slap();
+        // Press recorded; slap happens on release unless this becomes a
+        // drag-out (> 7pt with the button held → ghost + window attach).
+        this.botPress = { x: e.clientX, y: e.clientY };
       }
     });
 
+    // DOM mouseup only fires over our window; releases outside arrive via the
+    // Rust `mouse-up` event. Both funnel into onMouseUp (idempotent).
+    window.addEventListener("mouseup", () => this.onMouseUp(State.mouse.x, State.mouse.y));
+
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      // Esc always collapses except while an approval decision is pending —
+      // drop/chat pins must never trap the user (collapse() clears them).
+      if (e.key === "Escape" && State.mode === "expanded" && !State.pendingApproval) this.collapse();
       State.lastActivity = performance.now();
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    // Our own OLE target (droptarget.rs) emits the same shape when it wins
+    // the drop instead of wry's — one handler serves both transports.
+    void onEvent<{ type: string; paths?: string[] }>("ext-drag", (e) => this.onDragDrop(e));
+    this.wireDomDrop();
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
@@ -558,11 +834,22 @@ export class Island {
     }
   }
 
-  /** Cursor in window-logical coordinates. */
-  onCursor(x: number, y: number) {
+  /** Cursor in window-logical coordinates. `down` comes from the Rust poll. */
+  onCursor(x: number, y: number, down = false) {
     State.mouse = { x, y };
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
+
+    // Press turned into a drag-out: show the ghost once past the 7pt threshold.
+    if (this.botPress && down && IS_TAURI && !this.draggingGhost) {
+      const d = Math.hypot(x - this.botPress.x, y - this.botPress.y);
+      if (d > 7) this.startGhost(x, y);
+    }
+    if (this.draggingGhost) {
+      this.moveGhost(x, y);
+      this.ensureRunning();
+      return; // no enter/leave, hover or auto-close bookkeeping mid-drag
+    }
 
     // Windows sends no cursor position with an OLE drag, so the drop sequence is
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
@@ -739,8 +1026,9 @@ export class Island {
     this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    // The drop canvas draws its own Mochi; two of them would overlap.
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
+    // The drop canvas draws its own Mochi; two of them would overlap. The drag
+    // ghost replaces the bot too while a window attach is in flight.
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !this.draggingGhost;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
@@ -824,6 +1112,7 @@ export class Island {
   private syncDom() {
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
+    this.islandEl.classList.toggle("expanded", expanded);
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
@@ -869,12 +1158,25 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
-  /** Applies settings coming from Rust at boot. */
+  /** Applies settings coming from Rust at boot (and on every save). */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.applyTheme();
+    if (State.settings.language !== this.lastLang) {
+      this.lastLang = State.settings.language;
+      this.rebuildChrome();
+    }
     State.notify();
+  }
+
+  /** Island theme is pure CSS: one attribute, instant, no rebuild. */
+  private applyTheme() {
+    const theme = State.settings.theme === "ice" || State.settings.theme === "frost"
+      ? State.settings.theme
+      : "onyx";
+    this.root.dataset.theme = theme;
   }
 
   get panelSize() {

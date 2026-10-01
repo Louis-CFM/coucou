@@ -5,6 +5,7 @@
 // (month → day → booking); here it is the list of upcoming bookings.
 
 import { h, svg, clear, dot } from "./dom";
+import { t } from "../core/i18n";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -58,8 +59,11 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
-  // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
+  // misleading here. Spotify needs no key either, just the desktop app playing.
+  const missing = task.id === "integration_claude" ? t("Hooks not installed")
+    : task.id === "integration_spotify" ? t("Nothing playing")
+    : task.id === "integration_whatsapp" ? t("Open WhatsApp Web in your browser")
+    : t("Key not configured");
   const label = error ?? (configured ? "Connected · loading…" : missing);
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
@@ -69,7 +73,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}b3`,
-        text: "Open Visual Studio Code",
+        text: t("Open Visual Studio Code"),
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );
@@ -78,7 +82,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Open n8n",
+        text: t("Open n8n"),
         onclick: () => void Bridge.openN8n(),
       }),
     );
@@ -87,7 +91,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: `Open ${task.name}`,
+        text: `${t("Open")} ${task.name}`,
         onclick: () => void Bridge.openUrl(OPEN_URLS[task.id]),
       }),
     );
@@ -97,20 +101,20 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Refresh",
+        text: t("Refresh"),
         onclick: () => void Bridge.refreshIntegration(task.id),
       }),
     );
   } else {
     actions.append(
-      h("button", { class: "link-btn", style: "color:#8e939c", text: "Settings…", onclick: openSettings }),
+      h("button", { class: "link-btn", style: "color:#8e939c", text: t("Settings…"), onclick: openSettings }),
     );
   }
 
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, t("Integration")),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );
@@ -229,6 +233,124 @@ function githubCard(): HTMLElement {
   );
 }
 
+// ── Spotify (no key — desktop app window title) ─────────────────────────────
+
+function spotifyCard(): HTMLElement {
+  const d = get("integration_spotify");
+  const artist = String(d.artist ?? "");
+  const title = String(d.title ?? "");
+  const playing = d.playing === true;
+  const key = (label: string, action: string) =>
+    h("button", {
+      class: "link-btn",
+      style: "color:#1DB954d9",
+      text: label,
+      onclick: () => void Bridge.mediaKey(action),
+    });
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#1DB954", "Spotify", playing ? t("Now playing") : t("Paused")),
+    h(
+      "div",
+      { class: "int-rows tight" },
+      listRow("#1DB954", true,
+        h("span", { class: "int-name", text: title || "—" }),
+      ),
+      h(
+        "div",
+        { class: "int-row" },
+        dot("#6B7079", 5),
+        h("span", { class: "int-name", text: artist || t("Open Spotify and play something") }),
+      ),
+    ),
+    h("div", { class: "int-actions" },
+      key("⏮", "prev"),
+      key(playing ? "⏸" : "▶", "playpause"),
+      key("⏭", "next"),
+      h("button", {
+        class: "link-btn",
+        style: "color:#1DB954d9",
+        text: t("Open Spotify"),
+        onclick: () => void Bridge.openUrl("https://open.spotify.com"),
+      }),
+    ),
+  );
+}
+
+// ── WhatsApp (no login — Web tab title unread count) ─────────────────────────
+
+function whatsappCard(task: AgentTask, openSettings: () => void): HTMLElement {
+  const d = get("integration_whatsapp");
+  const present = d.present === true;
+  const unread = Number(d.unread ?? 0);
+  if (!present) return idleCard(task, openSettings);
+  const label = unread === 0
+    ? t("No unread messages")
+    : unread === 1 ? t("1 unread message") : t("{n} unread messages").replace("{n}", String(unread));
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#25D366", "WhatsApp", unread > 0 ? t("New messages") : t("No unread messages")),
+    h(
+      "div",
+      { class: "int-rows tight" },
+      listRow(unread > 0 ? "#25D366" : "#6B7079", true,
+        h("span", { class: "int-name", text: label }),
+      ),
+    ),
+    h("div", { class: "int-actions" },
+      h("button", {
+        class: "link-btn",
+        style: "color:#25D366d9",
+        text: t("Open WhatsApp"),
+        onclick: () => void Bridge.openUrl("https://web.whatsapp.com"),
+      }),
+    ),
+  );
+}
+
+// ── Mail (Gmail + Outlook over IMAP) ──────────────────────────────────────────
+
+function mailCard(id: string, color: string, name: string, inboxUrl: string): HTMLElement {
+  const d = get(id);
+  const unread = Number(d.unread ?? 0);
+  const rows = h("div", { class: "int-rows tight" });
+  const latest = arr(id, "latest").slice(0, 3);
+  if (unread > 0 && latest.length === 0) {
+    rows.append(listRow(color, true, h("span", {
+      class: "int-name",
+      text: unread === 1 ? t("1 unread mail") : t("{n} unread mails").replace("{n}", String(unread)),
+    })));
+  }
+  for (const m of latest) {
+    const first = m === latest[0];
+    rows.append(listRow(color, first,
+      h("span", { class: "int-name", text: `${String(m.from ?? "?")} — ${String(m.subject ?? "")}`.slice(0, 64) }),
+    ));
+  }
+  if (unread === 0 && latest.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("Inbox zero — nothing unread") }));
+  }
+  const head = unread > 0
+    ? `${unread} ${t("unread")}`
+    : t("Inbox");
+  return h(
+    "div",
+    { class: "int-card" },
+    header(color, name, head),
+    rows,
+    h("div", { class: "int-actions" },
+      h("button", {
+        class: "link-btn",
+        style: `color:${color}d9`,
+        text: `${t("Open")} ${name}`,
+        onclick: () => void Bridge.openUrl(inboxUrl),
+      }),
+    ),
+  );
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -296,7 +418,7 @@ function calcomCard(): HTMLElement {
     .sort((a, b) => new Date(String(a.start)).getTime() - new Date(String(b.start)).getTime());
   const rows = h("div", { class: "int-rows tight" });
   if (bookings.length === 0) {
-    rows.append(h("div", { class: "int-empty", text: "No calls scheduled" }));
+    rows.append(h("div", { class: "int-empty", text: t("No calls scheduled") }));
   }
   for (const b of bookings.slice(0, 3)) {
     const when = new Date(String(b.start));
@@ -398,6 +520,13 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_spotify":
+      return String(get(id).artist ?? "") !== "";
+    case "integration_whatsapp":
+      return get(id).present === true;
+    case "integration_gmail":
+    case "integration_outlook":
+      return get(id).unread != null;
     default:
       return false;
   }
@@ -426,6 +555,14 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_spotify":
+      return spotifyCard();
+    case "integration_whatsapp":
+      return whatsappCard(task, hooks.openSettings);
+    case "integration_gmail":
+      return mailCard(task.id, "#EA4335", "Gmail", "https://mail.google.com");
+    case "integration_outlook":
+      return mailCard(task.id, "#0078D4", "Outlook", "https://outlook.live.com");
     default:
       return idleCard(task, hooks.openSettings);
   }

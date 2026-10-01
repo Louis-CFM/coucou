@@ -68,11 +68,72 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Other CLIs: Gemini + opencode
+
+Claude is the default, but the island watches the other two side by side:
+
+- **Antigravity (`agy`, recommended)** — since June 2026 this is what new installs get instead of Gemini CLI. Open **Settings… → Antigravity (agy) → Install Antigravity hooks…**. This writes Coucou's relay into `%USERPROFILE%\.gemini\config\hooks.json` under the `"coucou"` key (dated backup + diff preview, your other hooks untouched) for `PreToolUse/PostToolUse/PreInvocation/PostInvocation/Stop`. Timeouts are in seconds. `agy` sessions appear as pink `agy · <folder>` pills with their own steps. Approvals stay in the terminal — the island only shows activity.
+- **Gemini CLI (legacy)** — open **Settings… → Gemini CLI → Install Gemini hooks…**. This merges Coucou's relay into `%USERPROFILE%\.gemini\settings.json` (dated backup + diff preview, your own hooks untouched) for `SessionStart/SessionEnd/BeforeTool/AfterTool/AfterModel/BeforeAgent/AfterAgent`. Timeouts are in ms. Gemini sessions appear as blue `Gemini · <folder>` pills with their own steps. Approvals stay in the terminal — Gemini has no blocking permission hook, so the island only shows activity.
+- **opencode** — copy `windows/opencode-plugin/coucou.ts` to `~/.config/opencode/plugins/coucou.ts` (or `<project>/.opencode/plugins/coucou.ts`) and restart opencode. The plugin forwards `session.created/deleted/idle/error` and `tool.execute.before/after` (+ `permission.asked` as activity) to the same island pipe. opencode sessions appear as purple `opencode · <folder>` pills. Fire-and-forget: if Coucou is closed the plugin silently does nothing and never blocks your session.
+
+Each CLI gets its own task (no more single-task overwrite): the most recently active one takes focus, `Stop` toasts 5.2 s, then ephemeral Gemini/opencode tasks disappear while Claude's pill persists.
+
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
+**Settings… → Chat AI** takes your keys and lets you pick the provider:
+
+- **Claude (Anthropic)** — `sk-ant-…` key, models Opus 5 / Sonnet 5 / Haiku 4.5, with web search.
+- **Gemini (Google)** — `AIza…` key from [Google AI Studio](https://aistudio.google.com/apikey), models 2.5 Flash / 2.5 Pro / 2.0 Flash, plain chat for now (no web search yet).
+
+Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
+
+## Mail pills (Gmail + Outlook)
+
+Two ways in, per account. OAuth is recommended: it survives firewalls that
+block IMAP port 993 and accounts with basic auth disabled.
+
+### Gmail — connect with Google
+
+1. Create your own OAuth client (once, free):
+   [Google Cloud Console](https://console.cloud.google.com/) → new project →
+   **APIs & Services → Library → Gmail API → Enable** → **OAuth consent
+   screen** (External; add your address under Test users) → **Credentials →
+   Create Credentials → OAuth client ID → Desktop app**.
+2. In Coucou: Settings → Gmail → paste the **client ID + client secret** →
+   **Sign in with Google** → approve in the browser → done.
+3. Toggle the Gmail pill on. Only `gmail.readonly` is requested; tokens stay
+   in the Credential Manager.
+
+### Outlook — connect with Microsoft
+
+1. Register your own app (once, free): [Azure Portal](https://portal.azure.com/)
+   → Microsoft Entra ID → **App registrations → New registration** (personal
+   accounts) → platform **Mobile and desktop applications** → add the
+   delegated permission **Mail.Read**. Copy the **Application (client) ID**.
+2. In Coucou: Settings → Outlook → paste the ID → **Sign in with
+   Microsoft** → approve the shown code in the browser → done.
+3. Toggle the Outlook pill on. Only `Mail.Read` is requested; tokens stay in
+   the Credential Manager.
+
+### IMAP app passwords (fallback for both)
+
+Gmail: Google Account → Security → 2-Step Verification → App passwords.
+Outlook: Microsoft Account → Security → Advanced security → App passwords
+(personal accounts; tenants — or accounts — with basic auth disabled reject
+them, so prefer OAuth above). Note: networks that block outbound port 993
+break IMAP entirely; OAuth keeps working.
+
+The card shows the unread count plus the newest subjects, and pings when new
+mail lands.
+
+## WhatsApp pill
+
+WhatsApp offers no personal-account API, so there is nothing to log into:
+toggle the pill and leave WhatsApp Web open in a browser tab — the pill reads
+the tab's `(N) WhatsApp` title for the unread count and pings on change.
+Clicking it opens WhatsApp Web.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
@@ -142,7 +203,14 @@ problems. It stays on your machine.
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
-- Not in this version: sending a file by email, dragging Mochi onto a window to
-  attach it as context, and jumping to a specific terminal window — "Open
-  terminal" opens the working folder in VS Code when `code` is on your `PATH`.
-- Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Not in this version: sending a file by email (no scriptable Mail.app
+  equivalent — `mailto:` cannot carry attachments) and the Cal.com month
+  calendar (list instead).
+- New in this fork: drag Mochi onto any window to attach a screenshot of it as
+  chat context, jump-to-terminal (focuses the console whose title shows the
+  project folder, falls back to VS Code/Explorer), Gemini CLI + Antigravity
+  (`agy`) + opencode pills, a Gemini chat provider with image support and
+  retries, keyless Spotify now-playing + WhatsApp unread pills, Gmail/Outlook
+  inbox pills over IMAP app passwords, island themes (Onyx/Ice/Frost) with the
+  Embasa accent rule, and a **PT-BR interface** (header badge + Settings →
+  Language, live switch).

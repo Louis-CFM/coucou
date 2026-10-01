@@ -68,7 +68,18 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    // Spotify needs no key: toggling the pill is the only opt-in.
+    spawn(app.clone(), "integration_spotify", 10, 15, poll_media);
+    // WhatsApp needs no key either: window-title presence + unread count.
+    spawn(app.clone(), "integration_whatsapp", 11, 15, poll_whatsapp);
+    // Mail over IMAP: only polls once address + app password exist.
+    spawn(app.clone(), "integration_gmail", 12, 60, |app| {
+        poll_mail(app, "integration_gmail", crate::mail::GMAIL)
+    });
+    spawn(app, "integration_outlook", 13, 60, |app| {
+        poll_mail(app, "integration_outlook", crate::mail::OUTLOOK)
+    });
 }
 
 /// True when the user has this integration switched on in settings.
@@ -113,6 +124,12 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_spotify" => poll_media(app).await,
+        "integration_whatsapp" => poll_whatsapp(app).await,
+        "integration_gmail" => poll_mail(app, "integration_gmail", crate::mail::GMAIL).await,
+        "integration_outlook" => {
+            poll_mail(app, "integration_outlook", crate::mail::OUTLOOK).await
+        }
         _ => {}
     }
 }
@@ -138,6 +155,172 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
         401 => "Invalid API key (401)".into(),
         403 => unauthorised_hint.into(),
         _ => format!("API error {code}"),
+    }
+}
+
+// ── Spotify (no key — reads the desktop app's window title) ──────────────────
+
+async fn poll_media(app: AppHandle) {
+    let np = tokio::task::block_in_place(crate::media::now_playing);
+    let track_id = if np.playing {
+        format!("{} — {}", np.artist, np.title)
+    } else {
+        "idle".into()
+    };
+    let event = if np.playing && is_new("spotify", &track_id) {
+        Some(IntegrationEvent {
+            success: true,
+            label: "♪ Now playing".into(),
+            detail: Some(track_id.clone()),
+        })
+    } else {
+        None
+    };
+    emit(&app, IntegrationUpdate {
+        id: "integration_spotify",
+        data: json!({ "artist": np.artist, "title": np.title, "playing": np.playing }),
+        error: None,
+        event,
+    });
+}
+
+async fn poll_whatsapp(app: AppHandle) {
+    let wa = tokio::task::block_in_place(crate::media::whatsapp);
+    let event = if wa.unread > 0 && is_new("whatsapp", &wa.unread.to_string()) {
+        Some(IntegrationEvent {
+            success: true,
+            label: if wa.unread == 1 {
+                "1 unread message".into()
+            } else {
+                format!("{} unread messages", wa.unread)
+            },
+            detail: None,
+        })
+    } else {
+        None
+    };
+    emit(&app, IntegrationUpdate {
+        id: "integration_whatsapp",
+        data: json!({ "present": wa.present, "unread": wa.unread }),
+        error: None,
+        event,
+    });
+}
+
+async fn poll_mail(app: AppHandle, id: &'static str, account: crate::mail::Account) {
+    // OAuth first where signed in (survives firewalls and disabled basic
+    // auth); IMAP app passwords stay as the fallback everywhere.
+    if id == "integration_gmail" && crate::gmail::has_oauth() {
+        return poll_gmail_rest(app).await;
+    }
+    if id == "integration_outlook" && crate::outlook::has_oauth() {
+        return poll_outlook_rest(app).await;
+    }
+    let outcome =
+        tokio::task::spawn_blocking(move || crate::mail::check(&account)).await;
+    let state = match outcome {
+        Ok(Ok(state)) => state,
+        // No credentials yet: the settings card says so, no error noise.
+        Ok(Err(e)) if e == "missing" => return,
+        Ok(Err(e)) => {
+            emit(&app, IntegrationUpdate {
+                id,
+                data: json!({}),
+                error: Some(e),
+                event: None,
+            });
+            return;
+        }
+        Err(_) => return,
+    };
+    let event = if state.unread > 0 && is_new(id, &state.unread.to_string()) {
+        Some(IntegrationEvent {
+            success: true,
+            label: if state.unread == 1 {
+                "1 unread mail".into()
+            } else {
+                format!("{} unread mails", state.unread)
+            },
+            detail: state.latest.first().map(|m| {
+                format!("{} — {}", m.from.chars().take(24).collect::<String>(), m.subject.chars().take(40).collect::<String>())
+            }),
+        })
+    } else {
+        None
+    };
+    emit(&app, IntegrationUpdate {
+        id,
+        data: json!({ "unread": state.unread, "latest": state.latest }),
+        error: None,
+        event,
+    });
+}
+
+async fn poll_gmail_rest(app: AppHandle) {
+    match crate::gmail::unread().await {
+        Ok(state) => {
+            let event = if state.unread > 0 && is_new("integration_gmail", &state.unread.to_string()) {
+                Some(IntegrationEvent {
+                    success: true,
+                    label: if state.unread == 1 {
+                        "1 unread mail".into()
+                    } else {
+                        format!("{} unread mails", state.unread)
+                    },
+                    detail: state.latest.first().map(|m| {
+                        format!("{} — {}", m.from.chars().take(24).collect::<String>(), m.subject.chars().take(40).collect::<String>())
+                    }),
+                })
+            } else {
+                None
+            };
+            emit(&app, IntegrationUpdate {
+                id: "integration_gmail",
+                data: json!({ "unread": state.unread, "latest": state.latest }),
+                error: None,
+                event,
+            });
+        }
+        Err(e) => emit(&app, IntegrationUpdate {
+            id: "integration_gmail",
+            data: json!({}),
+            error: Some(e),
+            event: None,
+        }),
+    }
+}
+
+async fn poll_outlook_rest(app: AppHandle) {
+    match crate::outlook::unread().await {
+        Ok(state) => {
+            let event = if state.unread > 0 && is_new("integration_outlook", &state.unread.to_string()) {
+                Some(IntegrationEvent {
+                    success: true,
+                    label: if state.unread == 1 {
+                        "1 unread mail".into()
+                    } else {
+                        format!("{} unread mails", state.unread)
+                    },
+                    detail: state.latest.first().map(|m| {
+                        format!("{} — {}", m.from.chars().take(24).collect::<String>(), m.subject.chars().take(40).collect::<String>())
+                    }),
+                })
+            } else {
+                None
+            };
+            emit(&app, IntegrationUpdate {
+                id: "integration_outlook",
+                data: json!({ "unread": state.unread, "latest": state.latest }),
+                error: None,
+                event,
+            });
+        }
+        Err(e) => emit(&app, IntegrationUpdate {
+            id: "integration_outlook",
+            data: json!({}),
+            error: Some(e),
+            event: None,
+        }),
     }
 }
 
