@@ -114,6 +114,16 @@ export class Island {
     const actions: ViewActions = {
       setView: (v) => this.setView(v),
       collapse: () => this.collapse(),
+      newChat: () => {
+        State.chatHistory = [];
+        State.droppedFile = null;
+        State.promptContext = null;
+        State.stateOverride = null;
+        State.noteMessage = null;
+        void Bridge.chatReset();
+        Sound.play("blip");
+        this.setView(State.defaultView());
+      },
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");

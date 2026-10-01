@@ -6,7 +6,7 @@ import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
-import type { ViewHost } from "./views";
+import type { ViewActions, ViewHost } from "./views";
 
 let nextId = 1;
 
@@ -36,7 +36,7 @@ function contextChip(label: string): HTMLElement {
   return chip;
 }
 
-export function buildPrompt(onHeightChange: () => void): ViewHost {
+export function buildPrompt(actions: ViewActions, onHeightChange: () => void): ViewHost {
   const chipRow = h("div", { class: "chip-row" });
   const log = h("div", { class: "chat-log" });
   const input = h("input", {
@@ -46,7 +46,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  // Ends this conversation (and detaches any file) so the next drop starts
+  // clean — no restart needed. Only shown once there is something to clear.
+  const fresh = h("button", {
+    class: "link-btn",
+    style: "color:#8e939c",
+    title: "New chat",
+    text: "New chat",
+    onclick: () => actions.newChat(),
+  });
+  fresh.style.display = "none";
+  const bar = h("div", { class: "chat-bar" }, input, send, fresh);
 
   const el = h(
     "div",
@@ -124,6 +134,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
       input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
       input.disabled = sending;
+      fresh.style.display = State.chatHistory.length > 0 || State.droppedFile ? "" : "none";
     },
     focus() {
       input.focus();
