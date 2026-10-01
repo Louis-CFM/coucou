@@ -423,6 +423,48 @@ pub fn make_non_activating(win: &WebviewWindow) {
     gtk_win.set_keep_above(true);
 }
 
+/// The WebKitWebView inside the island window.
+#[cfg(target_os = "linux")]
+pub fn island_webview(win: &WebviewWindow) -> Option<gtk::Widget> {
+    use gtk::prelude::*;
+    fn find(w: &gtk::Widget) -> Option<gtk::Widget> {
+        if w.type_().name() == "WebKitWebView" {
+            return Some(w.clone());
+        }
+        w.downcast_ref::<gtk::Container>()?.children().iter().find_map(find)
+    }
+    find(win.gtk_window().ok()?.upcast_ref())
+}
+
+/// Tells the front end when the pointer leaves and re-enters the island.
+///
+/// The window only takes the mouse inside the island's input region, so the
+/// pointer leaves it while still inside the webview's bounds. WebKit then
+/// reports the exit as an ordinary move at the edge and the page never gets a
+/// `mouseleave`, so the island would believe it is hovered forever.
+#[cfg(target_os = "linux")]
+pub fn watch_pointer_crossing(app: &AppHandle, win: &WebviewWindow) {
+    use gtk::gdk::{CrossingMode, NotifyType};
+    use gtk::prelude::*;
+    let Some(webview) = island_webview(win) else { return };
+    {
+        let app = app.clone();
+        webview.connect_leave_notify_event(move |_, ev| {
+            if ev.mode() == CrossingMode::Normal && ev.detail() != NotifyType::Inferior {
+                let _ = app.emit_to(WINDOW_LABEL, "pointer-left", ());
+            }
+            gtk::glib::Propagation::Proceed
+        });
+    }
+    let app = app.clone();
+    webview.connect_enter_notify_event(move |_, ev| {
+        if ev.detail() != NotifyType::Inferior {
+            let _ = app.emit_to(WINDOW_LABEL, "pointer-entered", ());
+        }
+        gtk::glib::Propagation::Proceed
+    });
+}
+
 /// Temporarily accept focus so a text field inside the island can be typed in.
 #[cfg(target_os = "linux")]
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
@@ -449,7 +491,11 @@ pub fn update_input_region(app: &AppHandle, gate: &PollGate) {
         use gtk::cairo::{RectangleInt, Region};
         use gtk::prelude::*;
         let Ok(gtk_win) = win.gtk_window() else { return };
-        let region = if collapsed {
+        let region = if crate::linux_dnd::REPICK.load(Ordering::Relaxed) {
+            // A drag just arrived: step out from under it so KWin picks us again
+            // (see linux_dnd.rs).
+            Region::create_rectangle(&RectangleInt::new(0, 0, 1, 1))
+        } else if collapsed {
             // Only the wake strip, even if the window manager kept the window
             // larger than asked: an invisible block at the top of the screen
             // swallowing clicks is the one thing this must never be.

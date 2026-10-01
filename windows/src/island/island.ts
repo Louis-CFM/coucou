@@ -89,6 +89,12 @@ export class Island {
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
+  /** Closes the drop zone when a drag left and never came back. */
+  private dragLeaveTimer: number | null = null;
+  /** A drag leave waiting to see whether an enter follows straight away. */
+  private pendingLeave: number | null = null;
+  /** Linux: set between Rust's `pointer-left` and `pointer-entered`. */
+  private pointerOutside = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -346,12 +352,21 @@ export class Island {
   private onDragDrop(e: DragDropPayload) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     // On Linux nothing else reports the cursor during a drag; GTK does send it
-    // with every drag event, in physical pixels.
+    // with every drag event. Tauri labels it physical, but GTK's coordinates
+    // are already logical, so dividing by the scale halves them on HiDPI.
     if (this.domCursor && e.position && e.type !== "leave") {
-      const scale = window.devicePixelRatio || 1;
-      this.onCursor(e.position.x / scale, e.position.y / scale);
+      this.pointerOutside = false;
+      this.onCursor(e.position.x, e.position.y);
     }
     if (State.paused) return;
+    if (this.dragLeaveTimer != null) {
+      window.clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
+    if (this.pendingLeave != null) {
+      window.clearTimeout(this.pendingLeave);
+      this.pendingLeave = null;
+    }
     switch (e.type) {
       case "enter":
       case "over": {
@@ -366,11 +381,32 @@ export class Island {
       }
       case "leave": {
         if (!State.fileDragOver) return;
-        State.fileDragOver = false;
-        this.engine.animateMorph(0);
-        // The island deliberately stays open: the drag session is still alive.
-        UploadSeq.exitZone();
-        State.notify();
+        // KWin under XWayland sends a leave and a fresh enter every few frames
+        // while the pointer stays on the island: only a leave that no event
+        // follows within a moment is a real one.
+        this.pendingLeave = window.setTimeout(() => {
+          this.pendingLeave = null;
+          State.fileDragOver = false;
+          this.engine.animateMorph(0);
+          // A drag that leaves sends no DOM mouseleave, and on Linux the drag
+          // was the only thing reporting the pointer: mark it gone, or the
+          // island thinks it is still hovered and never closes.
+          if (this.domCursor) {
+            this.trackHover(false);
+            if (this.botHovering) {
+              this.cancelBotHover();
+              this.botHovering = false;
+            }
+          }
+          // The island stays open while the drag may come back, but not forever:
+          // a drag dropped elsewhere or cancelled sends no further event.
+          UploadSeq.exitZone();
+          State.notify();
+          this.dragLeaveTimer = window.setTimeout(() => {
+            this.dragLeaveTimer = null;
+            if (!State.fileDragOver && State.view === "upload") this.setView(State.defaultView());
+          }, 1200);
+        }, 150);
         break;
       }
       case "drop": {
@@ -574,13 +610,32 @@ export class Island {
   useDomCursor() {
     if (this.domCursor) return;
     this.domCursor = true;
-    window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
-    document.documentElement.addEventListener("mouseleave", (e) => {
-      // The exit point still sits inside the hit margin; push it just past it,
-      // below the island, so `onCursor` sees the mouse leave.
-      const rect = this.islandRect();
-      this.onCursor(e.clientX, Math.max(e.clientY, rect.y + rect.h + HIT_MARGIN + 1));
+    window.addEventListener("mousemove", (e) => {
+      if (!this.pointerOutside) this.onCursor(e.clientX, e.clientY);
     });
+    document.documentElement.addEventListener("mouseleave", (e) => this.pointerLeft(e.clientX, e.clientY));
+  }
+
+  /**
+   * Linux: the pointer left the input region. WebKit follows up with a move at
+   * the exit point, inside the hit margin, which would mark the island hovered
+   * again; moves are ignored until the pointer comes back.
+   */
+  pointerExited() {
+    this.pointerOutside = true;
+    this.pointerLeft();
+  }
+
+  pointerEntered() {
+    this.pointerOutside = false;
+  }
+
+  /** The pointer left the window (DOM `mouseleave`, or Rust's `pointer-left` on Linux). */
+  pointerLeft(x = State.mouse.x, y = State.mouse.y) {
+    // The exit point still sits inside the hit margin; push it just past it,
+    // below the island, so `onCursor` sees the mouse leave.
+    const rect = this.islandRect();
+    this.onCursor(x, Math.max(y, rect.y + rect.h + HIT_MARGIN + 1));
   }
 
   /** Cursor in window-logical coordinates. */
@@ -598,19 +653,7 @@ export class Island {
     const inIsland =
       x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
-
-    if (inIsland && !this.wasInIsland) {
-      if (this.fsm.state === "coucou") this.greeting.hover();
-      this.fsm.mouseEntered();
-      this.homeCollapseAt = null;
-    }
-    if (!inIsland && this.wasInIsland) {
-      this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
-        this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
-      }
-    }
-    this.wasInIsland = inIsland;
+    this.trackHover(inIsland);
 
     // Bot hover → love
     const overBot = State.mode === "expanded" && State.stateOverride == null && this.isBotHit(x, y);
@@ -626,6 +669,22 @@ export class Island {
     }
 
     this.ensureRunning();
+  }
+
+  /** Pointer entering or leaving the island drives the open/close timers. */
+  private trackHover(inIsland: boolean) {
+    if (inIsland && !this.wasInIsland) {
+      if (this.fsm.state === "coucou") this.greeting.hover();
+      this.fsm.mouseEntered();
+      this.homeCollapseAt = null;
+    }
+    if (!inIsland && this.wasInIsland) {
+      this.fsm.mouseLeft();
+      if (this.fsm.state === "home" && !State.isPinned) {
+        this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+      }
+    }
+    this.wasInIsland = inIsland;
   }
 
   private isBotHit(x: number, y: number): boolean {

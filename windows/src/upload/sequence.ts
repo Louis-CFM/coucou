@@ -244,6 +244,9 @@ class UploadSequence {
     this.prevY = y;
     this.prevT = now;
     this.speed = 0;
+    // Back in the zone during the same drag: the box carries on from where it
+    // is rather than replaying the entry from the rest position.
+    if (this.isActive && this.dropWall == null) return;
 
     this.t = USC.ENTRY_T_REF;
     this.entered = USC.ENTRY_T_REF;

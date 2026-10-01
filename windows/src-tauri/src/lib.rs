@@ -8,6 +8,8 @@ mod integrations;
 mod island;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "linux")]
+mod linux_dnd;
 mod log;
 mod pipe;
 mod secrets;
@@ -126,6 +128,8 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
+    #[cfg(target_os = "linux")]
+    linux_dnd::TEXT_FOCUS.store(focused, Ordering::Relaxed);
     island::set_activating(&win, focused);
     if focused {
         let _ = win.set_focus();
@@ -473,6 +477,11 @@ pub fn run() {
 
             if let Some(win) = island::window(&handle) {
                 island::make_non_activating(&win);
+                #[cfg(target_os = "linux")]
+                {
+                    linux_dnd::attach(&handle, &win, gate.clone());
+                    island::watch_pointer_crossing(&handle, &win);
+                }
                 island::apply_geometry(&handle, &loaded.screen, false);
                 let _ = win.show();
             }

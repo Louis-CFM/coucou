@@ -27,6 +27,8 @@ async function main() {
   State.loadIntegrationTasks();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<null>("pointer-left", () => island.pointerExited());
+  await onEvent<null>("pointer-entered", () => island.pointerEntered());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
