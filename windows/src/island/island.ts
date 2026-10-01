@@ -80,6 +80,13 @@ export class Island {
   private lastLoveTime = 0;
   private botHoverStart = { x: 0, y: 0 };
 
+  // Mochi drag-out → window attach (macOS: drag Mochi onto any window).
+  // Press is recorded on mousedown; the slap is deferred until release so a
+  // press that turns into a drag (> 7pt) becomes a ghost instead of a slap.
+  private botPress: { x: number; y: number } | null = null;
+  private draggingGhost = false;
+  private ghostEl!: HTMLElement;
+
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
@@ -177,6 +184,7 @@ export class Island {
     this.wakeStrip = h("div", { id: "wake-strip" });
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
+    this.ghostEl = this.buildGhost();
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
@@ -222,8 +230,88 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.ghostEl);
     this.applyGeometry();
+  }
+
+  /**
+   * The drag ghost: a simple CSS Mochi (cream squircle + two eyes) that follows
+   * the cursor while dragging the bot out. The real canvas keeps rendering
+   * underneath but is hidden until the drop, so no engine coupling is needed.
+   */
+  private buildGhost(): HTMLElement {
+    const eye = (left: string) => h("div", {
+      style: `position:absolute;top:20px;left:${left};width:9px;height:11px;border-radius:50%;background:#1A1412`,
+    });
+    const ghost = h("div", {
+      id: "bot-ghost",
+      style: "position:absolute;display:none;width:54px;height:48px;border-radius:46% 46% 48% 48%/58% 58% 42% 42%;background:radial-gradient(circle at 68% 22%,#FFFAF5 0%,#EAD9CC 78%,#DDCCBF 100%);box-shadow:0 6px 22px rgba(0,0,0,.5);z-index:60;pointer-events:none",
+    }, eye("15px"), eye("30px"));
+    return ghost;
+  }
+
+  // ── Mochi drag-out → window attach ────────────────────────────────────────
+
+  private startGhost(x: number, y: number) {
+    this.draggingGhost = true;
+    this.botPress = null;
+    this.cancelBotHover();
+    this.botHovering = false;
+    this.engine.triggerEmote("surprised");
+    Sound.play("pop");
+    this.botCanvas.style.opacity = "0";
+    this.moveGhost(x, y);
+    this.ghostEl.style.display = "block";
+    void Bridge.log("attach drag started");
+  }
+
+  private moveGhost(x: number, y: number) {
+    this.ghostEl.style.left = `${x - 27}px`;
+    this.ghostEl.style.top = `${y - 30}px`;
+  }
+
+  private endGhostHidden() {
+    this.draggingGhost = false;
+    this.ghostEl.style.display = "none";
+    this.ensureRunning();
+  }
+
+  /** Release of the left button anywhere (Rust `mouse-up` or DOM fallback). */
+  onMouseUp(x: number, y: number) {
+    if (this.draggingGhost) {
+      const rect = this.islandRect();
+      const overIsland =
+        x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
+        y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
+      this.endGhostHidden();
+      if (overIsland) return; // dropped back home: silent cancel
+      void Bridge.log("attach capture");
+      void Bridge.attachWindow()
+        .then((win) => {
+          const label = win.title || win.appName || win.name;
+          State.droppedFile = { name: win.name, path: win.path };
+          State.promptContext = { kind: "file", name: win.name, path: win.path };
+          State.chatHistory = [];
+          void Bridge.chatReset();
+          void Bridge.log(`attach captured ${win.appName} ${label.slice(0, 40)}`);
+          Sound.play("attach");
+          this.engine.triggerEmote("wink");
+          this.setView("prompt");
+        })
+        .catch((err) => {
+          State.noteMessage = String(err).replace(/^Error:\s*/, "");
+          this.setView("note");
+          Sound.play("error");
+          window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        });
+      return;
+    }
+    if (this.botPress) {
+      // Plain click on Mochi: the deferred slap.
+      this.botPress = null;
+      this.cancelBotHover();
+      this.engine.slap();
+    }
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -293,8 +381,27 @@ export class Island {
     if (UploadSeq.isActive && !UPLOAD_VIEWS.has(view)) UploadSeq.deactivate();
   }
 
+  /**
+   * Drop views pin the island: the user opened the Drop tab and is about to
+   * fetch a file from Explorer, which always takes longer than the auto-close
+   * delay. Without this the island retracts to its 6px strip mid-drag and the
+   * OS refuses the drop ("prohibited" cursor) — the #1 drop complaint.
+   * Approval pins win over this; leaving the flow unpins unless a decision
+   * is still pending.
+   */
+  private pinUploadIfNeeded(view: IslandViewName) {
+    if (UPLOAD_VIEWS.has(view)) {
+      State.isPinned = true;
+      this.fsm.pinned = true;
+    } else if (!State.pendingApproval) {
+      State.isPinned = false;
+      this.fsm.pinned = false;
+    }
+  }
+
   expand(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.pinUploadIfNeeded(view);
     State.view = view;
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
@@ -305,6 +412,7 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.pinUploadIfNeeded(view);
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -544,10 +652,15 @@ export class Island {
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
-        this.cancelBotHover();
-        this.engine.slap();
+        // Press recorded; slap happens on release unless this becomes a
+        // drag-out (> 7pt with the button held → ghost + window attach).
+        this.botPress = { x: e.clientX, y: e.clientY };
       }
     });
+
+    // DOM mouseup only fires over our window; releases outside arrive via the
+    // Rust `mouse-up` event. Both funnel into onMouseUp (idempotent).
+    window.addEventListener("mouseup", () => this.onMouseUp(State.mouse.x, State.mouse.y));
 
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
@@ -563,11 +676,22 @@ export class Island {
     }
   }
 
-  /** Cursor in window-logical coordinates. */
-  onCursor(x: number, y: number) {
+  /** Cursor in window-logical coordinates. `down` comes from the Rust poll. */
+  onCursor(x: number, y: number, down = false) {
     State.mouse = { x, y };
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
+
+    // Press turned into a drag-out: show the ghost once past the 7pt threshold.
+    if (this.botPress && down && IS_TAURI && !this.draggingGhost) {
+      const d = Math.hypot(x - this.botPress.x, y - this.botPress.y);
+      if (d > 7) this.startGhost(x, y);
+    }
+    if (this.draggingGhost) {
+      this.moveGhost(x, y);
+      this.ensureRunning();
+      return; // no enter/leave, hover or auto-close bookkeeping mid-drag
+    }
 
     // Windows sends no cursor position with an OLE drag, so the drop sequence is
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
@@ -744,8 +868,9 @@ export class Island {
     this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    // The drop canvas draws its own Mochi; two of them would overlap.
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
+    // The drop canvas draws its own Mochi; two of them would overlap. The drag
+    // ghost replaces the bot too while a window attach is in flight.
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !this.draggingGhost;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {

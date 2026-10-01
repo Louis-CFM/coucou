@@ -157,7 +157,11 @@ problems. It stays on your machine.
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
-- Not in this version: sending a file by email, dragging Mochi onto a window to
-  attach it as context, and jumping to a specific terminal window — "Open
-  terminal" opens the working folder in VS Code when `code` is on your `PATH`.
-- Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Not in this version: sending a file by email (no scriptable Mail.app
+  equivalent — `mailto:` cannot carry attachments) and the Cal.com month
+  calendar (list instead).
+- New in this fork: drag Mochi onto any window to attach a screenshot of it as
+  chat context, jump-to-terminal (focuses the console whose title shows the
+  project folder, falls back to VS Code/Explorer), Gemini CLI + Antigravity
+  (`agy`) + opencode pills, and a Gemini chat provider. The island stays pinned
+  while a Drop view is open so it cannot retract mid-drag.

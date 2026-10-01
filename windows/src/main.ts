@@ -23,7 +23,10 @@ async function main() {
   island.applySettings();
   State.loadIntegrationTasks();
 
-  await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<{ x: number; y: number; down: boolean }>("cursor", ({ x, y, down }) =>
+    island.onCursor(x, y, down),
+  );
+  await onEvent<{ x: number; y: number }>("mouse-up", ({ x, y }) => island.onMouseUp(x, y));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

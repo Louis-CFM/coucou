@@ -40,6 +40,9 @@ const HIT_MARGIN: f64 = 14.0;
 pub struct CursorPayload {
     pub x: f64,
     pub y: f64,
+    /// True while the left mouse button is held. Lets the island tell a click
+    /// on Mochi apart from the start of a drag-out (window attach).
+    pub down: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -312,7 +315,18 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+
+                let down = left_button_down();
+                // Button released anywhere (usually outside our window, at the
+                // end of a Mochi drag-out): the page never sees a DOM mouseup
+                // out there, so the release is delivered as an event even when
+                // the cursor itself did not move.
+                if was_down && !down {
+                    let _ = win.emit("mouse-up", CursorPayload { x, y, down });
+                }
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
+                    was_down = down;
                     continue;
                 }
                 last = (x, y);
@@ -335,8 +349,8 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
+                // ours before the file arrives. (`down` was read above, before
+                // the movement check, so a press without movement still lands.)
                 if down && !was_down {
                     let handle = app.clone();
                     let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
@@ -355,7 +369,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
 
-                let _ = win.emit("cursor", CursorPayload { x, y });
+                let _ = win.emit("cursor", CursorPayload { x, y, down });
             }
         }
     });

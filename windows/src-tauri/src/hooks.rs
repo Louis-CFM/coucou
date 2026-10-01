@@ -408,6 +408,7 @@ fn merged_gemini(existing: &Value) -> Value {
         list.push(json!({
             "matcher": "*",
             "hooks": [{
+                "name": "coucou",
                 "type": "command",
                 "command": gemini_hook_command(normalized),
                 "timeout": timeout_ms,
@@ -518,6 +519,9 @@ fn agy_backup_path() -> PathBuf {
 fn merged_agy(existing: &Value) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut ours = Map::new();
+    // Explicit enabled:true — agy defaults to true, but a named key with an
+    // explicit flag can never be mistaken for a disabled entry.
+    ours.insert("enabled".into(), Value::Bool(true));
     for (event, timeout_s) in AGY_HOOK_EVENTS {
         ours.insert(
             (*event).to_string(),

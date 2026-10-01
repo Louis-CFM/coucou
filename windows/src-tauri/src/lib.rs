@@ -1,8 +1,10 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod capture;
 mod files;
 mod gemini;
+mod jump;
 mod hooks;
 mod integrations;
 mod island;
@@ -134,10 +136,24 @@ fn open_url(url: String) {
         .spawn();
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to Explorer otherwise.
+/// "Open terminal" — best effort, in order:
+/// 1. Focus the visible console whose title shows the project folder
+///    (PowerShell/CMD/Windows Terminal all put cwd in the title).
+/// 2. Open the folder in VS Code when `code` is on PATH.
+/// 3. Fall back to Explorer.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
+    if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+        let folder = p.replace('/', "\\");
+        let name = folder
+            .trim_end_matches('\\')
+            .rsplit('\\')
+            .next()
+            .unwrap_or("");
+        if jump::focus_window_for_folder(name) {
+            return true;
+        }
+    }
     // No `cmd /C` anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
     // in a folder name as syntax. Finding the launcher ourselves and handing the
@@ -311,6 +327,13 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// Mochi drag-out: captures the window under the cursor into the inbox.
+/// The cursor is read server-side — the release happens outside our window.
+#[tauri::command]
+fn attach_window(app: AppHandle) -> Result<capture::AttachedWindow, String> {
+    capture::attach(&app)
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -455,6 +478,7 @@ pub fn run() {
             chat_send,
             chat_reset,
             ingest_file,
+            attach_window,
             secret_present,
             secret_set,
             secret_clear,

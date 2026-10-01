@@ -97,6 +97,8 @@ export const Bridge = {
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Captures the window under the cursor (Mochi drag-out). */
+  attachWindow: () => callOrThrow<AttachedWindow>("attach_window"),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -150,10 +152,19 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 export type BridgeEvent =
-  | { name: "cursor"; payload: { x: number; y: number } }
+  | { name: "cursor"; payload: { x: number; y: number; down: boolean } }
+  | { name: "mouse-up"; payload: { x: number; y: number; down: boolean } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null };
+
+export interface AttachedWindow {
+  name: string;
+  path: string;
+  size: number;
+  appName: string;
+  title: string;
+}
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
