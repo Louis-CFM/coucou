@@ -73,10 +73,18 @@ The pill lifecycle:
 | `PreToolUse` | State → working; tool label shown in ticker |
 | `PostToolUse` / `PostToolUseFailure` | State → working |
 | `Notification` | Rate-limit or question state if applicable |
-| `Stop` | State → finished for 5 s, then pill removed |
+| `Stop` | State → finished for 5 s; active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
 | `StopFailure` | State → error |
-| `SessionEnd` | Pill removed |
+| `SessionEnd` | Active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
 | `SubagentStart` / `SubagentStop` | Step added to ticker |
+
+## Declared pills
+
+A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabled in **Settings → Active pills**. When a session ends for a declared pill, the pill stays visible and resets to idle instead of disappearing.
+
+A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
+
+The GitHub build exposes Gemini CLI (`agent_gemini`) and Antigravity (`agent_antigravity`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as the main pill; session support is coming in a future version.
 
 ## Real-world examples
 
