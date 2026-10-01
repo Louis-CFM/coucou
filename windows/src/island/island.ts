@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NO_NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
@@ -45,13 +45,12 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
-  private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
   private uploadCanvas!: UploadCanvas;
 
-  private width = new Tracked(NOTCH_W);
+  private width = new Tracked(NO_NOTCH_W);
   private height = new Tracked(0);
   private radius = new Tracked(ROUNDED_CORNER);
   private botCx = new Spring(46);
@@ -162,6 +161,29 @@ export class Island {
       setAutoClose: (s) => {
         State.settings.autoCloseInterval = s;
         this.fsm.homeToPetitDelay = s;
+        // Changing the timer re-arms it, so a new value takes effect at once
+        // rather than after the previous (possibly long) one elapses.
+        if (this.fsm.state === "home") this.fsm.mouseLeft();
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      setAbsence: (s) => {
+        State.settings.absenceInterval = s;
+        this.fsm.petitToHiddenDelay = s;
+        if (this.fsm.state === "petit") this.fsm.mouseLeft();
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      togglePin: () => {
+        const next = !State.settings.pinIsland;
+        State.settings.pinIsland = next;
+        State.isPinned = next;
+        this.fsm.pinned = next;
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      toggleWakeOnHover: () => {
+        State.settings.wakeOnHover = !State.settings.wakeOnHover;
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
@@ -169,7 +191,6 @@ export class Island {
       blip: () => Sound.play("blip"),
     };
 
-    this.wakeStrip = h("div", { id: "wake-strip" });
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
@@ -217,7 +238,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.islandEl);
     this.applyGeometry();
   }
 
@@ -235,7 +256,11 @@ export class Island {
           else if (from === "hidden") Sound.play("peek");
           this.setMode("compact");
           if (from === "coucou") State.view = State.defaultView();
-          if (!this.wasInIsland) this.fsm.mouseLeft();
+          // Always arm the fully-compact timer on arriving at the bar. Gating it
+          // on `wasInIsland` meant it silently never armed whenever the cursor
+          // happened to still be over the island, leaving the bar resting
+          // forever.
+          this.fsm.mouseLeft();
           break;
         case "home":
           this.expand(State.defaultView());
@@ -315,17 +340,154 @@ export class Island {
   }
 
   collapse() {
+    // Explicit dismissal clears a hook alert's pin, but never the user's own:
+    // `settings.pinIsland` is untouched here and keeps the island open.
     State.isPinned = false;
-    this.fsm.pinned = false;
+    this.fsm.pinned = State.settings.pinIsland;
     // Drive the state machine rather than the mode: setting the mode behind its
     // back left it thinking the island was still open, and a click on the compact
     // island then did nothing — the island could never be reopened.
     this.fsm.forcePetit();
   }
 
+  /** Explicit outside click closes the panel, while approval cards stay actionable. */
+  // ── Dragging the resting island ───────────────────────────────────────────────
+
+private dragStartX = 0;
+  private dragStartPosition = 0;
+  private dragMoved = false;
+/** Timestamps of recent outside clicks, for the double-click wake. */
+private outsideClicks: number[] = [];
+
+  /**
+   * Grabs the resting island and follows the pointer, landing it wherever it is
+   * released. The position is normalised across the target display (0 = left,
+   * 1 = right) and handed straight to Rust, which owns the actual window move.
+   *
+   * A press that never moves more than a few pixels is left alone so an ordinary
+   * click on the bar still wakes the island instead of nudging it.
+   */
+  private beginNotchDrag(e: MouseEvent) {
+    if (e.button !== 0) return;
+    const screen = State.screen;
+    if (!screen || screen.width <= 0) {
+      // Without screen metrics a drag can't be normalised, so fall back to the
+      // plain click that opens the island.
+      this.fsm.click();
+      return;
+    }
+    // Dragging a resting bar is a deliberate act; don't also nudge the mascot.
+    e.stopPropagation();
+
+    // The bar is the island's own width in whichever resting mode we are in, so
+    // the draggable span depends on it.
+    const barW = islandSize(State.mode, State.view).w;
+
+    this.dragStartX = e.screenX;
+    this.dragStartPosition = State.settings.notchPosition;
+    this.dragMoved = false;
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.screenX - this.dragStartX;
+      if (!this.dragMoved && Math.abs(dx) < 4) return;
+      this.dragMoved = true;
+      const span = Math.max(1, screen.width - barW);
+      // screenX is in physical pixels; divide by the scale factor the server
+      // reported so the maths matches the logical pixels Rust positions with.
+      const next = this.dragStartPosition + dx / screen.scale / span;
+      const clamped = Math.max(0, Math.min(1, next));
+      State.settings.notchPosition = clamped;
+      void Bridge.setNotchPosition(clamped);
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (this.dragMoved) {
+        // Persist once more so the resting place survives a restart even if the
+        // last move event landed a hair short of the release point.
+        void Bridge.setNotchPosition(State.settings.notchPosition);
+      } else {
+        // It was a click, not a drag, so open the island.
+        this.fsm.click();
+      }
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    e.preventDefault();
+  }
+
+  /**
+   * Whether the island must stay open: either the user pinned it, or a hook
+   * alert is waiting for an answer. Hooks clear `State.isPinned` when they
+   * finish, so the user's own pin has to be read from settings — otherwise an
+   * alert would quietly undo it.
+   */
+  private get staysOpen(): boolean {
+    return State.settings.pinIsland || State.isPinned;
+  }
+
+/**
+   * How close to the island a click may land and still count as "near" it for
+   * the double-click wake. Measured from the island's rect on both sides, so it
+   * behaves the same to the left and to the right.
+   */
+private static readonly NEAR_RADIUS = 56;
+/** Two clicks within this window count as a double-click. */
+private static readonly DOUBLE_MS = 900;
+
+/**
+   * A click outside the island.
+   *
+   * Reduced: nothing happens on one click; a second one near the island wakes it
+   * back to the bar.
+   *
+   * Showing: the first click closes the panel to the resting bar, and a further
+   * click takes it the rest of the way to fully compact. The fully-compact timer
+   * does the same thing on its own after the configured delay, so either route
+   * gets there — the click just skips the wait.
+   *
+   * A pinned island ignores all of it.
+   */
+dismissOutside() {
+  if (this.staysOpen) return;
+  const now = performance.now();
+  const near = this.isNearIsland();
+
+  this.outsideClicks = this.outsideClicks.filter((t) => now - t < Island.DOUBLE_MS);
+
+  // Double-click near the island while it is reduced: wake it back to the bar.
+  if (State.mode === "hidden" && near && this.outsideClicks.length > 0) {
+    this.outsideClicks = [];
+    this.fsm.mouseEntered();
+    return;
+  }
+  this.outsideClicks.push(now);
+
+  // Reduced with nothing showing: a lone click is inert, otherwise every stray
+  // click on the desktop would toggle the island.
+  if (State.mode === "hidden") return;
+
+  this.outsideClicks = [];
+  // Already resting on the bar: this extra click skips the wait and reduces now.
+  // `collapse()` would be a no-op here — the state machine ignores a transition
+  // to the state it is already in.
+  if (State.mode === "compact") this.fsm.forceHidden();
+  else this.collapse();
+}
+
+/** True when the cursor is within NEAR_RADIUS of the island's painted rect. */
+private isNearIsland(): boolean {
+  const rect = this.islandRect();
+  const dx = Math.max(rect.x - State.mouse.x, 0, State.mouse.x - (rect.x + rect.w));
+  const dy = Math.max(rect.y - State.mouse.y, 0, State.mouse.y - (rect.y + rect.h));
+  return dx <= Island.NEAR_RADIUS && dy <= Island.NEAR_RADIUS;
+}
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
-    this.fsm.pinned = State.isPinned;
+    this.fsm.pinned = this.staysOpen;
     this.fsm.forceHome();
     this.expand(view);
   }
@@ -469,22 +631,50 @@ export class Island {
     this.ensureRunning();
   }
 
+  /**
+   * Horizontal offset of the island inside the window, in logical px.
+   *
+   * The island must always open toward the middle of the screen: a bar resting
+   * on the left edge grows rightwards, one on the right edge grows leftwards,
+   * and a centred one opens symmetrically. `bias` is the resting position mapped
+   * to 0..1, which makes this continuous — crossing the middle of the screen
+   * slides the island rather than snapping it. At bias 0.5 it reduces exactly to
+   * the old centred offset.
+   */
+  private islandOffsetX(w: number): number {
+    // The window is always the full panel width, whatever the island draws inside
+    // it. If this switched to the reduced width, the offset would jump the moment
+    // the island shrank and the bar would appear to lurch to the middle before
+    // settling — the window resize must not affect where the island sits.
+    const winW = PANEL_W;
+    const position = State.settings.notchPosition;
+    const p = Number.isFinite(position) ? Math.max(0, Math.min(1, position)) : 0.5;
+    return (winW - w) * p;
+  }
+
   private applyGeometry() {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    const offsetX = this.islandOffsetX(w);
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    this.islandEl.style.transform = `translateX(${offsetX}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    // The pill grid is centred in the bar's right end and shrinks with it, so a
+    // 24px-tall bar never crops it (PR #22 scales the grid to the resting height).
+    const gridScale = Math.min(1, Math.max(0, hh - 4) / 28);
+    const grid = 29 * gridScale;
+    this.miniGrid.style.transform = `scale(${gridScale})`;
+    this.miniGrid.style.transformOrigin = "center center";
+    this.miniGrid.style.left = `${w - 40 - grid / 2}px`;
+    this.miniGrid.style.top = `${hh / 2 - grid / 2}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = { x: offsetX, y: 0, w, h: hh };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -496,7 +686,7 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    return { x: this.islandOffsetX(w), y: 0, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -507,14 +697,11 @@ export class Island {
       this.collapseTimer = null;
     }
     if (State.mode === "hidden") {
-      // Let the island finish retracting, then drop the window to the wake strip:
-      // from there the OS delivers no cursor events, so nothing polls at all.
-      this.collapseTimer = window.setTimeout(() => {
-        this.collapseTimer = null;
-        if (State.mode !== "hidden") return;
-        this.collapsed = true;
-        void Bridge.setCollapsed(true);
-      }, 420);
+      // The window deliberately keeps its full size while the island shrinks.
+      // Resizing it used to resize the surface underneath the shrink animation,
+      // which read as a lurch toward the middle; the transparent margin is
+      // click-through, so nothing is lost by leaving it in place.
+      this.collapseTimer = null;
     } else if (this.collapsed) {
       // Grow the window back before the island animates open.
       this.collapsed = false;
@@ -525,17 +712,18 @@ export class Island {
   // ── Input ───────────────────────────────────────────────────────────────────
 
   private wireInput() {
-    // The wake strip is the only thing the OS can hit while the island is hidden.
-    this.wakeStrip.addEventListener("mouseenter", () => {
-      Sound.resume();
-      if (State.mode === "hidden") this.fsm.mouseEntered();
-    });
-
+    // The island element is its own wake target now that the reduced state is a
+    // real, visible stub. A separate wake strip used to sit centred in the window
+    // and went stale the moment the island could be dragged off-centre, leaving a
+    // hit area to the left of the bar that woke the island by mistake.
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
       if (State.mode !== "expanded") {
-        this.fsm.click();
+        // Both resting bars drag, and the click that opens the island is decided
+        // on release instead. Opening on press would flip the mode to expanded
+        // mid-gesture and resize the window out from under the drag.
+        this.beginNotchDrag(e);
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
@@ -545,7 +733,7 @@ export class Island {
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      if (e.key === "Escape" && State.mode === "expanded" && !this.staysOpen) this.collapse();
       State.lastActivity = performance.now();
     });
 
@@ -555,6 +743,9 @@ export class Island {
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) {
       window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+      window.addEventListener("pointerdown", (e) => {
+        if (!this.islandEl.contains(e.target as Node)) this.dismissOutside();
+      });
     }
   }
 
@@ -576,12 +767,17 @@ export class Island {
 
     if (inIsland && !this.wasInIsland) {
       if (this.fsm.state === "coucou") this.greeting.hover();
-      this.fsm.mouseEntered();
+      // This is the poll-driven hover path and it is the one that actually wakes
+      // the island on Windows, so the "wake on hover" setting has to be honoured
+      // here too — gating only the DOM mouseenter left the setting inert.
+      if (this.fsm.state !== "hidden" || State.settings.wakeOnHover) {
+        this.fsm.mouseEntered();
+      }
       this.homeCollapseAt = null;
     }
     if (!inIsland && this.wasInIsland) {
       this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
+      if (this.fsm.state === "home" && !this.staysOpen && State.settings.autoCloseInterval > 0) {
         this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
       }
     }
@@ -808,7 +1004,7 @@ export class Island {
   }
 
   private updateCountdown(nowMs: number) {
-    if (State.mode !== "expanded" || State.isPinned || this.homeCollapseAt == null) {
+    if (State.mode !== "expanded" || this.staysOpen || this.homeCollapseAt == null) {
       this.countdown.style.width = "0px";
       return;
     }
@@ -874,6 +1070,10 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.absenceInterval;
+    // A pin saved last session keeps the island open across a restart.
+    State.isPinned = State.settings.pinIsland;
+    this.fsm.pinned = State.settings.pinIsland;
     State.notify();
   }
 

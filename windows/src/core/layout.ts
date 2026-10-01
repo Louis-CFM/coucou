@@ -53,11 +53,20 @@ export interface ViewLayout {
 export const PANEL_W = 720;
 export const PANEL_H = 320;
 
-// No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
-export const NOTCH_W = 184;
-export const NOTCH_H = 32;
-export const COMPACT_W = 288; // NOTCH_W + 104
+// A PC never has a real notch, so the resting sizes follow PR #22's no-notch
+// branch: an 80 pt fake notch that Mochi peeks out of, and a 240 pt compact bar
+// no taller than the menu bar.
+export const FALLBACK_NOTCH_W = 184; // only used when a screen really has a notch
+export const NO_NOTCH_W = 80;
+export const NO_NOTCH_H = 24;
+export const COMPACT_W = 240;
 export const EXPANDED_W = 640;
+
+/** The resting island's sizes on a notched-less screen. Mirrors PR #22's
+ *  `IslandScreenGeometry` so the mascot and pills shrink with the bar. */
+export function restingLayout() {
+  return { width: COMPACT_W, height: NO_NOTCH_H };
+}
 
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
@@ -84,7 +93,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   searching: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
-  settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  settings: { height: 200, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
 };
 
@@ -104,11 +113,11 @@ export function islandSize(
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
-      // No notch to hide inside on a PC: the island retracts to zero height and
-      // slides into the top edge of the screen instead of sitting there as a bar.
-      return { w: NOTCH_W, h: 0 };
+      // No notch to hide inside on a PC: a narrow 80 pt stub that keeps Mochi
+      // visible and parked, instead of the 184 pt a notched screen would use.
+      return { w: NO_NOTCH_W, h: NO_NOTCH_H };
     case "compact":
-      return { w: COMPACT_W, h: NOTCH_H };
+      return { w: COMPACT_W, h: NO_NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
@@ -131,10 +140,27 @@ export function botPosition(
   uploadProgress = 0,
 ): BotPlacement {
   switch (mode) {
-    case "hidden":
-      return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
-    case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+    case "hidden": {
+      // Peeking out of the 80 pt stub: shrunk to fit and kept visible.
+      const rest = restingLayout();
+      return {
+        cx: NO_NOTCH_W / 2,
+        cy: rest.height / 2,
+        diameter: Math.min(20, Math.max(0, NO_NOTCH_H - 6)),
+        opacity: 1,
+      };
+    }
+    case "compact": {
+      // PR #22's IslandRestingLayout: centre Mochi vertically and cap the
+      // diameter so a short bar never crops it.
+      const rest = restingLayout();
+      return {
+        cx: 40,
+        cy: rest.height / 2,
+        diameter: Math.min(20, Math.max(0, rest.height - 6)),
+        opacity: 1,
+      };
+    }
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
       if (view === "uploading") {

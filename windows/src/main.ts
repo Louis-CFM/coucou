@@ -19,6 +19,7 @@ async function main() {
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+    State.screen = boot.screen;
   }
   island.applySettings();
   State.loadIntegrationTasks();
@@ -51,6 +52,7 @@ async function main() {
   });
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
+  await onEvent<null>("outside-click", () => island.dismissOutside());
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {

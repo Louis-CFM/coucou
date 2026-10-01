@@ -8,9 +8,9 @@ export class IslandStateMachine {
 
   onTransition: ((from: FsmState, to: FsmState) => void) | null = null;
 
-  /** home → petit delay, seconds. */
+  /** home → petit delay, seconds. 0 = never auto-close. */
   homeToPetitDelay = 15;
-  /** petit → hidden delay, seconds. */
+  /** petit → hidden delay, seconds. 0 = stay compact, never fully reduce. */
   petitToHiddenDelay = 60;
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
@@ -66,6 +66,14 @@ export class IslandStateMachine {
   }
 
   click() {
+    // A click always opens the island, from either resting state. From the
+    // reduced stub it skips straight to open rather than stopping at compact, so
+    // one press is enough — otherwise turning off "wake on hover" would need two.
+    if (this.state === "hidden") {
+      this.cancelTimers();
+      this.transition("home");
+      return;
+    }
     if (this.state !== "petit") return;
     this.cancelTimers();
     this.transition("home");
@@ -106,6 +114,9 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    // 0 (or anything non-positive) means "stay compact": no timer at all, so the
+    // island never fully reduces on its own.
+    if (this.petitToHiddenDelay <= 0) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
@@ -115,6 +126,8 @@ export class IslandStateMachine {
   private scheduleHomeCollapse() {
     this.clear("homeCollapse");
     if (this.pinned) return;
+    // 0 means auto-close is off: the island stays open until it is dismissed.
+    if (this.homeToPetitDelay <= 0) return;
     this.homeCollapse = window.setTimeout(() => {
       this.homeCollapse = null;
       if (this.state === "home") this.transition("petit");
