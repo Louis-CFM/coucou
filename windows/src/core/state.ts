@@ -122,7 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hooksInstalled: false,
   model: "claude-opus-5",
   chatProvider: "claude",
-  geminiModel: "gemini-3.8-flash",
+  geminiModel: "gemini-3.5-flash",
   language: "en",
   theme: "onyx",
 };

@@ -181,9 +181,9 @@ const MODELS: [string, string][] = [
 ];
 
 const GEMINI_MODELS: [string, string][] = [
-  ["gemini-3.8-flash", "Gemini 3.8 Flash"],
-  ["gemini-2.5-pro", "Gemini 2.5 Pro"],
-  ["gemini-2.0-flash", "Gemini 2.0 Flash"],
+  ["gemini-3.5-flash", "Gemini 3.5 Flash"],
+  ["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite"],
+  ["gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite"],
 ];
 
 function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
@@ -306,7 +306,7 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
   if (!GEMINI_MODELS.some(([id]) => id === settings.geminiModel)) {
     geminiModel.append(h("option", { value: settings.geminiModel, text: settings.geminiModel }));
   }
-  geminiModel.value = settings.geminiModel ?? "gemini-3.8-flash";
+  geminiModel.value = settings.geminiModel ?? "gemini-3.5-flash";
   geminiModel.addEventListener("change", () => {
     settings.geminiModel = geminiModel.value;
     void save();

@@ -104,7 +104,8 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::set_ignore_cursor(&app, false);
     shared.gate.forget_ignore_state();
-    shared.gate.set_active(!collapsed);
+    // Expanded → full poll; collapsed → slow strip watch (drops still land).
+    shared.gate.set_collapsed(collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
@@ -555,7 +556,7 @@ pub fn run() {
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);
-            gate.set_active(true);
+            gate.set_collapsed(false);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));

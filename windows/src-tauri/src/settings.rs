@@ -47,7 +47,7 @@ fn default_chat_provider() -> String {
 }
 
 fn default_gemini_model() -> String {
-    "gemini-3.8-flash".to_string()
+    "gemini-3.5-flash".to_string()
 }
 
 fn default_model() -> String {

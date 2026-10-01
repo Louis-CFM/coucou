@@ -12,12 +12,12 @@ use crate::secrets;
 
 const MAX_INLINE_TEXT: u64 = 200_000;
 
-pub const DEFAULT_GEMINI_MODEL: &str = "gemini-3.8-flash";
+pub const DEFAULT_GEMINI_MODEL: &str = "gemini-3.5-flash";
 
 pub const GEMINI_MODELS: &[&str] = &[
-    "gemini-3.8-flash",
-    "gemini-2.5-pro",
-    "gemini-2.0-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
 ];
 
 const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
@@ -76,7 +76,14 @@ pub async fn send(
     let key = secrets::get("gemini-api-key")
         .ok_or_else(|| "Gemini API key missing. Open settings.".to_string())?;
 
-    let model = if model.is_empty() { DEFAULT_GEMINI_MODEL } else { model };
+    // Users paste whatever the docs show: "google/gemini-2.5-flash",
+    // "models/gemini-3.5-flash", stray spaces — the API wants the bare id.
+    let normalized = normalize_model_id(model);
+    let model: &str = if normalized.is_empty() {
+        DEFAULT_GEMINI_MODEL
+    } else {
+        &normalized
+    };
 
     // First turn may carry file/window context. Files ride as real parts —
     // images/PDF as inlineData so the model actually sees them (a bare
@@ -222,6 +229,8 @@ async fn post_once(
             .unwrap_or_else(|| text.chars().take(200).collect());
         let hint = if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             " (retried — the model is busy, try again in a bit)"
+        } else if status == reqwest::StatusCode::NOT_FOUND {
+            " (unknown or retired model — pick a current one in Settings → Chat AI)"
         } else {
             ""
         };
@@ -266,6 +275,16 @@ fn content_block(path: &str) -> Option<Value> {
     }
     let text = std::fs::read_to_string(path).ok()?;
     Some(json!({ "text": format!("File contents:\n{text}") }))
+}
+
+fn normalize_model_id(raw: &str) -> String {
+    let mut id = raw.trim().to_string();
+    for prefix in ["google/", "models/", "tunedModels/"] {
+        if let Some(rest) = id.strip_prefix(prefix) {
+            id = rest.to_string();
+        }
+    }
+    id
 }
 
 fn urlencoding_safe(model: &str) -> String {

@@ -65,9 +65,14 @@ pub struct IslandRect {
     pub h: f64,
 }
 
-/// Wakes / parks the cursor poll thread so a hidden island costs literally nothing.
+/// Wakes / parks the cursor poll thread. Full speed (60 Hz + cursor events)
+/// while visible; when collapsed the thread drops to a 5 Hz watch that only
+/// keeps the wake strip droppable — a hidden island must cost ~nothing, but a
+/// file drag arriving at the strip has to find a live drop target instead of
+/// the "prohibited" cursor.
 pub struct PollGate {
     active: Mutex<bool>,
+    slow: AtomicBool,
     cv: Condvar,
     pub collapsed: AtomicBool,
     pub rect: Mutex<IslandRect>,
@@ -79,6 +84,7 @@ impl PollGate {
     pub fn new() -> Self {
         Self {
             active: Mutex::new(false),
+            slow: AtomicBool::new(false),
             cv: Condvar::new(),
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
@@ -95,21 +101,30 @@ impl PollGate {
         self.ignoring.store(false, Ordering::Relaxed);
     }
 
-    pub fn set_active(&self, on: bool) {
-        let mut guard = self.active.lock().unwrap();
-        *guard = on;
+    /// Expanded island → full poll; collapsed → slow strip watch.
+    pub fn set_collapsed(&self, collapsed: bool) {
+        {
+            let mut guard = self.active.lock().unwrap();
+            *guard = !collapsed;
+        }
+        self.slow.store(collapsed, Ordering::Relaxed);
         self.cv.notify_all();
     }
 
-    fn wait_until_active(&self) {
-        let mut guard = self.active.lock().unwrap();
-        while !*guard {
+    fn wait_until_enabled(&self) {
+        let guard = self.active.lock().unwrap();
+        let mut guard = guard;
+        while !*guard && !self.slow.load(Ordering::Relaxed) {
             guard = self.cv.wait(guard).unwrap();
         }
     }
 
     fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
+    }
+
+    fn is_enabled(&self) -> bool {
+        *self.active.lock().unwrap() || self.slow.load(Ordering::Relaxed)
     }
 }
 
@@ -304,7 +319,9 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
-/// visible. Parked on a condvar the rest of the time.
+/// visible. Collapsed, it drops to a 5 Hz strip watch (no events, just the
+/// drop target + click-through flag) so a file drag can land on the hidden
+/// island instead of meeting the "prohibited" cursor.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
@@ -318,11 +335,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
         loop {
-            gate.wait_until_active();
+            gate.wait_until_enabled();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
-            while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+            while gate.is_enabled() {
+                let slow = !gate.is_active();
+                std::thread::sleep(Duration::from_millis(if slow { 200 } else { 16 }));
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -359,6 +377,30 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // the cursor itself did not move.
                 if was_down && !down {
                     let _ = win.emit("mouse-up", CursorPayload { x, y, down });
+                }
+
+                if slow {
+                    // Strip watch: the collapsed window is a 240×6 target that
+                    // must take the mouse and own its drop target, or file
+                    // drags die on it with the "prohibited" cursor. No cursor
+                    // events down here — the DOM wake strip handles hover.
+                    let in_window =
+                        x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1;
+                    if down && in_window {
+                        if gate.ignoring.load(Ordering::Relaxed) {
+                            gate.ignoring.store(false, Ordering::Relaxed);
+                            let _ = win.set_ignore_cursor_events(false);
+                        }
+                        if last_unblock.elapsed() >= std::time::Duration::from_secs(2) {
+                            last_unblock = std::time::Instant::now();
+                            let handle = app.clone();
+                            let _ = app.run_on_main_thread(move || {
+                                unblock_webview_drops(&handle)
+                            });
+                        }
+                    }
+                    was_down = down;
+                    continue;
                 }
 
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
