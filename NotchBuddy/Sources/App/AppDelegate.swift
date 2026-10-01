@@ -52,11 +52,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             placeBelowIsland(w)
             w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return
         }
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 540),
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 720),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered, defer: false)
         win.title = "Settings — Coucou"
-        win.contentView = NSHostingView(rootView: SettingsView())
+        let host = NSHostingView(rootView: SettingsView())
+        host.sizingOptions = [.minSize]
+        win.contentView = host
         win.contentMinSize = NSSize(width: 420, height: 320)
         win.isReleasedWhenClosed = false
         placeBelowIsland(win)

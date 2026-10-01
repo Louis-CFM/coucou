@@ -339,7 +339,7 @@ struct SettingsView: View {
             }
             .padding(20)
         }
-        .frame(width: 480, height: 720)
+        .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
     }
 
     // MARK: - Actions
