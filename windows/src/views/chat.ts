@@ -86,7 +86,14 @@ export function buildPrompt(actions: ViewActions, onHeightChange: () => void): V
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      // Backend has its own 90s HTTP timeout, but a hung invoke must never
+      // leave the typing dots forever: race it against a 60s fuse.
+      const reply = await Promise.race([
+        Bridge.chatSend(query, context),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error("Timed out talking to the model — try again.")), 60_000),
+        ),
+      ]);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");

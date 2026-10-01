@@ -18,6 +18,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "outlook-app-password",
     "outlook-client-id",
     "outlook-oauth",
+    "outlook-refresh-token",
     "outlook-device-code",
     "n8n-url",
     "n8n-api-key",

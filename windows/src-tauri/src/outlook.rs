@@ -34,10 +34,38 @@ const GRAPH_LIST: &str = "https://graph.microsoft.com/v1.0/me/messages\
 
 #[derive(Serialize, Deserialize, Default)]
 struct OAuthStore {
-    refresh_token: String,
     access_token: String,
     /// Unix seconds when `access_token` stops being valid (with margin).
     expires_at: u64,
+}
+
+/// The Windows Credential Manager refuses blobs over ~2560 UTF-16 chars, and
+/// Microsoft tokens are fat (a JWT access plus a long refresh routinely
+/// exceed it together — the save fails with exactly that platform error).
+/// So the refresh token lives alone under "outlook-refresh-token" and only
+/// the small access half under "outlook-oauth".
+fn load_refresh() -> Option<String> {
+    crate::secrets::get("outlook-refresh-token").filter(|v| !v.is_empty())
+}
+
+fn load() -> Option<(OAuthStore, String)> {
+    let store: OAuthStore = crate::secrets::get("outlook-oauth")
+        .and_then(|s| serde_json::from_str::<OAuthStore>(&s).ok())?;
+    let refresh = load_refresh()?;
+    Some((store, refresh))
+}
+
+fn save_access(access: &str, expires_at: u64) -> Result<(), String> {
+    let text = serde_json::to_string(&OAuthStore {
+        access_token: access.to_string(),
+        expires_at,
+    })
+    .map_err(|e| e.to_string())?;
+    crate::secrets::set("outlook-oauth", &text)
+}
+
+fn save_refresh(refresh: &str) -> Result<(), String> {
+    crate::secrets::set("outlook-refresh-token", refresh)
 }
 
 fn now_unix() -> u64 {
@@ -45,17 +73,6 @@ fn now_unix() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
-}
-
-fn load() -> Option<OAuthStore> {
-    crate::secrets::get("outlook-oauth")
-        .and_then(|s| serde_json::from_str::<OAuthStore>(&s).ok())
-        .filter(|o| !o.refresh_token.is_empty())
-}
-
-fn save(store: &OAuthStore) -> Result<(), String> {
-    let text = serde_json::to_string(store).map_err(|e| e.to_string())?;
-    crate::secrets::set("outlook-oauth", &text)
 }
 
 fn client_id() -> Option<String> {
@@ -102,25 +119,23 @@ fn apply_tokens(body: &Value) -> Result<String, String> {
         .ok_or_else(|| "token response: no access token".to_string())?
         .to_string();
     let expires_in = body.get("expires_in").and_then(Value::as_u64).unwrap_or(3600);
-    let mut store = load().unwrap_or_default();
     if let Some(refresh) = body.get("refresh_token").and_then(Value::as_str) {
         if !refresh.is_empty() {
-            store.refresh_token = refresh.to_string();
+            save_refresh(refresh)?;
         }
     }
-    store.access_token = access.clone();
-    store.expires_at = now_unix().saturating_add(expires_in.saturating_sub(120));
-    save(&store)?;
+    let expires_at = now_unix().saturating_add(expires_in.saturating_sub(120));
+    save_access(&access, expires_at)?;
     Ok(access)
 }
 
 async fn access_token() -> Result<String, String> {
-    let store = load().ok_or_else(|| "not signed in".to_string())?;
+    let (store, refresh_token) = load().ok_or_else(|| "not signed in".to_string())?;
     if !store.access_token.is_empty() && store.expires_at > now_unix() + 60 {
         return Ok(store.access_token);
     }
     let id = client_id().ok_or_else(|| "OAuth client ID missing".to_string())?;
-    refresh(&id, &store.refresh_token).await
+    refresh(&id, &refresh_token).await
 }
 
 async fn get_json(url: &str, token: &str) -> Result<Value, String> {
@@ -164,9 +179,9 @@ pub async fn unread() -> Result<MailboxState, String> {
     let token = access_token().await?;
     let list = match get_json(GRAPH_LIST, &token).await {
         Err(e) if e == "unauthorized" => {
-            let store = load().ok_or_else(|| "not signed in".to_string())?;
+            let (_, refresh_token) = load().ok_or_else(|| "not signed in".to_string())?;
             let id = client_id().ok_or_else(|| "OAuth client ID missing".to_string())?;
-            let fresh = refresh(&id, &store.refresh_token).await?;
+            let fresh = refresh(&id, &refresh_token).await?;
             get_json(GRAPH_LIST, &fresh).await?
         }
         other => other?,
@@ -285,6 +300,7 @@ pub async fn poll_device() -> Result<(), String> {
 
 pub fn signout() -> Result<(), String> {
     crate::secrets::clear("outlook-oauth")?;
+    let _ = crate::secrets::clear("outlook-refresh-token");
     let _ = crate::secrets::clear("outlook-device-code");
     Ok(())
 }
