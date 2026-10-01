@@ -7,6 +7,7 @@ mod files;
 mod hooks;
 mod integrations;
 mod island;
+mod media;
 mod log;
 mod pipe;
 mod secrets;
@@ -122,6 +123,22 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+}
+
+/// Opens the Spotify app the user installed. The `spotify:` protocol hands off
+/// to that app; Alfred never talks to Spotify's servers.
+#[tauri::command]
+fn open_spotify() {
+    let _ = Command::new("cmd")
+        .args(["/C", "start", "", "spotify:"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn();
+}
+
+/// "playpause", "next" or "prev" on the Spotify media session.
+#[tauri::command]
+async fn spotify_control(app: AppHandle, action: String) {
+    integrations::spotify_control(&app, &action).await;
 }
 
 #[tauri::command]
@@ -479,6 +496,8 @@ pub fn run() {
             secret_clear,
             refresh_integration,
             open_n8n,
+            open_spotify,
+            spotify_control,
             open_settings_window,
             set_paused,
         ])

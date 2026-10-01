@@ -42,6 +42,11 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_cursor = { ...cursor, configured: cursorHooks };
+  // Spotify has no key: the pill reads the app, it doesn't store a secret.
+  const spotify = State.integrations.integration_spotify ?? {
+    data: {}, error: null, loaded: false, configured: false,
+  };
+  State.integrations.integration_spotify = { ...spotify, configured: true };
   State.notify();
 }
 

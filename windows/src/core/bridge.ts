@@ -109,6 +109,11 @@ export const Bridge = {
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** Opens the installed Spotify app. No account, no network. */
+  openSpotify: () => call<void>("open_spotify"),
+  /** "playpause", "next" or "prev" on the Spotify session. */
+  spotifyControl: (action: "playpause" | "next" | "prev") =>
+    call<void>("spotify_control", { action }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
@@ -136,6 +141,8 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  /** Installed hook timeout is too short for Deny / Allow to land. */
+  hooksOutdated: boolean;
 }
 
 export interface HookPreview {

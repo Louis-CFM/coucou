@@ -6,7 +6,7 @@
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
-Approve Claude Code permissions, watch your session work, drop a file, chat with Claude, keep an eye on your services — without leaving what you're doing.
+Approve Claude Code and Cursor permissions, watch a session work, drop a file, chat with Claude or Cursor, keep an eye on Spotify and your other services — without leaving what you're doing.
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -44,17 +44,26 @@ installs for the current user only — no admin prompt.
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Click × on the compact island (when Hide = Close button) | It disappears until you hover the top edge again |
+| Click outside the open island (when Shrink = Click outside) | It shrinks back to compact |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
-Everything else happens on its own: a Claude Code permission request opens the
-island with **Deny / Allow**, a finished session shows what it did, and
-your integrations sit in the coloured pills next to Mochi.
+Everything else happens on its own: a Claude Code or Cursor permission request
+opens the island with **Deny / Allow**, a finished session shows what it did,
+and your integrations sit in the coloured pills next to Mochi.
 
 Which pill is open when Alfred starts is set in **Settings… → General →
-Default pill**: VS Code, Cursor, or any integration you have switched on.
-Clicking another pill keeps that one until the next launch. Turn the chosen
+Default pill**: VS Code, Cursor, Spotify, or any integration you have switched
+on. Clicking another pill keeps that one until the next launch. Turn the chosen
 integration off and Alfred goes back to VS Code.
+
+**Settings… → General** also controls when the island goes away:
+
+- **Hide completely** — *After a pause* (default) hides it on its own; *Close
+  button* leaves a × on the compact island so it only disappears when you click.
+- **Shrink** — *After you leave it* (default) folds it after a few seconds of
+  idle; *Click outside* keeps it open until you click somewhere else.
 
 ## Claude Code
 
@@ -79,11 +88,22 @@ Open **Settings… → Cursor → Install hooks…**. Alfred shows the diff for
 `%USERPROFILE%\.cursor\hooks.json`, takes a dated backup, and writes nothing
 until you click. Your own hooks are left untouched.
 
-The same `alfred-hook.exe` relays the events, in `--cursor` mode. It only
-observes local agent sessions: the pill shows the project, the prompt, tool
-steps, subagents, and when the run finishes or fails. Approvals stay in Cursor.
-If Alfred is closed the relay still answers immediately, so the agent is never
-blocked. Cloud agents do not run these hooks.
+The same `alfred-hook.exe` relays the events, in `--cursor` mode. The pill
+shows the project, the prompt, tool steps, subagents, and when the run finishes
+or fails. **Deny / Allow** opens only when Cursor itself would ask: a command
+that cannot stay in the sandbox, a file delete, or a change outside the
+project. Edits inside the project are not interrupted. If Alfred is closed, or
+nobody clicks, that call is **denied** — unlike Claude Code, Cursor never falls
+back to asking in the IDE. Cloud agents do not run these hooks.
+
+Hooks installed before this can still let the tool through when the wait runs
+out. Reinstall them once from **Settings… → Cursor** (Alfred shows a banner when
+the install is outdated).
+
+While Cursor works, the overview can show the last file it changed. Click the
+snippet to open a short diff inside the island, with the shell command and its
+output underneath when there is one. The preview shows a change once it has
+landed. A denied call never leaves a false trail.
 
 The island chat can talk to that same local agent, with the Cursor window
 closed. Open **Ask**, click **Claude** until it says **Cursor**, then pick
@@ -95,11 +115,19 @@ Install the [Cursor CLI](https://cursor.com/docs/cli/installation) first
 (`irm 'https://cursor.com/install?win32=true' | iex` on Windows), then
 `agent login`.
 
+## Spotify
+
+Turn on **Settings… → Integrations → Spotify**. Alfred reads whatever the Spotify
+desktop app is already playing through Windows’ media session — no Spotify
+account and no network call from Alfred. The pill shows the track and lets you
+pause, skip or open the app. A new track never pops the island open.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+only ask whether a key exists. Same for every integration key. Spotify needs
+none.
 
 No telemetry. The only network requests Alfred makes are to the services you
 configure yourself.
@@ -149,11 +177,14 @@ npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
 ```
 windows/
   src/                 island front end (TypeScript, no framework)
+    core/              bridge, layout, state, sounds, liveChange
     mochi/             Mochi and the launch greeting, in Canvas 2D
     island/            state machine, Claude and Cursor hooks, integrations
-    views/             every island view
+    views/             every island view (overview, approval, diff, …)
+    upload/            file-drop choreography
     settings/          the settings window
   src-tauri/           Rust backend: window, named pipe, Claude API, pollers
+    src/media.rs       Spotify via the Windows media session
   hook/                alfred-hook.exe, the Claude Code and Cursor relay
   scripts/             icon generator
 ```
@@ -169,6 +200,7 @@ problems. It stays on your machine.
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
+- Spotify is read from the Windows media session (SMTC), with no Spotify API.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.

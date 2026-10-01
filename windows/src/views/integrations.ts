@@ -428,7 +428,49 @@ export function hasIntegrationData(id: string): boolean {
   }
 }
 
+function spotifyCard(): HTMLElement {
+  const d = get("integration_spotify");
+  const title = typeof d.title === "string" ? d.title : "";
+  const artist = typeof d.artist === "string" ? d.artist : "";
+  const playing = d.playing === true;
+  const available = d.available === true;
+  const line = title || (available ? "Nothing playing" : "Spotify isn't open");
+
+  const button = (action: "prev" | "playpause" | "next", icon: string, label: string, main = false) =>
+    h(
+      "button",
+      {
+        class: main ? "spot-btn main" : "spot-btn",
+        title: label,
+        onclick: () => void Bridge.spotifyControl(action),
+      },
+      svg(icon, main ? 13 : 12),
+    );
+
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#1DB954", "Spotify", playing ? "Playing" : available ? "Paused" : "Off"),
+    h("div", { class: "spot-title", text: line }),
+    artist ? h("div", { class: "spot-artist", text: artist }) : null,
+    h(
+      "div",
+      { class: "spot-controls" },
+      button("prev", ICONS.skipPrev, "Previous"),
+      button("playpause", playing ? ICONS.pause : ICONS.play, playing ? "Pause" : "Play", true),
+      button("next", ICONS.skipNext, "Next"),
+    ),
+    h("button", {
+      class: "link-btn",
+      style: "color:#1DB954d9",
+      text: "Open Spotify",
+      onclick: () => void Bridge.openSpotify(),
+    }),
+  );
+}
+
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  if (task.id === "integration_spotify") return spotifyCard();
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity

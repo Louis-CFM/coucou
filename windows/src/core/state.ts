@@ -1,6 +1,7 @@
 // App state — mirror of AppState.swift (the parts the island needs).
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
+import type { LiveChange } from "./liveChange";
 import type { EyeShape } from "../mochi/engine";
 
 export type AgentSource = "claudeCode" | "cursor" | "n8n";
@@ -26,6 +27,12 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+  /** Which pill the card belongs to. Allow / Deny update that one. */
+  taskId: string;
+  /** File being edited, when the card is approving a change. */
+  file?: string;
+  /** A couple of lines of that change, so the card shows the edit itself. */
+  preview?: string[];
 }
 
 export interface ChatMessage {
@@ -60,6 +67,7 @@ const task = (
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
   task("integration_cursor", "Cursor", "#60A5FA", "cursor"),
+  task("integration_spotify", "Spotify", "#1DB954", "n8n"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -70,6 +78,7 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
 ];
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
+  "integration_spotify",
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   "integration_notion", "integration_calcom", "integration_stripe",
 ];
@@ -99,6 +108,16 @@ export interface Settings {
   model: string;
   /** Pill focused when Alfred starts, and whenever the current one disappears. */
   defaultPill: string;
+  /**
+   * How the compact island disappears completely.
+   * "timer" hides it after the mouse leaves. "manual" waits for the close button.
+   */
+  hideMode: "timer" | "manual";
+  /**
+   * How the expanded island shrinks back to compact.
+   * "timer" shrinks after the mouse leaves. "outside" waits for a click outside.
+   */
+  shrinkMode: "timer" | "outside";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -116,6 +135,8 @@ export const DEFAULT_SETTINGS: Settings = {
   cursorProject: null,
   model: "claude-opus-5",
   defaultPill: "integration_claude",
+  hideMode: "timer",
+  shrinkMode: "timer",
 };
 
 type Listener = () => void;
@@ -151,6 +172,9 @@ class AppState {
   /** Cursor CLI mode. Agent can edit the project; ask only answers. */
   cursorMode: "agent" | "ask" = "agent";
   pendingApproval: ApprovalInfo | null = null;
+
+  /** Latest Cursor file edit, drawn in the overview and opened as a diff. */
+  cursorChange: LiveChange | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 

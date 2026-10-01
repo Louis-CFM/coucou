@@ -45,6 +45,8 @@ pub struct HookStatus {
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
+    /// The installed hook timeout is too short for an approval to be answered.
+    pub hooks_outdated: bool,
 }
 
 #[derive(Serialize)]
@@ -248,6 +250,7 @@ pub fn status() -> HookStatus {
         settings_path: settings_path().to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
+        hooks_outdated: false,
     }
 }
 

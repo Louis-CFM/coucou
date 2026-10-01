@@ -30,6 +30,14 @@ pub struct Settings {
     /// Pill focused when Alfred starts. An older settings.json has no such field.
     #[serde(default = "default_pill")]
     pub default_pill: String,
+    /// How the compact island disappears completely.
+    /// "timer" = after the mouse has left it. "manual" = only the close button.
+    #[serde(default = "default_hide_mode")]
+    pub hide_mode: String,
+    /// How the expanded island shrinks back to compact.
+    /// "timer" = after the mouse has left it. "outside" = on a click outside Alfred.
+    #[serde(default = "default_shrink_mode")]
+    pub shrink_mode: String,
 }
 
 fn default_model() -> String {
@@ -38,6 +46,14 @@ fn default_model() -> String {
 
 fn default_pill() -> String {
     "integration_claude".to_string()
+}
+
+fn default_hide_mode() -> String {
+    "timer".to_string()
+}
+
+fn default_shrink_mode() -> String {
+    "timer".to_string()
 }
 
 impl Default for Settings {
@@ -60,6 +76,8 @@ impl Default for Settings {
             cursor_project: None,
             model: default_model(),
             default_pill: default_pill(),
+            hide_mode: default_hide_mode(),
+            shrink_mode: default_shrink_mode(),
         }
     }
 }

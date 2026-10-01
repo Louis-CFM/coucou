@@ -18,6 +18,10 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /** Compact island hides itself after the mouse leaves. Off when a close button does it. */
+  autoHide = true;
+  /** Expanded island shrinks after the mouse leaves. Off when a click outside does it. */
+  autoShrink = true;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -102,10 +106,25 @@ export class IslandStateMachine {
     this.transition("hidden");
   }
 
+  /**
+   * Arm or drop the idle timers for the state we're already in.
+   * Used when these settings change without a fresh mouse event.
+   */
+  refreshIdle(mouseInside: boolean) {
+    if (this.state === "petit") {
+      if (mouseInside || !this.autoHide) this.clear("petitHide");
+      else if (this.petitHide == null) this.schedulePetitHide();
+    } else if (this.state === "home") {
+      if (mouseInside || !this.autoShrink || this.pinned) this.clear("homeCollapse");
+      else if (this.homeCollapse == null) this.scheduleHomeCollapse();
+    }
+  }
+
   // ── Timers ──────────────────────────────────────────────────────────────────
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (!this.autoHide) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
@@ -114,7 +133,7 @@ export class IslandStateMachine {
 
   private scheduleHomeCollapse() {
     this.clear("homeCollapse");
-    if (this.pinned) return;
+    if (this.pinned || !this.autoShrink) return;
     this.homeCollapse = window.setTimeout(() => {
       this.homeCollapse = null;
       if (this.state === "home") this.transition("petit");

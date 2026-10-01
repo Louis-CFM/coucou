@@ -5,6 +5,7 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
+import { fileName, hasFilePreview, highlightLine } from "../core/liveChange";
 import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
@@ -26,6 +27,8 @@ export interface ViewActions {
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
   blip(): void;
+  /** Hides Alfred completely. Only offered when that is set to the close button. */
+  dismiss(): void;
 }
 
 export interface ViewHost {
@@ -84,6 +87,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const hideBtn = h(
+    "button",
+    { title: "Hide Alfred", hidden: true, onclick: () => actions.dismiss() },
+    svg(ICONS.xmark, 12),
+  );
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,14 +102,14 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, gearBtn, soundBtn, hideBtn),
   );
 
   return {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "diff");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -109,6 +117,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      hideBtn.hidden = State.settings.hideMode !== "manual";
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -127,6 +136,14 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
+  const liveFile = h("div", { class: "live-file" });
+  const liveCode = h("div", { class: "live-code" });
+  const liveBody = h(
+    "button",
+    { class: "live", title: "Open the diff", onclick: () => actions.setView("diff") },
+    liveFile,
+    liveCode,
+  );
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
 
@@ -138,8 +155,9 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
+  let mode: "ticker" | "card" | "live" | null = null;
   let cardKey = "";
+  let liveKey = "";
 
   const hooks: IntegrationCardHooks = {
     get detailOpen() {
@@ -172,13 +190,33 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // A live Claude Code or Cursor session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
+      // A running Claude Code or Cursor session keeps the ticker. Once the run
+      // is finished, leftover steps ("Recherche · windows") are not a session
+      // anymore — an idle pill goes back to its card, unless Cursor just edited
+      // a file, in which case that snippet stays clickable.
+      const busy =
+        task?.state === "working" || task?.state === "thinking" || task?.state === "searching";
       const sessionActive =
-        (task?.id === "integration_claude" || task?.id === "integration_cursor") &&
-        (task.state !== "idle" || task.steps.length > 0);
+        !!task &&
+        busy &&
+        (task.id === "integration_claude" || task.id === "integration_cursor");
+      const change = State.cursorChange;
+      const showLive = task?.id === "integration_cursor" && hasFilePreview(change) && !detailOpen;
 
-      if (task && sessionActive) {
+      if (task && showLive && change) {
+        if (mode !== "live") {
+          clear(leftBody);
+          leftBody.append(liveBody);
+          mode = "live";
+          cardKey = "";
+        }
+        const key = `${change.path}\n${change.preview.join("\n")}`;
+        if (key !== liveKey) {
+          liveKey = key;
+          liveFile.textContent = fileName(change.path);
+          fillHighlighted(liveCode, change.preview);
+        }
+      } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
           leftBody.append(tickerBody);
@@ -198,7 +236,9 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
+        liveKey = "";
       } else if (task) {
+        liveKey = "";
         const info = State.integrations[task.id];
         const key = [
           task.id, detailOpen, task.state, task.steps.join("|"),
@@ -225,6 +265,29 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
     },
   };
+}
+
+function fillHighlighted(host: HTMLElement, lines: string[]) {
+  clear(host);
+  for (const line of lines) {
+    const row = h("div", { class: "live-line" });
+    for (const tok of highlightLine(line.length > 0 ? line : " ")) {
+      const span = h("span", { text: tok.text });
+      if (tok.kind) span.className = `tok-${tok.kind}`;
+      row.append(span);
+    }
+    host.append(row);
+  }
+}
+
+/** Tool steps are not a summary. "Recherche · windows" means the run grepped, not that it is still searching. */
+const TOOL_STEP =
+  /^(Exécute|Lit|Écrit|Modifie|Supprime|Cherche|Recherche|Récupère|Tâches|Agent|Notebook|Liste) · |^(⚠|\+|•)/;
+
+function finishedHeadline(task: AgentTask | null): string {
+  const last = task?.steps.at(-1);
+  if (!last || TOOL_STEP.test(last)) return "Session finished";
+  return last;
 }
 
 function sourceLabel(source: AgentTask["source"]): string {
@@ -301,6 +364,26 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/** Path and command stay one line. A file edit shows the changed lines instead. */
+function paintApproval(code: HTMLElement) {
+  clear(code);
+  const pending = State.pendingApproval;
+  const preview = pending?.preview;
+  if (preview && preview.length > 0) {
+    code.classList.add("snippet");
+    if (pending.file) code.append(h("div", { class: "live-line file", text: pending.file }));
+    const host = h("div");
+    fillHighlighted(host, preview);
+    code.append(host);
+    return;
+  }
+  code.classList.remove("snippet");
+  // The whole point of approving here rather than in the terminal: this line
+  // is the command, the file path or the URL being authorised, not just the
+  // name of the tool asking.
+  code.textContent = pending?.command || pending?.tool || "…";
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
@@ -311,11 +394,9 @@ function buildApproval(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
-      // The whole point of approving here rather than in the terminal: this line
-      // is the command, the file path or the URL being authorised, not just the
-      // name of the tool asking.
-      code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
+      const owner = State.tasks.find((t) => t.id === State.pendingApproval?.taskId) ?? State.focusTask;
+      who.append(agentWho(owner, "needs permission"));
+      paintApproval(code);
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
@@ -397,7 +478,7 @@ function buildFinished(actions: ViewActions): ViewHost {
       const cursor = task?.source === "cursor";
       clear(who);
       who.append(agentWho(task, cursor ? "Cursor finished" : "Claude Code finished"));
-      title.textContent = task?.steps.at(-1) ?? "Session finished";
+      title.textContent = finishedHeadline(task);
       const openLabel = openBtn.querySelector("span");
       if (openLabel) openLabel.textContent = cursor ? "Open Cursor" : "Open terminal";
     },
@@ -438,9 +519,11 @@ function buildSettings(actions: ViewActions): ViewHost {
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
   const autoLabel = h("span", {});
+  const timerIcon = svg(ICONS.timer, 12);
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
+  const seg = h("div", { class: "seg" }, ...segButtons);
   const claudeBadge = h("span", { class: "status-badge" });
   const cursorBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
@@ -452,9 +535,9 @@ function buildSettings(actions: ViewActions): ViewHost {
     h(
       "div",
       { class: "settings-row" },
-      svg(ICONS.timer, 12),
+      timerIcon,
       autoLabel,
-      h("div", { class: "seg" }, ...segButtons),
+      seg,
     ),
     h(
       "div",
@@ -482,7 +565,12 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
-      autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
+      const shrinkOutside = s.shrinkMode === "outside";
+      autoLabel.textContent = shrinkOutside
+        ? "Shrinks on an outside click"
+        : `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
+      timerIcon.style.display = shrinkOutside ? "none" : "";
+      seg.hidden = shrinkOutside;
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
       clear(claudeBadge);
       claudeBadge.append(
@@ -496,6 +584,70 @@ function buildSettings(actions: ViewActions): ViewHost {
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+    },
+  };
+}
+
+// ── File diff ─────────────────────────────────────────────────────────────────
+
+function buildDiff(actions: ViewActions): ViewHost {
+  const back = h(
+    "button",
+    { class: "diff-back", title: "Overview", onclick: () => actions.setView("overview") },
+    svg(ICONS.chevronLeft, 11, { stroke: 2.4 }),
+  );
+  const file = h("div", { class: "diff-file" });
+  const lines = h("div", { class: "diff-lines" });
+  const shell = h("div", { class: "diff-shell" });
+  const el = h(
+    "div",
+    { class: "view diff-view" },
+    card(
+      null,
+      h("div", { class: "diff-pad" }, h("div", { class: "diff-top" }, back, file), lines, shell),
+    ),
+  );
+  let key = "";
+  return {
+    el,
+    sync() {
+      const change = State.cursorChange;
+      const next = change
+        ? `${change.path}\n${change.diff.map((l) => l.kind + l.text).join("\n")}\n${change.command ?? ""}\n${change.output ?? ""}\n${change.ok}`
+        : "";
+      if (next === key) return;
+      key = next;
+      clear(lines);
+      clear(shell);
+      if (!change || !hasFilePreview(change)) {
+        file.textContent = "No edit yet";
+        lines.append(h("div", { class: "diff-empty", text: "Cursor hasn't modified a file in this run." }));
+        shell.style.display = "none";
+        return;
+      }
+      file.textContent = fileName(change.path);
+      file.title = change.path;
+      for (const line of change.diff) {
+        const mark = line.kind === "add" ? "+" : line.kind === "del" ? "−" : " ";
+        const text = h("span", { class: "diff-text" });
+        for (const tok of highlightLine(line.text.length > 0 ? line.text : " ")) {
+          const span = h("span", { text: tok.text });
+          if (tok.kind) span.className = `tok-${tok.kind}`;
+          text.append(span);
+        }
+        lines.append(
+          h("div", { class: `diff-row ${line.kind}` }, h("span", { class: "diff-mark", text: mark }), text),
+        );
+      }
+      if (!change.command && !change.output) {
+        shell.style.display = "none";
+        return;
+      }
+      shell.style.display = "";
+      shell.append(h("div", { class: "diff-cmd", text: `$ ${change.command ?? ""}` }));
+      if (change.output) {
+        shell.append(h("pre", { class: change.ok === false ? "diff-out bad" : "diff-out ok", text: change.output }));
+      }
     },
   };
 }
@@ -536,5 +688,6 @@ export function buildViews(
   map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
   map.set("searching", buildPlaceholder("Claude is searching…", ""));
   map.set("result", buildPlaceholder("Result", ""));
+  map.set("diff", buildDiff(actions));
   return map;
 }

@@ -275,11 +275,16 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
+        // Press started outside the island; a click counts only if it also ends there.
+        let mut armed_outside = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
         loop {
             gate.wait_until_active();
+            // A button already held when the island wakes is not a new click.
+            was_down = left_button_down();
+            armed_outside = false;
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
@@ -312,14 +317,18 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
-                if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
+                // The button is read even when the cursor is still: a click outside
+                // Alfred often doesn't move the pointer, and the webview never sees
+                // it because the window is click-through there.
+                let down = left_button_down();
+                let pressed = down && !was_down;
+                let released = !down && was_down;
+                was_down = down;
+                let moved = (x - last.0).abs() >= 1.0 || (y - last.1).abs() >= 1.0;
+                if !pressed && !released && !moved {
                     continue;
                 }
-                last = (x, y);
 
-                // Click-through: the window only takes the mouse over the island
-                // shape. A small entry margin means the flag is already off by the
-                // time a moving cursor reaches a button.
                 let r = *gate.rect.lock().unwrap();
                 let on_island = r.w > 0.0
                     && x >= r.x - HIT_MARGIN
@@ -327,6 +336,30 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     && y >= r.y - HIT_MARGIN
                     && y <= r.y + r.h + HIT_MARGIN;
 
+                if pressed {
+                    // A press may be the start of a drag: make sure the drop target
+                    // is ours before the file arrives.
+                    let handle = app.clone();
+                    let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
+                    armed_outside = !on_island;
+                }
+                if released {
+                    // Shrink on a finished click that both started and ended outside,
+                    // so dragging a file onto Alfred does not close it first.
+                    if armed_outside && !on_island {
+                        let _ = win.emit("outside-click", ());
+                    }
+                    armed_outside = false;
+                }
+
+                if !moved {
+                    continue;
+                }
+                last = (x, y);
+
+                // Click-through: the window only takes the mouse over the island
+                // shape. A small entry margin means the flag is already off by the
+                // time a moving cursor reaches a button.
                 // A file being dragged has to be able to find us. WS_EX_TRANSPARENT
                 // — what click-through is on Windows — hides the window from
                 // WindowFromPoint, so OLE finds no drop target and shows the "no
@@ -334,14 +367,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
-                }
-                was_down = down;
 
                 let dragging = down
                     && x >= 0.0

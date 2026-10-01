@@ -26,6 +26,7 @@ async function main() {
   restoreCursorProject();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent("outside-click", () => island.onOutsideClick());
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

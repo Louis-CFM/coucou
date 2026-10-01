@@ -17,7 +17,8 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { h } from "../views/dom";
+import { h, svg } from "../views/dom";
+import { ICONS } from "../views/icons";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -46,6 +47,7 @@ export class Island {
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
+  private dismissBtn!: HTMLButtonElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -132,24 +134,13 @@ export class Island {
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_cursor") void Bridge.openInCursor(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === "integration_spotify") void Bridge.openSpotify();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
-      decide: (d) => {
-        const req = State.pendingApproval;
-        void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
-        if (!req) return;
-        Sound.play(d === "deny" ? "blip" : "approve");
-        void Bridge.approvalDecision(req.requestId, d);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
-      },
+      decide: (d) => this.decideApproval(d),
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
         Sound.setEnabled(State.settings.soundEnabled);
@@ -170,6 +161,7 @@ export class Island {
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
+      dismiss: () => this.dismiss(),
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -178,6 +170,16 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.dismissBtn = h(
+      "button",
+      { id: "dismiss", type: "button", title: "Hide Alfred" },
+      svg(ICONS.xmark, 10),
+    ) as HTMLButtonElement;
+    this.dismissBtn.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.dismiss();
+    });
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -212,6 +214,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      this.dismissBtn,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -324,6 +327,35 @@ export class Island {
     // back left it thinking the island was still open, and a click on the compact
     // island then did nothing — the island could never be reopened.
     this.fsm.forcePetit();
+  }
+
+  /** Close button: the island disappears completely, until the top edge is hovered. */
+  dismiss() {
+    if (State.mode !== "expanded") Sound.play("close");
+    this.homeCollapseAt = null;
+    this.fsm.forceHidden();
+  }
+
+  /** Click landed outside the island. Shrinks only in the "click outside" mode. */
+  onOutsideClick() {
+    if (State.settings.shrinkMode !== "outside") return;
+    if (State.isPinned || this.fsm.state !== "home") return;
+    this.collapse();
+  }
+
+  /** Allow / Deny, from the buttons or from Y / N. */
+  private decideApproval(d: "allow" | "deny") {
+    const req = State.pendingApproval;
+    void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
+    if (!req) return;
+    Sound.play(d === "deny" ? "blip" : "approve");
+    void Bridge.approvalDecision(req.requestId, d);
+    State.pendingApproval = null;
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    State.updateTask(req.taskId, "working");
+    State.setPillBadge(req.taskId, null);
+    this.setView(State.defaultView());
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
@@ -483,7 +515,8 @@ export class Island {
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
+    const dismissPad = State.mode === "compact" && State.settings.hideMode === "manual" ? 26 : 0;
+    this.miniGrid.style.left = `${w - 40 - 14.5 - dismissPad}px`;
     this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
@@ -550,6 +583,23 @@ export class Island {
 
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (
+        State.view === "approval" &&
+        State.pendingApproval &&
+        tag !== "INPUT" &&
+        tag !== "TEXTAREA" &&
+        !e.repeat &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        const k = e.key.toLowerCase();
+        if (k === "y" || k === "n") {
+          e.preventDefault();
+          this.decideApproval(k === "y" ? "allow" : "deny");
+        }
+      }
       State.lastActivity = performance.now();
     });
 
@@ -558,7 +608,18 @@ export class Island {
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) {
+      let pressedOutside = false;
       window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+      window.addEventListener("mousedown", (e) => {
+        const node = e.target;
+        pressedOutside = !(node instanceof Node && this.islandEl.contains(node));
+      });
+      window.addEventListener("mouseup", (e) => {
+        const node = e.target;
+        const onIsland = node instanceof Node && this.islandEl.contains(node);
+        if (pressedOutside && !onIsland) this.onOutsideClick();
+        pressedOutside = false;
+      });
     }
   }
 
@@ -585,8 +646,14 @@ export class Island {
     }
     if (!inIsland && this.wasInIsland) {
       this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
+      if (
+        this.fsm.state === "home" &&
+        !State.isPinned &&
+        State.settings.shrinkMode !== "outside"
+      ) {
         this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+      } else {
+        this.homeCollapseAt = null;
       }
     }
     this.wasInIsland = inIsland;
@@ -871,13 +938,32 @@ export class Island {
 
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+    this.dismissBtn.classList.toggle(
+      "show",
+      State.settings.hideMode === "manual" && State.mode === "compact",
+    );
   }
 
-  /** Applies settings coming from Rust at boot. */
+  /** Applies settings coming from Rust at boot, and whenever they change. */
   applySettings() {
+    if (State.settings.hideMode !== "manual") State.settings.hideMode = "timer";
+    if (State.settings.shrinkMode !== "outside") State.settings.shrinkMode = "timer";
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.autoHide = State.settings.hideMode !== "manual";
+    this.fsm.autoShrink = State.settings.shrinkMode !== "outside";
+    this.fsm.refreshIdle(this.wasInIsland);
+    if (
+      !this.fsm.autoShrink ||
+      this.wasInIsland ||
+      State.isPinned ||
+      this.fsm.state !== "home"
+    ) {
+      this.homeCollapseAt = null;
+    } else if (this.homeCollapseAt == null) {
+      this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    }
     State.notify();
   }
 

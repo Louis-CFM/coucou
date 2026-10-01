@@ -38,4 +38,8 @@ export const ICONS = {
   stack: "M5 8h14v11.5H5V8zm1.8-3h10.4v1.6H6.8V5zm1.6-2.6h7.2V4H8.4V2.4z",
   // doc.text
   doc: "M6.5 2.6h7l4 4v14.8h-11V2.6zm6.6 1.6v3.3h3.3l-3.3-3.3zM8.6 11h6.8v1.5H8.6V11zm0 3.4h6.8v1.5H8.6v-1.5z",
+  play: "M8 5.2v13.6l11-6.8L8 5.2z",
+  pause: "M7 5h3.2v14H7V5zm6.8 0H17v14h-3.2V5z",
+  skipPrev: "M6 5h2.2v14H6V5zM18.5 6.2 9.4 12l9.1 5.8V6.2z",
+  skipNext: "M15.8 5H18v14h-2.2V5zM5.5 6.2 14.6 12 5.5 17.8V6.2z",
 } as const;

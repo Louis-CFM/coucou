@@ -5,7 +5,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type ApprovalInfo } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -82,16 +82,17 @@ function stepLabel(tool: string, input: Record<string, unknown>): string {
  * whatever identifying string it carries instead of falling back to its name.
  */
 const APPROVAL_FIELDS = [
-  "command", // Bash, PowerShell
+  "command", // Bash, PowerShell, Cursor Shell
   "file_path", // Write, Edit, MultiEdit, NotebookEdit
-  "path", // Read, LS
+  "target_file", // Cursor edits
+  "path", // Read, LS, Delete
   "url", // WebFetch
   "query", // WebSearch
   "pattern", // Glob, Grep
   "prompt", // Task
 ] as const;
 
-function approvalTarget(tool: string, input: Record<string, unknown>): string {
+export function approvalTarget(tool: string, input: Record<string, unknown>): string {
   for (const field of APPROVAL_FIELDS) {
     const value = input[field];
     if (typeof value === "string" && value.trim()) {
@@ -115,6 +116,60 @@ function clearSession() {
   t.stepIndex = 0;
   t.name = "VS Code";
   t.pillBadge = null;
+}
+
+/**
+ * One card, one request. A second one is declined: the human would otherwise
+ * be staring at request B while request A waits for a click nobody can give.
+ *
+ * `badgeIfUnfocused` is Claude's rule (don't yank another pill; the terminal
+ * asks if we stay quiet). Cursor passes false: the tool is waiting on this
+ * card, so the buttons have to be on screen.
+ *
+ * Returns false when this request was handed back without a card.
+ */
+export function showApproval(
+  island: Island,
+  request: ApprovalInfo,
+  opts: { clearAfterMs: number; badgeIfUnfocused: boolean },
+): boolean {
+  if (State.pendingApproval && State.pendingApproval.requestId !== request.requestId) {
+    if (request.requestId) void Bridge.approvalDecline(request.requestId);
+    return false;
+  }
+  if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+  State.pendingApproval = request;
+  State.updateTask(request.taskId, "approval");
+  State.isPinned = true;
+  Sound.play("approval");
+  const focused = State.focusId === request.taskId;
+  if (focused || !opts.badgeIfUnfocused) {
+    if (!focused) State.setFocus(request.taskId);
+    island.alert("approval");
+  } else {
+    // Another agent holds the view, so the card would yank it away. The badge
+    // is the signal instead — but it has to be on screen for that to mean
+    // anything, hence the reveal. We just told the relay a human can act.
+    State.setPillBadge(request.taskId, "approval");
+    island.reveal();
+  }
+  // Ack after the card is up. The relay's short window closes in 800 ms;
+  // everything above is synchronous, so the card really is up by the time it lands.
+  if (request.requestId) void Bridge.approvalAck(request.requestId);
+  const requestId = request.requestId;
+  const taskId = request.taskId;
+  pendingTimeout = window.setTimeout(() => {
+    pendingTimeout = null;
+    if (State.pendingApproval?.requestId !== requestId) return;
+    State.pendingApproval = null;
+    State.isPinned = false;
+    island.dropPin();
+    State.updateTask(taskId, "working");
+    State.setPillBadge(taskId, null);
+    if (State.view === "approval") island.setView(State.defaultView());
+    State.notify();
+  }, opts.clearAfterMs);
+  return true;
 }
 
 export function registerHookHandlers(island: Island) {
@@ -228,52 +283,18 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "PermissionRequest": {
-      const requestId = payload.request_id ?? "";
-      // One card, one request. A second one must never quietly replace the first
-      // — that would leave a human staring at request B while request A waits for
-      // a decision nobody can give. Hand it straight back to the terminal.
-      if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
-        if (requestId) void Bridge.approvalDecline(requestId);
-        break;
-      }
       upsert(projectName, cwd);
-      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
-      State.pendingApproval = {
-        requestId,
+      // Alfred answers within 108 s or not at all; after that the terminal has
+      // taken over and the card would be lying.
+      showApproval(island, {
+        requestId: payload.request_id ?? "",
         sessionId: payload.session_id ?? "",
         tool,
         command: approvalTarget(tool, input),
-      };
-      // The relay's short ack window closes in 800 ms; everything below this
-      // line is synchronous, so the card really is up by the time it lands.
-      if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
-      State.isPinned = true;
-      Sound.play("approval");
-      if (focused) {
-        island.alert("approval");
-      } else {
-        // Another agent holds the view, so the card would yank it away. The badge
-        // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
-        island.reveal();
-      }
-      // Alfred answers within 108 s or not at all; after that the terminal has
-      // taken over and the card would be lying.
-      pendingTimeout = window.setTimeout(() => {
-        pendingTimeout = null;
-        if (!State.pendingApproval) return;
-        State.pendingApproval = null;
-        State.isPinned = false;
-        island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval") island.setView(State.defaultView());
-        State.notify();
-      }, 110_000);
+        taskId: CLAUDE_ID,
+      }, { clearAfterMs: 110_000, badgeIfUnfocused: true });
       break;
     }
 

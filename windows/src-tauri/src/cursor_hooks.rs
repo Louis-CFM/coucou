@@ -6,8 +6,9 @@
 // whose shape is `{ version, hooks: { event: [{ command, timeout }] } }` —
 // not Claude's nested `hooks` arrays.
 //
-// Every command is observational. `failClosed` is never set, and the relay
-// always answers allow / continue, so a closed Alfred cannot block the agent.
+// A permission hook is `failClosed`: if the relay is killed or prints nothing,
+// Cursor blocks that call. Alfred asks only when Cursor itself would — an
+// unsandboxed command, a delete, or a file outside the project.
 
 use std::path::{Path, PathBuf};
 
@@ -16,20 +17,34 @@ use serde_json::{json, Map, Value};
 use crate::hooks::{self, HookPreview, HookStatus};
 use crate::settings;
 
-/// Events the island shows. Short timeout: the relay answers in well under a
-/// second and never waits for a click.
+/// Events the island shows. `preToolUse` and `beforeShellExecution` can wait
+/// for a click (110 s in the relay), so their timeout has to be longer than
+/// that. The others answer in well under a second.
 const EVENTS: &[&str] = &[
     "sessionStart",
     "sessionEnd",
     "beforeSubmitPrompt",
     "preToolUse",
+    "beforeShellExecution",
+    "afterFileEdit",
+    "afterShellExecution",
     "postToolUseFailure",
     "subagentStart",
     "subagentStop",
     "stop",
 ];
 
-const TIMEOUT: u64 = 5;
+const OBSERVE_TIMEOUT: u64 = 5;
+/// Decision budget (110 s) plus a margin, same as Claude Code's PermissionRequest.
+const PERMISSION_TIMEOUT: u64 = 120;
+
+fn is_permission_event(event: &str) -> bool {
+    event == "preToolUse" || event == "beforeShellExecution"
+}
+
+fn timeout_for(event: &str) -> u64 {
+    if is_permission_event(event) { PERMISSION_TIMEOUT } else { OBSERVE_TIMEOUT }
+}
 
 /// Marker that identifies a Alfred entry inside hooks.json.
 const MARKER: &str = "alfred-hook";
@@ -105,10 +120,16 @@ fn merged(existing: &Value) -> Value {
             .cloned()
             .unwrap_or_default();
         list.retain(|entry| !entry_is_ours(entry));
-        list.push(json!({
+        let mut entry = json!({
             "command": command,
-            "timeout": TIMEOUT,
-        }));
+            "timeout": timeout_for(event),
+        });
+        // A killed or silent permission hook must block the call. Without this,
+        // Cursor allows it when the timeout fires.
+        if is_permission_event(event) {
+            entry["failClosed"] = json!(true);
+        }
+        list.push(entry);
         hooks.insert((*event).to_string(), Value::Array(list));
     }
 
@@ -172,13 +193,31 @@ fn installed_in(root: &Value) -> bool {
         .unwrap_or(false)
 }
 
+fn our_event<'a>(root: &'a Value, event: &str) -> Option<&'a Value> {
+    let list = root.get("hooks")?.as_object()?.get(event)?.as_array()?;
+    list.iter().find(|entry| entry_is_ours(entry))
+}
+
+fn permission_entry_current(root: &Value, event: &str) -> bool {
+    let Some(entry) = our_event(root, event) else { return false };
+    entry.get("timeout").and_then(Value::as_u64) == Some(PERMISSION_TIMEOUT)
+        && entry.get("failClosed").and_then(Value::as_bool) == Some(true)
+}
+
 pub fn status() -> HookStatus {
+    let root = read_hooks_lossy();
+    let installed = installed_in(&root);
     let hook_path = settings::hook_exe_path();
     HookStatus {
-        installed: installed_in(&read_hooks_lossy()),
+        installed,
         settings_path: hooks_path().to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
+        // A short timeout, or no failClosed, lets Cursor allow the tool when it
+        // kills the relay. Reinstalling writes 120 s and failClosed.
+        hooks_outdated: installed
+            && !(permission_entry_current(&root, "preToolUse")
+                && permission_entry_current(&root, "beforeShellExecution")),
     }
 }
 
@@ -266,10 +305,17 @@ mod tests {
         assert!(pre.iter().any(entry_is_ours));
         assert!(after["hooks"]["beforeShellExecution"].is_array());
         assert!(after["hooks"]["sessionStart"].is_array());
-        // Observational only: no failClosed, and the command is the cursor mode.
+        // preToolUse blocks if the relay dies. The others stay short and open.
         let ours = pre.iter().find(|e| entry_is_ours(e)).unwrap();
-        assert!(ours.get("failClosed").is_none());
-        assert_eq!(ours["timeout"], TIMEOUT);
+        assert_eq!(ours["failClosed"], true);
+        assert_eq!(ours["timeout"], PERMISSION_TIMEOUT);
+        let shell = after["hooks"]["beforeShellExecution"].as_array().unwrap();
+        assert!(shell.iter().any(|e| e["command"] == "keep-me.exe"));
+        let ours_shell = shell.iter().find(|e| entry_is_ours(e)).unwrap();
+        assert_eq!(ours_shell["failClosed"], true);
+        assert_eq!(ours_shell["timeout"], PERMISSION_TIMEOUT);
+        assert_eq!(after["hooks"]["sessionStart"][0]["timeout"], OBSERVE_TIMEOUT);
+        assert!(after["hooks"]["sessionStart"][0].get("failClosed").is_none());
         assert!(ours["command"].as_str().unwrap().contains("--cursor"));
 
         let cleaned = without_ours(&after);

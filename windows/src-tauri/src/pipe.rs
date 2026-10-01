@@ -1,9 +1,11 @@
 // Named-pipe server for alfred-hook.
 //
 // `\\.\pipe\alfred-<sid>` — one instance per connection. Every hook event is
-// forwarded to the island as a `hook` event. `PermissionRequest` is the only one
-// that keeps its connection open: it waits for the island's decision and writes
-// it back on the same pipe, which is how approving from the island works.
+// forwarded to the island. `PermissionRequest` (Claude Code) and a Cursor tool
+// marked `await_decision` keep the connection open: they wait for the island's
+// decision and write it back on the same pipe. Claude Code gets silence if
+// nobody answers, so the terminal asks. A Cursor permission gets `deny`: the
+// tool does not run until someone clicks Allow.
 //
 // Claude Code is never blocked by us. Three things guarantee it:
 //   * alfred-hook gives the connection 300 ms and exits cleanly if we are closed;
@@ -32,6 +34,7 @@ use crate::island::WINDOW_LABEL;
 use crate::log;
 
 /// Slightly under alfred-hook's own 110 s wait, so we always answer first.
+/// Cursor permissions use the same window: the tool waits for a click.
 const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// How long the island gets to say "the card is up". This is the whole of B4:
 /// without it, an island that is paused, hidden behind a crashed webview or
@@ -125,11 +128,39 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         .unwrap_or_default()
         .to_string();
 
-    // Cursor events are observational. They must never enter the permission
-    // wait, and they use their own event name — "cursor" is the mouse position.
-    if payload.get("source").and_then(Value::as_str) == Some("cursor") {
+    // "cursor" on the wire is an agent hook. The event name "cursor" is the
+    // mouse position, so the two must not share a channel.
+    let from_cursor = payload.get("source").and_then(Value::as_str) == Some("cursor");
+    let await_decision = payload
+        .get("await_decision")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if let Some(map) = payload.as_object_mut() {
+        map.remove("await_decision");
+    }
+    if from_cursor && !await_decision {
         log::line(format!("cursor-hook {event}"));
         let _ = app.emit_to(WINDOW_LABEL, "cursor-hook", payload);
+        let _ = pipe.disconnect();
+        return;
+    }
+    if from_cursor {
+        let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        {
+            let pending = app.state::<Pending>();
+            pending.0.lock().unwrap().insert(id.clone(), tx);
+        }
+        payload["request_id"] = json!(id);
+        log::line(format!("cursor-hook {event} id={id}"));
+        let _ = app.emit_to(WINDOW_LABEL, "cursor-hook", payload);
+
+        // No click means deny. The tool must not run without an answer.
+        let decision = wait_for_decision(&id, &mut rx, DECISION_TIMEOUT, Unanswered::Deny).await;
+        app.state::<Pending>().0.lock().unwrap().remove(&id);
+        let word = decision.unwrap_or_else(|| "deny".to_string());
+        let _ = pipe.write_all(format!("{word}\n").as_bytes()).await;
+        let _ = pipe.flush().await;
         let _ = pipe.disconnect();
         return;
     }
@@ -151,7 +182,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    let decision = wait_for_decision(&id, &mut rx, DECISION_TIMEOUT, Unanswered::Silence).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. alfred-hook then writes nothing to stdout
@@ -163,8 +194,27 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     let _ = pipe.disconnect();
 }
 
-/// Two waits: a short one for "the card is up", then the long one for a human.
-async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
+/// What to write when the click never comes.
+enum Unanswered {
+    /// Claude Code: silence, and the terminal asks.
+    Silence,
+    /// Cursor: the tool must not run.
+    Deny,
+}
+
+/// Two waits: a short one for "the card is up", then one for a human.
+async fn wait_for_decision(
+    id: &str,
+    rx: &mut mpsc::Receiver<Reply>,
+    decision_timeout: Duration,
+    unanswered: Unanswered,
+) -> Option<String> {
+    let deny = matches!(unanswered, Unanswered::Deny);
+    let miss = |why: &str| -> Option<String> {
+        log::line(format!("hook id={id} {why}"));
+        if deny { Some("deny".to_string()) } else { None }
+    };
+
     match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
         Ok(Some(Reply::Ack)) => {}
         // A click that beats the ack is still a click.
@@ -173,29 +223,38 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
             return Some(d);
         }
         Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} not shown — terminal takes over"));
-            return None;
+            return miss(if deny {
+                "not shown — denying"
+            } else {
+                "not shown — terminal takes over"
+            });
         }
-        Ok(None) => return None,
+        Ok(None) => return miss("relay dropped"),
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
-            return None;
+            return miss(if deny {
+                "island never acknowledged — denying"
+            } else {
+                "island never acknowledged — terminal takes over"
+            });
         }
     }
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
+    match tokio::time::timeout(decision_timeout, rx.recv()).await {
         Ok(Some(Reply::Decision(d))) => {
             log::line(format!("hook id={id} answered {d}"));
             Some(d)
         }
-        Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} released without a decision"));
-            None
-        }
-        _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
-            None
-        }
+        Ok(Some(Reply::Decline)) => miss(if deny {
+            "released without a decision — denying"
+        } else {
+            "released without a decision"
+        }),
+        Ok(Some(Reply::Ack)) | Ok(None) => miss("relay dropped"),
+        Err(_) => miss(if deny {
+            "no click — denying"
+        } else {
+            "timed out — terminal takes over"
+        }),
     }
 }
 

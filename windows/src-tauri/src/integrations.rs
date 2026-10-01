@@ -62,6 +62,7 @@ pub fn set_paused(on: bool) {
 
 /// Spawns every poller with the macOS delays and intervals.
 pub fn start(app: AppHandle) {
+    spawn(app.clone(), "integration_spotify", 1, 2, poll_spotify);
     spawn(app.clone(), "integration_n8n", 3, 15, poll_n8n);
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
@@ -103,9 +104,59 @@ where
     });
 }
 
+static SPOTIFY_LAST: Mutex<String> = Mutex::new(String::new());
+
+/// Local media session. `event` stays empty: a new track must not open the
+/// island or play a sound.
+async fn poll_spotify(app: AppHandle) {
+    let snap = match tokio::task::spawn_blocking(crate::media::snapshot).await {
+        Ok(snap) => snap,
+        Err(_) => return,
+    };
+    publish_spotify(&app, &snap);
+}
+
+pub async fn spotify_control(app: &AppHandle, action: &str) {
+    let action = action.to_string();
+    let snap = match tokio::task::spawn_blocking(move || crate::media::perform(&action)).await {
+        Ok(snap) => snap,
+        Err(_) => return,
+    };
+    // The click changed the session; publish even if the text matches the last poll.
+    if let Ok(mut last) = SPOTIFY_LAST.lock() {
+        last.clear();
+    }
+    publish_spotify(app, &snap);
+}
+
+fn publish_spotify(app: &AppHandle, snap: &crate::media::NowPlaying) {
+    let key = format!("{}\n{}\n{}\n{}", snap.title, snap.artist, snap.playing, snap.available);
+    if let Ok(mut last) = SPOTIFY_LAST.lock() {
+        if *last == key {
+            return;
+        }
+        *last = key;
+    }
+    emit(
+        app,
+        IntegrationUpdate {
+            id: "integration_spotify",
+            data: json!({
+                "title": snap.title,
+                "artist": snap.artist,
+                "playing": snap.playing,
+                "available": snap.available,
+            }),
+            error: None,
+            event: None,
+        },
+    );
+}
+
 /// One-shot refresh from the Refresh buttons in the island.
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
+        "integration_spotify" => poll_spotify(app).await,
         "integration_stripe" => poll_stripe(app).await,
         "integration_github" => poll_github(app).await,
         "integration_vercel" => poll_vercel(app).await,

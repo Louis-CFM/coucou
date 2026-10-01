@@ -50,6 +50,8 @@ interface HookSectionCopy {
   previewInstall: string;
   previewRemove: string;
   done: (backup: string) => string;
+  /** Shown when the installed timeout is too short for a click to land. */
+  outdated?: string;
   load: () => Promise<HookStatus | null>;
   preview: (install: boolean) => Promise<HookPreview>;
   apply: (install: boolean, fingerprint: string) => Promise<string>;
@@ -96,6 +98,9 @@ function hooksSection(copy: HookSectionCopy, status: HookStatus): HTMLElement {
         class: "notice warn",
         text: "alfred-hook.exe is not in place yet. Restart Alfred; if it still fails, build it with `cargo build -p alfred-hook`.",
       }));
+    }
+    if (status.hooksOutdated && copy.outdated) {
+      body.append(h("div", { class: "notice warn", text: copy.outdated }));
     }
 
     const actions = h("div", { class: "row" });
@@ -195,11 +200,12 @@ const CLAUDE_HOOKS: HookSectionCopy = {
 const CURSOR_HOOKS: HookSectionCopy = {
   title: "Cursor",
   fileLabel: "hooks.json",
-  installed: "Alfred watches your local Cursor agent sessions. Steps and subagents show up in the island. Approvals stay in Cursor, and cloud agents are not included.",
-  missing: "Install the hooks to see your local Cursor agent sessions in the island. Alfred only observes — it never approves or blocks a tool. Cloud agents are not included.",
+  installed: "Alfred watches your local Cursor agent sessions. Deny / Allow appears only when Cursor itself would ask: a command that needs full access, a file delete, or a change outside the project. Cloud agents are not included.",
+  missing: "Install the hooks to see your local Cursor agent sessions, and to answer the permissions Cursor would ask for. Edits inside the project are not interrupted. Cloud agents are not included.",
   previewInstall: "This is exactly what will change in your hooks.json. Your own hooks are left untouched.",
   previewRemove: "This removes Alfred's entries only. Your own hooks are left untouched.",
   done: (backup) => `Done. Previous hooks saved as ${backup}. Start a new Cursor agent chat to pick the hooks up.`,
+  outdated: "Reinstall the hooks. The copy installed now can let Cursor run the tool when the wait runs out, before you have clicked.",
   load: () => Bridge.cursorHooksStatus(),
   preview: (install) => Bridge.cursorHooksPreview(install),
   apply: (install, fingerprint) => Bridge.cursorHooksApply(install, fingerprint),
@@ -294,11 +300,16 @@ interface IntegrationDef {
   id: string;
   name: string;
   color: string;
+  /** Shown instead of a key field. Spotify has nothing to store. */
+  note?: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
+  { id: "integration_spotify", name: "Spotify", color: "#1DB954",
+    note: "Uses the Spotify app already open. No key.",
+    fields: [] },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
@@ -359,6 +370,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    if (def.note) rows.append(h("div", { class: "hint", text: def.note }));
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -428,6 +440,48 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  if (settings.hideMode !== "manual") settings.hideMode = "timer";
+  if (settings.shrinkMode !== "outside") settings.shrinkMode = "timer";
+
+  const hideMode = h("select", {}) as HTMLSelectElement;
+  hideMode.append(
+    h("option", { value: "timer", text: "After a pause" }),
+    h("option", { value: "manual", text: "Close button" }),
+  );
+  hideMode.value = settings.hideMode;
+  const hideHint = h("span", { class: "hint" });
+
+  const shrinkMode = h("select", {}) as HTMLSelectElement;
+  shrinkMode.append(
+    h("option", { value: "timer", text: "After you leave it" }),
+    h("option", { value: "outside", text: "Click outside" }),
+  );
+  shrinkMode.value = settings.shrinkMode;
+  const shrinkHint = h("span", { class: "hint" });
+
+  function syncBehavior() {
+    const manual = hideMode.value === "manual";
+    hideHint.textContent = manual
+      ? "Stays until you click ×. Hover the top of the screen to bring it back."
+      : "Hides on its own. Hover the top of the screen to bring it back.";
+    const outside = shrinkMode.value === "outside";
+    autoClose.hidden = outside;
+    shrinkHint.textContent = outside
+      ? "Stays open until you click somewhere else."
+      : "seconds after you leave the island";
+  }
+  hideMode.addEventListener("change", () => {
+    settings.hideMode = hideMode.value === "manual" ? "manual" : "timer";
+    syncBehavior();
+    void save();
+  });
+  shrinkMode.addEventListener("change", () => {
+    settings.shrinkMode = shrinkMode.value === "outside" ? "outside" : "timer";
+    syncBehavior();
+    void save();
+  });
+  syncBehavior();
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: "Main display" }),
@@ -468,9 +522,15 @@ function generalSection(): HTMLElement {
       volume,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
+      h("label", { text: "Hide completely" }),
+      hideMode,
+      hideHint,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Shrink" }),
+      shrinkMode,
       autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+      shrinkHint,
     ),
     h("div", { class: "row" },
       h("label", { text: "Default pill" }),
@@ -496,7 +556,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const emptyHooks = { installed: false, settingsPath: "", hookPath: "", hookReady: false };
+  const emptyHooks = { installed: false, settingsPath: "", hookPath: "", hookReady: false, hooksOutdated: false };
   const status = (await Bridge.hooksStatus()) ?? { ...emptyHooks };
   const cursorStatus = (await Bridge.cursorHooksStatus()) ?? { ...emptyHooks };
 
