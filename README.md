@@ -32,6 +32,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 ## Features
 
 - 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
+- 🟢 **Codex, optionally** — local coding-agent hooks alongside Claude Code, with a separate current-session pill and explicit Allow / Deny. See [setup and compatibility](docs/CODEX.md) for this contribution branch.
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Ask Claude anything** — built-in chat, straight from the notch.
@@ -100,6 +101,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
+| **Codex hooks (optional)** | local coding-session activity and approvals | Separate **Codex** section — review and confirm changes to `~/.codex/hooks.json`, then review/trust them in Codex using `/hooks`; no additional API key |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
@@ -138,6 +140,10 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 ## Contributing
 
 Issues and PRs are very welcome — new integrations, new emotes, new sounds, bug fixes. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The optional Codex contribution is described in [project analysis](docs/PROJECT_ANALYSIS.md)
+and the [upstream review proposal](docs/CODEX_CONTRIBUTION.md). Coding-agent
+providers remain separate from the built-in Anthropic API chat.
 
 ## Credits
 

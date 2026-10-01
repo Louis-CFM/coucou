@@ -7,6 +7,7 @@ extension AgentTask {
     /// All available integration pills. Claude is always active; others are opt-in (max 4).
     static let integrationAgents: [AgentTask] = [
         AgentTask(id: "integration_claude",  name: "VS Code",   color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
+        AgentTask(id: "integration_codex", name: "Codex", color: "#10A37F", state: .idle, steps: [], source: .codex, isIntegration: true),
         AgentTask(id: "integration_resend",  name: "Resend",    color: "#22C55E", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_n8n",     name: "n8n",       color: "#F29B38", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_vercel",  name: "Vercel",    color: "#7C5CFF", state: .idle, steps: [], source: .n8n, isIntegration: true),
@@ -263,10 +264,33 @@ final class AppState: ObservableObject {
         else if view == .overview && tasks.isEmpty { view = .empty }
     }
 
+    @Published private(set) var codexHooksInstalled = false
+
+    private func readCodexHooksInstalled() -> Bool {
+        #if APPSTORE
+        guard let data = UserDefaults.standard.data(forKey: "codexDirectoryBookmark") else { return false }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &stale), !stale else { return false }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        return CodexHooks(directory: url, relayCommand: "").isInstalled
+        #else
+        return CodexHooks(directory: CodexHooks.defaultDirectory, relayCommand: "").isInstalled
+        #endif
+    }
+
+    func ensureCodexTask() {
+        guard !tasks.contains(where: { $0.id == "integration_codex" }),
+              let task = AgentTask.integrationAgents.first(where: { $0.id == "integration_codex" }) else { return }
+        tasks.insert(task, at: min(1, tasks.count))
+    }
+
     /// Load integration pills respecting activeIntegrations. VS Code always loads. Safe to call multiple times.
     func loadIntegrationTasks() {
+        codexHooksInstalled = readCodexHooksInstalled()
         for task in AgentTask.integrationAgents {
-            let shouldLoad = task.id == "integration_claude" || activeIntegrations.contains(task.id)
+            let shouldLoad = task.id == "integration_claude" ||
+                (task.id == "integration_codex" ? codexHooksInstalled || tasks.contains(where: { $0.id == task.id && $0.sessionId != nil }) : activeIntegrations.contains(task.id))
             let loaded = tasks.contains(where: { $0.id == task.id })
             if shouldLoad && !loaded { tasks.append(task) }
             if !shouldLoad && loaded { tasks.removeAll { $0.id == task.id } }
@@ -277,7 +301,7 @@ final class AppState: ObservableObject {
 
     /// Toggle an integration pill on/off. VS Code cannot be toggled. Max 4 active at once.
     func toggleIntegration(_ id: String) {
-        guard id != "integration_claude" else { return }
+        guard id != "integration_claude" && id != "integration_codex" else { return }
         if activeIntegrations.contains(id) {
             activeIntegrations.remove(id)
             tasks.removeAll { $0.id == id }
