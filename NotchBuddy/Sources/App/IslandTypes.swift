@@ -60,6 +60,7 @@ struct AgentTask: Identifiable, Equatable {
 enum AgentSource: Equatable {
     case claudeCode
     case n8n
+    case orca
 }
 
 // MARK: - View dimensions (from VIEWS in prototype)
@@ -132,6 +133,7 @@ enum IslandConst {
         let color: String
     }
     static let allIntegrations: [IntegrationMeta] = [
+        .init(id: "integration_orca",    name: "Orca",    color: "#FF6B5B"),
         .init(id: "integration_resend",  name: "Resend",  color: "#22C55E"),
         .init(id: "integration_n8n",     name: "n8n",     color: "#F29B38"),
         .init(id: "integration_vercel",  name: "Vercel",  color: "#7C5CFF"),

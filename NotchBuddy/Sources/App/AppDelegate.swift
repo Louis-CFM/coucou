@@ -27,11 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.image?.isTemplate = true
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Coucou", action: #selector(openIsland), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Open Coucou"), action: #selector(openIsland), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        menu.addItem(withTitle: String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: String(localized: "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         statusItem?.menu = menu
     }
@@ -45,11 +45,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
 
     @objc private func openSettings() {
+        // The expanded island floats above every window and would cover the toolbar tabs.
+        // Never collapse it while an approval is waiting — the card must stay reachable.
+        if AppState.shared.pendingApproval == nil, AppState.shared.mode == .expanded {
+            islandController?.collapse()
+        }
         if let w = settingsWindow, w.isVisible { w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 540),
-                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        win.title = "Settings — Coucou"
-        win.contentView = NSHostingView(rootView: SettingsView())
+        let win = NSWindow(contentViewController: SettingsTabViewController())
+        win.styleMask = [.titled, .closable]
+        win.toolbarStyle = .preference
+        win.setContentSize(SettingsTabViewController.size)
         win.center()
         win.isReleasedWhenClosed = false
         settingsWindow = win
@@ -64,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        // Registry routes the approval-card buttons to the owning provider — without
+        // registration the Allow/Deny buttons are a silent no-op.
+        AgentServiceRegistry.shared.register(HookServer.shared)
+        OrcaService.shared.start()
+        AgentServiceRegistry.shared.register(OrcaService.shared)
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()

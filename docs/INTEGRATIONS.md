@@ -146,7 +146,40 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 7. Permissions macOS demandées (récapitulatif pour Louis)
+## 7. Orca (agents de coding)
+
+### Architecture
+```
+Orca.app (runtime RPC local, sans pareillage)
+  └─ <Application Support>/orca/orca-runtime.json  (transports[] + authToken, 0600)
+       └─ socket Unix ─► OrcaService (polling 5 s, méthode worktree.ps)
+                            └─ AgentEventRouter ─► pill / carte approval / sons
+```
+- **Pas de CLI** : le binaire `/usr/local/bin/orca` dépend du lien symbolique de l'app et peut être cassé. On parle directement au socket JSON-RPC newline-delimited que le CLI utilise :
+  `{"id":"…","authToken":"…","method":"worktree.ps","params":{"limit":50}}\n` → `{"id","ok","result","_meta"}`.
+- Chemin du JSON : champ « Runtime JSON path » dans Settings → détection auto `Application Support/orca|Orca/orca-runtime.json`.
+- Le polling ne tourne que si la pill Orca est active ; timeout 4 s ; 3 échecs consécutifs (~15 s) → la carte d'appro est libérée (Orca fermé).
+
+### Événements mappés (status du worktree, RuntimeWorktreeStatus)
+| status | effet dans l'app |
+|---|---|
+| `permission` | alerte `approval` : son, carte épinglée, badge pill — déclenchée aussi au 1er poll (une appro qui attend déjà au lancement) |
+| sort de `permission` | réponse prise dans Orca → carte libérée (`permissionResolved`) |
+| `done` | `finished` : son + badge, reset après 5,2 s |
+| `working` | état `working` de la pill |
+| ticker | une ligne par worktree actif (max 6) : `⚠ tradespace · sprint/s05 · approval needed` |
+
+### Approuver depuis le notch (MVP : non — sauter vers Orca)
+- La carte d'appro Orca affiche **« Open Orca »** (active `com.stablyai.orca`) + **« Dismiss »**, pas Allow/Deny : l'approbation à distance des agents en terminal nécessite le RPC `agentSession.respondToApproval` / `terminal.send` d'Orca, pas encore câblé.
+- « Dismiss » masque la carte ici **uniquement** ; l'agent reste bloqué tant que ce n'est pas répondu dans Orca. Jamais d'allow silencieux.
+- Une demande Claude Code en attente n'est jamais remplacée par une appro Orca (Claude Code reste bloqué tant qu'on n'a pas répondu) : l'appro Orca est mise en attente et s'affiche dès que la carte est libre.
+
+### Slots de pills
+- Limite portée de 4 à 6 (`AgentTask.maxToggleablePills`) ; « Orca » ajouté aux toggles Active pills et activé par défaut.
+
+---
+
+## 8. Permissions macOS demandées (récapitulatif pour Louis)
 
 | Permission | Pourquoi | Quand |
 |---|---|---|

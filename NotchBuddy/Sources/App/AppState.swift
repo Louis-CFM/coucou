@@ -4,9 +4,10 @@ import Combine
 
 // Integration pills — always-present, never purged
 extension AgentTask {
-    /// All available integration pills. Claude is always active; others are opt-in (max 4).
+    /// All available integration pills. Claude is always active; others are opt-in (max maxToggleablePills).
     static let integrationAgents: [AgentTask] = [
         AgentTask(id: "integration_claude",  name: "VS Code",   color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
+        AgentTask(id: "integration_orca",    name: "Orca",      color: "#FF6B5B", state: .idle, steps: [], source: .orca, isIntegration: true),
         AgentTask(id: "integration_resend",  name: "Resend",    color: "#22C55E", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_n8n",     name: "n8n",       color: "#F29B38", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_vercel",  name: "Vercel",    color: "#7C5CFF", state: .idle, steps: [], source: .n8n, isIntegration: true),
@@ -18,9 +19,12 @@ extension AgentTask {
 
     /// IDs that can be toggled (VS Code is always on and excluded from this list)
     static let toggleableIntegrationIds: [String] = [
-        "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
+        "integration_orca", "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
         "integration_notion", "integration_calcom", "integration_stripe",
     ]
+
+    /// Max toggleable pills shown at once (VS Code never counts).
+    static let maxToggleablePills = 6
 
 }
 
@@ -134,8 +138,13 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Active integration pills (VS Code excluded — always on). Max 4.
-    @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
+    // Orca runtime JSON path — empty = auto-detect (Application Support/orca|Orca)
+    @Published var orcaRuntimePath: String = "" {
+        didSet { UserDefaults.standard.set(orcaRuntimePath, forKey: "orcaRuntimePath") }
+    }
+
+    // Active integration pills (VS Code excluded — always on). Max AgentTask.maxToggleablePills.
+    @Published var activeIntegrations: Set<String> = ["integration_orca", "integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
         didSet {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
                 UserDefaults.standard.set(data, forKey: "activeIntegrations")
@@ -202,6 +211,7 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
+        if let v = ud.string(forKey: "orcaRuntimePath") { orcaRuntimePath = v }
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
@@ -214,6 +224,18 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// Resolved path to Orca's orca-runtime.json (custom override, else auto-detect).
+    var orcaRuntimeFilePath: String {
+        let custom = orcaRuntimePath.trimmingCharacters(in: .whitespaces)
+        if !custom.isEmpty { return (custom as NSString).expandingTildeInPath }
+        let base = NSHomeDirectory() + "/Library/Application Support"
+        for name in ["orca", "Orca"] {
+            let candidate = "\(base)/\(name)/orca-runtime.json"
+            if FileManager.default.fileExists(atPath: candidate) { return candidate }
+        }
+        return "\(base)/orca/orca-runtime.json"
     }
 
     var effectiveState: BotState {
@@ -275,7 +297,7 @@ final class AppState: ObservableObject {
         syncMode()
     }
 
-    /// Toggle an integration pill on/off. VS Code cannot be toggled. Max 4 active at once.
+    /// Toggle an integration pill on/off. VS Code cannot be toggled. Max AgentTask.maxToggleablePills active.
     func toggleIntegration(_ id: String) {
         guard id != "integration_claude" else { return }
         if activeIntegrations.contains(id) {
@@ -283,7 +305,7 @@ final class AppState: ObservableObject {
             tasks.removeAll { $0.id == id }
             if focusId == id { focusId = "integration_claude" }
         } else {
-            guard activeIntegrations.count < 4 else { return }
+            guard activeIntegrations.count < AgentTask.maxToggleablePills else { return }
             activeIntegrations.insert(id)
             if let task = AgentTask.integrationAgents.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {

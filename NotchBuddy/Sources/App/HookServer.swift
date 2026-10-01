@@ -5,9 +5,21 @@ import AppKit
 // MARK: - HookServer
 // Listens on a Unix domain socket for events from nb-hook (Claude Code hooks).
 // Thread-safe: socket I/O on background threads, state updates dispatched to main queue.
+// It is the Claude Code implementation of AgentService: it parses hook payloads and
+// forwards normalized AgentEvent values to AgentEventRouter.
 
 final class HookServer: @unchecked Sendable {
     static let shared = HookServer()
+
+    // MARK: - AgentService state
+    // (conformance declared in the extension below — declaring it on the class would
+    // make Swift isolate the whole type to the main actor, but socket I/O runs on threads)
+
+    let taskID = "integration_claude"
+    let source: AgentSource = .claudeCode
+
+    @MainActor
+    var hasPendingApproval: Bool { pendingApprovalFD >= 0 }
 
     // Support directory paths
     static var supportDir: URL {
@@ -37,6 +49,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Start
 
+    @MainActor
     func start() {
         // Ensure support directory exists before socket server tries to bind
         try? FileManager.default.createDirectory(at: Self.supportDir, withIntermediateDirectories: true)
@@ -117,14 +130,12 @@ final class HookServer: @unchecked Sendable {
     }
 
 
-    // MARK: - Event → AppState
-    // All Claude Code events route to the permanent "integration_claude" task.
-    // View switches only happen if VS Code is the currently focused mochi.
-    // When not focused: state updates animate the mini bot in the pill; badge shown for alerts.
+    // MARK: - Event → AgentEvent
+    // Claude Code hook payloads are parsed here and normalized into AgentEvent.
+    // AppState is only touched by AgentEventRouter (shared with the other providers).
 
     @MainActor
     private func processEvent(name: String, payload: [String: Any]) {
-        let state = AppState.shared
         let sessionId = payload["session_id"] as? String ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
@@ -135,127 +146,70 @@ final class HookServer: @unchecked Sendable {
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
         guard isVSCode else {
-            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
+            agentLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
-        let focused = state.focusId == "integration_claude"
+        guard let kind = eventKind(for: name, payload: payload, sessionId: sessionId) else { return }
 
+        AgentEventRouter.shared.handle(
+            AgentEvent(taskID: taskID, projectName: projectName, cwd: cwd, kind: kind)
+        )
+    }
+
+    /// Maps one Claude Code hook event to a normalized AgentEventKind (nil = ignored).
+    @MainActor
+    private func eventKind(for name: String, payload: [String: Any], sessionId: String) -> AgentEventKind? {
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            nbLog("SessionStart \(projectName) (\(sessionId.prefix(8)))")
-            if state.isPresent { expandIfNeeded(to: .overview) }
-            SoundEngine.shared.play("work")
+            return .sessionStart
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .thinking)
-            if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
-                appendStep(id: "integration_claude", step: String(prompt.prefix(60)))
-            }
-            if state.isPresent { expandIfNeeded(to: .overview) }
+            return .userPrompt(payload["prompt"] as? String)
 
         case "PreToolUse":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
-            let step = frenchStep(tool: tool, input: input)
-            appendStep(id: "integration_claude", step: step)
-            nbLog("PreToolUse \(step)")
+            return .step(frenchStep(tool: tool, input: input))
 
         case "PostToolUse":
-            state.updateTask(id: "integration_claude", state: .working)
+            return .working
 
         case "PostToolUseFailure":
-            state.updateTask(id: "integration_claude", state: .working)
-            appendStep(id: "integration_claude", step: "⚠ failed")
+            return .stepFailure
 
         case "Notification":
-            let message = payload["message"] as? String ?? ""
-            let lower = message.lowercased()
-            if lower.contains("rate limit") || lower.contains("limite d") {
-                state.updateTask(id: "integration_claude", state: .ratelimit)
-                SoundEngine.shared.play("rate")
-            } else if message.hasSuffix("?") {
-                state.updateTask(id: "integration_claude", state: .question)
-                appendStep(id: "integration_claude", step: message)
-            }
+            return .notification(payload["message"] as? String ?? "")
 
         case "Stop":
-            state.updateTask(id: "integration_claude", state: .finished)
-            if let message = payload["message"] as? String, !message.isEmpty {
-                appendStep(id: "integration_claude", step: String(message.prefix(60)))
-            }
-            SoundEngine.shared.play("finish")
-            if focused {
-                expandIfNeeded(to: .finished)
-            } else {
-                setPillBadge(id: "integration_claude", badge: .finished)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                state.updateTask(id: "integration_claude", state: .idle)
-                self.clearPillBadge(id: "integration_claude")
-            }
+            return .finished(payload["message"] as? String)
 
         case "StopFailure":
-            state.updateTask(id: "integration_claude", state: .error)
-            SoundEngine.shared.play("error")
-            if focused {
-                expandIfNeeded(to: .error)
-            } else {
-                setPillBadge(id: "integration_claude", badge: .error)
-            }
+            return .failed(nil)
 
         case "SessionEnd":
             activeSessionId = nil
-            state.updateTask(id: "integration_claude", state: .idle)
-            clearSession()
+            return .sessionEnd(resetTo: "VS Code")
 
         case "SubagentStart":
-            appendStep(id: "integration_claude", step: "+ subagent")
+            return .subagentStart
 
         case "SubagentStop":
-            appendStep(id: "integration_claude", step: "• subagent done")
+            return .subagentStop
 
         default:
-            break
+            return nil
         }
-    }
-
-    // MARK: - Helpers
-
-    @MainActor
-    private func expandIfNeeded(to view: IslandView) {
-        let state = AppState.shared
-        let isAlert: Bool
-        switch view {
-        case .approval, .finished, .error, .confused: isAlert = true
-        default: isAlert = false
-        }
-        if state.mode == .expanded {
-            // Only force-switch view for alerts — leave user on their current view otherwise
-            if isAlert { state.view = view }
-        } else if isAlert {
-            // Alerts always force-expand
-            NotificationCenter.default.post(name: .hookExpand, object: view)
-        } else if state.mode == .hidden {
-            // Non-alert work events: reveal compact only, never force-expand
-            NotificationCenter.default.post(name: .hookReveal, object: nil)
-        }
-        // Already compact and non-alert: Mochi state update is enough, no expand
     }
 
     // MARK: - Permission request (blocking — Claude Code waits for decision)
 
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
-        let state = AppState.shared
         let sessionId = payload["session_id"] as? String ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
@@ -278,7 +232,7 @@ final class HookServer: @unchecked Sendable {
         if let input = payload["tool_input"] as? [String: Any] {
             command = input["command"] as? String ?? tool
         }
-        nbLog("PermissionRequest \(tool): \(command)")
+        agentLog("PermissionRequest \(tool): \(command)")
 
         if pendingApprovalFD >= 0 {
             let old = pendingApprovalFD
@@ -291,36 +245,41 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertTask(projectName: projectName, cwd: cwd)
-        state.updateTask(id: "integration_claude", state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
-        state.isPinned = true
-        SoundEngine.shared.play("approval")
+        AgentEventRouter.shared.handle(AgentEvent(
+            taskID: taskID,
+            projectName: projectName,
+            cwd: cwd,
+            kind: .permissionRequest(AgentPermissionRequest(sessionID: sessionId,
+                                                            requestID: "",
+                                                            tool: tool,
+                                                            command: command))
+        ))
 
-        // Approval always forces the island open — user must be able to respond
-        state.focusId = "integration_claude"
-        expandIfNeeded(to: .approval)
-
+        // Claude Code gives us 120s to answer — hand the decision back to it when nobody decides.
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
-            guard let self, self.pendingApprovalFD == captured else { return }
-            // "ask" → nb-hook outputs nothing → Claude Code re-asks rather than denying
-            self.sendApprovalDecision("ask")
+            Task { @MainActor in
+                guard let self, self.pendingApprovalFD == captured else { return }
+                // "ask" → nb-hook outputs nothing → Claude Code re-asks rather than denying
+                self.respond(to: .ask)
+            }
         }
     }
 
-    /// Called by ApprovalView buttons. Writes the decision to the waiting nb-hook and cleans up.
+    // MARK: - AgentService: approval decision
+
+    /// Called by the approval card (via AgentServiceRegistry) and by the timeout above.
     @MainActor
-    func sendApprovalDecision(_ decision: String) {
+    func respond(to decision: AgentApprovalDecision) {
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
 
         let json: String
         switch decision {
-        case "allow":  json = #"{"permissionDecision":"allow"}"#
-        case "always": json = #"{"permissionDecision":"always"}"#
-        case "ask":    json = #"{"permissionDecision":"ask"}"#
-        default:       json = #"{"permissionDecision":"deny"}"#
+        case .allow:       json = #"{"permissionDecision":"allow"}"#
+        case .alwaysAllow: json = #"{"permissionDecision":"always"}"#
+        case .ask:         json = #"{"permissionDecision":"ask"}"#
+        case .deny:        json = #"{"permissionDecision":"deny"}"#
         }
 
         if fd >= 0 {
@@ -330,61 +289,12 @@ final class HookServer: @unchecked Sendable {
             }
         }
 
-        let state = AppState.shared
-        state.pendingApproval = nil
-        state.isPinned = false
-        state.updateTask(id: "integration_claude", state: .working)
-        clearPillBadge(id: "integration_claude")
-        state.view = state.tasks.isEmpty ? .empty : .overview
-    }
-
-    /// Updates integration_claude with the current session project name and cwd.
-    @MainActor
-    private func upsertTask(projectName: String, cwd: String = "") {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].name = projectName
-        if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-    }
-
-    // MARK: - Badge helpers
-
-    @MainActor
-    private func setPillBadge(id: String, badge: PillBadge) {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].pillBadge = badge
-    }
-
-    @MainActor
-    private func clearPillBadge(id: String) {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].pillBadge = nil
-    }
-
-    /// Resets integration_claude to idle, clears steps and project name.
-    @MainActor
-    private func clearSession() {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].steps = []
-        state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
-        state.tasks[idx].pillBadge = nil
-    }
-
-    @MainActor
-    private func appendStep(id: String, step: String) {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].steps.append(step)
-        if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
-        state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
+        AgentEventRouter.shared.handle(
+            AgentEvent(taskID: taskID, kind: .permissionResolved(decision))
+        )
     }
 
     // MARK: - Project name alias mapping
-
     private func aliasProjectName(_ name: String) -> String {
         let aliases: [String: String] = [
             "notch-buddy":  "Notch Buddy",
@@ -424,28 +334,6 @@ final class HookServer: @unchecked Sendable {
             return "\(label) · \(String(query.prefix(40)))"
         }
         return label
-    }
-
-    // MARK: - Logging
-
-    private func nbLog(_ message: String) {
-        let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs/NotchBuddy")
-        try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
-        let logFile = logsDir.appendingPathComponent("nb.log")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let line = "\(formatter.string(from: Date())) \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
-        if FileManager.default.fileExists(atPath: logFile.path) {
-            if let handle = try? FileHandle(forWritingTo: logFile) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                try? handle.close()
-            }
-        } else {
-            try? data.write(to: logFile)
-        }
     }
 
     private func sendLine(fd: Int32, text: String) {
@@ -680,6 +568,11 @@ final class HookServer: @unchecked Sendable {
     }
     #endif
 }
+
+// MARK: - AgentService conformance
+// Declared here (not on the class) so socket I/O stays non-isolated.
+
+extension HookServer: AgentService {}
 
 // MARK: - Notification names for hook server → controller communication
 
