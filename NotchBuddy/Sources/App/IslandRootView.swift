@@ -14,6 +14,9 @@ struct IslandRootView: View {
             IslandContainer(state: state)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
+        // The island is always a dark surface, independently of the system appearance.
+        // This also keeps native controls (Picker/Menu/TextField placeholders) legible.
+        .environment(\.colorScheme, .dark)
         .ignoresSafeArea()
     }
 }
@@ -193,7 +196,7 @@ struct IslandShape: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
-        let cr = max(0, cornerRadius)
+        let cr = min(max(0, cornerRadius), min(width / 2, height / 2))
         var p  = Path()
 
         if topRadius >= 0 {
@@ -437,7 +440,7 @@ struct IslandContentView: View {
                     // Views that fill available height instead of the fixed 98pt content frame:
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
-                    let isTall = v == .prompt || (v == .mail && active)
+                    let isTall = v == .prompt || v == .agentSession || (v == .mail && active)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
@@ -454,7 +457,7 @@ struct IslandContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 10)
         }
-        .padding(.top, 8)
+        .padding(.top, 10)
         .padding(.bottom, 10)
         .foregroundColor(Color(hex: "#F5F6F8"))
     }
@@ -543,18 +546,17 @@ struct TabButton: View {
     }
 }
 
-// MARK: - Compact mini mochi grid (2×2 to the right of the notch)
+// MARK: - Compact runtime indicators
 
 struct CompactMiniGrid: View {
     @ObservedObject var state: AppState
 
     private var others: [AgentTask] {
-        Array(state.tasks.filter { $0.id != state.focusId }.prefix(4))
+        Array(state.tasks.filter { $0.agentSessionID != nil }.prefix(2))
     }
 
     var body: some View {
-        let cols = [GridItem(.fixed(12), spacing: 4), GridItem(.fixed(12), spacing: 4)]
-        LazyVGrid(columns: cols, spacing: 4) {
+        HStack(spacing: 3) {
             ForEach(others) { task in
                 MiniBotCanvasView(task: task)
                     .frame(width: 12 / 0.6, height: 12 / 0.6)

@@ -2,6 +2,8 @@
 
 Règle d'or : **vérifier la doc officielle au moment d'implémenter**. Les formats ci-dessous sont le plan, pas une garantie. Sources à relire :
 - Hooks Claude Code : https://code.claude.com/docs/en/hooks
+- Hooks Antigravity : https://antigravity.google/docs/hooks
+- CLI Antigravity : https://antigravity.google/docs/cli/install/
 - API Claude (Messages, outil de recherche web, modèles) : https://docs.claude.com/en/api/overview
 - API publique n8n : `{URL de l'instance}/api/v1/docs` (playground de l'instance de Louis)
 
@@ -65,6 +67,19 @@ Demande l'autorisation Automatisation la première fois (normal).
 3. **Fusionner** : ajouter les hooks Notch Buddy sans toucher aux hooks existants. Chemin de `nb-hook` entre guillemets (il contient un espace).
 4. Montrer le diff à Louis, attendre son OK, écrire.
 5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy.
+
+## 1 bis. Antigravity CLI
+
+Les comptes Google individuels utilisent désormais `agy`; l'ancien Gemini CLI reste pris en charge comme intégration héritée pour les licences et clés compatibles.
+
+- Exécutable détecté : `agy` dans le `PATH`, `~/.local/bin`, Homebrew ou le chemin défini par `ANTIGRAVITY_EXECUTABLE`.
+- Hooks globaux : `~/.gemini/config/hooks.json`.
+- Identité de session : `conversationId`; espace de travail : premier élément de `workspacePaths`.
+- Événements observés : `PreInvocation`, `PostInvocation`, `PostToolUse` et `Stop`.
+- `PreToolUse` n'est pas installé par Coucou : son verdict obligatoire modifierait les décisions de permission natives. Coucou ne doit jamais autoriser implicitement un outil.
+- Chaque commande ajoute `COUCOU_RUNTIME=antigravity` et `COUCOU_HOOK_EVENT=<événement>` avant d'appeler `nb-hook`.
+- Comme pour Claude et Gemini CLI, une indisponibilité du socket ne bloque pas l'agent et le relais renvoie un objet JSON vide.
+- Installation et désinstallation suivent la même discipline : fusion, prévisualisation explicite, détection d'une modification concurrente, sauvegarde datée et suppression des seules entrées Coucou.
 
 ---
 

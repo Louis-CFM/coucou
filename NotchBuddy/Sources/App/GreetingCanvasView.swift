@@ -470,7 +470,7 @@ private func drawHeader(_ ctx: CGContext, alpha: Double) {
     guard alpha > 0 else { return }
     ctx.saveGState()
     ctx.setAlpha(CGFloat(alpha))
-    // VS Code icon pill (top-left)
+    // Home icon pill (top-left)
     gRR(ctx, 18, 4, 44, 26, 13)
     ctx.setFillColor(gHex("#1D1F23")); ctx.fillPath()
     ctx.setFillColor(gHex("#F5F6F8"))

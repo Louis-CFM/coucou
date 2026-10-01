@@ -4,9 +4,10 @@ import Combine
 
 // Integration pills — always-present, never purged
 extension AgentTask {
-    /// All available integration pills. Claude is always active; others are opt-in (max 4).
+    /// All available integration pills. Agent runtimes stay visible; service integrations are opt-in (max 4).
     static let integrationAgents: [AgentTask] = [
-        AgentTask(id: "integration_claude",  name: "VS Code",   color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
+        AgentTask(id: "integration_claude",  name: "Claude Code", color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
+        AgentTask(id: "integration_codex",   name: "Codex",     color: "#5EA2FF", state: .idle, steps: [], source: .codex, isIntegration: true),
         AgentTask(id: "integration_resend",  name: "Resend",    color: "#22C55E", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_n8n",     name: "n8n",       color: "#F29B38", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_vercel",  name: "Vercel",    color: "#7C5CFF", state: .idle, steps: [], source: .n8n, isIntegration: true),
@@ -16,7 +17,7 @@ extension AgentTask {
         AgentTask(id: "integration_stripe",  name: "Stripe",    color: "#0570DE", state: .idle, steps: [], source: .n8n, isIntegration: true),
     ]
 
-    /// IDs that can be toggled (VS Code is always on and excluded from this list)
+    /// IDs that can be toggled (agent runtimes are always on and excluded from this list)
     static let toggleableIntegrationIds: [String] = [
         "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
         "integration_notion", "integration_calcom", "integration_stripe",
@@ -27,6 +28,9 @@ extension AgentTask {
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
+
+    let agentRuntimeManager = AgentRuntimeManager()
+    private var runtimeCancellables: Set<AnyCancellable> = []
 
     // Island state
     @Published var mode: IslandMode = .hidden
@@ -141,7 +145,7 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Active integration pills (VS Code excluded — always on). Max 4.
+    // Active service pills (coding-agent runtimes are always available). Max 4.
     @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
         didSet {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
@@ -186,6 +190,7 @@ final class AppState: ObservableObject {
 
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
+    @Published var selectedAgentSessionID: String? = nil
 
     // MARK: - Init (loads persisted settings)
 
@@ -217,6 +222,27 @@ final class AppState: ObservableObject {
 
         // Always load integration pills
         loadIntegrationTasks()
+
+        agentRuntimeManager.$sessions
+            .receive(on: RunLoop.main)
+            .sink { [weak self] sessions in
+                self?.syncRuntimeTasks(with: sessions)
+            }
+            .store(in: &runtimeCancellables)
+
+        agentRuntimeManager.$latestAttentionSessionID
+            .compactMap { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] sessionID in
+                guard let self,
+                      let session = self.agentRuntimeManager.sessions[sessionID] else { return }
+                self.selectAgentSession(sessionID)
+                self.isPinned = true
+                let targetView: IslandView = session.pendingApproval == nil ? .question : .approval
+                self.view = targetView
+                NotificationCenter.default.post(name: .hookExpand, object: targetView)
+            }
+            .store(in: &runtimeCancellables)
     }
 
     // MARK: - Computed
@@ -257,6 +283,15 @@ final class AppState: ObservableObject {
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
     }
 
+    func selectAgentSession(_ id: String) {
+        guard agentRuntimeManager.sessions[id] != nil else { return }
+        selectedAgentSessionID = id
+        syncRuntimeTasks(with: agentRuntimeManager.sessions)
+        if let task = tasks.first(where: { $0.agentSessionID == id }) {
+            setFocus(task.id)
+        }
+    }
+
     func syncMode() {
         // If no tasks and not expanded/peek, go hidden
         if tasks.isEmpty && mode == .compact {
@@ -272,25 +307,85 @@ final class AppState: ObservableObject {
         else if view == .overview && tasks.isEmpty { view = .empty }
     }
 
-    /// Load integration pills respecting activeIntegrations. VS Code always loads. Safe to call multiple times.
+    /// Load integration pills respecting activeIntegrations. Agent runtimes always load. Safe to call multiple times.
     func loadIntegrationTasks() {
         for task in AgentTask.integrationAgents {
-            let shouldLoad = task.id == "integration_claude" || activeIntegrations.contains(task.id)
+            let shouldLoad = task.id == "integration_claude"
+                || task.id == "integration_codex"
+                || activeIntegrations.contains(task.id)
             let loaded = tasks.contains(where: { $0.id == task.id })
             if shouldLoad && !loaded { tasks.append(task) }
             if !shouldLoad && loaded { tasks.removeAll { $0.id == task.id } }
         }
-        if focusId == nil { focusId = "integration_claude" }
+        if focusId == nil { focusId = "integration_codex" }
         syncMode()
     }
 
-    /// Toggle an integration pill on/off. VS Code cannot be toggled. Max 4 active at once.
+    private func syncRuntimeTasks(with sessions: [String: AgentSession]) {
+        let runtimeSessionIDs = Set(sessions.keys)
+        tasks.removeAll { task in
+            guard let sessionID = task.agentSessionID else { return false }
+            return !runtimeSessionIDs.contains(sessionID)
+        }
+
+        for session in sessions.values.sorted(by: { $0.updatedAt > $1.updatedAt }) {
+            let task = AgentTask(runtimeSession: session)
+            if let index = tasks.firstIndex(where: { $0.agentSessionID == session.id }) {
+                tasks[index] = task
+            } else {
+                tasks.append(task)
+            }
+        }
+
+        let orderedSessions = sessions.values.sorted { $0.updatedAt > $1.updatedAt }
+        if selectedAgentSessionID.flatMap({ sessions[$0] }) == nil {
+            selectedAgentSessionID = orderedSessions.first?.id
+        }
+        if let focusId, tasks.contains(where: { $0.id == focusId }) == false {
+            self.focusId = selectedAgentSessionID
+                .flatMap { selectedID in tasks.first(where: { $0.agentSessionID == selectedID })?.id }
+                ?? "integration_codex"
+        }
+
+        guard let idx = tasks.firstIndex(where: { $0.id == "integration_codex" }) else { return }
+        let codexSessions = sessions.values
+            .filter { $0.runtime == .codex }
+            .sorted { $0.updatedAt > $1.updatedAt }
+        let selectedCodex = selectedAgentSessionID
+            .flatMap { sessions[$0] }
+            .flatMap { $0.runtime == .codex ? $0 : nil }
+        guard let selected = selectedCodex ?? codexSessions.first else {
+            tasks[idx].state = .idle
+            tasks[idx].steps = []
+            tasks[idx].pillBadge = nil
+            return
+        }
+
+        tasks[idx].state = selected.state.botState
+        tasks[idx].name = selected.displayTitle
+        tasks[idx].sessionCwd = selected.workspace?.path
+        tasks[idx].steps = selected.latestActivity.map { [$0.title] } ?? []
+        tasks[idx].stepIndex = 0
+        if selected.pendingApproval != nil {
+            tasks[idx].pillBadge = .approval
+        } else if selected.pendingUserInput != nil {
+            tasks[idx].pillBadge = .question
+        } else if selected.state == .failed {
+            tasks[idx].pillBadge = .error
+        } else if selected.state == .completed {
+            tasks[idx].pillBadge = .finished
+        } else {
+            tasks[idx].pillBadge = nil
+        }
+    }
+
+    /// Toggle a service integration pill on/off. Agent runtimes cannot be toggled. Max 4 active at once.
     func toggleIntegration(_ id: String) {
-        guard id != "integration_claude" else { return }
+        guard id != "integration_claude", id != "integration_codex" else { return }
         if activeIntegrations.contains(id) {
             activeIntegrations.remove(id)
             tasks.removeAll { $0.id == id }
-            if focusId == id { focusId = "integration_claude" }
+            if focusId == id { focusId = "integration_codex" }
         } else {
             guard activeIntegrations.count < 4 else { return }
             activeIntegrations.insert(id)
@@ -302,6 +397,71 @@ final class AppState: ObservableObject {
         syncMode()
     }
 
+}
+
+extension AgentTask {
+    init(runtimeSession session: AgentSession) {
+        let runtimeColor: String = switch session.runtime {
+        case .claudeCode: "#F29B38"
+        case .codex: "#5EA2FF"
+        case .geminiCLI: "#36CFC9"
+        case .antigravity: "#A78BFA"
+        }
+        let source: AgentSource = switch session.runtime {
+        case .claudeCode: .claudeCode
+        case .codex: .codex
+        case .geminiCLI: .geminiCLI
+        case .antigravity: .antigravity
+        }
+        let fallbackName: String = switch session.runtime {
+        case .claudeCode: "Claude session"
+        case .codex: "Codex session"
+        case .geminiCLI: "Gemini session"
+        case .antigravity: "Antigravity"
+        }
+        let badge: PillBadge? = if session.pendingApproval != nil {
+            .approval
+        } else if session.pendingUserInput != nil {
+            .question
+        } else if session.state == .failed {
+            .error
+        } else if session.state == .completed {
+            .finished
+        } else {
+            nil
+        }
+
+        self.init(
+            id: "runtime-session:\(session.id)",
+            name: session.displayTitle.nonEmpty ?? fallbackName,
+            color: runtimeColor,
+            state: session.state.botState,
+            stepIndex: 0,
+            steps: session.latestActivity.map { [$0.title] } ?? [],
+            source: source,
+            isIntegration: false,
+            pillBadge: badge,
+            sessionCwd: session.workspace?.path,
+            agentSessionID: session.id
+        )
+    }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+private extension AgentSessionState {
+    var botState: BotState {
+        switch self {
+        case .starting, .working: .working
+        case .waitingForApproval: .approval
+        case .waitingForUser: .question
+        case .completed: .finished
+        case .failed: .error
+        case .idle, .cancelled, .disconnected: .idle
+        }
+    }
 }
 
 // MARK: - Supporting types

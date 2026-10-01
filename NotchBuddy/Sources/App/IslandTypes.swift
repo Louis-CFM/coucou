@@ -10,7 +10,7 @@ enum IslandMode: String, CaseIterable {
 
 enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
-    case confused, upload, uploading, choose, mail, prompt
+    case confused, upload, uploading, choose, mail, prompt, agentPrompt, agentSession
     case searching, result, note, settings, greeting
 }
 
@@ -38,7 +38,7 @@ struct ApprovalInfo: Sendable {
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
 
-enum PillBadge { case approval, finished, error }
+enum PillBadge: Equatable { case approval, question, finished, error }
 
 // MARK: - Agent Task
 
@@ -55,12 +55,27 @@ struct AgentTask: Identifiable, Equatable {
     var miniEye: EyeShape? = nil
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
+    var agentSessionID: String? = nil // normalized runtime session represented by this pill
 }
 
 enum AgentSource: Equatable {
     case claudeCode
+    case codex
+    case geminiCLI
+    case antigravity
     case n8n
     case agent   // third-party agent via coucou_agent field
+
+    var runtimeLabel: String {
+        switch self {
+        case .claudeCode: "Claude Code"
+        case .codex: "Codex"
+        case .geminiCLI: "Gemini CLI"
+        case .antigravity: "Antigravity"
+        case .n8n: "n8n"
+        case .agent: "Agent"
+        }
+    }
 }
 
 // MARK: - View dimensions (from VIEWS in prototype)
@@ -82,6 +97,7 @@ enum AgentLayoutMode {
 enum IslandConst {
     static let notchWidth: CGFloat  = IslandScreenGeometry.fallbackNotchWidth
     static let notchHeight: CGFloat = 32
+    static let hiddenPeekHeight: CGFloat = 10
     static let expandedWidth: CGFloat = 640
     static let earRadius: CGFloat   = 14
     static let roundedCorner: CGFloat = 14    // hidden/peek/compact
@@ -102,6 +118,8 @@ enum IslandConst {
         .choose:    ViewLayout(height: 176, botX: 60,  botY: 101, botDiameter: 52, agentMode: .column),
         .mail:      ViewLayout(height: 240, botX: 56,  botY: nil, botDiameter: 46, agentMode: .column),
         .prompt:    ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
+        .agentPrompt: ViewLayout(height: 176, botX: 52, botY: nil, botDiameter: 44, agentMode: .column),
+        .agentSession: ViewLayout(height: 300, botX: 0, botY: nil, botDiameter: 0, agentMode: .none),
         .searching: ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
         .result:    ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
         .note:      ViewLayout(height: 160, botX: 60,  botY: nil, botDiameter: 50, agentMode: .column),

@@ -1,7 +1,6 @@
 import Foundation
 import Darwin
 import AppKit
-import CryptoKit
 
 // MARK: - HookServer
 // Listens on a Unix domain socket for events from nb-hook (Claude Code hooks).
@@ -28,7 +27,7 @@ final class HookServer: @unchecked Sendable {
     // App Store build derives the command from the panel-selected claudeURL in buildHooksData(claudeURL:).
     static var hookScriptPath: String { supportDir.appendingPathComponent("nb-hook").path }
 
-    // No approval blocking state — notch is notification-only, user answers in VS Code
+    // No approval blocking state — the user answers in their Claude Code host.
 
     private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
     private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
@@ -141,6 +140,20 @@ final class HookServer: @unchecked Sendable {
 
         let eventName = payload["hook_event_name"] as? String ?? ""
 
+        if payload["coucou_runtime"] as? String == AgentRuntimeID.geminiCLI.rawValue {
+            Task { @MainActor in self.processGeminiEvent(payload: payload) }
+            sendLine(fd: fd, text: "{}")
+            close(fd)
+            return
+        }
+
+        if payload["coucou_runtime"] as? String == AgentRuntimeID.antigravity.rawValue {
+            Task { @MainActor in self.processAntigravityEvent(payload: payload) }
+            sendLine(fd: fd, text: "{}")
+            close(fd)
+            return
+        }
+
         if eventName == "PermissionRequest" {
             // Hold fd open — Claude Code waits for our decision (up to 120s)
             Task { @MainActor in self.processPermissionRequest(fd: fd, payload: payload) }
@@ -154,17 +167,33 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Event → AppState
     // Claude Code events route to the permanent "integration_claude" task.
-    // Events tagged with a valid coucou_agent route to a dynamic "integration_<agent>" task.
-    // View switches only happen if VS Code (or the agent pill) is currently focused.
+    // Events tagged with a valid coucou_agent route to a dynamic "agent_<name>" task.
+    // View switches only happen if Claude Code, its selected session, or that agent is focused.
     // When not focused: state updates animate the mini bot in the pill; badge shown for alerts.
+
+    @MainActor
+    private func processGeminiEvent(payload: [String: Any]) {
+        guard let translation = GeminiHookTranslator.translate(payload: payload) else { return }
+        let state = AppState.shared
+        state.agentRuntimeManager.ingestExternal(translation.event)
+        if state.mode == .hidden {
+            NotificationCenter.default.post(name: .hookReveal, object: nil)
+        }
+    }
+
+    @MainActor
+    private func processAntigravityEvent(payload: [String: Any]) {
+        guard let translation = AntigravityHookTranslator.translate(payload: payload) else { return }
+        let state = AppState.shared
+        state.agentRuntimeManager.ingestExternal(translation.event)
+        if state.mode == .hidden {
+            NotificationCenter.default.post(name: .hookReveal, object: nil)
+        }
+    }
 
     @MainActor
     private func processEvent(name: String, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
-        let cwd = payload["cwd"] as? String ?? ""
-        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
@@ -180,62 +209,81 @@ final class HookServer: @unchecked Sendable {
                        bundleId.lowercased().contains("vscode")
         // External agents bypass the VS Code filter (their relay runs in any terminal).
         guard isExternalAgent || isVSCode else {
-            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
+            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram)")
             return
         }
+        guard let translation = ClaudeHookTranslator.translate(
+            name: name,
+            payload: payload
+        ) else { return }
+        let event = translation.event
+        if !isExternalAgent {
+            state.agentRuntimeManager.ingestExternal(event)
+        }
+        let sessionId = event.sessionID
+        let normalizedSessionID = "\(AgentRuntimeID.claudeCode.rawValue):\(sessionId)"
+        let cwd = translation.cwd
+        let projectName = translation.projectName
 
         let focused = state.focusId == agentId
+            || state.focusTask?.agentSessionID == normalizedSessionID
 
-        switch name {
+        switch event.kind {
 
-        case "SessionStart":
+        case .sessionStarted:
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
-        case "UserPromptSubmit":
+        case .userPrompt:
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent {
+                upsertExternalAgent(id: agentId, name: validAgent!)
+            } else {
+                upsertTask(projectName: projectName, cwd: cwd)
+            }
             state.updateTask(id: agentId, state: .thinking)
-            if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
+            if let prompt = event.title {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
             if state.isPresent { expandIfNeeded(to: .overview) }
 
-        case "PreToolUse":
+        case .toolStarted:
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent {
+                upsertExternalAgent(id: agentId, name: validAgent!)
+            } else {
+                upsertTask(projectName: projectName, cwd: cwd)
+            }
             state.updateTask(id: agentId, state: .working)
-            let tool = payload["tool_name"] as? String ?? "Tool"
-            let input = payload["tool_input"] as? [String: Any] ?? [:]
-            let step = frenchStep(tool: tool, input: input)
-            appendStep(id: agentId, step: step)
-            nbLog("PreToolUse \(tool)")
+            if let step = event.title {
+                appendStep(id: agentId, step: step)
+                nbLog("PreToolUse \(step)")
+            }
 
-        case "PostToolUse":
+        case .toolCompleted:
             state.updateTask(id: agentId, state: .working)
 
-        case "PostToolUseFailure":
+        case .toolFailed:
             state.updateTask(id: agentId, state: .working)
-            appendStep(id: agentId, step: "⚠ failed")
+            appendStep(id: agentId, step: event.title ?? "⚠ failed")
 
-        case "Notification":
-            let message = payload["message"] as? String ?? ""
-            let lower = message.lowercased()
-            if lower.contains("rate limit") || lower.contains("limite d") {
-                state.updateTask(id: agentId, state: .ratelimit)
-                SoundEngine.shared.play("rate")
-            } else if message.hasSuffix("?") {
-                state.updateTask(id: agentId, state: .question)
+        case .rateLimited:
+            state.updateTask(id: agentId, state: .ratelimit)
+            SoundEngine.shared.play("rate")
+
+        case .userInputRequested:
+            state.updateTask(id: agentId, state: .question)
+            if let message = event.title {
                 appendStep(id: agentId, step: message)
             }
 
-        case "Stop":
+        case .completed:
             state.updateTask(id: agentId, state: .finished)
-            if let message = payload["message"] as? String, !message.isEmpty {
-                appendStep(id: agentId, step: String(message.prefix(60)))
+            if let message = event.title {
+                appendStep(id: agentId, step: message)
             }
             SoundEngine.shared.play("finish")
             if focused {
@@ -252,7 +300,7 @@ final class HookServer: @unchecked Sendable {
                 }
             }
 
-        case "StopFailure":
+        case .error:
             state.updateTask(id: agentId, state: .error)
             SoundEngine.shared.play("error")
             if focused {
@@ -261,7 +309,7 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .error)
             }
 
-        case "SessionEnd":
+        case .sessionEnded:
             activeSessionId = nil
             if isExternalAgent {
                 state.removeTask(id: agentId)
@@ -270,11 +318,11 @@ final class HookServer: @unchecked Sendable {
                 clearSession()
             }
 
-        case "SubagentStart":
-            appendStep(id: agentId, step: "+ subagent")
+        case .subagentStarted:
+            appendStep(id: agentId, step: event.title ?? "+ subagent")
 
-        case "SubagentStop":
-            appendStep(id: agentId, step: "• subagent done")
+        case .subagentCompleted:
+            appendStep(id: agentId, step: event.title ?? "• subagent done")
 
         default:
             break
@@ -344,10 +392,6 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
-        let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         // External agents (coucou_agent) do not yet get an approval card — answering
         // would show a card that looks like a Claude Code request. Reply immediately
@@ -374,12 +418,23 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let tool = payload["tool_name"] as? String ?? "Tool"
-        var command = tool
-        if let input = payload["tool_input"] as? [String: Any] {
-            command = input["command"] as? String ?? tool
+        guard let translation = ClaudeHookTranslator.translate(
+            name: "PermissionRequest",
+            payload: payload
+        ), let approval = translation.event.approval else {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
         }
-        nbLog("PermissionRequest \(tool)")
+        let sessionId = translation.event.sessionID
+        state.agentRuntimeManager.ingestExternal(translation.event)
+        let cwd = translation.cwd
+        let projectName = translation.projectName
+        let tool = approval.title
+        let command = approval.detail ?? tool
+        nbLog("PermissionRequest \(tool): \(command)")
 
         if pendingApprovalFD >= 0 {
             let old = pendingApprovalFD
@@ -399,7 +454,9 @@ final class HookServer: @unchecked Sendable {
         SoundEngine.shared.play("approval")
 
         // Approval always forces the island open — user must be able to respond
-        state.focusId = "integration_claude"
+        let normalizedSessionID = "\(AgentRuntimeID.claudeCode.rawValue):\(sessionId)"
+        state.selectedAgentSessionID = normalizedSessionID
+        state.focusId = "runtime-session:\(normalizedSessionID)"
         expandIfNeeded(to: .approval)
 
         let captured = fd
@@ -432,6 +489,24 @@ final class HookServer: @unchecked Sendable {
         }
 
         let state = AppState.shared
+        if fd >= 0, let sessionId = activeSessionId {
+            state.agentRuntimeManager.ingestExternal(
+                AgentEvent(
+                    id: UUID(),
+                    runtime: .claudeCode,
+                    provider: .anthropic,
+                    sessionID: sessionId,
+                    timestamp: Date(),
+                    kind: .approvalResolved,
+                    title: nil,
+                    detail: nil,
+                    tool: nil,
+                    approval: nil,
+                    userInput: nil,
+                    metadata: [:]
+                )
+            )
+        }
         state.pendingApproval = nil
         state.isPinned = false
         state.updateTask(id: "integration_claude", state: .working)
@@ -471,7 +546,7 @@ final class HookServer: @unchecked Sendable {
         guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
         state.tasks[idx].steps = []
         state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
+        state.tasks[idx].name = "Claude Code"
         state.tasks[idx].pillBadge = nil
     }
 
@@ -482,49 +557,6 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].steps.append(step)
         if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
         state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
-    }
-
-    // MARK: - Project name alias mapping
-
-    private func aliasProjectName(_ name: String) -> String {
-        let aliases: [String: String] = [
-            "notch-buddy":  "Notch Buddy",
-            "notchbuddy":   "Notch Buddy",
-            "notch_buddy":  "Notch Buddy",
-        ]
-        return aliases[name.lowercased()] ?? name
-    }
-
-    // MARK: - French step labels
-
-    private func frenchStep(tool: String, input: [String: Any]) -> String {
-        let labels: [String: String] = [
-            "Bash":       "Exécute",
-            "Read":       "Lit",
-            "Write":      "Écrit",
-            "Edit":       "Modifie",
-            "Glob":       "Cherche",
-            "Grep":       "Recherche",
-            "WebSearch":  "Recherche web",
-            "WebFetch":   "Récupère",
-            "TodoWrite":  "Tâches",
-            "Task":       "Agent",
-            "LS":         "Liste",
-            "MultiEdit":  "Modifie",
-            "NotebookEdit": "Notebook",
-        ]
-        let label = labels[tool] ?? tool
-        if let cmd = input["command"] as? String {
-            let short = String(cmd.prefix(40))
-            return "\(label) · \(short)"
-        } else if let path = input["path"] as? String {
-            return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
-        } else if let file = input["file_path"] as? String {
-            return "\(label) · \(URL(fileURLWithPath: file).lastPathComponent)"
-        } else if let query = input["query"] as? String {
-            return "\(label) · \(String(query.prefix(40)))"
-        }
-        return label
     }
 
     // MARK: - Logging
@@ -596,6 +628,10 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Claude Code settings.json hook installer
 
     private var _pendingHooksData: Data?
+    private var _pendingGeminiHooksData: Data?
+    private var _pendingGeminiOriginalData: Data?
+    private var _pendingAntigravityHooksData: Data?
+    private var _pendingAntigravityOriginalData: Data?
 
     /// Returns preview JSON without writing — call writeClaudeHooks() to confirm.
     func previewClaudeHooks() throws -> String {
@@ -679,6 +715,273 @@ final class HookServer: @unchecked Sendable {
         settings["hooks"] = hooks
         let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
         try newData.write(to: settingsURL, options: .atomic)
+    }
+
+    // MARK: - Gemini CLI settings.json hook installer
+
+    func previewGeminiHooks() throws -> String {
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/settings.json")
+        let original = try? Data(contentsOf: settingsURL)
+        let data = try buildGeminiHooksData(originalData: original)
+        _pendingGeminiOriginalData = original
+        _pendingGeminiHooksData = data
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    func writeGeminiHooks() throws {
+        guard let data = _pendingGeminiHooksData else { return }
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/settings.json")
+        let current = try? Data(contentsOf: settingsURL)
+        guard current == _pendingGeminiOriginalData else {
+            _pendingGeminiHooksData = nil
+            _pendingGeminiOriginalData = nil
+            throw NSError(
+                domain: "Coucou.GeminiHooks",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "~/.gemini/settings.json changed after the preview. Review it again before writing."]
+            )
+        }
+        try FileManager.default.createDirectory(
+            at: settingsURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        if current != nil {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd-HHmmss"
+            let backupURL = settingsURL.deletingLastPathComponent()
+                .appendingPathComponent("settings.json.bak-\(formatter.string(from: Date()))")
+            try FileManager.default.copyItem(at: settingsURL, to: backupURL)
+        }
+        try data.write(to: settingsURL, options: .atomic)
+        _pendingGeminiHooksData = nil
+        _pendingGeminiOriginalData = nil
+    }
+
+    func uninstallGeminiHooks() throws {
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/settings.json")
+        guard let data = try? Data(contentsOf: settingsURL),
+              var settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var hooks = settings["hooks"] as? [String: Any] else { return }
+        for event in hooks.keys {
+            guard var groups = hooks[event] as? [[String: Any]] else { continue }
+            groups.removeAll { group in
+                (group["hooks"] as? [[String: Any]])?.contains(where: Self.isCoucouGeminiHook) == true
+            }
+            if groups.isEmpty { hooks.removeValue(forKey: event) }
+            else { hooks[event] = groups }
+        }
+        settings["hooks"] = hooks
+        let newData = try JSONSerialization.data(
+            withJSONObject: settings,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let backupURL = settingsURL.deletingLastPathComponent()
+            .appendingPathComponent("settings.json.bak-\(formatter.string(from: Date()))")
+        try FileManager.default.copyItem(at: settingsURL, to: backupURL)
+        try newData.write(to: settingsURL, options: .atomic)
+    }
+
+    private func buildGeminiHooksData(originalData: Data?) throws -> Data {
+        var settings: [String: Any] = [:]
+        if let originalData {
+            guard let parsed = try JSONSerialization.jsonObject(with: originalData) as? [String: Any] else {
+                throw NSError(
+                    domain: "Coucou.GeminiHooks",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "~/.gemini/settings.json is not a JSON object."]
+                )
+            }
+            settings = parsed
+        }
+        if settings["hooks"] != nil, settings["hooks"] is [String: Any] == false {
+            throw NSError(
+                domain: "Coucou.GeminiHooks",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "The hooks field in ~/.gemini/settings.json is not a JSON object."]
+            )
+        }
+        let escapedPath = Self.hookScriptPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let command = "COUCOU_RUNTIME=gemini-cli \"\(escapedPath)\""
+        settings = Self.mergingGeminiHooks(into: settings, command: command)
+        return try JSONSerialization.data(
+            withJSONObject: settings,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+    }
+
+    static func mergingGeminiHooks(
+        into settings: [String: Any],
+        command: String
+    ) -> [String: Any] {
+        var settings = settings
+        let events = [
+            "SessionStart", "SessionEnd", "BeforeAgent", "AfterAgent",
+            "BeforeTool", "AfterTool", "Notification",
+        ]
+        var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        for event in events {
+            var groups = hooks[event] as? [[String: Any]] ?? []
+            groups.removeAll { group in
+                (group["hooks"] as? [[String: Any]])?.contains(where: isCoucouGeminiHook) == true
+            }
+            groups.append([
+                "hooks": [[
+                    "type": "command",
+                    "name": "Coucou Gemini observer",
+                    "command": command,
+                    "timeout": 1_000,
+                ]],
+            ])
+            hooks[event] = groups
+        }
+        settings["hooks"] = hooks
+        return settings
+    }
+
+    private static func isCoucouGeminiHook(_ hook: [String: Any]) -> Bool {
+        (hook["command"] as? String)?.contains("COUCOU_RUNTIME=gemini-cli") == true
+    }
+
+    // MARK: - Antigravity CLI hooks.json installer
+
+    func previewAntigravityHooks() throws -> String {
+        let hooksURL = Self.antigravityHooksURL
+        let original = try? Data(contentsOf: hooksURL)
+        let data = try buildAntigravityHooksData(originalData: original)
+        _pendingAntigravityOriginalData = original
+        _pendingAntigravityHooksData = data
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    func writeAntigravityHooks() throws {
+        guard let data = _pendingAntigravityHooksData else { return }
+        let hooksURL = Self.antigravityHooksURL
+        let current = try? Data(contentsOf: hooksURL)
+        guard current == _pendingAntigravityOriginalData else {
+            _pendingAntigravityHooksData = nil
+            _pendingAntigravityOriginalData = nil
+            throw NSError(
+                domain: "Coucou.AntigravityHooks",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed after the preview. Review it again before writing."]
+            )
+        }
+        try FileManager.default.createDirectory(
+            at: hooksURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        if current != nil { try Self.backUp(hooksURL) }
+        try data.write(to: hooksURL, options: .atomic)
+        _pendingAntigravityHooksData = nil
+        _pendingAntigravityOriginalData = nil
+    }
+
+    func uninstallAntigravityHooks() throws {
+        let hooksURL = Self.antigravityHooksURL
+        guard let data = try? Data(contentsOf: hooksURL),
+              var hooks = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
+        }
+        hooks = Self.removingCoucouAntigravityHooks(from: hooks)
+        let newData = try JSONSerialization.data(
+            withJSONObject: hooks,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        try Self.backUp(hooksURL)
+        try newData.write(to: hooksURL, options: .atomic)
+    }
+
+    private func buildAntigravityHooksData(originalData: Data?) throws -> Data {
+        var hooks: [String: Any] = [:]
+        if let originalData {
+            guard let parsed = try JSONSerialization.jsonObject(with: originalData) as? [String: Any] else {
+                throw NSError(
+                    domain: "Coucou.AntigravityHooks",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json is not a JSON object."]
+                )
+            }
+            hooks = parsed
+        }
+        let escapedPath = Self.hookScriptPath.replacingOccurrences(of: "\"", with: "\\\"")
+        hooks = Self.mergingAntigravityHooks(
+            into: hooks,
+            commandPath: "\"\(escapedPath)\""
+        )
+        return try JSONSerialization.data(
+            withJSONObject: hooks,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+    }
+
+    static func mergingAntigravityHooks(
+        into hooks: [String: Any],
+        commandPath: String
+    ) -> [String: Any] {
+        var hooks = removingCoucouAntigravityHooks(from: hooks)
+        let preferredName = "coucou-agent-observer"
+        var hookName = preferredName
+        var suffix = 2
+        while hooks[hookName] != nil {
+            hookName = "\(preferredName)-\(suffix)"
+            suffix += 1
+        }
+
+        func command(_ event: String) -> String {
+            "COUCOU_RUNTIME=antigravity COUCOU_HOOK_EVENT=\(event) \(commandPath)"
+        }
+        func handler(_ event: String) -> [String: Any] {
+            [
+                "type": "command",
+                "command": command(event),
+                "timeout": 1,
+            ]
+        }
+
+        // PreToolUse is intentionally omitted: its required verdict would either
+        // auto-approve work or alter Antigravity's native permission prompts.
+        hooks[hookName] = [
+            "enabled": true,
+            "PostToolUse": [[
+                "matcher": "*",
+                "hooks": [handler("PostToolUse")],
+            ]],
+            "PreInvocation": [handler("PreInvocation")],
+            "PostInvocation": [handler("PostInvocation")],
+            "Stop": [handler("Stop")],
+        ]
+        return hooks
+    }
+
+    private static var antigravityHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/config/hooks.json")
+    }
+
+    private static func removingCoucouAntigravityHooks(
+        from hooks: [String: Any]
+    ) -> [String: Any] {
+        hooks.filter { _, value in
+            guard JSONSerialization.isValidJSONObject(value),
+                  let data = try? JSONSerialization.data(withJSONObject: value),
+                  let text = String(data: data, encoding: .utf8) else {
+                return true
+            }
+            return !text.contains("COUCOU_RUNTIME=antigravity")
+        }
+    }
+
+    private static func backUp(_ url: URL) throws {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let backupURL = url.deletingLastPathComponent()
+            .appendingPathComponent("\(url.lastPathComponent).bak-\(formatter.string(from: Date()))")
+        try FileManager.default.copyItem(at: url, to: backupURL)
     }
 
     // MARK: - App Store: hooks via security-scoped bookmark
@@ -765,283 +1068,6 @@ final class HookServer: @unchecked Sendable {
         return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
     }
     #endif
-
-    // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
-
-    #if !APPSTORE
-    private static var geminiSettingsURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/settings.json")
-    }
-    private static var agyHooksURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/config/hooks.json")
-    }
-
-    // MARK: Installed-state detection
-
-    static func geminiHooksInstalled() -> Bool {
-        guard let data = try? Data(contentsOf: geminiSettingsURL),
-              let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let hooks = settings["hooks"] as? [String: Any] else { return false }
-        for value in hooks.values {
-            guard let groups = value as? [[String: Any]] else { continue }
-            for group in groups {
-                if let innerHooks = group["hooks"] as? [[String: Any]] {
-                    for hook in innerHooks {
-                        if let cmd = hook["command"] as? String,
-                           cmd.contains("nb-hook"), cmd.contains("--agent gemini") { return true }
-                    }
-                }
-                // Legacy flat entry
-                if let cmd = group["command"] as? String,
-                   cmd.contains("nb-hook"), cmd.contains("--agent gemini") { return true }
-            }
-        }
-        return false
-    }
-
-    static func agyHooksInstalled() -> Bool {
-        guard let data = try? Data(contentsOf: agyHooksURL),
-              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let coucou = root["coucou"] else { return false }
-        let json = (try? JSONSerialization.data(withJSONObject: coucou))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        return json.contains("nb-hook")
-    }
-
-    // MARK: Gemini CLI – preview / write
-
-    private var _pendingGeminiData: Data?
-    private var _pendingGeminiFingerprint: String?
-
-    func previewGeminiHooks(install: Bool) throws -> String {
-        let url = Self.geminiSettingsURL
-        let exists = FileManager.default.fileExists(atPath: url.path)
-        if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
-                NSLocalizedDescriptionKey: "No Gemini CLI hooks to remove."
-            ])
-        }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingGeminiFingerprint = sha256Hex(current)
-        let newData = install ? try buildGeminiHooksData() : try withoutGeminiHooks()
-        _pendingGeminiData = newData
-        return String(data: newData, encoding: .utf8) ?? ""
-    }
-
-    func writeGeminiHooks() throws {
-        guard let data = _pendingGeminiData, let fp = _pendingGeminiFingerprint else { return }
-        let url = Self.geminiSettingsURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "settings.json")
-        _pendingGeminiData = nil
-        _pendingGeminiFingerprint = nil
-    }
-
-    private func buildGeminiHooksData() throws -> Data {
-        var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
-                                                     label: "~/.gemini/settings.json")
-        if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
-            ])
-        }
-        let base = hookBase()
-        // (Gemini event key, normalized event name passed via argv, timeout in ms)
-        let events: [(String, String, Int)] = [
-            ("SessionStart", "SessionStart", 10000),
-            ("SessionEnd",   "SessionEnd",   10000),
-            ("BeforeTool",   "PreToolUse",   5000),
-            ("AfterTool",    "PostToolUse",  5000),
-            ("BeforeAgent",  "UserPromptSubmit", 5000),
-            ("AfterAgent",   "Stop",         5000),
-        ]
-        var hooks = settings["hooks"] as? [String: Any] ?? [:]
-        for (geminiEvent, normalizedEvent, timeout) in events {
-            if let raw = hooks[geminiEvent], !(raw is [[String: Any]]) {
-                throw NSError(domain: "Coucou", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\"[\"\(geminiEvent)\"] has an unexpected type — Coucou has not touched it."
-                ])
-            }
-            var groups = hooks[geminiEvent] as? [[String: Any]] ?? []
-            // Remove legacy flat entries and groups whose inner hooks contain nb-hook
-            groups = removeNbHookEntries(from: groups)
-            let hookEntry: [String: Any] = [
-                "type": "command",
-                "command": "\(base) --agent gemini \(normalizedEvent)",
-                "timeout": timeout,
-            ]
-            groups.append(["matcher": "*", "hooks": [hookEntry]])
-            hooks[geminiEvent] = groups
-        }
-        settings["hooks"] = hooks
-        return try JSONSerialization.data(withJSONObject: settings,
-                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-    }
-
-    private func withoutGeminiHooks() throws -> Data {
-        var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
-                                                     label: "~/.gemini/settings.json")
-        if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
-            ])
-        }
-        if var hooks = settings["hooks"] as? [String: Any] {
-            for key in hooks.keys {
-                if let groups = hooks[key] as? [[String: Any]] {
-                    let cleaned = removeNbHookEntries(from: groups)
-                    if cleaned.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = cleaned }
-                }
-            }
-            if hooks.isEmpty { settings.removeValue(forKey: "hooks") } else { settings["hooks"] = hooks }
-        }
-        return try JSONSerialization.data(withJSONObject: settings,
-                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-    }
-
-    // MARK: Antigravity – preview / write
-
-    private var _pendingAgyData: Data?
-    private var _pendingAgyFingerprint: String?
-
-    func previewAgyHooks(install: Bool) throws -> String {
-        let url = Self.agyHooksURL
-        let exists = FileManager.default.fileExists(atPath: url.path)
-        if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
-                NSLocalizedDescriptionKey: "No Antigravity hooks to remove."
-            ])
-        }
-        let current = exists ? try Data(contentsOf: url) : Data()
-        _pendingAgyFingerprint = sha256Hex(current)
-        let newData = install ? try buildAgyHooksData() : try withoutAgyHooks()
-        _pendingAgyData = newData
-        return String(data: newData, encoding: .utf8) ?? ""
-    }
-
-    func writeAgyHooks() throws {
-        guard let data = _pendingAgyData, let fp = _pendingAgyFingerprint else { return }
-        let url = Self.agyHooksURL
-        let current = (try? Data(contentsOf: url)) ?? Data()
-        guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed since preview. Refresh and try again."
-            ])
-        }
-        try writeJSONFile(data, to: url, suffix: "hooks.json")
-        _pendingAgyData = nil
-        _pendingAgyFingerprint = nil
-    }
-
-    private func buildAgyHooksData() throws -> Data {
-        var root = try Self.strictReadJSONObject(at: Self.agyHooksURL,
-                                                 label: "~/.gemini/config/hooks.json")
-        let base = hookBase()
-        // PreToolUse / PostToolUse: tool-level hooks — use matcher group
-        // PreInvocation / PostInvocation / Stop: lifecycle hooks — direct handler, no matcher
-        var coucou: [String: Any] = [:]
-        for event in ["PreToolUse", "PostToolUse"] {
-            let hook: [String: Any] = ["type": "command",
-                                       "command": "\(base) --agent antigravity \(event)",
-                                       "timeout": 10]
-            coucou[event] = [["matcher": "*", "hooks": [hook]]]
-        }
-        for event in ["PreInvocation", "PostInvocation", "Stop"] {
-            let hook: [String: Any] = ["type": "command",
-                                       "command": "\(base) --agent antigravity \(event)",
-                                       "timeout": 10]
-            coucou[event] = [hook]
-        }
-        root["coucou"] = coucou
-        return try JSONSerialization.data(withJSONObject: root,
-                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-    }
-
-    private func withoutAgyHooks() throws -> Data {
-        var root = try Self.strictReadJSONObject(at: Self.agyHooksURL,
-                                                 label: "~/.gemini/config/hooks.json")
-        root.removeValue(forKey: "coucou")
-        return try JSONSerialization.data(withJSONObject: root,
-                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-    }
-
-    // MARK: Shared helpers
-
-    /// /bin/sh "<hookScriptPath>" — quoted for paths containing spaces (Application Support).
-    private func hookBase() -> String {
-        let path = Self.hookScriptPath.replacingOccurrences(of: "\"", with: "\\\"")
-        return "/bin/sh \"\(path)\""
-    }
-
-    /// Reads a JSON object from url.
-    /// Absent file → empty dict. Present but invalid → throws with a user-facing message.
-    private static func strictReadJSONObject(at url: URL, label: String) throws -> [String: Any] {
-        guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
-        let data: Data
-        do { data = try Data(contentsOf: url) }
-        catch {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "\(label) cannot be read — Coucou has not touched it."
-            ])
-        }
-        guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "\(label) is not valid JSON — Coucou has not touched it."
-            ])
-        }
-        return obj
-    }
-
-    /// Backs up the existing file (throws on failure), creates parent dirs, then atomically writes.
-    private func writeJSONFile(_ data: Data, to url: URL, suffix: String) throws {
-        let fm = FileManager.default
-        if fm.fileExists(atPath: url.path) {
-            let fmt = DateFormatter()
-            fmt.locale = Locale(identifier: "en_US_POSIX")
-            fmt.dateFormat = "yyyyMMdd-HHmmss"
-            let backupURL = url.deletingLastPathComponent()
-                .appendingPathComponent("\(suffix).bak-\(fmt.string(from: Date()))")
-            do { try fm.copyItem(at: url, to: backupURL) }
-            catch {
-                throw NSError(domain: "Coucou", code: 3, userInfo: [
-                    NSLocalizedDescriptionKey: "Could not back up \(url.lastPathComponent): \(error.localizedDescription)"
-                ])
-            }
-        }
-        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
-    }
-
-    /// Removes entries containing "nb-hook" from a Gemini-format groups array.
-    /// Handles both new group format (matcher + hooks[]) and legacy flat format (command at top level).
-    /// Returns the cleaned array; empty groups (after inner-hook removal) are dropped.
-    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
-        groups.compactMap { group -> [String: Any]? in
-            // Legacy flat entry — command at group level
-            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
-            // Group format — filter inner hooks
-            if var innerHooks = group["hooks"] as? [[String: Any]] {
-                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
-                if innerHooks.isEmpty { return nil }
-                var updated = group
-                updated["hooks"] = innerHooks
-                return updated
-            }
-            return group
-        }
-    }
-
-    // MARK: SHA-256 fingerprint
-
-    private func sha256Hex(_ data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-    }
-    #endif
 }
 
 // MARK: - Notification names for hook server → controller communication
@@ -1074,45 +1100,9 @@ exit 0
 
 private let nbHookPythonGitHub = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
+# nb-hook.py — Coucou hook relay for Claude Code (GitHub version)
 # Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
 import sys, json, os, socket
-
-def normalize_event(name):
-    mapping = {
-        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
-        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
-        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
-        'startup': 'SessionStart', 'exit': 'SessionEnd',
-        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
-    }
-    return mapping.get(name, name)
-
-def normalize_tool_fields(payload):
-    if 'tool_name' in payload:
-        return
-    tool = payload.get('toolCall')
-    if not isinstance(tool, dict):
-        tool = {}
-    name = tool.get('name') or payload.get('tool', '')
-    if name:
-        payload['tool_name'] = name
-    if 'tool_input' not in payload and isinstance(tool.get('args'), dict):
-        flat = dict(tool['args'])
-        for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                         ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
-            if src in flat:
-                flat[dst] = flat[src]
-        payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
 
 def main():
     try:
@@ -1123,23 +1113,15 @@ def main():
     except Exception:
         return
 
-    # Parse --agent <name> and optional positional event from argv.
-    # --agent tags the payload with coucou_agent so the app routes to the right pill.
-    # The positional arg is a fallback event name for agents that do not set hook_event_name.
+    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
+    # Adds coucou_agent to the payload so the app can route to the right pill.
     args = sys.argv[1:]
-    agent = ''
-    arg_event = ''
     i = 0
     while i < len(args):
         if args[i] == '--agent' and i + 1 < len(args):
-            agent = args[i + 1]
-            i += 2
-        else:
-            if not arg_event:
-                arg_event = args[i]
-            i += 1
-    if agent:
-        payload.setdefault('coucou_agent', agent)
+            payload.setdefault('coucou_agent', args[i + 1])
+            break
+        i += 1
 
     # Enrich with terminal context
     env = os.environ
@@ -1147,21 +1129,10 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    payload.setdefault('coucou_runtime', env.get('COUCOU_RUNTIME', 'claude-code'))
+    payload.setdefault('hook_event_name', env.get('COUCOU_HOOK_EVENT', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
-
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
-    try:
-        raw_event = payload.get('hook_event_name', '') or arg_event
-        if raw_event:
-            payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
-    except Exception:
-        pass
+        payload['cwd'] = os.getcwd()
 
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
@@ -1224,11 +1195,10 @@ def main():
         s.close()
     except Exception:
         pass  # Always exit cleanly — never block Claude Code
-
-    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
-    if agent in ('gemini', 'antigravity'):
-        sys.stdout.write('{}\\n')
-        sys.stdout.flush()
+    finally:
+        if payload.get('coucou_runtime') in ('gemini-cli', 'antigravity'):
+            sys.stdout.write('{}\\n')
+            sys.stdout.flush()
 
 main()
 sys.exit(0)
@@ -1238,45 +1208,9 @@ sys.exit(0)
 
 private let nbHookPythonAppStore = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou (App Store) hook relay for Claude Code and third-party agents
+# nb-hook.py — Coucou (App Store) hook relay for Claude Code
 # Socket lives inside the sandboxed container; script runs outside the sandbox.
 import sys, json, os, socket
-
-def normalize_event(name):
-    mapping = {
-        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
-        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
-        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
-        'startup': 'SessionStart', 'exit': 'SessionEnd',
-        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
-    }
-    return mapping.get(name, name)
-
-def normalize_tool_fields(payload):
-    if 'tool_name' in payload:
-        return
-    tool = payload.get('toolCall')
-    if not isinstance(tool, dict):
-        tool = {}
-    name = tool.get('name') or payload.get('tool', '')
-    if name:
-        payload['tool_name'] = name
-    if 'tool_input' not in payload and isinstance(tool.get('args'), dict):
-        flat = dict(tool['args'])
-        for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                         ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
-            if src in flat:
-                flat[dst] = flat[src]
-        payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
 
 def main():
     try:
@@ -1287,44 +1221,24 @@ def main():
     except Exception:
         return
 
-    # Parse --agent <name> and optional positional event from argv.
-    # --agent tags the payload with coucou_agent so the app routes to the right pill.
-    # The positional arg is a fallback event name for agents that do not set hook_event_name.
+    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
     args = sys.argv[1:]
-    agent = ''
-    arg_event = ''
     i = 0
     while i < len(args):
         if args[i] == '--agent' and i + 1 < len(args):
-            agent = args[i + 1]
-            i += 2
-        else:
-            if not arg_event:
-                arg_event = args[i]
-            i += 1
-    if agent:
-        payload.setdefault('coucou_agent', agent)
+            payload.setdefault('coucou_agent', args[i + 1])
+            break
+        i += 1
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    payload.setdefault('coucou_runtime', env.get('COUCOU_RUNTIME', 'claude-code'))
+    payload.setdefault('hook_event_name', env.get('COUCOU_HOOK_EVENT', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
-
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
-    try:
-        raw_event = payload.get('hook_event_name', '') or arg_event
-        if raw_event:
-            payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
-    except Exception:
-        pass
+        payload['cwd'] = os.getcwd()
 
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
@@ -1385,11 +1299,10 @@ def main():
         s.close()
     except Exception:
         pass  # Always exit cleanly — never block Claude Code
-
-    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
-    if agent in ('gemini', 'antigravity'):
-        sys.stdout.write('{}\\n')
-        sys.stdout.flush()
+    finally:
+        if payload.get('coucou_runtime') in ('gemini-cli', 'antigravity'):
+            sys.stdout.write('{}\\n')
+            sys.stdout.flush()
 
 main()
 sys.exit(0)

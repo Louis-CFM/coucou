@@ -7,51 +7,82 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
+		003A035909E5CC545394AB2F /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026AE096AC8965A414FE42A2 /* OpenAIProvider.swift */; };
 		065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */; };
+		0D2C008DDE7223BE146B782D /* AgentSessionReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827AAC4C2C2AC37137C78D26 /* AgentSessionReducer.swift */; };
 		0D68A4C4E3422487DB7B2262 /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BC1357785CA1B099A33969 /* IslandScreenGeometry.swift */; };
 		0E83C1DD4D20E7FB7A904450 /* VercelPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71718D1B87A39A4879DD2A9D /* VercelPoller.swift */; };
 		0E9CE475EC53C67DAB00F8E5 /* BotEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4540F630F8BA04AFFFA3979 /* BotEngine.swift */; };
+		0FBD8040B47243B23029151B /* CodexAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BCC5CCF2512D4767C53FDE /* CodexAgentRuntimeAdapter.swift */; };
 		118FC4AE0AC74D84B4A134D8 /* VercelPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71718D1B87A39A4879DD2A9D /* VercelPoller.swift */; };
+		136EA9B0ED12480498A68345 /* AnthropicProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685936992B973EEF9E64FAD0 /* AnthropicProvider.swift */; };
 		1558BB00C530B721172F6E65 /* StripePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */; };
 		160EDB9D06275E2607DA5151 /* N8nPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */; };
+		174B43132321940610D60E41 /* AnthropicProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685936992B973EEF9E64FAD0 /* AnthropicProvider.swift */; };
 		186AB8904029767DAA5277CF /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BC1357785CA1B099A33969 /* IslandScreenGeometry.swift */; };
 		1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
+		19CA59E990533A49EED84175 /* AntigravityHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DCAB3065226CF5A8AD6A57 /* AntigravityHookTranslator.swift */; };
+		1C465BBF4A87B00027ABBF95 /* AIProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F060ABF39BA131CEB1D0A5B8 /* AIProtocols.swift */; };
 		1F11EC4E6F604C612A1ADAD1 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E4F18AA940EFF7E047B9F7 /* AppState.swift */; };
 		2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3232F258523DD8D09B670363 /* FileDropView.swift */; };
+		26D664F87D1B97A24CBE8378 /* AgentRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE896CEFB0BA2949DA62FC85 /* AgentRuntimeManager.swift */; };
+		280353822A76070D8A54D6ED /* CodexAppServerCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7860BC844339B579BB05A3 /* CodexAppServerCodec.swift */; };
 		2875610F701376BD65573386 /* WindowContextCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */; };
+		2BAE00D3A0AD0307756D37AD /* CodexAppServerCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7860BC844339B579BB05A3 /* CodexAppServerCodec.swift */; };
+		2C390189F4274A2335EEA70D /* ClaudeCodeAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8772970DAFD4731B940673A /* ClaudeCodeAgentRuntimeAdapter.swift */; };
+		2C76F4555DE7DF0D831A8209 /* ClaudeCodeAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8772970DAFD4731B940673A /* ClaudeCodeAgentRuntimeAdapter.swift */; };
 		2C798C3837A63B9BB561A1A0 /* HookServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */; };
 		2CC2E3B688B15BBEB3AE3BCE /* WindowContextCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */; };
-		2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
 		2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
+		2F8FAF6D53D58FCACE9CEDAB /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8F52900AAC11E6F76FCCB3 /* GeminiProvider.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
 		3F19756A396F125EC711247F /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3CE3617E9D336DDBA10F7A /* IslandTypes.swift */; };
 		4117E7C8AA231AAE36E7509D /* UploadCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */; };
+		42ADFF7B708F18A6D31C427E /* ClaudeHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA10191AB1FDF453B4552EB /* ClaudeHookTranslator.swift */; };
 		4B6AC00F22EC75E90E0157D5 /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6D7015D6A77AA59323C0E7 /* AppLog.swift */; };
 		4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
+		5000BE29C6546B04BC9C9A34 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026AE096AC8965A414FE42A2 /* OpenAIProvider.swift */; };
 		56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
 		5B9A00AFB0837731FA678E4E /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
+		5EBBEF4FB15C3B0C75E85020 /* CodexAppServerTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFD0EDEF0886A1BC230731 /* CodexAppServerTransport.swift */; };
 		60E361FFE84C387E5E3ED1AA /* SoundEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */; };
 		61CB7049490F61CFA1B36B64 /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6D7015D6A77AA59323C0E7 /* AppLog.swift */; };
 		61F73B27A7E3AFF584B2CC22 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E4F18AA940EFF7E047B9F7 /* AppState.swift */; };
+		625ADBB6AD68ED69BFE3242D /* CodexAppServerTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FFD0EDEF0886A1BC230731 /* CodexAppServerTransport.swift */; };
 		62C4EE3F74DAA59764729E62 /* UploadCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */; };
 		651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */; };
+		68A37A3B62F3C3C8BD3858DC /* AgentSessionReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23CD895DD58AAEE2E7316FF2 /* AgentSessionReducerTests.swift */; };
 		68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
+		75CE64E68CD7DBC9A0C20E54 /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8F52900AAC11E6F76FCCB3 /* GeminiProvider.swift */; };
 		78B3C6814431B2DD9D1F4949 /* SoundEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */; };
 		78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
+		815E71025BD8532555376CBF /* AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80960C5645ED7B5E23B83930 /* AIModels.swift */; };
+		82DA854B16CBD2A15F9DF43B /* AIProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F060ABF39BA131CEB1D0A5B8 /* AIProtocols.swift */; };
+		857A8F4804624B40A3B026D5 /* CodexAppServerEventTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BDC7BD493570023E2ED1A3 /* CodexAppServerEventTranslator.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
+		92361CEFB782B67FEA5BAC7C /* GeminiHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47DD34EB430507BD7BDCE929 /* GeminiHookTranslator.swift */; };
+		94F3C4D5ACEACF5F02182E78 /* AntigravityAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C780B3CDD42D9994B54FF4C0 /* AntigravityAgentRuntimeAdapter.swift */; };
+		94FC74BE4BA8EDA178833004 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A5CBC321744C693D4E5E30 /* KeychainStore.swift */; };
 		967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B5FDDE03F5F711146937E2 /* ResendPoller.swift */; };
+		9AE577A7C19A4234AB1DB383 /* ClaudeHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA10191AB1FDF453B4552EB /* ClaudeHookTranslator.swift */; };
+		9B73332577DDCE02F25726C1 /* GeminiHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47DD34EB430507BD7BDCE929 /* GeminiHookTranslator.swift */; };
 		9DD56C95ECABDDCE23652D50 /* HookServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */; };
+		A51445AD90E48C25F688C116 /* AntigravityHookTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DCAB3065226CF5A8AD6A57 /* AntigravityHookTranslator.swift */; };
+		A565C17686AEFF82407304BA /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A5CBC321744C693D4E5E30 /* KeychainStore.swift */; };
+		AD60194A1D8979AF16084964 /* CodexAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BCC5CCF2512D4767C53FDE /* CodexAgentRuntimeAdapter.swift */; };
+		ADA5398BC0C2BA3B4A673602 /* InternalChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BBE910D6885EDB8120C2D5 /* InternalChatService.swift */; };
 		B3EC9CF3C8BD629C3530E8F1 /* sounds in Resources */ = {isa = PBXBuildFile; fileRef = C066E2B991AA4F56B2724263 /* sounds */; };
 		B605F976F4141435F27CF266 /* IslandRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A1A8206F73376F4CAF2057 /* IslandRootView.swift */; };
+		BFD9CDA878F484797A10F8A0 /* GeminiCLIAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C9BE50A5AD6F7A33F39881 /* GeminiCLIAgentRuntimeAdapter.swift */; };
 		C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		C18227D148D99FE6EE3CC51A /* GithubPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */; };
+		C1AD0A61373B3F4B64488C08 /* AgentSessionReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827AAC4C2C2AC37137C78D26 /* AgentSessionReducer.swift */; };
 		C24D863967D8D32D828ED4B1 /* BotEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4540F630F8BA04AFFFA3979 /* BotEngine.swift */; };
 		C61DDE2EC5FDDB39E4AA3B34 /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */; };
@@ -61,37 +92,66 @@
 		D82E93014C8087AE81511E40 /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3CE3617E9D336DDBA10F7A /* IslandTypes.swift */; };
 		DCAC390FF9EC65B945A15B24 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 506824380E9C80B9BC6DCE72 /* Assets.xcassets */; };
 		DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
+		E24DC98B9C82D1068E19558E /* InternalChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BBE910D6885EDB8120C2D5 /* InternalChatService.swift */; };
 		E4B9986674F4D425826F15A8 /* StripePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */; };
+		E5B8F6C01C3E936F096821C3 /* GeminiCLIAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C9BE50A5AD6F7A33F39881 /* GeminiCLIAgentRuntimeAdapter.swift */; };
+		E7616043D0625AF6494B63ED /* AntigravityAgentRuntimeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C780B3CDD42D9994B54FF4C0 /* AntigravityAgentRuntimeAdapter.swift */; };
 		E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3232F258523DD8D09B670363 /* FileDropView.swift */; };
 		EB23ED9F1C12EA8B54A76A91 /* ResendPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B5FDDE03F5F711146937E2 /* ResendPoller.swift */; };
 		ECECA2F225E82B7C951658D7 /* UploadSequenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */; };
 		F06EE0A97CB77096A337AA8B /* sounds in Resources */ = {isa = PBXBuildFile; fileRef = C066E2B991AA4F56B2724263 /* sounds */; };
+		F12A17914AE387FC2BF2860A /* AgentRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE896CEFB0BA2949DA62FC85 /* AgentRuntimeManager.swift */; };
+		F1E04ED2B03979C8A7CCB5F7 /* AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80960C5645ED7B5E23B83930 /* AIModels.swift */; };
+		F58A423B453F2C625C88F4DC /* CodexAppServerEventTranslator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BDC7BD493570023E2ED1A3 /* CodexAppServerEventTranslator.swift */; };
 		FAD78D74C6906D4EC8AA4101 /* UploadSequenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */; };
 		FBBC4CDE82B5886A83A27D7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 506824380E9C80B9BC6DCE72 /* Assets.xcassets */; };
 		FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		177E338AE6A6E7362B85F83C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACF315E0C1F7FECADF1B4FBC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12E59C1D41BFA3D2F7CDD7F5;
+			remoteInfo = NotchBuddy;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		026AE096AC8965A414FE42A2 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
 		15A1A8206F73376F4CAF2057 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
 		192844E7299DEED5C2372067 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEngine.swift; sourceTree = "<group>"; };
+		23CD895DD58AAEE2E7316FF2 /* AgentSessionReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionReducerTests.swift; sourceTree = "<group>"; };
 		2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripePoller.swift; sourceTree = "<group>"; };
 		3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcomPoller.swift; sourceTree = "<group>"; };
+		31A5CBC321744C693D4E5E30 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		3232F258523DD8D09B670363 /* FileDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropView.swift; sourceTree = "<group>"; };
+		40C9BE50A5AD6F7A33F39881 /* GeminiCLIAgentRuntimeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiCLIAgentRuntimeAdapter.swift; sourceTree = "<group>"; };
+		47DD34EB430507BD7BDCE929 /* GeminiHookTranslator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiHookTranslator.swift; sourceTree = "<group>"; };
 		4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoucouAppStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		506824380E9C80B9BC6DCE72 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		61B5FDDE03F5F711146937E2 /* ResendPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResendPoller.swift; sourceTree = "<group>"; };
+		685936992B973EEF9E64FAD0 /* AnthropicProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicProvider.swift; sourceTree = "<group>"; };
+		6D8F52900AAC11E6F76FCCB3 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
 		6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadSequenceEngine.swift; sourceTree = "<group>"; };
 		71718D1B87A39A4879DD2A9D /* VercelPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VercelPoller.swift; sourceTree = "<group>"; };
+		74BBE910D6885EDB8120C2D5 /* InternalChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InternalChatService.swift; sourceTree = "<group>"; };
 		78BC1357785CA1B099A33969 /* IslandScreenGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandScreenGeometry.swift; sourceTree = "<group>"; };
 		79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookServer.swift; sourceTree = "<group>"; };
 		7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		80960C5645ED7B5E23B83930 /* AIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModels.swift; sourceTree = "<group>"; };
+		81BCC5CCF2512D4767C53FDE /* CodexAgentRuntimeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAgentRuntimeAdapter.swift; sourceTree = "<group>"; };
+		81BDC7BD493570023E2ED1A3 /* CodexAppServerEventTranslator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServerEventTranslator.swift; sourceTree = "<group>"; };
+		827AAC4C2C2AC37137C78D26 /* AgentSessionReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionReducer.swift; sourceTree = "<group>"; };
 		8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubPoller.swift; sourceTree = "<group>"; };
 		8D3CE3617E9D336DDBA10F7A /* IslandTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTypes.swift; sourceTree = "<group>"; };
+		97FFD0EDEF0886A1BC230731 /* CodexAppServerTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServerTransport.swift; sourceTree = "<group>"; };
 		9F6D7015D6A77AA59323C0E7 /* AppLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLog.swift; sourceTree = "<group>"; };
 		A14A61070D293AB4BBA303F7 /* NotchBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCanvasView.swift; sourceTree = "<group>"; };
-		A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
+		AB7860BC844339B579BB05A3 /* CodexAppServerCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServerCodec.swift; sourceTree = "<group>"; };
 		B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadCanvasView.swift; sourceTree = "<group>"; };
 		B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeWebURL.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
@@ -99,15 +159,39 @@
 		C066E2B991AA4F56B2724263 /* sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sounds; path = Resources/sounds; sourceTree = SOURCE_ROOT; };
 		C2E4F18AA940EFF7E047B9F7 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GreetingCanvasView.swift; sourceTree = "<group>"; };
+		C780B3CDD42D9994B54FF4C0 /* AntigravityAgentRuntimeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityAgentRuntimeAdapter.swift; sourceTree = "<group>"; };
 		D4540F630F8BA04AFFFA3979 /* BotEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotEngine.swift; sourceTree = "<group>"; };
 		D710BD7834228045869D0184 /* IslandWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowController.swift; sourceTree = "<group>"; };
 		D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandStateMachine.swift; sourceTree = "<group>"; };
+		D84D7CB7196217FC59839DE9 /* NotchBuddyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotchBuddyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8772970DAFD4731B940673A /* ClaudeCodeAgentRuntimeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeAgentRuntimeAdapter.swift; sourceTree = "<group>"; };
+		DBA10191AB1FDF453B4552EB /* ClaudeHookTranslator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeHookTranslator.swift; sourceTree = "<group>"; };
+		DE896CEFB0BA2949DA62FC85 /* AgentRuntimeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRuntimeManager.swift; sourceTree = "<group>"; };
+		E3DCAB3065226CF5A8AD6A57 /* AntigravityHookTranslator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityHookTranslator.swift; sourceTree = "<group>"; };
 		E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContextCapture.swift; sourceTree = "<group>"; };
+		F060ABF39BA131CEB1D0A5B8 /* AIProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProtocols.swift; sourceTree = "<group>"; };
 		F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBuddyApp.swift; sourceTree = "<group>"; };
 		FA02B08886939FF6FE0475DD /* IslandViewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandViewContent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		158F491F11DC10116D181830 /* OpenAI */ = {
+			isa = PBXGroup;
+			children = (
+				026AE096AC8965A414FE42A2 /* OpenAIProvider.swift */,
+			);
+			path = OpenAI;
+			sourceTree = "<group>";
+		};
+		1777BFC31CF3CBE4981F7547 /* ClaudeCode */ = {
+			isa = PBXGroup;
+			children = (
+				D8772970DAFD4731B940673A /* ClaudeCodeAgentRuntimeAdapter.swift */,
+				DBA10191AB1FDF453B4552EB /* ClaudeHookTranslator.swift */,
+			);
+			path = ClaudeCode;
+			sourceTree = "<group>";
+		};
 		2D4550630644796DA0649B81 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -117,7 +201,6 @@
 				A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */,
 				D4540F630F8BA04AFFFA3979 /* BotEngine.swift */,
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
-				A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */,
 				3232F258523DD8D09B670363 /* FileDropView.swift */,
 				8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */,
 				C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */,
@@ -140,8 +223,27 @@
 				6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */,
 				71718D1B87A39A4879DD2A9D /* VercelPoller.swift */,
 				E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */,
+				AD6D7A9C31C2029F54B184DB /* Agents */,
+				DCC58E12EB63253D7FC1A5F3 /* AI */,
+				FE15B933C79FFCA40865E70E /* Providers */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		40B5E8372AD84630CA776DF6 /* Google */ = {
+			isa = PBXGroup;
+			children = (
+				6D8F52900AAC11E6F76FCCB3 /* GeminiProvider.swift */,
+			);
+			path = Google;
+			sourceTree = "<group>";
+		};
+		41F522BCA87D84C59D326860 /* Anthropic */ = {
+			isa = PBXGroup;
+			children = (
+				685936992B973EEF9E64FAD0 /* AnthropicProvider.swift */,
+			);
+			path = Anthropic;
 			sourceTree = "<group>";
 		};
 		6CF11AAA7898712CF6DB364A /* Products */ = {
@@ -149,8 +251,28 @@
 			children = (
 				4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */,
 				A14A61070D293AB4BBA303F7 /* NotchBuddy.app */,
+				D84D7CB7196217FC59839DE9 /* NotchBuddyTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		973AA747057523D9F6E4EF83 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				23CD895DD58AAEE2E7316FF2 /* AgentSessionReducerTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		AD6D7A9C31C2029F54B184DB /* Agents */ = {
+			isa = PBXGroup;
+			children = (
+				FFEE9862241C174BFF936D4C /* Antigravity */,
+				1777BFC31CF3CBE4981F7547 /* ClaudeCode */,
+				CB665E682E478A82790BC560 /* Codex */,
+				D8D3E410C31A4330A561E9A5 /* GeminiCLI */,
+			);
+			path = Agents;
 			sourceTree = "<group>";
 		};
 		B382DF6D17081F63DA1CC08B /* Sources */ = {
@@ -167,8 +289,20 @@
 				506824380E9C80B9BC6DCE72 /* Assets.xcassets */,
 				D3593DF62D69E62DA5121807 /* Resources */,
 				B382DF6D17081F63DA1CC08B /* Sources */,
+				973AA747057523D9F6E4EF83 /* Tests */,
 				6CF11AAA7898712CF6DB364A /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		CB665E682E478A82790BC560 /* Codex */ = {
+			isa = PBXGroup;
+			children = (
+				81BCC5CCF2512D4767C53FDE /* CodexAgentRuntimeAdapter.swift */,
+				AB7860BC844339B579BB05A3 /* CodexAppServerCodec.swift */,
+				81BDC7BD493570023E2ED1A3 /* CodexAppServerEventTranslator.swift */,
+				97FFD0EDEF0886A1BC230731 /* CodexAppServerTransport.swift */,
+			);
+			path = Codex;
 			sourceTree = "<group>";
 		};
 		D3593DF62D69E62DA5121807 /* Resources */ = {
@@ -177,6 +311,47 @@
 				C066E2B991AA4F56B2724263 /* sounds */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		D8D3E410C31A4330A561E9A5 /* GeminiCLI */ = {
+			isa = PBXGroup;
+			children = (
+				40C9BE50A5AD6F7A33F39881 /* GeminiCLIAgentRuntimeAdapter.swift */,
+				47DD34EB430507BD7BDCE929 /* GeminiHookTranslator.swift */,
+			);
+			path = GeminiCLI;
+			sourceTree = "<group>";
+		};
+		DCC58E12EB63253D7FC1A5F3 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				DE896CEFB0BA2949DA62FC85 /* AgentRuntimeManager.swift */,
+				827AAC4C2C2AC37137C78D26 /* AgentSessionReducer.swift */,
+				80960C5645ED7B5E23B83930 /* AIModels.swift */,
+				F060ABF39BA131CEB1D0A5B8 /* AIProtocols.swift */,
+				74BBE910D6885EDB8120C2D5 /* InternalChatService.swift */,
+				31A5CBC321744C693D4E5E30 /* KeychainStore.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
+		FE15B933C79FFCA40865E70E /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				41F522BCA87D84C59D326860 /* Anthropic */,
+				40B5E8372AD84630CA776DF6 /* Google */,
+				158F491F11DC10116D181830 /* OpenAI */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		FFEE9862241C174BFF936D4C /* Antigravity */ = {
+			isa = PBXGroup;
+			children = (
+				C780B3CDD42D9994B54FF4C0 /* AntigravityAgentRuntimeAdapter.swift */,
+				E3DCAB3065226CF5A8AD6A57 /* AntigravityHookTranslator.swift */,
+			);
+			path = Antigravity;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -218,6 +393,24 @@
 			productReference = 4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */;
 			productType = "com.apple.product-type.application";
 		};
+		6D1F134C76603D5AD4D39C03 /* NotchBuddyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1E8C4C7EE8F0BCD565BC41E /* Build configuration list for PBXNativeTarget "NotchBuddyTests" */;
+			buildPhases = (
+				1B3A31FA140659E08EA60FF8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				60F37AEF3D88FAE6F31ED67D /* PBXTargetDependency */,
+			);
+			name = NotchBuddyTests;
+			packageProductDependencies = (
+			);
+			productName = NotchBuddyTests;
+			productReference = D84D7CB7196217FC59839DE9 /* NotchBuddyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -233,6 +426,9 @@
 					495922874E20462B9FC47E53 = {
 						DevelopmentTeam = 256AUJ9555;
 						ProvisioningStyle = Automatic;
+					};
+					6D1F134C76603D5AD4D39C03 = {
+						ProvisioningStyle = Manual;
 					};
 				};
 			};
@@ -252,6 +448,7 @@
 			targets = (
 				12E59C1D41BFA3D2F7CDD7F5 /* NotchBuddy */,
 				495922874E20462B9FC47E53 /* CoucouAppStore */,
+				6D1F134C76603D5AD4D39C03 /* NotchBuddyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -282,26 +479,44 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1E04ED2B03979C8A7CCB5F7 /* AIModels.swift in Sources */,
+				82DA854B16CBD2A15F9DF43B /* AIProtocols.swift in Sources */,
+				F12A17914AE387FC2BF2860A /* AgentRuntimeManager.swift in Sources */,
+				C1AD0A61373B3F4B64488C08 /* AgentSessionReducer.swift in Sources */,
+				174B43132321940610D60E41 /* AnthropicProvider.swift in Sources */,
+				E7616043D0625AF6494B63ED /* AntigravityAgentRuntimeAdapter.swift in Sources */,
+				19CA59E990533A49EED84175 /* AntigravityHookTranslator.swift in Sources */,
 				C940B651C6CA952D99388E04 /* AppDelegate.swift in Sources */,
 				4B6AC00F22EC75E90E0157D5 /* AppLog.swift in Sources */,
 				1F11EC4E6F604C612A1ADAD1 /* AppState.swift in Sources */,
 				CD8DECA66B9E09C97E469DB9 /* BotCanvasView.swift in Sources */,
 				C24D863967D8D32D828ED4B1 /* BotEngine.swift in Sources */,
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
-				2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */,
+				2C76F4555DE7DF0D831A8209 /* ClaudeCodeAgentRuntimeAdapter.swift in Sources */,
+				9AE577A7C19A4234AB1DB383 /* ClaudeHookTranslator.swift in Sources */,
+				0FBD8040B47243B23029151B /* CodexAgentRuntimeAdapter.swift in Sources */,
+				2BAE00D3A0AD0307756D37AD /* CodexAppServerCodec.swift in Sources */,
+				F58A423B453F2C625C88F4DC /* CodexAppServerEventTranslator.swift in Sources */,
+				625ADBB6AD68ED69BFE3242D /* CodexAppServerTransport.swift in Sources */,
 				E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */,
+				BFD9CDA878F484797A10F8A0 /* GeminiCLIAgentRuntimeAdapter.swift in Sources */,
+				92361CEFB782B67FEA5BAC7C /* GeminiHookTranslator.swift in Sources */,
+				2F8FAF6D53D58FCACE9CEDAB /* GeminiProvider.swift in Sources */,
 				C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */,
 				8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */,
 				2C798C3837A63B9BB561A1A0 /* HookServer.swift in Sources */,
+				E24DC98B9C82D1068E19558E /* InternalChatService.swift in Sources */,
 				CA3321C14A11FED94E48B3E3 /* IslandRootView.swift in Sources */,
 				186AB8904029767DAA5277CF /* IslandScreenGeometry.swift in Sources */,
 				5B9A00AFB0837731FA678E4E /* IslandStateMachine.swift in Sources */,
 				3F19756A396F125EC711247F /* IslandTypes.swift in Sources */,
 				065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */,
 				091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */,
+				A565C17686AEFF82407304BA /* KeychainStore.swift in Sources */,
 				0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */,
 				06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */,
 				2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */,
+				5000BE29C6546B04BC9C9A34 /* OpenAIProvider.swift in Sources */,
 				967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */,
 				6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */,
 				56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */,
@@ -314,30 +529,56 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1B3A31FA140659E08EA60FF8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68A37A3B62F3C3C8BD3858DC /* AgentSessionReducerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		760473CA0E9C38B61B761B8C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				815E71025BD8532555376CBF /* AIModels.swift in Sources */,
+				1C465BBF4A87B00027ABBF95 /* AIProtocols.swift in Sources */,
+				26D664F87D1B97A24CBE8378 /* AgentRuntimeManager.swift in Sources */,
+				0D2C008DDE7223BE146B782D /* AgentSessionReducer.swift in Sources */,
+				136EA9B0ED12480498A68345 /* AnthropicProvider.swift in Sources */,
+				94F3C4D5ACEACF5F02182E78 /* AntigravityAgentRuntimeAdapter.swift in Sources */,
+				A51445AD90E48C25F688C116 /* AntigravityHookTranslator.swift in Sources */,
 				878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */,
 				61CB7049490F61CFA1B36B64 /* AppLog.swift in Sources */,
 				61F73B27A7E3AFF584B2CC22 /* AppState.swift in Sources */,
 				651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */,
 				0E9CE475EC53C67DAB00F8E5 /* BotEngine.swift in Sources */,
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
-				0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */,
+				2C390189F4274A2335EEA70D /* ClaudeCodeAgentRuntimeAdapter.swift in Sources */,
+				42ADFF7B708F18A6D31C427E /* ClaudeHookTranslator.swift in Sources */,
+				AD60194A1D8979AF16084964 /* CodexAgentRuntimeAdapter.swift in Sources */,
+				280353822A76070D8A54D6ED /* CodexAppServerCodec.swift in Sources */,
+				857A8F4804624B40A3B026D5 /* CodexAppServerEventTranslator.swift in Sources */,
+				5EBBEF4FB15C3B0C75E85020 /* CodexAppServerTransport.swift in Sources */,
 				2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */,
+				E5B8F6C01C3E936F096821C3 /* GeminiCLIAgentRuntimeAdapter.swift in Sources */,
+				9B73332577DDCE02F25726C1 /* GeminiHookTranslator.swift in Sources */,
+				75CE64E68CD7DBC9A0C20E54 /* GeminiProvider.swift in Sources */,
 				C18227D148D99FE6EE3CC51A /* GithubPoller.swift in Sources */,
 				C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */,
 				9DD56C95ECABDDCE23652D50 /* HookServer.swift in Sources */,
+				ADA5398BC0C2BA3B4A673602 /* InternalChatService.swift in Sources */,
 				B605F976F4141435F27CF266 /* IslandRootView.swift in Sources */,
 				0D68A4C4E3422487DB7B2262 /* IslandScreenGeometry.swift in Sources */,
 				3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */,
 				D82E93014C8087AE81511E40 /* IslandTypes.swift in Sources */,
 				68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */,
 				C61DDE2EC5FDDB39E4AA3B34 /* IslandWindowController.swift in Sources */,
+				94FC74BE4BA8EDA178833004 /* KeychainStore.swift in Sources */,
 				160EDB9D06275E2607DA5151 /* N8nPoller.swift in Sources */,
 				DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */,
 				78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */,
+				003A035909E5CC545394AB2F /* OpenAIProvider.swift in Sources */,
 				EB23ED9F1C12EA8B54A76A91 /* ResendPoller.swift in Sources */,
 				FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */,
 				8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */,
@@ -351,6 +592,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		60F37AEF3D88FAE6F31ED67D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 12E59C1D41BFA3D2F7CDD7F5 /* NotchBuddy */;
+			targetProxy = 177E338AE6A6E7362B85F83C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0C135EF4AD7F69AB24CA6CEF /* Release */ = {
@@ -503,6 +752,25 @@
 			};
 			name = Debug;
 		};
+		CD39379C08545D9DC34F443F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.NotchBuddyTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Coucou.app/Contents/MacOS/Coucou";
+			};
+			name = Debug;
+		};
 		ECAB43E9AE0B6830F8D4C6BA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -568,6 +836,25 @@
 			};
 			name = Release;
 		};
+		F0D80DDC213AD641393B11B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.NotchBuddyTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Coucou.app/Contents/MacOS/Coucou";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -585,6 +872,15 @@
 			buildConfigurations = (
 				CA9D2D4E8E2B8015D8EA90A2 /* Debug */,
 				ECAB43E9AE0B6830F8D4C6BA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D1E8C4C7EE8F0BCD565BC41E /* Build configuration list for PBXNativeTarget "NotchBuddyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD39379C08545D9DC34F443F /* Debug */,
+				F0D80DDC213AD641393B11B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

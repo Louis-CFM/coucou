@@ -144,7 +144,7 @@ final class IslandWindowController: NSWindowController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newView in
                 guard let self else { return }
-                if newView == .prompt {
+                if [.prompt, .agentPrompt, .agentSession, .question, .mail].contains(newView) {
                     self.islandPanel.makeKey()
                 }
             }
@@ -773,6 +773,33 @@ final class IslandWindowController: NSWindowController {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     }
 
+    static func notchWidth(for screen: NSScreen) -> CGFloat {
+        effectiveNotchWidth(
+            screenWidth: screen.frame.width,
+            safeAreaTop: screen.safeAreaInsets.top,
+            leftAuxWidth: screen.auxiliaryTopLeftArea?.width,
+            rightAuxWidth: screen.auxiliaryTopRightArea?.width
+        )
+    }
+
+    nonisolated static func effectiveNotchWidth(
+        screenWidth: CGFloat,
+        safeAreaTop: CGFloat,
+        leftAuxWidth: CGFloat?,
+        rightAuxWidth: CGFloat?
+    ) -> CGFloat {
+        guard safeAreaTop > 0,
+              let leftAuxWidth,
+              let rightAuxWidth else { return IslandConst.notchWidth }
+        let width = screenWidth - leftAuxWidth - rightAuxWidth
+        return width > 0 && width < screenWidth ? width : IslandConst.notchWidth
+    }
+
+    static func notchHeight(for screen: NSScreen) -> CGFloat {
+        let h = screen.safeAreaInsets.top
+        return h > 0 ? h : IslandConst.notchHeight
+    }
+
     static func screenGeometry(for screen: NSScreen) -> IslandScreenGeometry {
         let visibleMenuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
         // visibleFrame includes the menu bar only while it is visible. Keep a
@@ -868,8 +895,8 @@ func islandSize(mode: IslandMode, view: IslandView,
                 nw: CGFloat = IslandConst.notchWidth,
                 nh: CGFloat = IslandConst.notchHeight) -> (CGFloat, CGFloat) {
     switch mode {
-    case .hidden:   return (nw, nh)
-    case .compact:  return (nw + 160, nh)
+    case .hidden:   return (nw, min(nh, IslandConst.hiddenPeekHeight))
+    case .compact:  return (nw + 56, nh)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         return (IslandConst.expandedWidth, layout.height)

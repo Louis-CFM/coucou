@@ -6,26 +6,16 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import {
+  translateClaudeHook,
+  type ClaudeHookPayload,
+} from "../agents/claude-code/hook-translator";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
-
-interface HookPayload {
-  hook_event_name?: string;
-  request_id?: string;
-  session_id?: string;
-  cwd?: string;
-  message?: string;
-  /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
-  prompt?: string;
-  tool_name?: string;
-  tool_input?: Record<string, unknown>;
-  /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
-  coucou_agent?: string;
-}
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 function validateAgent(raw: string | undefined): string | null {
@@ -43,83 +33,6 @@ function agentColor(name: string): string {
   }
   return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
 }
-
-const PROJECT_ALIASES: Record<string, string> = {
-  "notch-buddy": "Notch Buddy",
-  notchbuddy: "Notch Buddy",
-  notch_buddy: "Notch Buddy",
-};
-
-function aliasProjectName(name: string): string {
-  return PROJECT_ALIASES[name.toLowerCase()] ?? name;
-}
-
-function lastPathComponent(p: string): string {
-  const cleaned = p.replace(/[\\/]+$/, "");
-  const idx = Math.max(cleaned.lastIndexOf("\\"), cleaned.lastIndexOf("/"));
-  return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
-}
-
-/** frenchStep() — same labels as the macOS app. */
-const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
-  NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
-};
-
-function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ?? tool;
-  const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
-  const cmd = str("command");
-  if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
-  const path = str("path");
-  if (path) return `${label} · ${lastPathComponent(path)}`;
-  const file = str("file_path");
-  if (file) return `${label} · ${lastPathComponent(file)}`;
-  const query = str("query");
-  if (query) return `${label} · ${query.slice(0, 40)}`;
-  return label;
-}
-
-/**
- * What the Allow button actually authorises. Approving "Write" tells you nothing
- * — approving `Write · C:\…\.env` tells you everything, and the difference is
- * the whole point of approving from the island rather than blind.
- *
- * Ordered by how specific the field is, so an unfamiliar tool still shows
- * whatever identifying string it carries instead of falling back to its name.
- */
-const APPROVAL_FIELDS = [
-  "command", // Bash, PowerShell
-  "file_path", // Write, Edit, MultiEdit, NotebookEdit
-  "path", // Read, LS
-  "url", // WebFetch
-  "query", // WebSearch
-  "pattern", // Glob, Grep
-  "prompt", // Task
-] as const;
-
-function approvalTarget(tool: string, input: Record<string, unknown>): string {
-  for (const field of APPROVAL_FIELDS) {
-    const value = input[field];
-    if (typeof value === "string" && value.trim()) {
-      return `${tool} · ${value.trim()}`;
-    }
-  }
-  return tool;
-}
-
 function upsert(projectName: string, cwd: string) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
@@ -137,10 +50,10 @@ function clearSession() {
 }
 
 export function registerHookHandlers(island: Island) {
-  void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  void onEvent<ClaudeHookPayload>("hook", (payload) => handleHook(island, payload));
 }
 
-function handleHook(island: Island, payload: HookPayload) {
+function handleHook(island: Island, payload: ClaudeHookPayload) {
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,
@@ -150,9 +63,9 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
-  const cwd = payload.cwd ?? "";
-  const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
+  const translation = translateClaudeHook(name, payload);
+  if (!translation) return;
+  const { event, cwd, projectName } = translation;
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
@@ -182,57 +95,52 @@ function handleHook(island: Island, payload: HookPayload) {
     }
   };
 
-  switch (name) {
-    case "SessionStart":
+  switch (event.kind) {
+    case "session-started":
       ensurePill();
       surface("overview", false);
       Sound.play("work");
       break;
 
-    case "UserPromptSubmit": {
+    case "user-prompt": {
       ensurePill();
       State.updateTask(agentId, "thinking");
-      // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      if (event.title) State.appendStep(agentId, event.title);
       surface("overview", false);
       break;
     }
 
-    case "PreToolUse": {
+    case "tool-started": {
       ensurePill();
       State.updateTask(agentId, "working");
-      const tool = payload.tool_name ?? "Tool";
-      State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
+      if (event.title) State.appendStep(agentId, event.title);
       surface("overview", false);
       break;
     }
 
-    case "PostToolUse":
+    case "tool-completed":
       State.updateTask(agentId, "working");
       break;
 
-    case "PostToolUseFailure":
+    case "tool-failed":
       State.updateTask(agentId, "working");
-      State.appendStep(agentId, "⚠ failed");
+      State.appendStep(agentId, event.title ?? "⚠ failed");
       break;
 
-    case "Notification": {
-      const message = payload.message ?? "";
-      const lower = message.toLowerCase();
-      if (lower.includes("rate limit") || lower.includes("limite d")) {
-        State.updateTask(agentId, "ratelimit");
-        Sound.play("rate");
-      } else if (message.endsWith("?")) {
-        State.updateTask(agentId, "question");
-        State.appendStep(agentId, message);
-      }
+    case "rate-limited":
+      State.updateTask(agentId, "ratelimit");
+      Sound.play("rate");
+      break;
+
+    case "user-input-requested": {
+      State.updateTask(agentId, "question");
+      if (event.title) State.appendStep(agentId, event.title);
       break;
     }
 
-    case "Stop":
+    case "completed":
       State.updateTask(agentId, "finished");
-      if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
+      if (event.title) State.appendStep(agentId, event.title);
       Sound.play("finish");
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
@@ -246,14 +154,14 @@ function handleHook(island: Island, payload: HookPayload) {
       }, 5200);
       break;
 
-    case "StopFailure":
+    case "error":
       State.updateTask(agentId, "error");
       Sound.play("error");
       if (focused) surface("error", true);
       else State.setPillBadge(agentId, "error");
       break;
 
-    case "SessionEnd":
+    case "session-ended":
       if (isExternalAgent) {
         State.removeTask(agentId);
       } else {
@@ -262,15 +170,15 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       break;
 
-    case "SubagentStart":
-      State.appendStep(agentId, "+ subagent");
+    case "subagent-started":
+      State.appendStep(agentId, event.title ?? "+ subagent");
       break;
 
-    case "SubagentStop":
-      State.appendStep(agentId, "• subagent done");
+    case "subagent-completed":
+      State.appendStep(agentId, event.title ?? "• subagent done");
       break;
 
-    case "PermissionRequest": {
+    case "approval-requested": {
       // External agents do not get an approval card — showing one would look like
       // a Claude Code request. Decline immediately so the agent re-asks in its
       // terminal. Approval support for other agents will come with Codex support.
@@ -278,7 +186,6 @@ function handleHook(island: Island, payload: HookPayload) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
-
       const requestId = payload.request_id ?? "";
       // One card, one request. A second one must never quietly replace the first
       // — that would leave a human staring at request B while request A waits for
@@ -289,13 +196,13 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       upsert(projectName, cwd);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
-      const tool = payload.tool_name ?? "Tool";
-      const input = payload.tool_input ?? {};
+      const approval = event.approval;
+      if (!approval) break;
       State.pendingApproval = {
         requestId,
-        sessionId: payload.session_id ?? "",
-        tool,
-        command: approvalTarget(tool, input),
+        sessionId: event.sessionId,
+        tool: approval.title,
+        command: approval.detail ?? approval.title,
       };
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.

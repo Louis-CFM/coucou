@@ -14,6 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        Task { await AppState.shared.agentRuntimeManager.start() }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        Task { await AppState.shared.agentRuntimeManager.stop() }
     }
 
     // MARK: - Menu bar

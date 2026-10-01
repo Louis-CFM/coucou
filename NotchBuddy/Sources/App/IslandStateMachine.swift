@@ -29,6 +29,7 @@ final class IslandStateMachine {
     private var petitHideWork: DispatchWorkItem?
     private var homeCollapseWork: DispatchWorkItem?
     private var greetCollapseWork: DispatchWorkItem?
+    private var hoverExpandWork: DispatchWorkItem?
 
     // MARK: – Inputs
 
@@ -47,6 +48,13 @@ final class IslandStateMachine {
         case .petit:
             petitHideWork?.cancel()
             petitHideWork = nil
+            hoverExpandWork?.cancel()
+            let item = DispatchWorkItem { [weak self] in
+                guard let self, self.state == .petit else { return }
+                self.transition(to: .home)
+            }
+            hoverExpandWork = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: item)
         case .home:
             homeCollapseWork?.cancel()
             homeCollapseWork = nil
@@ -62,6 +70,8 @@ final class IslandStateMachine {
         case .hidden:
             break
         case .petit:
+            hoverExpandWork?.cancel()
+            hoverExpandWork = nil
             schedulePetitHide()
         case .home:
             scheduleHomeCollapse()
@@ -153,6 +163,7 @@ final class IslandStateMachine {
         petitHideWork?.cancel();    petitHideWork = nil
         homeCollapseWork?.cancel(); homeCollapseWork = nil
         greetCollapseWork?.cancel(); greetCollapseWork = nil
+        hoverExpandWork?.cancel();   hoverExpandWork = nil
     }
 
     private func transition(to new: State) {

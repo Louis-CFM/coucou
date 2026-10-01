@@ -20,6 +20,8 @@ struct IslandViewContent: View {
         case .choose:    ChooseView(state: state)
         case .mail:      MailView(state: state)
         case .prompt:    PromptView(state: state)
+        case .agentPrompt: CodexSessionComposerView(state: state)
+        case .agentSession: AgentSessionView(state: state)
         case .searching: SearchingView(state: state)
         case .result:    ResultView(state: state)
         case .note:      NoteView(state: state)
@@ -59,17 +61,12 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .layoutPriority(1)
-                                Text({ () -> String in
-                                    switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
-                                    case .n8n:        return "n8n"
-                                    }
-                                }())
+                                    .help(agent.name)
+                                Text(agent.source.runtimeLabel)
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
-                                    .truncationMode(.tail)
+                                    .fixedSize()
                                 Spacer(minLength: 2)
                                 if agent.steps.count > 1 {
                                     Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
@@ -94,7 +91,9 @@ struct OverviewView: View {
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                if !showingN8nDetail {
+                if !showingN8nDetail,
+                   agent?.source != .codex,
+                   agent?.id != "integration_claude" {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .medium))
@@ -123,12 +122,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+            break
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
@@ -145,6 +139,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_codex":
+            break
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -199,29 +195,76 @@ struct ApprovalView: View {
     @ObservedObject var state: AppState
 
     var approval: ApprovalInfo? { state.pendingApproval }
+    var codexSession: AgentSession? {
+        guard state.focusTask?.source == .codex,
+              let id = state.selectedAgentSessionID else { return nil }
+        return state.agentRuntimeManager.sessions[id]
+    }
 
     var body: some View {
         ZStack {
             CardBackground(wash: .amber)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
-                CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
-                HStack(spacing: 8) {
-                    SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny")
-                    }
-                    PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow")
-                    }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+            if let session = codexSession, let request = session.pendingApproval {
+                VStack(alignment: .leading, spacing: 5) {
+                    AgentWho(task: state.focusTask, label: "Codex needs permission")
+                    CodeBlock(text: request.detail ?? request.title)
+                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        SecondaryButton("Deny") { resolveCodex(session, request, .deny) }
+                        PrimaryButton("Allow") { resolveCodex(session, request, .allow) }
+                        if request.choices.contains(.allowForSession) {
+                            SecondaryButton("Always") {
+                                resolveCodex(session, request, .allowForSession)
+                            }
+                        }
                     }
                 }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    AgentWho(task: state.focusTask, label: "needs permission")
+                    CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
+                    HStack(spacing: 8) {
+                        SecondaryButton("Deny") {
+                            HookServer.shared.sendApprovalDecision("deny")
+                        }
+                        PrimaryButton("Allow") {
+                            HookServer.shared.sendApprovalDecision("allow")
+                        }
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
+                    }
+                }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func resolveCodex(
+        _ session: AgentSession,
+        _ request: AgentApprovalRequest,
+        _ decision: ApprovalDecision
+    ) {
+        Task {
+            do {
+                try await state.agentRuntimeManager.resolveApproval(
+                    sessionID: session.id,
+                    requestID: request.id,
+                    decision: decision
+                )
+                state.isPinned = false
+                state.view = .overview
+            } catch {
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
         }
     }
 }
@@ -230,25 +273,169 @@ struct ApprovalView: View {
 
 struct QuestionView: View {
     @ObservedObject var state: AppState
+    @State private var questionIndex = 0
+    @State private var answers: [String: [String]] = [:]
+    @State private var selectedChoice = ""
+    @State private var typedAnswer = ""
+    @State private var isSubmitting = false
+
+    private var codexSession: AgentSession? {
+        guard state.focusTask?.source == .codex,
+              let id = state.selectedAgentSessionID else { return nil }
+        return state.agentRuntimeManager.sessions[id]
+    }
 
     var body: some View {
         ZStack {
             CardBackground(wash: .cyan)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
-                Text("Which search engine to use?")
-                    .font(.system(size: 15, weight: .semibold))
-                HStack(spacing: 8) {
-                    ForEach(["Postgres full-text", "Meilisearch", "Algolia"], id: \.self) { opt in
-                        SecondaryButton(opt) { /* answer */ }
+            if let session = codexSession,
+               let request = session.pendingUserInput,
+               !request.questions.isEmpty {
+                let index = min(questionIndex, request.questions.count - 1)
+                let question = request.questions[index]
+                VStack(alignment: .leading, spacing: 5) {
+                    AgentWho(
+                        task: state.focusTask,
+                        label: request.questions.count == 1
+                            ? "Codex needs input"
+                            : "Codex needs input · \(index + 1)/\(request.questions.count)"
+                    )
+                    Text(question.question)
+                        .font(.system(size: 14, weight: .semibold))
+                        .lineLimit(2)
+                    HStack(spacing: 7) {
+                        if !question.options.isEmpty {
+                            Menu {
+                                ForEach(question.options, id: \.label) { option in
+                                    Button(option.label) {
+                                        selectedChoice = option.label
+                                        typedAnswer = ""
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(selectedChoice.isEmpty ? "Choose…" : selectedChoice)
+                                        .lineLimit(1)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 8, weight: .bold))
+                                }
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: "#C9DFFF"))
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "#5EA2FF").opacity(0.13))
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(Color(hex: "#5EA2FF").opacity(0.28), lineWidth: 1))
+                            }
+                            .menuStyle(.borderlessButton)
+                            .fixedSize()
+                        }
+                        if question.options.isEmpty || question.allowsOther {
+                            answerField(for: question)
+                        }
+                        PrimaryButton(index == request.questions.count - 1 ? "Send" : "Next") {
+                            advance(session: session, request: request, question: question, index: index)
+                        }
+                        .disabled(!canAdvance(question) || isSubmitting)
+                        .opacity(canAdvance(question) && !isSubmitting ? 1 : 0.45)
                     }
                 }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onChange(of: request.id) { _, _ in resetDraft() }
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
+                    Text("Return to Claude Code to answer this question.")
+                        .font(.system(size: 14, weight: .semibold))
+                    SecondaryButton("OK") {
+                        state.isPinned = false
+                        state.view = .overview
+                    }
+                }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    @ViewBuilder
+    private func answerField(for question: AgentUserInputQuestion) -> some View {
+        Group {
+            if question.isSecret {
+                SecureField("Type an answer…", text: $typedAnswer)
+            } else {
+                TextField("Type an answer…", text: $typedAnswer)
+            }
+        }
+        .textFieldStyle(.plain)
+        .font(.system(size: 11))
+        .foregroundColor(Color(hex: "#F5F6F8"))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.white.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    private func canAdvance(_ question: AgentUserInputQuestion) -> Bool {
+        !typedAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !selectedChoice.isEmpty
+            || answers[question.id]?.isEmpty == false
+    }
+
+    private func advance(
+        session: AgentSession,
+        request: AgentUserInputRequest,
+        question: AgentUserInputQuestion,
+        index: Int
+    ) {
+        let typed = typedAnswer.trimmingCharacters(in: .whitespacesAndNewlines)
+        let answer = typed.isEmpty ? selectedChoice : typed
+        guard !answer.isEmpty else { return }
+        var submittedAnswers = answers
+        submittedAnswers[question.id] = [answer]
+        answers = submittedAnswers
+
+        if index < request.questions.count - 1 {
+            questionIndex = index + 1
+            selectedChoice = ""
+            typedAnswer = ""
+            return
+        }
+
+        isSubmitting = true
+        Task {
+            do {
+                try await state.agentRuntimeManager.respondToUserInput(
+                    sessionID: session.id,
+                    requestID: request.id,
+                    answers: submittedAnswers
+                )
+                resetDraft()
+                state.isPinned = false
+                state.view = .overview
+            } catch {
+                isSubmitting = false
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
+        }
+    }
+
+    private func resetDraft() {
+        questionIndex = 0
+        answers = [:]
+        selectedChoice = ""
+        typedAnswer = ""
+        isSubmitting = false
     }
 }
 
@@ -715,6 +902,7 @@ struct MailView: View {
 
 struct PromptView: View {
     @ObservedObject var state: AppState
+    @ObservedObject private var chatService = InternalChatService.shared
     @State private var text: String = ""
     @FocusState private var focused: Bool
 
@@ -723,6 +911,56 @@ struct PromptView: View {
             CardBackground(wash: .indigo)
 
             VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 7) {
+                    Picker("Provider", selection: providerBinding) {
+                        ForEach(chatService.availableProviders, id: \.self) { provider in
+                            Text(providerName(provider)).tag(provider)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+
+                    Picker("Model", selection: modelBinding) {
+                        if chatService.models.isEmpty {
+                            Text(chatService.selectedModelID).tag(chatService.selectedModelID)
+                        } else {
+                            if chatService.selectedModel == nil {
+                                Text("Unavailable · \(chatService.selectedModelID)")
+                                    .tag(chatService.selectedModelID)
+                            }
+                            ForEach(chatService.models) { model in
+                                Text(model.displayName).tag(model.id)
+                            }
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .disabled(chatService.isLoadingModels)
+
+                    if let model = chatService.selectedModel, !model.reasoningOptions.isEmpty {
+                        Picker("Reasoning", selection: reasoningBinding) {
+                            ForEach(model.reasoningOptions) { option in
+                                Text(option.displayName).tag(Optional(option.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .fixedSize()
+                    }
+
+                    Spacer()
+                    if chatService.isLoadingModels {
+                        ProgressView().controlSize(.small)
+                    } else if chatService.selectionWarning != nil {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .help(chatService.selectionWarning ?? "Model unavailable")
+                    }
+                }
+                .font(.system(size: 10.5, weight: .medium))
+
                 if let ctx = state.promptContext {
                     ContextChip(context: ctx).padding(.top, 4)
                 }
@@ -764,6 +1002,8 @@ struct PromptView: View {
                     TextField(state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…", text: $text)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .tint(Color(hex: "#8EBBFF"))
                         .focused($focused)
                         .onSubmit { sendMessage() }
 
@@ -786,7 +1026,10 @@ struct PromptView: View {
             .padding(.bottom, 14)
         }
         .padding(.bottom, 10)
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            chatService.loadModels()
+        }
     }
 
     private func sendMessage() {
@@ -797,8 +1040,37 @@ struct PromptView: View {
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
-            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            await chatService.chat(query: query, context: state.promptContext, state: state)
             await MainActor.run { focused = true }
+        }
+    }
+
+    private var providerBinding: Binding<ProviderID> {
+        Binding(
+            get: { chatService.selectedProviderID },
+            set: { chatService.selectProvider($0, state: state) }
+        )
+    }
+
+    private var modelBinding: Binding<String> {
+        Binding(
+            get: { chatService.selectedModelID },
+            set: { chatService.selectModel($0) }
+        )
+    }
+
+    private var reasoningBinding: Binding<String?> {
+        Binding(
+            get: { chatService.selectedReasoningID },
+            set: { chatService.selectReasoning($0) }
+        )
+    }
+
+    private func providerName(_ provider: ProviderID) -> String {
+        switch provider {
+        case .anthropic: "Anthropic"
+        case .openAI: "OpenAI"
+        case .google: "Google"
         }
     }
 }
@@ -978,6 +1250,13 @@ struct IntegrationCardView: View {
                 return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
             #endif
+        case "integration_codex":
+            switch appState.agentRuntimeManager.availability[.codex] {
+            case .available, .disconnected:
+                return true
+            default:
+                return false
+            }
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -992,6 +1271,7 @@ struct IntegrationCardView: View {
     private var openURL: URL? {
         switch task.id {
         case "integration_claude":  return nil  // uses terminal button below
+        case "integration_codex":   return nil
         case "integration_resend":  return URL(string: "https://resend.com/emails")
         case "integration_n8n":
             if let s = KeychainStore.shared.get("n8n-url") { return URL(string: s) }
@@ -1005,8 +1285,8 @@ struct IntegrationCardView: View {
         }
     }
 
-    // VS Code with active session: show ticker layout (same as overview)
-    private var vsCodeSessionActive: Bool {
+    // Claude Code with an active session: show ticker layout (same as overview)
+    private var claudeSessionActive: Bool {
         task.id == "integration_claude" && (task.state != .idle || !task.steps.isEmpty)
     }
 
@@ -1047,7 +1327,12 @@ struct IntegrationCardView: View {
     }
 
     var body: some View {
-        if showingDetail && n8nHasActivity {
+        if task.id == "integration_codex" {
+            CodexRuntimeCardView(
+                state: appState,
+                runtimeManager: appState.agentRuntimeManager
+            )
+        } else if showingDetail && n8nHasActivity {
             N8nDetailView(task: task) {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
             }
@@ -1077,7 +1362,7 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
-        } else if vsCodeSessionActive {
+        } else if claudeSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
@@ -1120,7 +1405,7 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? "VS Code" : task.name)
+                    Text(task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text("Integration")
@@ -1139,7 +1424,13 @@ struct IntegrationCardView: View {
                     let dot = stripeErr != nil ? Color(hex: "#F4505E")
                             : isConfigured    ? Color(hex: "#22C55E")
                             :                   Color(hex: "#F4505E")
-                    let label = stripeErr ?? (isConfigured ? "Connected · loading…" : "Key not configured")
+                    let label: String = if let stripeErr {
+                        stripeErr
+                    } else if task.id == "integration_claude" {
+                        isConfigured ? "Hooks connected · waiting for a session" : "Hooks not configured"
+                    } else {
+                        isConfigured ? "Connected · loading…" : "Key not configured"
+                    }
                     Circle().fill(dot).frame(width: 5, height: 5)
                     Text(label)
                         .font(.system(size: 11))
@@ -1149,12 +1440,7 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude" {
-                        Button("Open Visual Studio Code") { openVSCode() }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(hex: task.color).opacity(0.7))
-                            .buttonStyle(.plain)
-                    } else if n8nHasActivity {
+                    if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
                         let accent  = success ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1215,30 +1501,774 @@ struct IntegrationCardView: View {
         }
     }
 
-    private func openVSCode() {
-        let ids = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium.codium"]
-        let appURL = ids.compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
+}
 
-        // If we have a project folder, open it directly in VS Code
-        if let cwd = task.sessionCwd, !cwd.isEmpty, let appURL = appURL {
-            NSWorkspace.shared.open(
-                [URL(fileURLWithPath: cwd)],
-                withApplicationAt: appURL,
-                configuration: .init(),
-                completionHandler: nil
-            )
+// MARK: - Codex runtime card
+
+struct CodexRuntimeCardView: View {
+    @ObservedObject var state: AppState
+    @ObservedObject var runtimeManager: AgentRuntimeManager
+
+    private var sessions: [AgentSession] {
+        runtimeManager.sessions.values
+            .filter { $0.runtime == .codex }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var selected: AgentSession? {
+        if let id = state.selectedAgentSessionID,
+           let session = runtimeManager.sessions[id], session.runtime == .codex {
+            return session
+        }
+        return sessions.first
+    }
+
+    private var selectedIndex: Int? {
+        guard let selected else { return nil }
+        return sessions.firstIndex(where: { $0.id == selected.id })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color(hex: "#5EA2FF"))
+                    .frame(width: 7, height: 7)
+                    .shadow(color: Color(hex: "#5EA2FF").opacity(0.55), radius: 4)
+                Text(selected?.displayTitle ?? "Codex")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                    .help(selected?.displayTitle ?? "Codex")
+                Text("Codex")
+                    .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                    .foregroundColor(Color(hex: "#5EA2FF"))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color(hex: "#5EA2FF").opacity(0.12))
+                    .clipShape(Capsule())
+                    .fixedSize()
+                Spacer(minLength: 2)
+                Button("New") { state.view = .agentPrompt }
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundColor(Color(hex: "#5EA2FF"))
+                    .buttonStyle(.plain)
+                    .fixedSize()
+                if sessions.count > 1, let selectedIndex {
+                    Button(action: { cycle(from: selectedIndex, offset: 1) }) {
+                        HStack(spacing: 3) {
+                            Text("\(selectedIndex + 1)/\(sessions.count)")
+                            Image(systemName: "chevron.down")
+                        }
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundColor(Color(hex: "#727781"))
+                    }
+                    .buttonStyle(.plain)
+                    .fixedSize()
+                }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 10)
+
+            if let session = selected {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(session.state.statusColor)
+                        .frame(width: 5, height: 5)
+                    Text(session.state.displayLabel)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(session.state.statusColor)
+                    if let model = session.model?.modelID {
+                        Text(model)
+                            .font(.system(size: 10.5, design: .monospaced))
+                            .foregroundColor(Color(hex: "#686D76"))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 2)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
+
+                HStack(spacing: 7) {
+                    Text(activityText(for: session))
+                        .font(.system(size: 11.5))
+                        .foregroundColor(Color(hex: "#A7ABB3"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 4)
+                    action(for: session)
+                }
+                .padding(.leading, 108)
+                .padding(.trailing, 10)
+                .padding(.top, 5)
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(availabilityColor)
+                        .frame(width: 5, height: 5)
+                    Text(availabilityLabel)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#777C85"))
+                }
+                .padding(.leading, 108)
+                .padding(.top, 10)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private func action(for session: AgentSession) -> some View {
+        if session.pendingApproval != nil {
+            Button("Review") {
+                state.selectAgentSession(session.id)
+                state.view = .approval
+                state.isPinned = true
+            }
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundColor(Color(hex: "#F5A524"))
+            .buttonStyle(.plain)
+        } else if session.pendingUserInput != nil {
+            Button("Answer") {
+                state.selectAgentSession(session.id)
+                state.view = .question
+                state.isPinned = true
+            }
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundColor(Color(hex: "#36CFC9"))
+            .buttonStyle(.plain)
+        } else if session.state == .working {
+            HStack(spacing: 9) {
+                openConversationButton(session)
+                Button("Stop") { interrupt(session) }
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F17882"))
+                    .buttonStyle(.plain)
+            }
+        } else if session.state == .disconnected {
+            HStack(spacing: 9) {
+                openConversationButton(session)
+                Button("Resume") { resume(session) }
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(Color(hex: "#8EBBFF"))
+                    .buttonStyle(.plain)
+            }
+        } else {
+            openConversationButton(session)
+        }
+    }
+
+    private func openConversationButton(_ session: AgentSession) -> some View {
+        Button("Open") {
+            state.selectAgentSession(session.id)
+            state.view = .agentSession
+        }
+        .font(.system(size: 10.5, weight: .semibold))
+        .foregroundColor(Color(hex: "#8EBBFF"))
+        .buttonStyle(.plain)
+    }
+
+    private func activityText(for session: AgentSession) -> String {
+        if let activity = session.latestActivity?.title, !activity.isEmpty { return activity }
+        if let preview = session.metadata["preview"]?.stringValue, !preview.isEmpty { return preview }
+        if session.state == .waitingForUser { return "Waiting for your input" }
+        return session.workspace?.path ?? "No recent activity"
+    }
+
+    private func cycle(from index: Int, offset: Int) {
+        guard !sessions.isEmpty else { return }
+        let next = (index + offset + sessions.count) % sessions.count
+        withAnimation(.easeInOut(duration: 0.18)) {
+            state.selectAgentSession(sessions[next].id)
+        }
+        SoundEngine.shared.play("blip")
+    }
+
+    private func interrupt(_ session: AgentSession) {
+        Task {
+            do {
+                try await runtimeManager.interrupt(sessionID: session.id)
+            } catch {
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
+        }
+    }
+
+    private func resume(_ session: AgentSession) {
+        Task {
+            do {
+                let resumed = try await runtimeManager.resumeSession(sessionID: session.id)
+                state.selectAgentSession(resumed.id)
+            } catch {
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
+        }
+    }
+
+    private var availabilityLabel: String {
+        switch runtimeManager.availability[.codex] {
+        case .available(let version): version ?? "Codex connected"
+        case .disconnected(let version, let reason):
+            reason ?? version.map { "Codex \($0) disconnected" } ?? "Codex disconnected"
+        case .unavailable(let reason): reason ?? "Codex unavailable"
+        case .authenticationRequired(let reason): reason ?? "Codex authentication required"
+        case .unsupported(let reason): reason
+        case nil: "Detecting Codex…"
+        }
+    }
+
+    private var availabilityColor: Color {
+        switch runtimeManager.availability[.codex] {
+        case .available:
+            Color(hex: "#22C55E")
+        case .disconnected:
+            .orange
+        default:
+            Color(hex: "#6B7079")
+        }
+    }
+}
+
+// MARK: - Codex session composer
+
+struct CodexSessionComposerView: View {
+    @ObservedObject var state: AppState
+    @ObservedObject private var runtimeManager = AppState.shared.agentRuntimeManager
+    @State private var prompt = ""
+    @State private var selectedModelID = ""
+    @State private var selectedEffortID = ""
+    @State private var workspaceURL: URL?
+    @State private var isStarting = false
+    @FocusState private var promptFocused: Bool
+
+    private var models: [ModelDescriptor] {
+        runtimeManager.models[.codex] ?? []
+    }
+
+    private var selectedModel: ModelDescriptor? {
+        models.first { $0.id == selectedModelID }
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            CardBackground(wash: .indigo)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(Color(hex: "#5EA2FF"))
+                        .frame(width: 7, height: 7)
+                    Text("New Codex session")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    Spacer()
+                    Button(workspaceURL?.lastPathComponent ?? "Choose project…") {
+                        chooseWorkspace()
+                    }
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundColor(Color(hex: "#8EBBFF"))
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 7) {
+                    selector(
+                        title: selectedModel?.displayName ?? (models.isEmpty ? "No models" : "Model"),
+                        options: models.map { ($0.id, $0.displayName) },
+                        selection: $selectedModelID
+                    )
+                    if let selectedModel, !selectedModel.reasoningOptions.isEmpty {
+                        selector(
+                            title: selectedModel.reasoningOptions.first(where: { $0.id == selectedEffortID })?.displayName ?? "Effort",
+                            options: selectedModel.reasoningOptions.map { ($0.id, $0.displayName) },
+                            selection: $selectedEffortID
+                        )
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 8) {
+                    TextField("What should Codex do?", text: $prompt)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12.5))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .tint(Color(hex: "#8EBBFF"))
+                        .focused($promptFocused)
+                        .onSubmit { startSession() }
+                    Button(action: startSession) {
+                        Image(systemName: isStarting ? "ellipsis" : "arrow.up")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(hex: "#0B0C0E"))
+                    }
+                    .buttonStyle(SendButtonStyle())
+                    .disabled(!canStart)
+                    .opacity(canStart ? 1 : 0.45)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .padding(.leading, 84)
+            .padding(.trailing, 16)
+            .padding(.vertical, 12)
+        }
+        .onAppear {
+            workspaceURL = selectedCodexSession?.workspace
+            selectInitialModel()
+            promptFocused = true
+        }
+        .onChange(of: selectedModelID) { _, _ in selectDefaultEffort() }
+    }
+
+    private var selectedCodexSession: AgentSession? {
+        state.selectedAgentSessionID.flatMap { runtimeManager.sessions[$0] }
+    }
+
+    private var canStart: Bool {
+        !isStarting
+            && !selectedModelID.isEmpty
+            && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    @ViewBuilder
+    private func selector(
+        title: String,
+        options: [(String, String)],
+        selection: Binding<String>
+    ) -> some View {
+        Menu {
+            ForEach(options, id: \.0) { id, label in
+                Button(label) { selection.wrappedValue = id }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(title).lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(.system(size: 10.5, weight: .medium))
+            .foregroundColor(Color(hex: "#C9DFFF"))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(hex: "#5EA2FF").opacity(0.12))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color(hex: "#5EA2FF").opacity(0.24), lineWidth: 1))
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(options.isEmpty)
+        .fixedSize()
+    }
+
+    private func selectInitialModel() {
+        guard selectedModelID.isEmpty, let model = models.first else { return }
+        selectedModelID = model.id
+        selectDefaultEffort()
+    }
+
+    private func selectDefaultEffort() {
+        guard let model = selectedModel else {
+            selectedEffortID = ""
             return
         }
+        let preferred = model.metadata["defaultReasoningEffort"]
+        selectedEffortID = model.reasoningOptions.contains(where: { $0.id == preferred })
+            ? (preferred ?? "")
+            : (model.reasoningOptions.first?.id ?? "")
+    }
 
-        // No cwd: activate running instance or launch fresh
-        if let running = ids.compactMap({ id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }).first {
-            running.activate(options: .activateIgnoringOtherApps)
-            return
+    private func chooseWorkspace() {
+        let panel = NSOpenPanel()
+        panel.message = "Choose the project Codex should work in"
+        panel.prompt = "Choose project"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK {
+            workspaceURL = panel.url
         }
-        if let appURL = appURL {
-            NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
+    }
+
+    private func startSession() {
+        let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canStart else { return }
+        isStarting = true
+        promptFocused = false
+        let selection = ModelSelection(
+            modelID: selectedModelID,
+            reasoningOptionID: selectedEffortID.isEmpty ? nil : selectedEffortID
+        )
+        Task {
+            do {
+                let session = try await runtimeManager.startSession(
+                    runtimeID: .codex,
+                    request: StartAgentSessionRequest(
+                        workspace: workspaceURL,
+                        prompt: trimmedPrompt,
+                        model: selection,
+                        metadata: [:]
+                    )
+                )
+                state.selectAgentSession(session.id)
+                state.isPinned = false
+                state.view = .overview
+            } catch {
+                isStarting = false
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
+        }
+    }
+}
+
+// MARK: - Running agent conversation
+
+struct AgentSessionView: View {
+    private static let conversationBottomID = "agent-conversation-bottom"
+
+    @ObservedObject var state: AppState
+    @ObservedObject private var runtimeManager = AppState.shared.agentRuntimeManager
+    @State private var prompt = ""
+    @State private var errorMessage: String?
+    @State private var isSending = false
+    @FocusState private var promptFocused: Bool
+
+    private var sessions: [AgentSession] {
+        runtimeManager.sessions.values.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var session: AgentSession? {
+        guard let id = state.selectedAgentSessionID else { return sessions.first }
+        return runtimeManager.sessions[id]
+    }
+
+    private var messages: [AgentConversationMessage] {
+        guard let id = session?.id else { return [] }
+        return runtimeManager.conversations[id] ?? []
+    }
+
+    var body: some View {
+        ZStack {
+            CardBackground(wash: .indigo)
+            VStack(spacing: 8) {
+                header
+                Divider().overlay(Color.white.opacity(0.07))
+                conversation
+                composer
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .task(id: conversationLoadID) {
+            guard state.view == .agentSession,
+                  let id = session?.id,
+                  session?.runtime == .codex else { return }
+            promptFocused = true
+            await Task.yield()
+            do {
+                try await runtimeManager.loadConversation(sessionID: id)
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private var conversationLoadID: String {
+        "\(state.view.rawValue):\(session?.id ?? "none")"
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Button {
+                state.view = state.tasks.isEmpty ? .empty : .overview
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Back to overview")
+
+            Menu {
+                ForEach(sessions) { item in
+                    Button {
+                        state.selectAgentSession(item.id)
+                    } label: {
+                        Text("\(item.workspace?.lastPathComponent ?? item.runtime.displayName) · \(item.runtime.displayName)")
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(session?.state.statusColor ?? Color(hex: "#727781"))
+                        .frame(width: 7, height: 7)
+                    Text(session?.displayTitle ?? "Choose a session")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(Color(hex: "#727781"))
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .frame(maxWidth: 280, alignment: .leading)
+
+            if let session {
+                Text(session.runtime.displayName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                Text(session.state.displayLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(session.state.statusColor)
+            }
+            Spacer()
+            if session?.runtime == .codex {
+                Button("New") { state.view = .agentPrompt }
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(Color(hex: "#8EBBFF"))
+                    .buttonStyle(.plain)
+            }
+        }
+        .frame(height: 22)
+    }
+
+    @ViewBuilder
+    private var conversation: some View {
+        if let session {
+            if runtimeManager.conversationLoading.contains(session.id) && messages.isEmpty {
+                VStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Loading conversation…")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#727781"))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if messages.isEmpty {
+                VStack(spacing: 6) {
+                    Text(session.latestActivity?.title ?? "No conversation loaded yet")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "#B0B5BE"))
+                        .lineLimit(2)
+                    Text(errorMessage ?? emptyMessage(for: session))
+                        .font(.system(size: 11))
+                        .foregroundColor(errorMessage == nil ? Color(hex: "#727781") : Color(hex: "#FF8D97"))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollViewReader { proxy in
+                    ZStack(alignment: .bottomTrailing) {
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(alignment: .leading, spacing: 8) {
+                                ForEach(messages) { message in
+                                    AgentConversationBubble(message: message)
+                                        .id(message.id)
+                                }
+                                if session.state == .working {
+                                    HStack(spacing: 6) {
+                                        TypingDotsView()
+                                        Text("Codex is working")
+                                            .font(.system(size: 10.5))
+                                            .foregroundColor(Color(hex: "#727781"))
+                                    }
+                                }
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id(Self.conversationBottomID)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .defaultScrollAnchor(.bottom)
+
+                        Button {
+                            scrollToBottom(proxy)
+                        } label: {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(hex: "#D6D9DE"))
+                                .frame(width: 24, height: 24)
+                                .background(Color.black.opacity(0.78))
+                                .clipShape(Circle())
+                                .overlay {
+                                    Circle().stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .help("Jump to latest message")
+                        .padding(.trailing, 4)
+                        .padding(.bottom, 4)
+                    }
+                    .onAppear { scrollToBottom(proxy, animated: false) }
+                    .onChange(of: messages.count) { _, _ in scrollToBottom(proxy) }
+                    .onChange(of: session.state) { _, _ in scrollToBottom(proxy) }
+                }
+            }
+        } else {
+            VStack(spacing: 6) {
+                Text("No active sessions")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Start a Codex session to follow its work here.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#727781"))
+                Button("Start session") { state.view = .agentPrompt }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(hex: "#8EBBFF"))
+                    .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var composer: some View {
+        if let session, session.runtime == .codex {
+            HStack(spacing: 8) {
+                TextField("Continue this Codex chat…", text: $prompt)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12.5))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                    .tint(Color(hex: "#8EBBFF"))
+                    .focused($promptFocused)
+                    .onSubmit { send() }
+                if session.state == .working {
+                    Button {
+                        Task { try? await runtimeManager.interrupt(sessionID: session.id) }
+                    } label: {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(hex: "#F17882"))
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: send) {
+                        Image(systemName: isSending ? "ellipsis" : "arrow.up")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(hex: "#0B0C0E"))
+                    }
+                    .buttonStyle(SendButtonStyle())
+                    .disabled(!canSend)
+                    .opacity(canSend ? 1 : 0.45)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.white.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else if session != nil {
+            Text("This runtime is observation-only in Coucou.")
+                .font(.system(size: 10.5))
+                .foregroundColor(Color(hex: "#727781"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+        }
+    }
+
+    private var canSend: Bool {
+        !isSending && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func emptyMessage(for session: AgentSession) -> String {
+        session.runtime == .codex
+            ? "Type below to continue this chat."
+            : "Coucou can show this runtime's status, but its chat protocol is not available."
+    }
+
+    private func send() {
+        guard let session, canSend else { return }
+        let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        prompt = ""
+        isSending = true
+        errorMessage = nil
+        Task {
+            do {
+                try await runtimeManager.sendPrompt(sessionID: session.id, prompt: text)
+            } catch {
+                errorMessage = error.localizedDescription
+                prompt = text
+            }
+            isSending = false
+            promptFocused = true
+        }
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool = true) {
+        DispatchQueue.main.async {
+            if animated {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(Self.conversationBottomID, anchor: .bottom)
+                }
+            } else {
+                proxy.scrollTo(Self.conversationBottomID, anchor: .bottom)
+            }
+        }
+    }
+}
+
+private struct AgentConversationBubble: View {
+    let message: AgentConversationMessage
+
+    var body: some View {
+        HStack(alignment: .top) {
+            if message.role == .user { Spacer(minLength: 72) }
+            Text(message.content)
+                .font(.system(size: 11.5))
+                .foregroundColor(message.role == .user ? Color(hex: "#F1F2F4") : Color(hex: "#BEC2C9"))
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, message.role == .user ? 10 : 0)
+                .padding(.vertical, message.role == .user ? 6 : 2)
+                .background(message.role == .user ? Color.white.opacity(0.11) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            if message.role != .user { Spacer(minLength: 28) }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private extension AgentRuntimeID {
+    var displayName: String {
+        switch self {
+        case .claudeCode: "Claude Code"
+        case .codex: "Codex"
+        case .geminiCLI: "Gemini CLI"
+        case .antigravity: "Antigravity"
+        }
+    }
+}
+
+private extension AgentSessionState {
+    var displayLabel: String {
+        switch self {
+        case .starting: "Starting"
+        case .idle: "Idle"
+        case .working: "Working"
+        case .waitingForApproval: "Approval"
+        case .waitingForUser: "Needs input"
+        case .completed: "Completed"
+        case .failed: "Failed"
+        case .cancelled: "Stopped"
+        case .disconnected: "Saved"
+        }
+    }
+
+    var statusColor: Color {
+        switch self {
+        case .working, .starting: Color(hex: "#5EA2FF")
+        case .waitingForApproval: Color(hex: "#F5A524")
+        case .waitingForUser: Color(hex: "#36CFC9")
+        case .completed: Color(hex: "#22C55E")
+        case .failed: Color(hex: "#F4505E")
+        case .cancelled, .idle, .disconnected: Color(hex: "#727781")
         }
     }
 }
@@ -2244,7 +3274,9 @@ struct AgentPillsView: View {
     @State private var swapping = false
 
     private var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
+        state.tasks
+            .filter { $0.id != state.focusId }
+            .sorted { taskPriority($0) < taskPriority($1) }
     }
 
     private var displayTasks: [AgentTask] {
@@ -2263,7 +3295,12 @@ struct AgentPillsView: View {
                 ForEach(displayTasks) { task in
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
-                        state.setFocus(task.id)
+                        if let sessionID = task.agentSessionID {
+                            state.selectAgentSession(sessionID)
+                            state.view = .agentSession
+                        } else {
+                            state.setFocus(task.id)
+                        }
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
@@ -2274,6 +3311,13 @@ struct AgentPillsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private func taskPriority(_ task: AgentTask) -> Int {
+        if task.pillBadge != nil { return 0 }
+        if task.agentSessionID != nil && task.state != .idle { return 1 }
+        if task.agentSessionID != nil { return 2 }
+        return 3
+    }
 }
 
 struct AgentPill: View {
@@ -2283,9 +3327,9 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // Idle runtimes use their product name; active sessions use the project name.
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.name
     }
 
     var body: some View {
@@ -2298,21 +3342,28 @@ struct AgentPill: View {
                               : Color(hex: "#0E0F11"))
                     Capsule()
                         .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
-                    HStack(spacing: 0) {
+                    HStack(spacing: 6) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
                             .frame(width: 22, height: 22, alignment: .center)
-                            .padding(.leading, 8)
-                        Spacer()
+                            .fixedSize()
+                        Text(displayName)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(isHovered
+                                             ? Color(hex: task.color).lighter(by: 0.3)
+                                             : Color(hex: "#6B7079"))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
+                        if task.agentSessionID != nil {
+                            Image(systemName: "terminal.fill")
+                                .font(.system(size: 6.5, weight: .semibold))
+                                .foregroundColor(Color(hex: task.color).opacity(0.6))
+                                .fixedSize()
+                        }
                     }
-                    Text(displayName)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
-                                         : Color(hex: "#6B7079"))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 7)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
@@ -2326,6 +3377,8 @@ struct AgentPill: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(displayName), \(task.source.runtimeLabel), \(task.state.rawValue)")
+        .help(displayName)
         .scaleEffect(isHovered ? 1.04 : 1.0)
         .brightness(isHovered ? 0.06 : 0)
         .onHover { newHover in
@@ -2342,6 +3395,7 @@ struct PillBadgeView: View {
     private var badgeColor: Color {
         switch badge {
         case .approval: return Color(hex: "#F5A524")
+        case .question: return Color(hex: "#22D3EE")
         case .finished: return Color(hex: "#22C55E")
         case .error:    return Color(hex: "#F4505E")
         }
@@ -2350,6 +3404,7 @@ struct PillBadgeView: View {
     private var icon: String {
         switch badge {
         case .approval: return "exclamationmark"
+        case .question: return "questionmark"
         case .finished: return "checkmark"
         case .error:    return "xmark"
         }

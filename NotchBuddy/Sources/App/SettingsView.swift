@@ -4,45 +4,19 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
-    @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
-
-    // Claude model — dynamic list fetched from the API, static fallback if unavailable
-    private static let fallbackModels: [(id: String, label: String)] = [
-        ("claude-sonnet-4-6",         "Claude Sonnet 4.6"),
-        ("claude-sonnet-5-5",         "Claude Sonnet 5.5"),
-        ("claude-opus-5-5",           "Claude Opus 5.5"),
-        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-    ]
-    private static let customModelTag = "__custom__"
-    @State private var fetchedModels: [(id: String, label: String)] = []
-    @State private var modelChoice: String = {
-        let m = AppState.shared.claudeModel
-        return SettingsView.fallbackModels.contains { $0.id == m } ? m : SettingsView.customModelTag
-    }()
-    @State private var customModel: String = {
-        let m = AppState.shared.claudeModel
-        return SettingsView.fallbackModels.contains { $0.id == m } ? "" : m
-    }()
-    private var displayModels: [(id: String, label: String)] {
-        fetchedModels.isEmpty ? Self.fallbackModels : fetchedModels
-    }
+    @ObservedObject private var runtimeManager = AppState.shared.agentRuntimeManager
+    @State private var apiKey: String = ""
+    @State private var openAIKey: String = ""
+    @State private var googleKey: String = ""
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
+    @State private var showGeminiHookDiff: Bool = false
+    @State private var pendingGeminiHookJSON: String = ""
+    @State private var showAntigravityHookDiff: Bool = false
+    @State private var pendingAntigravityHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
-
-    #if !APPSTORE
-    @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
-    @State private var showGeminiDiff: Bool = false
-    @State private var pendingGeminiJSON: String = ""
-    @State private var geminiPendingInstall: Bool = true
-
-    @State private var agyHooksInstalled: Bool = HookServer.agyHooksInstalled()
-    @State private var showAgyDiff: Bool = false
-    @State private var pendingAgyJSON: String = ""
-    @State private var agyPendingInstall: Bool = true
-    #endif
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -79,41 +53,80 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
 
-                // MARK: API
-                GroupBox("Anthropic API") {
+                // MARK: AI providers
+                GroupBox("AI Providers") {
                     VStack(alignment: .leading, spacing: 8) {
-                        SecureField("API key (sk-ant-…)", text: $apiKey)
+                        Text("Anthropic")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(KeychainStore.shared.get("anthropic-api-key") == nil ? "Not configured" : "Connected · API key")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        SecureField("New API key (sk-ant-…)", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
-                        Button("Save") {
+                        Button("Save Anthropic key") {
+                            guard !apiKey.isEmpty else { return }
                             KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+                            apiKey = ""
+                            InternalChatService.shared.loadModels(forceRefresh: true)
                             statusMessage = "✓ Key saved."
                         }
                         .buttonStyle(.borderedProminent)
 
-                        Divider().padding(.vertical, 2)
+                        Divider().padding(.vertical, 4)
 
-                        Picker("Model", selection: $modelChoice) {
-                            ForEach(displayModels, id: \.id) { preset in
-                                Text(preset.label).tag(preset.id)
-                            }
-                            Text("Custom…").tag(Self.customModelTag)
-                        }
-                        .onChange(of: modelChoice) { _, choice in
-                            if choice != Self.customModelTag {
-                                state.claudeModel = choice
-                            } else {
-                                applyCustomModel(customModel)
-                            }
-                        }
-
-                        if modelChoice == Self.customModelTag {
-                            TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
-                                .textFieldStyle(.roundedBorder)
-                                .onChange(of: customModel) { _, value in applyCustomModel(value) }
-                        }
-
-                        Text("Used by the chat. The list comes from your Anthropic account.")
+                        Text("OpenAI")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(KeychainStore.shared.get("openai-api-key") == nil ? "Not configured" : "Connected · API key")
                             .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        SecureField("New API key (sk-…)", text: $openAIKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Save OpenAI key") {
+                            guard !openAIKey.isEmpty else { return }
+                            KeychainStore.shared.set("openai-api-key", value: openAIKey)
+                            openAIKey = ""
+                            InternalChatService.shared.loadModels(forceRefresh: true)
+                            statusMessage = "✓ OpenAI key saved."
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Divider().padding(.vertical, 4)
+
+                        Text("Google Gemini")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(KeychainStore.shared.get("google-api-key") == nil ? "Not configured" : "Connected · API key")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        SecureField("New Gemini API key", text: $googleKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Save Gemini key") {
+                            guard !googleKey.isEmpty else { return }
+                            KeychainStore.shared.set("google-api-key", value: googleKey)
+                            googleKey = ""
+                            InternalChatService.shared.loadModels(forceRefresh: true)
+                            statusMessage = "✓ Gemini key saved."
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(6)
+                }
+
+                // MARK: Agent runtimes
+                GroupBox("Agent runtimes") {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(codexRuntimeColor)
+                            .frame(width: 10, height: 10)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Codex")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(codexRuntimeDetail)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Text("\(codexSessionCount) session\(codexSessionCount == 1 ? "" : "s")")
+                            .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
                     .padding(6)
@@ -181,24 +194,29 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
-                // MARK: Gemini CLI Hooks / Antigravity Hooks
-                #if !APPSTORE
-                GroupBox("Gemini CLI Hooks") {
+                GroupBox("Antigravity CLI Hooks") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(geminiHooksInstalled
-                             ? "Hooks installed — restart Gemini CLI to activate"
-                             : "~/.gemini/settings.json")
+                        Text("Observe Antigravity sessions without changing its permission decisions.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        #if APPSTORE
+                        Text("Antigravity hook installation is available in the direct-download build.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        #else
+                        Text("~/.gemini/config/hooks.json")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.secondary)
                         HStack(spacing: 10) {
-                            Button("Install hooks") { triggerGeminiPreview(install: true) }
+                            Button("Install hooks") { installAntigravityHooks() }
                                 .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { triggerGeminiPreview(install: false) }
+                            Button("Uninstall") { uninstallAntigravityHooks() }
                                 .buttonStyle(.bordered)
                         }
-                        if showGeminiDiff {
+
+                        if showAntigravityHookDiff {
                             ScrollView {
-                                Text(pendingGeminiJSON)
+                                Text(pendingAntigravityHookJSON)
                                     .font(.system(size: 10, design: .monospaced))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
@@ -206,32 +224,43 @@ struct SettingsView: View {
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(6)
                             HStack {
-                                Button("Confirm & write") { confirmGeminiOp() }
+                                Button("Confirm & write") { confirmAntigravityHooks() }
                                     .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
-                                    .buttonStyle(.bordered)
+                                Button("Cancel") {
+                                    showAntigravityHookDiff = false
+                                    pendingAntigravityHookJSON = ""
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
+                        #endif
                     }
                     .padding(6)
                 }
 
-                GroupBox("Antigravity Hooks") {
+                GroupBox("Gemini CLI Hooks (Legacy)") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(agyHooksInstalled
-                             ? "Hooks installed — restart Antigravity to activate"
-                             : "~/.gemini/config/hooks.json")
+                        Text("For enterprise/API-key Gemini CLI installations that still support the legacy runtime.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        #if APPSTORE
+                        Text("Gemini CLI hook installation is available in the direct-download build.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        #else
+                        Text("~/.gemini/settings.json")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.secondary)
                         HStack(spacing: 10) {
-                            Button("Install hooks") { triggerAgyPreview(install: true) }
+                            Button("Install hooks") { installGeminiHooks() }
                                 .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { triggerAgyPreview(install: false) }
+                            Button("Uninstall") { uninstallGeminiHooks() }
                                 .buttonStyle(.bordered)
                         }
-                        if showAgyDiff {
+
+                        if showGeminiHookDiff {
                             ScrollView {
-                                Text(pendingAgyJSON)
+                                Text(pendingGeminiHookJSON)
                                     .font(.system(size: 10, design: .monospaced))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
@@ -239,16 +268,19 @@ struct SettingsView: View {
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(6)
                             HStack {
-                                Button("Confirm & write") { confirmAgyOp() }
+                                Button("Confirm & write") { confirmGeminiHooks() }
                                     .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
-                                    .buttonStyle(.bordered)
+                                Button("Cancel") {
+                                    showGeminiHookDiff = false
+                                    pendingGeminiHookJSON = ""
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
+                        #endif
                     }
                     .padding(6)
                 }
-                #endif
 
                 // MARK: Integrations
                 GroupBox("Integrations") {
@@ -390,7 +422,7 @@ struct SettingsView: View {
                 GroupBox("Active pills") {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text("VS Code")
+                            Text("Claude Code")
                                 .font(.system(size: 12, weight: .semibold))
                             Circle().fill(Color(hex: "#F5F6F8")).frame(width: 8, height: 8)
                             Spacer()
@@ -467,34 +499,43 @@ struct SettingsView: View {
             }
             .padding(20)
         }
-        .onAppear {
-            guard fetchedModels.isEmpty,
-                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
-            Task {
-                let models = await ClaudeService.fetchModels(apiKey: key)
-                guard !models.isEmpty else { return }
-                await MainActor.run {
-                    fetchedModels = models
-                    let m = state.claudeModel
-                    if models.contains(where: { $0.id == m }) {
-                        modelChoice = m
-                        customModel = ""
-                    } else if modelChoice != Self.customModelTag {
-                        modelChoice = Self.customModelTag
-                        customModel = m
-                    }
-                }
-            }
-        }
         .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
     }
 
-    // MARK: - Actions
-
-    private func applyCustomModel(_ value: String) {
-        let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !id.isEmpty { state.claudeModel = id }
+    private var codexSessionCount: Int {
+        runtimeManager.sessions.values.lazy.filter { $0.runtime == .codex }.count
     }
+
+    private var codexRuntimeColor: Color {
+        switch runtimeManager.availability[.codex] {
+        case .available:
+            Color(hex: "#5EA2FF")
+        case .disconnected:
+            .orange
+        default:
+            .secondary
+        }
+    }
+
+    private var codexRuntimeDetail: String {
+        switch runtimeManager.availability[.codex] {
+        case .available(let version):
+            return version.map { "Connected · \($0)" } ?? "Connected"
+        case .disconnected(let version, let reason):
+            let label = version.map { "Installed · \($0) · disconnected" } ?? "Installed · disconnected"
+            return reason.map { "\(label) · \($0)" } ?? label
+        case .unavailable(let reason):
+            return reason ?? "Unavailable"
+        case .authenticationRequired(let reason):
+            return reason ?? "Authentication required"
+        case .unsupported(let reason):
+            return reason
+        case nil:
+            return "Detecting Codex CLI…"
+        }
+    }
+
+    // MARK: - Actions
 
     private func toggleStartup(_ on: Bool) {
         do {
@@ -591,61 +632,65 @@ struct SettingsView: View {
         }
     }
 
-    #if !APPSTORE
-    private func triggerGeminiPreview(install: Bool) {
+    private func installGeminiHooks() {
         do {
-            geminiPendingInstall = install
-            pendingGeminiJSON = try HookServer.shared.previewGeminiHooks(install: install)
-            showGeminiDiff = true
-            statusMessage = "Review the JSON below before confirming."
-        } catch let e as NSError where e.domain == "CoucouNoop" {
-            statusMessage = e.localizedDescription
+            pendingGeminiHookJSON = try HookServer.shared.previewGeminiHooks()
+            showGeminiHookDiff = true
+            statusMessage = "Review the Gemini CLI JSON below before confirming."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
 
-    private func confirmGeminiOp() {
+    private func installAntigravityHooks() {
+        do {
+            pendingAntigravityHookJSON = try HookServer.shared.previewAntigravityHooks()
+            showAntigravityHookDiff = true
+            statusMessage = "Review the Antigravity hooks JSON below before confirming."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmAntigravityHooks() {
+        do {
+            try HookServer.shared.writeAntigravityHooks()
+            showAntigravityHookDiff = false
+            pendingAntigravityHookJSON = ""
+            statusMessage = "✓ Antigravity hooks installed."
+        } catch {
+            statusMessage = "❌ Write error: \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallAntigravityHooks() {
+        do {
+            try HookServer.shared.uninstallAntigravityHooks()
+            statusMessage = "✓ Antigravity hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmGeminiHooks() {
         do {
             try HookServer.shared.writeGeminiHooks()
-            showGeminiDiff = false
-            pendingGeminiJSON = ""
-            geminiHooksInstalled = geminiPendingInstall
-            statusMessage = geminiPendingInstall
-                ? "✓ Gemini CLI hooks installed in ~/.gemini/settings.json"
-                : "✓ Gemini CLI hooks removed."
+            showGeminiHookDiff = false
+            pendingGeminiHookJSON = ""
+            statusMessage = "✓ Gemini CLI hooks installed."
         } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
+            statusMessage = "❌ Write error: \(error.localizedDescription)"
         }
     }
 
-    private func triggerAgyPreview(install: Bool) {
+    private func uninstallGeminiHooks() {
         do {
-            agyPendingInstall = install
-            pendingAgyJSON = try HookServer.shared.previewAgyHooks(install: install)
-            showAgyDiff = true
-            statusMessage = "Review the JSON below before confirming."
-        } catch let e as NSError where e.domain == "CoucouNoop" {
-            statusMessage = e.localizedDescription
+            try HookServer.shared.uninstallGeminiHooks()
+            statusMessage = "✓ Gemini CLI hooks removed."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
-
-    private func confirmAgyOp() {
-        do {
-            try HookServer.shared.writeAgyHooks()
-            showAgyDiff = false
-            pendingAgyJSON = ""
-            agyHooksInstalled = agyPendingInstall
-            statusMessage = agyPendingInstall
-                ? "✓ Antigravity hooks installed in ~/.gemini/config/hooks.json"
-                : "✓ Antigravity hooks removed."
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
-    }
-    #endif
 
     private func saveIntegrations() {
         saveKey("resend-api-key",  value: resendKey)

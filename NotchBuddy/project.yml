@@ -115,3 +115,29 @@ targets:
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
         CODE_SIGNING_ALLOWED: YES
+
+  NotchBuddyTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+        type: group
+    dependencies:
+      - target: NotchBuddy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddyTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Coucou.app/Contents/MacOS/Coucou"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  NotchBuddy:
+    build:
+      targets:
+        NotchBuddy: all
+    test:
+      targets:
+        - NotchBuddyTests
