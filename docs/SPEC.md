@@ -91,6 +91,28 @@ Centre vertical du bonhomme : 36 + (hauteur − 46) / 2, sauf `result` (y = 86).
 ### Pastilles (overview)
 - 132 × 34, rayon 17, fond couleur de l'agent à 13 %, bord à 32 %, mini-bonhomme Ø 24 centré à 17 pt du bord gauche, libellé 12 pt couleur de l'agent éclaircie de 25 %. Deux colonnes, écart 8, centrées verticalement dans la carte droite (qui commence à x = 342).
 
+### Catalogue de pastilles
+Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source de vérité unique). Quatre catégories :
+
+| Catégorie | Titre | Pastilles | Subtitle (repos) | Subtitle (session) |
+|---|---|---|---|---|
+| `workspace` | Where you code | VS Code, Cursor *(coming soon)*, Codex *(coming soon, GitHub only)* | Integration | Claude Code / Agent |
+| `agent` | Agents | Gemini CLI *(GitHub only)*, Antigravity *(GitHub only)* | Agent | Agent |
+| `ai` | AI for the chat | Anthropic, Google AI, OpenAI | Chat | — |
+| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe | Integration | — |
+
+Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, pastilles IA = `ChatProvider.accentHex`.
+
+Règles :
+- **`integration_claude` est toujours chargée, jamais retirée, jamais décochée.** Elle ne compte pas dans les 4 places.
+- `mainPillId` (défaut `integration_claude`) peut valoir une pastille workspace cochée (ex. Cursor). Si on décoche la principale, `mainPillId` revient à `integration_claude`.
+- Max 4 pastilles autres qu'`integration_claude` actives à la fois (`activeIntegrations`, persisté). Cursor/Codex comptent dans les 4.
+- `removeTask` sur `integration_claude` ou `mainPillId` ou une pastille déclarée + active → reset à `.idle` + `pillBadge = nil` + nom du catalogue (pas de suppression). Sinon → suppression normale.
+- `sortTasksByCatalog` : pastilles du catalogue dans l'ordre du catalogue ; pastilles hors catalogue juste après `integration_claude`.
+- Pastilles `githubOnly` : exclues des builds App Store (`#if APPSTORE`).
+- Hooks (Gemini CLI, Antigravity) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` sous `#if !APPSTORE`.
+- Pastilles IA : `isConfigured` = clé API dans le Keychain. Bouton « Chat with… » → change le fournisseur et ouvre la vue `.prompt`.
+
 ### Boutons
 - Pilule, 12,5 pt medium, fond blanc 9 % (survol 15 %), primaire : fond `#F5F6F8` texte `#0B0C0E`. Appui : échelle 0,94. Raccourcis affichés en petite pastille bordée (Y, N).
 

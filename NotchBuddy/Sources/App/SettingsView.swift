@@ -428,6 +428,7 @@ struct SettingsView: View {
                 // MARK: Active pills
                 GroupBox("Active pills") {
                     VStack(alignment: .leading, spacing: 10) {
+                        // VS Code: always active (mirrors main branch row exactly)
                         HStack {
                             Text("VS Code")
                                 .font(.system(size: 12, weight: .semibold))
@@ -440,28 +441,44 @@ struct SettingsView: View {
 
                         Divider()
 
+                        Text("Choose the tools you use. Coucou only shows what you declare here.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+
                         Text("\(state.activeIntegrations.count)/4 slots used")
                             .font(.system(size: 11))
                             .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
-                        ForEach(AgentTask.toggleableIntegrationIds, id: \.self) { id in
-                            let task = AgentTask.integrationAgents.first { $0.id == id }!
-                            let isOn = state.activeIntegrations.contains(id)
-                            let atMax = state.activeIntegrations.count >= 4 && !isOn
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(Color(hex: task.color))
-                                    .frame(width: 10, height: 10)
-                                Text(task.name)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(atMax ? .secondary : .primary)
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { isOn },
-                                    set: { _ in state.toggleIntegration(id) }
-                                ))
-                                .labelsHidden()
-                                .disabled(atMax)
+                        // Main pill picker: shown only when a workspace pill (Cursor/Codex) is active
+                        let workspacePills = PillCatalog.available.filter {
+                            $0.category == .workspace && $0.id != "integration_claude"
+                                && state.activeIntegrations.contains($0.id)
+                        }
+                        if !workspacePills.isEmpty {
+                            Picker("Main pill", selection: $state.mainPillId) {
+                                Text("VS Code").tag("integration_claude")
+                                ForEach(workspacePills, id: \.id) { def in
+                                    Text(def.name).tag(def.id)
+                                }
+                            }
+                            .onChange(of: state.mainPillId) { _, newId in
+                                state.setFocus(newId)
+                            }
+                        }
+
+                        // Categories — integration_claude excluded (shown above)
+                        ForEach(PillCategory.allCases, id: \.self) { cat in
+                            let catPills = PillCatalog.available.filter {
+                                $0.category == cat && $0.id != "integration_claude"
+                            }
+                            if !catPills.isEmpty {
+                                Divider()
+                                Text(cat.title)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                ForEach(catPills, id: \.id) { def in
+                                    pillRow(def)
+                                }
                             }
                         }
                     }
@@ -775,6 +792,46 @@ struct SettingsView: View {
                 if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
             }
         }.resume()
+    }
+
+    @ViewBuilder
+    private func pillRow(_ def: PillDefinition) -> some View {
+        let isOn  = state.activeIntegrations.contains(def.id)
+        let atMax = state.activeIntegrations.count >= 4 && !isOn
+        // Status hint: shown in 11pt gray before the toggle
+        let hint: String? = {
+            if def.comingSoon { return "Coming soon" }
+            #if !APPSTORE
+            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled() { return "Hooks not installed" }
+            if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
+            #endif
+            if def.category == .ai {
+                let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
+                           : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
+                if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
+            }
+            return nil
+        }()
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(hex: def.color))
+                .frame(width: 10, height: 10)
+            Text(def.name)
+                .font(.system(size: 12))
+                .foregroundColor(atMax ? .secondary : .primary)
+            Spacer()
+            if let h = hint {
+                Text(h)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { _ in state.toggleIntegration(def.id) }
+            ))
+            .labelsHidden()
+            .disabled(atMax)
+        }
     }
 }
 

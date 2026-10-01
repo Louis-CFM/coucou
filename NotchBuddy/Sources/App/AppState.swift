@@ -2,27 +2,6 @@ import Foundation
 import SwiftUI
 import Combine
 
-// Integration pills — always-present, never purged
-extension AgentTask {
-    /// All available integration pills. Claude is always active; others are opt-in (max 4).
-    static let integrationAgents: [AgentTask] = [
-        AgentTask(id: "integration_claude",  name: "VS Code",   color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
-        AgentTask(id: "integration_resend",  name: "Resend",    color: "#22C55E", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_n8n",     name: "n8n",       color: "#F29B38", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_vercel",  name: "Vercel",    color: "#7C5CFF", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_github",  name: "GitHub",    color: "#F4505E", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_notion",  name: "Notion",    color: "#8C8C8C", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_calcom",  name: "Cal.com",   color: "#C9956A", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_stripe",  name: "Stripe",    color: "#0570DE", state: .idle, steps: [], source: .n8n, isIntegration: true),
-    ]
-
-    /// IDs that can be toggled (VS Code is always on and excluded from this list)
-    static let toggleableIntegrationIds: [String] = [
-        "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-        "integration_notion", "integration_calcom", "integration_stripe",
-    ]
-
-}
 
 @MainActor
 final class AppState: ObservableObject {
@@ -89,6 +68,11 @@ final class AppState: ObservableObject {
     }
     @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
+    }
+
+    // The always-on workspace pill (default: VS Code). Persisted.
+    @Published var mainPillId: String = PillCatalog.defaultMainPillId {
+        didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
     }
 
     // Dynamically fetched model lists for the in-chat picker (keyed by provider)
@@ -282,6 +266,12 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
+        if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
+           v == "integration_claude" ||
+           (PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace })
+            && activeIntegrations.contains(v)) {
+            mainPillId = v
+        }
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
@@ -311,8 +301,24 @@ final class AppState: ObservableObject {
     }
 
     func removeTask(id: String) {
+        // integration_claude: ALWAYS reset, never remove (Claude Code sessions pass through it)
+        // mainPillId: also always reset (the active workspace pill)
+        let isProtected = id == "integration_claude" || id == mainPillId
+        let isActiveDecl = PillCatalog.definition(for: id) != nil && activeIntegrations.contains(id)
+        if isProtected || isActiveDecl {
+            if let idx = tasks.firstIndex(where: { $0.id == id }) {
+                let catalogName = PillCatalog.definition(for: id)?.name
+                tasks[idx].state      = .idle
+                tasks[idx].steps      = []
+                tasks[idx].stepIndex  = 0
+                tasks[idx].pillBadge  = nil
+                if let n = catalogName { tasks[idx].name = n }
+            }
+            return
+        }
+        // Undeclared or declared-but-not-active: remove
         tasks.removeAll { $0.id == id }
-        if focusId == id { focusId = tasks.first?.id }
+        if focusId == id { focusId = mainPillId }
         syncMode()
         syncView()
     }
@@ -343,34 +349,83 @@ final class AppState: ObservableObject {
         else if view == .overview && tasks.isEmpty { view = .empty }
     }
 
-    /// Load integration pills respecting activeIntegrations. VS Code always loads. Safe to call multiple times.
+    /// Load catalog pills into tasks, respecting activeIntegrations. Safe to call multiple times.
     func loadIntegrationTasks() {
-        for task in AgentTask.integrationAgents {
-            let shouldLoad = task.id == "integration_claude" || activeIntegrations.contains(task.id)
-            let loaded = tasks.contains(where: { $0.id == task.id })
-            if shouldLoad && !loaded { tasks.append(task) }
-            if !shouldLoad && loaded { tasks.removeAll { $0.id == task.id } }
+        let catalog = PillCatalog.available
+        // Sanitize: remove saved IDs not in catalog
+        let catalogIds = Set(catalog.map { $0.id })
+        activeIntegrations = activeIntegrations.filter { catalogIds.contains($0) }
+        // Validate mainPillId: must be integration_claude or a checked workspace pill
+        if mainPillId != "integration_claude",
+           !(PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .workspace })
+             && activeIntegrations.contains(mainPillId)) {
+            mainPillId = "integration_claude"
         }
-        if focusId == nil { focusId = "integration_claude" }
+        for def in catalog {
+            // integration_claude always loads; mainPillId always loads; activeIntegrations load
+            let shouldLoad = def.id == "integration_claude"
+                          || def.id == mainPillId
+                          || activeIntegrations.contains(def.id)
+            let loaded = tasks.contains(where: { $0.id == def.id })
+            if shouldLoad && !loaded {
+                let task = AgentTask(id: def.id, name: def.name, color: def.color,
+                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                tasks.append(task)
+            }
+            if !shouldLoad && loaded
+               && def.id != "integration_claude" && def.id != mainPillId {
+                tasks.removeAll { $0.id == def.id }
+            }
+        }
+        sortTasksByCatalog()
+        if focusId == nil { focusId = mainPillId }
         syncMode()
     }
 
-    /// Toggle an integration pill on/off. VS Code cannot be toggled. Max 4 active at once.
+    /// Toggle a catalog pill on/off.
+    /// integration_claude: never toggleable.
+    /// mainPillId (workspace): can be unchecked — resets mainPillId to integration_claude.
+    /// Max 4 non-claude pills active at once.
     func toggleIntegration(_ id: String) {
         guard id != "integration_claude" else { return }
+        guard PillCatalog.available.contains(where: { $0.id == id }) else { return }
         if activeIntegrations.contains(id) {
             activeIntegrations.remove(id)
             tasks.removeAll { $0.id == id }
-            if focusId == id { focusId = "integration_claude" }
+            if mainPillId == id { mainPillId = "integration_claude" }
+            if focusId == id { focusId = mainPillId }
         } else {
             guard activeIntegrations.count < 4 else { return }
             activeIntegrations.insert(id)
-            if let task = AgentTask.integrationAgents.first(where: { $0.id == id }),
+            if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
+                let task = AgentTask(id: def.id, name: def.name, color: def.color,
+                                     state: .idle, steps: [], source: def.source, isIntegration: true)
                 tasks.append(task)
+                sortTasksByCatalog()
             }
         }
         syncMode()
+    }
+
+    /// Sort tasks so catalog pills are in catalog order, undeclared pills sit right after
+    /// integration_claude (matching HookServer insertion behaviour), and the rest follows.
+    private func sortTasksByCatalog() {
+        let order = PillCatalog.available.enumerated()
+            .reduce(into: [String: Int]()) { $0[$1.element.id] = $1.offset }
+        let catalogPills    = tasks.filter { order[$0.id] != nil }
+        let undeclaredPills = tasks.filter { order[$0.id] == nil }
+        let sortedCatalog   = catalogPills.sorted { (order[$0.id] ?? 0) < (order[$1.id] ?? 0) }
+        if let claudeIdx = sortedCatalog.firstIndex(where: { $0.id == "integration_claude" }) {
+            var result: [AgentTask] = Array(sortedCatalog[...claudeIdx])
+            result.append(contentsOf: undeclaredPills)
+            if claudeIdx + 1 < sortedCatalog.count {
+                result.append(contentsOf: sortedCatalog[(claudeIdx + 1)...])
+            }
+            tasks = result
+        } else {
+            tasks = undeclaredPills + sortedCatalog
+        }
     }
 
 }

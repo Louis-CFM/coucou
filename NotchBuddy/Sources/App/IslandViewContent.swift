@@ -145,6 +145,36 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "agent_cursor":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
+        case "agent_codex":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.openai.codex") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
+        case "agent_gemini", "agent_antigravity":
+            #if !APPSTORE
+            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+            if let hit = terminalBundleIds.compactMap({ id in
+                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+            }).first {
+                hit.activate(options: .activateIgnoringOtherApps)
+            }
+            #endif
+        case "ai_anthropic":
+            switchChatProvider(.anthropic)
+        case "ai_google":
+            switchChatProvider(.google)
+        case "ai_openai":
+            switchChatProvider(.openai)
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -1133,6 +1163,23 @@ struct IntegrationCardView: View {
                 return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
             #endif
+        case "agent_gemini":
+            #if !APPSTORE
+            return HookServer.geminiHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_antigravity":
+            #if !APPSTORE
+            return HookServer.agyHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_cursor", "agent_codex":
+            return false  // coming soon
+        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
+        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
+        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -1160,9 +1207,11 @@ struct IntegrationCardView: View {
         }
     }
 
-    // VS Code with active session: show ticker layout (same as overview)
-    private var vsCodeSessionActive: Bool {
-        task.id == "integration_claude" && (task.state != .idle || !task.steps.isEmpty)
+    // Workspace/agent pill with active session: show ticker layout
+    private var agentSessionActive: Bool {
+        guard let def = PillCatalog.definition(for: task.id) else { return false }
+        guard def.category == .workspace || def.category == .agent else { return false }
+        return task.state != .idle || !task.steps.isEmpty
     }
 
     // n8n with a finished execution: show result row instead of "Open n8n" button
@@ -1201,6 +1250,38 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    private var statusDot: Color {
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
+        let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_calcom"  ? appState.calcomError
+                   : nil
+        if svcErr != nil { return Color(hex: "#F4505E") }
+        return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
+    }
+
+    private var statusLabel: String {
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
+        let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_calcom"  ? appState.calcomError
+                   : nil
+        if let err = svcErr { return err }
+        let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
+        let isAI    = task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai"
+        if isConfigured {
+            if isHooks { return "Hooks installed" }
+            if isAI {
+                let model = task.id == "ai_anthropic" ? appState.claudeModel
+                          : task.id == "ai_google"    ? appState.googleChatModel
+                          :                             appState.openAIChatModel
+                return "Key configured · \(model)"
+            }
+            return "Connected · loading…"
+        } else {
+            if isHooks { return "Hooks not installed" }
+            return "Key not configured"
+        }
+    }
+
     var body: some View {
         if showingDetail && n8nHasActivity {
             N8nDetailView(task: task) {
@@ -1232,7 +1313,7 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
-        } else if vsCodeSessionActive {
+        } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
@@ -1244,7 +1325,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text("Claude Code")
+                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -1275,10 +1356,10 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? "VS Code" : task.name)
+                    Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                    Text("Integration")
+                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                     Spacer(minLength: 2)
@@ -1288,15 +1369,8 @@ struct IntegrationCardView: View {
                 .padding(.trailing, 36)
 
                 HStack(spacing: 5) {
-                    let stripeErr = task.id == "integration_stripe" ? appState.stripeError
-                                  : task.id == "integration_calcom"  ? appState.calcomError
-                                  : nil
-                    let dot = stripeErr != nil ? Color(hex: "#F4505E")
-                            : isConfigured    ? Color(hex: "#22C55E")
-                            :                   Color(hex: "#F4505E")
-                    let label = stripeErr ?? (isConfigured ? "Connected · loading…" : "Key not configured")
-                    Circle().fill(dot).frame(width: 5, height: 5)
-                    Text(label)
+                    Circle().fill(statusDot).frame(width: 5, height: 5)
+                    Text(statusLabel)
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#6B7079"))
                 }
@@ -1309,6 +1383,43 @@ struct IntegrationCardView: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
+                    } else if task.id == "agent_cursor" {
+                        #if !APPSTORE
+                        if let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                            Button("Open Cursor") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
+                                                                   completionHandler: nil)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
+                        #endif
+                    } else if task.id == "agent_codex" {
+                        #if !APPSTORE
+                        if let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.openai.codex") {
+                            Button("Open Codex") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
+                                                                   completionHandler: nil)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
+                        #endif
+                    } else if task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai" {
+                        if isConfigured {
+                            let provider: ChatProvider = task.id == "ai_anthropic" ? .anthropic
+                                                       : task.id == "ai_google"    ? .google : .openai
+                            Button("Chat with \(task.name)") {
+                                switchChatProvider(provider)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -1338,13 +1449,11 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    if task.id == "integration_stripe" {
-                        if isConfigured {
-                            Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
-                                .buttonStyle(.plain)
-                        }
+                    if task.id == "integration_stripe" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
+                            .buttonStyle(.plain)
                     }
                     if task.id == "integration_calcom" && isConfigured {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
@@ -1352,7 +1461,10 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    if !isConfigured {
+                    // Settings button: shown when not configured, except cursor/codex (coming soon)
+                    if !isConfigured
+                       && task.id != "agent_cursor"
+                       && task.id != "agent_codex" {
                         Button("Settings…") {
                             NotificationCenter.default.post(name: .openFullSettings, object: nil)
                         }
@@ -1396,6 +1508,7 @@ struct IntegrationCardView: View {
             NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
         }
     }
+
 }
 
 // MARK: - Vercel Deployment List View
@@ -2947,6 +3060,23 @@ struct StatusBadge: View {
 }
 
 // MARK: - Color extension (lighten)
+
+// MARK: - Chat-provider switch (used by AI pill buttons and ↗ action)
+
+/// Mirrors ModelPickerView provider-chip tap: animates, fires surprised emote + "pop" sound,
+/// then opens the chat view. No-op if provider is already selected (just opens chat).
+@MainActor
+func switchChatProvider(_ provider: ChatProvider) {
+    let state = AppState.shared
+    if provider != state.chatProvider {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            state.chatProvider = provider
+        }
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+        SoundEngine.shared.play("pop")
+    }
+    state.view = .prompt
+}
 
 extension Color {
     func lighter(by amount: Double) -> Color {
