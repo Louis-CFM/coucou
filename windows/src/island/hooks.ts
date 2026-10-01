@@ -261,7 +261,7 @@ function handleHook(island: Island, payload: HookPayload) {
         State.setPillBadge(CLAUDE_ID, "approval");
         island.reveal();
       }
-      // Coucou answers within 108 s or not at all; after that the terminal has
+      // Alfred answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {
         pendingTimeout = null;

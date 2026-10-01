@@ -1,4 +1,4 @@
-// Small append-only log at %LOCALAPPDATA%\Coucou\coucou.log — the Windows
+// Small append-only log at %LOCALAPPDATA%\Alfred\alfred.log — the Windows
 // equivalent of nbLog() in HookServer.swift. Nothing leaves the machine.
 
 use std::io::Write;
@@ -17,7 +17,7 @@ pub fn line(message: impl AsRef<str>) {
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
-    let path = dir.join("coucou.log");
+    let path = dir.join("alfred.log");
     // Keep it from growing forever: start fresh past ~1 MB.
     if std::fs::metadata(&path).map(|m| m.len() > 1_000_000).unwrap_or(false) {
         let _ = std::fs::remove_file(&path);

@@ -17,7 +17,7 @@ final class HookServer: @unchecked Sendable {
     static var socketPath: String {
         #if APPSTORE
         // Container home root keeps path ≤ 103 bytes (sun_path limit on macOS is 104 incl. NUL)
-        // /Users/louis/Library/Containers/fr.louisraille.Coucou/Data/nb.sock = 66 bytes ✓
+        // /Users/louis/Library/Containers/fr.louisraille.Alfred/Data/nb.sock = 66 bytes ✓
         return NSHomeDirectory() + "/nb.sock"
         #else
         return supportDir.appendingPathComponent("nb.sock").path
@@ -501,7 +501,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Outdated hook detection
 
-    /// Returns true if settings.json has a Coucou PermissionRequest hook with timeout < 120s.
+    /// Returns true if settings.json has a Alfred PermissionRequest hook with timeout < 120s.
     static func hooksNeedUpdate() -> Bool {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
@@ -515,7 +515,7 @@ final class HookServer: @unchecked Sendable {
             if let hookList = matcher["hooks"] as? [[String: Any]] {
                 for hook in hookList {
                     if let cmd = hook["command"] as? String,
-                       (cmd.contains("NotchBuddy") || cmd.contains("coucou")),
+                       (cmd.contains("NotchBuddy") || cmd.contains("alfred")),
                        let timeout = hook["timeout"] as? Int,
                        timeout < 120 {
                         return true
@@ -582,7 +582,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
         for (event, timeout) in events {
             var existing = hooks[event] as? [[String: Any]] ?? []
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("alfred") == true } ?? false }
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -602,7 +602,7 @@ final class HookServer: @unchecked Sendable {
                 matchers.removeAll { matcher in
                     (matcher["hooks"] as? [[String: Any]])?.contains {
                         ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
+                        ($0["command"] as? String)?.contains("alfred") == true
                     } ?? false
                 }
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
@@ -622,13 +622,13 @@ final class HookServer: @unchecked Sendable {
     func installAndWriteClaudeHooksAppStore(claudeURL: URL) throws {
         let data = try buildHooksData(claudeURL: claudeURL)
 
-        // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/coucou/
-        let coucouDir = claudeURL.appendingPathComponent("coucou")
-        try FileManager.default.createDirectory(at: coucouDir, withIntermediateDirectories: true)
-        let wrapperURL = coucouDir.appendingPathComponent("nb-hook")
+        // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/alfred/
+        let alfredDir = claudeURL.appendingPathComponent("alfred")
+        try FileManager.default.createDirectory(at: alfredDir, withIntermediateDirectories: true)
+        let wrapperURL = alfredDir.appendingPathComponent("nb-hook")
         try nbHookShellWrapper.write(to: wrapperURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: wrapperURL.path)
-        let pyURL = coucouDir.appendingPathComponent("nb-hook.py")
+        let pyURL = alfredDir.appendingPathComponent("nb-hook.py")
         try nbHookPythonAppStore.write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
 
@@ -639,7 +639,7 @@ final class HookServer: @unchecked Sendable {
         let backupURL = claudeURL.appendingPathComponent("settings.json.bak-\(formatter.string(from: Date()))")
         try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
         try data.write(to: settingsURL, options: .atomic)
-        UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
+        UserDefaults.standard.set(true, forKey: "alfredHooksInstalled")
     }
 
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
@@ -651,7 +651,7 @@ final class HookServer: @unchecked Sendable {
             if var matchers = hooks[key] as? [[String: Any]] {
                 matchers.removeAll { matcher in
                     (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
+                        ($0["command"] as? String)?.contains("alfred") == true ||
                         ($0["command"] as? String)?.contains("NotchBuddy") == true
                     } ?? false
                 }
@@ -662,7 +662,7 @@ final class HookServer: @unchecked Sendable {
         settings["hooks"] = hooks
         let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
         try newData.write(to: settingsURL, options: .atomic)
-        UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
+        UserDefaults.standard.set(false, forKey: "alfredHooksInstalled")
     }
 
     private func buildHooksData(claudeURL: URL) throws -> Data {
@@ -673,7 +673,7 @@ final class HookServer: @unchecked Sendable {
             settings = parsed
         }
         // Derive hook path from the panel-selected claudeURL (real ~/.claude, not container)
-        let hookPath = claudeURL.appendingPathComponent("coucou/nb-hook").path
+        let hookPath = claudeURL.appendingPathComponent("alfred/nb-hook").path
         let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
         let events: [(String, Int)] = [
             ("SessionStart", 10), ("SessionEnd", 10),
@@ -688,7 +688,7 @@ final class HookServer: @unchecked Sendable {
         for (event, timeout) in events {
             var existing = hooks[event] as? [[String: Any]] ?? []
             existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
+                ($0["command"] as? String)?.contains("alfred") == true ||
                 ($0["command"] as? String)?.contains("NotchBuddy") == true
             } ?? false }
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
@@ -714,7 +714,7 @@ extension Notification.Name {
 
 private let nbHookShellWrapper = """
 #!/bin/sh
-# Coucou hook relay — always exits 0, never blocks Claude Code
+# Alfred hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
 if xcode-select -p >/dev/null 2>&1; then
     out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" 2>/dev/null)
@@ -730,8 +730,8 @@ exit 0
 
 private let nbHookPythonGitHub = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou hook relay for Claude Code (GitHub version)
-# Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
+# nb-hook.py — Alfred hook relay for Claude Code (GitHub version)
+# Reads JSON from stdin, forwards to Alfred via Unix socket, translates response.
 import sys, json, os, socket
 
 def main():
@@ -758,7 +758,7 @@ def main():
     )
 
     if event == 'PermissionRequest':
-        # Block and wait for Coucou's decision (Claude Code allows up to 120s)
+        # Block and wait for Alfred's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(118)
@@ -793,7 +793,7 @@ def main():
                     sys.stdout.flush()
                     sys.exit(0)
                 elif decision == 'deny':
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Alfred'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -822,7 +822,7 @@ sys.exit(0)
 
 private let nbHookPythonAppStore = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou (App Store) hook relay for Claude Code
+# nb-hook.py — Alfred (App Store) hook relay for Claude Code
 # Socket lives inside the sandboxed container; script runs outside the sandbox.
 import sys, json, os, socket
 
@@ -845,11 +845,11 @@ def main():
 
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
-        '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
+        '~/Library/Containers/fr.louisraille.Alfred/Data/nb.sock'
     )
 
     if event == 'PermissionRequest':
-        # Block and wait for Coucou's decision (Claude Code allows up to 120s)
+        # Block and wait for Alfred's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(118)
@@ -884,7 +884,7 @@ def main():
                     sys.stdout.flush()
                     sys.exit(0)
                 elif decision == 'deny':
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Alfred'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)

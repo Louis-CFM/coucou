@@ -18,6 +18,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "alfred"
+version = "0.1.1"
+dependencies = [
+ "keyring",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-single-instance",
+ "tokio",
+ "windows 0.61.3",
+]
+
+[[package]]
+name = "alfred-hook"
+version = "0.1.1"
+dependencies = [
+ "serde_json",
+ "windows 0.61.3",
+]
+
+[[package]]
 name = "alloc-no-stdlib"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -567,30 +591,6 @@ dependencies = [
  "bitflags 2.13.2",
  "core-foundation",
  "libc",
-]
-
-[[package]]
-name = "coucou"
-version = "0.1.1"
-dependencies = [
- "keyring",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-single-instance",
- "tokio",
- "windows 0.61.3",
-]
-
-[[package]]
-name = "coucou-hook"
-version = "0.1.1"
-dependencies = [
- "serde_json",
- "windows 0.61.3",
 ]
 
 [[package]]
@@ -4040,6 +4040,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "windows-sys 0.61.2",
 ]

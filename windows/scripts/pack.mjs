@@ -30,8 +30,8 @@ const built = installers
   .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
 
 mkdirSync(outDir, { recursive: true });
-const versioned = join(outDir, `Coucou-Windows-${version}-setup.exe`);
-const rolling = join(outDir, "Coucou-Windows-setup.exe");
+const versioned = join(outDir, `Alfred-Windows-${version}-setup.exe`);
+const rolling = join(outDir, "Alfred-Windows-setup.exe");
 copyFileSync(built, versioned);
 copyFileSync(built, rolling);
 

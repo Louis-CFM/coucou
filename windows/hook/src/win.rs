@@ -1,7 +1,7 @@
 //! The little bit of Win32 the relay needs: who we are, and who is on the other
 //! end of the pipe.
 //!
-//! Named pipes live in a machine-wide namespace, so `\\.\pipe\coucou-<name>` can
+//! Named pipes live in a machine-wide namespace, so `\\.\pipe\alfred-<name>` can
 //! be created by *any* account that gets there first. Two defences, both cheap:
 //! the pipe name carries our SID, and once connected we check the server process
 //! really belongs to us before sending anything.

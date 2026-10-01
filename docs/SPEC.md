@@ -34,7 +34,7 @@ Grille compact : pastilles Ø 9,5 autour du point (largeur − 27, hN/2), écart
 ## 3. Règles de comportement (validées par Louis)
 
 1. **Rien ne tourne** → `hidden`. Totalement invisible.
-2. **Souris sur le notch** alors que `hidden` → `peek` immédiatement, le bonhomme sort en faisant coucou (mains + son `peek` + son `greet`). Si la souris reste 650 ms → `expanded` (vue `overview`, ou `empty` s'il n'y a aucune tâche). Si elle part pendant le peek → retour `hidden` après 600 ms.
+2. **Souris sur le notch** alors que `hidden` → `peek` immédiatement, le bonhomme sort en saluant (mains + son `peek` + son `greet`). Si la souris reste 650 ms → `expanded` (vue `overview`, ou `empty` s'il n'y a aucune tâche). Si elle part pendant le peek → retour `hidden` après 600 ms.
 3. **Des tâches tournent et Louis est actif** → `compact` : très fin, le bonhomme visible, il suit la souris des yeux partout sur l'écran.
 4. **Survol en compact** → `expanded` après 200 ms. Clic sur le bonhomme en compact → `expanded` tout de suite.
 5. **Fermeture auto** : une fois ouverte, l'island se replie après **60 s sans activité** (mouvement de souris sur l'island, clic, frappe). Quitter l'island ne la ferme pas. Pendant les 10 dernières secondes, un trait de 2 pt en bas au centre (160 pt → 0, blanc 35 %) montre le compte à rebours. `Échap` ferme.
@@ -167,7 +167,7 @@ Fichiers `assets/sounds/*.wav` (48 kHz stéréo), rendus depuis le moteur du pro
 
 | Événement | Son |
 |---|---|
-| peek / coucou | `peek` + `greet` |
+| peek / salut | `peek` + `greet` |
 | ouverture / fermeture | `open` / `close` |
 | survol du bonhomme / petit clic UI | `hover` / `blip` |
 | claque / agacé / sonné | `slap` / `annoyed` / `dizzy` |

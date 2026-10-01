@@ -1,4 +1,4 @@
-// The launch "coucou" — port of GreetingCanvasView.swift.
+// The launch greeting — port of GreetingCanvasView.swift.
 // Everything is laid out in the same 640×150 reference space as on macOS.
 
 import { Sound } from "../core/sound";
