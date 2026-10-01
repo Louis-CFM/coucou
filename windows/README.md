@@ -155,6 +155,11 @@ never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+The hooks are written in Claude Code's *exec form* (`"command"` is the relay's
+path, `"args"` the event name), so no shell is involved: they work the same
+whether Claude Code runs hooks through Git Bash or, on a PC without Git Bash,
+through PowerShell, and spaces in the path are no problem. The relay links the
+Visual C++ runtime statically, so it needs no Redistributable either.
 
 ### Plan usage
 
