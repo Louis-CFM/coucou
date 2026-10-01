@@ -180,7 +180,8 @@ pub fn write(install: bool, expected: &str) -> Result<String, String> {
     }
     let backup = backup_path();
     if path.exists() { std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?; }
-    let mut text = pretty(if install { &merged(&current) } else { &without_ours(&current) });
+    let next = if install { merged(&current) } else { without_ours(&current) };
+    let mut text = pretty(&next);
     text.push('\n');
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     std::fs::write(&temp, text).map_err(|e| format!("write failed: {e}"))?;
