@@ -43,8 +43,11 @@ struct OAuthStore {
 /// Microsoft tokens are fat — even a single JWT/refresh can exceed it. So big
 /// values are sharded across suffixed keys (base, base-2, …) and reassembled
 /// on load. Old single-key values keep working: part 1 IS the base key.
-const CHUNK: usize = 2000;
-const MAX_PARTS: u8 = 4;
+///
+/// Sizing: the platform limit is 2560 *bytes*; ASCII doubles in UTF-16, so
+/// parts stay at 1000 chars (2000 bytes) with room to spare.
+const CHUNK: usize = 1000;
+const MAX_PARTS: u8 = 8;
 
 fn set_big(key: &str, value: &str) -> Result<(), String> {
     for i in 2..=MAX_PARTS {
