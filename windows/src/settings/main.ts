@@ -179,6 +179,53 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
+// ── Appearance ────────────────────────────────────────────────────────────────
+
+const MOCHI_COLORS: [string, string][] = [
+  ["#E6E9EE", "Cloud"],
+  ["#FFD6E0", "Sakura"],
+  ["#FFE3A3", "Butter"],
+  ["#BDF0D2", "Mint"],
+  ["#BFE3FF", "Sky"],
+  ["#D9CCFF", "Lilac"],
+  ["#FFB38A", "Peach"],
+  ["#3A3F4B", "Ink"],
+];
+
+function appearanceSection(): HTMLElement {
+  const swatches = h("div", { class: "swatches" });
+  const picker = h("input", { type: "color", title: "Custom colour" }) as HTMLInputElement;
+  picker.value = settings.mochiColor || "#E6E9EE";
+
+  function mark() {
+    for (const el of Array.from(swatches.children) as HTMLElement[]) {
+      el.classList.toggle("on", el.dataset.color?.toLowerCase() === settings.mochiColor.toLowerCase());
+    }
+  }
+  function pick(color: string) {
+    settings.mochiColor = color;
+    picker.value = color;
+    mark();
+    void save();
+  }
+  for (const [color, name] of MOCHI_COLORS) {
+    const b = h("button", { class: "swatch", title: name, onclick: () => pick(color) });
+    b.dataset.color = color;
+    b.style.background = color;
+    swatches.append(b);
+  }
+  picker.addEventListener("input", () => pick(picker.value.toUpperCase()));
+  mark();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Appearance" })),
+    h("span", { class: "hint", text: "Mochi's colour at rest. Working, approval and error colours stay as they are." }),
+    h("div", { class: "row" }, h("label", { text: "Mochi" }), swatches, picker),
+  );
+}
+
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
   const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
@@ -442,6 +489,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    appearanceSection(),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),

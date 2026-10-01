@@ -21,6 +21,17 @@ export interface AgentTask {
   sessionCwd?: string | null;
 }
 
+/** An AskUserQuestion call from Claude Code, shown read-only in the island. */
+export interface QuestionInfo {
+  header: string;
+  question: string;
+  options: { label: string; description: string }[];
+  multiSelect: boolean;
+  /** 1-based position when Claude asks several questions at once. */
+  index: number;
+  total: number;
+}
+
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
@@ -92,6 +103,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Mochi's body colour at rest, as #RRGGBB. */
+  mochiColor: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,9 +119,22 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  mochiColor: "#E6E9EE",
 };
 
 type Listener = () => void;
+
+export interface UsageWindow {
+  /** 0–1 */
+  used: number;
+  resetsAt: string | null;
+}
+
+export interface ClaudeUsage {
+  session: UsageWindow | null;
+  weekly: UsageWindow | null;
+  error: string | null;
+}
 
 class AppState {
   mode: IslandMode = "hidden";
@@ -137,8 +163,11 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  pendingQuestion: QuestionInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
+  /** Claude plan usage, pushed by src-tauri/src/usage.rs every 5 min. */
+  claudeUsage: ClaudeUsage | null = null;
 
   lastActivity = performance.now();
 

@@ -1,3 +1,4 @@
+import type { ClaudeUsage } from "../core/state";
 // Integration events → island state. Port of the `handle…` methods in the Swift
 // pollers: a genuinely new item flips the pill to finished/error, badges it when
 // the pill isn't focused, plays a sound, and clears itself after 60 s.
@@ -22,6 +23,10 @@ const clearTimers = new Map<string, number>();
 
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
+  void onEvent<ClaudeUsage>("claude-usage", (usage) => {
+    State.claudeUsage = usage;
+    State.notify();
+  });
   void refreshConfigured();
 }
 

@@ -10,6 +10,8 @@ mod pipe;
 mod secrets;
 mod settings;
 mod tray;
+mod usage;
+mod vscode_focus;
 mod win_user;
 
 use std::os::windows::process::CommandExt;
@@ -132,10 +134,16 @@ fn open_url(url: String) {
         .spawn();
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to Explorer otherwise.
+/// "Open terminal" focuses the VS Code window that has the project open; failing
+/// that it opens the folder with `code` when it is on PATH, then Explorer.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
+    // An already open window for this project wins: `code <path>` would open
+    // a second one whenever the path isn't exactly its workspace folder.
+    let target = path.as_deref().filter(|p| !p.is_empty());
+    if vscode_focus::focus(target) {
+        return true;
+    }
     // No `cmd /C` anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
     // in a folder name as syntax. Finding the launcher ourselves and handing the
@@ -427,6 +435,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            usage::start(handle.clone());
             Ok(())
         })
         .run(tauri::generate_context!())

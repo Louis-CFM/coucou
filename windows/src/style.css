@@ -56,23 +56,126 @@ body {
 #wake-strip {
   position: fixed;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 240px;
-  height: 6px;
+  right: 0;
+  width: 6px;
+  height: 240px;
   background: transparent;
 }
 
 /* ── Island ─────────────────────────────────────────────────────────────── */
 
 #island {
+  --island-bg: #000;
   position: absolute;
   top: 0;
-  left: 50%;
-  background: #000;
-  border-radius: 0 0 14px 14px;
+  right: 0;
+  background: var(--island-bg);
+  transition: background 0.25s ease-out;
+  border-radius: 14px 0 0 14px;
   overflow: visible;
   will-change: width, height, transform;
+}
+
+/* Concave ears (fillets) above and below the island, where it meets the screen
+   edge — CodeNotch's 38.7 px flare, so the settings orb can nest in the lower
+   one. A 1 px ring in --edge carries the outline round the curve, so black on a
+   black wallpaper still reads. Must match EAR in layout.ts. */
+#island {
+  --fillet: 38.7px;
+  --edge: #2e2e2e;
+  border: 1px solid var(--edge);
+  border-right: none;
+}
+#island::before,
+#island::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: var(--fillet);
+  height: var(--fillet);
+  pointer-events: none;
+}
+#island::before {
+  top: calc(-1 * var(--fillet));
+  background: radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--island-bg) calc(var(--fillet) + 0.5px));
+}
+#island::after {
+  bottom: calc(-1 * var(--fillet));
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--island-bg) calc(var(--fillet) + 0.5px));
+}
+
+/* Settings orb (CodeNotch's SettingsOrb): a quarter arc tucked into the lower
+   fillet's pocket at rest; under the pointer it fills into a disc with a gear
+   that spins in. Only while the island is the compact tab. */
+#orb {
+  position: absolute;
+  width: 57px;
+  height: 57px;
+  display: none;
+  cursor: pointer;
+}
+#orb.placed {
+  display: block;
+}
+#orb > * {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.36s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+#orb .h-rest {
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  overflow: visible;
+  transform: rotate(270deg) scale(1);
+}
+#orb .h-ring {
+  stroke: #2e2e2e;
+}
+#orb .h-fill {
+  stroke: #000;
+}
+#orb .h-disc {
+  width: 46.6px;
+  height: 46.6px;
+  margin: -23.3px 0 0 -23.3px;
+  border-radius: 50%;
+  background: #000;
+  border: 1px solid #2e2e2e;
+  opacity: 0;
+  transform: scale(1.1);
+}
+#orb .h-glyph {
+  width: 21px;
+  height: 21px;
+  margin: -10.5px 0 0 -10.5px;
+  fill: #e8e8ea;
+  opacity: 0;
+  transform: rotate(calc(var(--spins, 0) * 360deg - 60deg)) scale(0.5);
+  transition: opacity 0.2s, transform 0.55s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+#orb.hover .h-rest {
+  opacity: 0;
+  transform: rotate(270deg) scale(0.86);
+}
+#orb.hover .h-disc {
+  opacity: 1;
+  transform: scale(1);
+}
+#orb.hover .h-glyph {
+  opacity: 1;
+  transform: rotate(calc(var(--spins, 0) * 360deg)) scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  #orb > * {
+    transition: none;
+  }
+}
+#island.no-ears::before,
+#island.no-ears::after {
+  display: none;
 }
 
 #island-clip {
@@ -95,6 +198,9 @@ body {
   top: 0;
   width: 640px;
   height: 176px;
+  /* Drawn in macOS points, shrunk into the upright card (300 / 640). */
+  transform: scale(0.46875);
+  transform-origin: 0 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease-in-out;
@@ -1357,4 +1463,362 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Upright card on the right edge ─────────────────────────────────────────
+   The views were laid out for a 640-wide strip with Mochi on the left; on the
+   right edge the card is 300 wide, Mochi sits centred at the top (BOT_TOP_Y in
+   layout.ts) and everything else stacks under it. The inline paddings in the
+   view builders reserve room on the left, hence the !important overrides. */
+
+.overview {
+  flex-direction: column;
+}
+.overview > .left {
+  flex: 0 0 236px;
+  width: auto;
+}
+.overview > .right {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.card-body {
+  padding-top: 80px;
+}
+.who {
+  padding: 0 30px 0 16px;
+  justify-content: center;
+}
+.ticker {
+  margin: 6px 14px 0 14px;
+}
+.int-card {
+  padding: 80px 14px 0 14px !important;
+}
+
+.stack {
+  padding: 82px 16px 14px 16px !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: center;
+  gap: 8px !important;
+}
+.stack .grow {
+  display: none;
+}
+.stack .code {
+  align-self: stretch;
+  white-space: normal;
+  word-break: break-all;
+  max-height: 72px;
+  overflow-y: auto;
+}
+.stack .actions {
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.chat-body {
+  padding: 92px 14px 14px 14px;
+}
+.chat-row.user {
+  padding-left: 20px;
+}
+
+/* Current step under the ticker: label + full command, wrapped. */
+.step-detail {
+  margin: 8px 14px 0 14px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 64px;
+  overflow: hidden;
+}
+.step-label {
+  font: 600 10.5px var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dim-2);
+}
+.step-label:empty {
+  display: none;
+}
+.step-text {
+  font: 400 11.5px var(--mono);
+  color: #e8e9ec;
+  line-height: 1.35;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  user-select: text;
+}
+.ticker-row .tick-text {
+  font-size: 12.5px;
+}
+
+/* Claude usage card (overview). */
+.overview > .usage {
+  flex: 0 0 auto;
+}
+.overview > .usage .card {
+  height: auto;
+}
+.u-body {
+  position: relative;
+  z-index: 1;
+  padding: 10px 14px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.u-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.u-label {
+  font: 600 11.5px var(--font);
+  color: var(--ink);
+}
+.u-pct {
+  font: 500 11.5px var(--font);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.u-reset {
+  margin-left: auto;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+}
+.u-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.u-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease-out, background 0.4s;
+}
+.u-note {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+}
+
+/* Claude's AskUserQuestion, read-only. */
+.q-header {
+  font: 600 10.5px var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #67e8f9;
+}
+.q-header:empty {
+  display: none;
+}
+.q-title {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.q-options {
+  align-self: stretch;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: q;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 170px;
+  overflow-y: auto;
+  text-align: left;
+}
+.q-options:empty {
+  display: none;
+}
+.q-options li {
+  counter-increment: q;
+  position: relative;
+  padding: 6px 10px 6px 30px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.q-options li::before {
+  content: counter(q);
+  position: absolute;
+  left: 10px;
+  top: 6px;
+  font: 600 11px var(--font);
+  color: var(--dim-2);
+}
+.q-label {
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+.q-desc {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  line-height: 1.3;
+}
+.q-hint {
+  font-size: 11.5px;
+}
+
+/* ── Polish: rounder, softer, a little depth ───────────────────────────────── */
+
+.card {
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #17181c 0%, #111215 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.tab {
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.header-actions button {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.header-actions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+.header-actions {
+  gap: 4px;
+  padding-right: 12px;
+}
+
+.who {
+  padding: 0 34px 0 16px;
+}
+.who .name {
+  font-size: 12.5px;
+}
+
+/* Previous step: one dim line with a tick. */
+.prev-step {
+  margin: 10px 18px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim-3);
+  min-width: 0;
+}
+.prev-step svg {
+  flex: 0 0 auto;
+  color: #4b5060;
+}
+.prev-text {
+  font: 400 11.5px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Current step: soft pill with an accent bar in the task colour. */
+.step-detail {
+  --accent: #3b9eff;
+  position: relative;
+  margin: 8px 14px 0;
+  padding: 9px 12px 10px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  max-height: 84px;
+}
+.step-detail::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  opacity: 0.85;
+}
+.step-label {
+  color: var(--accent);
+  filter: brightness(1.25);
+}
+.step-text {
+  font-size: 11.5px;
+  color: #dfe2e8;
+}
+
+/* Usage: thicker rounded bars with a soft glow. */
+.u-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.u-fill {
+  border-radius: 999px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.pill {
+  border-radius: 999px;
+  height: 30px;
+}
+.pills {
+  grid-auto-rows: 30px;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.btn {
+  padding: 8px 15px;
+}
+.q-options li {
+  border-radius: 14px;
+}
+.code {
+  border-radius: 12px;
+}
+
+/* ── Grey open panel ────────────────────────────────────────────────────────
+   The open island is a grey card like CodeNotch's popover; inner cards sit a
+   shade lighter, with no heavy borders. */
+#island.open {
+  --island-bg: #1f2023;
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.45);
+}
+#island.open .card {
+  background: linear-gradient(180deg, #2a2b2f 0%, #252629 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+}
+#island.open .step-detail,
+#island.open .q-options li,
+#island.open .code {
+  background: rgba(255, 255, 255, 0.06);
+}
+#island.open .pill {
+  background: #1f2023;
+}
+#island.open .u-bar {
+  background: rgba(255, 255, 255, 0.1);
 }

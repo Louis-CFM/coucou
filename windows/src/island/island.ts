@@ -2,16 +2,16 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EAR, TAB_W, EXPANDED_CORNER, GREET_H, GREET_W, PANEL_H, PANEL_W, UPLOAD_SCALE, UPLOAD_TOP,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { BotEngine, hexToRGB } from "../mochi/engine";
+import { BotEngine, hexToRGB, setMochiColor } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
@@ -21,6 +21,16 @@ import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
+/** Settings orb hot zone radius — CodeNotch's HANDLE_REACH (half of 57). */
+const ORB_REACH = 28.5;
+
+const ORB_SVG = `
+<svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
+  <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+  <circle class="h-fill" r="28.5" fill="none" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+</svg>
+<div class="h-disc"></div>
+<svg class="h-glyph" viewBox="0 0 12 12" aria-hidden="true"><path fill-rule="evenodd" d="M5.1.6h1.8l.3 1.5 1.1.5 1.3-.8 1.3 1.3-.8 1.3.5 1.1 1.5.3v1.8l-1.5.3-.5 1.1.8 1.3-1.3 1.3-1.3-.8-1.1.5-.3 1.5H5.1l-.3-1.5-1.1-.5-1.3.8-1.3-1.3.8-1.3-.5-1.1L.6 6.9V5.1l1.5-.3.5-1.1-.8-1.3 1.3-1.3 1.3.8 1.1-.5zM6 4.1a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"/></svg>`;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
 
@@ -29,6 +39,12 @@ const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading"
 
 /** Seconds between the drop and the moment the progress bar starts filling. */
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
+
+/** Island point -> the drop sequence's 640x176 macOS space. */
+const toUploadSpace = (p: { x: number; y: number }): [number, number] => [
+  p.x / UPLOAD_SCALE,
+  (p.y - UPLOAD_TOP) / UPLOAD_SCALE,
+];
 
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
 
@@ -46,12 +62,16 @@ export class Island {
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
+  private orb!: HTMLElement;
+  /** Orb centre in window coordinates, or null while it isn't shown. */
+  private orbAt: { x: number; y: number } | null = null;
+  private orbSpins = 0;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
   private uploadCanvas!: UploadCanvas;
 
-  private width = new Tracked(NOTCH_W);
+  private width = new Tracked(0);
   private height = new Tracked(0);
   private radius = new Tracked(ROUNDED_CORNER);
   private botCx = new Spring(46);
@@ -212,12 +232,26 @@ export class Island {
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
-    this.greetingCanvas.height = Math.round(150 * dpr);
-    this.greetingCanvas.style.width = `${EXPANDED_W}px`;
-    this.greetingCanvas.style.height = "150px";
+    this.greetingCanvas.width = Math.round(GREET_W * dpr);
+    this.greetingCanvas.height = Math.round(GREET_H * dpr);
+    this.greetingCanvas.style.width = `${GREET_W}px`;
+    this.greetingCanvas.style.height = `${GREET_H}px`;
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    // Settings orb, nested in the lower fillet of the compact tab (CodeNotch).
+    this.orb = h("div", { id: "orb", title: "Settings" });
+    this.orb.innerHTML = ORB_SVG;
+    this.orb.addEventListener("click", (e) => {
+      if (!this.orbAt || Math.hypot(e.clientX - this.orbAt.x, e.clientY - this.orbAt.y) > ORB_REACH) return;
+      this.orb.style.setProperty("--spins", String(++this.orbSpins));
+      this.orb.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(.84)", offset: 0.21 }, { transform: "scale(1)" }],
+        { duration: 430 },
+      );
+      Sound.play("blip");
+      void Bridge.openSettingsWindow();
+    });
+
+    this.root.append(this.wakeStrip, this.islandEl, this.orb);
     this.applyGeometry();
   }
 
@@ -352,7 +386,7 @@ export class Island {
         this.engine.animateMorph(1);
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
-        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        UploadSeq.enterZone(...toUploadSpace(State.mouseInIsland));
         this.alert("upload");
         break;
       }
@@ -475,18 +509,46 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    this.islandEl.style.top = `${(PANEL_H - hh) / 2}px`;
+    // Flush against the right edge: only the left corners are rounded.
+    this.islandEl.style.borderRadius = `${r}px 0 0 ${r}px`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
-    this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
-    this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
+    this.miniGrid.style.left = `${w / 2 - 14.5}px`;
+    this.miniGrid.style.top = `${hh - 40}px`;
+    // The concave ears only make sense while there is a tab to join to the edge.
+    this.islandEl.classList.toggle("no-ears", w < EAR);
+    // The greeting hangs off the island's right edge, which never moves.
+    this.greetingCanvas.style.left = `${w - GREET_W}px`;
+    this.greetingCanvas.style.top = `${(hh - GREET_H) / 2}px`;
+    this.uploadCanvas.el.style.left = "0px";
+    this.uploadCanvas.el.style.top = `${UPLOAD_TOP}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const island = { x: PANEL_W - w, y: (PANEL_H - hh) / 2, w, h: hh };
+
+    // The orb sits on the lower fillet's centre, only on the settled tab.
+    const showOrb = State.mode === "compact" && w >= TAB_W - 1;
+    if (showOrb) {
+      this.orbAt = { x: PANEL_W - EAR, y: island.y + hh + EAR };
+      this.orb.style.left = `${this.orbAt.x - ORB_REACH}px`;
+      this.orb.style.top = `${this.orbAt.y - ORB_REACH}px`;
+    } else {
+      this.orbAt = null;
+      this.orb.classList.remove("hover");
+    }
+    this.orb.classList.toggle("placed", showOrb);
+
+    // What Rust lets the mouse through to: the island, plus the orb's box.
+    const rect = showOrb
+      ? {
+          x: Math.min(island.x, this.orbAt!.x - ORB_REACH),
+          y: island.y,
+          w: PANEL_W - Math.min(island.x, this.orbAt!.x - ORB_REACH),
+          h: hh + EAR + ORB_REACH,
+        }
+      : island;
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -496,7 +558,7 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    return { x: PANEL_W - w, y: (PANEL_H - hh) / 2, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -551,6 +613,14 @@ export class Island {
 
     void onDragDrop((e) => this.onDragDrop(e));
 
+    // A click anywhere off the island folds it away — except during a drop,
+    // which has to survive the user clicking back into their file manager.
+    void onEvent("outside-click", () => {
+      if (State.mode !== "expanded") return;
+      if (UPLOAD_VIEWS.has(State.view) || UploadSeq.isActive) return;
+      this.collapse();
+    });
+
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) {
@@ -567,12 +637,15 @@ export class Island {
     // Windows sends no cursor position with an OLE drag, so the drop sequence is
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
     if (UploadSeq.isActive && !UploadSeq.dropped) {
-      UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
+      UploadSeq.updateCursor(...toUploadSpace(State.mouseInIsland));
     }
 
-    const inIsland =
+    const onOrb = this.orbAt != null && Math.hypot(x - this.orbAt.x, y - this.orbAt.y) <= ORB_REACH;
+    this.orb.classList.toggle("hover", onOrb);
+    // The orb belongs to the tab: reaching for it must not count as leaving.
+    const inIsland = onOrb || (
       x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
-      y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
+      y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN);
 
     if (inIsland && !this.wasInIsland) {
       if (this.fsm.state === "coucou") this.greeting.hover();
@@ -777,7 +850,11 @@ export class Island {
     if (!ctx) return;
 
     const focus = State.focusTask;
-    this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    // Other integrations dress Mochi in their brand colour. The Claude Code one
+    // ("VS Code", near-white #F5F6F8) is Mochi itself, so it keeps the shaded
+    // body in the colour picked in Settings → Appearance.
+    const ownColour = !focus || focus.id === "integration_claude";
+    this.engine.bodyColor = focus?.isIntegration && !ownColour ? hexToRGB(focus.color) : null;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -804,7 +881,8 @@ export class Island {
   }
 
   private lookY(): number {
-    return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
+    const botScreenY = this.islandRect().y + this.botCy.value;
+    return -Math.tanh((State.mouse.y - botScreenY) / 200);
   }
 
   private updateCountdown(nowMs: number) {
@@ -823,6 +901,8 @@ export class Island {
 
   private syncDom() {
     const expanded = State.mode === "expanded";
+    // Grey panel when open (like CodeNotch's popover); the tab stays black.
+    this.islandEl.classList.toggle("open", expanded);
     const greetingActive = expanded && State.view === "greeting";
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
@@ -874,6 +954,9 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    setMochiColor(State.settings.mochiColor || "#E6E9EE");
+    this.dirty = true;
+    this.ensureRunning();
     State.notify();
   }
 

@@ -20,6 +20,13 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Mochi's body colour at rest, #RRGGBB. Defaulted for older settings files.
+    #[serde(default = "default_mochi_color")]
+    pub mochi_color: String,
+}
+
+fn default_mochi_color() -> String {
+    "#E6E9EE".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +50,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            mochi_color: default_mochi_color(),
         }
     }
 }

@@ -4,7 +4,6 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
@@ -84,6 +83,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // The island never takes focus, so Esc can't reach it: closing needs a button.
+  const closeBtn = h("button", { title: "Close", onclick: () => actions.collapse() }, svg(ICONS.xmark, 13));
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,7 +95,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, gearBtn, soundBtn, closeBtn),
   );
 
   return {
@@ -117,9 +118,18 @@ export function buildHeader(actions: ViewActions): ViewHost {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
   const who = h("div", { class: "who" });
-  const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
+  // The ticker rows are one line each; the current step gets the room to
+  // show its whole command underneath.
+  const stepLabel = h("span", { class: "step-label" });
+  const stepText = h("span", { class: "step-text" });
+  const stepDetail = h("div", { class: "step-detail" }, stepLabel, stepText);
+  // The upright card is too narrow for the two-row ticker plus the detail box —
+  // they ended up drawn over each other. One quiet line for the previous step,
+  // the box for the current one.
+  const prevText = h("span", { class: "prev-text" });
+  const prevStep = h("div", { class: "prev-step" }, svg(ICONS.check, 8, { stroke: 2.2 }), prevText);
+  const tickerBody = h("div", { class: "card-body" }, who, prevStep, stepDetail);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
@@ -130,8 +140,10 @@ function buildOverview(actions: ViewActions): ViewHost {
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
 
+  const usage = buildUsage();
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
+    usage.el,
     h("div", { class: "right" }, right),
   );
 
@@ -161,7 +173,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   return {
     el,
     tick(nowMs: number) {
-      if (mode === "ticker") ticker.tick(nowMs);
+      void nowMs;
     },
     sync() {
       const task = State.focusTask;
@@ -196,7 +208,16 @@ function buildOverview(actions: ViewActions): ViewHost {
             text: `${Math.min(task.stepIndex + 1, task.steps.length)}/${task.steps.length}`,
           }));
         }
-        ticker.sync(task);
+        const idx = Math.min(task.stepIndex, task.steps.length - 1);
+        const prev = idx > 0 ? task.steps[idx - 1] : "";
+        prevText.textContent = prev;
+        prevStep.style.display = prev ? "" : "none";
+        stepDetail.style.setProperty("--accent", task.color);
+        const step = task.steps[idx] ?? "";
+        const cut = step.indexOf(" · ");
+        stepLabel.textContent = cut > 0 ? step.slice(0, cut) : "";
+        stepText.textContent = cut > 0 ? step.slice(cut + 3) : step;
+        stepDetail.style.display = step ? "" : "none";
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -213,6 +234,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen ? "none" : "";
+      usage.sync();
 
       const others = State.otherTasks.slice(0, 4);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
@@ -222,6 +244,72 @@ function buildOverview(actions: ViewActions): ViewHost {
         for (const t of others) pills.append(buildPill(t, actions));
         pruneMiniBots();
       }
+    },
+  };
+}
+
+// ── Claude usage (overview) ───────────────────────────────────────────────────
+
+function usageColor(used: number): string {
+  if (used >= 0.9) return "#F4505E";
+  if (used >= 0.7) return "#F5A524";
+  return "#34D399";
+}
+
+/** "13:00" today, "Tue 10:00" within a week, else a date. */
+function resetLabel(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return `resets ${time}`;
+  if (d.getTime() - now.getTime() < 6.5 * 86400_000) {
+    return `resets ${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
+  }
+  return `resets ${d.toLocaleDateString([], { day: "2-digit", month: "short" })}`;
+}
+
+function buildUsage(): { el: HTMLElement; sync(): void } {
+  function row(label: string) {
+    const pct = h("span", { class: "u-pct" });
+    const reset = h("span", { class: "u-reset" });
+    const fill = h("div", { class: "u-fill" });
+    const el = h("div", { class: "u-row" },
+      h("div", { class: "u-head" }, h("span", { class: "u-label", text: label }), pct, reset),
+      h("div", { class: "u-bar" }, fill),
+    );
+    return { el, pct, reset, fill };
+  }
+  const session = row("Session");
+  const weekly = row("Weekly");
+  const note = h("div", { class: "u-note" });
+  const el = h("div", { class: "usage" },
+    card(null, h("div", { class: "u-body" }, session.el, weekly.el, note)));
+  let key = "";
+
+  return {
+    el,
+    sync() {
+      const u = State.claudeUsage;
+      const k = JSON.stringify(u);
+      if (k === key) return;
+      key = k;
+      // Nothing yet (first poll pending, or no Claude Code login): stay out of the way.
+      el.style.display = u ? "" : "none";
+      if (!u) return;
+      const pairs: [ReturnType<typeof row>, typeof u.session][] = [[session, u.session], [weekly, u.weekly]];
+      for (const [r, w] of pairs) {
+        r.el.style.display = w ? "" : "none";
+        if (!w) continue;
+        const used = Math.round(w.used * 100);
+        r.pct.textContent = `${used}%`;
+        r.reset.textContent = resetLabel(w.resetsAt);
+        r.fill.style.width = `${Math.max(2, used)}%`;
+        r.fill.style.background = usageColor(w.used);
+      }
+      note.textContent = u.error ?? "";
+      note.style.display = u.error && !u.session && !u.weekly ? "" : "none";
     },
   };
 }
@@ -319,20 +407,45 @@ function buildApproval(actions: ViewActions): ViewHost {
 
 // ── Question ──────────────────────────────────────────────────────────────────
 
-function buildQuestion(): ViewHost {
+function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
+  const header = h("div", { class: "q-header" });
+  const title = h("div", { class: "title q-title" });
+  const options = h("ol", { class: "q-options" });
+  const hint = h("div", { class: "sub q-hint" });
+  const row = h("div", { class: "actions" },
+    btn("Open terminal", "primary", () => actions.openTerminal()));
+  const el = h("div", { class: "view" },
+    card("cyan", stack(116, 16, who, header, title, options, hint, row)));
+  let key = "";
   return {
     el,
     sync() {
+      const q = State.pendingQuestion;
+      const k = JSON.stringify(q) + (State.focusTask?.name ?? "");
+      if (k === key) return;
+      key = k;
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
-      const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
-      clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
+      who.append(agentWho(State.focusTask, "is asking"));
+      clear(options);
+      if (!q) {
+        // Notification-only questions carry just a sentence.
+        header.textContent = "";
+        title.textContent = State.focusTask?.steps.at(-1) ?? "Claude needs an answer.";
+        hint.textContent = "Answer in your terminal.";
+        return;
+      }
+      header.textContent = [q.header, q.total > 1 ? `${q.index}/${q.total}` : ""].filter(Boolean).join(" · ");
+      title.textContent = q.question;
+      for (const o of q.options) {
+        options.append(h("li", {},
+          h("span", { class: "q-label", text: o.label }),
+          o.description ? h("span", { class: "q-desc", text: o.description }) : null,
+        ));
+      }
+      hint.textContent = q.multiSelect
+        ? "Several answers allowed — choose in your terminal."
+        : "Choose in your terminal.";
     },
   };
 }
@@ -491,7 +604,7 @@ export function buildViews(
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
-  map.set("question", buildQuestion());
+  map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());

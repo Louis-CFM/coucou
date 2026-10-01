@@ -49,43 +49,60 @@ export interface ViewLayout {
 }
 
 // The window is a fixed 720×320 (largest view) like the macOS panel; the island is
-// drawn inside it, glued to the top edge and horizontally centred.
-export const PANEL_W = 720;
-export const PANEL_H = 320;
+// drawn inside it, glued to the right edge and vertically centred (the window
+// itself sits in the middle of the display's right edge, like CodeNotch).
+export const PANEL_W = 300;
+export const PANEL_H = 560;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
-export const EXPANDED_W = 640;
+/** The open island is an upright card on the right edge. */
+export const EXPANDED_W = 300;
+/** Mochi sits centred at the top of each card, under the 42 pt header. */
+export const BOT_TOP_Y = 84;
+/** The drop sequence is drawn in its 640x176 macOS space, scaled into the card. */
+export const UPLOAD_SCALE = EXPANDED_W / 640;
+export const UPLOAD_H = 176 * UPLOAD_SCALE;
+export const UPLOAD_VIEW_H = 220;
+export const UPLOAD_TOP = (UPLOAD_VIEW_H - UPLOAD_H) / 2;
+/** Launch greeting space (see src/mochi/greeting.ts). */
+export const GREET_W = 240;
+export const GREET_H = 260;
+
+/** Compact island on the right edge: an upright tab, like CodeNotch's. */
+export const TAB_W = 56;
+export const TAB_H = 104;
+/** Concave "ears" joining the tab to the screen edge, above and below it. */
+export const EAR = 38.7;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
-export const EXPANDED_CORNER = 22;
+export const EXPANDED_CORNER = 28;
 
 /** Invisible hover strip that wakes the island when hidden. */
 export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
-  overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
-  empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
-  approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
-  question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
-  error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
-  upload: { height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
-  // botY 103 = bar top (42 + 58) + 3, so the dot really rides the bar. The Swift
-  // layout says 118 while its own comment says 103; the comment matches the spec.
-  uploading: { height: 176, botX: 46, botY: 103, botDiameter: 20, agentMode: "none" },
-  choose: { height: 176, botX: 60, botY: 101, botDiameter: 52, agentMode: "column" },
-  mail: { height: 240, botX: 56, botY: null, botDiameter: 46, agentMode: "column" },
-  prompt: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  searching: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
-  settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
-  greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
+  // The three drop views keep their macOS coordinates; botPosition scales them.
+  overview: { height: 480, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 58, agentMode: "pills" },
+  empty: { height: 270, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 62, agentMode: "none" },
+  approval: { height: 290, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 56, agentMode: "column" },
+  question: { height: 440, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 56, agentMode: "column" },
+  error: { height: 300, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 58, agentMode: "column" },
+  finished: { height: 280, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 58, agentMode: "column" },
+  confused: { height: 250, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 66, agentMode: "column" },
+  upload: { height: UPLOAD_VIEW_H, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
+  uploading: { height: UPLOAD_VIEW_H, botX: 46, botY: 103, botDiameter: 20, agentMode: "none" },
+  choose: { height: UPLOAD_VIEW_H, botX: 60, botY: 101, botDiameter: 52, agentMode: "column" },
+  mail: { height: 420, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 46, agentMode: "column" },
+  prompt: { height: 300, botX: EXPANDED_W / 2, botY: 66, botDiameter: 36, agentMode: "column" },
+  searching: { height: 280, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 44, agentMode: "column" },
+  result: { height: 280, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 44, agentMode: "column" },
+  note: { height: 250, botX: EXPANDED_W / 2, botY: BOT_TOP_Y, botDiameter: 50, agentMode: "column" },
+  settings: { height: 300, botX: EXPANDED_W / 2, botY: 66, botDiameter: 36, agentMode: "none" },
+  greeting: { height: GREET_H, botX: GREET_W / 2, botY: 120, botDiameter: 0, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -94,7 +111,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {
-  return Math.min(300, 240 + messageCount * 40);
+  return Math.min(520, 300 + messageCount * 44);
 }
 
 export function islandSize(
@@ -104,14 +121,14 @@ export function islandSize(
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
-      // No notch to hide inside on a PC: the island retracts to zero height and
-      // slides into the top edge of the screen instead of sitting there as a bar.
-      return { w: NOTCH_W, h: 0 };
+      // No notch to hide inside on a PC: the tab retracts to zero width and
+      // slides into the right edge of the screen.
+      return { w: 0, h: TAB_H };
     case "compact":
-      return { w: COMPACT_W, h: NOTCH_H };
+      return { w: TAB_W, h: TAB_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
-      return { w: EXPANDED_W, h };
+      return { w: view === "greeting" ? GREET_W : EXPANDED_W, h };
     }
   }
 }
@@ -132,16 +149,18 @@ export function botPosition(
 ): BotPlacement {
   switch (mode) {
     case "hidden":
-      return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
+      return { cx: TAB_W / 2, cy: 36, diameter: 6, opacity: 0 };
     case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+      // Mochi on top, the 2×2 mini grid under it.
+      return { cx: TAB_W / 2, cy: 36, diameter: 30, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
-      if (view === "uploading") {
+      if (view === "upload" || view === "uploading" || view === "choose") {
+        const cx = view === "uploading" ? 36 + uploadProgress * 526 : layout.botX;
         return {
-          cx: 36 + uploadProgress * 526,
-          cy: layout.botY ?? 103,
-          diameter: layout.botDiameter,
+          cx: cx * UPLOAD_SCALE,
+          cy: UPLOAD_TOP + (layout.botY ?? 103) * UPLOAD_SCALE,
+          diameter: layout.botDiameter * UPLOAD_SCALE,
           opacity: 1,
         };
       }

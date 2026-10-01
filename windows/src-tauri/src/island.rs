@@ -2,7 +2,7 @@
 // (full panel / invisible wake strip), click-through and the cursor poll.
 //
 // There is no notch on a PC, so the island is a black shape drawn at the top
-// centre of the main display inside a borderless, transparent, always-on-top
+// middle of the right edge of the main display (like CodeNotch's right-edge notch) inside a borderless, transparent, always-on-top
 // window that never takes focus.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -23,18 +23,27 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WS_EX_TOOLWINDOW,
 };
 
-/// Logical size of the full window — the largest island view, like the macOS panel.
-pub const PANEL_W: f64 = 720.0;
-pub const PANEL_H: f64 = 320.0;
+/// Logical size of the full window — the tallest island view (an upright card).
+/// Must match PANEL_W / PANEL_H in src/core/layout.ts.
+pub const PANEL_W: f64 = 300.0;
+pub const PANEL_H: f64 = 560.0;
 /// Logical size of the invisible strip that wakes the island when it is hidden.
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
 
 pub const WINDOW_LABEL: &str = "island";
 
+/// Gap between the island's right edge and the right edge of the display, in
+/// logical px. 0 = flush against the edge.
+pub const RIGHT_INSET: f64 = 0.0;
+
 /// Margin around the island that still counts as "on the island", in logical px.
 /// Wider than the macOS 6 pt because a click must never be swallowed.
 const HIT_MARGIN: f64 = 14.0;
+
+/// A press and release further apart than this (logical px) is a drag — a file
+/// on its way to the island, say — not a click outside it.
+const CLICK_SLOP: f64 = 6.0;
 
 #[derive(Serialize, Clone)]
 pub struct CursorPayload {
@@ -208,14 +217,19 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(m) = target_monitor(app, pref) else { return };
 
     let scale = m.scale_factor();
-    let mp = *m.position();
-    let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    // On the right edge the wake strip stands upright: thin and tall.
+    let (lw, lh) = if collapsed { (STRIP_H, STRIP_W) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    // Glued to the right edge and vertically centred on the work area (the
+    // display minus the taskbar). The island is right-aligned and vertically
+    // centred inside the window, so both window sizes share the same middle.
+    let wa = m.work_area();
+    let (wx, wy, ww, wh) = (wa.position.x, wa.position.y, wa.size.width as i32, wa.size.height as i32);
+    let inset = (RIGHT_INSET * scale).round() as i32;
+    let x = wx + ww - pw as i32 - inset;
+    let y = wy + (wh - ph as i32) / 2;
 
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
@@ -275,6 +289,9 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
+        // Where a press that started off the island began, until it is released.
+        let mut outside_press: Option<(f64, f64)> = None;
+        let mut press_seen = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
@@ -312,6 +329,34 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+                // Click outside the island: the window is click-through there, so
+                // the click lands on another app and never reaches the webview.
+                // Read the button here, before the "cursor didn't move" shortcut
+                // below, or a click with a still mouse would go unnoticed. Only a
+                // press *and* release off the island, close together, counts —
+                // dragging a file in from Explorer also starts with a press outside.
+                {
+                    let down = left_button_down();
+                    let r = *gate.rect.lock().unwrap();
+                    let off_island = r.w <= 0.0
+                        || x < r.x - HIT_MARGIN
+                        || x > r.x + r.w + HIT_MARGIN
+                        || y < r.y - HIT_MARGIN
+                        || y > r.y + r.h + HIT_MARGIN;
+                    if down && !press_seen {
+                        outside_press = if off_island { Some((x, y)) } else { None };
+                    }
+                    if !down && press_seen {
+                        if let Some((px, py)) = outside_press.take() {
+                            let still = (x - px).abs() <= CLICK_SLOP && (y - py).abs() <= CLICK_SLOP;
+                            if off_island && still {
+                                let _ = app.emit_to(WINDOW_LABEL, "outside-click", ());
+                            }
+                        }
+                    }
+                    press_seen = down;
+                }
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }

@@ -5,7 +5,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type QuestionInfo } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -117,6 +117,37 @@ function clearSession() {
   t.pillBadge = null;
 }
 
+/** AskUserQuestion's tool_input → the first question (the terminal shows the rest in turn). */
+function parseQuestion(input: Record<string, unknown>): QuestionInfo | null {
+  const list = Array.isArray(input.questions) ? (input.questions as Record<string, unknown>[]) : [];
+  const q = list[0];
+  if (!q || typeof q.question !== "string") return null;
+  const options = Array.isArray(q.options)
+    ? (q.options as Record<string, unknown>[]).map((o) => ({
+        label: typeof o.label === "string" ? o.label : "",
+        description: typeof o.description === "string" ? o.description : "",
+      })).filter((o) => o.label)
+    : [];
+  return {
+    header: typeof q.header === "string" ? q.header : "",
+    question: q.question,
+    options,
+    multiSelect: q.multiSelect === true,
+    index: 1,
+    total: list.length,
+  };
+}
+
+/** The question was answered (or abandoned): drop the card. */
+function clearQuestion(island: Island) {
+  if (!State.pendingQuestion) return;
+  State.pendingQuestion = null;
+  State.isPinned = false;
+  island.dropPin();
+  State.setPillBadge(CLAUDE_ID, null);
+  if (State.view === "question") island.setView(State.defaultView());
+}
+
 export function registerHookHandlers(island: Island) {
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
 }
@@ -155,6 +186,7 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "UserPromptSubmit": {
+      clearQuestion(island);
       upsert(projectName, cwd);
       State.updateTask(CLAUDE_ID, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
@@ -166,18 +198,40 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PreToolUse": {
       upsert(projectName, cwd);
-      State.updateTask(CLAUDE_ID, "working");
       const tool = payload.tool_name ?? "Tool";
+      // Claude is asking the user something: show the actual question and its
+      // options rather than a bare "AskUserQuestion" step. Answering still
+      // happens in the terminal — there is no hook that can reply for the user.
+      if (tool === "AskUserQuestion") {
+        const q = parseQuestion(payload.tool_input ?? {});
+        if (q) {
+          State.pendingQuestion = q;
+          State.updateTask(CLAUDE_ID, "question");
+          State.appendStep(CLAUDE_ID, `Question · ${q.question}`);
+          State.isPinned = true;
+          Sound.play("question");
+          if (focused) {
+            island.alert("question");
+          } else {
+            State.setPillBadge(CLAUDE_ID, "approval");
+            island.reveal();
+          }
+          break;
+        }
+      }
+      State.updateTask(CLAUDE_ID, "working");
       State.appendStep(CLAUDE_ID, stepLabel(tool, payload.tool_input ?? {}));
       surface("overview", false);
       break;
     }
 
     case "PostToolUse":
+      if (payload.tool_name === "AskUserQuestion") clearQuestion(island);
       State.updateTask(CLAUDE_ID, "working");
       break;
 
     case "PostToolUseFailure":
+      if (payload.tool_name === "AskUserQuestion") clearQuestion(island);
       State.updateTask(CLAUDE_ID, "working");
       State.appendStep(CLAUDE_ID, "⚠ failed");
       break;
@@ -196,6 +250,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop":
+      clearQuestion(island);
       State.updateTask(CLAUDE_ID, "finished");
       if (payload.message) State.appendStep(CLAUDE_ID, payload.message.slice(0, 60));
       Sound.play("finish");
@@ -215,6 +270,7 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
+      clearQuestion(island);
       State.updateTask(CLAUDE_ID, "idle");
       clearSession();
       break;
@@ -229,6 +285,12 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PermissionRequest": {
       const requestId = payload.request_id ?? "";
+      // A question is not a permission: Allow would answer nothing. The question
+      // card is already up; let the terminal take the request straight away.
+      if (payload.tool_name === "AskUserQuestion") {
+        if (requestId) void Bridge.approvalDecline(requestId);
+        break;
+      }
       // One card, one request. A second one must never quietly replace the first
       // — that would leave a human staring at request B while request A waits for
       // a decision nobody can give. Hand it straight back to the terminal.

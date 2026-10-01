@@ -1,8 +1,10 @@
 // The launch "coucou" — port of GreetingCanvasView.swift.
-// Everything is laid out in the same 640×150 reference space as on macOS.
+// On Windows the island lives on the right edge, so the greeting is laid out
+// in an upright GREET_W×GREET_H space: Mochi slides out of the tab, waves in
+// the middle of the card, then tucks back into the tab.
 
 import { Sound } from "../core/sound";
-import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
+import { GREET_H, GREET_W, TAB_H, TAB_W } from "../core/layout";
 
 // ── Timing (mirrors greeting-v2.html `T`) ─────────────────────────────────────
 
@@ -31,18 +33,16 @@ const T = {
 
 export const GREETING_END = T.end;
 
-// ── Geometry (640×150) ────────────────────────────────────────────────────────
+// ── Geometry (GREET_W×GREET_H) ────────────────────────────────────────────────────────
 
-const C0 = { x: 320, y: 90 };
+const C0 = { x: GREET_W / 2, y: 120 };
 const HB = 58;
 const ASP = 1.34;
-const EAR_X = 40;
-const EAR_Y = 16;
-const EAR_HB = 17;
-const CARD = { x: 10, y: 36, w: 620, h: 104 };
+/** Where Mochi sits in the compact tab, in greeting space. */
+const TAB_BOT = { x: GREET_W - TAB_W / 2, y: GREET_H / 2 - TAB_H / 2 + 36 };
+const TAB_HB = 25;
+const CARD = { x: 10, y: 36, w: GREET_W - 20, h: GREET_H - 46 };
 const CARD_R = 20;
-const SMALL_W = COMPACT_W;
-const SMALL_H = NOTCH_H;
 
 // ── Easing ────────────────────────────────────────────────────────────────────
 
@@ -78,13 +78,15 @@ interface Pose {
 function greetPose(t: number): Pose {
   const gx = seg(t, 0, 0.5);
   const g = Math.sin((Math.PI * gx) / 2) + 0.04 * Math.sin(Math.PI * gx) * gx;
-  const iw = lerp(NOTCH_W, 640, g);
-  const ih = lerp(NOTCH_H, 150, g);
+  const iw = lerp(TAB_W, GREET_W, g);
+  const ih = lerp(TAB_H, GREET_H, g);
 
   const gg = E.back(seg(t, 0.02, T.grow));
   const hb = lerp(3, HB, gg);
-  let x = C0.x;
-  let y = lerp(16, C0.y, E.out(seg(t, 0.02, T.grow)));
+  // Slides out of the tab on the right edge.
+  const out = E.out(seg(t, 0.02, T.grow));
+  let x = lerp(TAB_BOT.x, C0.x, out);
+  let y = lerp(TAB_BOT.y, C0.y, out);
   let sx = 1;
   let sy = 1;
   let tilt = 0;
@@ -156,9 +158,9 @@ function greetPose(t: number): Pose {
 
 function smallPose(): Pose {
   return {
-    hb: EAR_HB,
-    x: 320 - SMALL_W / 2 + EAR_X,
-    y: EAR_Y,
+    hb: TAB_HB,
+    x: TAB_BOT.x,
+    y: TAB_BOT.y,
     sx: 1, sy: 1, tilt: 0,
     eye: "dot", open: 1, eyeRoll: 0,
     lookX: 0, lookY: 0,
@@ -166,7 +168,7 @@ function smallPose(): Pose {
     badge: 1, tint: 0.6, halo: 0.6, haloBlue: 1,
     minis: 1, fx: 1,
     header: 0, card: 0,
-    iw: SMALL_W, ih: SMALL_H,
+    iw: TAB_W, ih: TAB_H,
   };
 }
 
@@ -436,8 +438,8 @@ function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
   for (const ring of PARTICLES.rings) {
     const k = seg(t, ring.t0, ring.t0 + 1.35);
     if (k <= 0 || k >= 1) continue;
-    const rx = lerp(14, 380, E.out(k));
-    const ry = rx * 0.34;
+    const rx = lerp(14, 200, E.out(k));
+    const ry = rx * 0.9;
     const fade = (1 - k) * (k < 0.08 ? k / 0.08 : 1) * p.fx * p.card;
     for (const dot of ring.dots) {
       const r = 1 + dot.j;
@@ -454,8 +456,8 @@ function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
     x.lineWidth = 1.6;
     x.lineCap = "round";
     x.beginPath();
-    x.moveTo(C0.x + Math.cos(s.a) * (dist - s.len), C0.y + Math.sin(s.a) * (dist - s.len) * 0.42);
-    x.lineTo(C0.x + Math.cos(s.a) * dist, C0.y + Math.sin(s.a) * dist * 0.42);
+    x.moveTo(C0.x + Math.cos(s.a) * (dist - s.len), C0.y + Math.sin(s.a) * (dist - s.len) * 0.9);
+    x.lineTo(C0.x + Math.cos(s.a) * dist, C0.y + Math.sin(s.a) * dist * 0.9);
     x.stroke();
   }
 }
@@ -464,8 +466,9 @@ const MINI_COLORS = ["#E86A6A", "#3E86E0", "#EFAE5A", "#8C73F2"];
 
 function drawMinis(x: CanvasRenderingContext2D, alpha: number) {
   if (alpha <= 0.01) return;
-  const cx = 320 + SMALL_W / 2 - 27;
-  const cy = 16;
+  // The 2×2 grid under Mochi in the tab (island.ts: top = h - 40).
+  const cx = TAB_BOT.x;
+  const cy = GREET_H / 2 + TAB_H / 2 - 25.5;
   const sp = 6;
   const offsets: [number, number][] = [[-sp, -sp], [sp, -sp], [-sp, sp], [sp, sp]];
   offsets.forEach(([dx, dy], i) => {
@@ -541,7 +544,7 @@ export class Greeting {
     if (!this.fired && t >= T.end && this.tc >= T.autoLeave) this.fire();
 
     const p = pose(t, this.tc);
-    x.clearRect(0, 0, 640, 150);
+    x.clearRect(0, 0, GREET_W, GREET_H);
 
     if (p.card > 0) {
       x.save();

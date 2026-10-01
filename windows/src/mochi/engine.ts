@@ -66,6 +66,8 @@ const EYE_SP = 0.37;
 const EYE_P = -0.12;
 const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
 const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
+const BASE_TOP_DEFAULT: RGB = [...BASE_TOP] as unknown as RGB;
+const BASE_BOTTOM_DEFAULT: RGB = [...BASE_BOTTOM] as unknown as RGB;
 const INK = "rgb(26,20,18)"; // #1A1412
 const MINI_INK = "rgb(16,19,26)"; // #10131A
 
@@ -82,6 +84,29 @@ const C = {
   sleeping: [0.58, 0.635, 0.722] as RGB,
   dizzy: [0.957, 0.447, 0.714] as RGB,
 };
+
+/**
+ * Recolours Mochi at rest. Mutates C.idle in place: BOT_STATES.idle and every
+ * engine's current colour hold that same array, so the change shows at once.
+ * The state colours (working blue, approval amber…) stay — they carry meaning.
+ */
+export function setMochiColor(hex: string) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return;
+  const v = parseInt(m[1], 16);
+  const c: RGB = [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
+  const idle = C.idle as unknown as number[];
+  const top = BASE_TOP as unknown as number[];
+  const bottom = BASE_BOTTOM as unknown as number[];
+  const isDefault = m[1].toUpperCase() === "E6E9EE";
+  for (let i = 0; i < 3; i++) {
+    idle[i] = c[i];
+    // The body is a top-to-bottom gradient; the default keeps its exact
+    // #EDEDEF → #C4C5CA, any other colour gets the same lighter/darker spread.
+    top[i] = isDefault ? BASE_TOP_DEFAULT[i] : c[i] + (1 - c[i]) * 0.12;
+    bottom[i] = isDefault ? BASE_BOTTOM_DEFAULT[i] : c[i] * 0.84;
+  }
+}
 
 const base = {
   bounces: false, scans: false, breathes: false, zz: false, sweat: false,
