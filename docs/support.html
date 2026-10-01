@@ -13,8 +13,8 @@
 <h2>FAQ</h2>
 <h3>macOS says it can’t verify the app</h3>
 <p>The current Mac build isn’t notarized by Apple yet. The first time, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. You only need to do it once.</p>
-<h3>Windows SmartScreen blocks the installer</h3>
-<p>The Windows installer isn’t code-signed yet, so SmartScreen warns about any app it hasn’t seen before. Click <b>More info</b>, then <b>Run anyway</b>. Coucou installs for your user only and needs no administrator rights.</p>
+<h3>Where is the Windows download?</h3>
+<p>It is paused for now. Microsoft Defender wrongly flags the unsigned Windows installer as malware; a false-positive report is under review at Microsoft, and the installer will come back once it’s cleared and signed. Until then you can <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">build it from source</a>.</p>
 <h3>Mochi doesn’t show my Claude Code sessions</h3>
 <p>Open Settings → Claude Code → <b>Install hooks</b>, review the changes, confirm, then start a new Claude Code session.</p>
 <h3>The chat doesn’t answer</h3>
@@ -23,6 +23,8 @@
 <p>Check its key in Settings → Integrations. Up to 4 integrations can be shown at once.</p>
 <h3>No sound</h3>
 <p>Check the speaker icon in the notch header and the volume in Settings.</p>
+<h3>Does it work without a notch?</h3>
+<p>Yes. On an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the main screen. With the lid open, it stays in the notch.</p>
 <h3>How do I uninstall?</h3>
 <p>Settings → Claude Code → <b>Uninstall</b> (removes only Coucou’s hooks), then quit the app and move it to the Trash. Optionally delete <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>On Windows: same <b>Uninstall</b> button for the hooks, then Windows Settings → Apps → <b>Coucou</b> → Uninstall. Optionally delete <code>%LOCALAPPDATA%\Coucou</code>.</p>
@@ -37,8 +39,8 @@
 <h2>Questions fréquentes</h2>
 <h3>macOS dit qu’il ne peut pas vérifier l’app</h3>
 <p>La version Mac actuelle n’est pas encore notarisée par Apple. La première fois, ouvre <b>Réglages Système → Confidentialité et sécurité</b>, descends et clique sur <b>Ouvrir quand même</b>. Une seule fois suffit.</p>
-<h3>SmartScreen bloque l’installeur Windows</h3>
-<p>L’installeur Windows n’est pas encore signé, donc SmartScreen prévient pour toute app qu’il ne connaît pas. Clique sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>. Coucou s’installe pour ton compte seulement et ne demande aucun droit administrateur.</p>
+<h3>Où est le téléchargement Windows ?</h3>
+<p>Il est en pause pour le moment. Microsoft Defender détecte à tort l’installeur Windows (non signé) comme un malware ; un signalement de faux positif est en cours d’analyse chez Microsoft, et l’installeur reviendra dès que ce sera réglé et signé. En attendant, tu peux <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">le compiler depuis le code source</a>.</p>
 <h3>Mochi n’affiche pas mes sessions Claude Code</h3>
 <p>Réglages → Claude Code → <b>Install hooks</b>, vérifie les changements, confirme, puis lance une nouvelle session Claude Code.</p>
 <h3>Le chat ne répond pas</h3>
@@ -47,6 +49,8 @@
 <p>Vérifie sa clé dans Réglages → Intégrations. Jusqu’à 4 intégrations s’affichent en même temps.</p>
 <h3>Pas de son</h3>
 <p>Vérifie l’icône haut-parleur dans l’en-tête du notch et le volume dans les Réglages.</p>
+<h3>Ça marche sans notch ?</h3>
+<p>Oui. Sur un iMac, un Mac mini ou un MacBook capot fermé branché à un écran externe, Mochi s’affiche dans une petite barre en haut de l’écran principal. Capot ouvert, il reste dans le notch.</p>
 <h3>Comment désinstaller ?</h3>
 <p>Réglages → Claude Code → <b>Uninstall</b> (retire seulement les hooks de Coucou), puis quitte l’app et mets-la à la corbeille. Tu peux aussi supprimer <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>Sous Windows : le même bouton <b>Uninstall</b> pour les hooks, puis Paramètres Windows → Applications → <b>Coucou</b> → Désinstaller. Tu peux aussi supprimer <code>%LOCALAPPDATA%\Coucou</code>.</p>

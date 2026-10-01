@@ -120,7 +120,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
   3 items maximum. Si le JSON est invalide : afficher le texte brut (3 lignes max) dans la vue `result`.
 - Contenu du message utilisateur : capture (bloc image) + « URL : … / Titre : … / Demande : … », ou fichier (§3) + demande, ou demande seule (onglet Demander).
 - Pendant l'appel : état `searching`, vue `searching`, texte scintillant. Réponse : état `finished`, vue `result`, émote Fier, son `finish`.
-- Boutons du résultat : « Ouvrir » (premier lien), « Copier » (texte), « Fermer ».
+- Boutons du résultat : « Ouvrir » (premier lien, seulement s'il est en http ou https ; sinon le bouton est grisé), « Copier » (texte), « Fermer ».
 - Erreur réseau ou clé invalide : état `error`, vue `note` avec la raison en une phrase et « Ouvre les réglages pour vérifier la clé ».
 - Micro (bouton du champ) : dictée `SFSpeechRecognizer` en `fr-FR`, sur l'appareil si possible. Optionnel (M9). Si la permission est refusée, masquer le bouton.
 

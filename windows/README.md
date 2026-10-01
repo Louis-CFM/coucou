@@ -21,20 +21,13 @@ Approve Claude Code or Codex permissions, watch your sessions work, drop a file,
 
 ## Install
 
-1. Download `Coucou-Windows-setup.exe` from the [latest release](../../releases/tag/windows-latest).
-2. Run it. It installs for the current user only — no admin prompt.
-3. Coucou starts, waves hello, and then gets out of the way.
+The downloadable installer is **temporarily unavailable**. Microsoft Defender
+wrongly flags the unsigned installer as malware (`Trojan:Win32/Wacatac.H!ml`, a
+machine-learning false positive). A report is under review at Microsoft, and the
+installer will be published again once it is cleared and code-signed.
 
-### "Windows protected your PC"
-
-The installer isn't code-signed yet, so **SmartScreen** shows a blue warning the first
-few times anybody downloads it:
-
-> Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognised app from starting.
-
-Click **More info**, then **Run anyway**. That's it. Signing is on the list; until
-then this is what an unsigned installer looks like on Windows, and you can always
-[build it yourself](#build-it-yourself) if you'd rather not trust a download.
+Until then, [build it yourself](#build-it-yourself): it takes a few minutes and
+installs for the current user only — no admin prompt.
 
 ## Using it
 

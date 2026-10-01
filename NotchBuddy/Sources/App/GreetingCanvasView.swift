@@ -31,14 +31,9 @@ private let GC0     = CGPoint(x: 320, y: 90)   // Mochi center
 private let GHB:    CGFloat = 58                // body height at full size
 private let GASP:   CGFloat = 1.34             // body width/height ratio
 private let GEAR_X: CGFloat = 40               // ear x from small island left edge (matches BotPlacement compact x=40)
-private let GEAR_Y: CGFloat = 16               // ear y
 private let GEAR_HB:CGFloat = 17               // ear body height
 private let GCARD   = CGRect(x: 10, y: 36, width: 620, height: 104)
 private let GCARD_R:CGFloat = 20
-
-// Small island = compact mode size (matches our actual nw+160)
-private var GSMALL_W: CGFloat { IslandConst.notchWidth + 160 }
-private let GSMALL_H: CGFloat = IslandConst.notchHeight
 
 // MARK: - Easing (mirrors E = {...})
 
@@ -101,18 +96,18 @@ private let greetParticles: (rings: [GRing], streaks: [GStreak]) = {
 
 // MARK: - Pose computation
 
-private func greetPose(_ t: Double) -> GreetPose {
+private func greetPose(_ t: Double, compact: IslandRestingLayout) -> GreetPose {
     // island size interpolation (used as reference for clip, not drawn)
     let gx = gSeg(t, 0, 0.5)
     let g  = sin(.pi*gx/2) + 0.04*sin(.pi*gx)*gx
-    let iw = gLerp(Double(IslandConst.notchWidth), 640, g)
-    let ih = gLerp(Double(IslandConst.notchHeight), 150, g)
+    let iw = gLerp(Double(compact.width - 160), 640, g)
+    let ih = gLerp(Double(compact.height), 150, g)
 
     // body grows with back-ease (tiny → full size)
     let gg = GE.back(gSeg(t, 0.02, GT.grow))
     var hb = gLerp(3, Double(GHB), gg)
     var x  = Double(GC0.x)
-    var y  = gLerp(16, Double(GC0.y), GE.out(gSeg(t, 0.02, GT.grow)))
+    var y  = gLerp(Double(compact.botCenterY), Double(GC0.y), GE.out(gSeg(t, 0.02, GT.grow)))
     var sx = 1.0, sy = 1.0, tilt = 0.0
 
     // dip (1.25→1.52): body squishes forward
@@ -179,12 +174,12 @@ private func greetPose(_ t: Double) -> GreetPose {
     )
 }
 
-private func smallPose() -> GreetPose {
-    let sw = Double(GSMALL_W)
+private func smallPose(_ compact: IslandRestingLayout) -> GreetPose {
+    let sw = Double(compact.width)
     return GreetPose(
-        hb: Double(GEAR_HB),
+        hb: Double(GEAR_HB * compact.botDiameter / 20),
         x: 320 - sw/2 + Double(GEAR_X),
-        y: Double(GEAR_Y),
+        y: Double(compact.botCenterY),
         sx: 1, sy: 1, tilt: 0,
         eye: .dot, open: 1, eyeRoll: 0,
         lookX: 0, lookY: 0,
@@ -192,14 +187,14 @@ private func smallPose() -> GreetPose {
         badge: 1, tint: 0.6, halo: 0.6, haloBlue: 1,
         minis: 1, fx: 1,
         header: 0, card: 0,
-        iw: sw, ih: Double(GSMALL_H)
+        iw: sw, ih: Double(compact.height)
     )
 }
 
-private func pose(_ t: Double, tc: Double) -> GreetPose {
-    if t < tc { return greetPose(min(t, GT.end + 10)) }
-    let a = greetPose(tc)
-    let b = smallPose()
+private func pose(_ t: Double, tc: Double, compact: IslandRestingLayout) -> GreetPose {
+    if t < tc { return greetPose(min(t, GT.end + 10), compact: compact) }
+    let a = greetPose(tc, compact: compact)
+    let b = smallPose(compact)
     let e = GE.inOut(gSeg(t, tc, tc + GT.COLLAPSE))
     var p = a
     p.iw = gLerp(a.iw, b.iw, e); p.ih = gLerp(a.ih, b.ih, e)
@@ -495,16 +490,17 @@ private func drawHeader(_ ctx: CGContext, alpha: Double) {
 
 private let miniColors = ["#E86A6A","#3E86E0","#EFAE5A","#8C73F2"]
 
-private func drawMinis(_ ctx: CGContext, alpha: Double) {
+private func drawMinis(_ ctx: CGContext, alpha: Double, compact: IslandRestingLayout) {
     guard alpha > 0.01 else { return }
-    let cx = 320 + GSMALL_W/2 - 27
-    let cy: CGFloat = 16
-    let sp: CGFloat = 6
+    let cx = 320 - compact.width/2 + compact.miniGridCenterX
+    let cy = compact.botCenterY
+    let sp: CGFloat = 6 * compact.miniGridScale
     let offsets: [(CGFloat, CGFloat)] = [(-sp,-sp),(sp,-sp),(-sp,sp),(sp,sp)]
     for (i,(dx,dy)) in offsets.enumerated() {
         ctx.saveGState()
         ctx.translateBy(x: cx+dx, y: cy+dy)
-        ctx.scaleBy(x: CGFloat(alpha), y: CGFloat(alpha))
+        let scale = CGFloat(alpha) * compact.miniGridScale
+        ctx.scaleBy(x: scale, y: scale)
         ctx.setFillColor(gHex(miniColors[i]))
         ctx.addPath(mochiPath(hw: 5.3, hh: 4)); ctx.fillPath()
         ctx.restoreGState()
@@ -513,8 +509,8 @@ private func drawMinis(_ ctx: CGContext, alpha: Double) {
 
 // MARK: - Full draw function
 
-private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double, tc: Double) {
-    let p = pose(t, tc: tc)
+private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double, tc: Double, compact: IslandRestingLayout) {
+    let p = pose(t, tc: tc, compact: compact)
 
     // Card background (dark panel)
     if p.card > 0 {
@@ -538,7 +534,7 @@ private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double, tc: Double)
     }
 
     // drawHeader: no icons during greeting
-    drawMinis(ctx, alpha: p.minis)
+    drawMinis(ctx, alpha: p.minis, compact: compact)
     drawMochi(ctx, p: p)
 }
 
@@ -561,7 +557,9 @@ struct GreetingCanvasView: View {
             let t = timeline.date.timeIntervalSince(startDate)
             Canvas { context, size in
                 context.withCGContext { cgCtx in
-                    drawGreeting(cgCtx, size: size, t: t, tc: tc)
+                    drawGreeting(cgCtx, size: size, t: t, tc: tc,
+                                 compact: IslandRestingLayout(width: state.notchWidth + 160,
+                                                              height: state.notchHeight))
                 }
             }
             // Fire greetComplete exactly once at T.end (when no hover)

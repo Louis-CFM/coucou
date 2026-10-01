@@ -12,6 +12,13 @@ on:
 permissions:
   contents: write
 
+# Publishing is paused: Defender flags the unsigned installer as
+# Trojan:Win32/Wacatac.H!ml (false positive, reported to Microsoft). Tags still
+# build, to check the app compiles, but nothing is uploaded. Set this back to
+# 'true' once the installer is signed or the detection is cleared.
+env:
+  PUBLISH: 'false'
+
 jobs:
   build:
     runs-on: windows-latest
@@ -81,12 +88,13 @@ jobs:
           Get-ChildItem release | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v4
+        if: env.PUBLISH == 'true'
         with:
           name: Coucou-Windows-setup
           path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}-setup.exe
 
       - name: Publish the release
-        if: startsWith(github.ref, 'refs/tags/windows-v')
+        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,7 +118,7 @@ jobs:
             --latest=false
 
       - name: Update the rolling windows-latest release
-        if: startsWith(github.ref, 'refs/tags/windows-v')
+        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

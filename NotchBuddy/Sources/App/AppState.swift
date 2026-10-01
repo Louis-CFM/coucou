@@ -42,6 +42,7 @@ final class AppState: ObservableObject {
     // Real notch dimensions (set by IslandWindowController on launch)
     var notchWidth:  CGFloat = IslandConst.notchWidth
     var notchHeight: CGFloat = IslandConst.notchHeight
+    var hasNotch = true
 
     // Last app active before NotchBuddy (for window context capture)
     var lastExternalApp: NSRunningApplication? = nil

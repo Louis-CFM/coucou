@@ -11,6 +11,12 @@ cd NotchBuddy && xcodegen && open NotchBuddy.xcodeproj
 
 Never edit `NotchBuddy.xcodeproj` by hand: change `project.yml` and run `xcodegen`.
 
+Check resting island dimensions on screens with and without a notch:
+
+```bash
+bash scripts/test-screen-geometry.sh
+```
+
 ## Good first contributions
 
 - A new integration (a poller + a pill + a detail card). Look at `StripePoller.swift` for a compact example.
