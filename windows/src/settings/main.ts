@@ -209,6 +209,11 @@ function opencodeSection(status: OpencodeStatus): HTMLElement {
         h("span", { class: "path", text: status.relayReady ? "coucou-hook.exe ready" : "coucou-hook.exe missing" }),
         statusDot(status.relayReady),
       ),
+      h("div", { class: "row" },
+        h("label", { text: "Persistent server" }),
+        toggle(settings.chatViaServer, (v) => { settings.chatViaServer = v; void save(); }),
+        h("span", { class: "hint", text: "on keeps one opencode server open for chat; off runs a fresh opencode per message" }),
+      ),
     );
 
     if (!status.relayReady) {
@@ -598,14 +603,30 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // 0 means "Off" — the island stays open until it is dismissed. The field is a
+  // number input so any delay can be typed, with 0 as the documented off switch.
   const autoClose = h("input", {
-    type: "number", min: "5", max: "120", step: "1",
+    type: "number", min: "0", max: "600", step: "1",
     value: String(Math.round(settings.autoCloseInterval)),
     style: "width:72px",
   }) as HTMLInputElement;
   autoClose.addEventListener("change", () => {
-    settings.autoCloseInterval = Math.max(5, Math.min(120, Number(autoClose.value) || 15));
-    autoClose.value = String(settings.autoCloseInterval);
+    const raw = Number(autoClose.value);
+    settings.autoCloseInterval = Number.isFinite(raw) ? Math.max(0, Math.min(600, raw)) : 15;
+    autoClose.value = String(Math.round(settings.autoCloseInterval));
+    void save();
+  });
+
+  // Same deal for the fully-reduced timer: 0 = stay compact indefinitely.
+  const absence = h("input", {
+    type: "number", min: "0", max: "3600", step: "10",
+    value: String(Math.round(settings.absenceInterval)),
+    style: "width:72px",
+  }) as HTMLInputElement;
+  absence.addEventListener("change", () => {
+    const raw = Number(absence.value);
+    settings.absenceInterval = Number.isFinite(raw) ? Math.max(0, Math.min(3600, raw)) : 180;
+    absence.value = String(Math.round(settings.absenceInterval));
     void save();
   });
 
@@ -617,6 +638,29 @@ function generalSection(): HTMLElement {
   screen.value = settings.screen;
   screen.addEventListener("change", () => {
     settings.screen = screen.value as Settings["screen"];
+    void save();
+  });
+
+  // Snap presets for the resting island. The value stored is a fraction across
+  // the display, so these map straight onto it and a manual drag fills anything
+  // in between.
+  const POSITIONS: { value: number; text: string }[] = [
+    { value: 0, text: "Left" },
+    { value: 0.5, text: "Center" },
+    { value: 1, text: "Right" },
+  ];
+  const position = h("select", {}) as HTMLSelectElement;
+  const CUSTOM = "__custom";
+  position.append(
+    ...POSITIONS.map((p) => h("option", { value: String(p.value), text: p.text })),
+    h("option", { value: CUSTOM, text: "Custom" }),
+  );
+  // Tolerate a fraction that is no longer exactly one of the presets.
+  const preset = POSITIONS.find((p) => Math.abs(p.value - settings.notchPosition) < 0.005);
+  position.value = preset ? String(preset.value) : CUSTOM;
+  position.addEventListener("change", () => {
+    if (position.value === CUSTOM) return;
+    settings.notchPosition = Number(position.value);
     void save();
   });
 
@@ -632,11 +676,31 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: "Auto-close" }),
       autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+      h("span", { class: "hint", text: "seconds after you leave the island — 0 = never" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Fully compact" }),
+      absence,
+      h("span", { class: "hint", text: "seconds before it reduces to the stub — 0 = never" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Keep pinned" }),
+      toggle(settings.pinIsland, (v) => { settings.pinIsland = v; void save(); }),
+      h("span", { class: "hint", text: "ignores outside clicks and auto-close" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Wake on hover" }),
+      toggle(settings.wakeOnHover, (v) => { settings.wakeOnHover = v; void save(); }),
+      h("span", { class: "hint", text: "off means the reduced island waits for a click" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
       screen,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Island sits" }),
+      position,
+      h("span", { class: "hint", text: "or drag the resting bar sideways" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
