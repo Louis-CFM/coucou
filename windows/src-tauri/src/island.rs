@@ -133,24 +133,54 @@ fn cursor_physical() -> Option<(f64, f64)> {
 /// through to the target wry registered on the parent widget, which is the one
 /// that feeds Tauri's drag events.
 ///
-/// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+/// WebView2 may re-register its target later (it owns that child window), which
+/// is exactly the "first drop works, later drops refuse" failure mode: the
+/// revoke has to be re-run throughout a drag, not just on the button edge.
+/// Cheap and idempotent, so the poll re-runs it while a button is held inside
+/// the window.
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
         let Some(win) = app.get_webview_window(label) else { continue };
         let Some(hwnd) = hwnd_of(&win) else { continue };
+        let mut ctx = UnblockCtx { visited: 0, revoked: 0, failed: 0 };
         unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
+            let _ = EnumChildWindows(
+                Some(hwnd),
+                Some(revoke_render_widget),
+                LPARAM(&mut ctx as *mut UnblockCtx as isize),
+            );
+        }
+        if ctx.visited > 0 {
+            crate::log::line(format!(
+                "unblock {label}: children={} revoked={} failed={}",
+                ctx.visited, ctx.revoked, ctx.failed
+            ));
         }
     }
 }
 
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
+struct UnblockCtx {
+    visited: u32,
+    revoked: u32,
+    failed: u32,
+}
+
+unsafe extern "system" fn revoke_render_widget(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let ctx = unsafe { &mut *(lparam.0 as *mut UnblockCtx) };
     let mut name = [0u16; 64];
     let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
+    if len == 0 {
+        return true.into();
+    }
+    let class = String::from_utf16_lossy(&name[..len as usize]);
+    // Any Chromium render widget eats drops; class names gain suffixes across
+    // WebView2 releases, so match by prefix rather than the exact historic name.
+    if class.starts_with("Chrome_RenderWidgetHostHWND") {
+        ctx.visited += 1;
+        if unsafe { RevokeDragDrop(hwnd) }.is_ok() {
+            ctx.revoked += 1;
+        } else {
+            ctx.failed += 1;
         }
     }
     true.into()
@@ -278,6 +308,12 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
+        // Last unblock while a button is held inside the window: WebView2 may
+        // re-register its inner drop target mid-drag, so the revoke is
+        // refreshed instead of trusted once.
+        let mut last_unblock = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(10))
+            .unwrap_or_else(std::time::Instant::now);
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
@@ -351,21 +387,30 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives. (`down` was read above, before
                 // the movement check, so a press without movement still lands.)
-                if down && !was_down {
+                // While the button stays held inside the window a file drag may
+                // be in flight: refresh the revoke every ~500 ms in case
+                // WebView2 re-registered its inner target since the edge.
+                let in_window = x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1;
+                if down && in_window
+                    && (!was_down
+                        || last_unblock.elapsed() >= std::time::Duration::from_millis(500))
+                {
+                    last_unblock = std::time::Instant::now();
                     let handle = app.clone();
                     let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
                 }
                 was_down = down;
 
-                let dragging = down
-                    && x >= 0.0
-                    && x <= size.0
-                    && y >= 0.0
-                    && y <= size.1;
+                let dragging = down && in_window;
 
                 let accept = on_island || dragging;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
+                    if down {
+                        crate::log::line(format!(
+                            "drop target take (on_island={on_island} dragging={dragging})"
+                        ));
+                    }
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
 
