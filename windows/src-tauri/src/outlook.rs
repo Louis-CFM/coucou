@@ -126,8 +126,8 @@ async fn access_token() -> Result<String, String> {
 async fn get_json(url: &str, token: &str) -> Result<Value, String> {
     let http = client()?;
     let response = http
-        .bearer_auth(token)
         .get(url)
+        .bearer_auth(token)
         .header("Accept", "application/json")
         .send()
         .await
@@ -245,7 +245,7 @@ pub async fn begin_device(client_id: String) -> Result<DeviceChallenge, String> 
 /// Polls for the grant after the user approves (up to ~3 min). Stores tokens
 /// and returns silently; the pill picks them up on the next poll.
 pub async fn poll_device() -> Result<(), String> {
-    let id = client_id().ok_or_else(|| "paste the OAuth client (application) ID first".into())?;
+    let id: String = client_id().ok_or_else(|| "paste the OAuth client (application) ID first".to_string())?;
     // The device_code must survive between begin and poll: keep it in the
     // Credential Manager under a transient key.
     let device_code = crate::secrets::get("outlook-device-code")

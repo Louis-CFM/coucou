@@ -91,28 +91,39 @@ only ask whether a key exists. Same for every integration key.
 
 ## Mail pills (Gmail + Outlook)
 
-Two ways in, per account:
+Two ways in, per account. OAuth is recommended: it survives firewalls that
+block IMAP port 993 and accounts with basic auth disabled.
 
-- **Gmail via Google sign-in (recommended, works behind firewalls).** Create
-  your own OAuth client once: [Google Cloud Console](https://console.cloud.google.com/)
-  → new project → enable the **Gmail API** → OAuth consent screen (External,
-  add your address as test user) → Credentials → **OAuth client ID → Desktop
-  app**. Paste the client ID + secret in Settings → Gmail → **Sign in with
-  Google**, approve in the browser, done. Tokens stay in the Credential
-  Manager; only `gmail.readonly` is requested.
-- **Outlook via Microsoft sign-in (recommended, survives disabled basic
-  auth).** Register your own app once: [Azure Portal](https://portal.azure.com/)
-  → Microsoft Entra ID → App registrations → New (personal accounts) →
-  platform **Mobile and desktop applications**, delegated permission
-  **Mail.Read**. Paste the Application (client) ID in Settings → Outlook →
-  **Sign in with Microsoft**, approve the shown code in the browser, done.
-  Tokens stay in the Credential Manager; only `Mail.Read` is requested.
-- **IMAP app passwords (fallback).** Gmail: Google Account → Security →
-  2-Step Verification → App passwords. Outlook: Microsoft Account → Security
-  → Advanced security → App passwords (personal accounts; some tenants — and
-  accounts with basic auth disabled — reject them, so prefer OAuth above).
-  Note: networks that block outbound port 993 break IMAP entirely; OAuth
-  keeps working.
+### Gmail — connect with Google
+
+1. Create your own OAuth client (once, free):
+   [Google Cloud Console](https://console.cloud.google.com/) → new project →
+   **APIs & Services → Library → Gmail API → Enable** → **OAuth consent
+   screen** (External; add your address under Test users) → **Credentials →
+   Create Credentials → OAuth client ID → Desktop app**.
+2. In Coucou: Settings → Gmail → paste the **client ID + client secret** →
+   **Sign in with Google** → approve in the browser → done.
+3. Toggle the Gmail pill on. Only `gmail.readonly` is requested; tokens stay
+   in the Credential Manager.
+
+### Outlook — connect with Microsoft
+
+1. Register your own app (once, free): [Azure Portal](https://portal.azure.com/)
+   → Microsoft Entra ID → **App registrations → New registration** (personal
+   accounts) → platform **Mobile and desktop applications** → add the
+   delegated permission **Mail.Read**. Copy the **Application (client) ID**.
+2. In Coucou: Settings → Outlook → paste the ID → **Sign in with
+   Microsoft** → approve the shown code in the browser → done.
+3. Toggle the Outlook pill on. Only `Mail.Read` is requested; tokens stay in
+   the Credential Manager.
+
+### IMAP app passwords (fallback for both)
+
+Gmail: Google Account → Security → 2-Step Verification → App passwords.
+Outlook: Microsoft Account → Security → Advanced security → App passwords
+(personal accounts; tenants — or accounts — with basic auth disabled reject
+them, so prefer OAuth above). Note: networks that block outbound port 993
+break IMAP entirely; OAuth keeps working.
 
 The card shows the unread count plus the newest subjects, and pings when new
 mail lands.
