@@ -3,7 +3,9 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli" | "media" | "n8n";
+export type AgentSource =
+  | "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli"
+  | "media" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
 export type Lang = "en" | "pt-BR";
 export type IslandTheme = "onyx" | "ice" | "frost";
@@ -227,10 +229,45 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Keep the declared order so pills never shuffle.
+    // Order: integration_claude first, then dynamic CLI/agent pills (visible
+    // in slice(0,4)), then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    this.tasks.sort((a, b) => {
+      const isDynA = a.id.startsWith("agent_") || a.id.startsWith("cli_");
+      const isDynB = b.id.startsWith("agent_") || b.id.startsWith("cli_");
+      // integration_claude always first
+      if (a.id === "integration_claude") return -1;
+      if (b.id === "integration_claude") return 1;
+      // dynamic pills before other integrations; preserve insertion order
+      if (isDynA && !isDynB) return -1;
+      if (isDynB && !isDynA) return 1;
+      if (isDynA && isDynB) return 0;
+      // both known integrations → declaration order
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
     if (!this.focusId) this.focusId = "integration_claude";
+    this.notify();
+  }
+
+  removeTask(id: string) {
+    const idx = this.tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    this.tasks.splice(idx, 1);
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    this.notify();
+  }
+
+  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
+   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  upsertExternalAgent(id: string, name: string, color: string) {
+    if (this.tasks.some((t) => t.id === id)) return;
+    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
+    this.tasks.splice(at, 0, {
+      id, name, color,
+      state: "idle", stepIndex: 0, steps: [],
+      source: "agent", isIntegration: false,
+    });
+    if (!this.focusId) this.focusId = id;
     this.notify();
   }
 

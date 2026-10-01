@@ -60,6 +60,7 @@ struct AgentTask: Identifiable, Equatable {
 enum AgentSource: Equatable {
     case claudeCode
     case n8n
+    case agent   // third-party agent via coucou_agent field
 }
 
 // MARK: - View dimensions (from VIEWS in prototype)
@@ -79,7 +80,7 @@ enum AgentLayoutMode {
 // MARK: - Constants (from NW, NH, EW in prototype)
 
 enum IslandConst {
-    static let notchWidth: CGFloat  = 184
+    static let notchWidth: CGFloat  = IslandScreenGeometry.fallbackNotchWidth
     static let notchHeight: CGFloat = 32
     static let expandedWidth: CGFloat = 640
     static let earRadius: CGFloat   = 14

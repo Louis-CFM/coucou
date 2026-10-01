@@ -94,7 +94,7 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "2"
+        CFBundleVersion: "4"
         CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
@@ -114,3 +114,4 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStore.entitlements
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
+        CODE_SIGNING_ALLOWED: YES

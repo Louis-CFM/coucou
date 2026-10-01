@@ -18,6 +18,12 @@ jobs:
       - name: Generate project
         run: cd NotchBuddy && xcodegen
 
+      - name: Test screen geometry
+        run: bash scripts/test-screen-geometry.sh
+
+      - name: Test link filter
+        run: bash scripts/test-safe-links.sh
+
       - name: Build
         run: |
           xcodebuild \

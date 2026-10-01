@@ -218,14 +218,34 @@ fn read_event() -> Option<(String, String)> {
     let mut payload = serde_json::from_slice::<serde_json::Value>(&raw).ok()?;
     let map = payload.as_object_mut()?;
 
-    // The event name is passed as argv[1] by the hook command; the JSON usually
-    // carries it too. Trust argv when the JSON is missing it.
-    // argv[2] (optional) is the source: "claude" (default), "gemini", "agy",
-    // "opencode". Env COUCOU_SOURCE overrides argv — useful for matchers that
-    // share the same command line.
-    let args: Vec<String> = std::env::args().collect();
-    let arg_event = args.get(1).cloned().unwrap_or_default();
-    let arg_source = args.get(2).cloned().unwrap_or_default();
+    // Parse argv, supporting both call shapes:
+    //   "coucou-hook.exe [--agent <name>] [<EventName>]"      (upstream)
+    //   "coucou-hook.exe [<EventName>] [<source>] [--agent <name>]" (this fork)
+    // --agent tags the payload with coucou_agent so the app routes to the
+    // right pill; the positional source (claude/gemini/agy/opencode) tags it
+    // with source. Absent or invalid names are validated downstream, not here.
+    // Env COUCOU_SOURCE overrides argv — useful for matchers that share
+    // the same command line.
+    let mut agent = String::new();
+    let mut arg_event = String::new();
+    let mut arg_source = String::new();
+    {
+        let mut it = std::env::args().skip(1);
+        while let Some(arg) = it.next() {
+            if arg == "--agent" {
+                agent = it.next().unwrap_or_default();
+            } else if arg_event.is_empty() {
+                arg_event = arg;
+            } else if arg_source.is_empty() {
+                arg_source = arg;
+            }
+        }
+    }
+    // Which agent this hook was installed for. Absent means Claude Code,
+    // so existing hook commands keep working unchanged.
+    if !agent.is_empty() {
+        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+    }
     let mut event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())

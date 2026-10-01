@@ -4,7 +4,7 @@
 
 # Coucou
 
-**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
+**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
 
 Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
 
@@ -31,10 +31,10 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 ## Features
 
-- 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
-- ♊ **Gemini CLI + Antigravity (`agy`) + opencode, side by side** *(Windows)* — Gemini sessions (via `~/.gemini/settings.json` hooks), Antigravity sessions (via `~/.gemini/config/hooks.json`, pink `agy` pills) and opencode sessions (via the bundled plugin in `windows/opencode-plugin/`) show up as their own pills next to Claude, each with its own steps and working folder. Approvals from the notch stay Claude-only for now.
+- 🤖 **Claude Code, Gemini CLI, Antigravity and other agents, live** — see every session in your notch: what it reads, edits and runs, step by step. Tag a hook payload with `coucou_agent` to give any agent its own pill (see [`docs/AGENTS.md`](docs/AGENTS.md)). Finished? Mochi does a happy little jump.
+- ♊ **Multi-CLI side by side** *(Windows fork)* — Gemini sessions (via `~/.gemini/settings.json` hooks), Antigravity sessions (via `~/.gemini/config/hooks.json`, pink `agy` pills) and opencode sessions (via the bundled plugin in `windows/opencode-plugin/`) show up as their own pills next to Claude, each with its own steps and working folder. Approvals from the notch stay Claude-only for now.
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
-- 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
+- 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS; Windows focuses the console by folder name)*.
 - 💬 **Ask Claude or Gemini anything** — built-in chat, straight from the notch. Pick the provider in Settings (Anthropic key or Google `AIza…` key).
 - 🇧🇷 **PT-BR interface** *(Windows fork)* — header badge shows the language, Settings switches everything live, no restart.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
@@ -42,6 +42,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
+- 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
 
 <table>
@@ -102,6 +103,8 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
+| **Gemini CLI hooks** *(macOS)* | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
+| **Antigravity (agy) hooks** *(macOS)* | agy sessions in the island | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json` |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 

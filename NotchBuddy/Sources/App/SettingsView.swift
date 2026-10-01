@@ -5,13 +5,43 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+
+    // Claude model — dynamic list fetched from the API, static fallback if unavailable
+    private static let fallbackModels: [(id: String, label: String)] = [
+        ("claude-sonnet-4-6",         "Claude Sonnet 4.6"),
+        ("claude-sonnet-5-5",         "Claude Sonnet 5.5"),
+        ("claude-opus-5-5",           "Claude Opus 5.5"),
+        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+    ]
+    private static let customModelTag = "__custom__"
+    @State private var fetchedModels: [(id: String, label: String)] = []
+    @State private var modelChoice: String = {
+        let m = AppState.shared.claudeModel
+        return SettingsView.fallbackModels.contains { $0.id == m } ? m : SettingsView.customModelTag
+    }()
+    @State private var customModel: String = {
+        let m = AppState.shared.claudeModel
+        return SettingsView.fallbackModels.contains { $0.id == m } ? "" : m
+    }()
+    private var displayModels: [(id: String, label: String)] {
+        fetchedModels.isEmpty ? Self.fallbackModels : fetchedModels
+    }
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
-    #if APPSTORE
-    @State private var claudeAccessGranted: Bool = (UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") != nil)
+
+    #if !APPSTORE
+    @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
+    @State private var showGeminiDiff: Bool = false
+    @State private var pendingGeminiJSON: String = ""
+    @State private var geminiPendingInstall: Bool = true
+
+    @State private var agyHooksInstalled: Bool = HookServer.agyHooksInstalled()
+    @State private var showAgyDiff: Bool = false
+    @State private var pendingAgyJSON: String = ""
+    @State private var agyPendingInstall: Bool = true
     #endif
 
     // Integration keys
@@ -59,6 +89,32 @@ struct SettingsView: View {
                             statusMessage = "✓ Key saved."
                         }
                         .buttonStyle(.borderedProminent)
+
+                        Divider().padding(.vertical, 2)
+
+                        Picker("Model", selection: $modelChoice) {
+                            ForEach(displayModels, id: \.id) { preset in
+                                Text(preset.label).tag(preset.id)
+                            }
+                            Text("Custom…").tag(Self.customModelTag)
+                        }
+                        .onChange(of: modelChoice) { _, choice in
+                            if choice != Self.customModelTag {
+                                state.claudeModel = choice
+                            } else {
+                                applyCustomModel(customModel)
+                            }
+                        }
+
+                        if modelChoice == Self.customModelTag {
+                            TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: customModel) { _, value in applyCustomModel(value) }
+                        }
+
+                        Text("Used by the chat. The list comes from your Anthropic account.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
                     }
                     .padding(6)
                 }
@@ -81,22 +137,14 @@ struct SettingsView: View {
                             #endif
                         }
                         #if APPSTORE
-                        if claudeAccessGranted {
-                            Text("~/.claude/coucou/nb-hook")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            HStack(spacing: 10) {
-                                Button("Install hooks") { installHooksAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Uninstall") { uninstallHooksAppStore() }
-                                    .buttonStyle(.bordered)
-                            }
-                        } else {
-                            Text("Choose your ~/.claude folder so Coucou can add its hooks.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                            Button("Choose .claude folder…") { chooseClaudeFolder() }
+                        Text("~/.claude/coucou/nb-hook")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { installHooksAppStore() }
                                 .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { uninstallHooksAppStore() }
+                                .buttonStyle(.bordered)
                         }
                         #else
                         Text("nb-hook : \(HookServer.hookScriptPath)")
@@ -110,6 +158,7 @@ struct SettingsView: View {
                         }
                         #endif
 
+                        #if !APPSTORE
                         if showDiff {
                             ScrollView {
                                 Text(pendingHookJSON)
@@ -121,20 +170,85 @@ struct SettingsView: View {
                             .cornerRadius(6)
 
                             HStack {
-                                #if APPSTORE
-                                Button("Confirm & write") { confirmInstallAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                #else
                                 Button("Confirm & write") { confirmInstall() }
                                     .buttonStyle(.borderedProminent)
-                                #endif
                                 Button("Cancel") { showDiff = false; pendingHookJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(6)
+                }
+
+                // MARK: Gemini CLI Hooks / Antigravity Hooks
+                #if !APPSTORE
+                GroupBox("Gemini CLI Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(geminiHooksInstalled
+                             ? "Hooks installed — restart Gemini CLI to activate"
+                             : "~/.gemini/settings.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerGeminiPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerGeminiPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showGeminiDiff {
+                            ScrollView {
+                                Text(pendingGeminiJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmGeminiOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
                                     .buttonStyle(.bordered)
                             }
                         }
                     }
                     .padding(6)
                 }
+
+                GroupBox("Antigravity Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(agyHooksInstalled
+                             ? "Hooks installed — restart Antigravity to activate"
+                             : "~/.gemini/config/hooks.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerAgyPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerAgyPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showAgyDiff {
+                            ScrollView {
+                                Text(pendingAgyJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmAgyOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+                #endif
 
                 // MARK: Integrations
                 GroupBox("Integrations") {
@@ -353,10 +467,34 @@ struct SettingsView: View {
             }
             .padding(20)
         }
-        .frame(width: 480, height: 720)
+        .onAppear {
+            guard fetchedModels.isEmpty,
+                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
+            Task {
+                let models = await ClaudeService.fetchModels(apiKey: key)
+                guard !models.isEmpty else { return }
+                await MainActor.run {
+                    fetchedModels = models
+                    let m = state.claudeModel
+                    if models.contains(where: { $0.id == m }) {
+                        modelChoice = m
+                        customModel = ""
+                    } else if modelChoice != Self.customModelTag {
+                        modelChoice = Self.customModelTag
+                        customModel = m
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
     }
 
     // MARK: - Actions
+
+    private func applyCustomModel(_ value: String) {
+        let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !id.isEmpty { state.claudeModel = id }
+    }
 
     private func toggleStartup(_ on: Bool) {
         do {
@@ -371,86 +509,48 @@ struct SettingsView: View {
     // MARK: - App Store: hooks via NSOpenPanel + security-scoped bookmark
 
     #if APPSTORE
-    private func chooseClaudeFolder() {
+    /// Opens NSOpenPanel to select ~/.claude, then writes hooks directly.
+    /// NSOpenPanel grants sandbox access immediately — no security-scoped bookmark needed.
+    private func pickClaudeFolder(prompt: String) -> URL? {
         let panel = NSOpenPanel()
-        panel.message = "Choose your .claude folder so Coucou can add its hooks"
-        panel.prompt = "Choose"
+        panel.message = "Select your .claude folder (press ⇧⌘. to show hidden files)"
+        panel.prompt = prompt
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-        if panel.runModal() == .OK, let url = panel.url {
-            do {
-                let data = try url.bookmarkData(
-                    options: .withSecurityScope,
-                    includingResourceValuesForKeys: nil,
-                    relativeTo: nil
-                )
-                UserDefaults.standard.set(data, forKey: "claudeDirectoryBookmark")
-                claudeAccessGranted = true
-                statusMessage = "✓ .claude folder access granted."
-            } catch {
-                statusMessage = "❌ Bookmark error: \(error.localizedDescription)"
-            }
-        }
-    }
-
-    private func resolveClaudeBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") else { return nil }
-        var isStale = false
-        guard let url = try? URL(resolvingBookmarkData: data,
-                                  options: .withSecurityScope,
-                                  relativeTo: nil,
-                                  bookmarkDataIsStale: &isStale) else { return nil }
-        if isStale {
-            // Re-prompt user if bookmark is stale
-            claudeAccessGranted = false
-            UserDefaults.standard.removeObject(forKey: "claudeDirectoryBookmark")
+        panel.showsHiddenFiles = true
+        // getpwuid bypasses CFFIXED_USER_HOME and always returns the real user home
+        let realHomePath = getpwuid(getuid()).flatMap { String(cString: $0.pointee.pw_dir, encoding: .utf8) }
+            ?? "/Users/\(NSUserName())"
+        panel.directoryURL = URL(fileURLWithPath: realHomePath)
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard url.lastPathComponent == ".claude" else {
+            statusMessage = "❌ Select the .claude folder (hidden, in your Home directory)."
             return nil
         }
         return url
     }
 
     private func installHooksAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost — choose the folder again."
-            return
-        }
+        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
+        let alert = NSAlert()
+        alert.messageText = "Install Coucou hooks in ~/.claude?"
+        alert.informativeText = "Will write:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)"
+        alert.addButton(withTitle: "Install")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
-            let accessing = claudeURL.startAccessingSecurityScopedResource()
-            defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
-            pendingHookJSON = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL)
-            showDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
+            hookNeedsUpdate = false
+            statusMessage = "✓ Hooks installed — restart VS Code to activate."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
 
-    private func confirmInstallAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost."
-            return
-        }
-        do {
-            try HookServer.shared.writeClaudeHooksAppStore(claudeURL: claudeURL)
-            showDiff = false
-            statusMessage = "✓ Hooks installed in ~/.claude/settings.json"
-            pendingHookJSON = ""
-            hookNeedsUpdate = false
-        } catch {
-            statusMessage = "❌ Write error: \(error.localizedDescription)"
-        }
-    }
-
     private func uninstallHooksAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost."
-            return
-        }
+        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         do {
             try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
             statusMessage = "✓ Hooks removed."
@@ -490,6 +590,62 @@ struct SettingsView: View {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
+
+    #if !APPSTORE
+    private func triggerGeminiPreview(install: Bool) {
+        do {
+            geminiPendingInstall = install
+            pendingGeminiJSON = try HookServer.shared.previewGeminiHooks(install: install)
+            showGeminiDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmGeminiOp() {
+        do {
+            try HookServer.shared.writeGeminiHooks()
+            showGeminiDiff = false
+            pendingGeminiJSON = ""
+            geminiHooksInstalled = geminiPendingInstall
+            statusMessage = geminiPendingInstall
+                ? "✓ Gemini CLI hooks installed in ~/.gemini/settings.json"
+                : "✓ Gemini CLI hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerAgyPreview(install: Bool) {
+        do {
+            agyPendingInstall = install
+            pendingAgyJSON = try HookServer.shared.previewAgyHooks(install: install)
+            showAgyDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmAgyOp() {
+        do {
+            try HookServer.shared.writeAgyHooks()
+            showAgyDiff = false
+            pendingAgyJSON = ""
+            agyHooksInstalled = agyPendingInstall
+            statusMessage = agyPendingInstall
+                ? "✓ Antigravity hooks installed in ~/.gemini/config/hooks.json"
+                : "✓ Antigravity hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+    #endif
 
     private func saveIntegrations() {
         saveKey("resend-api-key",  value: resendKey)

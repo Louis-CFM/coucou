@@ -33,6 +33,25 @@ interface HookPayload {
   prompt?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
+  /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
+  coucou_agent?: string;
+}
+
+/** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
+function validateAgent(raw: string | undefined): string | null {
+  if (!raw || raw.length > 24 || raw === "claude") return null;
+  if (!/^[a-z0-9-]+$/.test(raw)) return null;
+  return raw;
+}
+
+const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
+
+function agentColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
+  }
+  return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -166,6 +185,9 @@ const SOURCE_META: Record<AgentSource, { prefix: string; color: string; label: s
   genericCli: { prefix: "cli_", color: "#22C55E", label: "CLI" },
   media: { prefix: "integration_", color: "#1DB954", label: "Media" },
   n8n: { prefix: "integration_", color: "#F29B38", label: "n8n" },
+  // Upstream third-party agents carry their own per-name color (agentColor);
+  // this entry only satisfies the Record — resolveTaskId never uses it.
+  agent: { prefix: "agent_", color: "#EAB308", label: "Agent" },
 };
 
 function shortId(sessionId: string | undefined, cwd: string): string {
@@ -203,7 +225,7 @@ function upsertClaude(projectName: string, cwd: string) {
   if (cwd) t.sessionCwd = cwd;
 }
 
-function clearClaudeSession() {
+function clearSession() {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.steps = [];
@@ -230,7 +252,16 @@ function handleHook(island: Island, payload: HookPayload) {
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
-  const taskId = resolveTaskId(source, payload, projectName, cwd);
+
+  // Two routing mechanisms, one pill per session:
+  // 1. Valid coucou_agent (upstream) → dynamic "agent_<name>" pill.
+  // 2. Otherwise our source tag → integration_claude or cli_<source>_<session>.
+  // "claude" is reserved; absent/invalid agent + Claude source → Claude pill.
+  const validAgent = validateAgent(payload.coucou_agent);
+  const isExternalAgent = validAgent !== null;
+  const taskId = isExternalAgent
+    ? upsertAgentTask(validAgent)
+    : resolveTaskId(source, payload, projectName, cwd);
   const focused = State.focusId === taskId;
 
   /** Alerts force the island open; work events only reveal the compact island. */
@@ -243,6 +274,13 @@ function handleHook(island: Island, payload: HookPayload) {
       island.reveal();
     }
   };
+
+  /** Creates the upstream agent_ pill on first event; no-op if present. */
+function upsertAgentTask(name: string): string {
+  const id = `agent_${name}`;
+  State.upsertExternalAgent(id, name, agentColor(name));
+  return id;
+}
 
   switch (name) {
     case "SessionStart":
@@ -300,6 +338,8 @@ function handleHook(island: Island, payload: HookPayload) {
         if (taskId === CLAUDE_ID) {
           State.updateTask(taskId, "idle");
           State.setPillBadge(taskId, null);
+        } else if (isExternalAgent) {
+          State.removeTask(taskId);
         } else {
           // Ephemeral CLI tasks disappear after the finished toast, like Mac Stop.
           State.removeCliTask(taskId);
@@ -317,7 +357,9 @@ function handleHook(island: Island, payload: HookPayload) {
     case "SessionEnd":
       if (taskId === CLAUDE_ID) {
         State.updateTask(taskId, "idle");
-        clearClaudeSession();
+        clearSession();
+      } else if (isExternalAgent) {
+        State.removeTask(taskId);
       } else {
         State.removeCliTask(taskId);
       }
@@ -332,8 +374,13 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "PermissionRequest": {
-      // Only Claude blocks for a decision. Gemini/opencode relays are
-      // fire-and-forget — show the request as activity, don't hold the card.
+      // External agent_ pills never get an approval card — it would look like
+      // a Claude Code request. Decline immediately so the agent re-asks in
+      // its terminal. Other non-Claude sources show activity instead.
+      if (isExternalAgent) {
+        if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
+        break;
+      }
       if (source !== "claudeCode") {
         State.updateTask(taskId, "working");
         const tool = payload.tool_name ?? "Tool";
