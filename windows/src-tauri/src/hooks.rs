@@ -343,8 +343,10 @@ pub fn ensure_hook_exe(app: &AppHandle) {
         return;
     };
 
-    let same = match (std::fs::metadata(&src), std::fs::metadata(&dest)) {
-        (Ok(a), Ok(b)) => a.len() == b.len() && a.modified().ok() == b.modified().ok(),
+    // Compare bytes rather than timestamps: an installer/resource rebuild can
+    // preserve size and coarse file times while still shipping a new relay.
+    let same = match (std::fs::read(&src), std::fs::read(&dest)) {
+        (Ok(a), Ok(b)) => a == b,
         _ => false,
     };
     if same {

@@ -91,7 +91,7 @@ fn main() {
         // A non-approval Codex hook still needs valid JSON when Coucou is
         // closed or the relay times out. Keep PermissionRequest silent so
         // Codex falls back to its normal interactive prompt.
-        _ if !waits_for_answer => Some(default_hook_output(&event)),
+        _ if !waits_for_answer => Some(default_hook_output()),
         _ => None,
     };
     if let Some(json) = output {
@@ -108,17 +108,14 @@ fn hook_output(event: &str, response: &str) -> Option<String> {
     if event == "PermissionRequest" {
         return decision_json(response);
     }
-    Some(default_hook_output(event))
+    Some(default_hook_output())
 }
 
-/// Codex accepts an empty JSON object for informational hooks. Stop supports
-/// the common `continue` field, which makes the response explicit and valid.
-fn default_hook_output(event: &str) -> String {
-    if event == "Stop" {
-        r#"{"continue":true}"#.to_string()
-    } else {
-        "{}".to_string()
-    }
+/// Codex requires JSON for Stop, but a continuation decision would change the
+/// session. An empty object is the documented no-op shape: valid JSON without
+/// `decision: "block"` or any unsupported control field.
+fn default_hook_output() -> String {
+    "{}".to_string()
 }
 
 /// The documented PermissionRequest output. Anything we do not recognise
@@ -277,8 +274,7 @@ mod tests {
             let output = hook_output(event, "{}").unwrap();
             assert!(serde_json::from_str::<serde_json::Value>(&output).is_ok());
         }
-        assert_eq!(default_hook_output("Stop"), r#"{"continue":true}"#);
-        assert_eq!(default_hook_output("SessionStart"), "{}");
+        assert_eq!(default_hook_output(), "{}");
     }
 
     #[test]

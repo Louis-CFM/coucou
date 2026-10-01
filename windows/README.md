@@ -99,6 +99,26 @@ and `/hooks`. Project-local hooks may be ignored until that project is trusted, 
 the Coucou installer intentionally uses the user-level file. `CODEX_HOME`, when
 set, takes precedence over `%USERPROFILE%\.codex`.
 
+### Diagnose the installed relay
+
+`Stop` requires a JSON object on stdout. Coucou returns `{}` for this event:
+it is valid JSON and does not ask Codex to continue the turn. Run this from
+PowerShell to test the binary that Codex actually invokes:
+
+```powershell
+$hook = "$env:LOCALAPPDATA\Coucou\bin\coucou-hook.exe"
+$payload = '{"session_id":"diagnostic","cwd":"C:\\Temp","hook_event_name":"Stop","turn_id":"diagnostic","stop_hook_active":false,"last_assistant_message":"diagnostic"}'
+$stdout = $payload | & $hook Stop 2> "$env:TEMP\coucou-hook.stderr"
+if ($LASTEXITCODE -ne 0) { throw "coucou-hook.exe exited with $LASTEXITCODE" }
+$stdout | ConvertFrom-Json | ConvertTo-Json -Compress
+Get-FileHash $hook -Algorithm SHA256
+```
+
+The first command must print `{}` (and no non-JSON text). Compare the hash
+with the freshly built `windows\target\release\coucou-hook.exe` if an older
+installer may still be installed. The launcher now compares relay bytes rather
+than timestamps before replacing the copy in `%LOCALAPPDATA%\Coucou\bin`.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
