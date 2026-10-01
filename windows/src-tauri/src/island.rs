@@ -141,62 +141,77 @@ fn cursor_physical() -> Option<(f64, f64)> {
 /// Lets dropped files reach the app again.
 ///
 /// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
-/// later and registers its own target on it; being the innermost window, that one
-/// wins, and since the page has no HTML5 drop handler it refuses everything — the
-/// "no drop" cursor, with nothing reaching Tauri. Revoking it makes OLE fall
-/// through to the target wry registered on the parent widget, which is the one
-/// that feeds Tauri's drag events.
+/// when the webview is created. WebView2 creates render widgets later —
+/// possibly nested several levels deep — and registers its own targets on
+/// them; being the innermost windows, those win, and since the page has no
+/// HTML5 drop handler it refuses everything — the "no drop" cursor, with
+/// nothing reaching Tauri. Revoking every Chromium render widget in the whole
+/// subtree makes OLE fall through to the target wry registered on the parent
+/// widget, which is the one that feeds Tauri's drag events.
 ///
-/// WebView2 may re-register its target later (it owns that child window), which
-/// is exactly the "first drop works, later drops refuse" failure mode: the
-/// revoke has to be re-run throughout a drag, not just on the button edge.
-/// Cheap and idempotent, so the poll re-runs it while a button is held inside
-/// the window.
+/// WebView2 may re-register its targets later (it owns those child windows),
+/// which is exactly the "first drop works, later drops refuse" failure mode:
+/// the revoke is refreshed throughout a drag, not trusted once. Cheap and
+/// idempotent.
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
         let Some(win) = app.get_webview_window(label) else { continue };
         let Some(hwnd) = hwnd_of(&win) else { continue };
-        let mut ctx = UnblockCtx { visited: 0, revoked: 0, failed: 0 };
+        let mut ctx = UnblockCtx::default();
         unsafe {
             let _ = EnumChildWindows(
                 Some(hwnd),
-                Some(revoke_render_widget),
+                Some(walk_children),
                 LPARAM(&mut ctx as *mut UnblockCtx as isize),
             );
         }
-        if ctx.visited > 0 {
+        if ctx.total > 0 {
+            let mut classes = ctx.classes.clone();
+            classes.sort();
+            classes.dedup();
+            let shown = classes.iter().take(8).cloned().collect::<Vec<_>>().join(",");
             crate::log::line(format!(
-                "unblock {label}: children={} revoked={} failed={}",
-                ctx.visited, ctx.revoked, ctx.failed
+                "unblock {label}: descendants={} render_widgets={} revoked={} failed={} classes=[{shown}]",
+                ctx.total, ctx.matched, ctx.revoked, ctx.failed,
             ));
         }
     }
 }
 
+#[derive(Default)]
 struct UnblockCtx {
-    visited: u32,
+    total: u32,
+    matched: u32,
     revoked: u32,
     failed: u32,
+    classes: Vec<String>,
 }
 
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, lparam: LPARAM) -> BOOL {
+unsafe extern "system" fn walk_children(hwnd: HWND, lparam: LPARAM) -> BOOL {
     let ctx = unsafe { &mut *(lparam.0 as *mut UnblockCtx) };
     let mut name = [0u16; 64];
     let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len == 0 {
-        return true.into();
-    }
-    let class = String::from_utf16_lossy(&name[..len as usize]);
-    // Any Chromium render widget eats drops; class names gain suffixes across
-    // WebView2 releases, so match by prefix rather than the exact historic name.
-    if class.starts_with("Chrome_RenderWidgetHostHWND") {
-        ctx.visited += 1;
-        if unsafe { RevokeDragDrop(hwnd) }.is_ok() {
-            ctx.revoked += 1;
-        } else {
-            ctx.failed += 1;
+    if len > 0 {
+        let class = String::from_utf16_lossy(&name[..len as usize]);
+        ctx.total += 1;
+        if ctx.classes.len() < 16 {
+            ctx.classes.push(class.clone());
         }
+        // Any Chromium render widget eats drops; class names gain suffixes
+        // across WebView2 releases, so match by prefix — at ANY depth, not
+        // just direct children.
+        if class.starts_with("Chrome_RenderWidgetHostHWND") {
+            ctx.matched += 1;
+            if unsafe { RevokeDragDrop(hwnd) }.is_ok() {
+                ctx.revoked += 1;
+            } else {
+                ctx.failed += 1;
+            }
+        }
+    }
+    // Recurse: the render widget is usually a grandchild, not a direct child.
+    unsafe {
+        let _ = EnumChildWindows(Some(hwnd), Some(walk_children), lparam);
     }
     true.into()
 }
