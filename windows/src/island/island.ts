@@ -126,7 +126,6 @@ export class Island {
         Sound.play("blip");
         this.setView(State.defaultView());
       },
-      pickFile: () => this.pickFile(),
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
@@ -620,45 +619,6 @@ export class Island {
     );
   }
 
-  /** System file picker: ingestion that cannot be refused by any drop target. */
-  private pickFile() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      void Bridge.log(`picker ${file.name} ${file.size}b`);
-      if (file.size > 25 * 1024 * 1024) {
-        State.noteMessage = "File too large (25 MB max).";
-        this.setView("note");
-        Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = String(reader.result ?? "");
-        const b64 = url.includes(",") ? url.split(",")[1] : "";
-        if (!b64) {
-          State.noteMessage = "Could not read that file.";
-          this.setView("note");
-          Sound.play("error");
-          window.setTimeout(() => this.setView(State.defaultView()), 2400);
-          return;
-        }
-        this.swallowBytes(file.name, b64);
-      };
-      reader.onerror = () => {
-        State.noteMessage = "Could not read that file.";
-        this.setView("note");
-        Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
-  }
-
   /** Shared opening choreography. False = duplicate of a swallow in flight. */
   private beginSwallow(name: string, path: string): boolean {
     const now = performance.now();
@@ -784,10 +744,16 @@ export class Island {
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
     const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    // While a Drop view is up the whole window takes the mouse: a file drag
+    // must see one stable target from approach to release. Flipping
+    // click-through mid-drag is what makes Explorer cache "no drop" and show
+    // the prohibited cursor on the second and later drags.
+    const dropOpen = State.mode === "expanded" && UPLOAD_VIEWS.has(State.view);
+    const hit = dropOpen ? { x: 0, y: 0, w: PANEL_W, h: PANEL_H } : rect;
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
-      this.pushedRect = rect;
-      void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
+    if (Math.abs(p.x - hit.x) > 0.5 || Math.abs(p.w - hit.w) > 0.5 || Math.abs(p.h - hit.h) > 0.5) {
+      this.pushedRect = hit;
+      void Bridge.setIslandRect(hit.x, hit.y, hit.w, hit.h);
     }
   }
 
