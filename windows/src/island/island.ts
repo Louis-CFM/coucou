@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, COMPACT_W, NO_NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -263,10 +263,16 @@ export class Island {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.onTransition = (from, to) => {
       switch (to) {
+case "gone":
         case "hidden":
-        case "gone":
-          this.setMode("hidden");
-          break;
+        // Dropping the wake flag matters here: it forces the fully-compact bar to
+        // render at the 240pt width, so a bar compacted by a click while the cursor
+        // was still resting on it reached the right state but kept the wide width —
+        // it looked like the click had done nothing, and only moving the mouse off
+        // it made it shrink.
+        this.setBarHover(false);
+        this.setMode("hidden");
+        break;
         case "petit":
           if (from === "coucou") this.greeting.interrupt();
           else if (from === "hidden") Sound.play("peek");
@@ -377,6 +383,8 @@ private dragStartX = 0;
   private dragMoved = false;
 /** Timestamps of recent outside clicks, for the double-click wake. */
 private outsideClicks: number[] = [];
+  /** When `dismissOutside` last ran, so the two delivery paths cannot double-count. */
+  private lastDismiss = -1e9;
 
   /**
    * Grabs the resting island and follows the pointer, landing it wherever it is
@@ -457,13 +465,19 @@ private outsideClicks: number[] = [];
   }
 
 /**
-   * How close to the island a click may land and still count as "near" it for
-   * the double-click wake. Measured from the island's rect on both sides, so it
-   * behaves the same to the left and to the right.
+   * Browser-only counterpart of the native `near_press`, for `npm run dev` where the
+   * event carries no classification. The shipped app is told by the server instead,
+   * so the two cannot drift apart.
    */
-private static readonly NEAR_RADIUS = 56;
+  private isNearIsland(px: number, py: number): boolean {
+    const rect = this.islandRect();
+    const dx = Math.max(rect.x - px, 0, px - (rect.x + rect.w));
+    const dy = Math.max(rect.y - py, 0, py - (rect.y + rect.h));
+    return dx <= 56 && dy <= 56;
+  }
+
 /** Two clicks within this window count as a double-click. */
-private static readonly DOUBLE_MS = 900;
+  private static readonly DOUBLE_MS = 900;
 
 /**
    * A click outside the island.
@@ -478,53 +492,45 @@ private static readonly DOUBLE_MS = 900;
    *
    * A pinned island ignores all of it.
    */
-dismissOutside() {
+/**
+   * A press landed outside the island. `near` is decided natively, from the press
+   * position and the same rect the click-through test uses.
+   */
+  dismissOutside(near: boolean) {
   if (this.staysOpen) return;
+  // One physical click reaches here twice: once from the webview's own pointerdown
+  // and once from the native poll. Without this the second would read as the second
+  // click of a double-click and wake the bar it was meant to compact.
   const now = performance.now();
-  const near = this.isNearIsland();
+if (now - this.lastDismiss < 50) return;
+  this.lastDismiss = now;
 
   this.outsideClicks = this.outsideClicks.filter((t) => now - t < Island.DOUBLE_MS);
-
-// Reduced, whether that is the docked bar or off-screen: only a deliberate
-  // double-click near the island opens it, and all the way to the full panel.
-  // `click()` takes the docked bar and the off-screen island straight to open.
-  // One click on its own does nothing, otherwise every stray click on the desktop
-  // would toggle the island.
-  if (State.mode === "compact" || State.mode === "hidden") {
-    if (near && this.outsideClicks.length > 0) {
+    // Double-click near the island while it is fully compact (the 80pt bar): wake it
+    // back to the 240pt bar. This is the only place "near" is consulted — a near branch
+    // on the 240pt bar swallowed the click that should have compacted it, which is
+    // what made the bar sit there until it was dragged.
+    if (State.mode === "hidden" && near && this.outsideClicks.length > 0) {
       this.outsideClicks = [];
-      // A double-click near the bar expands it to the full 240pt retracted bar, from
-      // either resting width. This is a real state change rather than the visual
-      // widening "wake on hover" uses, so the bar stays at 240 when the cursor leaves
-      // and the Compact timer takes it down to 80 from there. It never opens the panel
-      // and does not recall the island from off-screen.
-      if (this.fsm.state !== "gone" || State.settings.hoverRestore) this.fsm.mouseEntered();
+      this.fsm.mouseEntered();
       return;
     }
     this.outsideClicks.push(now);
-    // A second click beside the bar takes it the rest of the way down to the
-    // fully-compact 80pt bar: 640 → 240 on the first click, 240 → 80 on the next.
-    // Compact on Never means the 80pt bar is never reached by any route.
-    if (this.fsm.state === "petit" && State.settings.absenceInterval > 0) this.fsm.forceHidden();
-    return;
+
+    // Fully compact with nothing to wake: a lone click is inert, otherwise every
+    // stray click on the desktop would toggle the island.
+    if (State.mode === "hidden") return;
+
+    this.outsideClicks = [];
+    // Already resting on the 240pt bar: this click reduces it to 80pt now, wherever
+    // it landed. `collapse()` would be a no-op here — the state machine ignores a
+    // transition to the state it is already in.
+    if (State.mode === "compact") this.fsm.forceHidden();
+    else this.collapse();
   }
 
-  this.outsideClicks = [];
-  // Open: the first outside click compacts to the 240pt bar, and the island stays
-  // docked. Auto-close owns that step's timer; clicking again beside the bar is
-  // what takes it down to the fully-compact one.
-  this.collapse();
-}
-
 /** True when the cursor is within NEAR_RADIUS of the island's painted rect. */
-private isNearIsland(): boolean {
-  const rect = this.islandRect();
-  const dx = Math.max(rect.x - State.mouse.x, 0, State.mouse.x - (rect.x + rect.w));
-  const dy = Math.max(rect.y - State.mouse.y, 0, State.mouse.y - (rect.y + rect.h));
-  return dx <= Island.NEAR_RADIUS && dy <= Island.NEAR_RADIUS;
-}
-
-  /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
+/** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = this.staysOpen;
     this.fsm.forceHome();
@@ -812,12 +818,20 @@ private isNearIsland(): boolean {
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
-    if (!IS_TAURI) {
-      window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
-      window.addEventListener("pointerdown", (e) => {
-        if (!this.islandEl.contains(e.target as Node)) this.dismissOutside();
-      });
-    }
+    // A click that lands on the island window but not on the island itself has to reach
+    // `dismissOutside`, because the native poll does not always deliver it: the window
+    // only receives the mouse over the island shape, and the click-through state is
+    // only re-evaluated while the cursor moves. Registering this only outside Tauri
+    // left the real app with a single, lossy route — which is why the second outside
+    // click failed to compact the bar until a drag had refreshed that state.
+    //
+    // The native poll still reports clicks that land outside the window entirely, so
+    // both paths feed the same handler; `dismissOutside` is guarded against the
+    // duplicate so one physical click cannot count as two.
+    window.addEventListener("pointerdown", (e) => {
+      if (this.islandEl.contains(e.target as Node)) return;
+      this.dismissOutside(this.isNearIsland(e.clientX, e.clientY));
+    });
   }
 
   /** Cursor in window-logical coordinates. */

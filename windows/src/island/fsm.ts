@@ -41,7 +41,12 @@ export class IslandStateMachine {
         this.transition("petit");
         break;
       case "petit":
-        this.clear("petitHide");
+        // Deliberately does NOT cancel the compact timer. It used to, and the timer
+        // is only re-armed on mouseLeft, which needs an in→out cursor transition. With
+        // "wake on hover" on, the cursor is already over the bar when the panel
+        // collapses to 240, so the timer was cancelled and never re-armed: the bar
+        // sat at 240 until the pointer happened to move off it and back, which looked
+        // like the Compact timer not working at all.
         break;
       case "home":
         this.clear("homeCollapse");

@@ -76,6 +76,22 @@ fn outside_press(rect: IslandRect, x: f64, y: f64, down: bool, was_down: bool) -
         && !(x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h)
 }
 
+/// How close a press may land to the island and still count as "near" it, on both
+/// sides so left and right are identical by construction.
+const NEAR_RADIUS: f64 = 56.0;
+
+/// Whether a press landed within `NEAR_RADIUS` of the island's painted rect.
+///
+/// Decided here rather than in the front end, which has to rebuild the same rect and
+/// guess the coordinate space. Getting that wrong made the near gesture — the
+/// double-click wake — fail intermittently, and the two constants drifting apart
+/// would silently change which clicks count as near.
+fn near_press(rect: IslandRect, x: f64, y: f64) -> bool {
+    let dx = (rect.x - x).max(0.0).max(x - (rect.x + rect.w));
+    let dy = (rect.y - y).max(0.0).max(y - (rect.y + rect.h));
+    dx <= NEAR_RADIUS && dy <= NEAR_RADIUS
+}
+
 /// Wakes / parks the cursor poll thread so a hidden island costs literally nothing.
 pub struct PollGate {
     active: Mutex<bool>,
@@ -462,7 +478,22 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                         GetAncestor(hit, GA_ROOT).0 != hwnd.0 as *mut _
                             && GetAncestor(hit, GA_ROOTOWNER).0 == hwnd.0 as *mut _
                     });
-                    if !own_popup { let _ = win.emit("outside-click", ()); }
+                    // The gesture travels with the event: whether the press was near the island or
+                    // anywhere else decides which of the two reduced-state clicks it
+                    // is, and the front end's own cursor is only refreshed when the
+                    // pointer moves, so it used to judge a click after the mouse had
+                    // been still against a stale position. That made a desktop click
+                    // wake the island at random, and only dragging kept it honest.
+                    if !own_popup {
+                        // A map, not a tuple: Tauri serialises a tuple as a JSON
+                        // array, and the front end destructured this as an object,
+                        // so `near` arrived `undefined` on every native click and the
+                        // native classification did nothing at all.
+                        let _ = win.emit(
+                            "outside-click",
+                            serde_json::json!({ "near": near_press(r, x, y) }),
+                        );
+                    }
                 }
                 was_down = down;
                 if pressed {
