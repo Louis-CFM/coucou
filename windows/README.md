@@ -136,6 +136,40 @@ windows/
 `%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
 
+## Linux
+
+The same app builds on Linux from this folder — the island, Mochi, the hooks,
+chat, file drops and integrations are all shared code. Only the OS layer differs:
+
+| | Windows | Linux |
+|---|---|---|
+| Hook relay | `coucou-hook.exe`, named pipe `\\.\pipe\coucou-<SID>` | `coucou-hook`, Unix socket `$XDG_RUNTIME_DIR/coucou.sock` (mode 0600, peer uid checked) |
+| Keys | Windows Credential Manager | Secret Service — GNOME Keyring, KWallet… |
+| Settings | `%APPDATA%\Coucou\settings.json` | `~/.config/coucou/settings.json` |
+| Relay, log, inbox | `%LOCALAPPDATA%\Coucou\` | `~/.local/share/coucou/` |
+| Packages | NSIS installer | `.deb` + AppImage |
+
+Build it with Rust, Node 20+ and the WebKitGTK development packages:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  librsvg2-dev libxdo-dev libsoup-3.0-dev     # Debian, Ubuntu, Mint
+cd windows
+npm install
+npm run tauri dev      # development build
+npm run pack           # Coucou-Linux-X.Y.Z-amd64.deb and .AppImage in windows/release/
+```
+
+**Desktop support.** The island is an always-on-top, unfocusable utility window
+that follows the cursor through X11. On a Wayland session Coucou runs through
+XWayland (it sets `GDK_BACKEND=x11` unless you set it yourself), because Wayland
+lets no app place its own window or keep it above the others. A compositor is
+needed for the transparent window — every mainstream desktop has one. Tested on
+Ubuntu 24.04 with Cinnamon (X11).
+
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` is set by default too: WebKitGTK's DMA-BUF
+renderer leaves transparent windows blank on many drivers. Set it to `0` to opt out.
+
 ## What's different from the Mac version
 
 - No notch, so the island lives at the top centre of the screen and retracts into

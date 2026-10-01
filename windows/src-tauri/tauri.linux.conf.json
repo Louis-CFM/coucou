@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["deb", "appimage"],
+    "resources": {
+      "../target/release/coucou-hook.exe": null,
+      "../target/release/coucou-hook": "coucou-hook"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      }
+    }
+  }
+}

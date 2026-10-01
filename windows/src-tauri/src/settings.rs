@@ -1,5 +1,6 @@
-// Preferences, stored as plain JSON in %APPDATA%\Coucou\settings.json.
-// No secret ever lands here — API keys live in the Windows Credential Manager.
+// Preferences, stored as plain JSON in %APPDATA%\Coucou\settings.json on Windows
+// and ~/.config/coucou/settings.json on Linux. No secret ever lands here — API
+// keys live in the Windows Credential Manager / the Linux Secret Service.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -48,6 +49,7 @@ impl Default for Settings {
 }
 
 /// %APPDATA%\Coucou
+#[cfg(windows)]
 pub fn config_dir() -> PathBuf {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
@@ -56,6 +58,7 @@ pub fn config_dir() -> PathBuf {
 }
 
 /// %LOCALAPPDATA%\Coucou — where coucou-hook.exe and the log live.
+#[cfg(windows)]
 pub fn local_dir() -> PathBuf {
     let base = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
@@ -63,8 +66,38 @@ pub fn local_dir() -> PathBuf {
     base.join("Coucou")
 }
 
+/// `$XDG_CONFIG_HOME/coucou`, i.e. ~/.config/coucou
+#[cfg(not(windows))]
+pub fn config_dir() -> PathBuf {
+    xdg_dir("XDG_CONFIG_HOME", ".config").join("coucou")
+}
+
+/// `$XDG_DATA_HOME/coucou`, i.e. ~/.local/share/coucou — where coucou-hook and
+/// the log live.
+#[cfg(not(windows))]
+pub fn local_dir() -> PathBuf {
+    xdg_dir("XDG_DATA_HOME", ".local/share").join("coucou")
+}
+
+/// An XDG base directory: the variable when it holds an absolute path (the spec
+/// says to ignore relative ones), `$HOME/<fallback>` otherwise.
+#[cfg(not(windows))]
+fn xdg_dir(var: &str, fallback: &str) -> PathBuf {
+    if let Some(dir) = std::env::var_os(var).map(PathBuf::from).filter(|p| p.is_absolute()) {
+        return dir;
+    }
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(fallback)
+}
+
+/// Fixed place of the relay, so the command in ~/.claude/settings.json never
+/// changes when the app is updated or moved.
 pub fn hook_exe_path() -> PathBuf {
-    local_dir().join("bin").join("coucou-hook.exe")
+    local_dir()
+        .join("bin")
+        .join(format!("coucou-hook{}", std::env::consts::EXE_SUFFIX))
 }
 
 fn settings_path() -> PathBuf {

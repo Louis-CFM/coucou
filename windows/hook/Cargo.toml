@@ -1,6 +1,6 @@
 [package]
 name = "coucou-hook"
-description = "Relays Claude Code hook events to Coucou over a named pipe"
+description = "Relays Claude Code hook events to Coucou over a named pipe (Windows) or a Unix socket (Linux)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -21,3 +21,7 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_Threading",
 ] }
+
+# Linux: the uid of the process on the other end of the socket.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

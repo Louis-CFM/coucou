@@ -1,6 +1,6 @@
 [package]
 name = "coucou"
-description = "Coucou for Windows — Mochi lives at the top of your screen"
+description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
 authors = ["Louis Raille"]
 version.workspace = true
 edition.workspace = true
@@ -21,6 +21,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+[target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
   "Win32_Foundation",
@@ -32,3 +34,11 @@ windows = { version = "0.61", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
+
+# Linux: keys in the Secret Service (GNOME Keyring, KWallet…), the island's
+# window hints through GTK, and the cursor read straight from the X server.
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+gtk = "0.18"
+x11rb = "0.13"
+libc = "0.2"

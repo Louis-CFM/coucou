@@ -565,7 +565,8 @@ export class Island {
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
 
     // Windows sends no cursor position with an OLE drag, so the drop sequence is
-    // fed from the Win32 cursor poll instead — it runs throughout the drag.
+    // fed from the native cursor poll instead (Win32, or X11 on Linux) — it runs
+    // throughout the drag.
     if (UploadSeq.isActive && !UploadSeq.dropped) {
       UploadSeq.updateCursor(State.mouseInIsland.x, State.mouseInIsland.y);
     }

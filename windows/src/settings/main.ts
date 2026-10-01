@@ -6,6 +6,7 @@ import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
+import { HOOK_EXE, KEY_STORE } from "../core/platform";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
@@ -84,7 +85,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: `${HOOK_EXE} is not in place yet. Restart Coucou; if it still fails, build it with \`cargo build -p coucou-hook\`.`,
       }));
     }
 
@@ -181,7 +182,7 @@ const MODELS: [string, string][] = [
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? `Key saved in ${KEY_STORE}.` : "No key yet — the chat needs one." });
 
   const field = h("input", {
     type: "password",
@@ -199,7 +200,7 @@ function apiSection(hasKey: boolean): HTMLElement {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
+      ? `Key saved in ${KEY_STORE}.`
       : "No key yet — the chat needs one.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
@@ -292,7 +293,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in ${KEY_STORE}, never on disk.`;
   }
 
   for (const def of INTEGRATIONS) {

@@ -1,6 +1,7 @@
-// Coucou for Windows — app wiring and the commands the island calls.
+// Coucou for Windows and Linux — app wiring and the commands the island calls.
 
 mod claude;
+mod clock;
 mod files;
 mod hooks;
 mod integrations;
@@ -10,8 +11,10 @@ mod pipe;
 mod secrets;
 mod settings;
 mod tray;
+#[cfg(windows)]
 mod win_user;
 
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -29,6 +32,7 @@ use pipe::Pending;
 use settings::Settings;
 
 /// Keeps spawned helpers from flashing a console window.
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub struct Shared {
@@ -126,6 +130,9 @@ fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return;
     }
+    #[cfg(not(windows))]
+    let _ = Command::new("xdg-open").arg(&url).spawn();
+    #[cfg(windows)]
     let _ = Command::new("rundll32.exe")
         .args(["url.dll,FileProtocolHandler", &url])
         .creation_flags(CREATE_NO_WINDOW)
@@ -134,6 +141,7 @@ fn open_url(url: String) {
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to Explorer otherwise.
+#[cfg(windows)]
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
     // No `cmd /C` anywhere near this. The path is a project folder chosen by
@@ -155,9 +163,37 @@ fn open_in_vscode(path: Option<String>) -> bool {
     false
 }
 
+/// Linux: VS Code when `code` is on PATH, the file manager (xdg-open) otherwise.
+/// The path is handed over as one argument, never through a shell.
+#[cfg(not(windows))]
+#[tauri::command]
+fn open_in_vscode(path: Option<String>) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let path = path.filter(|p| !p.is_empty());
+    let code = std::env::var_os("PATH").and_then(|dirs| {
+        std::env::split_paths(&dirs)
+            .map(|d| d.join("code"))
+            .find(|c| c.metadata().map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false))
+    });
+    if let Some(code) = code {
+        let mut cmd = Command::new(code);
+        if let Some(p) = path.as_deref() {
+            cmd.arg(p);
+        }
+        if cmd.spawn().is_ok() {
+            return true;
+        }
+    }
+    if let Some(p) = path.as_deref() {
+        let _ = Command::new("xdg-open").arg(p).spawn();
+    }
+    false
+}
+
 /// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
 /// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
 /// spawning `code.cmd` directly is safe.
+#[cfg(windows)]
 fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
     let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
     let dirs = std::env::var_os("PATH")?;
@@ -279,7 +315,7 @@ fn secret_clear(key: String) -> Result<(), String> {
     secrets::clear(&key)
 }
 
-/// Opens the configured n8n instance — the URL lives in the Credential Manager.
+/// Opens the configured n8n instance — the URL lives in the OS key store.
 #[tauri::command]
 fn open_n8n() {
     if let Some(url) = secrets::get("n8n-url") {

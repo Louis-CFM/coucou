@@ -1,0 +1,96 @@
+name: Linux
+
+# Builds the Linux app (.deb + AppImage) from the same Tauri project as Windows.
+# Pull requests touching windows/ run the tests and the build; tags like
+# `linux-v0.1.0` also publish. The macOS and Windows workflows are untouched.
+
+on:
+  push:
+    tags:
+      - 'linux-v*'
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/linux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # The oldest supported runner: an AppImage only runs on systems at least as
+    # new as the glibc it was built against.
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev libxdo-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: linux-cargo-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the tag and every version agree
+        if: startsWith(github.ref, 'refs/tags/linux-v')
+        run: |
+          tag="${GITHUB_REF_NAME#linux-v}"
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          cargo=$(sed -nE 's/^version *= *"(.+)"/\1/p' Cargo.toml | head -1)
+          echo "tag=$tag tauri.conf=$conf package.json=$pkg Cargo.toml=$cargo"
+          [ "$tag" = "$conf" ] && [ "$tag" = "$pkg" ] && [ "$tag" = "$cargo" ]
+
+      - name: Tests
+        run: cargo test --workspace
+
+      - name: Build and pack
+        id: pack
+        run: |
+          npm run pack
+          echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+          ls -l release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Coucou-Linux
+          path: |
+            windows/release/Coucou-Linux-${{ steps.pack.outputs.version }}-amd64.deb
+            windows/release/Coucou-Linux-${{ steps.pack.outputs.version }}-amd64.AppImage
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/linux-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.pack.outputs.version }}"
+          # --latest=false: /releases/latest belongs to the macOS builds (see windows.yml).
+          gh release create "$GITHUB_REF_NAME" \
+            "release/Coucou-Linux-$v-amd64.deb" \
+            "release/Coucou-Linux-$v-amd64.AppImage" \
+            --title "Coucou for Linux $v" \
+            --notes "Coucou for Linux $v — Mochi at the top of your screen. Install the .deb (Debian, Ubuntu, Mint…) or run the AppImage anywhere." \
+            --latest=false

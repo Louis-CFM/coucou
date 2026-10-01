@@ -4,6 +4,11 @@
 // There is no notch on a PC, so the island is a black shape drawn at the top
 // centre of the main display inside a borderless, transparent, always-on-top
 // window that never takes focus.
+//
+// The OS-specific bits — reading the cursor and the mouse button, keeping the
+// window from taking focus, unblocking drops — are the small functions marked
+// `cfg(windows)` (Win32) and `cfg(target_os = "linux")` (X11 + GTK). Everything
+// else is shared.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -12,12 +17,19 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
+#[cfg(windows)]
 use windows::Win32::Foundation::{HWND, POINT};
+#[cfg(windows)]
 use windows::core::BOOL;
+#[cfg(windows)]
 use windows::Win32::Foundation::LPARAM;
+#[cfg(windows)]
 use windows::Win32::System::Ole::RevokeDragDrop;
+#[cfg(windows)]
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW,
@@ -114,6 +126,7 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
 }
 
+#[cfg(windows)]
 fn cursor_physical() -> Option<(f64, f64)> {
     let mut p = POINT::default();
     unsafe { GetCursorPos(&mut p).ok()? };
@@ -131,6 +144,7 @@ fn cursor_physical() -> Option<(f64, f64)> {
 /// that feeds Tauri's drag events.
 ///
 /// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+#[cfg(windows)]
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
         let Some(win) = app.get_webview_window(label) else { continue };
@@ -141,6 +155,7 @@ pub fn unblock_webview_drops(app: &AppHandle) {
     }
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
     let mut name = [0u16; 64];
     let len = unsafe { GetClassNameW(hwnd, &mut name) };
@@ -155,6 +170,7 @@ unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
 
 /// True while the left mouse button is held — the only signal we get that a
 /// drag might be in flight before it reaches the window.
+#[cfg(windows)]
 fn left_button_down() -> bool {
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
@@ -224,6 +240,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_always_on_top(true);
 }
 
+#[cfg(windows)]
 fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
     let raw = win.hwnd().ok()?.0 as isize;
     if raw == 0 {
@@ -234,6 +251,7 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 
 /// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
 /// island out of Alt-Tab.
+#[cfg(windows)]
 pub fn make_non_activating(win: &WebviewWindow) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
@@ -244,6 +262,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
 }
 
 /// Temporarily allow activation so a text field inside the island can be typed in.
+#[cfg(windows)]
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
@@ -255,6 +274,92 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
     }
+}
+
+// ── Linux: X11 pointer + GTK window hints ─────────────────────────────────────
+
+/// One X connection, owned by the poll thread's calls. Reconnects after an error
+/// (an X server restart, say) instead of going blind for good.
+#[cfg(target_os = "linux")]
+mod x11 {
+    use std::sync::Mutex;
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{ConnectionExt, KeyButMask, Window};
+    use x11rb::rust_connection::RustConnection;
+
+    static POINTER: Mutex<Option<(RustConnection, Window)>> = Mutex::new(None);
+
+    /// Pointer position on the root window, in physical pixels, and whether the
+    /// left button is held. QueryPointer keeps answering during a drag, when the
+    /// file manager has grabbed the pointer — which is exactly when we need it.
+    pub fn query() -> Option<(f64, f64, bool)> {
+        let mut guard = POINTER.lock().ok()?;
+        if guard.is_none() {
+            let (conn, screen) = x11rb::connect(None).ok()?;
+            let root = conn.setup().roots.get(screen)?.root;
+            *guard = Some((conn, root));
+        }
+        let (conn, root) = guard.as_ref()?;
+        let reply = conn.query_pointer(*root).ok().and_then(|c| c.reply().ok());
+        let Some(reply) = reply else {
+            *guard = None;
+            return None;
+        };
+        let left = u16::from(reply.mask) & u16::from(KeyButMask::BUTTON1) != 0;
+        Some((reply.root_x as f64, reply.root_y as f64, left))
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn cursor_physical() -> Option<(f64, f64)> {
+    x11::query().map(|(x, y, _)| (x, y))
+}
+
+#[cfg(target_os = "linux")]
+fn left_button_down() -> bool {
+    x11::query().map(|(_, _, down)| down).unwrap_or(false)
+}
+
+/// WebKitGTK has no inner window grabbing drops, so there is nothing to undo.
+#[cfg(target_os = "linux")]
+pub fn unblock_webview_drops(_app: &AppHandle) {}
+
+/// The GTK side of WS_EX_NOACTIVATE + WS_EX_TOOLWINDOW: no focus on click, out of
+/// the taskbar, the pager and Alt-Tab, above other windows on every workspace.
+/// The type hint only counts before the window is mapped, hence the hide/show.
+#[cfg(target_os = "linux")]
+pub fn make_non_activating(win: &WebviewWindow) {
+    let w = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        use gtk::prelude::*;
+        let Ok(gw) = w.gtk_window() else { return };
+        let visible = gw.is_visible();
+        if visible {
+            gw.hide();
+        }
+        gw.set_type_hint(gtk::gdk::WindowTypeHint::Utility);
+        gw.set_skip_taskbar_hint(true);
+        gw.set_skip_pager_hint(true);
+        gw.set_accept_focus(false);
+        gw.set_focus_on_map(false);
+        gw.set_keep_above(true);
+        gw.stick();
+        if visible {
+            gw.show();
+        }
+    });
+}
+
+/// Temporarily allow focus so a text field inside the island can be typed in.
+#[cfg(target_os = "linux")]
+pub fn set_activating(win: &WebviewWindow, activating: bool) {
+    let w = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        use gtk::prelude::*;
+        if let Ok(gw) = w.gtk_window() {
+            gw.set_accept_focus(activating);
+        }
+    });
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here
