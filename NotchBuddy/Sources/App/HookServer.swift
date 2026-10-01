@@ -177,12 +177,14 @@ final class HookServer: @unchecked Sendable {
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
+        let isClaudeDesktop = bundleId == "com.anthropic.claudefordesktop"
         // External agents bypass the VS Code filter (their relay runs in any terminal).
-        guard isExternalAgent || isVSCode else {
+        guard isExternalAgent || isVSCode || isClaudeDesktop else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
+        if !isExternalAgent, state.claudeSessionBundleId != bundleId { state.claudeSessionBundleId = bundleId }
         let focused = state.focusId == agentId
 
         switch name {
@@ -365,7 +367,8 @@ final class HookServer: @unchecked Sendable {
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        let isClaudeDesktop = bundleId == "com.anthropic.claudefordesktop"
+        guard isVSCode || isClaudeDesktop else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -470,7 +473,7 @@ final class HookServer: @unchecked Sendable {
         guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
         state.tasks[idx].steps = []
         state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
+        state.tasks[idx].name = state.claudePillName
         state.tasks[idx].pillBadge = nil
     }
 

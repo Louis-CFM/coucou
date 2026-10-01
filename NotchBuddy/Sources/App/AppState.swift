@@ -46,6 +46,12 @@ final class AppState: ObservableObject {
 
     // Last app active before NotchBuddy (for window context capture)
     var lastExternalApp: NSRunningApplication? = nil
+    /// Bundle id of the app that sent the latest Claude Code session event (VS Code or the Claude app).
+    @Published var claudeSessionBundleId: String = ""
+    /// Label of the Claude Code pill, after the app the session runs in.
+    var claudePillName: String {
+        claudeSessionBundleId == "com.anthropic.claudefordesktop" ? "Claude" : "VS Code"
+    }
 
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
