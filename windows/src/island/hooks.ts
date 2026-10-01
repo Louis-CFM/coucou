@@ -78,11 +78,24 @@ const TOOL_LABELS: Record<string, string> = {
   PowerShell: "Exécute",
 };
 
+/**
+ * The part of a shell command worth reading in one ticker line: whitespace and
+ * newlines collapsed, and the `cd <project> &&` / `cd <project>;` prefix Claude
+ * puts in front of most commands dropped, since the card already names the
+ * project. The ticker ellipsizes, so this only caps pathological lengths.
+ */
+function commandSummary(cmd: string): string {
+  let s = cmd.replace(/\s+/g, " ").trim();
+  const rest = s.replace(/^(?:cd|Set-Location|pushd)\s+("[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/i, "");
+  if (rest) s = rest;
+  return s.slice(0, 120);
+}
+
 function stepLabel(tool: string, input: Record<string, unknown>): string {
   const label = TOOL_LABELS[tool] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
   const cmd = str("command");
-  if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
+  if (cmd) return `${label} · ${commandSummary(cmd)}`;
   const path = str("path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
   const file = str("file_path");

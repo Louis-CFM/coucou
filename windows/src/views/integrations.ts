@@ -44,13 +44,15 @@ function arr(id: string, key: string): Record<string, unknown>[] {
 
 // ── Not configured / idle ─────────────────────────────────────────────────────
 
-const OPEN_URLS: Record<string, string> = {
+/** Where "Open …" and the card's ↗ button go. */
+export const OPEN_URLS: Record<string, string> = {
   integration_resend: "https://resend.com/emails",
   integration_vercel: "https://vercel.com/dashboard",
-  integration_github: "https://github.com",
+  integration_github: "https://github.com/pulls",
   integration_stripe: "https://dashboard.stripe.com/payments",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
+  integration_gcal: "https://calendar.google.com",
 };
 
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
@@ -59,7 +61,12 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const error = info?.error ?? null;
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
   // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
+  const missing =
+    task.id === "integration_claude"
+      ? "Hooks not installed"
+      : task.id === "integration_gcal"
+        ? "Google account not connected"
+        : "Key not configured";
   const label = error ?? (configured ? "Connected · loading…" : missing);
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
@@ -211,21 +218,130 @@ function statRow(icon: string, color: string, label: string, value: string): HTM
   );
 }
 
+const GREEN = "#22C55E";
+const RED = "#F4505E";
+const AMBER = "#F5A524";
+const GREY = "#6B7079";
+
+/** A list row that opens `url` — the GitHub and Calendar cards are all links. */
+function linkRow(accent: string, first: boolean, url: string, ...children: Node[]): HTMLElement {
+  const row = h(
+    "button",
+    {
+      class: first ? "int-row int-go first" : "int-row int-go",
+      onclick: () => {
+        if (url) void Bridge.openUrl(url);
+      },
+    },
+    dot(accent, 5),
+    ...children,
+  );
+  if (first) row.style.background = `${accent}14`;
+  return row;
+}
+
+function trailing(text: string, color: string): HTMLElement {
+  return h("span", { class: "int-state", style: `color:${color}`, text });
+}
+
+/** CI of the Claude Code session's branch: what its last commit's checks say. */
+function ciRow(b: Record<string, unknown>, first: boolean): HTMLElement {
+  const state = b.state as string | null;
+  const [accent, label] = !b.pushed
+    ? [GREY, "not pushed"]
+    : state === "SUCCESS"
+      ? [GREEN, "passing"]
+      : state === "FAILURE" || state === "ERROR"
+        ? [RED, "failing"]
+        : state === "PENDING" || state === "EXPECTED"
+          ? [AMBER, "running"]
+          : [GREY, "no checks"];
+  const failing = Array.isArray(b.failing) ? (b.failing as string[]) : [];
+  const cells: Node[] = [h("span", { class: "int-name", text: String(b.branch ?? "") })];
+  // The branch name is what gets ellipsized; the PR number stays whole.
+  if (b.pr != null) cells.push(h("span", { class: "int-sub", style: "flex:0 0 auto", text: `#${b.pr}` }));
+  else if (failing.length) cells.push(h("span", { class: "int-sub", text: failing[0] }));
+  cells.push(trailing(label, accent));
+  const url = String(b.url ?? "") || `https://github.com/${b.repo}/tree/${b.branch}`;
+  const row = linkRow(accent, first, url, ...cells);
+  row.title = `${b.repo} · ${b.branch}${failing.length ? `\nFailing: ${failing.join(", ")}` : ""}`;
+  return row;
+}
+
 function githubCard(): HTMLElement {
   const d = get("integration_github");
   const stars = Number(d.totalStars ?? 0);
   const repos = Number(d.totalRepos ?? 0);
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+  const branch = d.branch as Record<string, unknown> | null | undefined;
+  const requests = arr("integration_github", "requests");
+  const pulls = arr("integration_github", "pulls").filter(
+    // The branch row already stands for its own pull request — unless a
+    // reviewer has had their say, which the CI row doesn't show.
+    (p) =>
+      !(branch && branch.pr === p.number && p.repo === branch.repo) ||
+      p.decision === "APPROVED" || p.decision === "CHANGES_REQUESTED",
+  );
+
+  // Three rows at most, most pressing first: your branch's CI, reviews people
+  // are waiting on from you, then your own pull requests.
+  const rows: HTMLElement[] = [];
+  if (branch) rows.push(ciRow(branch, true));
+  for (const r of requests) {
+    if (rows.length >= 3) break;
+    rows.push(
+      linkRow(
+        AMBER, rows.length === 0, String(r.url ?? ""),
+        h("span", { class: "int-name", text: `#${r.number} ${r.title}` }),
+        trailing("review", AMBER),
+      ),
+    );
+  }
+  for (const p of pulls) {
+    if (rows.length >= 3) break;
+    const [accent, label] = p.draft
+      ? [GREY, "draft"]
+      : p.decision === "APPROVED"
+        ? [GREEN, "approved"]
+        : p.decision === "CHANGES_REQUESTED"
+          ? [RED, "changes"]
+          : [GREY, "waiting"];
+    rows.push(
+      linkRow(
+        accent, rows.length === 0, String(p.url ?? ""),
+        h("span", { class: "int-name", text: `#${p.number} ${p.title}` }),
+        trailing(label, accent),
+      ),
+    );
+  }
+
+  const starCount = h(
+    "span",
+    { class: "int-total", title: `${repos} repositories` },
+    h("i", { class: "int-star" }, svg(ICONS.star, 9)),
+    h("span", { text: fmt(stars) }),
+  );
+
+  // Nothing on the go: the old overview, so the card is never empty.
+  if (rows.length === 0) {
+    return h(
+      "div",
+      { class: "int-card" },
+      header(RED, "GitHub", "Overview"),
+      h(
+        "div",
+        { class: "int-stats" },
+        statRow(ICONS.star, AMBER, "Total stars", fmt(stars)),
+        statRow(ICONS.stack, GREY, "Repositories", String(repos)),
+      ),
+    );
+  }
   return h(
     "div",
     { class: "int-card" },
-    header("#F4505E", "GitHub", "Overview"),
-    h(
-      "div",
-      { class: "int-stats" },
-      statRow(ICONS.star, "#F5A524", "Total stars", fmt(stars)),
-      statRow(ICONS.stack, "#6B7079", "Repositories", String(repos)),
-    ),
+    header(RED, "GitHub", "Activity", starCount),
+    h("div", { class: "int-rows" }, ...rows),
   );
 }
 
@@ -315,6 +431,81 @@ function calcomCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", "Schedule"), rows);
 }
 
+// ── Google Calendar ───────────────────────────────────────────────────────────
+
+const GCAL = "#4285F4";
+
+/** All-day events carry a bare YYYY-MM-DD: that day, at local midnight. */
+function eventStart(e: Record<string, unknown>): Date {
+  if (typeof e.startMs === "number") return new Date(e.startMs);
+  const [y, m, d] = String(e.start).split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** "14:30" today, "Fri 09:00" later in the week, "All day" / "Fri" for all-day. */
+function eventWhen(e: Record<string, unknown>, now: Date): string {
+  const start = eventStart(e);
+  const today = sameDay(start, now);
+  const weekday = start.toLocaleDateString(undefined, { weekday: "short" });
+  if (e.allDay) return today ? "All day" : weekday;
+  const time = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return today ? time : `${weekday} ${time}`;
+}
+
+function gcalCard(): HTMLElement {
+  const now = new Date();
+  const events = arr("integration_gcal", "events");
+  // Meetings first; all-day events only fill what's left.
+  const ordered = [...events.filter((e) => !e.allDay), ...events.filter((e) => e.allDay)].slice(0, 3);
+
+  const rows = h("div", { class: "int-rows tight" });
+  if (ordered.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: "Nothing on the calendar this week" }));
+  }
+  ordered.forEach((e, i) => {
+    const startMs = typeof e.startMs === "number" ? e.startMs : null;
+    const endMs = typeof e.endMs === "number" ? e.endMs : null;
+    const ongoing = startMs != null && endMs != null && startMs <= now.getTime() && now.getTime() < endMs;
+    const minutes = startMs != null ? Math.ceil((startMs - now.getTime()) / 60_000) : null;
+    const soon = minutes != null && minutes > 0 && minutes <= 60;
+    // Otherwise the calendar's own colour, as in Google Calendar.
+    const calColor = typeof e.color === "string" && /^#[0-9a-f]{6}$/i.test(e.color) ? e.color : GCAL;
+    const accent = ongoing ? GREEN : soon && minutes <= 5 ? AMBER : calColor;
+
+    const cells: Node[] = [
+      h("span", { class: "int-time", style: `color:${ongoing ? GREEN : "#8AB4F8"}`, text: ongoing ? "now" : eventWhen(e, now) }),
+      h("span", { class: "int-name", text: String(e.title ?? "") }),
+    ];
+    // Join, for the meeting that is on or about to be: the one click that matters.
+    if (i === 0 && typeof e.meetUrl === "string" && (ongoing || (minutes != null && minutes <= 15))) {
+      const url = e.meetUrl;
+      cells.push(
+        h("span", {
+          class: "int-join",
+          role: "button",
+          style: `color:${accent};background:${accent}24`,
+          text: "Join",
+          onclick: (ev: Event) => {
+            ev.stopPropagation();
+            void Bridge.openUrl(url);
+          },
+        }),
+      );
+    } else if (soon && !ongoing) {
+      cells.push(trailing(`in ${minutes}m`, minutes <= 5 ? AMBER : "#6B7079"));
+    }
+    rows.append(linkRow(accent, i === 0, String(e.url ?? ""), ...cells));
+  });
+
+  const first = ordered[0];
+  const kind = first && sameDay(eventStart(first), now) ? "Today" : "Upcoming";
+  return h("div", { class: "int-card" }, header(GCAL, "Calendar", kind), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -398,6 +589,9 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_gcal":
+      // Disconnecting sends `{}`: back to the idle card, not an empty agenda.
+      return Array.isArray(get(id).events);
     default:
       return false;
   }
@@ -426,6 +620,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_gcal":
+      return gcalCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

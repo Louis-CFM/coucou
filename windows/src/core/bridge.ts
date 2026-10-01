@@ -94,6 +94,15 @@ export const Bridge = {
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /**
+   * Opens Google's consent page and resolves once the refresh token is stored
+   * (or rejects with the reason: cancelled, timed out, wrong client…).
+   */
+  gcalConnect: () => callOrThrow<void>("gcal_connect"),
+  /** Stops a pending gcalConnect, which then rejects with "Sign-in cancelled." */
+  gcalCancel: () => call<void>("gcal_cancel"),
+  /** Revokes the grant at Google and forgets the token. */
+  gcalDisconnect: () => callOrThrow<void>("gcal_disconnect"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
@@ -103,7 +112,15 @@ export interface IntegrationUpdate {
   id: string;
   data: Record<string, unknown>;
   error: string | null;
-  event: { success: boolean; label: string; detail: string | null } | null;
+  event: {
+    success: boolean;
+    label: string;
+    detail: string | null;
+    /** Waiting on the user (a review request, a meeting about to start). */
+    attention?: boolean;
+    /** What a card should show about it — the calendar event of a reminder. */
+    item?: Record<string, unknown>;
+  } | null;
 }
 
 export type ChatContext =
@@ -139,6 +156,7 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
 
 export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
+  | { name: "mouse-button"; payload: boolean }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null };

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou — integration cards preview</title>
+    <style>
+      body { margin: 0; background: #1b1c1f; font: 12px system-ui; color: #ddd; }
+      #stage { position: relative; width: 640px; height: 176px; margin: 32px auto 12px; background: #000; border-radius: 0 0 14px 14px; }
+      #stage > #views { position: absolute; left: 10px; right: 10px; top: 42px; bottom: 10px; }
+      #bot { position: absolute; left: 34px; top: 82px; width: 64px; height: 48px; border-radius: 18px; background: #f2f3f5; z-index: 2; opacity: 0.9; }
+      #controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 760px; margin: 0 auto; }
+      #controls button { background: #222; color: #ddd; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; }
+      #caption { text-align: center; color: #888; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><div id="bot"></div></div>
+    <div id="controls"></div>
+    <div id="caption"></div>
+    <script type="module" src="./integrations-preview.ts"></script>
+  </body>
+</html>

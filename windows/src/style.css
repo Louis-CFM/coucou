@@ -461,18 +461,36 @@ body {
 }
 
 .ticker-row .tick-icon {
+  position: relative;
   width: 12px;
+  height: 22px;
   display: grid;
   place-items: center;
   flex: 0 0 12px;
   color: var(--dim-2);
 }
 
+.ticker-row .tick-texts {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+}
+
+/* Two layers on one line: the shimmering current label and the dim completed
+   one, crossfaded by the ticker. Each is a single clipped, ellipsized line. */
 .ticker-row .tick-text {
-  font: 500 13px var(--font);
+  position: absolute;
+  inset: 0;
+  display: block;
+  font: 500 13px/22px var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ticker-row .tick-text.done {
+  color: var(--dim-3);
 }
 
 /* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
@@ -589,6 +607,12 @@ body {
 .detail {
   font: 400 12px var(--font);
   color: var(--red-text);
+}
+
+.reminder-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .who-row {
@@ -1167,6 +1191,46 @@ input[type="range"]::-webkit-slider-thumb {
   font: 500 10px var(--mono);
   color: #c9956a;
   flex: 0 0 auto;
+}
+
+/* Rows that open something (GitHub, Calendar). */
+.int-go {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: default;
+}
+
+.int-go:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.int-state {
+  font: 500 10px var(--font);
+  margin-left: auto;
+  padding-left: 4px;
+  flex: 0 0 auto;
+}
+
+.int-join {
+  font: 600 10px var(--font);
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.int-join:hover {
+  filter: brightness(1.25);
+}
+
+.int-star {
+  color: #f5a524;
+  display: grid;
+  place-items: center;
 }
 
 .int-more,

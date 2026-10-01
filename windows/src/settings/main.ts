@@ -262,13 +262,17 @@ interface IntegrationDef {
   color: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
+  hint?: string;
+  /** Anything beyond key fields — Google's Connect button. */
+  extra?: (present: Record<string, boolean>) => HTMLElement;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
-    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }] },
+    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }],
+    hint: "A classic token with the repo scope. CI follows the branch of your last Claude Code session; reviews cover your open pull requests and the ones waiting on you." },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
     fields: [{ key: "vercel-token", label: "Token", placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
@@ -282,7 +286,98 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: "Integration token", placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
+  { id: "integration_gcal", name: "Google Calendar", color: "#4285F4",
+    fields: [
+      { key: "gcal-client-id", label: "Client ID", placeholder: "….apps.googleusercontent.com", secret: false },
+      { key: "gcal-client-secret", label: "Client secret", placeholder: "GOCSPX-…", secret: true },
+    ],
+    hint: "Coucou has no server, so it signs in with your own OAuth client: in Google Cloud, enable the Google Calendar API, create an OAuth client of type Desktop app, and paste its ID and secret here. Then publish the consent screen (In production): Google will warn that the app isn't verified — it's your own, continue. Left in Testing, only the test users listed there can sign in, and Google signs them out every 7 days. Read-only. Mochi reminds you at the times your events' own Google reminders say.",
+    extra: gcalConnectRow },
 ];
+
+function gcalConnectRow(present: Record<string, boolean>): HTMLElement {
+  const status = h("span", { class: "hint" });
+  const dotEl = statusDot(false);
+  const connect = h("button", { class: "primary" });
+  const cancel = h("button", { text: "Cancel" });
+  const disconnect = h("button", { class: "danger", text: "Disconnect" });
+  const feedback = h("div", {});
+  const consoleLink = h("button", {
+    text: "Google Cloud console",
+    onclick: () => void Bridge.openUrl("https://console.cloud.google.com/apis/credentials"),
+  });
+
+  /** Which Connect click the screen belongs to: a stale one never redraws it. */
+  let attempt = 0;
+  let waiting = false;
+
+  function draw(connected: boolean) {
+    dotEl.style.background = connected ? "#22c55e" : "#f4505e";
+    status.textContent = connected ? "Connected" : "Not connected";
+    connect.disabled = waiting;
+    connect.textContent = waiting ? "Waiting for Google…" : connected ? "Reconnect…" : "Connect Google account…";
+    cancel.style.display = waiting ? "" : "none";
+    disconnect.style.display = connected && !waiting ? "" : "none";
+  }
+
+  connect.addEventListener("click", async () => {
+    clear(feedback);
+    if (!present["gcal-client-id"] || !present["gcal-client-secret"]) {
+      feedback.append(h("div", { class: "notice warn", text: "Save the client ID and client secret first." }));
+      return;
+    }
+    const mine = ++attempt;
+    waiting = true;
+    draw(present["gcal-refresh-token"] ?? false);
+    feedback.append(h("div", {
+      class: "hint",
+      // Google's "access blocked" page is a dead end: it never comes back here.
+      text: "Finish signing in in your browser. If Google says access is blocked, your address isn't a test user of the app yet: fix it in the console's OAuth consent screen, then Cancel and connect again.",
+    }));
+    let outcome: HTMLElement;
+    try {
+      await Bridge.gcalConnect();
+      present["gcal-refresh-token"] = true;
+      outcome = h("div", { class: "notice ok", text: "Connected. Turn the Calendar pill on to see it next to Mochi." });
+    } catch (err) {
+      outcome = h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") });
+    }
+    if (mine !== attempt) return; // cancelled, or another attempt took over
+    waiting = false;
+    clear(feedback);
+    feedback.append(outcome);
+    draw(present["gcal-refresh-token"] ?? false);
+  });
+
+  // Takes effect at once here; Rust drops its listener within a second.
+  cancel.addEventListener("click", () => {
+    attempt++;
+    waiting = false;
+    void Bridge.gcalCancel();
+    clear(feedback);
+    draw(present["gcal-refresh-token"] ?? false);
+  });
+
+  disconnect.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.gcalDisconnect();
+      present["gcal-refresh-token"] = false;
+      feedback.append(h("div", { class: "notice ok", text: "Disconnected, and access revoked at Google." }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not disconnect: ${String(err)}` }));
+    }
+    draw(present["gcal-refresh-token"] ?? false);
+  });
+
+  draw(present["gcal-refresh-token"] ?? false);
+  return h(
+    "div",
+    { style: "display:flex;flex-direction:column;gap:6px" },
+    h("div", { class: "row" }, h("label", { style: "min-width:104px", text: "Account" }), dotEl, status, connect, cancel, disconnect, consoleLink),
+    feedback,
+  );
+}
 
 const MAX_ACTIVE = 4;
 
@@ -341,6 +436,8 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         ),
       );
     }
+    if (def.extra) rows.append(def.extra(present));
+    if (def.hint) rows.append(h("div", { class: "hint", text: def.hint }));
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
@@ -434,6 +531,7 @@ async function main() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gcal-client-id", "gcal-client-secret", "gcal-refresh-token",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

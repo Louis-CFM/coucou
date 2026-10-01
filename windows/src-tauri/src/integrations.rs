@@ -1,9 +1,12 @@
-// Integration pollers — the Rust side of StripePoller / GithubPoller /
-// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
+// Integration pollers — the Rust side of StripePoller / VercelPoller /
+// N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
 // 60 s auto-clear, exactly as the Swift handlers do.
+//
+// GitHub (CI and pull requests) and Google Calendar go further than macOS and
+// live in their own modules, github.rs and gcal.rs.
 //
 // Nothing is polled until its key exists in the Credential Manager, and no
 // request goes anywhere the user has not configured.
@@ -39,13 +42,21 @@ pub struct IntegrationEvent {
     pub success: bool,
     pub label: String,
     pub detail: Option<String>,
+    /// Something is waiting on the user (a review request, a meeting about to
+    /// start) rather than something that finished: amber badge, not green/red.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub attention: bool,
+    /// What the event is about, when the island opens a card for it (the
+    /// calendar event behind a reminder).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item: Option<Value>,
 }
 
-fn emit(app: &AppHandle, update: IntegrationUpdate) {
+pub(crate) fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
+pub(crate) fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()
@@ -66,9 +77,13 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
-    spawn(app.clone(), "integration_github", 7, 300, poll_github);
+    // Every minute rather than macOS's five: a CI run or a review is only worth
+    // hearing about while it is still news. One GraphQL query per poll.
+    spawn(app.clone(), "integration_github", 7, 60, crate::github::poll);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    // Every minute so the five-minute meeting reminder can't be skipped over.
+    spawn(app, "integration_gcal", 4, 60, crate::gcal::poll);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -107,7 +122,8 @@ where
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
         "integration_stripe" => poll_stripe(app).await,
-        "integration_github" => poll_github(app).await,
+        "integration_github" => crate::github::poll(app).await,
+        "integration_gcal" => crate::gcal::poll(app).await,
         "integration_vercel" => poll_vercel(app).await,
         "integration_n8n" => poll_n8n(app).await,
         "integration_resend" => poll_resend(app).await,
@@ -133,7 +149,7 @@ fn is_new(key: &'static str, id: &str) -> bool {
     }
 }
 
-fn status_error(code: u16, unauthorised_hint: &str) -> String {
+pub(crate) fn status_error(code: u16, unauthorised_hint: &str) -> String {
     match code {
         401 => "Invalid API key (401)".into(),
         403 => unauthorised_hint.into(),
@@ -249,7 +265,7 @@ async fn poll_stripe(app: AppHandle) {
                 let cents = payments[0].get("amount").and_then(Value::as_i64).unwrap_or(0);
                 format!("{:.2}", cents as f64 / 100.0)
             });
-        Some(IntegrationEvent { success: true, label, detail: None })
+        Some(IntegrationEvent { success: true, label, detail: None, attention: false, item: None })
     } else {
         None
     };
@@ -259,67 +275,6 @@ async fn poll_stripe(app: AppHandle) {
         data: json!({ "balance": amount, "currency": currency, "payments": payments }),
         error: None,
         event,
-    });
-}
-
-// ── GitHub ────────────────────────────────────────────────────────────────────
-
-async fn poll_github(app: AppHandle) {
-    let Some(token) = secrets::get("github-token") else { return };
-    let http = client();
-
-    let user = http
-        .get("https://api.github.com/user")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let Ok(response) = user else { return };
-    if !response.status().is_success() {
-        emit(&app, IntegrationUpdate {
-            id: "integration_github",
-            data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Token lacks the needed scope")),
-            event: None,
-        });
-        return;
-    }
-    let json: Value = response.json().await.unwrap_or(json!({}));
-    let public = json.get("public_repos").and_then(Value::as_i64).unwrap_or(0);
-    let private = json
-        .get("owned_private_repos")
-        .or_else(|| json.get("total_private_repos"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-
-    let repos = http
-        .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let stars: i64 = match repos {
-        Ok(r) if r.status().is_success() => r
-            .json::<Value>()
-            .await
-            .ok()
-            .and_then(|v| v.as_array().cloned())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
-                    .sum()
-            })
-            .unwrap_or(0),
-        _ => 0,
-    };
-
-    emit(&app, IntegrationUpdate {
-        id: "integration_github",
-        data: json!({ "totalRepos": public + private, "totalStars": stars }),
-        error: None,
-        event: None,
     });
 }
 
@@ -384,6 +339,7 @@ async fn poll_vercel(app: AppHandle) {
             success,
             label: latest.get("projectName")?.as_str()?.to_string(),
             detail: None,
+            attention: false, item: None,
         })
     });
 
@@ -691,7 +647,7 @@ async fn poll_n8n(app: AppHandle) {
         id: "integration_n8n",
         data: json!({ "workflow": name, "status": status }),
         error: None,
-        event: Some(IntegrationEvent { success, label: name, detail }),
+        event: Some(IntegrationEvent { success, label: name, detail, attention: false, item: None }),
     });
 }
 
