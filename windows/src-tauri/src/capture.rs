@@ -4,8 +4,8 @@
 // Flow: user drags Mochi out of the island (> 7pt) → a ghost follows the
 // cursor → on release the front end calls `attach_window` → we read the cursor
 // position ourselves (the release usually happens outside our window, so
-// client coordinates would be meaningless), find the window below it, capture
-// it with PrintWindow (BitBlt fallback), and save a PNG next to dropped files.
+// client coordinates would be meaningless), find the window below it, blit
+// the visible screen rect into a PNG next to dropped files.
 // The front end then offers it as prompt context like any other file.
 //
 // Permissions: none beyond what a screenshot tool needs. A minimized window or
@@ -23,7 +23,7 @@ use windows::Win32::System::ProcessStatus::GetModuleBaseNameW;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
-    PrintWindow, PW_CLIENTONLY, PW_RENDERFULLCONTENT, WindowFromPoint,
+    WindowFromPoint,
 };
 
 use crate::files;
@@ -84,16 +84,10 @@ fn capture(hwnd: HWND, rect: RECT) -> Result<(u32, u32, Vec<u8>), String> {
         }
         let old = SelectObject(mem_dc, bmp.into());
 
-        // PrintWindow renders even covered windows; some (Electron, browsers)
-        // need the full-content flag, others only answer the classic one.
-        let mut ok = PrintWindow(hwnd, mem_dc, PW_RENDERFULLCONTENT).as_bool();
-        if !ok {
-            ok = PrintWindow(hwnd, mem_dc, PW_CLIENTONLY).as_bool();
-        }
-        if !ok {
-            // Last resort: copy what is actually on screen at that rect.
-            ok = BitBlt(mem_dc, 0, 0, w, h, Some(screen_dc), rect.left, rect.top, SRCCOPY).is_ok();
-        }
+        // Copy what is on screen at that rect. The drop always lands on a
+        // visible window (minimized is rejected above), so a screen blit is
+        // the honest capture here — no PrintWindow needed.
+        let ok = BitBlt(mem_dc, 0, 0, w, h, Some(screen_dc), rect.left, rect.top, SRCCOPY).is_ok();
         SelectObject(mem_dc, old);
 
         let result = if ok {
