@@ -6,22 +6,26 @@ struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
 
-    // Claude model — presets plus a free field for any other model ID
-    private static let modelPresets: [(id: String, label: String)] = [
-        ("claude-opus-5-5",   "Claude Opus 5.5"),
-        ("claude-fable-5-1",  "Claude Fable 5.1"),
-        ("claude-sonnet-5-5", "Claude Sonnet 5.5"),
-        ("claude-haiku-4-5",  "Claude Haiku 4.5"),
+    // Claude model — dynamic list fetched from the API, static fallback if unavailable
+    private static let fallbackModels: [(id: String, label: String)] = [
+        ("claude-sonnet-4-6",         "Claude Sonnet 4.6"),
+        ("claude-sonnet-5-5",         "Claude Sonnet 5.5"),
+        ("claude-opus-5-5",           "Claude Opus 5.5"),
+        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
     ]
     private static let customModelTag = "__custom__"
+    @State private var fetchedModels: [(id: String, label: String)] = []
     @State private var modelChoice: String = {
         let m = AppState.shared.claudeModel
-        return SettingsView.modelPresets.contains { $0.id == m } ? m : SettingsView.customModelTag
+        return SettingsView.fallbackModels.contains { $0.id == m } ? m : SettingsView.customModelTag
     }()
     @State private var customModel: String = {
         let m = AppState.shared.claudeModel
-        return SettingsView.modelPresets.contains { $0.id == m } ? "" : m
+        return SettingsView.fallbackModels.contains { $0.id == m } ? "" : m
     }()
+    private var displayModels: [(id: String, label: String)] {
+        fetchedModels.isEmpty ? Self.fallbackModels : fetchedModels
+    }
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
@@ -77,7 +81,7 @@ struct SettingsView: View {
                         Divider().padding(.vertical, 2)
 
                         Picker("Model", selection: $modelChoice) {
-                            ForEach(Self.modelPresets, id: \.id) { preset in
+                            ForEach(displayModels, id: \.id) { preset in
                                 Text(preset.label).tag(preset.id)
                             }
                             Text("Custom…").tag(Self.customModelTag)
@@ -91,12 +95,12 @@ struct SettingsView: View {
                         }
 
                         if modelChoice == Self.customModelTag {
-                            TextField("Model ID (e.g. claude-opus-5-5)", text: $customModel)
+                            TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
                                 .textFieldStyle(.roundedBorder)
                                 .onChange(of: customModel) { _, value in applyCustomModel(value) }
                         }
 
-                        Text("Used by the chat and the search. Fable needs access on your API account.")
+                        Text("Used by the chat. The list comes from your Anthropic account.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -381,6 +385,25 @@ struct SettingsView: View {
                 Spacer(minLength: 0)
             }
             .padding(20)
+        }
+        .onAppear {
+            guard fetchedModels.isEmpty,
+                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
+            Task {
+                let models = await ClaudeService.fetchModels(apiKey: key)
+                guard !models.isEmpty else { return }
+                await MainActor.run {
+                    fetchedModels = models
+                    let m = state.claudeModel
+                    if models.contains(where: { $0.id == m }) {
+                        modelChoice = m
+                        customModel = ""
+                    } else if modelChoice != Self.customModelTag {
+                        modelChoice = Self.customModelTag
+                        customModel = m
+                    }
+                }
+            }
         }
         .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
     }

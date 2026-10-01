@@ -75,7 +75,7 @@ final class AppState: ObservableObject {
     }
 
     // Claude model used by the chat and the search — persisted
-    static let defaultClaudeModel = "claude-opus-5-5"
+    static let defaultClaudeModel = "claude-sonnet-4-6"
     @Published var claudeModel: String = AppState.defaultClaudeModel {
         didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
     }

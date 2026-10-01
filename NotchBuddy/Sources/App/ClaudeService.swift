@@ -108,6 +108,26 @@ final class ClaudeService {
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let anthropicVersion = "2023-06-01"
+
+    // MARK: - Model list
+
+    /// Fetches available models from the Anthropic API in the order the API returns them
+    /// (newest first). Returns an empty array on any error — callers fall back to a static list.
+    static func fetchModels(apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "https://api.anthropic.com/v1/models?limit=100") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String,
+                  let name = item["display_name"] as? String else { return nil }
+            return (id: id, label: name)
+        }
+    }
     /// Chosen in Settings; falls back to the default when the field is left empty.
     private var model: String {
         let m = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -176,7 +196,7 @@ final class ClaudeService {
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
-            await showError("Network error: \(error.localizedDescription)", state: state)
+            await showError(error.localizedDescription, state: state)
         }
     }
 
@@ -227,7 +247,7 @@ final class ClaudeService {
             let result = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
             await handleResult(result, state: state)
         } catch {
-            await showError("Network error: \(error.localizedDescription)", state: state)
+            await showError(error.localizedDescription, state: state)
         }
     }
 
@@ -246,6 +266,20 @@ final class ClaudeService {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            // Parse Anthropic error format: {"type":"error","error":{"type":"…","message":"…"}}
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let err = json["error"] as? [String: Any],
+               let errType = err["type"] as? String,
+               let errMsg = err["message"] as? String {
+                if errType == "not_found_error" {
+                    let id = AppState.shared.claudeModel
+                    throw NSError(domain: "Claude", code: 0,
+                        userInfo: [NSLocalizedDescriptionKey:
+                            "Model not found: \(id). Pick another one in Settings."])
+                }
+                throw NSError(domain: "Claude", code: 0,
+                    userInfo: [NSLocalizedDescriptionKey: errMsg])
+            }
             let msg = String(data: data, encoding: .utf8) ?? "unknown error"
             throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
         }
