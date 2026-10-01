@@ -444,7 +444,7 @@ struct IslandContentView: View {
                     IslandViewContent(view: v, state: state)
                         .frame(maxWidth: .infinity)
                         .frame(height: isTall ? nil : 98)
-                        .frame(maxHeight: isTall ? .infinity : nil)
+                        .frame(minHeight: (isTall && !active) ? 0 : nil, maxHeight: isTall ? .infinity : nil)
                         .opacity(active ? 1 : 0)
                         .scaleEffect(active ? 1 : 0.97)
                         .allowsHitTesting(active)
