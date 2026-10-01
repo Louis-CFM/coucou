@@ -74,8 +74,11 @@ fn parse(bytes: &[u8], path: &str) -> Result<Value, String> {
     }
 }
 
-fn command() -> String {
-    format!("\"{}\"", settings::hook_exe_path().to_string_lossy().replace('\\', "/"))
+fn command(event: &str) -> String {
+    format!(
+        "\"{}\" {event}",
+        settings::hook_exe_path().to_string_lossy().replace('\\', "/")
+    )
 }
 
 fn ours(entry: &Value) -> bool {
@@ -96,8 +99,8 @@ fn merged(existing: &Value) -> Value {
         entries.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": command(),
-                "commandWindows": command(),
+                "command": command(event),
+                "commandWindows": command(event),
                 "timeout": if *event == "PermissionRequest" { 120 } else { 10 },
             }]
         }));
@@ -208,5 +211,26 @@ mod tests {
     fn parser_rejects_non_objects() {
         assert!(parse(br#"[]"#, "hooks.json").is_err());
         assert_eq!(parse(b"\xef\xbb\xbf{}", "hooks.json").unwrap(), json!({}));
+    }
+
+    #[test]
+    fn generated_commands_include_the_event_argument() {
+        let value = merged(&json!({}));
+        assert_eq!(
+            value["hooks"]["Stop"][0]["hooks"][0]["command"]
+                .as_str()
+                .unwrap()
+                .split_whitespace()
+                .last(),
+            Some("Stop")
+        );
+        assert_eq!(
+            value["hooks"]["Stop"][0]["hooks"][0]["commandWindows"]
+                .as_str()
+                .unwrap()
+                .split_whitespace()
+                .last(),
+            Some("Stop")
+        );
     }
 }

@@ -119,6 +119,32 @@ with the freshly built `windows\target\release\coucou-hook.exe` if an older
 installer may still be installed. The launcher now compares relay bytes rather
 than timestamps before replacing the copy in `%LOCALAPPDATA%\Coucou\bin`.
 
+To inspect the effective `Stop` configuration and prove which process emits
+the response, run:
+
+```powershell
+$hooks = if ($env:CODEX_HOME) { Join-Path $env:CODEX_HOME 'hooks.json' } else { Join-Path $env:USERPROFILE '.codex\hooks.json' }
+$config = Get-Content -Raw $hooks | ConvertFrom-Json
+$config.hooks.Stop | ConvertTo-Json -Depth 20
+$hook = "$env:LOCALAPPDATA\Coucou\bin\coucou-hook.exe"
+$payload = [ordered]@{ session_id='diagnostic'; cwd=(Get-Location).Path; hook_event_name='Stop'; model='diagnostic'; turn_id='diagnostic'; permission_mode='default'; stop_hook_active=$false; last_assistant_message='diagnostic' } | ConvertTo-Json -Compress
+$stdoutFile = Join-Path $env:TEMP 'coucou-stop.stdout'
+$stderrFile = Join-Path $env:TEMP 'coucou-stop.stderr'
+$payload | & $hook Stop 1> $stdoutFile 2> $stderrFile
+Write-Host "exit=$LASTEXITCODE"
+Write-Host 'stdout bytes:'
+[BitConverter]::ToString([IO.File]::ReadAllBytes($stdoutFile))
+Write-Host 'stderr bytes:'
+[BitConverter]::ToString([IO.File]::ReadAllBytes($stderrFile))
+Get-Content -Raw $stdoutFile | ConvertFrom-Json | ConvertTo-Json -Compress
+```
+
+The Coucou entry must show both `command` and `commandWindows` ending in
+`"coucou-hook.exe" Stop`. Expected stdout bytes are `7B-7D-0D-0A` (or
+`7B-7D-0A`) and stderr must be empty. If another `Stop` entry is present,
+disable it temporarily or test its command separately: Codex validates every
+matching hook, not only Coucou's entry.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
