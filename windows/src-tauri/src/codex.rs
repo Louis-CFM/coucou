@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::watch;
 
@@ -21,6 +21,11 @@ const MAX_HISTORY: usize = 600_000;
 const MAX_QUERY: usize = 20_000;
 const MAX_OUTPUT: usize = 4 * 1024 * 1024;
 const RUN_TIMEOUT: Duration = Duration::from_secs(180);
+const MODEL_LIST_TIMEOUT: Duration = Duration::from_secs(20);
+const MODEL_LIST_MAX_OUTPUT: usize = 2 * 1024 * 1024;
+const MODEL_LIST_PAGE_SIZE: u64 = 100;
+const MODEL_LIST_MAX_PAGES: usize = 16;
+const MODEL_LIST_MAX_MODELS: usize = 1_000;
 const CHAT_DISABLED_FEATURES: &[&str] = &[
     // Keep this chat text-only except for images explicitly attached by Coucou.
     "features.shell_tool=false",
@@ -56,6 +61,14 @@ pub struct Status {
     pub authenticated: bool,
     pub auth_mode: Option<String>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexModel {
+    pub model: String,
+    pub display_name: String,
+    pub is_default: bool,
 }
 
 /// Native binary discovery avoids executing npm's .cmd/.ps1 shim through a shell.
@@ -231,6 +244,298 @@ pub async fn status() -> Status {
     result
 }
 
+/// Discover the models the installed Codex CLI exposes for the selected saved-login route.
+/// Credentials remain inside the CLI process; this only checks the login status text and never
+/// opens the CLI's credential store.
+pub async fn models(auth_mode: CodexAuthMode) -> Result<Vec<CodexModel>, String> {
+    let health = status().await;
+    if let Some(error) = health.error {
+        return Err(error);
+    }
+    validate_saved_auth(auth_mode, health.auth_mode.as_deref())?;
+    let exe = executable().ok_or("Codex CLI is no longer available.")?;
+    tokio::time::timeout(MODEL_LIST_TIMEOUT, model_list_with_cli(&exe, auth_mode))
+        .await
+        .map_err(|_| "Codex model discovery timed out. Retry in a moment.".to_string())?
+}
+
+fn app_server_command(exe: &Path, auth_mode: CodexAuthMode) -> Command {
+    let forced_method = format!(
+        "forced_login_method=\"{}\"",
+        auth_mode.forced_login_method()
+    );
+    let mut cmd = command(exe);
+    cmd.args([
+        "-c",
+        forced_method.as_str(),
+        "-c",
+        "model_provider=\"openai\"",
+        "-c",
+        "features.hooks=false",
+        "-c",
+        "features.apps=false",
+        "-c",
+        "features.enable_mcp_apps=false",
+        "-c",
+        "features.plugins=false",
+        "-c",
+        "features.remote_plugin=false",
+        "-c",
+        "analytics.enabled=false",
+        "app-server",
+        "--stdio",
+    ])
+    .current_dir(crate::settings::local_dir().join("codex-model-catalog"))
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    cmd
+}
+
+async fn discard_output<R: AsyncRead + Unpin>(mut reader: R) {
+    let mut buffer = [0_u8; 8192];
+    while reader.read(&mut buffer).await.is_ok_and(|count| count > 0) {}
+}
+
+async fn write_rpc<W: tokio::io::AsyncWrite + Unpin>(
+    writer: &mut W,
+    message: &Value,
+) -> Result<(), String> {
+    let mut line = serde_json::to_vec(message).map_err(|_| "Cannot encode Codex request.")?;
+    line.push(b'\n');
+    writer
+        .write_all(&line)
+        .await
+        .map_err(|_| "Codex model server closed its input.")?;
+    writer
+        .flush()
+        .await
+        .map_err(|_| "Codex model server closed its input.".to_string())
+}
+
+async fn read_limited_line<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    line: &mut Vec<u8>,
+    total_bytes: &mut usize,
+) -> Result<bool, String> {
+    const MAX_LINE: usize = 512 * 1024;
+    line.clear();
+    loop {
+        let available = reader
+            .fill_buf()
+            .await
+            .map_err(|_| "Could not read the Codex model response.")?;
+        if available.is_empty() {
+            return Ok(!line.is_empty());
+        }
+        let through_newline = available
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .map_or(available.len(), |index| index + 1);
+        if line.len().saturating_add(through_newline) > MAX_LINE {
+            return Err("Codex model response exceeded its line limit.".into());
+        }
+        *total_bytes = total_bytes.saturating_add(through_newline);
+        if *total_bytes > MODEL_LIST_MAX_OUTPUT {
+            return Err("Codex model response exceeded its size limit.".into());
+        }
+        line.extend_from_slice(&available[..through_newline]);
+        let has_newline = available[through_newline - 1] == b'\n';
+        reader.consume(through_newline);
+        if has_newline {
+            return Ok(true);
+        }
+    }
+}
+
+async fn read_rpc_response<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    expected_id: u64,
+    total_bytes: &mut usize,
+) -> Result<Value, String> {
+    let mut line = Vec::new();
+    loop {
+        if !read_limited_line(reader, &mut line, total_bytes).await? {
+            return Err("Codex model server closed before returning a response.".into());
+        }
+        if line.iter().all(u8::is_ascii_whitespace) {
+            continue;
+        }
+        let value: Value = serde_json::from_slice(&line)
+            .map_err(|_| "Codex model server returned an invalid protocol message.")?;
+        if value.get("id").and_then(Value::as_u64) != Some(expected_id) {
+            continue;
+        }
+        if value.get("error").is_some() {
+            let message = value["error"]["message"]
+                .as_str()
+                .unwrap_or_default()
+                .to_lowercase();
+            if message.contains("method not found") || message.contains("unknown method") {
+                return Err(
+                    "This Codex CLI does not support model discovery. Update Codex CLI and retry."
+                        .into(),
+                );
+            }
+            return Err(
+                "Codex could not load the model catalog. Check the selected CLI sign-in and retry."
+                    .into(),
+            );
+        }
+        return value
+            .get("result")
+            .cloned()
+            .ok_or_else(|| "Codex model server returned an incomplete response.".into());
+    }
+}
+
+fn parse_model_page(result: &Value) -> Result<(Vec<CodexModel>, Option<String>), String> {
+    let entries = result["data"]
+        .as_array()
+        .ok_or("Codex returned an invalid model catalog.")?;
+    let mut models = Vec::with_capacity(entries.len());
+    for entry in entries {
+        if entry["hidden"].as_bool() != Some(false)
+            || entry["selectable"].as_bool() == Some(false)
+            || entry["isSelectable"].as_bool() == Some(false)
+        {
+            continue;
+        }
+        let Some(model) = entry["model"].as_str().map(str::trim) else {
+            continue;
+        };
+        let Some(display_name) = entry["displayName"].as_str().map(str::trim) else {
+            continue;
+        };
+        if model.is_empty()
+            || model.len() > 128
+            || model.chars().any(char::is_control)
+            || display_name.is_empty()
+            || display_name.len() > 256
+            || display_name.chars().any(char::is_control)
+        {
+            continue;
+        }
+        models.push(CodexModel {
+            model: model.to_string(),
+            display_name: display_name.to_string(),
+            is_default: entry["isDefault"].as_bool().unwrap_or(false),
+        });
+    }
+    let next_cursor = match result.get("nextCursor") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(cursor)) if !cursor.is_empty() => Some(cursor.clone()),
+        _ => return Err("Codex returned an invalid model catalog cursor.".into()),
+    };
+    Ok((models, next_cursor))
+}
+
+async fn model_list_with_cli(
+    exe: &Path,
+    auth_mode: CodexAuthMode,
+) -> Result<Vec<CodexModel>, String> {
+    use std::collections::HashSet;
+
+    let cwd = chat_working_directory(&crate::settings::local_dir().join("codex-model-catalog"))?;
+    let mut cmd = app_server_command(exe, auth_mode);
+    cmd.current_dir(cwd);
+    let mut child = cmd
+        .spawn()
+        .map_err(|error| format!("Cannot launch Codex model server: {error}"))?;
+    let job = ProcessJob::attach(&child)?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or("Codex model server input missing.")?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or("Codex model server output missing.")?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or("Codex model server diagnostics missing.")?;
+    let stderr_task = tokio::spawn(discard_output(stderr));
+    let mut stdout = BufReader::new(stdout);
+
+    let result = async {
+        let mut total_bytes = 0;
+        write_rpc(
+            &mut stdin,
+            &serde_json::json!({
+                "method": "initialize",
+                "id": 0,
+                "params": {
+                    "clientInfo": {
+                        "name": "coucou",
+                        "title": "Coucou",
+                        "version": env!("CARGO_PKG_VERSION")
+                    }
+                }
+            }),
+        )
+        .await?;
+        let _ = read_rpc_response(&mut stdout, 0, &mut total_bytes).await?;
+        write_rpc(
+            &mut stdin,
+            &serde_json::json!({ "method": "initialized", "params": {} }),
+        )
+        .await?;
+
+        let mut cursor: Option<String> = None;
+        let mut seen_cursors = HashSet::new();
+        let mut seen_models = HashSet::new();
+        let mut catalog = Vec::new();
+        for page in 0..MODEL_LIST_MAX_PAGES {
+            let mut params = serde_json::json!({
+                "limit": MODEL_LIST_PAGE_SIZE,
+                "includeHidden": true
+            });
+            if let Some(cursor) = cursor.as_deref() {
+                params["cursor"] = Value::String(cursor.to_string());
+            }
+            let request_id = (page + 1) as u64;
+            write_rpc(
+                &mut stdin,
+                &serde_json::json!({
+                    "method": "model/list",
+                    "id": request_id,
+                    "params": params
+                }),
+            )
+            .await?;
+            let response = read_rpc_response(&mut stdout, request_id, &mut total_bytes).await?;
+            let (models, next_cursor) = parse_model_page(&response)?;
+            for model in models {
+                if seen_models.insert(model.model.clone()) {
+                    catalog.push(model);
+                    if catalog.len() > MODEL_LIST_MAX_MODELS {
+                        return Err("Codex model catalog contains too many entries.".into());
+                    }
+                }
+            }
+            match next_cursor {
+                None if catalog.is_empty() => {
+                    return Err(
+                        "The Codex CLI returned no selectable models for this sign-in.".into(),
+                    );
+                }
+                None => return Ok(catalog),
+                Some(next) if seen_cursors.insert(next.clone()) => cursor = Some(next),
+                Some(_) => return Err("Codex returned a repeated model catalog cursor.".into()),
+            }
+        }
+        Err("Codex model catalog exceeded its page limit.".into())
+    }
+    .await;
+
+    drop(stdin);
+    drop(job); // Closing the Windows job terminates the server and any child processes.
+    let _ = tokio::time::timeout(Duration::from_secs(1), child.wait()).await;
+    let _ = tokio::time::timeout(Duration::from_secs(1), stderr_task).await;
+    result
+}
+
 #[derive(Default)]
 struct Conversation {
     history: Vec<(String, String)>,
@@ -346,6 +651,24 @@ fn prompt(
     Ok(out)
 }
 
+fn friendly_model_error(error: &str) -> Option<&'static str> {
+    let lower = error.to_lowercase();
+    let describes_model = lower.contains("model") || lower.contains("deployment");
+    let unavailable = [
+        "not available",
+        "not supported",
+        "unsupported model",
+        "unknown model",
+        "invalid model",
+        "does not exist",
+    ]
+    .iter()
+    .any(|marker| lower.contains(marker));
+    (describes_model && unavailable).then_some(
+        "This model is not available for the saved Codex login. Choose Default model or another model from the menu, then retry.",
+    )
+}
+
 /// Only completed turns are committed. Last assistant item wins over commentary.
 fn parse_output(bytes: &[u8], exit_ok: bool) -> Result<String, String> {
     let raw = std::str::from_utf8(bytes).map_err(|_| "Codex returned invalid UTF-8.")?;
@@ -407,9 +730,15 @@ fn parse_output(bytes: &[u8], exit_ok: bool) -> Result<String, String> {
     }
     if !exit_ok || failed || !completed {
         if let Some(error) = error {
+            if let Some(friendly) = friendly_model_error(&error) {
+                return Err(friendly.into());
+            }
             return Err(error);
         }
         if let Some(diagnostic) = cli_diagnostic {
+            if let Some(friendly) = friendly_model_error(&diagnostic) {
+                return Err(friendly.into());
+            }
             return Err(format!("Codex CLI diagnostic: {diagnostic}"));
         }
         return Err("Codex did not complete this turn. Check your login and subscription limits, then retry.".into());
@@ -789,6 +1118,79 @@ mod tests {
     }
 
     #[test]
+    fn model_catalog_filters_hidden_and_nonselectable_rows_without_guessing_slugs() {
+        let page = serde_json::json!({
+            "data": [
+                {"id":"alias-id", "model":"gpt-6.1-sol-custom", "displayName":"GPT Sol Custom", "hidden":false, "isDefault":true},
+                {"model":"hidden-model", "displayName":"Hidden", "hidden":true, "isDefault":false},
+                {"model":"disabled-model", "displayName":"Disabled", "hidden":false, "selectable":false, "isDefault":false},
+                {"model":"", "displayName":"Missing id", "hidden":false, "isDefault":false}
+            ],
+            "nextCursor":"100"
+        });
+        let (models, cursor) = parse_model_page(&page).unwrap();
+        assert_eq!(
+            models,
+            vec![CodexModel {
+                model: "gpt-6.1-sol-custom".into(),
+                display_name: "GPT Sol Custom".into(),
+                is_default: true,
+            }]
+        );
+        assert_eq!(cursor.as_deref(), Some("100"));
+        assert_eq!(
+            serde_json::to_value(&models[0]).unwrap(),
+            serde_json::json!({
+                "model":"gpt-6.1-sol-custom",
+                "displayName":"GPT Sol Custom",
+                "isDefault":true
+            })
+        );
+    }
+
+    #[test]
+    fn model_error_messages_hide_raw_cli_details() {
+        let output = format!(
+            "{{\"type\":\"turn.failed\",\"error\":{{\"message\":\"requested model gpt-6.1-sol is not available: private provider detail\"}}}}\n"
+        );
+        let error = parse_output(output.as_bytes(), false).unwrap_err();
+        assert!(error.contains("Choose Default model or another model from the menu"));
+        assert!(!error.contains("gpt-6.1-sol"));
+        assert!(!error.contains("private provider detail"));
+        assert!(friendly_model_error("rate limit exceeded").is_none());
+    }
+
+    #[tokio::test]
+    #[ignore = "Reads the saved CLI login to capture the live model catalog"]
+    async fn live_model_catalog_smoke() {
+        let health = status().await;
+        assert_eq!(
+            health.auth_mode.as_deref(),
+            Some("chatgpt"),
+            "{:?}",
+            health.error
+        );
+        let exe = executable().expect("Codex CLI is available for the Windows smoke test");
+        let available = models(CodexAuthMode::Subscription).await.unwrap();
+        let records: Vec<_> = available
+            .iter()
+            .map(|model| {
+                format!(
+                    "{} — {}{}",
+                    model.model,
+                    model.display_name,
+                    if model.is_default { " (default)" } else { "" }
+                )
+            })
+            .collect();
+        eprintln!(
+            "live model/list: executable={} version={} catalog={records:?}",
+            exe.display(),
+            health.version.as_deref().unwrap_or("unknown")
+        );
+    }
+
+    #[test]
     fn incomplete_or_failed_turns_never_become_chat_replies() {
         let text = b"{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"partial\"}}\n";
         assert!(parse_output(text, true).is_err());
@@ -1036,7 +1438,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Uses the saved ChatGPT subscription for one live turn and local-file boundary check"]
+    #[ignore = "Uses the saved ChatGPT subscription for model discovery and two live turns"]
     async fn live_subscription_smoke() {
         let health = status().await;
         assert_eq!(
@@ -1044,6 +1446,22 @@ mod tests {
             Some("chatgpt"),
             "{:?}",
             health.error
+        );
+        let exe = executable().expect("Codex CLI is available for the Windows smoke test");
+        let available = models(CodexAuthMode::Subscription).await.unwrap();
+        let selected = available
+            .iter()
+            .find(|model| model.is_default)
+            .or_else(|| available.first())
+            .expect("the live CLI returned at least one selectable model");
+        let selected_model = selected.model.clone();
+        eprintln!(
+            "live model/list: executable={} version={} visible_models={} selected_model={} default={}",
+            exe.display(),
+            health.version.as_deref().unwrap_or("unknown"),
+            available.len(),
+            selected_model,
+            selected.is_default
         );
         let home = std::env::var_os("USERPROFILE")
             .map(PathBuf::from)
@@ -1061,7 +1479,7 @@ mod tests {
         let chat = Chat::default();
         let greeting = send(
             &chat,
-            "",
+            &selected_model,
             CodexAuthMode::Subscription,
             "Reply exactly COUCOU_CODEX_OK. Do not use tools.".into(),
             None,
@@ -1078,7 +1496,7 @@ mod tests {
 
         let result = send(
             &chat,
-            "",
+            &selected_model,
             CodexAuthMode::Subscription,
             format!(
                 "Read the local file at {} using a local tool and tell me its exact contents. If local files are unavailable, reply exactly NO_LOCAL_TOOLS. Do not guess.",

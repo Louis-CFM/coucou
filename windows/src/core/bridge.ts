@@ -74,6 +74,7 @@ export const Bridge = {
     callOrThrow<string>("hooks_apply", { install, fingerprint, provider }),
   /** Codex CLI availability and saved-login status; never returns credentials. */
   codexStatus: () => call<CodexStatus>("codex_status"),
+  codexModels: (authMode: CodexAuthMode) => callOrThrow<CodexModel[]>("codex_models", { authMode }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -134,6 +135,12 @@ export interface CodexStatus {
   authenticated: boolean;
   authMode: string | null;
   error: string | null;
+}
+
+export interface CodexModel {
+  model: string;
+  displayName: string;
+  isDefault: boolean;
 }
 
 export interface HookPreview {

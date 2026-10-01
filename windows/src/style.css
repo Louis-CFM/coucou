@@ -782,8 +782,34 @@ input[type="range"]::-webkit-slider-thumb {
 
 .chat-model {
   min-width: 0;
-  width: 170px;
-  max-width: 45%;
+  width: 190px;
+  max-width: 55%;
+}
+
+.chat-provider,
+.chat-model {
+  color-scheme: dark;
+  color: var(--ink-2);
+  background-color: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  outline: none;
+  cursor: pointer;
+}
+
+.chat-provider:focus-visible,
+.chat-model:focus-visible {
+  border-color: rgba(129, 140, 248, 0.65);
+}
+
+.chat-provider option,
+.chat-model option {
+  background: #202124;
+  color: #e5e7eb;
+}
+
+.chat-model:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .chip {

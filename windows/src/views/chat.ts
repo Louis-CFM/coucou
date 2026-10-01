@@ -8,6 +8,7 @@ import { reconcileChatSession, waitForChatSessionReady } from "../core/chat-sess
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
+import { codexModelPicker } from "./codex-model-picker";
 
 let nextId = 1;
 
@@ -45,15 +46,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     h("option", { value: "claude", text: "Claude" }),
     h("option", { value: "codex", text: "Codex" }),
   );
-  const codexModel = h("input", {
-    type: "text",
-    class: "chat-model",
-    placeholder: "CLI default model",
-    title: "Optional Codex model override. Leave empty to use the Codex CLI default.",
-    "aria-label": "Codex model override",
-    autocomplete: "off",
-    spellcheck: "false",
-  }) as HTMLInputElement;
+  const modelPicker = codexModelPicker("chat-model", () => changeConfig(State.settings.chatProvider, ""));
+  const codexModel = modelPicker.select;
   const controls = h("div", { class: "chat-controls" },
     h("span", { class: "chat-provider-label", text: "Chat with" }), provider, codexModel,
   );
@@ -95,6 +89,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   async function submit() {
     const query = input.value.trim();
+    if (!query) return;
+    if (State.settings.chatProvider === "codex") {
+      try { await modelPicker.ready(); }
+      catch (error) { State.noteMessage = String(error).replace(/^Error:\s*/, ""); State.view = "note"; State.notify(); onHeightChange(); return; }
+    }
     reconcileChatSession(false, Boolean(query));
     const generation = State.chatGeneration;
     if (!query || activeGeneration === generation) return;
@@ -157,7 +156,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     sync() {
       reconcileChatSession();
       if (document.activeElement !== provider) provider.value = State.settings.chatProvider;
-      if (document.activeElement !== codexModel) codexModel.value = State.settings.codexModel;
+      if (State.settings.chatProvider === "codex") modelPicker.sync(State.settings.codexAuthMode, State.settings.codexModel);
       codexModel.style.display = State.settings.chatProvider === "codex" ? "" : "none";
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";

@@ -27,7 +27,7 @@ use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
 use pipe::Pending;
-use settings::{ChatProvider, Settings};
+use settings::{ChatProvider, CodexAuthMode, Settings};
 
 /// Keeps spawned helpers from flashing a console window.
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -326,6 +326,11 @@ async fn codex_status() -> codex::Status {
     codex::status().await
 }
 
+#[tauri::command]
+async fn codex_models(auth_mode: CodexAuthMode) -> Result<Vec<codex::CodexModel>, String> {
+    codex::models(auth_mode).await
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -473,6 +478,7 @@ pub fn run() {
             chat_send,
             chat_reset,
             codex_status,
+            codex_models,
             ingest_file,
             secret_present,
             secret_set,

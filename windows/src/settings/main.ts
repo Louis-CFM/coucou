@@ -6,6 +6,7 @@ import "./settings.css";
 import { Bridge, onEvent, type CodexStatus, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
+import { codexModelPicker } from "../views/codex-model-picker";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
@@ -294,15 +295,9 @@ function chatEngineSection(): HTMLElement {
   authMode.value = settings.codexAuthMode;
   const authModeRow = h("div", { class: "row" }, h("label", { text: "Authentication & billing" }), authMode);
 
-  const model = h("input", {
-    type: "text",
-    value: settings.codexModel,
-    placeholder: "CLI default model",
-    autocomplete: "off",
-    spellcheck: "false",
-    style: "flex:1 1 auto;min-width:180px",
-  }) as HTMLInputElement;
-  const modelRow = h("div", { class: "row" }, h("label", { text: "Codex model override" }), model);
+  const modelPicker = codexModelPicker("", () => { settings.codexModel = ""; void save(); });
+  const model = modelPicker.select;
+  const modelRow = h("div", { class: "row" }, h("label", { text: "Codex model" }), model);
   const hint = h("div", { class: "hint" });
   const apiSetup = h("div", { class: "notice warn" });
 
@@ -316,7 +311,7 @@ function chatEngineSection(): HTMLElement {
       apiSetup.textContent = "To set up API login, run `codex login --with-api-key` in a terminal and provide the key through stdin. Do not paste the key into Coucou.";
       apiSetup.style.display = "";
     } else {
-      hint.textContent = "Codex chat uses the saved ChatGPT subscription login. Leave the model blank to use the Codex CLI default. Text files up to 200 KB and images are supported; PDF context is not available yet.";
+      hint.textContent = "Codex chat uses the saved ChatGPT subscription login. Choose a model offered by your CLI, or use Default model. Text files up to 200 KB and images are supported; PDF context is not available yet.";
       apiSetup.textContent = "";
       apiSetup.style.display = "none";
     }
@@ -325,11 +320,11 @@ function chatEngineSection(): HTMLElement {
   const persist = async () => {
     settings.chatProvider = provider.value as Settings["chatProvider"];
     settings.codexAuthMode = authMode.value as Settings["codexAuthMode"];
-    settings.codexModel = model.value.trim();
     await save();
   };
   const updateModelVisibility = () => {
     const codex = provider.value === "codex";
+    if (codex) modelPicker.sync(authMode.value as Settings["codexAuthMode"], settings.codexModel);
     modelRow.style.display = codex ? "" : "none";
     authModeRow.style.display = codex ? "" : "none";
     apiSetup.style.display = codex && authMode.value === "api" ? "" : "none";
@@ -337,8 +332,8 @@ function chatEngineSection(): HTMLElement {
   updateModeHelp();
   updateModelVisibility();
   provider.addEventListener("change", () => { updateModeHelp(); updateModelVisibility(); void persist(); });
-  authMode.addEventListener("change", () => { updateModeHelp(); updateModelVisibility(); void persist(); });
-  model.addEventListener("change", () => void persist());
+  authMode.addEventListener("change", () => { settings.codexModel = ""; updateModeHelp(); updateModelVisibility(); void persist(); });
+  model.addEventListener("change", () => { settings.codexModel = model.value; void persist(); });
 
   return h(
     "section",
