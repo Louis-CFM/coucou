@@ -4,6 +4,7 @@ mod claude;
 mod capture;
 mod files;
 mod gemini;
+mod gmail;
 mod jump;
 mod mail;
 mod media;
@@ -323,6 +324,19 @@ fn chat_reset(chat: State<Chat>, gchat: State<GeminiChat>) {
     gchat.reset();
 }
 
+/// Gmail OAuth sign-in: opens the browser, waits for consent, stores tokens.
+/// Returns the account address on success.
+#[tauri::command]
+async fn gmail_signin(client_id: String, client_secret: String) -> Result<String, String> {
+    gmail::signin(client_id, client_secret).await
+}
+
+/// Forgets the Gmail OAuth tokens (IMAP fallback keeps working if set).
+#[tauri::command]
+fn gmail_signout() -> Result<(), String> {
+    gmail::signout()
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -495,6 +509,8 @@ pub fn run() {
             chat_reset,
             ingest_file,
             ingest_bytes,
+            gmail_signin,
+            gmail_signout,
             attach_window,
             secret_present,
             secret_set,

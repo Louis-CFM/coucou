@@ -478,17 +478,135 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [] }, // no key — reads the desktop app's window title
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366",
     fields: [] }, // no key — reads the Web tab's title unread count
-  { id: "integration_gmail", name: "Gmail", color: "#EA4335",
-    fields: [
-      { key: "gmail-email", label: t("Email address"), placeholder: "you@gmail.com", secret: false },
-      { key: "gmail-app-password", label: t("App password"), placeholder: "xxxx xxxx xxxx xxxx", secret: true },
-    ] },
   { id: "integration_outlook", name: "Outlook", color: "#0078D4",
     fields: [
-      { key: "outlook-email", label: t("Email address"), placeholder: "you@outlook.com", secret: false },
-      { key: "outlook-app-password", label: t("App password"), placeholder: "••••••••", secret: true },
+      { key: "outlook-email", label: "Email address", placeholder: "you@outlook.com", secret: false },
+      { key: "outlook-app-password", label: "App password", placeholder: "••••••••", secret: true },
     ] },
 ];
+
+// ── Gmail section (OAuth sign-in + IMAP fallback fields) ─────────────────────
+
+function gmailSection(present: Record<string, boolean>): HTMLElement {
+  const dotEl = statusDot(present["gmail-oauth"] || present["gmail-app-password"] || false);
+  const state = h("span", { class: "hint", text: t("Sign in with Google (works behind firewalls), or use an app password.") });
+
+  const email = h("input", {
+    type: "text", placeholder: "you@gmail.com", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const appPass = h("input", {
+    type: "password", placeholder: "xxxx xxxx xxxx xxxx", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientId = h("input", {
+    type: "text", placeholder: t("OAuth client ID"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientSecret = h("input", {
+    type: "password", placeholder: t("OAuth client secret"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const oauth = (await Bridge.secretPresent("gmail-oauth")) ?? false;
+    const imap = (await Bridge.secretPresent("gmail-app-password")) ?? false;
+    present["gmail-oauth"] = oauth;
+    present["gmail-app-password"] = imap;
+    dotEl.style.background = oauth || imap ? "#22c55e" : "#f4505e";
+    state.textContent = oauth
+      ? t("Signed in with Google.")
+      : imap
+        ? t("App password saved (IMAP fallback).")
+        : t("Sign in with Google (works behind firewalls), or use an app password.");
+  }
+
+  const saveMail = h("button", { text: t("Save") });
+  saveMail.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      if (email.value.trim()) await Bridge.secretSet("gmail-email", email.value.trim());
+      if (appPass.value.trim()) await Bridge.secretSet("gmail-app-password", appPass.value.trim());
+      email.value = "";
+      appPass.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
+    }
+  });
+
+  const signin = h("button", { class: "primary", text: t("Sign in with Google") });
+  signin.addEventListener("click", async () => {
+    clear(feedback);
+    const id = clientId.value.trim();
+    const secret = clientSecret.value.trim();
+    if (!id || !secret) {
+      feedback.append(h("div", { class: "notice err", text: t("Paste the OAuth client ID and secret first.") }));
+      return;
+    }
+    signin.disabled = true;
+    feedback.append(h("div", { class: "notice", text: t("Browser opened — approve, then come back.") }));
+    try {
+      const address = await Bridge.gmailSignin(id, secret);
+      clientId.value = "";
+      clientSecret.value = "";
+      feedback.append(h("div", { class: "notice ok", text: `${t("Signed in as")} ${address}` }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    } finally {
+      signin.disabled = false;
+    }
+  });
+
+  const signout = h("button", { class: "danger", text: t("Sign out") });
+  signout.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.gmailSignout();
+      feedback.append(h("div", { class: "notice ok", text: t("Signed out.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
+    }
+  });
+
+  const sw = h("button", { class: settings.activeIntegrations.includes("integration_gmail") ? "switch on" : "switch" });
+  sw.addEventListener("click", () => {
+    const on = settings.activeIntegrations.includes("integration_gmail");
+    if (on) {
+      settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== "integration_gmail");
+    } else {
+      if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+      settings.activeIntegrations = [...settings.activeIntegrations, "integration_gmail"];
+    }
+    sw.classList.toggle("on", !on);
+    void save();
+  });
+
+  return h("section", {},
+    h("h2", {}, dotEl, h("span", { text: "Gmail" })),
+    state,
+    h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+        sw,
+        h("i", { class: "dot", style: "background:#EA4335" }),
+        h("span", { style: "font-size:12.5px", text: "Gmail" }),
+      ),
+      h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" },
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Email address") }), email,
+          h("label", { style: "min-width:104px", text: t("App password") }), appPass, saveMail),
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Client ID") }), clientId,
+          h("label", { style: "min-width:104px", text: t("Client secret") }), clientSecret),
+        h("div", { class: "row" }, signin, signout, feedback),
+      ),
+    ),
+  );
+}
 
 const MAX_ACTIVE = 4;
 
@@ -685,7 +803,8 @@ async function main() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
-    "gmail-email", "gmail-app-password", "outlook-email", "outlook-app-password",
+    "gmail-email", "gmail-app-password", "gmail-oauth",
+    "outlook-email", "outlook-app-password",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -704,6 +823,7 @@ async function main() {
       }),
     ),
     apiSection(hasKey, hasGeminiKey),
+    gmailSection(present),
     integrationsSection(present),
     generalSection(),
     h("div", {

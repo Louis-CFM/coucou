@@ -208,6 +208,11 @@ async fn poll_whatsapp(app: AppHandle) {
 }
 
 async fn poll_mail(app: AppHandle, id: &'static str, account: crate::mail::Account) {
+    // Gmail prefers REST/OAuth when signed in (works behind firewalls that
+    // block IMAP); IMAP app passwords stay as the fallback everywhere.
+    if id == "integration_gmail" && crate::gmail::has_oauth() {
+        return poll_gmail_rest(app).await;
+    }
     let outcome =
         tokio::task::spawn_blocking(move || crate::mail::check(&account)).await;
     let state = match outcome {
@@ -246,6 +251,40 @@ async fn poll_mail(app: AppHandle, id: &'static str, account: crate::mail::Accou
         error: None,
         event,
     });
+}
+
+async fn poll_gmail_rest(app: AppHandle) {
+    match crate::gmail::unread().await {
+        Ok(state) => {
+            let event = if state.unread > 0 && is_new("integration_gmail", &state.unread.to_string()) {
+                Some(IntegrationEvent {
+                    success: true,
+                    label: if state.unread == 1 {
+                        "1 unread mail".into()
+                    } else {
+                        format!("{} unread mails", state.unread)
+                    },
+                    detail: state.latest.first().map(|m| {
+                        format!("{} — {}", m.from.chars().take(24).collect::<String>(), m.subject.chars().take(40).collect::<String>())
+                    }),
+                })
+            } else {
+                None
+            };
+            emit(&app, IntegrationUpdate {
+                id: "integration_gmail",
+                data: json!({ "unread": state.unread, "latest": state.latest }),
+                error: None,
+                event,
+            });
+        }
+        Err(e) => emit(&app, IntegrationUpdate {
+            id: "integration_gmail",
+            data: json!({}),
+            error: Some(e),
+            event: None,
+        }),
+    }
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
