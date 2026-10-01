@@ -40,16 +40,59 @@ struct OAuthStore {
 }
 
 /// The Windows Credential Manager refuses blobs over ~2560 UTF-16 chars, and
-/// Microsoft tokens are fat (a JWT access plus a long refresh routinely
-/// exceed it together — the save fails with exactly that platform error).
-/// So the refresh token lives alone under "outlook-refresh-token" and only
-/// the small access half under "outlook-oauth".
+/// Microsoft tokens are fat — even a single JWT/refresh can exceed it. So big
+/// values are sharded across suffixed keys (base, base-2, …) and reassembled
+/// on load. Old single-key values keep working: part 1 IS the base key.
+const CHUNK: usize = 2000;
+const MAX_PARTS: u8 = 4;
+
+fn set_big(key: &str, value: &str) -> Result<(), String> {
+    for i in 2..=MAX_PARTS {
+        let _ = crate::secrets::clear(&format!("{key}-{i}"));
+    }
+    if value.len() <= CHUNK {
+        return crate::secrets::set(key, value);
+    }
+    let chars: Vec<char> = value.chars().collect();
+    if chars.chunks(CHUNK).count() > MAX_PARTS as usize {
+        return Err("credential too large even sharded".into());
+    }
+    for (i, chunk) in chars.chunks(CHUNK).enumerate() {
+        let text: String = chunk.iter().collect();
+        if i == 0 {
+            crate::secrets::set(key, &text)?;
+        } else {
+            crate::secrets::set(&format!("{}-{}", key, i + 1), &text)?;
+        }
+    }
+    Ok(())
+}
+
+fn get_big(key: &str) -> Option<String> {
+    let first = crate::secrets::get(key).filter(|v| !v.is_empty())?;
+    let mut out = first;
+    for i in 2..=MAX_PARTS {
+        match crate::secrets::get(&format!("{key}-{i}")) {
+            Some(part) if !part.is_empty() => out.push_str(&part),
+            _ => break,
+        }
+    }
+    Some(out)
+}
+
+fn clear_big(key: &str) {
+    let _ = crate::secrets::clear(key);
+    for i in 2..=MAX_PARTS {
+        let _ = crate::secrets::clear(&format!("{key}-{i}"));
+    }
+}
+
 fn load_refresh() -> Option<String> {
-    crate::secrets::get("outlook-refresh-token").filter(|v| !v.is_empty())
+    get_big("outlook-refresh-token")
 }
 
 fn load() -> Option<(OAuthStore, String)> {
-    let store: OAuthStore = crate::secrets::get("outlook-oauth")
+    let store: OAuthStore = get_big("outlook-oauth")
         .and_then(|s| serde_json::from_str::<OAuthStore>(&s).ok())?;
     let refresh = load_refresh()?;
     Some((store, refresh))
@@ -61,11 +104,11 @@ fn save_access(access: &str, expires_at: u64) -> Result<(), String> {
         expires_at,
     })
     .map_err(|e| e.to_string())?;
-    crate::secrets::set("outlook-oauth", &text)
+    set_big("outlook-oauth", &text)
 }
 
 fn save_refresh(refresh: &str) -> Result<(), String> {
-    crate::secrets::set("outlook-refresh-token", refresh)
+    set_big("outlook-refresh-token", refresh)
 }
 
 fn now_unix() -> u64 {
@@ -119,11 +162,19 @@ fn apply_tokens(body: &Value) -> Result<String, String> {
         .ok_or_else(|| "token response: no access token".to_string())?
         .to_string();
     let expires_in = body.get("expires_in").and_then(Value::as_u64).unwrap_or(3600);
+    let mut refresh_len = 0usize;
     if let Some(refresh) = body.get("refresh_token").and_then(Value::as_str) {
         if !refresh.is_empty() {
+            refresh_len = refresh.len();
             save_refresh(refresh)?;
         }
     }
+    // Lengths only, never values: proves which half is fat if storage complains.
+    crate::log::line(format!(
+        "outlook tokens: access={}b refresh={}b",
+        access.len(),
+        refresh_len
+    ));
     let expires_at = now_unix().saturating_add(expires_in.saturating_sub(120));
     save_access(&access, expires_at)?;
     Ok(access)
@@ -299,8 +350,8 @@ pub async fn poll_device() -> Result<(), String> {
 }
 
 pub fn signout() -> Result<(), String> {
-    crate::secrets::clear("outlook-oauth")?;
-    let _ = crate::secrets::clear("outlook-refresh-token");
+    clear_big("outlook-oauth");
+    clear_big("outlook-refresh-token");
     let _ = crate::secrets::clear("outlook-device-code");
     Ok(())
 }
