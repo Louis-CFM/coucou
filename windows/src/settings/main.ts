@@ -5,6 +5,7 @@
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { t } from "../core/i18n";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -67,15 +68,15 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+          ? t("Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
+          : t("Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing."),
       }),
       h("div", { class: "row" },
         h("label", { text: "settings.json" }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
       h("div", { class: "row" },
-        h("label", { text: "Relay" }),
+        h("label", { text: t("Relay") }),
         h("span", { class: "path", text: status.hookPath }),
         statusDot(status.hookReady),
       ),
@@ -84,14 +85,14 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: t("coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`."),
       }));
     }
 
     const actions = h("div", { class: "row" });
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
+      text: status.installed ? t("Reinstall hooks…") : t("Install hooks…"),
       onclick: () => showPreview(true),
     });
     // Writing hook commands that point at a relay which isn't there would give
@@ -104,7 +105,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (status.installed) {
       actions.append(h("button", {
         class: "danger",
-        text: "Uninstall hooks…",
+        text: t("Uninstall hooks…"),
         onclick: () => showPreview(false),
       }));
     }
@@ -122,7 +123,7 @@ function claudeSection(status: HookStatus): HTMLElement {
       body.append(
         h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
         h("div", { class: "row" }, h("button", {
-          text: "Back",
+          text: t("Back"),
           onclick: () => { clear(body); draw(); },
         })),
       );
@@ -134,8 +135,8 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+          ? t("This is exactly what will change in your settings.json. Your own hooks are left untouched.")
+          : t("This removes Coucou's entries only. Your own hooks are left untouched."),
       }),
       renderDiff(preview.diff),
       h("div", { class: "row" },
@@ -144,7 +145,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     );
     const confirm = h("button", {
       class: install ? "primary" : "danger",
-      text: install ? "Back up and write" : "Back up and remove",
+      text: install ? t("Back up and write") : t("Back up and remove"),
     });
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
@@ -153,16 +154,16 @@ function claudeSection(status: HookStatus): HTMLElement {
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: `${t("Done. Previous settings saved as")} ${backup}. ${t("Open a new session to pick the hooks up.")}`,
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
         confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+        body.append(h("div", { class: "notice err", text: `${t("Could not write")}: ${String(err)}` }));
       }
     });
     body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
+      text: t("Cancel"),
       onclick: () => { clear(body); draw(); },
     })));
   }
@@ -186,8 +187,13 @@ const GEMINI_MODELS: [string, string][] = [
 ];
 
 function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const dot = statusDot(hasKey || hasGeminiKey);
+  const state = h("span", {
+    class: "hint",
+    text: (hasKey || hasGeminiKey)
+      ? t("Key saved in the Windows Credential Manager.")
+      : t("No key yet — the chat needs one."),
+  });
 
   const field = h("input", {
     type: "password",
@@ -197,8 +203,8 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     spellcheck: "false",
   }) as HTMLInputElement;
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const saveBtn = h("button", { class: "primary", text: t("Save key") });
+  const clearBtn = h("button", { class: "danger", text: t("Remove") });
   const feedback = h("div", {});
 
   async function refresh() {
@@ -218,10 +224,10 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     try {
       await Bridge.secretSet("anthropic-api-key", value);
       field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
     }
   });
 
@@ -229,10 +235,10 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     clear(feedback);
     try {
       await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Key removed.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
     }
   });
 
@@ -251,8 +257,8 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
 
   // Provider + Gemini model
   const provider = h("select", {}) as HTMLSelectElement;
-  provider.append(h("option", { value: "claude", text: "Claude (Anthropic)" }));
-  provider.append(h("option", { value: "gemini", text: "Gemini (Google)" }));
+  provider.append(h("option", { value: "claude", text: t("Claude (Anthropic)") }));
+  provider.append(h("option", { value: "gemini", text: t("Gemini (Google)") }));
   provider.value = settings.chatProvider ?? "claude";
   provider.addEventListener("change", () => {
     settings.chatProvider = provider.value;
@@ -267,25 +273,25 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     autocomplete: "off",
     spellcheck: "false",
   }) as HTMLInputElement;
-  const geminiSave = h("button", { class: "primary", text: "Save" });
-  const geminiClear = h("button", { class: "danger", text: "Remove" });
+  const geminiSave = h("button", { class: "primary", text: t("Save") });
+  const geminiClear = h("button", { class: "danger", text: t("Remove") });
   geminiSave.addEventListener("click", async () => {
     const value = geminiField.value.trim();
     if (!value) return;
     try {
       await Bridge.secretSet("gemini-api-key", value);
       geminiField.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Gemini key saved." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Gemini key saved.") }));
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
     }
   });
   geminiClear.addEventListener("click", async () => {
     try {
       await Bridge.secretClear("gemini-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Gemini key removed." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Gemini key removed.") }));
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
     }
   });
 
@@ -299,18 +305,18 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     settings.geminiModel = geminiModel.value;
     void save();
   });
-  const geminiModelRow = h("div", { class: "row" }, h("label", { text: "Gemini model" }), geminiModel);
+  const geminiModelRow = h("div", { class: "row" }, h("label", { text: t("Gemini model") }), geminiModel);
   geminiModelRow.style.display = provider.value === "gemini" ? "" : "none";
 
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Chat AI" })),
+    h("h2", {}, dot, h("span", { text: t("Chat AI") })),
     state,
-    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
-    h("div", { class: "row" }, h("label", { text: "Claude key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
-    h("div", { class: "row" }, h("label", { text: "Gemini key" }), geminiField, geminiSave, geminiClear),
+    h("div", { class: "row" }, h("label", { text: t("Provider") }), provider),
+    h("div", { class: "row" }, h("label", { text: t("Claude key") }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    h("div", { class: "row" }, h("label", { text: t("Gemini key") }), geminiField, geminiSave, geminiClear),
     geminiModelRow,
     feedback,
   );
@@ -353,13 +359,13 @@ function cliHooksSection(opts: {
     const actions = h("div", { class: "row" });
     actions.append(h("button", {
       class: "primary",
-      text: status.installed ? `Reinstall ${opts.title} hooks…` : `Install ${opts.title} hooks…`,
+      text: status.installed ? t(`Reinstall ${opts.title} hooks…`) : t(`Install ${opts.title} hooks…`),
       onclick: () => showPreview(true),
     }));
     if (status.installed) {
       actions.append(h("button", {
         class: "danger",
-        text: "Uninstall…",
+        text: t("Uninstall…"),
         onclick: () => showPreview(false),
       }));
     }
@@ -388,7 +394,7 @@ function cliHooksSection(opts: {
       try {
         const backup = await opts.backend.apply(install, preview.fingerprint);
         clear(body);
-        body.append(h("div", { class: "notice ok", text: `Done. Backup: ${backup}. Open a new session to pick the hooks up.` }));
+        body.append(h("div", { class: "notice ok", text: `${t("Done. Backup:")} ${backup}. ${t("Open a new session to pick the hooks up.")}` }));
         window.setTimeout(async () => {
           const fresh = await opts.backend.status();
           if (fresh) Object.assign(status, fresh);
@@ -396,11 +402,11 @@ function cliHooksSection(opts: {
         }, 2000);
       } catch (err) {
         confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+        body.append(h("div", { class: "notice err", text: `${t("Could not write")}: ${String(err)}` }));
       }
     });
     body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel", onclick: () => { clear(body); draw(); },
+      text: t("Cancel"), onclick: () => { clear(body); draw(); },
     })));
   }
 
@@ -412,9 +418,9 @@ function geminiSection(status: HookStatus): HTMLElement {
   return cliHooksSection({
     title: "Gemini CLI",
     fileLabel: "settings.json",
-    hintOn: "Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude.",
-    hintOff: "Install the hooks to see your Gemini CLI sessions in the island next to Claude Code. Note: since June 2026 new installs use Antigravity (`agy`) instead — see below.",
-    previewHint: "Gemini settings use timeouts in ms. Your own hooks are left untouched.",
+    hintOn: t("Coucou is hooked into your Gemini CLI sessions (BeforeTool/AfterTool). Approvals stay in the terminal — activity shows in the island side by side with Claude."),
+    hintOff: t("Install the hooks to see your Gemini CLI sessions in the island next to Claude Code. Note: since June 2026 new installs use Antigravity (`agy`) instead — see below."),
+    previewHint: t("Gemini settings use timeouts in ms. Your own hooks are left untouched."),
     backend: {
       status: () => Bridge.geminiHooksStatus(),
       preview: (install) => Bridge.geminiHooksPreview(install),
@@ -428,9 +434,9 @@ function agySection(status: HookStatus): HTMLElement {
   return cliHooksSection({
     title: "Antigravity (agy)",
     fileLabel: "hooks.json",
-    hintOn: "Coucou is hooked into your Antigravity sessions (Pre/PostToolUse, invocations, Stop). Approvals stay in the terminal — activity shows in the island as pink agy pills.",
-    hintOff: "Install the hooks to see your `agy` sessions in the island. Writes to %USERPROFILE%\\.gemini\\config\\hooks.json under the \"coucou\" key.",
-    previewHint: "Antigravity timeouts are in seconds. Your other hooks are left untouched.",
+    hintOn: t("Coucou is hooked into your Antigravity sessions (Pre/PostToolUse, invocations, Stop). Approvals stay in the terminal — activity shows in the island as pink agy pills."),
+    hintOff: t("Install the hooks to see your `agy` sessions in the island. Writes to %USERPROFILE%\\.gemini\\config\\hooks.json under the \"coucou\" key."),
+    previewHint: t("Antigravity timeouts are in seconds. Your other hooks are left untouched."),
     backend: {
       status: () => Bridge.agyHooksStatus(),
       preview: (install) => Bridge.agyHooksPreview(install),
@@ -480,7 +486,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = t("Pick up to {n} pills to show next to Mochi — {used}/{n} in use. Keys are stored in the Windows Credential Manager, never on disk.")
+      .replaceAll("{n}", String(MAX_ACTIVE))
+      .replace("{used}", String(used));
   }
 
   for (const def of INTEGRATIONS) {
@@ -508,7 +516,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         spellcheck: "false",
         style: "flex:1 1 auto;min-width:0",
       }) as HTMLInputElement;
-      const saveBtn = h("button", { text: "Save" });
+      const saveBtn = h("button", { text: t("Save") });
       const dotEl = statusDot(present[field.key] ?? false);
       saveBtn.addEventListener("click", async () => {
         const value = input.value.trim();
@@ -524,7 +532,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       });
       rows.append(
         h("div", { class: "row" },
-          h("label", { style: "min-width:104px", text: field.label }),
+          h("label", { style: "min-width:104px", text: t(field.label) }),
           input, saveBtn, dotEl,
         ),
       );
@@ -543,7 +551,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   }
 
   updateNote();
-  return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
+  return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -571,8 +579,8 @@ function generalSection(): HTMLElement {
 
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
-    h("option", { value: "primary", text: "Main display" }),
-    h("option", { value: "cursor", text: "Display under the cursor" }),
+    h("option", { value: "primary", text: t("Main display") }),
+    h("option", { value: "cursor", text: t("Display under the cursor") }),
   );
   screen.value = settings.screen;
   screen.addEventListener("change", () => {
@@ -580,26 +588,44 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const language = h("select", {}) as HTMLSelectElement;
+  language.append(
+    h("option", { value: "en", text: t("English") }),
+    h("option", { value: "pt-BR", text: t("Portuguese (Brazil)") }),
+  );
+  language.value = settings.language ?? "en";
+  language.addEventListener("change", async () => {
+    settings.language = language.value as Settings["language"];
+    await save();
+    // Static labels are built once: reload so the whole window speaks it.
+    // The island rebuilds live via settings-changed, no restart needed there.
+    location.reload();
+  });
+
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "General" })),
+    h("h2", {}, h("span", { text: t("General") })),
     h("div", { class: "row" },
-      h("label", { text: "Sound" }),
+      h("label", { text: t("Language") }),
+      language,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Sound") }),
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
+      h("label", { text: t("Auto-close") }),
       autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+      h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
     h("div", { class: "row" },
-      h("label", { text: "Island lives on" }),
+      h("label", { text: t("Island lives on") }),
       screen,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Launch at startup" }),
+      h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
   );
@@ -643,7 +669,7 @@ async function main() {
       h("h2", {}, h("span", { text: "opencode" })),
       h("div", {
         class: "hint",
-        text: "opencode has no settings.json hooks. Copy windows/opencode-plugin/coucou.ts to ~/.config/opencode/plugins/ (or .opencode/plugins/) — it forwards session/tool events to the same island pipe. Gemini + opencode appear as separate pills next to Claude.",
+        text: t("opencode has no settings.json hooks. Copy windows/opencode-plugin/coucou.ts to ~/.config/opencode/plugins/ (or .opencode/plugins/) — it forwards session/tool events to the same island pipe. Gemini + opencode appear as separate pills next to Claude."),
       }),
     ),
     apiSection(hasKey, hasGeminiKey),
@@ -651,7 +677,7 @@ async function main() {
     generalSection(),
     h("div", {
       class: "hint",
-      text: "No telemetry. Network requests only go to the services you configure yourself.",
+      text: t("No telemetry. Network requests only go to the services you configure yourself."),
     }),
   );
 

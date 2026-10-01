@@ -26,6 +26,13 @@ pub struct Settings {
     /// Gemini model used when chat_provider == "gemini".
     #[serde(default = "default_gemini_model")]
     pub gemini_model: String,
+    /// UI language: "en" | "pt-BR".
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "en".to_string()
 }
 
 fn default_chat_provider() -> String {
@@ -59,6 +66,7 @@ impl Default for Settings {
             model: default_model(),
             chat_provider: default_chat_provider(),
             gemini_model: default_gemini_model(),
+            language: default_language(),
         }
     }
 }

@@ -4,6 +4,7 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
+import { t } from "../core/i18n";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewActions, ViewHost } from "./views";
@@ -45,14 +46,14 @@ export function buildPrompt(actions: ViewActions, onHeightChange: () => void): V
     placeholder: "Ask me anything…",
     spellcheck: "false",
   }) as HTMLInputElement;
-  const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
+  const send = h("button", { class: "send-btn", title: t("Send") }, svg(ICONS.arrowUp, 11));
   // Ends this conversation (and detaches any file) so the next drop starts
   // clean — no restart needed. Only shown once there is something to clear.
   const fresh = h("button", {
     class: "link-btn",
     style: "color:#8e939c",
-    title: "New chat",
-    text: "New chat",
+    title: t("New chat"),
+    text: t("New chat"),
     onclick: () => actions.newChat(),
   });
   fresh.style.display = "none";
@@ -132,7 +133,7 @@ export function buildPrompt(actions: ViewActions, onHeightChange: () => void): V
         log.scrollTop = log.scrollHeight;
       }
 
-      input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
+      input.placeholder = State.chatHistory.length === 0 ? t("Ask me anything…") : t("Continue…");
       input.disabled = sending;
       fresh.style.display = State.chatHistory.length > 0 || State.droppedFile ? "" : "none";
     },

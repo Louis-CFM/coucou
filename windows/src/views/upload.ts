@@ -5,6 +5,7 @@
 // action the spec asks for: ask a question about it.
 
 import { h, clear } from "./dom";
+import { t } from "../core/i18n";
 import { State } from "../core/state";
 import type { ViewActions, ViewHost } from "./views";
 
@@ -29,7 +30,7 @@ function dashedFrame(): SVGSVGElement {
 
 export function buildUpload(): ViewHost {
   const frame = dashedFrame();
-  const title = h("div", { class: "drop-title", text: "Drop your files here" });
+  const title = h("div", { class: "drop-title", text: t("Drop your files here") });
   const tags = h(
     "div",
     { class: "drop-tags" },
@@ -70,8 +71,8 @@ export function buildUploading(): ViewHost {
       const done = State.uploadProgress >= 0.999;
       const pct = Math.round(State.uploadProgress * 100);
       label.textContent = done
-        ? `✓  ${State.droppedFile?.name ?? "File"}`
-        : `Uploading ${State.droppedFile?.name ?? "file"}`;
+        ? `✓  ${State.droppedFile?.name ?? t("File")}`
+        : `${t("Uploading")} ${State.droppedFile?.name ?? t("file")}`;
       label.classList.toggle("done", done);
       percent.textContent = done ? "" : `${pct} %`;
       const w = State.uploadProgress * 526;
@@ -85,18 +86,18 @@ export function buildUploading(): ViewHost {
 
 export function buildChoose(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title" });
-  const sub = h("div", { class: "sub", text: "What do you want to do with it?" });
+  const sub = h("div", { class: "sub", text: t("What do you want to do with it?") });
   const row = h(
     "div",
     { class: "actions" },
     h("button", {
       class: "btn primary",
-      text: "Ask a question",
+      text: t("Ask a question"),
       onclick: () => actions.setView("prompt"),
     }),
     h("button", {
       class: "btn secondary",
-      text: "Cancel",
+      text: t("Cancel"),
       onclick: () => actions.setView(State.defaultView()),
     }),
   );
@@ -115,8 +116,8 @@ export function buildChoose(actions: ViewActions): ViewHost {
     sync() {
       clear(title);
       title.append(
-        h("b", { text: State.droppedFile?.name ?? "file" }),
-        document.createTextNode(" is ready."),
+        h("b", { text: State.droppedFile?.name ?? t("file") }),
+        document.createTextNode(t(" is ready.")),
       );
     },
   };

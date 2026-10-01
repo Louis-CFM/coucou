@@ -5,6 +5,7 @@
 // (month → day → booking); here it is the list of upcoming bookings.
 
 import { h, svg, clear, dot } from "./dom";
+import { t } from "../core/i18n";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -59,9 +60,9 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const error = info?.error ?? null;
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
   // misleading here. Spotify needs no key either, just the desktop app playing.
-  const missing = task.id === "integration_claude" ? "Hooks not installed"
-    : task.id === "integration_spotify" ? "Nothing playing"
-    : "Key not configured";
+  const missing = task.id === "integration_claude" ? t("Hooks not installed")
+    : task.id === "integration_spotify" ? t("Nothing playing")
+    : t("Key not configured");
   const label = error ?? (configured ? "Connected · loading…" : missing);
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
@@ -71,7 +72,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}b3`,
-        text: "Open Visual Studio Code",
+        text: t("Open Visual Studio Code"),
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );
@@ -80,7 +81,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Open n8n",
+        text: t("Open n8n"),
         onclick: () => void Bridge.openN8n(),
       }),
     );
@@ -89,7 +90,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: `Open ${task.name}`,
+        text: `${t("Open")} ${task.name}`,
         onclick: () => void Bridge.openUrl(OPEN_URLS[task.id]),
       }),
     );
@@ -99,20 +100,20 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Refresh",
+        text: t("Refresh"),
         onclick: () => void Bridge.refreshIntegration(task.id),
       }),
     );
   } else {
     actions.append(
-      h("button", { class: "link-btn", style: "color:#8e939c", text: "Settings…", onclick: openSettings }),
+      h("button", { class: "link-btn", style: "color:#8e939c", text: t("Settings…"), onclick: openSettings }),
     );
   }
 
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, t("Integration")),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );
@@ -248,7 +249,7 @@ function spotifyCard(): HTMLElement {
   return h(
     "div",
     { class: "int-card" },
-    header("#1DB954", "Spotify", playing ? "Now playing" : "Paused"),
+    header("#1DB954", "Spotify", playing ? t("Now playing") : t("Paused")),
     h(
       "div",
       { class: "int-rows tight" },
@@ -259,7 +260,7 @@ function spotifyCard(): HTMLElement {
         "div",
         { class: "int-row" },
         dot("#6B7079", 5),
-        h("span", { class: "int-name", text: artist || "Open Spotify and play something" }),
+        h("span", { class: "int-name", text: artist || t("Open Spotify and play something") }),
       ),
     ),
     h("div", { class: "int-actions" },
@@ -269,7 +270,7 @@ function spotifyCard(): HTMLElement {
       h("button", {
         class: "link-btn",
         style: "color:#1DB954d9",
-        text: "Open Spotify",
+        text: t("Open Spotify"),
         onclick: () => void Bridge.openUrl("https://open.spotify.com"),
       }),
     ),
@@ -343,7 +344,7 @@ function calcomCard(): HTMLElement {
     .sort((a, b) => new Date(String(a.start)).getTime() - new Date(String(b.start)).getTime());
   const rows = h("div", { class: "int-rows tight" });
   if (bookings.length === 0) {
-    rows.append(h("div", { class: "int-empty", text: "No calls scheduled" }));
+    rows.append(h("div", { class: "int-empty", text: t("No calls scheduled") }));
   }
   for (const b of bookings.slice(0, 3)) {
     const when = new Date(String(b.start));

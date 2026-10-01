@@ -49,6 +49,8 @@ export class Island {
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
+  private actions!: ViewActions;
+  private lastLang: string = "en";
   private uploadCanvas!: UploadCanvas;
 
   private width = new Tracked(NOTCH_W);
@@ -205,6 +207,7 @@ export class Island {
     this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
+    this.actions = actions;
 
     // The drop sequence draws the card, the bar and its own Mochi. It sits under
     // the header, which stays visible on top of it exactly as on macOS.
@@ -243,6 +246,24 @@ export class Island {
 
     this.root.append(this.wakeStrip, this.islandEl, this.ghostEl);
     this.applyGeometry();
+  }
+
+  /**
+   * Rebuilds header + views so a language switch re-renders every static
+   * label immediately (buttons built once would otherwise stay in the old
+   * language until restart). State (tasks, chat, focus) is untouched.
+   */
+  private rebuildChrome() {
+    const old = this.contentEl;
+    this.header = buildHeader(this.actions);
+    this.views = buildViews(this.actions, () => this.animateGeometry(false));
+    this.viewsEl = h("div", { id: "views" });
+    for (const v of this.views.values()) this.viewsEl.append(v.el);
+    this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
+    old.replaceWith(this.contentEl);
+    this.lastSyncedView = null;
+    this.dirty = true;
+    this.ensureRunning();
   }
 
   /**
@@ -1103,11 +1124,15 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
-  /** Applies settings coming from Rust at boot. */
+  /** Applies settings coming from Rust at boot (and on every save). */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    if (State.settings.language !== this.lastLang) {
+      this.lastLang = State.settings.language;
+      this.rebuildChrome();
+    }
     State.notify();
   }
 

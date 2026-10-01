@@ -36,6 +36,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Ask Claude or Gemini anything** — built-in chat, straight from the notch. Pick the provider in Settings (Anthropic key or Google `AIza…` key).
+- 🇧🇷 **PT-BR interface** *(Windows fork)* — header badge shows the language, Settings switches everything live, no restart.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.

@@ -5,6 +5,7 @@ import type { EyeShape } from "../mochi/engine";
 
 export type AgentSource = "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli" | "media" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
+export type Lang = "en" | "pt-BR";
 
 export interface AgentTask {
   id: string;
@@ -97,6 +98,8 @@ export interface Settings {
   chatProvider: string;
   /** Gemini model used when chatProvider == "gemini". */
   geminiModel: string;
+  /** UI language: "en" | "pt-BR". */
+  language: Lang;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -113,6 +116,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: "claude-opus-5",
   chatProvider: "claude",
   geminiModel: "gemini-2.5-flash",
+  language: "en",
 };
 
 type Listener = () => void;
