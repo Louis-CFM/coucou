@@ -23,7 +23,7 @@ use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
 use files::DroppedFile;
-use hooks::{HookPreview, HookStatus};
+use hooks::{HookPreview, HookStatus, Provider};
 use island::{PollGate, ScreenInfo};
 use pipe::Pending;
 use settings::Settings;
@@ -50,6 +50,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
     settings.hooks_installed = hooks::status().installed;
+    settings.codex_hooks_installed = hooks::status_for(Provider::Codex).installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -187,14 +188,14 @@ fn set_paused(paused: bool) {
 // ── Claude Code hooks ─────────────────────────────────────────────────────────
 
 #[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
+fn hooks_status(provider: Option<Provider>) -> HookStatus {
+    hooks::status_for(provider.unwrap_or_default())
 }
 
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
+fn hooks_preview(install: bool, provider: Option<Provider>) -> Result<HookPreview, String> {
+    hooks::preview_for(install, provider.unwrap_or_default())
 }
 
 /// Only ever called from an explicit click in the settings window.
@@ -204,13 +205,19 @@ fn hooks_apply(
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
+    provider: Option<Provider>,
 ) -> Result<String, String> {
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
+    let provider = provider.unwrap_or_default();
+    let backup = hooks::write_for(install, &fingerprint, provider)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.hooks_installed = install;
+        if provider == Provider::Codex {
+            current.codex_hooks_installed = hooks::status_for(provider).installed;
+        } else {
+            current.hooks_installed = hooks::status_for(provider).installed;
+        }
         let _ = settings::save(&current);
         current.clone()
     };

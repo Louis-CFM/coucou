@@ -68,6 +68,19 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Optional Codex coding-agent provider
+
+On this contribution branch, **Settings… -> Codex -> Install hooks…** offers
+the same reviewed preview/backup/confirmation flow for a separate
+`%USERPROFILE%\.codex\hooks.json` (or `CODEX_HOME\hooks.json`). Start a new Codex
+session and review/trust the definitions using `/hooks`. Claude remains the
+default, and Codex adds its own current-session pill without using a service slot.
+No additional API key is needed; API chat remains Anthropic.
+
+See [protocol, version compatibility and test instructions](../docs/CODEX.md).
+Frontend-only checks are `npm test`, `npm run typecheck` and
+`npm run build:frontend`; native checks also require Rust/MSVC.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

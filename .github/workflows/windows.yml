@@ -48,6 +48,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check coding-agent regressions before packaging
+        run: |
+          npm test
+          npm run typecheck
+          cargo build --release -p coucou-hook --locked
+          cargo test -p coucou-hook --locked
+          cargo test -p coucou --lib --release --locked
+          python -m unittest discover -s ../tests -p 'test_*.py' -v
+
       # Three files carry the version and they drift silently. Publishing a
       # "0.1.1" that installs a 0.1.0 is the kind of thing nobody notices until
       # a bug report arrives against the wrong build.

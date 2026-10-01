@@ -24,7 +24,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::sync::mpsc;
 
@@ -39,6 +39,7 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+const READ_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -96,28 +97,7 @@ pub fn start(app: AppHandle) {
 }
 
 async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        match pipe.read(&mut chunk).await {
-            Ok(0) => break,
-            Ok(n) => {
-                buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
-                }
-            }
-            Err(_) => return,
-        }
-    }
-    let line = match buf.iter().position(|b| *b == b'\n') {
-        Some(i) => &buf[..i],
-        None => &buf[..],
-    };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
-    if !payload.is_object() {
-        return;
-    }
+    let Some(mut payload) = read_payload(&mut pipe, READ_TIMEOUT).await else { return };
 
     let event = payload
         .get("hook_event_name")
@@ -154,37 +134,56 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     let _ = pipe.disconnect();
 }
 
+/// Read one bounded frame. A client that never sends EOF/newline gets no
+/// permanent server task, and exceeding the size limit rejects the whole frame.
+async fn read_payload<R: AsyncRead + Unpin>(reader: &mut R, timeout: Duration) -> Option<Value> {
+    tokio::time::timeout(timeout, async {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            let n = reader.read(&mut chunk).await.ok()?;
+            if n == 0 { break; }
+            if buf.len() + n > MAX_PAYLOAD { return None; }
+            buf.extend_from_slice(&chunk[..n]);
+            if buf.contains(&b'\n') { break; }
+        }
+        let line = &buf[..buf.iter().position(|b| *b == b'\n').unwrap_or(buf.len())];
+        let payload: Value = serde_json::from_slice(line).ok()?;
+        payload.is_object().then_some(payload)
+    }).await.ok().flatten()
+}
+
 /// Two waits: a short one for "the card is up", then the long one for a human.
 async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
-    match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
+    let decision = receive_decision(rx, ACK_TIMEOUT, DECISION_TIMEOUT).await;
+    log::line(format!("hook id={id} {}", if decision.is_some() { "answered explicitly" } else { "released without a decision" }));
+    decision
+}
+
+async fn receive_decision(rx: &mut mpsc::Receiver<Reply>, ack: Duration, decision: Duration) -> Option<String> {
+    match tokio::time::timeout(ack, rx.recv()).await {
         Ok(Some(Reply::Ack)) => {}
         // A click that beats the ack is still a click.
         Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {d}"));
-            return Some(d);
+            return answer_word(&d).map(str::to_owned);
         }
         Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} not shown — terminal takes over"));
             return None;
         }
         Ok(None) => return None,
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
             return None;
         }
     }
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
+    match tokio::time::timeout(decision, rx.recv()).await {
         Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {d}"));
-            Some(d)
+            answer_word(&d).map(str::to_owned)
         }
         Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} released without a decision"));
             None
         }
         _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
             None
         }
     }
@@ -218,10 +217,73 @@ pub fn decline(app: &AppHandle, request_id: &str) {
 /// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
 /// it into Claude Code's JSON is coucou-hook's job.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
-    let word = match decision {
-        "allow" | "always" => "allow",
-        _ => "deny",
-    };
+    let Some(word) = answer_word(decision) else { return };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+fn answer_word(decision: &str) -> Option<&'static str> {
+    match decision {
+        "allow" | "always" => Some("allow"),
+        "deny" => Some("deny"),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap()
+    }
+
+    #[test]
+    fn malformed_decisions_do_not_become_implicit_denials() {
+        assert_eq!(answer_word("allow"), Some("allow"));
+        assert_eq!(answer_word("deny"), Some("deny"));
+        assert_eq!(answer_word("always"), Some("allow"));
+        for word in ["", "ask", "unknown", "ALLOW", " allow"] { assert_eq!(answer_word(word), None); }
+    }
+
+    #[test]
+    fn pipe_frames_reject_malformed_and_oversized_input() {
+        runtime().block_on(async {
+            for input in [b"invalid".to_vec(), b"[]".to_vec(), b"null".to_vec(), vec![b' '; MAX_PAYLOAD + 1]] {
+                assert!(read_payload(&mut input.as_slice(), READ_TIMEOUT).await.is_none());
+            }
+            let payload = read_payload(&mut br#"{"hook_event_name":"Stop"}"#.as_slice(), READ_TIMEOUT).await.unwrap();
+            assert_eq!(payload["hook_event_name"], "Stop");
+        });
+    }
+
+    #[test]
+    fn stalled_pipe_reader_times_out_without_a_payload() {
+        struct Stalled;
+        impl AsyncRead for Stalled {
+            fn poll_read(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>, _: &mut tokio::io::ReadBuf<'_>) -> std::task::Poll<std::io::Result<()>> {
+                std::task::Poll::Pending
+            }
+        }
+        runtime().block_on(async {
+            assert!(read_payload(&mut Stalled, Duration::from_millis(10)).await.is_none());
+        });
+    }
+
+    #[test]
+    fn only_explicit_decisions_survive_ack_decline_and_timeout() {
+        runtime().block_on(async {
+            let timeout = Duration::from_millis(10);
+            for replies in [vec![Reply::Decision("allow".into())], vec![Reply::Ack, Reply::Decision("deny".into())],
+                            vec![Reply::Ack, Reply::Decline], vec![Reply::Decision("invalid".into())], vec![]] {
+                let expected = match replies.last() { Some(Reply::Decision(d)) => answer_word(d).map(str::to_owned), _ => None };
+                let (tx, mut rx) = mpsc::channel(4);
+                for reply in replies { tx.send(reply).await.unwrap(); }
+                assert_eq!(receive_decision(&mut rx, timeout, timeout).await, expected);
+            }
+            let (tx, mut rx) = mpsc::channel(4);
+            tx.send(Reply::Ack).await.unwrap();
+            assert_eq!(receive_decision(&mut rx, timeout, timeout).await, None);
+        });
+    }
 }

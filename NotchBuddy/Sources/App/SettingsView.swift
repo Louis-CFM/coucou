@@ -122,6 +122,8 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
+                CodexSettingsView()
+
                 // MARK: Integrations
                 GroupBox("Integrations") {
                     VStack(alignment: .leading, spacing: 14) {

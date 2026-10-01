@@ -16,6 +16,8 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
+    #[serde(default)]
+    pub codex_hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
@@ -42,6 +44,7 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
+            codex_hooks_installed: false,
             model: default_model(),
         }
     }
@@ -84,4 +87,23 @@ pub fn save(settings: &Settings) -> std::io::Result<()> {
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(settings_path(), json)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_preferences_keep_their_values_and_do_not_enable_codex() {
+        let mut legacy = serde_json::to_value(Settings::default()).unwrap();
+        let fields = legacy.as_object_mut().unwrap();
+        fields.remove("codexHooksInstalled");
+        fields.remove("model");
+        fields.insert("soundVolume".into(), serde_json::json!(0.08));
+        let loaded: Settings = serde_json::from_value(legacy).unwrap();
+        assert!(!loaded.codex_hooks_installed);
+        assert_eq!(loaded.sound_volume, 0.08);
+        assert_eq!(loaded.active_integrations, Settings::default().active_integrations);
+        assert_eq!(loaded.model, default_model());
+    }
 }

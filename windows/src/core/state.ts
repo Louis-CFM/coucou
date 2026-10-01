@@ -3,7 +3,11 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type AgentSource = "claudeCode" | "codex" | "n8n";
+export function isCodingAgent(task: Pick<AgentTask, "source">): boolean {
+  return task.source === "claudeCode" || task.source === "codex";
+}
+
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -19,10 +23,12 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  sessionId?: string;
 }
 
 export interface ApprovalInfo {
   requestId: string;
+  taskId: string;
   sessionId: string;
   tool: string;
   command: string;
@@ -59,6 +65,7 @@ const task = (
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_codex", "Codex", "#10A37F", "codex"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -90,6 +97,7 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
+  codexHooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
 }
@@ -105,6 +113,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  codexHooksInstalled: false,
   model: "claude-opus-5",
 };
 
@@ -203,7 +212,8 @@ class AppState {
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        proto.id === "integration_claude" ||
+        (proto.id === "integration_codex" ? this.settings.codexHooksInstalled || !!this.tasks.find((t) => t.id === proto.id && t.sessionId) : this.settings.activeIntegrations.includes(proto.id));
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
@@ -216,7 +226,8 @@ class AppState {
   }
 
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    const proto = INTEGRATION_AGENTS.find((t) => t.id === id);
+    if (!proto || isCodingAgent(proto)) return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);
@@ -226,6 +237,13 @@ class AppState {
       this.settings.activeIntegrations = [...active, id];
     }
     this.loadIntegrationTasks();
+  }
+
+  ensureCodexTask() {
+    if (this.tasks.some((t) => t.id === "integration_codex")) return;
+    const proto = INTEGRATION_AGENTS.find((t) => t.id === "integration_codex")!;
+    this.tasks.splice(1, 0, { ...proto, steps: [] });
+    this.notify();
   }
 
   defaultView(): IslandViewName {

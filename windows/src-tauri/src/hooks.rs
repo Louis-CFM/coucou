@@ -1,4 +1,4 @@
-// Claude Code hook installation.
+// Separate Claude Code and opt-in Codex hook installation.
 //
 // The rule from CLAUDE.md is strict and is followed to the letter:
 // read %USERPROFILE%\.claude\settings.json, take a dated backup, merge without
@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 use windows::Win32::System::SystemInformation::GetLocalTime;
@@ -35,8 +35,20 @@ pub const HOOK_EVENTS: &[(&str, u64)] = &[
     ("SubagentStop", 10),
 ];
 
-/// Marker that identifies a Coucou entry inside settings.json.
-const MARKER: &str = "coucou-hook";
+/// The CLI hook provider is explicit; legacy callers remain Claude by default.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Provider {
+    #[default]
+    Claude,
+    Codex,
+}
+
+const CODEX_EVENTS: &[(&str, u64)] = &[
+    ("SessionStart", 10), ("SessionEnd", 3), ("UserPromptSubmit", 10),
+    ("PreToolUse", 10), ("PostToolUse", 10), ("PermissionRequest", 120),
+    ("Stop", 10), ("Interrupt", 3), ("SubagentStart", 10), ("SubagentStop", 10),
+];
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -64,8 +76,17 @@ fn home() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
+#[cfg(test)]
 pub fn settings_path() -> PathBuf {
-    home().join(".claude").join("settings.json")
+    settings_path_for(Provider::Claude)
+}
+
+fn settings_path_for(provider: Provider) -> PathBuf {
+    match provider {
+        Provider::Claude => home().join(".claude").join("settings.json"),
+        Provider::Codex => std::env::var_os("CODEX_HOME").filter(|value| !value.is_empty()).map(PathBuf::from)
+            .unwrap_or_else(|| home().join(".codex")).join("hooks.json"),
+    }
 }
 
 /// Reads `~/.claude/settings.json`.
@@ -74,8 +95,8 @@ pub fn settings_path() -> PathBuf {
 /// Everything else — a lock held by another process, a permission problem, JSON
 /// we cannot parse — is reported, because the alternative is treating somebody's
 /// unreadable settings as an empty object and then writing that back over them.
-fn read_settings() -> Result<Value, String> {
-    let path = settings_path();
+fn read_settings(provider: Provider) -> Result<Value, String> {
+    let path = settings_path_for(provider);
     match std::fs::read(&path) {
         Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
@@ -96,7 +117,20 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
         return Ok(json!({}));
     }
     match serde_json::from_slice::<Value>(text) {
-        Ok(v) if v.is_object() => Ok(v),
+        Ok(v) if v.is_object() => {
+            if let Some(hooks) = v.get("hooks") {
+                let Some(events) = hooks.as_object() else { return Err(format!("{path}: hooks must be an object")) };
+                for (event, groups) in events {
+                    let Some(groups) = groups.as_array() else { return Err(format!("{path}: {event} must be an array")) };
+                    for group in groups {
+                        if !group.is_object() || !group.get("hooks").map(Value::is_array).unwrap_or(false) {
+                            return Err(format!("{path}: {event} has an invalid matcher group"));
+                        }
+                    }
+                }
+            }
+            Ok(v)
+        },
         Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
         Err(err) => Err(format!(
             "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
@@ -107,32 +141,52 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
 /// The settings as they are, or an empty object when we cannot tell. Only for
 /// read-only paths like `status()`, which must never fail loudly; anything that
 /// writes uses `read_settings()` and surfaces the error instead.
-fn read_settings_lossy() -> Value {
-    read_settings().unwrap_or_else(|_| json!({}))
+fn read_settings_lossy(provider: Provider) -> Value {
+    read_settings(provider).unwrap_or_else(|_| json!({}))
 }
 
-fn hook_command(event: &str) -> String {
+fn hook_command(event: &str, provider: Provider) -> String {
     let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
-    format!("\"{exe}\" {event}")
+    let prefix = if provider == Provider::Codex { " --provider codex" } else { "" };
+    format!("\"{exe}\"{prefix} {event}")
+}
+
+fn handler_is_ours(handler: &Value) -> bool {
+    let Some(command) = handler.get("command").and_then(Value::as_str) else { return false };
+    let command = command.trim();
+    let executable = if let Some(quoted) = command.strip_prefix('"') {
+        quoted.split('"').next().unwrap_or_default()
+    } else {
+        command.split_whitespace().next().unwrap_or_default()
+    };
+    let normalized = executable.replace('\\', "/");
+    normalized.rsplit('/').next().map(|name| name.eq_ignore_ascii_case("coucou-hook.exe")
+        || name == "coucou-hook").unwrap_or(false)
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
-    entry
-        .get("hooks")
-        .and_then(Value::as_array)
-        .map(|hooks| {
-            hooks.iter().any(|h| {
-                h.get("command")
-                    .and_then(Value::as_str)
-                    .map(|c| c.contains(MARKER))
-                    .unwrap_or(false)
-            })
-        })
-        .unwrap_or(false)
+    entry.get("hooks").and_then(Value::as_array)
+        .map(|hooks| hooks.iter().any(handler_is_ours)).unwrap_or(false)
+}
+
+// Filter individual handlers, never delete somebody else's shared matcher group.
+fn clean_entry(entry: &Value) -> Option<Value> {
+    if !entry_is_ours(entry) { return Some(entry.clone()); }
+    let mut out = entry.clone();
+    let handlers: Vec<Value> = entry["hooks"].as_array()?.iter()
+        .filter(|h| !handler_is_ours(h)).cloned().collect();
+    if handlers.is_empty() { return None; }
+    out["hooks"] = Value::Array(handlers);
+    Some(out)
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched.
+#[cfg(test)]
 fn merged(existing: &Value) -> Value {
+    merged_for(existing, Provider::Claude)
+}
+
+fn merged_for(existing: &Value, provider: Provider) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = root
         .get("hooks")
@@ -140,17 +194,18 @@ fn merged(existing: &Value) -> Value {
         .cloned()
         .unwrap_or_else(Map::new);
 
-    for (event, timeout) in HOOK_EVENTS {
+    let events = if provider == Provider::Codex { CODEX_EVENTS } else { HOOK_EVENTS };
+    for (event, timeout) in events {
         let mut list = hooks
             .get(*event)
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        list.retain(|entry| !entry_is_ours(entry));
+        list = list.iter().filter_map(clean_entry).collect();
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": hook_command(event, provider),
                 "timeout": timeout,
             }]
         }));
@@ -172,8 +227,8 @@ fn without_ours(existing: &Value) -> Value {
         match value.as_array() {
             Some(list) => {
                 let kept: Vec<Value> =
-                    list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
-                if !kept.is_empty() {
+                    list.iter().filter_map(clean_entry).collect();
+                if !kept.is_empty() || list.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
             }
@@ -204,9 +259,10 @@ fn stamp() -> String {
     )
 }
 
-fn backup_path() -> PathBuf {
-    let p = settings_path();
-    p.with_file_name(format!("settings.json.bak-{}", stamp()))
+fn backup_path(provider: Provider) -> PathBuf {
+    let p = settings_path_for(provider);
+    let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos();
+    p.with_file_name(format!("{}.bak-{}-{nonce}", p.file_name().unwrap().to_string_lossy(), stamp()))
 }
 
 /// Identifies the exact bytes a preview was computed from. FNV-1a is plenty:
@@ -220,17 +276,16 @@ fn fingerprint(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
-fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
-        Ok(bytes) => fingerprint(&bytes),
-        Err(_) => fingerprint(b""),
-    }
+fn snapshot_fingerprint(bytes: Option<&[u8]>) -> String {
+    bytes.map(|b| format!("present:{}", fingerprint(b))).unwrap_or_else(|| "missing".into())
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-pub fn status() -> HookStatus {
-    let current = read_settings_lossy();
+pub fn status() -> HookStatus { status_for(Provider::Claude) }
+
+pub fn status_for(provider: Provider) -> HookStatus {
+    let current = read_settings_lossy(provider);
     let installed = current
         .get("hooks")
         .and_then(Value::as_object)
@@ -245,20 +300,30 @@ pub fn status() -> HookStatus {
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,
-        settings_path: settings_path().to_string_lossy().to_string(),
+        settings_path: settings_path_for(provider).to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
     }
 }
 
-pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_settings()?;
-    let next = if install { merged(&current) } else { without_ours(&current) };
+#[cfg(test)]
+pub fn preview(install: bool) -> Result<HookPreview, String> { preview_for(install, Provider::Claude) }
+
+pub fn preview_for(install: bool, provider: Provider) -> Result<HookPreview, String> {
+    let path = settings_path_for(provider);
+    let original = match std::fs::read(&path) {
+        Ok(bytes) => Some(bytes),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(e.to_string()),
+    };
+    let bytes = original.as_deref().unwrap_or_default();
+    let current = parse_settings(bytes, &path.display().to_string())?;
+    let next = if install { merged_for(&current, provider) } else { without_ours(&current) };
     Ok(HookPreview {
         diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path().to_string_lossy().to_string(),
-        settings_path: settings_path().to_string_lossy().to_string(),
-        fingerprint: current_fingerprint(),
+        backup: backup_path(provider).to_string_lossy().to_string(),
+        settings_path: settings_path_for(provider).to_string_lossy().to_string(),
+        fingerprint: snapshot_fingerprint(original.as_deref()),
     })
 }
 
@@ -268,34 +333,56 @@ pub fn preview(install: bool) -> Result<HookPreview, String> {
 /// in between — another tool, another window, the user's own editor — we stop
 /// and make them look at a fresh diff, because the only thing worse than not
 /// installing the hooks is silently reverting somebody else's edit.
-pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = settings_path();
+#[cfg(test)]
+pub fn write(install: bool, fingerprint: &str) -> Result<String, String> { write_for(install, fingerprint, Provider::Claude) }
+
+pub fn write_for(install: bool, fingerprint: &str, provider: Provider) -> Result<String, String> {
+    let path = settings_path_for(provider);
     let dir = path.parent().unwrap_or(Path::new("."));
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     // Read before the backup: an unreadable file must abort before we touch
     // anything at all.
-    let current = read_settings()?;
-    if current_fingerprint() != fingerprint {
+    let original = match std::fs::read(&path) {
+        Ok(bytes) => Some(bytes),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(e.to_string()),
+    };
+    let bytes = original.as_deref().unwrap_or_default();
+    let current = parse_settings(bytes, &path.display().to_string())?;
+    if snapshot_fingerprint(original.as_deref()) != fingerprint {
         return Err(format!(
             "{} changed since the preview. Nothing was written — review the new diff.",
             path.display()
         ));
     }
 
-    let backup = backup_path();
-    if path.exists() {
-        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+    let backup = backup_path(provider);
+    if let Some(bytes) = original {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&backup)
+            .map_err(|e| format!("backup failed: {e}"))?;
+        file.write_all(&bytes).map_err(|e| format!("backup failed: {e}"))?;
     }
 
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    let next = if install { merged_for(&current, provider) } else { without_ours(&current) };
     let mut text = pretty(&next);
     text.push('\n');
 
     // Write beside the target and rename over it: a crash or a full disk leaves
     // the original settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
+    let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos();
+    let temp = path.with_extension(format!("json.coucou-{}-{nonce}", std::process::id()));
+    {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&temp)
+            .map_err(|e| format!("write failed: {e}"))?;
+        if let Err(err) = file.write_all(text.as_bytes()).and_then(|_| file.sync_all()) {
+            drop(file);
+            let _ = std::fs::remove_file(&temp);
+            return Err(format!("write failed: {err}"));
+        }
+    }
     if let Err(err) = std::fs::rename(&temp, &path) {
         let _ = std::fs::remove_file(&temp);
         return Err(format!("write failed: {err}"));
@@ -366,6 +453,12 @@ fn unified_diff(before: &str, after: &str) -> String {
     let a: Vec<&str> = before.lines().collect();
     let b: Vec<&str> = after.lines().collect();
     let (n, m) = (a.len(), b.len());
+
+    // Large foreign configs must not cause quadratic memory use merely to
+    // preview a few added handlers. Keep the full before/after review instead.
+    if n.saturating_mul(m) > 1_000_000 {
+        return format!("BEFORE\n{before}\n\nAFTER\n{after}\n");
+    }
 
     let mut lcs = vec![vec![0usize; m + 1]; n + 1];
     for i in (0..n).rev() {
@@ -509,16 +602,44 @@ mod tests {
         assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
         assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
         assert_ne!(fingerprint(b""), fingerprint(b"{}"));
+        assert_ne!(snapshot_fingerprint(None), snapshot_fingerprint(Some(b"")));
+    }
+
+    #[test]
+    fn codex_installer_registers_only_documented_events_and_preserves_shared_groups() {
+        let existing = json!({ "description": "foreign", "hooks": { "PreToolUse": [
+            { "matcher": "Bash", "hooks": [
+                { "type": "command", "command": "C:/bin/coucou-hook.exe --provider codex PreToolUse" },
+                { "type": "command", "command": "keep-me.exe" }
+            ] }
+        ], "FutureEvent": [] } });
+        let merged = merged_for(&existing, Provider::Codex);
+        assert_eq!(merged["description"], "foreign");
+        assert!(merged["hooks"].get("Notification").is_none());
+        assert!(merged["hooks"].get("StopFailure").is_none());
+        assert_eq!(merged["hooks"]["Interrupt"][0]["hooks"][0]["timeout"], 3);
+        assert_eq!(merged["hooks"]["SessionEnd"][0]["hooks"][0]["timeout"], 3);
+        assert_eq!(merged["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"], 120);
+        let cleaned = without_ours(&merged);
+        assert_eq!(cleaned["hooks"]["PreToolUse"][0]["hooks"][0]["command"], "keep-me.exe");
+        assert_eq!(cleaned["hooks"]["PreToolUse"][0]["matcher"], "Bash");
+        assert_eq!(cleaned["hooks"]["FutureEvent"], json!([]));
+        assert!(!handler_is_ours(&json!({ "command": "not-coucou-hook.exe" })));
+        assert_eq!(merged_for(&merged, Provider::Codex), merged);
     }
 
     /// Everything filesystem-shaped lives in one test on purpose: it points
     /// USERPROFILE at a temp directory, and that is process-wide.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
-        let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&tmp);
+        let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}-{nonce}", std::process::id()));
+        let saved_home = std::env::var_os("USERPROFILE");
+        let saved_codex = std::env::var_os("CODEX_HOME");
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
         std::env::set_var("USERPROFILE", &tmp);
+        std::env::set_var("CODEX_HOME", "");
+        assert_eq!(settings_path_for(Provider::Codex), tmp.join(".codex/hooks.json"));
 
         let path = settings_path();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");
@@ -560,6 +681,43 @@ mod tests {
         assert!(write(true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
+        // A missing file and an empty file are distinct preview states.
+        let absent = preview_for(true, Provider::Codex).unwrap();
+        std::fs::create_dir_all(tmp.join(".codex")).unwrap();
+        std::fs::write(settings_path_for(Provider::Codex), b"").unwrap();
+        assert!(write_for(true, &absent.fingerprint, Provider::Codex).is_err());
+        assert_eq!(std::fs::read(settings_path_for(Provider::Codex)).unwrap(), b"");
+
+        // Codex writes hooks.json in CODEX_HOME, never config.toml or Claude settings.
+        let codex_home = tmp.join("custom-codex");
+        std::env::set_var("CODEX_HOME", &codex_home);
+        std::fs::create_dir_all(&codex_home).unwrap();
+        std::fs::write(codex_home.join("config.toml"), b"model = \"fixture-model\"\n").unwrap();
+        let codex_path = settings_path_for(Provider::Codex);
+        std::fs::write(&codex_path, b"{\"description\":\"keep\"}").unwrap();
+        let before = std::fs::read(&codex_path).unwrap();
+        let plan = preview_for(true, Provider::Codex).unwrap();
+        assert!(plan.diff.contains("--provider codex"));
+        let backup = write_for(true, &plan.fingerprint, Provider::Codex).unwrap();
+        assert_eq!(std::fs::read(backup).unwrap(), before);
+        assert!(status_for(Provider::Codex).installed);
+        assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
+        let plan = preview_for(false, Provider::Codex).unwrap();
+        write_for(false, &plan.fingerprint, Provider::Codex).unwrap();
+        assert_eq!(serde_json::from_slice::<Value>(&std::fs::read(&codex_path).unwrap()).unwrap(), json!({"description": "keep"}));
+        assert_eq!(std::fs::read(codex_home.join("config.toml")).unwrap(), b"model = \"fixture-model\"\n");
+        match saved_home { Some(v) => std::env::set_var("USERPROFILE", v), None => std::env::remove_var("USERPROFILE") }
+        match saved_codex { Some(v) => std::env::set_var("CODEX_HOME", v), None => std::env::remove_var("CODEX_HOME") }
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn large_previews_keep_complete_content_without_quadratic_allocation() {
+        let before = "foreign-setting\n".repeat(1100);
+        let after = format!("{before}new-handler\n");
+        let diff = unified_diff(&before, &after);
+        assert!(diff.starts_with("BEFORE\n"));
+        assert!(diff.contains(&before));
+        assert!(diff.ends_with("new-handler\n\n"));
     }
 }
