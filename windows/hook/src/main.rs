@@ -1,19 +1,22 @@
-//! coucou-hook — the relay Claude Code runs on every hook event.
+//! alfred-hook — the relay Claude Code runs on every hook event.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
-//! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
+//! Alfred over the named pipe `\\.\pipe\alfred-<sid>`.
 //!
 //! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
-//! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
+//! * If the pipe does not exist — Alfred is closed — we exit 0 immediately with
 //!   nothing on stdout, and the session carries on untouched.
 //! * Every step runs under a deadline enforced by the main thread, so a pipe that
 //!   accepts the connection and then stops reading cannot wedge the session
 //!   either: we abandon the worker and exit.
 //! * Only `PermissionRequest` waits for an answer, because approving from the
 //!   island is the whole point. No answer means empty stdout, and Claude Code
-//!   asks in the terminal exactly as if Coucou were not installed.
+//!   asks in the terminal exactly as if Alfred were not installed.
 //!
-//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON).
+//! Usage:
+//! * `alfred-hook <EventName>` — Claude Code. The name is also read from the JSON.
+//! * `alfred-hook --cursor` — Cursor agent hooks. Observes only: stdout is always
+//!   an allow / continue, never a deny, and Alfred is never waited on.
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -25,6 +28,9 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// Cursor hooks are observational. Long enough to hand the event over, short
+/// enough that a missing pipe cannot sit on a tool call.
+const CURSOR_BUDGET: Duration = Duration::from_millis(800);
 
 /// `ERROR_PIPE_BUSY` — every instance is serving someone else right now. This is
 /// the one error worth retrying: the server exists and a slot will free up.
@@ -39,13 +45,13 @@ const MAX_FIELD_LEN: usize = 2_000;
 
 mod win;
 
-/// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
+/// `\\.\pipe\alfred-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
 fn pipe_path() -> String {
     let key = win::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\coucou-{key}")
+    format!(r"\\.\pipe\alfred-{key}")
 }
 
 /// Opens the pipe. Retries only while the server is busy: any other error means
@@ -72,6 +78,10 @@ fn connect() -> Option<std::fs::File> {
 }
 
 fn main() {
+    if std::env::args().skip(1).any(|arg| arg == "--cursor") {
+        run_cursor();
+    }
+
     let Some((payload, event)) = read_event() else { std::process::exit(0) };
 
     let waits_for_answer = event == "PermissionRequest";
@@ -97,6 +107,99 @@ fn main() {
     std::process::exit(0);
 }
 
+/// Fields Cursor puts on the payload that Alfred must not keep: an email
+/// address, a transcript, or a whole tool result.
+const CURSOR_DROPPED: &[&str] = &["user_email", "transcript_path", "tool_output"];
+
+/// Printed when the event cannot be read. Covers both permission hooks
+/// (`preToolUse`, `subagentStart`) and `beforeSubmitPrompt`: an empty or
+/// invalid stdout on those events blocks the agent.
+const CURSOR_SAFE: &str = r#"{"permission":"allow","continue":true}"#;
+
+/// Cursor mode. Always exits. The allow is printed even when Alfred is closed.
+fn run_cursor() -> ! {
+    let mut raw = Vec::new();
+    let _ = std::io::stdin().read_to_end(&mut raw);
+    let (payload, reply) = if raw.is_empty() {
+        (None, CURSOR_SAFE)
+    } else {
+        prepare_cursor(&raw)
+    };
+
+    if let Some(payload) = payload {
+        let (tx, rx) = mpsc::channel::<()>();
+        std::thread::spawn(move || {
+            let _ = talk(&payload, false);
+            let _ = tx.send(());
+        });
+        let _ = rx.recv_timeout(CURSOR_BUDGET);
+    }
+
+    let mut out = std::io::stdout();
+    let _ = writeln!(out, "{reply}");
+    let _ = out.flush();
+    std::process::exit(0);
+}
+
+/// Stdout Cursor actually enforces. Anything else is `{}` — never a follow-up,
+/// never a deny. See https://cursor.com/docs/hooks
+fn cursor_reply(event: &str) -> &'static str {
+    match event {
+        "preToolUse" | "subagentStart" => r#"{"permission":"allow"}"#,
+        "beforeSubmitPrompt" => r#"{"continue":true}"#,
+        _ => "{}",
+    }
+}
+
+/// Builds the line forwarded to Alfred and the stdout Cursor must see.
+fn prepare_cursor(raw: &[u8]) -> (Option<String>, &'static str) {
+    let text = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
+    let mut payload = match serde_json::from_slice::<serde_json::Value>(text) {
+        Ok(value) if value.is_object() => value,
+        _ => return (None, CURSOR_SAFE),
+    };
+    let Some(map) = payload.as_object_mut() else {
+        return (None, CURSOR_SAFE);
+    };
+
+    for field in CURSOR_DROPPED {
+        map.remove(*field);
+    }
+
+    let event = map
+        .get("hook_event_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    map.insert("source".into(), serde_json::Value::String("cursor".into()));
+
+    let cwd_missing = map
+        .get("cwd")
+        .and_then(|v| v.as_str())
+        .map(str::is_empty)
+        .unwrap_or(true);
+    if cwd_missing {
+        // User hooks run from ~/.cursor, so the process cwd is not the project.
+        // CURSOR_PROJECT_DIR is the workspace; current_dir is only a last resort.
+        let cwd = std::env::var("CURSOR_PROJECT_DIR")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                std::env::current_dir()
+                    .ok()
+                    .map(|p| p.to_string_lossy().into_owned())
+            });
+        if let Some(cwd) = cwd {
+            map.insert("cwd".into(), serde_json::Value::String(cwd));
+        }
+    }
+
+    truncate_strings(&mut payload);
+    let mut line = payload.to_string();
+    line.push('\n');
+    (Some(line), cursor_reply(&event))
+}
+
 /// The documented PermissionRequest output. Anything we do not recognise prints
 /// nothing at all rather than guessing — silence is the safe answer.
 /// See https://code.claude.com/docs/en/hooks
@@ -105,7 +208,7 @@ fn decision_json(decision: &str) -> Option<String> {
         // "always" still answers a plain allow; remembering it is the island's
         // business, not Claude Code's.
         "allow" | "always" => r#"{"behavior":"allow"}"#.to_string(),
-        "deny" => r#"{"behavior":"deny","message":"Denied from Coucou"}"#.to_string(),
+        "deny" => r#"{"behavior":"deny","message":"Denied from Alfred"}"#.to_string(),
         _ => return None,
     };
     Some(format!(
@@ -156,7 +259,7 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
-    // Which terminal the session runs in. Unlike macOS, Coucou on Windows accepts
+    // Which terminal the session runs in. Unlike macOS, Alfred on Windows accepts
     // events from every terminal, so this is context only — never a filter.
     for (key, var) in [
         ("term_program", "TERM_PROGRAM"),
@@ -241,7 +344,7 @@ mod tests {
         );
         assert_eq!(
             decision_json("deny").unwrap(),
-            r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#
+            r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Alfred"}}}"#
         );
         // "always" is an island concept; Claude Code just gets an allow.
         assert!(decision_json("always").unwrap().contains(r#""behavior":"allow""#));
@@ -253,6 +356,38 @@ mod tests {
         assert!(decision_json("maybe").is_none());
         // The shape the app used to send must not be mistaken for a decision.
         assert!(decision_json(r#"{"permissionDecision":"allow"}"#).is_none());
+    }
+
+    #[test]
+    fn cursor_replies_allow_and_never_a_followup() {
+        assert_eq!(cursor_reply("preToolUse"), r#"{"permission":"allow"}"#);
+        assert_eq!(cursor_reply("subagentStart"), r#"{"permission":"allow"}"#);
+        assert_eq!(cursor_reply("beforeSubmitPrompt"), r#"{"continue":true}"#);
+        assert_eq!(cursor_reply("stop"), "{}");
+        assert_eq!(cursor_reply("sessionStart"), "{}");
+        assert!(!cursor_reply("stop").contains("followup"));
+        assert!(!cursor_reply("preToolUse").contains("deny"));
+    }
+
+    #[test]
+    fn cursor_payload_drops_private_fields_and_marks_its_source() {
+        let raw = br#"{"hook_event_name":"preToolUse","user_email":"a@b.c","transcript_path":"t","tool_output":"huge","tool_name":"Shell","cwd":"C:/repo"}"#;
+        let (line, reply) = prepare_cursor(raw);
+        assert_eq!(reply, r#"{"permission":"allow"}"#);
+        let line = line.expect("a valid event is forwarded");
+        let v: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+        assert_eq!(v["source"], "cursor");
+        assert_eq!(v["tool_name"], "Shell");
+        assert!(v.get("user_email").is_none());
+        assert!(v.get("transcript_path").is_none());
+        assert!(v.get("tool_output").is_none());
+    }
+
+    #[test]
+    fn cursor_garbage_still_allows_the_action() {
+        let (line, reply) = prepare_cursor(b"not json");
+        assert!(line.is_none());
+        assert_eq!(reply, CURSOR_SAFE);
     }
 
     #[test]

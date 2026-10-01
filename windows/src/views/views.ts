@@ -172,10 +172,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
+      // A live Claude Code or Cursor session keeps the ticker; every other
       // pill shows its own card, exactly like IntegrationCardView.
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        (task?.id === "integration_claude" || task?.id === "integration_cursor") &&
+        (task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +189,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: sourceLabel(task.source) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -226,8 +227,20 @@ function buildOverview(actions: ViewActions): ViewHost {
   };
 }
 
+function sourceLabel(source: AgentTask["source"]): string {
+  if (source === "claudeCode") return "Claude Code";
+  if (source === "cursor") return "Cursor";
+  return "n8n";
+}
+
+function pillLabel(task: AgentTask): string {
+  if (task.id === "integration_claude") return "VS Code";
+  if (task.id === "integration_cursor") return "Cursor";
+  return task.name;
+}
+
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = pillLabel(task);
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
@@ -332,7 +345,7 @@ function buildQuestion(): ViewHost {
       const task = State.focusTask;
       title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
       clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
+      row.append(h("div", { class: "sub", text: "Answer in your terminal — Alfred can't reply for you yet." }));
     },
   };
 }
@@ -343,9 +356,13 @@ function buildError(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title", text: "Workflow stopped." });
   const detail = h("div", { class: "detail" });
+  const openBtn = btn("Open in n8n", "secondary", () => {
+    if (State.focusTask?.source === "cursor") actions.openTerminal();
+    else actions.openUrl("");
+  });
   const row = h("div", { class: "actions" },
     btn("Retry", "primary", () => actions.setView(State.defaultView())),
-    btn("Open in n8n", "secondary", () => actions.openUrl("")),
+    openBtn,
   );
   const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, row)));
   return {
@@ -353,8 +370,10 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, task ? sourceLabel(task.source) : "Claude Code"));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
+      const openLabel = openBtn.querySelector("span");
+      if (openLabel) openLabel.textContent = task?.source === "cursor" ? "Open Cursor" : "Open in n8n";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
   };
@@ -365,17 +384,22 @@ function buildError(actions: ViewActions): ViewHost {
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
+  const openBtn = btn("Open terminal", "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
-    btn("Open terminal", "primary", () => actions.openTerminal()),
+    openBtn,
     btn("OK", "secondary", () => actions.collapse()),
   );
   const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
   return {
     el,
     sync() {
+      const task = State.focusTask;
+      const cursor = task?.source === "cursor";
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      who.append(agentWho(task, cursor ? "Cursor finished" : "Claude Code finished"));
+      title.textContent = task?.steps.at(-1) ?? "Session finished";
+      const openLabel = openBtn.querySelector("span");
+      if (openLabel) openLabel.textContent = cursor ? "Open Cursor" : "Open terminal";
     },
   };
 }
@@ -418,6 +442,7 @@ function buildSettings(actions: ViewActions): ViewHost {
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
   const claudeBadge = h("span", { class: "status-badge" });
+  const cursorBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
 
   const rows = h(
@@ -435,6 +460,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       "div",
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
+      cursorBadge,
       apiBadge,
       h("div", { class: "grow" }),
       h("button", {
@@ -462,6 +488,11 @@ function buildSettings(actions: ViewActions): ViewHost {
       claudeBadge.append(
         dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
         h("span", { text: "Claude Code" }),
+      );
+      clear(cursorBadge);
+      cursorBadge.append(
+        dot(s.cursorHooksInstalled ? "#22C55E" : "#F4505E", 6),
+        h("span", { text: "Cursor" }),
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));

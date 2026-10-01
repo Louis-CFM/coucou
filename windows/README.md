@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128.png" width="96" alt="Coucou icon">
+<img src="src-tauri/icons/128x128.png" width="96" alt="Alfred icon">
 
-# Coucou for Windows
+# Alfred for Windows
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
@@ -58,15 +58,34 @@ your integrations sit in the coloured pills next to Mochi.
 Open **Settings… → Claude Code → Install hooks…**. You get the exact diff of what
 will change in `%USERPROFILE%\.claude\settings.json`, the path of the dated backup
 that will be taken, and nothing is written until you click. Your own hooks are
-never touched, and uninstalling removes only Coucou's entries.
+never touched, and uninstalling removes only Alfred's entries.
 
-The relay is a tiny executable, `coucou-hook.exe`, copied to
-`%LOCALAPPDATA%\Coucou\bin\` at launch. It is given 300 ms to reach Coucou and
+The relay is a tiny executable, `alfred-hook.exe`, copied to
+`%LOCALAPPDATA%\Alfred\bin\` at launch. It is given 300 ms to reach Alfred and
 exits cleanly if the app is closed, slow or crashed — **a Claude Code session is
-never blocked or slowed down by Coucou.** If nobody answers a permission request
-in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
+never blocked or slowed down by Alfred.** If nobody answers a permission request
+in time, Alfred stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+
+## Cursor
+
+Open **Settings… → Cursor → Install hooks…**. Alfred shows the diff for
+`%USERPROFILE%\.cursor\hooks.json`, takes a dated backup, and writes nothing
+until you click. Your own hooks are left untouched.
+
+The same `alfred-hook.exe` relays the events, in `--cursor` mode. It only
+observes local agent sessions: the pill shows the project, the prompt, tool
+steps, subagents, and when the run finishes or fails. Approvals stay in Cursor.
+If Alfred is closed the relay still answers immediately, so the agent is never
+blocked. Cloud agents do not run these hooks.
+
+The island chat can talk to that same local agent, with the Cursor window
+closed. Open **Ask**, click **Claude** until it says **Cursor**, then pick
+**Agent** (it can edit the project and run commands there) or **Ask** (it only
+answers). The **Folder** button chooses the project; Alfred remembers it after
+Cursor closes and after a restart. The next message resumes the same thread.
+The CLI has to be installed and logged in (`agent login`).
 
 ## Chat and keys
 
@@ -74,7 +93,7 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
-No telemetry. The only network requests Coucou makes are to the services you
+No telemetry. The only network requests Alfred makes are to the services you
 configure yourself.
 
 ## Build it yourself
@@ -99,11 +118,11 @@ otherwise needs a real drag from Explorer to see. Neither page ships in the app.
 workflow publishes:
 
 ```
-Coucou-Windows-X.Y.Z-setup.exe    the versioned installer
-Coucou-Windows-setup.exe          the same file under the rolling name
+Alfred-Windows-X.Y.Z-setup.exe    the versioned installer
+Alfred-Windows-setup.exe          the same file under the rolling name
 ```
 
-Installing is optional — `target/release/coucou.exe` runs on its own. There is no
+Installing is optional — `target/release/alfred.exe` runs on its own. There is no
 window in the taskbar and no console: the island at the top of the screen and the
 Mochi in the notification area are the whole app, and Quit lives in its menu.
 
@@ -123,17 +142,17 @@ npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
 windows/
   src/                 island front end (TypeScript, no framework)
     mochi/             Mochi and the launch greeting, in Canvas 2D
-    island/            state machine, hooks, integrations
+    island/            state machine, Claude and Cursor hooks, integrations
     views/             every island view
     settings/          the settings window
   src-tauri/           Rust backend: window, named pipe, Claude API, pollers
-  hook/                coucou-hook.exe, the Claude Code relay
+  hook/                alfred-hook.exe, the Claude Code and Cursor relay
   scripts/             icon generator
 ```
 
 ### Log
 
-`%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
+`%LOCALAPPDATA%\Alfred\alfred.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
 
 ## What's different from the Mac version

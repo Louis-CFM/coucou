@@ -58,6 +58,9 @@ export const NOTCH_W = 184;
 export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
 export const EXPANDED_W = 640;
+// Overview only: the pills sit in a narrow column, so the island is narrower
+// than the other expanded views. 10 + 322 + 10 + 140 + 10.
+export const OVERVIEW_W = 492;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
@@ -67,7 +70,8 @@ export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
-  overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
+  // Tall enough for four 28 px pills stacked with 4 px gaps inside the card.
+  overview: { height: 178, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
   approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
@@ -111,7 +115,8 @@ export function islandSize(
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
-      return { w: EXPANDED_W, h };
+      const w = view === "overview" ? OVERVIEW_W : EXPANDED_W;
+      return { w, h };
     }
   }
 }

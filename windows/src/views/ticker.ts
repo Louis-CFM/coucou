@@ -17,7 +17,8 @@ const ROW_H = 22;
 const DURATION = 380;
 /** Beyond this many queued steps we stop trying to show them all. */
 const MAX_QUEUE = 4;
-const COMPLETED_SCALE = 11.5 / 13; // 0.885 — the completed font size
+const CURRENT_SIZE = 13;
+const COMPLETED_SIZE = 11.5;
 const EASE = cubicBezier(0.4, 0, 0.2, 1);
 
 interface Row {
@@ -31,20 +32,15 @@ interface Row {
 
 function makeRow(): Row {
   const chevron = svg(ICONS.chevronRight, 9, { stroke: 2.4 });
-  const check = svg(ICONS.check, 8, { stroke: 2.2 });
-  check.style.color = "#454850"; // the completed tick is dimmer than the chevron
-  check.style.position = "absolute";
-  chevron.style.position = "absolute";
+  const check = svg(ICONS.check, 9, { stroke: 2.2 });
+  check.style.color = "#6b7079";
   const shimmer = h("span", { class: "tick-text shimmer" });
-  const dim = h("span", {
-    class: "tick-text",
-    style: "position:absolute;left:0;right:0;color:#6b7079",
-  });
+  const dim = h("span", { class: "tick-text dim" });
   const el = h(
     "div",
     { class: "ticker-row" },
-    h("span", { class: "tick-icon", style: "position:relative" }, chevron, check),
-    h("span", { style: "position:relative;flex:1 1 auto;min-width:0" }, shimmer, dim),
+    h("span", { class: "tick-icon" }, chevron, check),
+    h("span", { class: "tick-copy" }, shimmer, dim),
   );
   return { el, chevron, check, shimmer, dim, text: "" };
 }
@@ -57,13 +53,16 @@ function setText(row: Row, text: string) {
 }
 
 /**
- * Places a row. `phase` 0 = current (shimmering, full size), 1 = completed
- * (dim, shifted up-left and scaled down) — same crossfades as the Swift view.
+ * Places a row. `phase` 0 = current (shimmer, full size), 1 = completed
+ * (dim, slightly smaller). Size is a font change, not a scale, so the glyphs
+ * stay sharp and the two lines share the same left edge.
  */
 function place(row: Row, y: number, phase: number, opacity: number) {
-  const scale = 1 - phase * (1 - COMPLETED_SCALE);
-  row.el.style.transform = `translate(${-phase * 10}px, ${y}px) scale(${scale})`;
+  const size = CURRENT_SIZE - phase * (CURRENT_SIZE - COMPLETED_SIZE);
+  row.el.style.transform = `translateY(${y}px)`;
   row.el.style.opacity = String(opacity);
+  row.shimmer.style.fontSize = `${size}px`;
+  row.dim.style.fontSize = `${size}px`;
   row.chevron.style.opacity = String(clamp(1 - phase * 2, 0, 1));
   row.check.style.opacity = String(clamp(phase * 2 - 1, 0, 1));
   row.shimmer.style.opacity = String(clamp(1 - phase * 1.6, 0, 1));

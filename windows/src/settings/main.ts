@@ -1,10 +1,9 @@
 // Settings window — the place where anything that writes to disk is confirmed.
-// Stage 2 covers the Claude Code hooks and the general preferences; API keys and
-// integrations land here too in a later stage.
+// Claude Code hooks, Cursor agent hooks, preferences, API keys and integrations.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
+import { DEFAULT_SETTINGS, INTEGRATION_AGENTS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -41,37 +40,48 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
-// ── Claude Code section ───────────────────────────────────────────────────────
+// ── Hook installers (Claude Code and Cursor) ─────────────────────────────────
 
-function claudeSection(status: HookStatus): HTMLElement {
+interface HookSectionCopy {
+  title: string;
+  fileLabel: string;
+  installed: string;
+  missing: string;
+  previewInstall: string;
+  previewRemove: string;
+  done: (backup: string) => string;
+  load: () => Promise<HookStatus | null>;
+  preview: (install: boolean) => Promise<HookPreview>;
+  apply: (install: boolean, fingerprint: string) => Promise<string>;
+}
+
+function hooksSection(copy: HookSectionCopy, status: HookStatus): HTMLElement {
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
   const section = h(
     "section",
     {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
+    h("h2", {}, statusDot(status.installed), h("span", { text: copy.title })),
     body,
   );
 
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
+    const fresh = await copy.load();
     if (fresh) Object.assign(status, fresh);
     clear(body);
     draw();
     const head = section.querySelector("h2")!;
     clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
+    head.append(statusDot(status.installed), h("span", { text: copy.title }));
   };
 
   function draw() {
     body.append(
       h("div", {
         class: "hint",
-        text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+        text: status.installed ? copy.installed : copy.missing,
       }),
       h("div", { class: "row" },
-        h("label", { text: "settings.json" }),
+        h("label", { text: copy.fileLabel }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
       h("div", { class: "row" },
@@ -84,7 +94,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: "alfred-hook.exe is not in place yet. Restart Alfred; if it still fails, build it with `cargo build -p alfred-hook`.",
       }));
     }
 
@@ -114,7 +124,7 @@ function claudeSection(status: HookStatus): HTMLElement {
   async function showPreview(install: boolean) {
     let preview;
     try {
-      preview = await Bridge.hooksPreview(install);
+      preview = await copy.preview(install);
     } catch (err) {
       // An unreadable or invalid settings.json stops here rather than being
       // treated as empty and written over.
@@ -133,9 +143,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     body.append(
       h("div", {
         class: "hint",
-        text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+        text: install ? copy.previewInstall : copy.previewRemove,
       }),
       renderDiff(preview.diff),
       h("div", { class: "row" },
@@ -149,11 +157,11 @@ function claudeSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
+        const backup = await copy.apply(install, preview.fingerprint);
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: copy.done(backup),
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
@@ -170,6 +178,32 @@ function claudeSection(status: HookStatus): HTMLElement {
   draw();
   return section;
 }
+
+const CLAUDE_HOOKS: HookSectionCopy = {
+  title: "Claude Code",
+  fileLabel: "settings.json",
+  installed: "Alfred is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.",
+  missing: "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+  previewInstall: "This is exactly what will change in your settings.json. Your own hooks are left untouched.",
+  previewRemove: "This removes Alfred's entries only. Your own hooks are left untouched.",
+  done: (backup) => `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+  load: () => Bridge.hooksStatus(),
+  preview: (install) => Bridge.hooksPreview(install),
+  apply: (install, fingerprint) => Bridge.hooksApply(install, fingerprint),
+};
+
+const CURSOR_HOOKS: HookSectionCopy = {
+  title: "Cursor",
+  fileLabel: "hooks.json",
+  installed: "Alfred watches your local Cursor agent sessions. Steps and subagents show up in the island. Approvals stay in Cursor, and cloud agents are not included.",
+  missing: "Install the hooks to see your local Cursor agent sessions in the island. Alfred only observes — it never approves or blocks a tool. Cloud agents are not included.",
+  previewInstall: "This is exactly what will change in your hooks.json. Your own hooks are left untouched.",
+  previewRemove: "This removes Alfred's entries only. Your own hooks are left untouched.",
+  done: (backup) => `Done. Previous hooks saved as ${backup}. Start a new Cursor agent chat to pick the hooks up.`,
+  load: () => Bridge.cursorHooksStatus(),
+  preview: (install) => Bridge.cursorHooksPreview(install),
+  apply: (install, fingerprint) => Bridge.cursorHooksApply(install, fingerprint),
+};
 
 // ── Claude API section ────────────────────────────────────────────────────────
 
@@ -286,6 +320,18 @@ const INTEGRATIONS: IntegrationDef[] = [
 
 const MAX_ACTIVE = 4;
 
+/** Rebuilt when an integration is toggled, so a disabled pill leaves the list. */
+let refreshDefaultPill: () => void = () => {};
+
+function defaultPillChoices(): { id: string; name: string }[] {
+  return INTEGRATION_AGENTS.filter(
+    (t) =>
+      t.id === "integration_claude" ||
+      t.id === "integration_cursor" ||
+      settings.activeIntegrations.includes(t.id),
+  ).map((t) => ({ id: t.id, name: t.name }));
+}
+
 function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
@@ -308,6 +354,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       }
       sw.classList.toggle("on", !on);
       updateNote();
+      refreshDefaultPill();
       void save();
     });
 
@@ -392,6 +439,25 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const pill = h("select", {}) as HTMLSelectElement;
+  function fillDefaultPill() {
+    const choices = defaultPillChoices();
+    if (!choices.some((c) => c.id === settings.defaultPill)) {
+      settings.defaultPill = "integration_claude";
+    }
+    clear(pill);
+    for (const choice of choices) {
+      pill.append(h("option", { value: choice.id, text: choice.name }));
+    }
+    pill.value = settings.defaultPill;
+  }
+  refreshDefaultPill = fillDefaultPill;
+  fillDefaultPill();
+  pill.addEventListener("change", () => {
+    settings.defaultPill = pill.value;
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -405,6 +471,11 @@ function generalSection(): HTMLElement {
       h("label", { text: "Auto-close" }),
       autoClose,
       h("span", { class: "hint", text: "seconds after you leave the island" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Default pill" }),
+      pill,
+      h("span", { class: "hint", text: "Shown when Alfred starts" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
@@ -425,9 +496,9 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
-  };
+  const emptyHooks = { installed: false, settingsPath: "", hookPath: "", hookReady: false };
+  const status = (await Bridge.hooksStatus()) ?? { ...emptyHooks };
+  const cursorStatus = (await Bridge.cursorHooksStatus()) ?? { ...emptyHooks };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
 
@@ -440,8 +511,9 @@ async function main() {
 
   clear(root);
   root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
+    h("h1", {}, h("span", { text: "Alfred" }), h("span", { class: "version", text: version })),
+    hooksSection(CLAUDE_HOOKS, status),
+    hooksSection(CURSOR_HOOKS, cursorStatus),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),

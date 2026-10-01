@@ -1,4 +1,4 @@
-/* Coucou for Windows — same palette, sizes and type scale as the macOS island.
+/* Alfred for Windows — same palette, sizes and type scale as the macOS island.
    Every colour below is copied from the Swift views. */
 
 :root {
@@ -386,7 +386,8 @@ body {
 }
 
 .overview > .right {
-  flex: 1 1 auto;
+  flex: 0 0 140px;
+  width: 140px;
 }
 
 .card-body {
@@ -440,12 +441,18 @@ body {
   overflow: hidden;
   -webkit-mask-image: linear-gradient(
     to bottom,
-    transparent 0%,
-    #000 12%,
-    #000 85%,
+    transparent 0,
+    #000 3px,
+    #000 calc(100% - 3px),
     transparent 100%
   );
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 85%, transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 3px,
+    #000 calc(100% - 3px),
+    transparent 100%
+  );
 }
 
 .ticker-row {
@@ -456,32 +463,56 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  transform-origin: left center;
   will-change: transform, opacity;
 }
 
 .ticker-row .tick-icon {
-  width: 12px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 12px;
+  position: relative;
+  width: 14px;
+  height: 22px;
+  flex: 0 0 14px;
   color: var(--dim-2);
 }
 
+.ticker-row .tick-icon svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ticker-row .tick-copy {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+}
+
 .ticker-row .tick-text {
-  font: 500 13px var(--font);
+  display: block;
+  width: 100%;
+  font: 500 13px/22px var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.ticker-row .tick-text.dim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  color: #6b7079;
+}
+
 /* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
 .shimmer {
+  color: transparent;
   background: linear-gradient(
     90deg,
-    #7c818a 0%,
-    #f2f3f5 40%,
-    #7c818a 70%
+    #9aa0a8 0%,
+    #f2f3f5 42%,
+    #9aa0a8 72%
   );
   background-size: 260% 100%;
   -webkit-background-clip: text;
@@ -505,11 +536,10 @@ body {
   position: relative;
   z-index: 1;
   height: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 4px;
-  align-content: center;
   padding: 0 8px;
 }
 
@@ -531,16 +561,15 @@ body {
 }
 
 .pill .lbl {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
   font: 600 10px var(--font);
   color: var(--dim-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 8px 0 6px;
   pointer-events: none;
 }
 
@@ -856,6 +885,27 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.07);
   border-radius: 12px;
+}
+
+.chat-target {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  padding: 3px 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim-2);
+  font: 600 10px var(--font);
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+
+.chat-target.on {
+  background: rgba(96, 165, 250, 0.22);
+  color: #dbeafe;
+}
+
+.chat-target.hidden {
+  display: none;
 }
 
 .chat-input {

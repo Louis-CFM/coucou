@@ -3,7 +3,7 @@
 // The rule from CLAUDE.md is strict and is followed to the letter:
 // read %USERPROFILE%\.claude\settings.json, take a dated backup, merge without
 // touching anybody else's hooks, show the diff, and write only after an explicit
-// click. Uninstall removes Coucou's entries and nothing else.
+// click. Uninstall removes Alfred's entries and nothing else.
 //
 // The command is only the quoted exe path in forward slashes plus the event name:
 // on Windows Claude Code runs hook commands through Git Bash, and anything with
@@ -35,8 +35,8 @@ pub const HOOK_EVENTS: &[(&str, u64)] = &[
     ("SubagentStop", 10),
 ];
 
-/// Marker that identifies a Coucou entry inside settings.json.
-const MARKER: &str = "coucou-hook";
+/// Marker that identifies a Alfred entry inside settings.json.
+const MARKER: &str = "alfred-hook";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,9 +97,9 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
+        Ok(_) => Err(format!("{path} isn't a JSON object — Alfred won't touch it.")),
         Err(err) => Err(format!(
-            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
+            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Alfred won't overwrite it."
         )),
     }
 }
@@ -131,7 +131,7 @@ fn entry_is_ours(entry: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// Settings with Coucou's hooks added; everything else is left untouched.
+/// Settings with Alfred's hooks added; everything else is left untouched.
 fn merged(existing: &Value) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = root
@@ -161,7 +161,7 @@ fn merged(existing: &Value) -> Value {
     Value::Object(root)
 }
 
-/// Settings with every Coucou entry removed, and nothing else changed.
+/// Settings with every Alfred entry removed, and nothing else changed.
 fn without_ours(existing: &Value) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let Some(hooks) = root.get("hooks").and_then(Value::as_object).cloned() else {
@@ -196,7 +196,7 @@ fn pretty(v: &Value) -> String {
 
 /// Down to the second: installing then uninstalling in the same minute must not
 /// quietly overwrite the first backup.
-fn stamp() -> String {
+pub(crate) fn stamp() -> String {
     let t = unsafe { GetLocalTime() };
     format!(
         "{:04}{:02}{:02}-{:02}{:02}{:02}",
@@ -211,7 +211,7 @@ fn backup_path() -> PathBuf {
 
 /// Identifies the exact bytes a preview was computed from. FNV-1a is plenty:
 /// the question is only "is this still the file I showed the user?".
-fn fingerprint(bytes: &[u8]) -> String {
+pub(crate) fn fingerprint(bytes: &[u8]) -> String {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for b in bytes {
         hash ^= *b as u64;
@@ -294,7 +294,7 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 
     // Write beside the target and rename over it: a crash or a full disk leaves
     // the original settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    let temp = path.with_extension(format!("json.alfred-{}", std::process::id()));
     std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
     if let Err(err) = std::fs::rename(&temp, &path) {
         let _ = std::fs::remove_file(&temp);
@@ -303,9 +303,9 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     Ok(backup.to_string_lossy().to_string())
 }
 
-/// Copies coucou-hook.exe into %LOCALAPPDATA%\Coucou\bin on launch.
+/// Copies alfred-hook.exe into %LOCALAPPDATA%\Alfred\bin on launch.
 /// In a bundled install it comes from the app resources; in `tauri dev` it sits
-/// next to coucou.exe in the workspace target directory.
+/// next to alfred.exe in the workspace target directory.
 ///
 /// Every candidate is tried rather than just the first, because getting this
 /// wrong is silent and fatal: `resources` used to be a glob, which made NSIS
@@ -320,24 +320,24 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     }
 
     let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(p) = app.path().resolve("coucou-hook.exe", tauri::path::BaseDirectory::Resource) {
+    if let Ok(p) = app.path().resolve("alfred-hook.exe", tauri::path::BaseDirectory::Resource) {
         candidates.push(p);
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             // Installed build, then `tauri dev` (target/debug) next to the
             // release hook the pre-build step produces.
-            candidates.push(parent.join("coucou-hook.exe"));
-            candidates.push(parent.join("../release/coucou-hook.exe"));
+            candidates.push(parent.join("alfred-hook.exe"));
+            candidates.push(parent.join("../release/alfred-hook.exe"));
             // Belt and braces: where the old glob form used to land it.
-            candidates.push(parent.join("_up_/target/release/coucou-hook.exe"));
+            candidates.push(parent.join("_up_/target/release/alfred-hook.exe"));
         }
     }
 
     let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
     let Some(src) = candidates.into_iter().find(|p| p.exists()) else {
         crate::log::line(format!(
-            "coucou-hook.exe not found — Claude Code hooks cannot work. Looked in: {}",
+            "alfred-hook.exe not found — Claude Code hooks cannot work. Looked in: {}",
             tried.join(", ")
         ));
         return;
@@ -354,7 +354,7 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     // copy is fine, it is the same relay.
     if let Err(err) = std::fs::copy(&src, &dest) {
         if !dest.exists() {
-            crate::log::line(format!("could not install coucou-hook.exe: {err}"));
+            crate::log::line(format!("could not install alfred-hook.exe: {err}"));
         }
     }
 }
@@ -362,7 +362,7 @@ pub fn ensure_hook_exe(app: &AppHandle) {
 // ── Minimal unified diff (LCS) ────────────────────────────────────────────────
 
 /// settings.json is short, so a plain O(n·m) LCS is the simplest honest diff.
-fn unified_diff(before: &str, after: &str) -> String {
+pub(crate) fn unified_diff(before: &str, after: &str) -> String {
     let a: Vec<&str> = before.lines().collect();
     let b: Vec<&str> = after.lines().collect();
     let (n, m) = (a.len(), b.len());
@@ -435,6 +435,14 @@ fn unified_diff(before: &str, after: &str) -> String {
     result
 }
 
+/// Serialises tests that point USERPROFILE at a temp directory. The variable is
+/// process-wide, so the Claude and Cursor installer tests cannot run together.
+#[cfg(test)]
+pub(crate) fn lock_test_home() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(|err| err.into_inner())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -453,7 +461,7 @@ mod tests {
     #[test]
     fn unreadable_content_is_an_error_never_an_empty_object() {
         // This is the whole bug: returning {} here meant `merged()` produced a
-        // file containing nothing but Coucou's hooks, and the write replaced
+        // file containing nothing but Alfred's hooks, and the write replaced
         // everything the user had.
         for bad in [&b"{ not json"[..], &b"[1,2,3]"[..], &b"\"a string\""[..]] {
             assert!(
@@ -515,7 +523,9 @@ mod tests {
     /// USERPROFILE at a temp directory, and that is process-wide.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
-        let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
+        // USERPROFILE is process-wide; the Cursor installer test takes the same lock.
+        let _guard = crate::hooks::lock_test_home();
+        let tmp = std::env::temp_dir().join(format!("alfred-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
         std::env::set_var("USERPROFILE", &tmp);
@@ -531,7 +541,7 @@ mod tests {
 
         // Install.
         let plan = preview(true).expect("a BOM must not stop the preview");
-        assert!(plan.diff.contains("coucou-hook"), "the diff must show what changes");
+        assert!(plan.diff.contains("alfred-hook"), "the diff must show what changes");
         let backup = write(true, &plan.fingerprint).expect("install should succeed");
 
         // The backup holds the original bytes, BOM and all.

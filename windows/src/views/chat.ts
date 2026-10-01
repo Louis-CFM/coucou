@@ -1,6 +1,7 @@
 // Chat view — DOM port of PromptView / ChatBubble / TypingDotsView from
 // IslandViewContent.swift.
 
+import { chooseCursorProject } from "../island/cursor";
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
@@ -45,8 +46,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     placeholder: "Ask me anything…",
     spellcheck: "false",
   }) as HTMLInputElement;
+  const target = h("button", { class: "chat-target", title: "Talk to Cursor", text: "Cursor" });
+  const mode = h("button", { class: "chat-target hidden", title: "Agent can edit the project", text: "Agent" });
+  const project = h("button", {
+    class: "chat-target hidden",
+    title: "Choose the project, Cursor can stay closed",
+    text: "Folder",
+  });
   const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  const bar = h("div", { class: "chat-bar" }, target, mode, project, input, send);
 
   const el = h(
     "div",
@@ -57,6 +65,31 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   let sending = false;
   let renderedCount = -1;
+
+  function useCursor() {
+    State.chatTarget = State.chatTarget === "cursor" ? "claude" : "cursor";
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    void Bridge.cursorChatReset();
+    State.notify();
+    onHeightChange();
+    input.focus();
+  }
+
+  target.addEventListener("click", () => {
+    if (!sending) useCursor();
+  });
+
+  mode.addEventListener("click", () => {
+    if (sending || State.chatTarget !== "cursor") return;
+    State.cursorMode = State.cursorMode === "agent" ? "ask" : "agent";
+    State.notify();
+    input.focus();
+  });
+
+  project.addEventListener("click", () => {
+    if (!sending) void chooseCursorProject();
+  });
 
   async function submit() {
     const query = input.value.trim();
@@ -71,11 +104,18 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     onHeightChange();
 
     const file = State.droppedFile;
+    const first = State.chatHistory.length === 1;
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      first && file ? { kind: "file", name: file.name, path: file.path } : null;
+    const cursor = State.chatTarget === "cursor";
+    const cwd = State.tasks.find((t) => t.id === "integration_cursor")?.sessionCwd
+      ?? State.settings.cursorProject;
+    const asked = cursor && first && file ? `${query}\n\nAttached file: ${file.path}` : query;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      const reply = cursor
+        ? await Bridge.cursorChatSend(asked, cwd, State.cursorMode)
+        : await Bridge.chatSend(query, context);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
@@ -122,7 +162,25 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         log.scrollTop = log.scrollHeight;
       }
 
-      input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
+      const cursorOn = State.chatTarget === "cursor";
+      const editing = State.cursorMode === "agent";
+      target.classList.toggle("on", cursorOn);
+      target.textContent = cursorOn ? "Cursor" : "Claude";
+      target.title = cursorOn ? "Talking to Cursor — click for Claude" : "Talk to Cursor";
+      mode.classList.toggle("hidden", !cursorOn);
+      mode.classList.toggle("on", cursorOn && editing);
+      mode.textContent = editing ? "Agent" : "Ask";
+      mode.title = editing ? "Agent can edit the project — click for Ask" : "Ask only answers — click for Agent";
+      const folder = State.tasks.find((t) => t.id === "integration_cursor")?.sessionCwd
+        ?? State.settings.cursorProject;
+      const base = folder?.split(/[/\\]/).filter(Boolean).pop() ?? "";
+      project.classList.toggle("hidden", !cursorOn);
+      project.classList.toggle("on", Boolean(base));
+      project.textContent = base ? (base.length > 14 ? `${base.slice(0, 13)}…` : base) : "Folder";
+      project.title = folder ?? "Choose the project. Cursor can stay closed.";
+      input.placeholder = State.chatHistory.length === 0
+        ? (cursorOn ? (editing ? "Tell Cursor…" : "Ask Cursor…") : "Ask me anything…")
+        : "Continue…";
       input.disabled = sending;
     },
     focus() {

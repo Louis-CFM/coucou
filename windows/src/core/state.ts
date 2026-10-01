@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type AgentSource = "claudeCode" | "cursor" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -59,6 +59,7 @@ const task = (
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_cursor", "Cursor", "#60A5FA", "cursor"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -90,8 +91,14 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
+  /** Cursor agent hooks in %USERPROFILE%\.cursor\hooks.json. */
+  cursorHooksInstalled: boolean;
+  /** Last project the Cursor chat may edit, with the Cursor window closed. */
+  cursorProject: string | null;
   /** Claude model used by the chat. */
   model: string;
+  /** Pill focused when Alfred starts, and whenever the current one disappears. */
+  defaultPill: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -105,7 +112,10 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  cursorHooksInstalled: false,
+  cursorProject: null,
   model: "claude-opus-5",
+  defaultPill: "integration_claude",
 };
 
 type Listener = () => void;
@@ -136,6 +146,10 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** Who the island chat is talking to. */
+  chatTarget: "claude" | "cursor" = "claude";
+  /** Cursor CLI mode. Agent can edit the project; ask only answers. */
+  cursorMode: "agent" | "ask" = "agent";
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
@@ -203,7 +217,9 @@ class AppState {
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        proto.id === "integration_claude" ||
+        proto.id === "integration_cursor" ||
+        this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
@@ -211,16 +227,30 @@ class AppState {
     // Keep the declared order so pills never shuffle.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    if (!this.focusId) this.focusId = "integration_claude";
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) {
+      this.focusId = this.preferredPillId();
+    }
     this.notify();
   }
 
+  /** The configured default, or VS Code when that pill is not loaded. */
+  preferredPillId(): string {
+    const id = this.settings.defaultPill;
+    return this.tasks.some((t) => t.id === id) ? id : "integration_claude";
+  }
+
+  /** Switches the open pill to the one chosen in settings. */
+  focusDefaultPill() {
+    const id = this.preferredPillId();
+    if (this.focusId === id) return;
+    this.setFocus(id);
+  }
+
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    if (id === "integration_claude" || id === "integration_cursor") return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);
-      if (this.focusId === id) this.focusId = "integration_claude";
     } else {
       if (active.length >= 4) return;
       this.settings.activeIntegrations = [...active, id];

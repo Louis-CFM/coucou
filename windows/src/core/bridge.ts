@@ -15,7 +15,7 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T |
   try {
     return await invoke<T>(cmd, args);
   } catch (err) {
-    console.error(`[coucou] ${cmd} failed`, err);
+    console.error(`[alfred] ${cmd} failed`, err);
     return null;
   }
 }
@@ -53,11 +53,14 @@ export const Bridge = {
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
+  /** Opens the folder in Cursor when `cursor` is on PATH. */
+  openInCursor: (path: string | null) => call<boolean>("open_in_cursor", { path }),
+
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),
 
-  /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
+  /** Writes to %LOCALAPPDATA%\Alfred\alfred.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),
 
   // ── Claude Code hooks ─────────────────────────────────────────────────────
@@ -71,6 +74,12 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  cursorHooksStatus: () => call<HookStatus>("cursor_hooks_status"),
+  cursorHooksPreview: (install: boolean) =>
+    callOrThrow<HookPreview>("cursor_hooks_preview", { install }),
+  cursorHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("cursor_hooks_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -83,6 +92,12 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** One turn with the local Cursor agent. `agent` can edit; `ask` only answers. */
+  cursorChatSend: (query: string, cwd: string | null, mode: "agent" | "ask") =>
+    callOrThrow<{ text: string }>("cursor_chat_send", { query, cwd, mode }),
+  cursorChatReset: () => call<void>("cursor_chat_reset"),
+  /** Folder picker for the Cursor chat. Cancel returns null. */
+  pickProjectFolder: () => call<string | null>("pick_project_folder"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -133,7 +148,7 @@ export interface HookPreview {
 
 /** Same as `call`, but surfaces the error so the UI can show what went wrong. */
 async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!IS_TAURI) throw new Error("not running inside Coucou");
+  if (!IS_TAURI) throw new Error("not running inside Alfred");
   return invoke<T>(cmd, args);
 }
 

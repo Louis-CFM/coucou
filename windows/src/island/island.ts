@@ -112,8 +112,10 @@ export class Island {
         Sound.play("blip");
       },
       openTerminal: () => {
-        const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
+        const task = State.focusTask;
+        const cwd = task?.sessionCwd ?? null;
+        if (task?.id === "integration_cursor") void Bridge.openInCursor(cwd);
+        else void Bridge.openInVSCode(cwd);
       },
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
@@ -128,6 +130,7 @@ export class Island {
           integration_calcom: "https://app.cal.com/bookings",
         };
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
+        else if (task.id === "integration_cursor") void Bridge.openInCursor(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
@@ -231,17 +234,17 @@ export class Island {
           this.setMode("hidden");
           break;
         case "petit":
-          if (from === "coucou") this.greeting.interrupt();
+          if (from === "alfred") this.greeting.interrupt();
           else if (from === "hidden") Sound.play("peek");
           this.setMode("compact");
-          if (from === "coucou") State.view = State.defaultView();
+          if (from === "alfred") State.view = State.defaultView();
           if (!this.wasInIsland) this.fsm.mouseLeft();
           break;
         case "home":
           this.expand(State.defaultView());
           if (!this.wasInIsland) this.fsm.mouseLeft();
           break;
-        case "coucou":
+        case "alfred":
           this.expand("greeting");
           this.greeting.start();
           break;
@@ -390,6 +393,7 @@ export class Island {
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
     void Bridge.chatReset();
+    void Bridge.cursorChatReset();
 
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
@@ -575,7 +579,7 @@ export class Island {
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
 
     if (inIsland && !this.wasInIsland) {
-      if (this.fsm.state === "coucou") this.greeting.hover();
+      if (this.fsm.state === "alfred") this.greeting.hover();
       this.fsm.mouseEntered();
       this.homeCollapseAt = null;
     }

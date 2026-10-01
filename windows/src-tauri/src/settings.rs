@@ -1,4 +1,4 @@
-// Preferences, stored as plain JSON in %APPDATA%\Coucou\settings.json.
+// Preferences, stored as plain JSON in %APPDATA%\Alfred\settings.json.
 // No secret ever lands here — API keys live in the Windows Credential Manager.
 
 use serde::{Deserialize, Serialize};
@@ -16,14 +16,28 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
+    /// Cursor agent hooks in `%USERPROFILE%\.cursor\hooks.json`.
+    /// Defaulted so a settings.json written before the Cursor pill still loads.
+    #[serde(default)]
+    pub cursor_hooks_installed: bool,
+    /// Last project the Cursor chat may edit. Survives a closed Cursor window.
+    #[serde(default)]
+    pub cursor_project: Option<String>,
     /// Claude model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Pill focused when Alfred starts. An older settings.json has no such field.
+    #[serde(default = "default_pill")]
+    pub default_pill: String,
 }
 
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
+}
+
+fn default_pill() -> String {
+    "integration_claude".to_string()
 }
 
 impl Default for Settings {
@@ -42,29 +56,32 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
+            cursor_hooks_installed: false,
+            cursor_project: None,
             model: default_model(),
+            default_pill: default_pill(),
         }
     }
 }
 
-/// %APPDATA%\Coucou
+/// %APPDATA%\Alfred
 pub fn config_dir() -> PathBuf {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
+    base.join("Alfred")
 }
 
-/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe and the log live.
+/// %LOCALAPPDATA%\Alfred — where alfred-hook.exe and the log live.
 pub fn local_dir() -> PathBuf {
     let base = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
+    base.join("Alfred")
 }
 
 pub fn hook_exe_path() -> PathBuf {
-    local_dir().join("bin").join("coucou-hook.exe")
+    local_dir().join("bin").join("alfred-hook.exe")
 }
 
 fn settings_path() -> PathBuf {

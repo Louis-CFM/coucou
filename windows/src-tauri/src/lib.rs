@@ -1,6 +1,8 @@
-// Coucou for Windows — app wiring and the commands the island calls.
+// Alfred for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod cursor_chat;
+mod cursor_hooks;
 mod files;
 mod hooks;
 mod integrations;
@@ -48,8 +50,9 @@ pub struct BootInfo {
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
+    // The files on disk win over whatever we stored.
     settings.hooks_installed = hooks::status().installed;
+    settings.cursor_hooks_installed = cursor_hooks::status().installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -69,13 +72,13 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         (screen_changed, autostart_changed)
     };
     if let Err(err) = settings::save(&settings) {
-        eprintln!("[coucou] could not save settings: {err}");
+        eprintln!("[alfred] could not save settings: {err}");
     }
     if autostart_changed {
         let manager = app.autolaunch();
         let result = if settings.autostart { manager.enable() } else { manager.disable() };
         if let Err(err) = result {
-            eprintln!("[coucou] autostart: {err}");
+            eprintln!("[alfred] autostart: {err}");
         }
     }
     if screen_changed {
@@ -132,16 +135,24 @@ fn open_url(url: String) {
         .spawn();
 }
 
+/// Opens the working folder in Cursor when `cursor` is on PATH, else Explorer.
+#[tauri::command]
+fn open_in_cursor(path: Option<String>) -> bool {
+    open_with("cursor", path)
+}
+
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to Explorer otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
-    // No `cmd /C` anywhere near this. The path is a project folder chosen by
-    // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
-    // in a folder name as syntax. Finding the launcher ourselves and handing the
-    // path over as a separate argument keeps it a path.
-    if let Some(code) = find_on_path("code") {
-        let mut cmd = Command::new(code);
+    open_with("code", path)
+}
+
+/// Launches `stem` from PATH with the folder as a separate argument — never via
+/// `cmd /C`, so `&`, `^` and `%` in a folder name stay part of the path.
+fn open_with(stem: &str, path: Option<String>) -> bool {
+    if let Some(bin) = find_on_path(stem) {
+        let mut cmd = Command::new(bin);
         if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
             cmd.arg(p);
         }
@@ -238,6 +249,37 @@ fn approval_decline(app: AppHandle, request_id: String) {
     pipe::decline(&app, &request_id);
 }
 
+// ── Cursor hooks ──────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn cursor_hooks_status() -> HookStatus {
+    cursor_hooks::status()
+}
+
+#[tauri::command]
+fn cursor_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    cursor_hooks::preview(install)
+}
+
+/// Only ever called from an explicit click in the settings window.
+#[tauri::command]
+fn cursor_hooks_apply(
+    app: AppHandle,
+    shared: State<Shared>,
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    let backup = cursor_hooks::write(install, &fingerprint)?;
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.cursor_hooks_installed = install;
+        let _ = settings::save(&current);
+        current.clone()
+    };
+    let _ = app.emit("settings-changed", updated);
+    Ok(backup)
+}
+
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
@@ -255,6 +297,30 @@ async fn chat_send(
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
+}
+
+/// One turn with the local Cursor agent. `mode` is `agent` (can edit) or `ask`.
+#[tauri::command]
+async fn cursor_chat_send(
+    chat: State<'_, cursor_chat::CursorChat>,
+    query: String,
+    cwd: Option<String>,
+    mode: String,
+) -> Result<ChatReply, String> {
+    cursor_chat::send(&chat, query, cwd, mode).await
+}
+
+#[tauri::command]
+fn cursor_chat_reset(chat: State<cursor_chat::CursorChat>) {
+    chat.reset();
+}
+
+/// Folder the Cursor chat edits when the Cursor window is closed.
+#[tauri::command]
+async fn pick_project_folder() -> Result<Option<String>, String> {
+    tokio::task::spawn_blocking(cursor_chat::pick_folder)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -328,7 +394,7 @@ fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
-        .title("Settings — Coucou")
+        .title("Settings — Alfred")
         .inner_size(560.0, 680.0)
         .min_inner_size(460.0, 480.0)
         .resizable(true)
@@ -380,6 +446,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(cursor_chat::CursorChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -389,16 +456,23 @@ pub fn run() {
             reposition,
             open_url,
             open_in_vscode,
+            open_in_cursor,
             quit_app,
             hooks_status,
             hooks_preview,
             hooks_apply,
+            cursor_hooks_status,
+            cursor_hooks_preview,
+            cursor_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,
             log_line,
             chat_send,
             chat_reset,
+            cursor_chat_send,
+            cursor_chat_reset,
+            pick_project_folder,
             ingest_file,
             secret_present,
             secret_set,
@@ -423,12 +497,12 @@ pub fn run() {
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
-            log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            log::line(format!("--- Alfred {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Coucou");
+        .expect("error while running Alfred");
 }

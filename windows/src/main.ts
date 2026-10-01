@@ -5,6 +5,7 @@ import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
+import { registerCursorHandlers, restoreCursorProject } from "./island/cursor";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 
@@ -22,6 +23,7 @@ async function main() {
   }
   island.applySettings();
   State.loadIntegrationTasks();
+  restoreCursorProject();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
 
@@ -54,13 +56,22 @@ async function main() {
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
+    const previousPill = State.settings.defaultPill;
     State.settings = { ...State.settings, ...s };
     island.applySettings();
     State.loadIntegrationTasks();
+    // Follow a new default when it was the open pill. A pill the user picked
+    // stays put until the next launch.
+    if (s.defaultPill != null && s.defaultPill !== previousPill) {
+      const stillThere = State.tasks.some((t) => t.id === State.focusId);
+      if (!stillThere || State.focusId === previousPill) State.focusDefaultPill();
+    }
+    restoreCursorProject();
     void refreshConfigured();
   });
 
   registerHookHandlers(island);
+  registerCursorHandlers(island);
   registerIntegrationHandlers(island);
 
   island.launch();
