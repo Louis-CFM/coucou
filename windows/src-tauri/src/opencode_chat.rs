@@ -79,6 +79,41 @@ pub fn resolve_bin(configured: &str) -> Option<PathBuf> {
     None
 }
 
+/// The real `opencode` program to start a server with, rather than a launcher
+/// that wraps it.
+///
+/// On a scoop install, `opencode` on PATH is a shim: a small executable that
+/// starts the genuine binary as a second process and stays alive beside it. For
+/// `opencode run` that indirection does not matter, because the run is awaited to
+/// completion. For a server it matters a lot: the process Coucou holds is not the
+/// one holding the port, so stopping it reliably is guesswork. Not every install
+/// uses a shim, so this looks for the actual program where installs put it and
+/// only falls back to PATH when there is none to find.
+pub fn resolve_server_bin(configured: &str) -> Option<PathBuf> {
+    let trimmed = configured.trim();
+    if !trimmed.is_empty() {
+        // An explicit path in Settings is the user's choice, shim or not.
+        let p = PathBuf::from(trimmed);
+        return p.is_file().then_some(p);
+    }
+    if let Some(home) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
+        // scoop keeps the real program in a versioned folder, with `current`
+        // pointing at the live one, and keeps only wrappers in `shims`.
+        let current = home.join("scoop/apps/opencode/current/opencode.exe");
+        if current.is_file() {
+            return Some(current);
+        }
+        for rel in [".bun/bin/opencode.exe", ".opencode/bin/opencode.exe"] {
+            let p = home.join(rel);
+            if p.is_file() {
+                return Some(p);
+            }
+        }
+    }
+    // Nothing but PATH — take it rather than fail, shim included.
+    crate::find_on_path("opencode")
+}
+
 /// One chat turn. Returns the assistant's text, or a message the island shows
 /// in the note view.
 pub async fn send(
@@ -87,35 +122,123 @@ pub async fn send(
     model_override: &str,
     query: String,
     context: Option<ChatContext>,
+    session_override: Option<String>,
 ) -> Result<ChatReply, String> {
     let bin = resolve_bin(bin_configured).ok_or_else(|| {
         "opencode not found. Install it (opencode.ai) or set its path in Settings → Chat.".to_string()
     })?;
 
-    // First turn of a conversation carries the persona + context; later turns
-    // reuse the session in the same directory.
+    // A leading "/" is one of the user's own commands from the opencode `/`
+    // menu, not chat prose. It runs verbatim: no persona preamble, and no
+    // remembered session, because the command owns the whole turn the same way
+    // it would in the TUI.
+    let command = query
+        .strip_prefix('/')
+        .map(|rest| match rest.split_once(char::is_whitespace) {
+            Some((name, args)) => (name.trim().to_string(), args.trim().to_string()),
+            None => (rest.trim().to_string(), String::new()),
+        })
+        .filter(|(name, _)| !name.is_empty());
+
+    // An explicitly picked session wins over the remembered one. Its working
+    // directory comes from the live session list so `--dir` matches the session
+    // rather than the home folder the new-chat path uses.
+    let picked = session_override
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(|id| {
+            let dir = crate::opencode_server::sessions()
+                .into_iter()
+                .find(|s| s.id == id)
+                .map(|s| s.directory)
+                .filter(|d| !d.is_empty())
+                .unwrap_or_else(home_dir);
+            (id.to_string(), dir)
+        });
+
+    // opencode's own TUI built-ins are handled entirely inside the terminal UI:
+    // they never reach the server as commands and `opencode run --command`
+    // rejects them. The ones that map to a real server route are dispatched
+    // straight to that route here, so they perform the genuine action.
+    if let Some((name, _)) = &command {
+        if let Some(canonical) = crate::opencode_server::builtin_for(name) {
+            let target = picked
+                .as_ref()
+                .map(|(id, _)| id.clone())
+                .or_else(|| {
+                    chat.session
+                        .lock()
+                        .unwrap()
+                        .as_ref()
+                        .map(|s| s.id.clone())
+                })
+                .unwrap_or_default();
+            let text = crate::opencode_server::act(canonical, &target)?;
+            return Ok(ChatReply { text });
+        }
+    }
+
     let first;
     let (session_id, dir, files, message) = {
         let guard = chat.session.lock().unwrap();
-        match &*guard {
-            Some(s) => {
-                first = false;
-                (Some(s.id.clone()), s.dir.clone(), Vec::new(), query.clone())
-            }
-            None => {
-                first = true;
-                let (dir, files, ctx_text) = first_turn_context(&context);
-                let mut message = String::from(PERSONA);
-                if !ctx_text.is_empty() {
-                    message.push_str("\n\nContext: ");
-                    message.push_str(&ctx_text);
+        if let Some(cmd) = &command {
+            first = true;
+            let _ = cmd;
+            (None, home_dir(), Vec::new(), query.clone())
+        } else if let Some((id, dir)) = &picked {
+            first = false;
+            (Some(id.clone()), dir.clone(), Vec::new(), query.clone())
+        } else {
+            match &*guard {
+                Some(s) => {
+                    first = false;
+                    (Some(s.id.clone()), s.dir.clone(), Vec::new(), query.clone())
                 }
-                message.push_str("\n\nUser: ");
-                message.push_str(&query);
-                (None, dir, files, message)
+                None => {
+                    first = true;
+                    let (dir, files, ctx_text) = first_turn_context(&context);
+                    let mut message = String::from(PERSONA);
+                    if !ctx_text.is_empty() {
+                        message.push_str("\n\nContext: ");
+                        message.push_str(&ctx_text);
+                    }
+                    message.push_str("\n\nUser: ");
+                    message.push_str(&query);
+                    (None, dir, files, message)
+                }
             }
         }
     };
+
+    // Persistent-server transport. A `/command` still goes through `opencode run`
+    // because `--command` owns the whole turn, and an attachment still needs
+    // `--file`, which the server route would otherwise have to reimplement as an
+    // upload. Everything else is a plain turn and goes over HTTP.
+    let via_server = crate::settings::load().chat_via_server;
+    if via_server && command.is_none() && files.is_empty() {
+        let attempt = tokio::task::spawn_blocking({
+            let sid = session_id.clone();
+            let model = model_override.to_string();
+            let msg = message.clone();
+            move || send_via_server(sid.as_deref(), &model, &msg)
+        })
+        .await
+        .map_err(|e| format!("opencode task failed: {e}"))?;
+        match attempt {
+            Ok((id, text)) => {
+                if picked.is_none() {
+                    *chat.session.lock().unwrap() = Some(ChatSession { id, dir });
+                }
+                let _ = first;
+                return Ok(ChatReply { text });
+            }
+            // A transport hiccup must not cost the user their message: log it
+            // and let the `opencode run` path below try instead.
+            Err(err) => {
+                crate::log::line(format!("server turn failed ({err}), using opencode run"));
+            }
+        }
+    }
 
     let model = model_override.trim();
     let mut args: Vec<String> = vec![
@@ -131,9 +254,17 @@ pub async fn send(
         args.push("--model".into());
         args.push(model.to_string());
     }
-    if let Some(id) = &session_id {
-        args.push("--session".into());
-        args.push(id.clone());
+    // Commands run in a throwaway session: they must not land in the
+    // conversation the island is holding open.
+    if command.is_none() {
+        if let Some(id) = &session_id {
+            args.push("--session".into());
+            args.push(id.clone());
+        }
+    }
+    if let Some((name, _)) = &command {
+        args.push("--command".into());
+        args.push(name.clone());
     }
     // NOTE: the message must come before `--file`: yargs array options greedily
     // swallow every positional after them, so `--file f "message"` eats the
@@ -151,8 +282,13 @@ pub async fn send(
             .map_err(|e| format!("opencode task failed: {e}"))??;
 
     let parsed = parse_events(&stdout);
-    if let Some(id) = parsed.session_id {
-        *chat.session.lock().unwrap() = Some(ChatSession { id, dir });
+    // Only a plain chat turn updates the remembered session. A command ran in a
+    // throwaway session and a picked session is already the active one, so
+    // neither should replace what the island is holding on to.
+    if command.is_none() && picked.is_none() {
+        if let Some(id) = parsed.session_id {
+            *chat.session.lock().unwrap() = Some(ChatSession { id, dir });
+        }
     }
 
     if let Some(err) = parsed.error {
@@ -176,7 +312,96 @@ pub async fn send(
     })
 }
 
+/// One chat turn over the opencode server that is already running.
+///
+/// The alternative to this is `opencode run`, which boots a whole throwaway
+/// server per message and tears it down again. Here the same turn is two HTTP
+/// calls against the long-lived one, which is why replies start sooner.
+///
+/// Returns the session the turn landed in along with the assistant's text, so
+/// the caller can remember it exactly like the `opencode run` path does.
+fn send_via_server(
+    session_id: Option<&str>,
+    model_override: &str,
+    message: &str,
+) -> Result<(String, String), String> {
+    let base = crate::opencode_server::discover(true)
+        .ok_or_else(|| "no opencode server is running".to_string())?;
+    let client = reqwest::blocking::Client::builder()
+        .timeout(RUN_TIMEOUT)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // A brand new conversation has nothing to post into yet.
+    let id = match session_id.filter(|s| !s.is_empty()) {
+        Some(id) => id.to_string(),
+        None => {
+            let resp = client
+                .post(format!("{base}/session"))
+                .json(&serde_json::json!({ "title": "Coucou chat" }))
+                .send()
+                .map_err(|e| format!("could not open a session: {e}"))?;
+            let value: Value = resp.json().map_err(|e| e.to_string())?;
+            value
+                .get("id")
+                .and_then(|id| id.as_str())
+                .map(str::to_string)
+                .ok_or_else(|| "the server did not return a session id".to_string())?
+        }
+    };
+
+    let mut body = serde_json::json!({ "parts": [{ "type": "text", "text": message }] });
+    // The setting spells the override "provider/model"; the server wants the two
+    // halves separately.
+    if let Some((provider, model)) = model_override.trim().split_once('/') {
+        if !provider.is_empty() && !model.is_empty() {
+            body["model"] =
+                serde_json::json!({ "providerID": provider, "modelID": model });
+        }
+    }
+
+    let resp = client
+        .post(format!("{base}/session/{id}/message"))
+        .json(&body)
+        .send()
+        .map_err(|e| format!("could not reach the opencode server: {e}"))?;
+    let status = resp.status();
+    let value: Value = resp.json().map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        let detail = value
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown error");
+        return Err(format!("opencode server said {status}: {detail}"));
+    }
+
+    // The reply is a list of parts; only the text ones are the answer, the rest
+    // are the step markers around it.
+    let text: String = value
+        .get("parts")
+        .and_then(|parts| parts.as_array())
+        .map(|parts| {
+            parts
+                .iter()
+                .filter(|part| part.get("type").and_then(|t| t.as_str()) == Some("text"))
+                .filter_map(|part| part.get("text").and_then(|t| t.as_str()))
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .unwrap_or_default();
+    if text.trim().is_empty() {
+        return Err("opencode returned no text.".into());
+    }
+    Ok((id, text.trim().to_string()))
+}
+
 /// Working dir + file attachments + context line for a fresh conversation.
+pub fn home_dir() -> String {
+    std::env::var_os("USERPROFILE")
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".into())
+}
+
 fn first_turn_context(context: &Option<ChatContext>) -> (String, Vec<String>, String) {
     let home = std::env::var_os("USERPROFILE")
         .map(PathBuf::from)
@@ -371,5 +596,16 @@ mod tests {
     #[test]
     fn resolve_bin_rejects_missing_configured_path() {
         assert!(resolve_bin("C:\\definitely\\not\\here\\opencode.exe").is_none());
+    }
+
+    /// A real turn over the persistent server, which is the whole point of the
+    /// `chat_via_server` setting. Ignored by default because it costs a model
+    /// call and needs a server to be reachable; run it with `--ignored`.
+    #[test]
+    #[ignore = "talks to a live model"]
+    fn server_turn_answers_and_reports_its_session() {
+        let (id, text) = send_via_server(None, "", "Reply with exactly: OK").expect("server turn");
+        assert!(id.starts_with("ses_"), "expected a session id, got {id}");
+        assert!(text.contains("OK"), "expected OK in the reply, got {text:?}");
     }
 }
