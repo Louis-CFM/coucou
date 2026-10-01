@@ -53,7 +53,7 @@ fn client() -> reqwest::Client {
 }
 
 /// Set from the tray's Pause item. While it is on, nothing reaches the network:
-/// pausing Alfred has to mean pausing Alfred, not just hiding the island.
+/// pausing Coucou has to mean pausing Coucou, not just hiding the island.
 pub static PAUSED: AtomicBool = AtomicBool::new(false);
 
 pub fn set_paused(on: bool) {
@@ -323,7 +323,7 @@ async fn poll_github(app: AppHandle) {
         .get("https://api.github.com/user")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Alfred")
+        .header("User-Agent", "Coucou")
         .send()
         .await;
     let Ok(response) = user else { return };
@@ -348,7 +348,7 @@ async fn poll_github(app: AppHandle) {
         .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Alfred")
+        .header("User-Agent", "Coucou")
         .send()
         .await;
     let stars: i64 = match repos {

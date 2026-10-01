@@ -78,7 +78,7 @@
 		2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripePoller.swift; sourceTree = "<group>"; };
 		3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcomPoller.swift; sourceTree = "<group>"; };
 		3232F258523DD8D09B670363 /* FileDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropView.swift; sourceTree = "<group>"; };
-		4DC2A07E42245A8CF3BBD2AB /* AlfredAppStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlfredAppStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoucouAppStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		506824380E9C80B9BC6DCE72 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		61B5FDDE03F5F711146937E2 /* ResendPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResendPoller.swift; sourceTree = "<group>"; };
 		6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadSequenceEngine.swift; sourceTree = "<group>"; };
@@ -147,7 +147,7 @@
 		6CF11AAA7898712CF6DB364A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4DC2A07E42245A8CF3BBD2AB /* AlfredAppStore.app */,
+				4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */,
 				A14A61070D293AB4BBA303F7 /* NotchBuddy.app */,
 			);
 			name = Products;
@@ -200,9 +200,9 @@
 			productReference = A14A61070D293AB4BBA303F7 /* NotchBuddy.app */;
 			productType = "com.apple.product-type.application";
 		};
-		495922874E20462B9FC47E53 /* AlfredAppStore */ = {
+		495922874E20462B9FC47E53 /* CoucouAppStore */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 21BF9C617EC84EECBB6BC46D /* Build configuration list for PBXNativeTarget "AlfredAppStore" */;
+			buildConfigurationList = 21BF9C617EC84EECBB6BC46D /* Build configuration list for PBXNativeTarget "CoucouAppStore" */;
 			buildPhases = (
 				760473CA0E9C38B61B761B8C /* Sources */,
 				4AFCA0709B0C077E65F471EB /* Resources */,
@@ -211,11 +211,11 @@
 			);
 			dependencies = (
 			);
-			name = AlfredAppStore;
+			name = CoucouAppStore;
 			packageProductDependencies = (
 			);
-			productName = AlfredAppStore;
-			productReference = 4DC2A07E42245A8CF3BBD2AB /* AlfredAppStore.app */;
+			productName = CoucouAppStore;
+			productReference = 4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -251,7 +251,7 @@
 			projectRoot = "";
 			targets = (
 				12E59C1D41BFA3D2F7CDD7F5 /* NotchBuddy */,
-				495922874E20462B9FC47E53 /* AlfredAppStore */,
+				495922874E20462B9FC47E53 /* CoucouAppStore */,
 			);
 		};
 /* End PBXProject section */
@@ -366,7 +366,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.NotchBuddy;
-				PRODUCT_NAME = Alfred;
+				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -384,7 +384,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.NotchBuddy;
-				PRODUCT_NAME = Alfred;
+				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -394,7 +394,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_ENTITLEMENTS = Resources/AlfredAppStore.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Resources/CoucouAppStore.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -405,8 +405,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.Alfred;
-				PRODUCT_NAME = Alfred;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.Coucou;
+				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = APPSTORE;
 			};
@@ -417,7 +417,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_ENTITLEMENTS = Resources/AlfredAppStore.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Resources/CoucouAppStore.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -428,8 +428,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.Alfred;
-				PRODUCT_NAME = Alfred;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.louisraille.Coucou;
+				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = APPSTORE;
 			};
@@ -538,7 +538,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
-				CODE_SIGN_ENTITLEMENTS = Resources/Alfred.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Resources/Coucou.entitlements;
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
@@ -571,7 +571,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		21BF9C617EC84EECBB6BC46D /* Build configuration list for PBXNativeTarget "AlfredAppStore" */ = {
+		21BF9C617EC84EECBB6BC46D /* Build configuration list for PBXNativeTarget "CoucouAppStore" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B00AFE3DDD2B0870D9FC5B2A /* Debug */,

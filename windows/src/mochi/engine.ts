@@ -319,7 +319,7 @@ export class BotEngine {
     this.anim("roll", [[Math.PI * 2 * turns, durationMs, Ease.inOut]], () => { this.roll = 0; });
   }
 
-  /** Peek wave — the launch greeting. Timings from BotEngine.greet(). */
+  /** Peek wave — the "coucou". Timings from BotEngine.greet(). */
   greet() {
     const t = now();
     const tok = ++this.greetToken;

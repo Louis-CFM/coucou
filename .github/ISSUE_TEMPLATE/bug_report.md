@@ -14,4 +14,4 @@ labels: bug
 
 **Mac model**
 
-**Alfred version**
+**Coucou version**

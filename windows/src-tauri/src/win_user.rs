@@ -1,8 +1,8 @@
 // Who we are, for the relay pipe name.
 //
 // Named pipes share one machine-wide namespace, so the SID in the name is what
-// keeps two accounts on the same machine from ever meeting on `alfred-*`.
-// alfred-hook computes the same string (hook/src/win.rs) and additionally checks
+// keeps two accounts on the same machine from ever meeting on `coucou-*`.
+// coucou-hook computes the same string (hook/src/win.rs) and additionally checks
 // that the process serving the pipe really is us.
 
 use windows::core::PWSTR;

@@ -1,6 +1,6 @@
-// Alfred runs without a console window: Mochi is the whole UI.
+// Coucou runs without a console window: Mochi is the whole UI.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    alfred_lib::run()
+    coucou_lib::run()
 }

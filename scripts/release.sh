@@ -4,9 +4,9 @@ set -euo pipefail
 
 VERSION="${1:?Usage: $0 <version>}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="/tmp/alfred-release-$VERSION"
-APP="$BUILD_DIR/Alfred.app"
-ZIP="$BUILD_DIR/Alfred.zip"
+BUILD_DIR="/tmp/coucou-release-$VERSION"
+APP="$BUILD_DIR/Coucou.app"
+ZIP="$BUILD_DIR/Coucou.zip"
 
 # ── 1. Find Developer ID identity ─────────────────────────────────────────────
 IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed 's/.*"\(Developer ID Application[^"]*\)".*/\1/')
@@ -33,7 +33,7 @@ xcodebuild \
 
 # ── 3. Zip + notarize ─────────────────────────────────────────────────────────
 ditto -c -k --keepParent "$APP" "$ZIP"
-xcrun notarytool submit "$ZIP" --keychain-profile alfred-notary --wait
+xcrun notarytool submit "$ZIP" --keychain-profile coucou-notary --wait
 
 # ── 4. Staple + verify ────────────────────────────────────────────────────────
 xcrun stapler staple "$APP"
@@ -50,21 +50,21 @@ git tag "v$VERSION"
 git push origin "v$VERSION"
 
 gh release create "v$VERSION" "$ZIP" \
-  --repo Patriot5701/alfred \
-  --title "Alfred $VERSION" \
+  --repo Louis-CFM/coucou \
+  --title "Coucou $VERSION" \
   --notes "$(cat <<EOF
 ## Install
 
-Download **Alfred.zip**, unzip and move **Alfred.app** to \`/Applications\`. Launch — no extra steps needed.
+Download **Coucou.zip**, unzip and move **Coucou.app** to \`/Applications\`. Launch — no extra steps needed.
 
 ## Build from source
 
 \`\`\`bash
 brew install xcodegen
-git clone https://github.com/Patriot5701/alfred.git
-cd alfred/NotchBuddy && xcodegen && open NotchBuddy.xcodeproj
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/NotchBuddy && xcodegen && open NotchBuddy.xcodeproj
 \`\`\`
 EOF
 )"
 
-echo "✓ v$VERSION released: https://github.com/Patriot5701/alfred/releases/tag/v$VERSION"
+echo "✓ v$VERSION released: https://github.com/Louis-CFM/coucou/releases/tag/v$VERSION"

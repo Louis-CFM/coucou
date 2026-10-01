@@ -16,7 +16,7 @@ export const SOUNDS_DIR = resolve(__dirname, "../NotchBuddy/Resources/sounds");
 function sharedSounds(): Plugin {
   const prefix = "/sounds/";
   return {
-    name: "alfred-shared-sounds",
+    name: "coucou-shared-sounds",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith(prefix)) return next();

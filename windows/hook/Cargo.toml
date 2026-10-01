@@ -1,12 +1,12 @@
 [package]
-name = "alfred-hook"
-description = "Relays Claude Code hook events to Alfred over a named pipe"
+name = "coucou-hook"
+description = "Relays Claude Code hook events to Coucou over a named pipe"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "alfred-hook"
+name = "coucou-hook"
 path = "src/main.rs"
 
 [dependencies]

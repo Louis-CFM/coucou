@@ -1,4 +1,4 @@
-# Contributing to Alfred
+# Contributing to Coucou
 
 Thanks for wanting to help Mochi grow up! 🫶
 

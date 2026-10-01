@@ -22,7 +22,7 @@ settings:
       CODE_SIGN_IDENTITY: "Developer ID Application"
       DEVELOPMENT_TEAM: 256AUJ9555
       OTHER_CODE_SIGN_FLAGS: "--timestamp"
-      CODE_SIGN_ENTITLEMENTS: Resources/Alfred.entitlements
+      CODE_SIGN_ENTITLEMENTS: Resources/Coucou.entitlements
 
 schemes:
   NotchBuddy:
@@ -33,10 +33,10 @@ schemes:
       config: Debug
     archive:
       config: Release
-  AlfredAppStore:
+  CoucouAppStore:
     build:
       targets:
-        AlfredAppStore: all
+        CoucouAppStore: all
     run:
       config: Debug
     archive:
@@ -57,8 +57,8 @@ targets:
     info:
       path: Resources/Info.plist
       properties:
-        CFBundleName: Alfred
-        CFBundleDisplayName: Alfred
+        CFBundleName: Coucou
+        CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
         CFBundleVersion: "2"
         CFBundleShortVersionString: "0.1.1"
@@ -71,13 +71,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
-        PRODUCT_NAME: Alfred
+        PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
 
-  AlfredAppStore:
+  CoucouAppStore:
     type: application
     platform: macOS
     sources:
@@ -91,9 +91,9 @@ targets:
     info:
       path: Resources/InfoAppStore.plist
       properties:
-        CFBundleName: Alfred
-        CFBundleDisplayName: Alfred
-        CFBundleIdentifier: fr.louisraille.Alfred
+        CFBundleName: Coucou
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou
         CFBundleVersion: "4"
         CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
@@ -104,14 +104,14 @@ targets:
         ITSAppUsesNonExemptEncryption: NO
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Alfred
-        PRODUCT_NAME: Alfred
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
+        PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoAppStore.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
-        CODE_SIGN_ENTITLEMENTS: Resources/AlfredAppStore.entitlements
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStore.entitlements
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
         CODE_SIGNING_ALLOWED: YES

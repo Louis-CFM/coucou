@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Alfred",
+  "productName": "Coucou",
   "version": "0.1.1",
-  "identifier": "fr.louisraille.alfred",
+  "identifier": "fr.louisraille.coucou",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "island",
-        "title": "Alfred",
+        "title": "Coucou",
         "url": "index.html",
         "width": 240,
         "height": 6,
@@ -48,11 +48,11 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "resources": { "../target/release/alfred-hook.exe": "alfred-hook.exe" },
+    "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
     "copyright": "© Louis Raille",
     "category": "DeveloperTool",
     "shortDescription": "Mochi lives at the top of your screen",
-    "longDescription": "Alfred puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
+    "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",

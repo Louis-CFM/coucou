@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Alfred icon">
+<img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">
 
-# Alfred
+# Coucou
 
 **A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code and Cursor sessions.**
 
@@ -14,9 +14,9 @@ Approve permissions, watch your agents work, drop a file, chat with Claude or Cu
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![GitHub stars](https://img.shields.io/github/stars/Patriot5701/alfred?style=social)
+![GitHub stars](https://img.shields.io/github/stars/Louis-CFM/coucou?style=social)
 
-<img src="docs/media/demo.gif" width="760" alt="Alfred in action">
+<img src="docs/media/demo.gif" width="760" alt="Coucou in action">
 
 </div>
 
@@ -25,7 +25,7 @@ Approve permissions, watch your agents work, drop a file, chat with Claude or Cu
 ## Why
 
 Some studios showed off gorgeous notch companions… and never let anyone use them.
-**Alfred is the open version.** Every line of code, every animation, every sound — free to use, read, fork and remix.
+**Coucou is the open version.** Every line of code, every animation, every sound — free to use, read, fork and remix.
 
 Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
 
@@ -59,8 +59,8 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 ### Download for macOS
 
-1. Grab the latest `Alfred.zip` from [Releases](https://github.com/Patriot5701/alfred/releases).
-2. Unzip and move **Alfred.app** to `/Applications`.
+1. Grab the latest `Coucou.zip` from [Releases](https://github.com/Louis-CFM/coucou/releases).
+2. Unzip and move **Coucou.app** to `/Applications`.
 3. Launch. This build isn't notarized by Apple yet, so the first time macOS says it can't verify the developer: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (only once).
 
 ### Windows
@@ -80,8 +80,8 @@ rest of the differences.
 
 ```bash
 brew install xcodegen
-git clone https://github.com/Patriot5701/alfred.git
-cd alfred/NotchBuddy
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/NotchBuddy
 xcodegen
 open NotchBuddy.xcodeproj   # then ⌘R
 ```
@@ -89,24 +89,24 @@ open NotchBuddy.xcodeproj   # then ⌘R
 **Windows** — requirements: [Rust](https://rustup.rs), Node 20+, MSVC build tools.
 
 ```powershell
-git clone https://github.com/Patriot5701/alfred.git
-cd alfred/windows
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/windows
 npm install
 npm run pack                # installer lands in windows/release/
 ```
 
 ## Setup
 
-Click the Alfred icon in the menu bar (macOS) or in the system tray (Windows) → **Settings…**
+Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) → **Settings…**
 
 | What | Why | Where the key goes |
 |---|---|---|
-| **Claude Code hooks** | live sessions and approvals | **Install hooks** — Alfred backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
+| **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Cursor hooks** *(Windows)* | live local agent sessions | **Settings… → Cursor → Install hooks…** — same backup + diff flow for `%USERPROFILE%\.cursor\hooks.json`. Cloud agents are not included |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
-If Alfred isn't running, the hook exits immediately: **Claude Code and Cursor are never blocked.** For Cursor chat from the island, install the [Cursor CLI](https://cursor.com/docs/cli/installation) and run `agent login`.
+If Coucou isn't running, the hook exits immediately: **Claude Code and Cursor are never blocked.** For Cursor chat from the island, install the [Cursor CLI](https://cursor.com/docs/cli/installation) and run `agent login`.
 
 ## Things to try
 
@@ -135,7 +135,7 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 **Windows**
 
 - A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
-- Claude Code and Cursor hooks go through a tiny `alfred-hook.exe` and a named pipe; keys live in Windows Credential Manager. Cursor support also covers chatting with the local agent via the `agent` CLI.
+- Claude Code and Cursor hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager. Cursor support also covers chatting with the local agent via the `agent` CLI.
 - Details and differences in [`windows/README.md`](windows/README.md).
 
 ## Contributing
@@ -156,6 +156,6 @@ Inspired by the notch-companion concepts shared by design studios — this proje
 
 **If Mochi made you smile, a ⭐ helps a lot.**
 
-[Website](https://louis-cfm.github.io/alfred/) · [Privacy](https://louis-cfm.github.io/alfred/privacy.html) · [Terms](https://louis-cfm.github.io/alfred/terms.html) · [Support](https://louis-cfm.github.io/alfred/support.html)
+[Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
 
 </div>

@@ -66,7 +66,7 @@ jobs:
           if ($tag -ne $cargo) { $bad += "Cargo.toml says $cargo" }
           if ($bad) { throw "tag says $tag but $($bad -join '; ')" }
 
-      # `npm run build` (run by tauri as beforeBuildCommand) builds alfred-hook
+      # `npm run build` (run by tauri as beforeBuildCommand) builds coucou-hook
       # first, which tauri.conf.json then bundles as a resource. `pack` then
       # copies the installer out of target/ under its shipping name.
       - name: Build and pack the installer
@@ -81,8 +81,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: env.PUBLISH == 'true'
         with:
-          name: Alfred-Windows-setup
-          path: windows/release/Alfred-Windows-${{ steps.pack.outputs.version }}-setup.exe
+          name: Coucou-Windows-setup
+          path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}-setup.exe
 
       - name: Publish the release
         if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
@@ -92,9 +92,9 @@ jobs:
         run: |
           $v = "${{ steps.pack.outputs.version }}"
           $notes = @"
-          Alfred for Windows $v — Mochi at the top of your screen.
+          Coucou for Windows $v — Mochi at the top of your screen.
 
-          Download ``Alfred-Windows-$v-setup.exe`` and run it. The installer is not
+          Download ``Coucou-Windows-$v-setup.exe`` and run it. The installer is not
           code-signed yet, so Windows SmartScreen shows a warning: click
           **More info → Run anyway**.
           "@
@@ -103,8 +103,8 @@ jobs:
           # button points at /releases/latest. A Windows tag would silently send
           # Mac users to the .exe. The macOS `v*` releases own that slot.
           gh release create "${{ github.ref_name }}" `
-            "release/Alfred-Windows-$v-setup.exe" `
-            --title "Alfred for Windows $v" `
+            "release/Coucou-Windows-$v-setup.exe" `
+            --title "Coucou for Windows $v" `
             --notes $notes `
             --latest=false
 
@@ -122,12 +122,12 @@ jobs:
             # from it gets an old tree.
             git tag -f windows-latest "${{ github.sha }}"
             git push -f origin windows-latest
-            gh release edit windows-latest --title "Alfred for Windows (latest)" --notes "Always the newest Windows build — currently $v."
-            gh release upload windows-latest "release/Alfred-Windows-setup.exe" --clobber
+            gh release edit windows-latest --title "Coucou for Windows (latest)" --notes "Always the newest Windows build — currently $v."
+            gh release upload windows-latest "release/Coucou-Windows-setup.exe" --clobber
           } else {
             gh release create windows-latest `
-              "release/Alfred-Windows-setup.exe" `
-              --title "Alfred for Windows (latest)" `
+              "release/Coucou-Windows-setup.exe" `
+              --title "Coucou for Windows (latest)" `
               --notes "Always the newest Windows build — currently $v." `
               --latest=false
           }

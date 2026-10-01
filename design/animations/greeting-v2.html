@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Notch Buddy · salut d'entrée v2 (référence)</title>
+<title>Notch Buddy · coucou d'entrée v2 (référence)</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
   --bg:#E2E4E8;--ink:#16171B;--muted:#5F646D;--panel:#fff;--line:#D1D4DA}
@@ -26,8 +26,8 @@ input[type=range]{flex:1;min-width:200px}
 </head>
 <body>
 <div class="wrap">
-  <h1>Salut d'entrée v2, avec le Mochi de Louis</h1>
-  <p>Tout est une fonction du temps et de l'instant où la souris quitte le notch. Repère de l'island, en points. « Souris sur le notch » : le salut se termine et l'island reste ouverte. « Retirer la souris » : l'island se replie en petit tout de suite, même en pleine animation.</p>
+  <h1>Coucou d'entrée v2, avec le Mochi de Louis</h1>
+  <p>Tout est une fonction du temps et de l'instant où la souris quitte le notch. Repère de l'island, en points. « Souris sur le notch » : le coucou se termine et l'island reste ouverte. « Retirer la souris » : l'island se replie en petit tout de suite, même en pleine animation.</p>
   <div class="stage"><canvas id="c" width="1280" height="440"></canvas></div>
   <div class="bar">
     <button id="play" class="on">Pause</button>
@@ -45,11 +45,11 @@ input[type=range]{flex:1;min-width:200px}
 /* ====================== CONSTANTES (repère island, points) ====================== */
 const W=640, H=220, CX=320;
 const NOTCH={w:184,h:32};
-const BIG={w:640,h:150};                  // island ouverte pendant le salut
+const BIG={w:640,h:150};                  // island ouverte pendant le coucou
 const SMALL={w:NOTCH.w+104,h:32};         // « petit » : notch + les deux oreilles
 const CARD={x:10,y:36,w:620,h:104,r:20};
-const C0={x:320,y:90};                    // centre du Mochi pendant le salut
-const HB=58;                              // hauteur du corps du Mochi pendant le salut
+const C0={x:320,y:90};                    // centre du Mochi pendant le coucou
+const HB=58;                              // hauteur du corps du Mochi pendant le coucou
 const ASPECT=1.34;                        // largeur / hauteur du Mochi de Louis
 const EAR={x:27,y:16,hb:17};              // Mochi dans l'oreille gauche du petit
 const MINI=['#E86A6A','#3E86E0','#EFAE5A','#8C73F2'];
@@ -65,7 +65,7 @@ let seed=7; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed
 const RINGS=[.10,.20,.30,.45,.60].map(t0=>({t0,dots:Array.from({length:170},()=>({a:rnd()*Math.PI*2,j:(rnd()-.5)*.22,s:.7+rnd()*.9,al:.45+rnd()*.55}))}));
 const STREAKS=Array.from({length:16},(_,i)=>({a:(i/16)*Math.PI*2+(rnd()-.5)*.3,sp:230+rnd()*260,len:6+rnd()*9,t0:.08+rnd()*.14,col:['#3B9EFF','#F29B38','#FF5A4E','#2EC4A0','#A78BFA'][i%5]}));
 
-/* ====================== POSE DU SALUT À L'INSTANT t ====================== */
+/* ====================== POSE DU COUCOU À L'INSTANT t ====================== */
 function greetPose(t){
   const p={};
   // island du notch vers la grande taille (0 → 0,5 s, léger dépassement)
@@ -76,7 +76,7 @@ function greetPose(t){
   p.sx=1; p.sy=1; p.tilt=0;
   // plongeon en avant (1,25 → 1,40) : le corps descend, s'écrase, les yeux roulent vers le bas et disparaissent
   if(t>=T.dip0&&t<T.pop1){ const k=Math.sin(Math.PI*seg(t,T.dip0,T.pop1)); p.y+=p.hb*.22*k; p.sy=1-.06*k; p.sx=1+.04*k }
-  // salut : le corps se balance de gauche à droite et penche un peu
+  // coucou : le corps se balance de gauche à droite et penche un peu
   if(t>=T.pop1&&t<T.tuck1){ const w=t-T.pop1, fade=1-seg(t,T.tuck0,T.tuck1); p.x+=Math.sin(w*2*Math.PI*.9)*p.hb*ASPECT*.05*fade; p.tilt=(Math.sin(w*2*Math.PI*.9+.6)*.05)*fade; p.y+=Math.sin(w*2*Math.PI*1.8)*.8*fade }
   // il se tasse vers le bas quand les mains rentrent, puis revient
   if(t>=T.tuck0&&t<T.down1){ const k=Math.sin(Math.PI*seg(t,T.tuck0,T.down1)); p.y+=p.hb*.12*k }
@@ -183,7 +183,7 @@ function draw(t,tc){
   if(p.minis>.01){ const cx=CX+SMALL.w/2-27, cy=16, sp=6; [[-sp,-sp],[sp,-sp],[-sp,sp],[sp,sp]].forEach(([dx,dy],i)=>{ X.save(); X.translate(cx+dx,cy+dy); X.scale(p.minis,p.minis); X.fillStyle=MINI[i]; X.fill(mochiPath(5.3,4)); X.restore() }) }
   drawMochi(p);
   X.restore();
-  const ph=t>=tc?'Repli en petit (souris partie)':t<T.grow?'1 · Le notch s\u2019ouvre, le Mochi jaillit':t<T.dip0?'2 · Ondes, yeux plissés de joie, il te regarde':t<T.pop1?'3 · Plongeon en avant, les mains sortent de sous le corps':t<T.tuck0?'4 · SALUT : main droite qui s\u2019agite, main gauche posée':t<T.tuck1?'5 · Les mains rentrent sous le corps':t<T.down1?'6 · Il se tasse, yeux contents, le badge apparaît':t<T.end?'7 · Clignement, teinte de l\u2019état':'8 · Fin du salut : reste ouvert tant que la souris est là';
+  const ph=t>=tc?'Repli en petit (souris partie)':t<T.grow?'1 · Le notch s\u2019ouvre, le Mochi jaillit':t<T.dip0?'2 · Ondes, yeux plissés de joie, il te regarde':t<T.pop1?'3 · Plongeon en avant, les mains sortent de sous le corps':t<T.tuck0?'4 · COUCOU : main droite qui s\u2019agite, main gauche posée':t<T.tuck1?'5 · Les mains rentrent sous le corps':t<T.down1?'6 · Il se tasse, yeux contents, le badge apparaît':t<T.end?'7 · Clignement, teinte de l\u2019état':'8 · Fin du coucou : reste ouvert tant que la souris est là';
   return ph;
 }
 

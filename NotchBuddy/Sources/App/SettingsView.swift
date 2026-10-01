@@ -78,7 +78,7 @@ struct SettingsView: View {
                             #endif
                         }
                         #if APPSTORE
-                        Text("~/.claude/alfred/nb-hook")
+                        Text("~/.claude/coucou/nb-hook")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.secondary)
                         HStack(spacing: 10) {
@@ -382,8 +382,8 @@ struct SettingsView: View {
     private func installHooksAppStore() {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         let alert = NSAlert()
-        alert.messageText = "Install Alfred hooks in ~/.claude?"
-        alert.informativeText = "Will write:\n• ~/.claude/alfred/nb-hook\n• ~/.claude/settings.json (backup created first)"
+        alert.messageText = "Install Coucou hooks in ~/.claude?"
+        alert.informativeText = "Will write:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)"
         alert.addButton(withTitle: "Install")
         alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .informational
