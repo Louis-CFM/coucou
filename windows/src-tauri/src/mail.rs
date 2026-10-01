@@ -58,8 +58,9 @@ pub fn check(account: &Account) -> Result<MailboxState, String> {
     };
 
     let tls = native_tls::TlsConnector::new().map_err(|e| format!("TLS: {e}"))?;
-    let client =
-        imap::connect((account.host, 993), account.host, &tls).map_err(|e| format!("connect: {e}"))?;
+    let client = imap::connect((account.host, 993), account.host, &tls).map_err(|e| {
+        format!("connect: {e} (port 993 unreachable — the network may block IMAP)")
+    })?;
     // NOTE: login fails with (Error, Client) — the tuple has no Display.
     let mut session = client
         .login(&email, &pass)
