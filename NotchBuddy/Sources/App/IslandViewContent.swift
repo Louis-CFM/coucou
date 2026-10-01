@@ -123,6 +123,11 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
+            if state.claudeSessionBundleId == "com.anthropic.claudefordesktop",
+               let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == state.claudeSessionBundleId }) {
+                app.activate()
+                return
+            }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -1120,7 +1125,7 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? "VS Code" : task.name)
+                    Text(task.id == "integration_claude" ? AppState.shared.claudePillName : task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text("Integration")
@@ -2283,9 +2288,9 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // Claude Code pill shows the app the session runs in (VS Code or Claude), not the project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? state.claudePillName : task.name
     }
 
     var body: some View {
