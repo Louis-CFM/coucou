@@ -87,8 +87,14 @@ export interface IntegrationInfo {
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
+  /** Seconds from open to compact. 0 = never auto-close. */
   autoCloseInterval: number;
+  /** Seconds from compact to fully reduced. 0 = never fully reduce. */
   absenceInterval: number;
+  /** Pinned: ignores outside clicks, Escape and the auto-close timer. */
+  pinIsland: boolean;
+  /** Wake the reduced island on hover. When false it waits to be clicked. */
+  wakeOnHover: boolean;
   activeIntegrations: string[];
   screen: "primary" | "cursor";
   autostart: boolean;
@@ -101,6 +107,10 @@ export interface Settings {
   opencodeBin: string;
   /** provider/model override for opencode chat; empty = its default. */
   opencodeModel: string;
+  /** Keep one opencode server running while the app is, and send chat to it. */
+  chatViaServer: boolean;
+  /** Resting place of the compact island, 0 = left edge, 1 = right edge. */
+  notchPosition: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -108,9 +118,9 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
-  activeIntegrations: [
-    "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  ],
+  pinIsland: false,
+  wakeOnHover: true,
+  activeIntegrations: [],
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
@@ -118,6 +128,8 @@ export const DEFAULT_SETTINGS: Settings = {
   chatProvider: "claude",
   opencodeBin: "",
   opencodeModel: "",
+  chatViaServer: false,
+  notchPosition: 0.5,
 };
 
 type Listener = () => void;
@@ -130,6 +142,10 @@ class AppState {
   focusId: string | null = null;
 
   stateOverride: BotStateName | null = null;
+
+  /** Logical rect of the monitor the island lives on, from `boot`. Needed to turn a
+   *  pointer delta into a normalised position while dragging. */
+  screen: { x: number; y: number; width: number; height: number; scale: number } | null = null;
 
   /** Cursor in logical screen pixels, origin top-left (like AppState.mousePosition). */
   mouse = { x: 0, y: 0 };

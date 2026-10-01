@@ -7,14 +7,31 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default = "default_sound_enabled")]
     pub sound_enabled: bool,
+    #[serde(default = "default_sound_volume")]
     pub sound_volume: f64,
+    #[serde(default = "default_auto_close_interval")]
     pub auto_close_interval: f64,
+    #[serde(default = "default_absence_interval")]
     pub absence_interval: f64,
+    /// Pinned by the user from the island header: the island then ignores
+    /// outside clicks, Escape and the auto-close timer until unpinned.
+    #[serde(default)]
+    pub pin_island: bool,
+    /// Wake the reduced island on hover. When false it waits to be clicked.
+    #[serde(default = "default_wake_on_hover")]
+    pub wake_on_hover: bool,
+    /// Opt-in integrations. Defaults to empty: a fresh install shows only the
+    /// coding-agent pills rather than every integration that has no key.
+    #[serde(default)]
     pub active_integrations: Vec<String>,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
+    #[serde(default = "default_screen")]
     pub screen: String,
+    #[serde(default)]
     pub autostart: bool,
+    #[serde(default)]
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
@@ -29,6 +46,21 @@ pub struct Settings {
     /// Optional `provider/model` override for opencode chat; empty = its default.
     #[serde(default)]
     pub opencode_model: String,
+    /// Keep one opencode server running for as long as the app is, and send chat
+    /// turns to it over HTTP. Off means the default: a fresh `opencode run` per
+    /// message, each booting a throwaway server of its own.
+    #[serde(default)]
+    pub chat_via_server: bool,
+    /// Horizontal resting place of the compact island, normalised 0..=1 across
+    /// the target display: 0 = flush left, 0.5 = centred, 1 = flush right.
+    /// Stored as a fraction so a drag can land anywhere while the presets still
+    /// snap to exact edges.
+    #[serde(default = "default_notch_position")]
+    pub notch_position: f64,
+}
+
+fn default_notch_position() -> f64 {
+    0.5
 }
 
 fn default_chat_provider() -> String {
@@ -39,26 +71,54 @@ fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
 }
 
+fn default_sound_enabled() -> bool {
+    true
+}
+
+fn default_sound_volume() -> f64 {
+    0.12
+}
+
+fn default_auto_close_interval() -> f64 {
+    15.0
+}
+
+fn default_absence_interval() -> f64 {
+    180.0
+}
+
+/// Waking on hover is the default: the island is a bar at the top of the screen
+/// and should appear as the pointer reaches it. Turning it off means it waits to
+/// be clicked.
+fn default_wake_on_hover() -> bool {
+    true
+}
+
+fn default_screen() -> String {
+    "primary".into()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            sound_enabled: true,
-            sound_volume: 0.12,
-            auto_close_interval: 15.0,
-            absence_interval: 180.0,
-            active_integrations: vec![
-                "integration_resend".into(),
-                "integration_n8n".into(),
-                "integration_vercel".into(),
-                "integration_github".into(),
-            ],
-            screen: "primary".into(),
+            sound_enabled: default_sound_enabled(),
+            sound_volume: default_sound_volume(),
+            auto_close_interval: default_auto_close_interval(),
+            absence_interval: default_absence_interval(),
+            pin_island: false,
+            wake_on_hover: default_wake_on_hover(),
+            // Opt-in only: the coding-agent pills are always loaded, so starting
+            // with an empty list means a fresh install shows nothing unconfigured.
+            active_integrations: Vec::new(),
+            screen: default_screen(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
             chat_provider: default_chat_provider(),
             opencode_bin: String::new(),
             opencode_model: String::new(),
+            chat_via_server: false,
+            notch_position: default_notch_position(),
         }
     }
 }
