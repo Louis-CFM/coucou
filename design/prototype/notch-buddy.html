@@ -226,57 +226,6 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
 @media (prefers-reduced-motion: reduce){
   #island,.botwrap,.agent,.view,.view.on{transition-duration:.01s!important;transition-delay:0s!important}
 }
-
-/* ─── pill variant B ─── */
-#island[data-pill="b"] .agent.pill{background:rgba(14,15,18,.9);border-color:rgba(255,255,255,.09);border-radius:10px;box-shadow:inset 0 2.5px 0 var(--bd)}
-#island[data-pill="b"] .agent.pill .lbl{text-transform:uppercase;font-size:10.5px;font-weight:700;letter-spacing:.05em}
-
-/* ─── settings panel ─── */
-.spanel{position:absolute;left:50%;top:50px;width:660px;transform:translateX(-50%);background:rgba(22,23,28,.96);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-radius:14px;overflow:hidden;box-shadow:0 32px 72px -20px rgba(0,0,0,.85),0 0 0 .5px rgba(255,255,255,.1);z-index:20;display:none;flex-direction:column;color:#ECEDF0;font-size:13px}
-.spanel.open{display:flex}
-.sptb{height:40px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.07);flex:none}
-.sptb .ttl{font-size:13.5px;font-weight:600;flex:1;text-align:center}
-.sptb .tl{cursor:pointer}
-.spbody{flex:1;padding:14px 20px 20px;overflow-y:auto}
-.sp-section h3{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6E737C;margin:0 0 10px}
-.sp-row{padding:11px 0;border-top:1px solid rgba(255,255,255,.055)}
-.sp-row-head{display:flex;align-items:center;gap:10px}
-.sp-dot{width:8px;height:8px;border-radius:50%;flex:none}
-.sp-name{font-weight:600;flex:1;font-size:13.5px}
-.sp-status{font-size:11.5px;padding:2px 8px;border-radius:999px;font-weight:600;flex:none}
-.sp-status.on{background:rgba(52,211,153,.15);color:#34D399}
-.sp-status.off{background:rgba(255,255,255,.07);color:#6E737C}
-.sp-status.soon{background:rgba(99,102,241,.15);color:#818CF8}
-.sp-btns{display:flex;gap:6px;flex:none}
-.spbtn{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#DDE0E6;border-radius:7px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit;transition:background .12s}
-.spbtn:hover{background:rgba(255,255,255,.15)}
-.spbtn.primary{background:rgba(47,107,255,.8);border-color:rgba(47,107,255,.4);color:#fff}
-.spbtn.primary:hover{background:rgba(47,107,255,1)}
-.sp-result{font-size:12px;color:#9398A1;margin-top:8px;display:none;padding:0 18px}
-.sp-result.on{display:block}
-.sp-preview{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.65;background:rgba(255,255,255,.04);border-radius:8px;padding:7px 10px;margin-top:5px;max-height:72px;overflow:auto;white-space:pre}
-.sp-preview .add{color:#34D399}.sp-preview .rem{color:#F87171}.sp-preview .cmt{color:#5C6370}
-.sp-actions{display:flex;gap:6px;margin-top:8px}
-
-/* ─── model picker ─── */
-.mpanel{position:absolute;left:50%;top:100%;transform:translateX(-50%);width:320px;margin-top:8px;background:rgba(18,19,24,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:14px;border:.5px solid rgba(255,255,255,.1);box-shadow:0 20px 50px -15px rgba(0,0,0,.75);z-index:24;display:none}
-.mpanel.open{display:block}
-.mphead{padding:12px 14px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:.5px solid rgba(255,255,255,.07)}
-.mphead h4{margin:0;font-size:12.5px;font-weight:650;color:#E8E9EC}
-.mphead button{appearance:none;border:0;background:transparent;color:#6E737C;cursor:pointer;font-size:18px;line-height:1;padding:0}
-.mp-va{padding:10px 14px}
-.mp-va .mp-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.mp-va .mp-lbl{font-size:12px;color:#8D93A0;width:86px;flex:none}
-.mp-va select{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 8px;color:#E0E1E4;font:inherit;font-size:12.5px;outline:none}
-.mp-vb{padding:10px 14px}
-.mp-vb .pchips{display:flex;gap:5px;margin-bottom:10px}
-.pchip{appearance:none;border:1px solid rgba(255,255,255,.1);background:transparent;border-radius:999px;padding:5px 11px;font:inherit;font-size:12px;color:#8D93A0;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .14s}
-.pchip.on{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.26);color:#F0F1F3;font-weight:600}
-.pchip .pdot{width:7px;height:7px;border-radius:50%;flex:none}
-.mp-vb select{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 8px;color:#E0E1E4;font:inherit;font-size:12.5px;outline:none}
-.mp-vb .anim-note{font-size:11px;color:#6E737C;text-align:center;margin-top:7px;font-style:italic}
-.mpfoot{padding:7px 14px 12px;display:flex;justify-content:flex-end;gap:6px;border-top:.5px solid rgba(255,255,255,.07)}
-.mpfoot .btn{font-size:12.5px;padding:5px 12px}
 </style>
 </head>
 <body>
@@ -429,7 +378,6 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
       <div class="view" data-view="prompt">
         <div class="card full wash indigo" style="--w:rgba(99,102,241,.22)"><div class="copy" style="--pl:84px;gap:9px">
           <div class="row" id="ctxChips"></div>
-          <div class="row" style="justify-content:flex-end;margin-bottom:-3px"><button class="btn" id="modelBtn" data-act="model" style="font-size:11px;padding:3px 8px;opacity:.65">claude-sonnet-4-6 ▾</button></div>
           <div class="prompt"><input id="promptIn" placeholder="Demande n'importe quoi à Claude…" autocomplete="off">
             <button class="ibtn" aria-label="Dicter"><svg viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" fill="currentColor"/><path d="M3.5 8a4.5 4.5 0 009 0M8 12.5v2" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></button>
             <button class="ibtn send" data-act="send" aria-label="Envoyer"><svg viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -455,43 +403,6 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
       <div class="cd" id="cd"></div>
     </div>
     <div class="botwrap" id="botwrap"><div class="glow"></div><canvas id="botc"></canvas></div>
-    <!-- Model picker A — variante compacte (listes déroulantes) -->
-    <div id="mpA" class="mpanel">
-      <div class="mphead"><h4>Modèle IA</h4><button id="mpAClose">×</button></div>
-      <div class="mp-va">
-        <div class="mp-row"><span class="mp-lbl">Fournisseur</span><select id="mpA-prov"><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="openai">OpenAI</option></select></div>
-        <div class="mp-row"><span class="mp-lbl">Modèle</span><select id="mpA-model"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-haiku-4-5</option></select></div>
-      </div>
-      <div class="mpfoot"><button class="btn" id="mpACancel">Annuler</button><button class="btn primary" id="mpAOk">Choisir</button></div>
-    </div>
-    <!-- Model picker B — variante chips fournisseur -->
-    <div id="mpB" class="mpanel" style="width:340px">
-      <div class="mphead"><h4>Modèle IA</h4><button id="mpBClose">×</button></div>
-      <div class="mp-vb">
-        <div class="pchips">
-          <button class="pchip on" data-prov="anthropic"><span class="pdot" style="background:#E07950"></span>Anthropic</button>
-          <button class="pchip" data-prov="google"><span class="pdot" style="background:#4285F4"></span>Google</button>
-          <button class="pchip" data-prov="openai"><span class="pdot" style="background:#10A37F"></span>OpenAI</button>
-        </div>
-        <select id="mpB-model"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-haiku-4-5</option></select>
-        <div class="anim-note" id="mpB-note">Mochi change de couleur quand tu changes de fournisseur</div>
-      </div>
-      <div class="mpfoot"><button class="btn" id="mpBCancel">Annuler</button><button class="btn primary" id="mpBOk">Choisir</button></div>
-    </div>
-  </div>
-
-  <!-- Settings panel (hors island, dans le screen) -->
-  <div id="settingsPanel" class="spanel">
-    <div class="sptb"><i class="tl r" id="spClose" title="Fermer"></i><i class="tl y"></i><i class="tl g"></i><span class="ttl">Réglages — Agents</span></div>
-    <div class="spbody">
-      <div class="sp-section">
-        <h3>Agents</h3>
-        <div class="sp-row"><div class="sp-row-head"><div class="sp-dot" style="background:#FF6B5B"></div><span class="sp-name">Claude Code</span><span class="sp-status on">Installé</span><div class="sp-btns"><button class="spbtn" data-sp="claude-preview">Aperçu</button><button class="spbtn" data-sp="claude-uninstall">Désinstaller</button></div></div><div class="sp-result" id="sp-res-claude"></div></div>
-        <div class="sp-row"><div class="sp-row-head"><div class="sp-dot" style="background:#4285F4"></div><span class="sp-name">Gemini CLI</span><span class="sp-status off" id="sp-st-gemini">Non installé</span><div class="sp-btns" id="sp-btns-gemini"><button class="spbtn primary" data-sp="gemini-install">Installer</button></div></div><div class="sp-result" id="sp-res-gemini"></div></div>
-        <div class="sp-row"><div class="sp-row-head"><div class="sp-dot" style="background:#FF7043"></div><span class="sp-name">Antigravity (agy)</span><span class="sp-status off" id="sp-st-agy">Non installé</span><div class="sp-btns" id="sp-btns-agy"><button class="spbtn primary" data-sp="agy-install">Installer</button></div></div><div class="sp-result" id="sp-res-agy"></div></div>
-        <div class="sp-row"><div class="sp-row-head"><div class="sp-dot" style="background:#22C55E"></div><span class="sp-name">Codex</span><span class="sp-status soon">Bientôt</span></div></div>
-      </div>
-    </div>
   </div>
 
   <div class="floatbot" id="floatbot"><canvas id="floatc"></canvas></div>
@@ -532,19 +443,6 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
         <span class="seg" id="segClose"><button data-ms="60000" class="on">1 min</button><button data-ms="6000">6 s (test)</button></span>
       </label>
     </div>
-  </div>
-  <div class="grp" style="grid-column:span 12">
-    <h2>Nouveautés — à valider en maquette</h2>
-    <p>Variantes à comparer avant d'écrire le Swift. Les écrans existants restent inchangés.</p>
-    <div class="setrow" style="margin-bottom:14px;row-gap:10px">
-      <b>Pastilles agents</b>
-      <span class="seg" id="segPill"><button data-pv="a">A — fond teinté</button><button data-pv="b" class="on">B — accentuation haute</button></span>
-      <b>Sélecteur modèle</b>
-      <span class="seg" id="segMp"><button data-mv="a">A — listes déroulantes</button><button data-mv="b" class="on">B — chips fournisseur</button></span>
-      <b>Animation fournisseur</b>
-      <span class="seg" id="segPA"><button data-pa="wink">A — clin d'œil</button><button data-pa="surprised" class="on">B — surpris</button></span>
-    </div>
-    <div class="btns" id="newBtns"></div>
   </div>
 </section>
 
@@ -784,10 +682,7 @@ const AGENTS={
   sbe:{name:'SBE Hub',tool:'Claude Code',color:'#2DD4A7',short:'SBE Hub',steps:['Analyse des requêtes lentes','Index sur les cours','Écriture des tests']},
   brief:{name:'Morning AI Brief',tool:'n8n',color:'#F7B32B',short:'Morning Brief',steps:['Collecte des sources','Résumé par Claude','Envoi Gmail']},
   ig:{name:'Publication IG',tool:'n8n',color:'#A78BFA',short:'Publication IG',steps:['Rendu du carousel','Planification']},
-  folio:{name:'louisraille.fr',tool:'Claude Code',color:'#38BDF8',short:'Portfolio',steps:['Refonte du scroll','Optimisation des images']},
-  gemini:{name:'api.py',tool:'Gemini CLI',color:'#4285F4',short:'Gemini',steps:['Lecture du contexte','Réécriture de l\'API','Vérification des types','Tests unitaires']},
-  agy:{name:'doc-builder',tool:'Antigravity',color:'#FF7043',short:'agy',steps:['Analyse des sources','Génération des docs','Validation du format','Export Markdown']},
-  codex:{name:'test-suite',tool:'Codex',color:'#22C55E',short:'Codex',steps:['Analyse des tests existants','Nouveaux cas de test','Couverture du code','Rapport final']}
+  folio:{name:'louisraille.fr',tool:'Claude Code',color:'#38BDF8',short:'Portfolio',steps:['Refonte du scroll','Optimisation des images']}
 };
 const app={piste:'mochi',mode:'hidden',view:'overview',tasks:[],focus:null,present:true,lastMove:NOW(),lastAct:NOW(),hover:false,autoClose:60000,demo:false,pinned:false,pinUntil:0,
   override:null,pointer:{x:548,y:420},drag:null,ctx:null,upP:0,slaps:[],file:'brief-client.pdf'};
@@ -977,7 +872,6 @@ function act(a,b){
     case 'open-first': Snd.play('blip'); collapse(); break;
     case 'copy': Snd.play('blip'); note('Copié.','',1200); break;
     case 'close': collapse(); break;
-    case 'model': if(!app.demo) openModelPicker(); break;
   }
   if(b){ b.classList.add('pressed'); setTimeout(()=>b.classList.remove('pressed'),160) }
 }
@@ -1025,8 +919,6 @@ const SIMS=[
   ['Erreur n8n','#F4505E',()=>alertView('error','brief','error')],
   ['Tâche terminée','#34D399',()=>alertView('finished','korus','finished')],
   ['Limite atteinte','#FB923C',()=>{ addTask('folio','working'); app.focus='folio'; setTask('folio','ratelimit'); ensureVisible(); Snd.play('rate') }],
-  ['Agents mélangés','#A78BFA',()=>{ app.present=true; addTask('korus','working'); setTimeout(()=>addTask('gemini','working'),280); setTimeout(()=>addTask('agy','thinking'),540); setTimeout(()=>{ if(app.mode==='hidden') setMode('compact'); Snd.play('work') },100) }],
-  ['Fin d\'une session Gemini','#4285F4',()=>{ if(!task('gemini')) addTask('gemini','working'); app.focus='gemini'; setTask('gemini','finished'); ensureVisible(); Snd.play('finish'); setTimeout(()=>{ removeTask('gemini'); sync() },3500) }],
   ['Utilisateur absent','#94A3B8',()=>{ app.present=false; collapse(); setMode('hidden') }],
   ['Tout arrêter','#6B7280',()=>{ app.tasks=[]; app.focus=null; app.override=null; sync(); collapse(); setMode('hidden') }]
 ];
@@ -1065,123 +957,6 @@ async function runDemo(){
   ghost.style.display='none'; $('#demoTag').style.display='none'; app.demo=false; app.demoHold=false; btn.disabled=false; btn.querySelector('span').textContent='Relancer la démo'; app.lastMove=NOW(); $('#promptIn').value=''; $('#mailTo').value='';
 }
 $('#demoBtn').addEventListener('click',runDemo);
-
-/* ---------------- NOUVEAUTÉS : pastilles / modèle / réglages ---------------- */
-
-// État nouvelles fonctions
-app.mpVariant='b'; app.provAnim='surprised'; app.currentModel='claude-sonnet-4-6'; app.currentProv='anthropic';
-island.dataset.pill='b';
-
-// Couleurs et modèles par fournisseur
-const PROV_COLORS={anthropic:'#E07950',google:'#4285F4',openai:'#10A37F'};
-const PROV_MODELS={
-  anthropic:['claude-sonnet-4-6','claude-opus-4-6','claude-haiku-4-5','claude-3-5-sonnet-20241022'],
-  google:['gemini-2.5-pro-preview','gemini-2.0-flash','gemini-1.5-pro','gemini-2.0-flash-lite'],
-  openai:['gpt-4o','gpt-4o-mini','o3','o4-mini']
-};
-
-function updateModelOptions(selId,prov){
-  const sel=document.getElementById(selId); if(!sel)return;
-  sel.innerHTML=PROV_MODELS[prov].map(m=>`<option>${m}</option>`).join('');
-}
-
-function animProvChange(prov){
-  const col=hexRgb(PROV_COLORS[prov]);
-  main.colT=col;
-  if(app.provAnim==='wink') main.emote('wink',700,true);
-  else { main.emote('surprised',900,true) }
-  setTimeout(()=>{ main.colT=hexRgb(STATES[main.state||'idle'].col) },900);
-}
-
-// Variante A : listes déroulantes
-$('#mpA-prov').addEventListener('change',function(){
-  const prov=this.value; app.currentProv=prov;
-  updateModelOptions('mpA-model',prov); animProvChange(prov);
-});
-$('#mpAClose').addEventListener('click',closeMp);
-$('#mpACancel').addEventListener('click',closeMp);
-$('#mpAOk').addEventListener('click',()=>{ app.currentModel=$('#mpA-model').value; closeMp(); updateModelBtn(); note('Modèle mis à jour.',app.currentModel,1800); Snd.play('blip') });
-
-// Variante B : chips fournisseur
-$$('.pchip').forEach(ch=>ch.addEventListener('click',function(){
-  $$('.pchip').forEach(x=>x.classList.toggle('on',x===this));
-  const prov=this.dataset.prov; app.currentProv=prov;
-  updateModelOptions('mpB-model',prov); animProvChange(prov);
-  $('#mpB-note').textContent=app.provAnim==='wink'?"Mochi vient de cligner de l'œil ↑":"Mochi vient de se surprendre ↑";
-}));
-$('#mpBClose').addEventListener('click',closeMp);
-$('#mpBCancel').addEventListener('click',closeMp);
-$('#mpBOk').addEventListener('click',()=>{ app.currentModel=$('#mpB-model').value; closeMp(); updateModelBtn(); note('Modèle mis à jour.',app.currentModel,1800); Snd.play('blip') });
-
-function openModelPicker(){
-  closeMp();
-  const mp=$('#mp'+(app.mpVariant==='a'?'A':'B'));
-  mp.classList.add('open'); app.pinned=true;
-}
-function closeMp(){ $('#mpA').classList.remove('open'); $('#mpB').classList.remove('open'); app.pinned=false }
-function updateModelBtn(){ const b=$('#modelBtn'); if(b) b.textContent=app.currentModel+' ▾' }
-
-// Variante des pastilles
-$$('#segPill button').forEach(b=>b.addEventListener('click',()=>{
-  $$('#segPill button').forEach(x=>x.classList.toggle('on',x===b));
-  island.dataset.pill=b.dataset.pv;
-  if(app.mode==='hidden'||app.mode==='peek') expand(defaultView());
-}));
-
-// Variante du sélecteur modèle
-$$('#segMp button').forEach(b=>b.addEventListener('click',()=>{
-  $$('#segMp button').forEach(x=>x.classList.toggle('on',x===b));
-  app.mpVariant=b.dataset.mv;
-}));
-
-// Variante de l'animation fournisseur
-$$('#segPA button').forEach(b=>b.addEventListener('click',()=>{
-  $$('#segPA button').forEach(x=>x.classList.toggle('on',x===b));
-  app.provAnim=b.dataset.pa;
-}));
-
-// Settings panel
-const sp=$('#settingsPanel');
-$('#spClose').addEventListener('click',()=>{ sp.classList.remove('open'); app.pinned=false });
-sp.addEventListener('click',e=>{ const btn=e.target.closest('[data-sp]'); if(!btn)return; handleSp(btn.dataset.sp) });
-
-const SP_CONTENT={
-  'claude-preview':{ msg:'hooks actuellement installés dans ~/.claude/settings.json',
-    diff:'  (sauvegarde : settings.json.bak-20261001-141200)\n<span class="cmt">  # hooks existants conservés</span>\n<span class="add">+ "UserPromptSubmit" → nb-hook --agent claude</span>\n<span class="add">+ "PreToolUse"       → nb-hook --agent claude</span>\n<span class="add">+ "PostToolUse"      → nb-hook --agent claude</span>', confirm:false },
-  'claude-uninstall':{ msg:'Retirer les hooks Coucou de ~/.claude/settings.json ?',
-    diff:'<span class="rem">- "UserPromptSubmit" → nb-hook</span>\n<span class="rem">- "PreToolUse"       → nb-hook</span>\n<span class="rem">- "PostToolUse"      → nb-hook</span>\n<span class="cmt">  (les autres hooks restent en place)</span>', confirm:true, action:'claude-do-uninstall' },
-  'gemini-install':{ msg:'Ajouter les hooks dans ~/.gemini/settings.json ?',
-    diff:'  (sauvegarde : settings.json.bak-20261001-141202)\n<span class="add">+ "BeforeTool"  → [{ matcher:"*", hooks:[nb-hook --agent gemini] }]</span>\n<span class="add">+ "AfterTool"   → [{ matcher:"*", hooks:[nb-hook --agent gemini] }]</span>\n<span class="add">+ "BeforeAgent" → [{ matcher:"*", hooks:[nb-hook --agent gemini] }]</span>\n<span class="add">+ "AfterAgent"  → [{ matcher:"*", hooks:[nb-hook --agent gemini] }]</span>', confirm:true, action:'gemini-do-install' },
-  'agy-install':{ msg:'Ajouter les hooks dans ~/.gemini/config/hooks.json ?',
-    diff:'  (sauvegarde : hooks.json.bak-20261001-141204)\n<span class="add">+ "coucou": {</span>\n<span class="add">+   "PreToolUse":   [{ matcher:"*", hooks:[nb-hook --agent antigravity] }],</span>\n<span class="add">+   "PostToolUse":  [{ matcher:"*", hooks:[nb-hook --agent antigravity] }],</span>\n<span class="add">+   "PreInvocation": [{ type:"command", command:"nb-hook --agent antigravity" }],</span>\n<span class="add">+   "PostInvocation":[{ type:"command", command:"nb-hook --agent antigravity" }],</span>\n<span class="add">+   "Stop":          [{ type:"command", command:"nb-hook --agent antigravity" }]</span>\n<span class="add">+ }</span>', confirm:true, action:'agy-do-install' },
-};
-
-function handleSp(key){
-  const d=SP_CONTENT[key]; if(!d)return;
-  const id=key.split('-')[0]; const res=$(`#sp-res-${id}`);
-  res.innerHTML=`<div>${d.msg}</div><div class="sp-preview">${d.diff}</div>`+(d.confirm?`<div class="sp-actions"><button class="spbtn" onclick="cancelSp('${id}')">Annuler</button><button class="spbtn primary" onclick="confirmSp('${id}','${d.action}')">Confirmer et écrire</button></div>`:'');
-  res.classList.add('on');
-}
-window.cancelSp=function(id){ const r=$(`#sp-res-${id}`); r.innerHTML=''; r.classList.remove('on') };
-window.confirmSp=function(id,action){
-  const r=$(`#sp-res-${id}`);
-  const ok=action.includes('install')?'Hooks installés. Lance une nouvelle session pour voir la pastille.':'Hooks retirés de la configuration.';
-  r.innerHTML=`<div style="color:#34D399">✓ ${ok}</div>`;
-  // Mettre à jour le badge de statut dans la maquette
-  const st=$(`#sp-st-${id}`); const btns=$(`#sp-btns-${id}`);
-  if(action.includes('install')&&st){ st.textContent='Installé'; st.className='sp-status on'; if(btns) btns.innerHTML=`<button class="spbtn" data-sp="${id}-preview">Aperçu</button><button class="spbtn" data-sp="${id}-uninstall">Désinstaller</button>` }
-  if(action.includes('uninstall')&&st){ st.textContent='Non installé'; st.className='sp-status off'; if(btns) btns.innerHTML=`<button class="spbtn primary" data-sp="${id}-install">Installer</button>` }
-  Snd.play('approve');
-};
-
-// Boutons dans le panneau Nouveautés
-const NEW_BTNS=[
-  ['Ouvrir les Réglages','#6366F1',()=>{ sp.classList.add('open'); app.pinned=true; Snd.play('blip') }],
-  ['Sélecteur de modèle','#8B5CF6',()=>{ ensureVisible(); expand('prompt'); setTimeout(openModelPicker,320) }],
-  ['Agents mélangés (démo)','#A78BFA',()=>{ app.present=true; addTask('korus','working'); setTimeout(()=>addTask('gemini','working'),280); setTimeout(()=>addTask('agy','thinking'),540); setTimeout(()=>{ if(app.mode==='hidden') setMode('compact'); Snd.play('work') },100) }],
-  ['Fin d\'une session Gemini','#4285F4',()=>{ if(!task('gemini')) addTask('gemini','working'); app.focus='gemini'; setTask('gemini','finished'); ensureVisible(); Snd.play('finish'); setTimeout(()=>{ removeTask('gemini'); sync() },3500) }],
-];
-for(const [l,c,fn] of NEW_BTNS){ const b=document.createElement('button'); b.className='cb'; b.innerHTML=`<i style="--c:${c}"></i>${l}`; b.addEventListener('click',()=>{ if(!app.demo) fn() }); $('#newBtns').appendChild(b) }
 
 /* ---------------- ÉCHELLE ---------------- */
 function fit(){ const o=$('#stageOuter'); const k=o.clientWidth/1120; $('#stage').style.transform=`scale(${k})`; o.style.height=(700*k)+'px' }
