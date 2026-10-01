@@ -147,6 +147,9 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
           integration_spotify: "https://open.spotify.com",
+          integration_whatsapp: "https://web.whatsapp.com",
+          integration_gmail: "https://mail.google.com",
+          integration_outlook: "https://outlook.live.com",
         };
         if (task.id === "integration_claude" || task.source === "claudeCode") {
           void Bridge.openInVSCode(task.sessionCwd ?? null);
@@ -237,6 +240,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      h("div", { id: "embasa-rule" }),
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1169,11 +1173,20 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.applyTheme();
     if (State.settings.language !== this.lastLang) {
       this.lastLang = State.settings.language;
       this.rebuildChrome();
     }
     State.notify();
+  }
+
+  /** Island theme is pure CSS: one attribute, instant, no rebuild. */
+  private applyTheme() {
+    const theme = State.settings.theme === "ice" || State.settings.theme === "frost"
+      ? State.settings.theme
+      : "onyx";
+    this.root.dataset.theme = theme;
   }
 
   get panelSize() {

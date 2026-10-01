@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod gemini;
 mod jump;
+mod mail;
 mod media;
 mod hooks;
 mod integrations;

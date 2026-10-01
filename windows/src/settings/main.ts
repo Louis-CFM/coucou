@@ -476,6 +476,18 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954",
     fields: [] }, // no key — reads the desktop app's window title
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366",
+    fields: [] }, // no key — reads the Web tab's title unread count
+  { id: "integration_gmail", name: "Gmail", color: "#EA4335",
+    fields: [
+      { key: "gmail-email", label: t("Email address"), placeholder: "you@gmail.com", secret: false },
+      { key: "gmail-app-password", label: t("App password"), placeholder: "xxxx xxxx xxxx xxxx", secret: true },
+    ] },
+  { id: "integration_outlook", name: "Outlook", color: "#0078D4",
+    fields: [
+      { key: "outlook-email", label: t("Email address"), placeholder: "you@outlook.com", secret: false },
+      { key: "outlook-app-password", label: t("App password"), placeholder: "••••••••", secret: true },
+    ] },
 ];
 
 const MAX_ACTIVE = 4;
@@ -602,6 +614,19 @@ function generalSection(): HTMLElement {
     location.reload();
   });
 
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "onyx", text: t("Onyx (black)") }),
+    h("option", { value: "ice", text: t("Ice (frost white)") }),
+    h("option", { value: "frost", text: t("Frost (translucent blue)") }),
+  );
+  theme.value = settings.theme ?? "onyx";
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    document.documentElement.dataset.theme = settings.theme;
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -609,6 +634,10 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: t("Language") }),
       language,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Theme") }),
+      theme,
     ),
     h("div", { class: "row" },
       h("label", { text: t("Sound") }),
@@ -639,6 +668,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  document.documentElement.dataset.theme = settings.theme ?? "onyx";
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
@@ -655,6 +685,7 @@ async function main() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gmail-email", "gmail-app-password", "outlook-email", "outlook-app-password",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

@@ -89,6 +89,26 @@ Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+## Mail pills (Gmail + Outlook)
+
+No OAuth app and no consent screen: both pills poll INBOX over IMAP with an
+**app password** you create once and paste in Settings → Integrations:
+
+- Gmail: Google Account → Security → 2-Step Verification → App passwords.
+- Outlook: Microsoft Account → Security → Advanced security → App passwords
+  (personal accounts; some corporate tenants block them — the card shows the
+  login error if so).
+
+The card shows the unread count plus the newest subjects, and pings when new
+mail lands. Credentials never leave the Credential Manager.
+
+## WhatsApp pill
+
+WhatsApp offers no personal-account API, so there is nothing to log into:
+toggle the pill and leave WhatsApp Web open in a browser tab — the pill reads
+the tab's `(N) WhatsApp` title for the unread count and pings on change.
+Clicking it opens WhatsApp Web.
+
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
@@ -164,6 +184,7 @@ problems. It stays on your machine.
   chat context, jump-to-terminal (focuses the console whose title shows the
   project folder, falls back to VS Code/Explorer), Gemini CLI + Antigravity
   (`agy`) + opencode pills, a Gemini chat provider with image support and
-  retries, a keyless Spotify now-playing pill with play/pause/next controls,
-  a **PT-BR interface** (header badge + Settings → Language, live switch), a
-  New chat button, and a pinned Drop flow so the island cannot retract mid-drag.
+  retries, keyless Spotify now-playing + WhatsApp unread pills, Gmail/Outlook
+  inbox pills over IMAP app passwords, island themes (Onyx/Ice/Frost) with the
+  Embasa accent rule, and a **PT-BR interface** (header badge + Settings →
+  Language, live switch).

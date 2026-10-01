@@ -9,6 +9,10 @@ const SERVICE: &str = "fr.louisraille.coucou";
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
     "gemini-api-key",
+    "gmail-email",
+    "gmail-app-password",
+    "outlook-email",
+    "outlook-app-password",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",

@@ -18,6 +18,23 @@
   --amber: #f5a524;
 }
 
+/* Ice theme follows the island: light window to match. */
+:root[data-theme="ice"] {
+  color-scheme: light;
+  --ink: #182430;
+  --dim: #51606f;
+  --dim-2: #707b89;
+  --bg: #e9eef3;
+  --card: #ffffff;
+  --hairline: rgba(25, 50, 75, 0.09);
+}
+
+:root[data-theme="frost"] {
+  --bg: #10233d;
+  --card: rgba(22, 48, 84, 0.55);
+  --hairline: rgba(150, 205, 235, 0.12);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

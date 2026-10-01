@@ -6,6 +6,7 @@ import type { EyeShape } from "../mochi/engine";
 export type AgentSource = "claudeCode" | "geminiCli" | "antigravity" | "opencode" | "genericCli" | "media" | "n8n";
 export type PillBadge = "approval" | "finished" | "error";
 export type Lang = "en" | "pt-BR";
+export type IslandTheme = "onyx" | "ice" | "frost";
 
 export interface AgentTask {
   id: string;
@@ -68,11 +69,15 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
   task("integration_spotify", "Spotify", "#1DB954", "media"),
+  task("integration_whatsapp", "WhatsApp", "#25D366", "media"),
+  task("integration_gmail", "Gmail", "#EA4335", "n8n"),
+  task("integration_outlook", "Outlook", "#0078D4", "n8n"),
 ];
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   "integration_notion", "integration_calcom", "integration_stripe", "integration_spotify",
+  "integration_whatsapp", "integration_gmail", "integration_outlook",
 ];
 
 /** What an integration poller last reported. */
@@ -100,6 +105,8 @@ export interface Settings {
   geminiModel: string;
   /** UI language: "en" | "pt-BR". */
   language: Lang;
+  /** Island theme: "onyx" | "ice" | "frost". */
+  theme: IslandTheme;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -117,6 +124,7 @@ export const DEFAULT_SETTINGS: Settings = {
   chatProvider: "claude",
   geminiModel: "gemini-2.5-flash",
   language: "en",
+  theme: "onyx",
 };
 
 type Listener = () => void;

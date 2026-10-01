@@ -5,9 +5,9 @@
 // now-playing widget uses. Runs synchronously inside the poller tick.
 
 use serde::Serialize;
+
 use windows::core::BOOL;
-use windows::Win32::Foundation::{HWND, LPARAM};
-use windows::Win32::UI::Input::KeyboardAndMouse::{
+use windows::Win32::Foundation::{HWND, LPARAM};use windows::Win32::UI::Input::KeyboardAndMouse::{
     SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -107,4 +107,59 @@ pub fn press(action: &str) -> Result<(), String> {
     } else {
         Err("media key not delivered".into())
     }
+}
+
+// ── WhatsApp (no login, no key) ─────────────────────────────────────────────
+// WhatsApp has no personal-account API, so the pill reads what the OS shows:
+// a browser tab running WhatsApp Web titles itself "(N) WhatsApp" with the
+// unread count, and the desktop app titles itself "WhatsApp". No credentials,
+// no network, works with whatever you already have open.
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct WhatsAppState {
+    pub present: bool,
+    pub unread: u32,
+}
+
+struct WaFound {
+    present: bool,
+    unread: u32,
+}
+
+unsafe extern "system" fn wa_enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let found = unsafe { &mut *(lparam.0 as *mut WaFound) };
+    if unsafe { IsWindowVisible(hwnd) }.as_bool() {
+        let mut buf = [0u16; 512];
+        let len = unsafe { GetWindowTextW(hwnd, &mut buf) };
+        if len > 0 {
+            let title = String::from_utf16_lossy(&buf[..len as usize]);
+            let lower = title.to_lowercase();
+            if lower.contains("whatsapp") {
+                found.present = true;
+                // "(3) WhatsApp" → 3. Take the max across windows so two
+                // windows on the same session never double-count.
+                let trimmed = title.trim_start();
+                if let Some(rest) = trimmed.strip_prefix('(') {
+                    if let Some(end) = rest.find(')') {
+                        if let Ok(n) = rest[..end].trim().parse::<u32>() {
+                            found.unread = found.unread.max(n);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    true.into()
+}
+
+pub fn whatsapp() -> WhatsAppState {
+    let mut found = WaFound { present: false, unread: 0 };
+    unsafe {
+        let _ = EnumWindows(
+            Some(wa_enum_proc),
+            LPARAM(&mut found as *mut WaFound as isize),
+        );
+    };
+    WhatsAppState { present: found.present, unread: found.unread }
 }

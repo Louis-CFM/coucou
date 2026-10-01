@@ -62,6 +62,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   // misleading here. Spotify needs no key either, just the desktop app playing.
   const missing = task.id === "integration_claude" ? t("Hooks not installed")
     : task.id === "integration_spotify" ? t("Nothing playing")
+    : task.id === "integration_whatsapp" ? t("Open WhatsApp Web in your browser")
     : t("Key not configured");
   const label = error ?? (configured ? "Connected · loading…" : missing);
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
@@ -277,6 +278,79 @@ function spotifyCard(): HTMLElement {
   );
 }
 
+// ── WhatsApp (no login — Web tab title unread count) ─────────────────────────
+
+function whatsappCard(task: AgentTask, openSettings: () => void): HTMLElement {
+  const d = get("integration_whatsapp");
+  const present = d.present === true;
+  const unread = Number(d.unread ?? 0);
+  if (!present) return idleCard(task, openSettings);
+  const label = unread === 0
+    ? t("No unread messages")
+    : unread === 1 ? t("1 unread message") : t("{n} unread messages").replace("{n}", String(unread));
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#25D366", "WhatsApp", unread > 0 ? t("New messages") : t("No unread messages")),
+    h(
+      "div",
+      { class: "int-rows tight" },
+      listRow(unread > 0 ? "#25D366" : "#6B7079", true,
+        h("span", { class: "int-name", text: label }),
+      ),
+    ),
+    h("div", { class: "int-actions" },
+      h("button", {
+        class: "link-btn",
+        style: "color:#25D366d9",
+        text: t("Open WhatsApp"),
+        onclick: () => void Bridge.openUrl("https://web.whatsapp.com"),
+      }),
+    ),
+  );
+}
+
+// ── Mail (Gmail + Outlook over IMAP) ──────────────────────────────────────────
+
+function mailCard(id: string, color: string, name: string, inboxUrl: string): HTMLElement {
+  const d = get(id);
+  const unread = Number(d.unread ?? 0);
+  const rows = h("div", { class: "int-rows tight" });
+  const latest = arr(id, "latest").slice(0, 3);
+  if (unread > 0 && latest.length === 0) {
+    rows.append(listRow(color, true, h("span", {
+      class: "int-name",
+      text: unread === 1 ? t("1 unread mail") : t("{n} unread mails").replace("{n}", String(unread)),
+    })));
+  }
+  for (const m of latest) {
+    const first = m === latest[0];
+    rows.append(listRow(color, first,
+      h("span", { class: "int-name", text: `${String(m.from ?? "?")} — ${String(m.subject ?? "")}`.slice(0, 64) }),
+    ));
+  }
+  if (unread === 0 && latest.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("Inbox zero — nothing unread") }));
+  }
+  const head = unread > 0
+    ? `${unread} ${t("unread")}`
+    : t("Inbox");
+  return h(
+    "div",
+    { class: "int-card" },
+    header(color, name, head),
+    rows,
+    h("div", { class: "int-actions" },
+      h("button", {
+        class: "link-btn",
+        style: `color:${color}d9`,
+        text: `${t("Open")} ${name}`,
+        onclick: () => void Bridge.openUrl(inboxUrl),
+      }),
+    ),
+  );
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -448,6 +522,11 @@ export function hasIntegrationData(id: string): boolean {
       return info.loaded;
     case "integration_spotify":
       return String(get(id).artist ?? "") !== "";
+    case "integration_whatsapp":
+      return get(id).present === true;
+    case "integration_gmail":
+    case "integration_outlook":
+      return get(id).unread != null;
     default:
       return false;
   }
@@ -478,6 +557,12 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return calcomCard();
     case "integration_spotify":
       return spotifyCard();
+    case "integration_whatsapp":
+      return whatsappCard(task, hooks.openSettings);
+    case "integration_gmail":
+      return mailCard(task.id, "#EA4335", "Gmail", "https://mail.google.com");
+    case "integration_outlook":
+      return mailCard(task.id, "#0078D4", "Outlook", "https://outlook.live.com");
     default:
       return idleCard(task, hooks.openSettings);
   }

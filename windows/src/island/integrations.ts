@@ -16,6 +16,8 @@ const KEY_FOR: Record<string, string> = {
   integration_resend: "resend-api-key",
   integration_notion: "notion-api-key",
   integration_calcom: "calcom-api-key",
+  integration_gmail: "gmail-app-password",
+  integration_outlook: "outlook-app-password",
 };
 
 const clearTimers = new Map<string, number>();
@@ -37,11 +39,16 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_claude = { ...claude, configured: hooks };
-  // Spotify has no key: the pill is configured as soon as it exists.
+  // Spotify and WhatsApp have no key: the pills are configured as soon as
+  // they exist.
   const spotify = State.integrations.integration_spotify ?? {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_spotify = { ...spotify, configured: true };
+  const whatsapp = State.integrations.integration_whatsapp ?? {
+    data: {}, error: null, loaded: false, configured: false,
+  };
+  State.integrations.integration_whatsapp = { ...whatsapp, configured: true };
   State.notify();
 }
 

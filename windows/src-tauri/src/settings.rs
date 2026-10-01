@@ -29,10 +29,17 @@ pub struct Settings {
     /// UI language: "en" | "pt-BR".
     #[serde(default = "default_language")]
     pub language: String,
+    /// Island theme: "onyx" | "ice" | "frost".
+    #[serde(default = "default_theme")]
+    pub theme: String,
 }
 
 fn default_language() -> String {
     "en".to_string()
+}
+
+fn default_theme() -> String {
+    "onyx".to_string()
 }
 
 fn default_chat_provider() -> String {
@@ -67,6 +74,7 @@ impl Default for Settings {
             chat_provider: default_chat_provider(),
             gemini_model: default_gemini_model(),
             language: default_language(),
+            theme: default_theme(),
         }
     }
 }

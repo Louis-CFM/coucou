@@ -164,7 +164,7 @@ const SOURCE_META: Record<AgentSource, { prefix: string; color: string; label: s
   antigravity: { prefix: "cli_agy_", color: "#F472B6", label: "agy" },
   opencode: { prefix: "cli_opencode_", color: "#A78BFA", label: "opencode" },
   genericCli: { prefix: "cli_", color: "#22C55E", label: "CLI" },
-  media: { prefix: "integration_", color: "#1DB954", label: "Spotify" },
+  media: { prefix: "integration_", color: "#1DB954", label: "Media" },
   n8n: { prefix: "integration_", color: "#F29B38", label: "n8n" },
 };
 
