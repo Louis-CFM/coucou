@@ -6,7 +6,7 @@
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
-Approve Claude Code permissions, watch your session work, drop a file, chat with Claude, keep an eye on your services — without leaving what you're doing.
+Approve Claude Code or Codex permissions, watch your sessions work, drop a file, chat with Claude or Codex, and keep an eye on your services — without leaving what you're doing.
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -47,7 +47,7 @@ installs for the current user only — no admin prompt.
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
-Everything else happens on its own: a Claude Code permission request opens the
+Everything else happens on its own: a Claude Code or Codex permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
 
@@ -68,14 +68,60 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Codex
+
+Install the [Codex CLI](https://developers.openai.com/codex/cli) and sign in once:
+
+```powershell
+codex login
+```
+
+Choose **Sign in with ChatGPT** in the browser flow to use an eligible ChatGPT
+plan for Codex. Coucou uses the saved local CLI sign-in, so Codex chat does not
+need an OpenAI API key. Optionally select **OpenAI API (separate billing)** under
+**Settings → Chat provider → Authentication & billing** and use
+`codex login --with-api-key` in a terminal, providing the key through stdin.
+Coucou uses the saved CLI login and does not store the OpenAI key. API requests
+are billed separately from a ChatGPT plan. A login that does not match the
+selected mode is rejected; Coucou never automatically falls back between them.
+The first verified Coucou CLI version is 0.151.0;
+use that version or newer.
+
+Open **Settings… → Codex → Install hooks…** to preview the change and backup for
+your Codex hook configuration. Claude Code hooks remain separate. After
+installing or changing Coucou's hook, open the Codex CLI, run `/hooks`, and
+review and trust Coucou's current hook definition. Codex intentionally does not
+run new or changed user hooks until you trust them; if you remove and reinstall
+or Coucou changes its hook definition, review it again.
+
+Codex hooks are enabled by default. If you explicitly turned them off, enable
+them with `codex features enable hooks`, then restart the Codex session. Coucou
+does not change your Codex feature settings.
+
+Once trusted, Codex sessions started in Codex CLI or the Codex desktop app can
+show their prompts, tool activity, and approval requests in Coucou. On a
+permission card, **Allow** or **Deny** answers that request. If Coucou is
+unavailable, no decision is made and Codex keeps its regular approval prompt.
+Codex's approval hook only runs when Codex is about to request approval. Coucou
+does not offer Claude's **Always** permission action for Codex.
+
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+**Settings… → Chat** lets you choose Claude or Codex. Claude stays the default
+and uses your Anthropic API key. Choose Codex to use the local CLI sign-in above.
+Each Codex turn runs as a separate, read-only CLI task and uses Coucou's own
+bounded chat history; it does not join an already-open Codex conversation.
 
-No telemetry. The only network requests Coucou makes are to the services you
-configure yourself.
+Codex chat can include text and code files up to 200 KB and image attachments.
+PDF questions are not supported by the Codex chat provider yet; Coucou explains
+that instead of silently leaving the PDF out.
+
+Anthropic and integration keys live in the **Windows Credential Manager**, never
+on disk and never in the interface — the island can only ask whether a key
+exists. Codex credentials remain managed by the Codex CLI.
+
+No telemetry from Coucou. Claude and Codex chat requests go to the provider you
+select; integrations contact only the services you configure.
 
 ## Build it yourself
 
@@ -126,8 +172,8 @@ windows/
     island/            state machine, hooks, integrations
     views/             every island view
     settings/          the settings window
-  src-tauri/           Rust backend: window, named pipe, Claude API, pollers
-  hook/                coucou-hook.exe, the Claude Code relay
+  src-tauri/           Rust backend: window, named pipe, Claude/Codex chat, pollers
+  hook/                coucou-hook.exe, the Claude Code and Codex relay
   scripts/             icon generator
 ```
 
@@ -140,8 +186,8 @@ problems. It stays on your machine.
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
-- Permission approval works from **any** terminal; the Mac build only listens to
-  VS Code sessions.
+- Permission approval works from **any** terminal. Windows supports Codex hooks;
+  the Mac build remains Claude Code-only and listens to VS Code sessions.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.

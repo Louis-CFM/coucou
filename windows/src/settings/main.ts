@@ -3,9 +3,10 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type CodexStatus, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
+import { codexModelPicker } from "../views/codex-model-picker";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
@@ -41,25 +42,28 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
-// ── Claude Code section ───────────────────────────────────────────────────────
+// ── Code hook sections ────────────────────────────────────────────────────────
 
-function claudeSection(status: HookStatus): HTMLElement {
+function hooksSection(provider: "claude" | "codex", status: HookStatus, initialCodexStatus?: CodexStatus): HTMLElement {
+  const title = provider === "codex" ? "Codex" : "Claude Code";
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
   const section = h(
     "section",
     {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
+    h("h2", {}, statusDot(status.installed), h("span", { text: `${title} hooks` })),
     body,
   );
+  let codexStatus = initialCodexStatus;
 
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
+    const fresh = await Bridge.hooksStatus(provider);
     if (fresh) Object.assign(status, fresh);
+    if (provider === "codex") codexStatus = (await Bridge.codexStatus()) ?? codexStatus;
     clear(body);
     draw();
     const head = section.querySelector("h2")!;
     clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
+    head.append(statusDot(status.installed), h("span", { text: `${title} hooks` }));
   };
 
   function draw() {
@@ -67,11 +71,11 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+          ? `Coucou is hooked into your ${title} sessions. Tool calls and permission requests show up in the island.`
+          : `Install the hooks to see ${title} sessions in the island and review permission requests there.`,
       }),
       h("div", { class: "row" },
-        h("label", { text: "settings.json" }),
+        h("label", { text: "Hooks settings" }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
       h("div", { class: "row" },
@@ -84,8 +88,23 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: `${status.hookPath || "The hook executable"} is not in place yet. Restart Coucou; if it still fails, run cargo build -p coucou-hook.`,
       }));
+    }
+
+    if (provider === "codex") {
+      const cli = codexStatus;
+      const cliText = cli?.installed
+        ? `Codex CLI ${cli.version ?? "installed"}${cli.authenticated ? ` · signed in${cli.authMode ? ` (${cli.authMode})` : ""}` : " · not signed in"}`
+        : "Codex CLI not detected.";
+      body.append(
+        h("div", { class: cli?.authenticated ? "notice ok" : "notice warn", text: cliText }),
+        h("div", {
+          class: "hint",
+          text: "Sign in from a terminal with `codex login`. Hook trust is reviewed in Codex with `/hooks`. Codex chat uses the authentication and billing mode selected below; API-key login is billed separately through the OpenAI API. The Claude API key above is a separate service.",
+        }),
+      );
+      if (cli?.error) body.append(h("div", { class: "notice err", text: cli.error }));
     }
 
     const actions = h("div", { class: "row" });
@@ -108,13 +127,19 @@ function claudeSection(status: HookStatus): HTMLElement {
         onclick: () => showPreview(false),
       }));
     }
+    if (provider === "codex") {
+      actions.append(h("button", {
+        text: "Refresh status",
+        onclick: () => void rebuild(),
+      }));
+    }
     body.append(actions);
   }
 
   async function showPreview(install: boolean) {
     let preview;
     try {
-      preview = await Bridge.hooksPreview(install);
+      preview = await Bridge.hooksPreview(install, provider);
     } catch (err) {
       // An unreadable or invalid settings.json stops here rather than being
       // treated as empty and written over.
@@ -133,9 +158,9 @@ function claudeSection(status: HookStatus): HTMLElement {
     body.append(
       h("div", {
         class: "hint",
-        text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+          text: install
+          ? `This is exactly what will change in ${title}'s hooks settings. Your own hooks are left untouched.`
+          : `This removes Coucou's entries only. Your own ${title} hooks are left untouched.`,
       }),
       renderDiff(preview.diff),
       h("div", { class: "row" },
@@ -149,11 +174,11 @@ function claudeSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
+        const backup = await Bridge.hooksApply(install, preview.fingerprint, provider);
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: `Done. Previous settings saved as ${backup}. Open a new ${title} session to pick the hooks up.`,
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
@@ -251,6 +276,74 @@ function apiSection(hasKey: boolean): HTMLElement {
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
+  );
+}
+
+function chatEngineSection(): HTMLElement {
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "claude", text: "Claude" }),
+    h("option", { value: "codex", text: "Codex" }),
+  );
+  provider.value = settings.chatProvider;
+
+  const authMode = h("select", { "aria-label": "Codex authentication and billing" }) as HTMLSelectElement;
+  authMode.append(
+    h("option", { value: "subscription", text: "ChatGPT subscription" }),
+    h("option", { value: "api", text: "OpenAI API (separate billing)" }),
+  );
+  authMode.value = settings.codexAuthMode;
+  const authModeRow = h("div", { class: "row" }, h("label", { text: "Authentication & billing" }), authMode);
+
+  const modelPicker = codexModelPicker("", () => { settings.codexModel = ""; void save(); });
+  const model = modelPicker.select;
+  const modelRow = h("div", { class: "row" }, h("label", { text: "Codex model" }), model);
+  const hint = h("div", { class: "hint" });
+  const apiSetup = h("div", { class: "notice warn" });
+
+  const updateModeHelp = () => {
+    if (provider.value !== "codex") {
+      hint.textContent = "Claude chat uses the Anthropic API key configured below.";
+      apiSetup.textContent = "";
+      apiSetup.style.display = "none";
+    } else if (authMode.value === "api") {
+      hint.textContent = "Codex API mode uses the API-key login saved by the local Codex CLI. API usage is billed separately through your OpenAI API account. Coucou uses only the saved CLI login matching your choice and never asks for or stores the API key.";
+      apiSetup.textContent = "To set up API login, run `codex login --with-api-key` in a terminal and provide the key through stdin. Do not paste the key into Coucou.";
+      apiSetup.style.display = "";
+    } else {
+      hint.textContent = "Codex chat uses the saved ChatGPT subscription login. Choose a model offered by your CLI, or use Default model. Text files up to 200 KB and images are supported; PDF context is not available yet.";
+      apiSetup.textContent = "";
+      apiSetup.style.display = "none";
+    }
+  };
+
+  const persist = async () => {
+    settings.chatProvider = provider.value as Settings["chatProvider"];
+    settings.codexAuthMode = authMode.value as Settings["codexAuthMode"];
+    await save();
+  };
+  const updateModelVisibility = () => {
+    const codex = provider.value === "codex";
+    if (codex) modelPicker.sync(authMode.value as Settings["codexAuthMode"], settings.codexModel);
+    modelRow.style.display = codex ? "" : "none";
+    authModeRow.style.display = codex ? "" : "none";
+    apiSetup.style.display = codex && authMode.value === "api" ? "" : "none";
+  };
+  updateModeHelp();
+  updateModelVisibility();
+  provider.addEventListener("change", () => { updateModeHelp(); updateModelVisibility(); void persist(); });
+  authMode.addEventListener("change", () => { settings.codexModel = ""; updateModeHelp(); updateModelVisibility(); void persist(); });
+  model.addEventListener("change", () => { settings.codexModel = model.value; void persist(); });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Chat provider" })),
+    h("div", { class: "row" }, h("label", { text: "Use for chat" }), provider),
+    authModeRow,
+    modelRow,
+    hint,
+    apiSetup,
   );
 }
 
@@ -425,8 +518,14 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const status = (await Bridge.hooksStatus()) ?? {
+  const claudeStatus = (await Bridge.hooksStatus("claude")) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
+  const codexHookStatus = (await Bridge.hooksStatus("codex")) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
+  const codexCliStatus = await Bridge.codexStatus() ?? {
+    installed: false, version: null, authenticated: false, authMode: null, error: null,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
@@ -441,7 +540,9 @@ async function main() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
+    hooksSection("claude", claudeStatus),
+    hooksSection("codex", codexHookStatus, codexCliStatus),
+    chatEngineSection(),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),

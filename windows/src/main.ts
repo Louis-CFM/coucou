@@ -4,8 +4,9 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { initializeChatSession, reconcileChatSession } from "./core/chat-session";
 import { Island } from "./island/island";
-import { registerHookHandlers } from "./island/hooks";
+import { declinePendingApproval, registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 
 async function main() {
@@ -20,6 +21,7 @@ async function main() {
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
   }
+  initializeChatSession();
   island.applySettings();
   State.loadIntegrationTasks();
 
@@ -28,6 +30,7 @@ async function main() {
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {
     if (State.paused === on) return;
+    if (on) declinePendingApproval(island);
     State.paused = on;
     void Bridge.setPaused(on);
   };
@@ -55,6 +58,7 @@ async function main() {
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };
+    reconcileChatSession();
     island.applySettings();
     State.loadIntegrationTasks();
     void refreshConfigured();

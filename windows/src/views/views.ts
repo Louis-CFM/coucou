@@ -69,6 +69,12 @@ function agentWho(task: AgentTask | null, label: string): HTMLElement {
   return row;
 }
 
+function providerLabel(task: AgentTask | null): string {
+  if (task?.source === "codex") return "Codex";
+  if (task?.source === "claudeCode") return "Claude Code";
+  return "n8n";
+}
+
 function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElement {
   const el = h("div", { class: "stack" }, ...children);
   el.style.padding = `4px ${padRight}px 4px ${padLeft}px`;
@@ -172,10 +178,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+      // Live Claude Code and Codex sessions get their own ticker. Permanent
+      // provider cards show installation state until a session is active.
+      const isCodeSession = task?.source === "claudeCode" || task?.source === "codex";
+      const sessionActive = Boolean(task && isCodeSession &&
+        (!task.isIntegration || task.state !== "idle" || task.steps.length > 0));
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +195,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: providerLabel(task) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -271,6 +278,7 @@ function lighten(hex: string, amount: number): string {
 // ── Empty ─────────────────────────────────────────────────────────────────────
 
 function buildEmpty(actions: ViewActions): ViewHost {
+  const ask = btn("Ask Claude", "primary", () => actions.setView("prompt"));
   const body = h(
     "div",
     { class: "stack", style: "padding:0 18px 0 118px;flex-direction:row;align-items:center;gap:16px" },
@@ -281,9 +289,12 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: "Drop a file or window, or ask me anything." }),
     ),
     h("div", { class: "grow" }),
-    btn("Ask Claude", "primary", () => actions.setView("prompt")),
+    ask,
   );
-  return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() { ask.querySelector("span")!.textContent = `Ask ${State.settings.chatProvider === "codex" ? "Codex" : "Claude"}`; },
+  };
 }
 
 // ── Approval ──────────────────────────────────────────────────────────────────
@@ -298,11 +309,12 @@ function buildApproval(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      who.append(agentWho(State.focusTask, `${providerLabel(State.focusTask)} · needs permission`));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
+      code.title = code.textContent;
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
@@ -328,9 +340,9 @@ function buildQuestion(): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      who.append(agentWho(task, `${providerLabel(task)} is asking a question`));
+      title.textContent = task?.steps.at(-1) ?? `${providerLabel(task)} needs an answer.`;
       clear(row);
       row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
@@ -353,8 +365,8 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
-      title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
+      who.append(agentWho(task, providerLabel(task)));
+      title.textContent = task?.source === "n8n" ? "Workflow stopped." : `${providerLabel(task)} stopped on an error.`;
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
   };
@@ -374,7 +386,7 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      who.append(agentWho(State.focusTask, `${providerLabel(State.focusTask)} finished`));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };
@@ -418,6 +430,7 @@ function buildSettings(actions: ViewActions): ViewHost {
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
   const claudeBadge = h("span", { class: "status-badge" });
+  const codexBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
 
   const rows = h(
@@ -435,6 +448,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       "div",
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
+      codexBadge,
       apiBadge,
       h("div", { class: "grow" }),
       h("button", {
@@ -461,10 +475,18 @@ function buildSettings(actions: ViewActions): ViewHost {
       clear(claudeBadge);
       claudeBadge.append(
         dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
-        h("span", { text: "Claude Code" }),
+        h("span", { text: "Claude hooks" }),
+      );
+      clear(codexBadge);
+      codexBadge.append(
+        dot(State.integrations.integration_codex?.configured ? "#22C55E" : "#F4505E", 6),
+        h("span", { text: "Codex hooks" }),
       );
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      apiBadge.append(
+        dot(s.chatProvider === "codex" ? "#35A67A" : "#F5A524", 6),
+        h("span", { text: `Chat · ${s.chatProvider === "codex" ? "Codex" : "Claude"}` }),
+      );
     },
   };
 }

@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"test-thread-002"}
+{"type":"turn.started"}
+{"type":"error","message":"Temporary transport warning."}
+{"type":"turn.failed","error":{"message":"The Codex turn failed."}}

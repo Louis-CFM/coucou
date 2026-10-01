@@ -1,0 +1,43 @@
+name: Windows checks
+
+on:
+  pull_request:
+    paths: ['windows/**', '.github/workflows/windows-check.yml']
+  push:
+    branches: [main]
+    paths: ['windows/**', '.github/workflows/windows-check.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: windows-check-${{ hashFiles('windows/Cargo.lock') }}
+      - run: npm ci
+      - run: npm test
+      # Builds the relay resource before the Tauri test binary.
+      - run: npm run build
+      - run: cargo test --workspace --locked
+      - run: npm run pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Coucou-Windows-test-installer
+          path: windows/release/Coucou-Windows-*-setup.exe
