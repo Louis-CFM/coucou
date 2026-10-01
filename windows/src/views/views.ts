@@ -288,12 +288,44 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/// A fresh approval card ignores clicks and keys for this long. The card slides
+/// out under wherever the pointer happens to be, and a click that was aimed at
+/// something else a moment earlier must not approve a command nobody has read.
+const APPROVAL_ARM_MS = 400;
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
   const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
-  let rowKey = "";
+
+  // The request the card was last armed for, and when it becomes clickable.
+  let armedFor = "";
+  let armedAt = 0;
+  const decide = (d: "allow" | "deny") => {
+    if (performance.now() < armedAt) return;
+    actions.decide(d);
+  };
+
+  // Two buttons, built once. Rebuilding them between a mouse-down and a
+  // mouse-up would swallow the click, and there is nothing left to vary:
+  // "Always" is gone until the remembered-rules list exists to back it.
+  const deny = btn("Deny", "secondary", () => decide("deny"), "N");
+  const allow = btn("Allow", "primary", () => decide("allow"), "Y");
+  row.append(deny, allow);
+
+  // Y / N only ever reach the page while the island itself has keyboard focus —
+  // there is no global shortcut, so typing "y" in another window can never
+  // answer a permission request.
+  window.addEventListener("keydown", (e) => {
+    if (State.view !== "approval" || !State.pendingApproval) return;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key !== "y" && key !== "n") return;
+    e.preventDefault();
+    decide(key === "y" ? "allow" : "deny");
+  });
+
   return {
     el,
     sync() {
@@ -303,16 +335,13 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
-      clear(row);
-      row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
-        btn("Allow", "primary", () => actions.decide("allow"), "Y"),
-      );
+
+      // Arm once per request, from the moment its card is actually drawn.
+      // The card looks the same while it is arming; only the input waits.
+      const id = State.pendingApproval?.requestId ?? "";
+      if (id === armedFor) return;
+      armedFor = id;
+      armedAt = performance.now() + APPROVAL_ARM_MS;
     },
   };
 }
