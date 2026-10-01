@@ -123,12 +123,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+            activateApp(bundleIds: task.sessionClient.bundleIds)
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
@@ -1356,7 +1351,8 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
+                    Text(task.id == "integration_claude" ? task.sessionClient.name
+                         : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
@@ -1379,7 +1375,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude" {
-                        Button("Open Visual Studio Code") { openVSCode() }
+                        Button("Open \(task.sessionClient.appName)") { openSessionApp() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -1482,12 +1478,12 @@ struct IntegrationCardView: View {
         }
     }
 
-    private func openVSCode() {
-        let ids = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium.codium"]
-        let appURL = ids.compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
+    private func openSessionApp() {
+        let ids = task.sessionClient.bundleIds
 
-        // If we have a project folder, open it directly in VS Code
-        if let cwd = task.sessionCwd, !cwd.isEmpty, let appURL = appURL {
+        // VS Code with a project folder: open it directly
+        if task.sessionClient == .vscode, let cwd = task.sessionCwd, !cwd.isEmpty,
+           let appURL = ids.compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first {
             NSWorkspace.shared.open(
                 [URL(fileURLWithPath: cwd)],
                 withApplicationAt: appURL,
@@ -1497,16 +1493,20 @@ struct IntegrationCardView: View {
             return
         }
 
-        // No cwd: activate running instance or launch fresh
-        if let running = ids.compactMap({ id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }).first {
-            running.activate(options: .activateIgnoringOtherApps)
-            return
-        }
-        if let appURL = appURL {
-            NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
-        }
+        activateApp(bundleIds: ids)
+    }
+}
+
+/// Activates the first running app among `bundleIds`, or launches the first installed one.
+private func activateApp(bundleIds ids: [String]) {
+    if let running = ids.compactMap({ id in
+        NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+    }).first {
+        running.activate(options: .activateIgnoringOtherApps)
+        return
+    }
+    if let appURL = ids.compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first {
+        NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
     }
 
 }
@@ -2551,9 +2551,9 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // Claude pill shows the app name (VS Code, Claude, Orca) regardless of active project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? task.sessionClient.name : task.name
     }
 
     var body: some View {
