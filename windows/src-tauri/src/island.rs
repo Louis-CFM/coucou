@@ -182,49 +182,108 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
+/// The display the island is currently painted on, if it is on one at all.
+fn current_monitor(app: &AppHandle, monitors: &[Monitor]) -> Option<Monitor> {
+    let win = window(app)?;
+    let (pos, size) = (win.outer_position().ok()?, win.outer_size().ok()?);
+    // Test the island's own centre: the window is deliberately wider than
+    // the bar and overhangs the edge, so its left edge is not a reliable
+    // indicator of which display it belongs to.
+    let cx = pos.x as i64 + size.width as i64 / 2;
+    let cy = pos.y as i64 + size.height as i64 / 2;
+    monitors
+        .iter()
+        .find(|m| monitor_contains(m, cx as f64, cy as f64))
+        .cloned()
+}
+
+/// The first non-primary display, in the order the OS reports them.
+fn secondary_monitor(app: &AppHandle, monitors: &[Monitor]) -> Option<Monitor> {
+    let primary = app.primary_monitor().ok().flatten();
+    monitors
+        .iter()
+        .find(|m| primary.as_ref().map(|p| p.name() != m.name()).unwrap_or(true))
+        .cloned()
+}
+
+/// Set once the display under the pointer has been resolved, so later placements
+/// stick to the display the island is already on. See `target_monitor`.
+static CURSOR_PLACED: AtomicBool = AtomicBool::new(false);
+
+/// Keeps the "staying put" line to one per state rather than one per placement
+/// call, which the collapse loop makes far too often to be readable.
+static CURSOR_LOGGED: AtomicBool = AtomicBool::new(false);
+
+/// Lets "cursor" re-read the pointer on the next placement.
+pub fn forget_cursor_placement() {
+    CURSOR_PLACED.store(false, Ordering::Relaxed);
+    CURSOR_LOGGED.store(false, Ordering::Relaxed);
+}
+
 /// The display the island lives on.
 ///
-/// The monitor is decided by where the island *already is*, not by where the
-/// cursor is: `pref = "cursor"` picks the display under the pointer when the
-/// island has no home yet, but a resting bar dragged toward an edge takes its
-/// cursor with it. Resolving from the cursor every frame would hop the island
-/// onto the neighbouring monitor mid-drag and fight the drag. Once placed, the
-/// island stays on that monitor, so a drag to the left or right edge stays on
-/// the screen the user started on.
+/// "primary" and "secondary" name a specific display, so they are resolved from the
+/// setting every time — honouring them only when the island had no home yet meant
+/// changing the setting did nothing, since a placed island always sits on some
+/// display.
+///
+/// "cursor" is the exception. A resting bar dragged toward an edge takes the cursor
+/// with it, so re-resolving from the pointer on every frame would hop the island onto
+/// the neighbouring monitor mid-drag and fight the drag. It therefore picks the
+/// pointer's display once and then stays put, which also keeps a drag to the left or
+/// right edge on the screen the user started on.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
-    if let Some(win) = window(app) {
-        if let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) {
-            // Test the island's own centre: the window is deliberately wider than
-            // the bar and overhangs the edge, so its left edge is not a reliable
-            // indicator of which display it belongs to.
-            let cx = pos.x as i64 + size.width as i64 / 2;
-            let cy = pos.y as i64 + size.height as i64 / 2;
-            if let Some(m) = monitors
-                .iter()
-                .find(|m| monitor_contains(m, cx as f64, cy as f64))
-            {
-                return Some(m.clone());
-            }
-        }
+    if pref == "primary" {
+        return app
+            .primary_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| current_monitor(app, &monitors))
+            .or_else(|| monitors.into_iter().next());
+    }
+    if pref == "secondary" {
+        // A machine with only one monitor has no secondary, so it falls back to the
+        // primary rather than leaving the island nowhere to draw.
+        return secondary_monitor(app, &monitors)
+            .or_else(|| app.primary_monitor().ok().flatten())
+            .or_else(|| monitors.into_iter().next());
     }
     if pref == "cursor" {
-        if let Some((cx, cy)) = cursor_physical() {
-            if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
-                return Some(m.clone());
+        // Known-broken: the display under the pointer is read once at launch and
+        // then never again, so moving the mouse to another screen does nothing. The
+        // "stick to the current monitor" early return below predates the secondary
+        // option; it is what makes this the default path once the island has a home,
+        // and it is why `cursor` only ever worked in the narrow window before first
+        // placement. Logged once per change of state, not per call, so the trace is
+        // readable.
+        if CURSOR_PLACED.load(Ordering::Relaxed) {
+            if let Some(m) = current_monitor(app, &monitors) {
+                if !CURSOR_LOGGED.swap(true, Ordering::Relaxed) {
+                    crate::log::line(format!(
+                        "[monitor] cursor: staying on {:?}, not following the pointer",
+                        m.name()
+                    ));
+                }
+                return Some(m);
             }
         }
-    }
-    // "secondary" = the first non-primary display, in the order the OS reports them.
-    // A machine with only one monitor falls through to the primary one below rather
-    // than ending up with nowhere to draw.
-    if pref == "secondary" {
-        let primary = app.primary_monitor().ok().flatten();
-        if let Some(m) = monitors
-            .iter()
-            .find(|m| primary.as_ref().map(|p| p.name() != m.name()).unwrap_or(true))
-        {
-            return Some(m.clone());
+        if let Some((cx, cy)) = cursor_physical() {
+            if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
+                crate::log::line(format!(
+                    "[monitor] cursor: placing on {:?} from the pointer at {},{}",
+                    m.name(),
+                    cx,
+                    cy
+                ));
+                return Some(m.clone());
+            }
+            crate::log::line(format!(
+                "[monitor] cursor: pointer {},{} is on no known monitor",
+                cx, cy
+            ));
+        } else {
+            crate::log::line("[monitor] cursor: GetCursorPos failed");
         }
     }
     app.primary_monitor()

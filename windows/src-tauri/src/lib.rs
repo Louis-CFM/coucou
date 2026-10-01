@@ -100,6 +100,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+        // "cursor" reads the pointer once and then sticks, so a preference change is
+        // the only thing that should make it look again.
+        island::forget_cursor_placement();
         island::apply_geometry(&app, &settings.screen, collapsed, settings.notch_position);
     }
     // Keep the other window in step (island ⇄ settings window).
