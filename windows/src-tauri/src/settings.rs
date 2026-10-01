@@ -11,19 +11,35 @@ pub struct Settings {
     pub sound_volume: f64,
     pub auto_close_interval: f64,
     pub absence_interval: f64,
+    #[serde(default)]
+    pub keep_visible: bool,
     pub active_integrations: Vec<String>,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
+    /// AI provider used by the chat. Older settings default to Claude.
+    #[serde(default = "default_provider")]
+    pub provider: String,
     /// Claude model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Ollama model used when the Ollama provider is selected.
+    #[serde(default = "default_ollama_model")]
+    pub ollama_model: String,
+}
+
+fn default_provider() -> String {
+    "claude".to_string()
 }
 
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
+}
+
+fn default_ollama_model() -> String {
+    crate::ollama::DEFAULT_MODEL.to_string()
 }
 
 impl Default for Settings {
@@ -33,6 +49,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             absence_interval: 180.0,
+            keep_visible: false,
             active_integrations: vec![
                 "integration_resend".into(),
                 "integration_n8n".into(),
@@ -42,7 +59,9 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
+            provider: default_provider(),
             model: default_model(),
+            ollama_model: default_ollama_model(),
         }
     }
 }

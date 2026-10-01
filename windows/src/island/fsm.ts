@@ -16,6 +16,10 @@ export class IslandStateMachine {
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
   greetHoverCollapseDelay = 10;
+
+  /** Keep the compact island visible instead of allowing it to hide. */
+  keepVisible = false;
+
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
 
@@ -106,10 +110,25 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+
+    if (this.keepVisible) return;
+
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
-      if (this.state === "petit") this.transition("hidden");
+
+      if (this.state === "petit" && !this.keepVisible) {
+        this.transition("hidden");
+      }
     }, this.petitToHiddenDelay * 1000);
+  }
+
+  setKeepVisible(value: boolean) {
+    this.keepVisible = value;
+    this.clear("petitHide");
+
+    if (!value && this.state === "petit") {
+      this.schedulePetitHide();
+    }
   }
 
   private scheduleHomeCollapse() {
