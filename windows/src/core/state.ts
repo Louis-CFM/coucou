@@ -236,10 +236,12 @@ class AppState {
     this.notify();
   }
 
-  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists. */
+  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
+   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
-    this.tasks.push({
+    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
+    this.tasks.splice(at, 0, {
       id, name, color,
       state: "idle", stepIndex: 0, steps: [],
       source: "agent", isIntegration: false,
