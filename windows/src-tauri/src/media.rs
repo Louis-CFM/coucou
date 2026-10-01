@@ -7,6 +7,9 @@
 use serde::Serialize;
 use windows::core::BOOL;
 use windows::Win32::Foundation::{HWND, LPARAM};
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClassNameW, GetWindowTextW, IsWindowVisible,
 };
@@ -74,4 +77,34 @@ pub fn now_playing() -> NowPlaying {
         }
     }
     NowPlaying::default()
+}
+
+/// System-wide media keys (play/pause, next, previous). They go to whatever
+/// is currently playing — the Spotify desktop app, a browser tab with the web
+/// player, anything. No focus stealing, no API, no key.
+pub fn press(action: &str) -> Result<(), String> {
+    let vk = match action {
+        "playpause" | "toggle" | "play" | "pause" => 0xB3u16,
+        "next" => 0xB0u16,
+        "prev" | "previous" => 0xB1u16,
+        _ => return Err("unknown media key".into()),
+    };
+    let mk = |up: bool| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                wScan: 0,
+                dwFlags: if up { KEYEVENTF_KEYUP } else { Default::default() },
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    let sent = unsafe { SendInput(&[mk(false), mk(true)], std::mem::size_of::<INPUT>() as i32) };
+    if sent == 2 {
+        Ok(())
+    } else {
+        Err("media key not delivered".into())
+    }
 }

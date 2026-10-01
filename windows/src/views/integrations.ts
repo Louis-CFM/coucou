@@ -238,6 +238,13 @@ function spotifyCard(): HTMLElement {
   const artist = String(d.artist ?? "");
   const title = String(d.title ?? "");
   const playing = d.playing === true;
+  const key = (label: string, action: string) =>
+    h("button", {
+      class: "link-btn",
+      style: "color:#1DB954d9",
+      text: label,
+      onclick: () => void Bridge.mediaKey(action),
+    });
   return h(
     "div",
     { class: "int-card" },
@@ -256,6 +263,9 @@ function spotifyCard(): HTMLElement {
       ),
     ),
     h("div", { class: "int-actions" },
+      key("⏮", "prev"),
+      key(playing ? "⏸" : "▶", "playpause"),
+      key("⏭", "next"),
       h("button", {
         class: "link-btn",
         style: "color:#1DB954d9",

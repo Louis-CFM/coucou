@@ -387,17 +387,16 @@ export class Island {
    * fetch a file from Explorer, which always takes longer than the auto-close
    * delay. Without this the island retracts to its 6px strip mid-drag and the
    * OS refuses the drop ("prohibited" cursor) — the #1 drop complaint.
-   * Approval pins win over this; leaving the flow unpins unless a decision
+   * A prompt WITH an attached file pins too, so a second drop right after the
+   * first chat lands on an open island instead of a hidden strip. Approval
+   * pins win over everything; leaving the flow unpins unless a decision
    * is still pending.
    */
   private pinUploadIfNeeded(view: IslandViewName) {
-    if (UPLOAD_VIEWS.has(view)) {
-      State.isPinned = true;
-      this.fsm.pinned = true;
-    } else if (!State.pendingApproval) {
-      State.isPinned = false;
-      this.fsm.pinned = false;
-    }
+    if (State.pendingApproval) return; // approval owns the pin
+    const pinned = UPLOAD_VIEWS.has(view) || (view === "prompt" && State.promptContext != null);
+    State.isPinned = pinned;
+    this.fsm.pinned = pinned;
   }
 
   expand(view: IslandViewName) {
@@ -755,7 +754,9 @@ export class Island {
     window.addEventListener("mouseup", () => this.onMouseUp(State.mouse.x, State.mouse.y));
 
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      // Esc always collapses except while an approval decision is pending —
+      // drop/chat pins must never trap the user (collapse() clears them).
+      if (e.key === "Escape" && State.mode === "expanded" && !State.pendingApproval) this.collapse();
       State.lastActivity = performance.now();
     });
 

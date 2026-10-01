@@ -163,34 +163,55 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let response = client
-        .post(ENDPOINT)
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
-        .header("content-type", "application/json")
-        .json(body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
-
-    let status = response.status();
-    let text = response.text().await.map_err(|e| e.to_string())?;
-    if !status.is_success() {
-        // Surface the API's own message, which is what makes a bad key obvious.
-        let detail = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("error")
-                    .and_then(|e| e.get("message"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-            })
-            .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Claude API {status}: {detail}"));
+    let mut attempt = 0;
+    loop {
+        let response = client
+            .post(ENDPOINT)
+            .header("x-api-key", key)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .header("anthropic-beta", FALLBACK_BETA)
+            .header("content-type", "application/json")
+            .json(body)
+            .send()
+            .await;
+        match response {
+            Err(e) if attempt < 2 => {
+                // Transient network blip — one breath, then once more.
+                attempt += 1;
+                crate::log::line(format!("claude network error ({e}) — retry {attempt}/2"));
+                tokio::time::sleep(std::time::Duration::from_secs(attempt as u64)).await;
+                continue;
+            }
+            Err(e) => return Err(format!("Network error: {e}")),
+            Ok(response) => {
+                let status = response.status();
+                let text = response.text().await.map_err(|e| e.to_string())?;
+                if !status.is_success() {
+                    let retryable = status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                        || status.is_server_error();
+                    if retryable && attempt < 2 {
+                        attempt += 1;
+                        crate::log::line(format!("claude {status} — retry {attempt}/2"));
+                        tokio::time::sleep(std::time::Duration::from_secs(attempt as u64)).await;
+                        continue;
+                    }
+                    // Surface the API's own message, which is what makes a bad key obvious.
+                    let detail = serde_json::from_str::<Value>(&text)
+                        .ok()
+                        .and_then(|v| {
+                            v.get("error")
+                                .and_then(|e| e.get("message"))
+                                .and_then(Value::as_str)
+                                .map(str::to_string)
+                        })
+                        .unwrap_or_else(|| text.chars().take(200).collect());
+                    let hint = if retryable { " (retried — the model is busy, try again in a bit)" } else { "" };
+                    return Err(format!("Claude API {status}: {detail}{hint}"));
+                }
+                return serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"));
+            }
+        }
     }
-    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
-}
 
 /// PDF → document block, image → image block, text/code → inline text.
 /// Mirrors readFileAsBlock() in ClaudeService.swift.

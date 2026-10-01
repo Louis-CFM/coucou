@@ -165,6 +165,37 @@ async fn call(url: &str, key: &str, body: &Value) -> Result<Value, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let mut attempt = 0;
+    loop {
+        match post_once(&client, url, key, body).await {
+            Ok(value) => return Ok(value),
+            Err(retry) if retry.retryable && attempt < 2 => {
+                attempt += 1;
+                crate::log::line(format!("gemini {status} — retry {attempt}/2", status = retry.status));
+                tokio::time::sleep(std::time::Duration::from_secs(attempt as u64)).await;
+            }
+            Err(retry) => return Err(retry.message),
+        }
+    }
+}
+
+struct Failed {
+    retryable: bool,
+    status: String,
+    message: String,
+}
+
+async fn post_once(
+    client: &reqwest::Client,
+    url: &str,
+    key: &str,
+    body: &Value,
+) -> Result<Value, Failed> {
+    let fail = |status: reqwest::StatusCode, message: String| Failed {
+        retryable: status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error(),
+        status: status.to_string(),
+        message,
+    };
     let response = client
         .post(url)
         .header("x-goog-api-key", key)
@@ -172,10 +203,13 @@ async fn call(url: &str, key: &str, body: &Value) -> Result<Value, String> {
         .json(body)
         .send()
         .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| fail(
+            reqwest::StatusCode::SERVICE_UNAVAILABLE,
+            format!("Network error: {e}"),
+        ))?;
 
     let status = response.status();
-    let text = response.text().await.map_err(|e| e.to_string())?;
+    let text = response.text().await.map_err(|e| fail(status, e.to_string()))?;
     if !status.is_success() {
         let detail = serde_json::from_str::<Value>(&text)
             .ok()
@@ -186,9 +220,14 @@ async fn call(url: &str, key: &str, body: &Value) -> Result<Value, String> {
                     .map(str::to_string)
             })
             .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Gemini API {status}: {detail}"));
+        let hint = if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            " (retried — the model is busy, try again in a bit)"
+        } else {
+            ""
+        };
+        return Err(fail(status, format!("Gemini API {status}: {detail}{hint}")));
     }
-    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
+    serde_json::from_str(&text).map_err(|e| fail(status, format!("Bad API response: {e}")))
 }
 
 /// File → Gemini part. Mirrors the Claude `file_block` mapping:
