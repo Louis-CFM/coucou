@@ -8,6 +8,7 @@ mod gmail;
 mod jump;
 mod mail;
 mod media;
+mod outlook;
 mod hooks;
 mod integrations;
 mod island;
@@ -337,6 +338,24 @@ fn gmail_signout() -> Result<(), String> {
     gmail::signout()
 }
 
+/// Outlook device-flow step 1: returns the user code + URL to approve.
+#[tauri::command]
+async fn outlook_device_begin(client_id: String) -> Result<outlook::DeviceChallenge, String> {
+    outlook::begin_device(client_id).await
+}
+
+/// Outlook device-flow step 2: waits for the approval, stores the tokens.
+#[tauri::command]
+async fn outlook_device_poll() -> Result<(), String> {
+    outlook::poll_device().await
+}
+
+/// Forgets the Outlook OAuth tokens (IMAP fallback keeps working if set).
+#[tauri::command]
+fn outlook_signout() -> Result<(), String> {
+    outlook::signout()
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -511,6 +530,9 @@ pub fn run() {
             ingest_bytes,
             gmail_signin,
             gmail_signout,
+            outlook_device_begin,
+            outlook_device_poll,
+            outlook_signout,
             attach_window,
             secret_present,
             secret_set,

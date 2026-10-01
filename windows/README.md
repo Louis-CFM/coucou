@@ -100,11 +100,19 @@ Two ways in, per account:
   app**. Paste the client ID + secret in Settings → Gmail → **Sign in with
   Google**, approve in the browser, done. Tokens stay in the Credential
   Manager; only `gmail.readonly` is requested.
+- **Outlook via Microsoft sign-in (recommended, survives disabled basic
+  auth).** Register your own app once: [Azure Portal](https://portal.azure.com/)
+  → Microsoft Entra ID → App registrations → New (personal accounts) →
+  platform **Mobile and desktop applications**, delegated permission
+  **Mail.Read**. Paste the Application (client) ID in Settings → Outlook →
+  **Sign in with Microsoft**, approve the shown code in the browser, done.
+  Tokens stay in the Credential Manager; only `Mail.Read` is requested.
 - **IMAP app passwords (fallback).** Gmail: Google Account → Security →
   2-Step Verification → App passwords. Outlook: Microsoft Account → Security
-  → Advanced security → App passwords (personal accounts; some corporate
-  tenants block them — the card shows the login error if so). Note: networks
-  that block outbound port 993 break IMAP entirely; OAuth keeps working.
+  → Advanced security → App passwords (personal accounts; some tenants — and
+  accounts with basic auth disabled — reject them, so prefer OAuth above).
+  Note: networks that block outbound port 993 break IMAP entirely; OAuth
+  keeps working.
 
 The card shows the unread count plus the newest subjects, and pings when new
 mail lands.

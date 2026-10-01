@@ -114,6 +114,13 @@ const PT: Record<string, string> = {
     "Entre com Google (funciona atrás de firewall) ou use senha de app.",
   "Browser opened — approve, then come back.": "Navegador aberto — aprove e volte.",
   "Paste the OAuth client ID and secret first.": "Cole o ID e o segredo OAuth primeiro.",
+  "Sign in with Microsoft": "Entrar com Microsoft",
+  "Signed in with Microsoft.": "Logado com Microsoft.",
+  "Sign in with Microsoft (works when app passwords are blocked), or use an app password.":
+    "Entre com Microsoft (funciona quando senha de app é bloqueada) ou use senha de app.",
+  "Application (client) ID": "ID do aplicativo (cliente)",
+  "Paste the application (client) ID first.": "Cole o ID do aplicativo (cliente) primeiro.",
+  "Approve in the browser with code": "Aprove no navegador com o código",
   // Settings window
   "General": "Geral",
   "Sound": "Som",

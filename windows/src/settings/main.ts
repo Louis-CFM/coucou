@@ -492,14 +492,131 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [] }, // no key — reads the desktop app's window title
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366",
     fields: [] }, // no key — reads the Web tab's title unread count
-  { id: "integration_outlook", name: "Outlook", color: "#0078D4",
-    fields: [
-      { key: "outlook-email", label: "Email address", placeholder: "you@outlook.com", secret: false },
-      { key: "outlook-app-password", label: "App password", placeholder: "••••••••", secret: true },
-    ] },
 ];
 
-// ── Gmail section (OAuth sign-in + IMAP fallback fields) ─────────────────────
+// ── Outlook section (OAuth device flow + IMAP fallback fields) ───────────────
+
+function outlookSection(present: Record<string, boolean>): HTMLElement {
+  const dotEl = statusDot(present["outlook-oauth"] || present["outlook-app-password"] || false);
+  const state = h("span", {
+    class: "hint",
+    text: t("Sign in with Microsoft (works when app passwords are blocked), or use an app password."),
+  });
+
+  const email = h("input", {
+    type: "text", placeholder: "you@outlook.com", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const appPass = h("input", {
+    type: "password", placeholder: "••••••••", autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const clientId = h("input", {
+    type: "text", placeholder: t("Application (client) ID"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const oauth = (await Bridge.secretPresent("outlook-oauth")) ?? false;
+    const imap = (await Bridge.secretPresent("outlook-app-password")) ?? false;
+    present["outlook-oauth"] = oauth;
+    present["outlook-app-password"] = imap;
+    dotEl.style.background = oauth || imap ? "#22c55e" : "#f4505e";
+    state.textContent = oauth
+      ? t("Signed in with Microsoft.")
+      : imap
+        ? t("App password saved (IMAP fallback).")
+        : t("Sign in with Microsoft (works when app passwords are blocked), or use an app password.");
+  }
+
+  const saveMail = h("button", { text: t("Save") });
+  saveMail.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      if (email.value.trim()) await Bridge.secretSet("outlook-email", email.value.trim());
+      if (appPass.value.trim()) await Bridge.secretSet("outlook-app-password", appPass.value.trim());
+      email.value = "";
+      appPass.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not save")}: ${String(err)}` }));
+    }
+  });
+
+  const signin = h("button", { class: "primary", text: t("Sign in with Microsoft") });
+  signin.addEventListener("click", async () => {
+    clear(feedback);
+    const id = clientId.value.trim();
+    if (!id) {
+      feedback.append(h("div", { class: "notice err", text: t("Paste the application (client) ID first.") }));
+      return;
+    }
+    signin.disabled = true;
+    try {
+      const challenge = await Bridge.outlookDeviceBegin(id);
+      feedback.append(h("div", {
+        class: "notice",
+        text: `${t("Approve in the browser with code")} ${challenge.userCode}`,
+      }));
+      void Bridge.openUrl(challenge.verificationUrl);
+      await Bridge.outlookDevicePoll();
+      clientId.value = "";
+      feedback.append(h("div", { class: "notice ok", text: t("Signed in with Microsoft.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    } finally {
+      signin.disabled = false;
+    }
+  });
+
+  const signout = h("button", { class: "danger", text: t("Sign out") });
+  signout.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.outlookSignout();
+      feedback.append(h("div", { class: "notice ok", text: t("Signed out.") }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `${t("Could not remove")}: ${String(err)}` }));
+    }
+  });
+
+  const sw = h("button", { class: settings.activeIntegrations.includes("integration_outlook") ? "switch on" : "switch" });
+  sw.addEventListener("click", () => {
+    const on = settings.activeIntegrations.includes("integration_outlook");
+    if (on) {
+      settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== "integration_outlook");
+    } else {
+      if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+      settings.activeIntegrations = [...settings.activeIntegrations, "integration_outlook"];
+    }
+    sw.classList.toggle("on", !on);
+    void save();
+  });
+
+  return h("section", {},
+    h("h2", {}, dotEl, h("span", { text: "Outlook" })),
+    state,
+    h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+        sw,
+        h("i", { class: "dot", style: "background:#0078D4" }),
+        h("span", { style: "font-size:12.5px", text: "Outlook" }),
+      ),
+      h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" },
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Email address") }), email,
+          h("label", { style: "min-width:104px", text: t("App password") }), appPass, saveMail),
+        h("div", { class: "row" },
+          h("label", { style: "min-width:104px", text: t("Application (client) ID") }), clientId),
+        h("div", { class: "row" }, signin, signout, feedback),
+      ),
+    ),
+  );
+}
 
 function gmailSection(present: Record<string, boolean>): HTMLElement {
   const dotEl = statusDot(present["gmail-oauth"] || present["gmail-app-password"] || false);
@@ -818,7 +935,7 @@ async function main() {
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
     "gmail-email", "gmail-app-password", "gmail-oauth",
-    "outlook-email", "outlook-app-password",
+    "outlook-email", "outlook-app-password", "outlook-oauth",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -838,6 +955,7 @@ async function main() {
     ),
     apiSection(hasKey, hasGeminiKey),
     gmailSection(present),
+    outlookSection(present),
     integrationsSection(present),
     generalSection(),
     h("div", {

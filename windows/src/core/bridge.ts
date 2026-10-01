@@ -115,6 +115,12 @@ export const Bridge = {
   gmailSignin: (clientId: string, clientSecret: string) =>
     callOrThrow<string>("gmail_signin", { clientId, clientSecret }),
   gmailSignout: () => callOrThrow<void>("gmail_signout"),
+  /** Outlook device flow step 1: returns the code + URL to approve. */
+  outlookDeviceBegin: (clientId: string) =>
+    callOrThrow<{ userCode: string; verificationUrl: string }>("outlook_device_begin", { clientId }),
+  /** Outlook device flow step 2: waits for the approval (up to ~3 min). */
+  outlookDevicePoll: () => callOrThrow<void>("outlook_device_poll"),
+  outlookSignout: () => callOrThrow<void>("outlook_signout"),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
