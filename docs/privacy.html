@@ -21,6 +21,7 @@
 <tr><td>Preferences (sound, delays, active integrations, shortcut)</td><td>App preferences on your Mac, or <code>%APPDATA%\Coucou</code> on Windows</td><td>To remember your settings</td></tr>
 <tr><td>Files you drop on the notch</td><td>A copy in the app’s own folder (on Windows: <code>%LOCALAPPDATA%\Coucou</code>)</td><td>So you can ask a question about them or attach them to an email</td></tr>
 <tr><td>Claude Code session events (project name, current step, permission requests)</td><td>In memory only</td><td>To show them in the notch</td></tr>
+<tr><td>Diagnostic log (event and tool names, project names, HTTP status codes — no commands, content or API keys)</td><td><code>~/Library/Logs/NotchBuddy</code> on Mac (App Store: same path inside the container); <code>%LOCALAPPDATA%\Coucou\coucou.log</code> on Windows. Capped at 1 MB. Never leaves your computer.</td><td>To help diagnose connection issues between Claude Code and Coucou</td></tr>
 </table>
 <p>You can delete all of this at any time by removing your keys in Settings, then deleting the app and its folder in <code>~/Library/Application Support/NotchBuddy</code> (or the app’s container for the App Store version). On Windows: uninstall Coucou from Settings → Apps, then delete <code>%APPDATA%\Coucou</code> and <code>%LOCALAPPDATA%\Coucou</code>.</p>
 

@@ -29,7 +29,13 @@ final class HookServer: @unchecked Sendable {
 
     // No approval blocking state — notch is notification-only, user answers in VS Code
 
+    private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
+    private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
+    private static let maxConnections = 32              // concurrent connection ceiling
+
     private var serverFD: Int32 = -1
+    private let connectionLock = NSLock()
+    private var connectionCount = 0
     private var pendingApprovalFD: Int32 = -1   // held open while user decides
     private var activeSessionId: String? = nil  // current Claude Code session
 
@@ -38,8 +44,10 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Start
 
     func start() {
-        // Ensure support directory exists before socket server tries to bind
-        try? FileManager.default.createDirectory(at: Self.supportDir, withIntermediateDirectories: true)
+        // Ensure support directory exists (mode 0700 — not world-readable)
+        let dir = Self.supportDir
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700 as NSNumber], ofItemAtPath: dir.path)
         #if !APPSTORE
         installHookScript()
         #endif
@@ -73,11 +81,29 @@ final class HookServer: @unchecked Sendable {
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
         guard bindRC == 0 else { close(fd); return }
-        guard Darwin.listen(fd, 10) == 0 else { close(fd); return }
+        // Restrict socket to owner only
+        chmod(path, 0o600)
+        guard Darwin.listen(fd, 32) == 0 else { close(fd); return }
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
             guard clientFD >= 0 else { break }
+            // Reject connections from other users (same-UID check)
+            var euid: uid_t = 0
+            var egid: gid_t = 0
+            guard getpeereid(clientFD, &euid, &egid) == 0, euid == getuid() else {
+                close(clientFD)
+                continue
+            }
+            // Enforce concurrent connection ceiling
+            connectionLock.lock()
+            let count = connectionCount
+            if count < Self.maxConnections { connectionCount += 1 }
+            connectionLock.unlock()
+            guard count < Self.maxConnections else {
+                close(clientFD)
+                continue
+            }
             Thread.detachNewThread { self.handleClient(fd: clientFD) }
         }
     }
@@ -85,6 +111,13 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Client handler (background thread)
 
     private func handleClient(fd: Int32) {
+        defer {
+            connectionLock.lock(); connectionCount -= 1; connectionLock.unlock()
+        }
+        // 5-second receive timeout — unresponsive clients don't hold threads forever
+        var tv = timeval(tv_sec: Self.receiveTimeoutSeconds, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+
         // Read newline-delimited JSON
         var raw = Data()
         var buf = [UInt8](repeating: 0, count: 4096)
@@ -95,6 +128,7 @@ final class HookServer: @unchecked Sendable {
                 if buf[i] == UInt8(ascii: "\n") { break outer }
                 raw.append(buf[i])
             }
+            if raw.count > Self.maxPayload { break }
         }
 
         guard !raw.isEmpty,
@@ -167,7 +201,7 @@ final class HookServer: @unchecked Sendable {
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
             appendStep(id: "integration_claude", step: step)
-            nbLog("PreToolUse \(step)")
+            nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
             state.updateTask(id: "integration_claude", state: .working)
@@ -278,7 +312,7 @@ final class HookServer: @unchecked Sendable {
         if let input = payload["tool_input"] as? [String: Any] {
             command = input["command"] as? String ?? tool
         }
-        nbLog("PermissionRequest \(tool): \(command)")
+        nbLog("PermissionRequest \(tool)")
 
         if pendingApprovalFD >= 0 {
             let old = pendingApprovalFD
@@ -429,23 +463,7 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Logging
 
     private func nbLog(_ message: String) {
-        let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs/NotchBuddy")
-        try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
-        let logFile = logsDir.appendingPathComponent("nb.log")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let line = "\(formatter.string(from: Date())) \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
-        if FileManager.default.fileExists(atPath: logFile.path) {
-            if let handle = try? FileHandle(forWritingTo: logFile) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                try? handle.close()
-            }
-        } else {
-            try? data.write(to: logFile)
-        }
+        appendAppLog("nb.log", message)
     }
 
     private func sendLine(fd: Int32, text: String) {
@@ -469,6 +487,7 @@ final class HookServer: @unchecked Sendable {
         #else
         let dir = Self.supportDir
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700 as NSNumber], ofItemAtPath: dir.path)
         // nb-hook: shell wrapper (always exits 0, calls nb-hook.py via python3)
         let wrapperURL = URL(fileURLWithPath: Self.hookScriptPath)
         try? nbHookShellWrapper.write(to: wrapperURL, atomically: true, encoding: .utf8)

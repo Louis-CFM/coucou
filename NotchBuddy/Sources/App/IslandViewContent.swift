@@ -633,13 +633,10 @@ struct MailView: View {
         }
         guard let httpBody = try? JSONSerialization.data(withJSONObject: payload) else { return false }
         request.httpBody = httpBody
-        guard let (data, response) = try? await URLSession.shared.data(for: request) else { return false }
+        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         if code == 200 || code == 201 { return true }
-        // Surface Resend error body for debugging
-        if let body = String(data: data, encoding: .utf8) {
-            print("[Resend] HTTP \(code): \(body)")
-        }
+        print("[Resend] HTTP \(code)")
         return false
     }
 
