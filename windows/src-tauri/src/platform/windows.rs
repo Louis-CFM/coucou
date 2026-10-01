@@ -49,6 +49,11 @@ pub fn local_dir() -> PathBuf {
     base.join("Coucou")
 }
 
+/// %APPDATA% and %LOCALAPPDATA% are already private to the user.
+pub fn ensure_private_dir(dir: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)
+}
+
 /// Nothing to set up before the webview starts.
 pub fn prepare_environment() {}
 

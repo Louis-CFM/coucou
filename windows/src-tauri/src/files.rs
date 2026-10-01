@@ -31,6 +31,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     }
 
     let dir = inbox_dir();
+    crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
     let name = src

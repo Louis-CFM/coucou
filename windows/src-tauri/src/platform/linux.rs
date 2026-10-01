@@ -11,7 +11,7 @@
 //     the island — Mochi's eyes follow the pointer there, not across the screen.
 
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -85,18 +85,38 @@ pub fn local_time() -> LocalTime {
     }
 }
 
+/// Creates `dir` and closes it to other users. The log, the inbox of dropped
+/// files and the relay binary live under these directories; with the default
+/// umask they would come out 0755 and readable by anyone on the machine.
+pub fn ensure_private_dir(dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+}
+
+/// True when `dir` is a real directory (not a symlink), owned by us, with no
+/// access for group or others: what `$XDG_RUNTIME_DIR` promises, checked
+/// rather than assumed, since the socket in it decides who can answer a
+/// permission request.
+fn is_private_dir(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    std::fs::symlink_metadata(dir)
+        .map(|m| {
+            m.file_type().is_dir() && m.uid() == unsafe { libc::getuid() } && m.mode() & 0o077 == 0
+        })
+        .unwrap_or(false)
+}
+
 /// Where coucou-hook finds us: `$XDG_RUNTIME_DIR/coucou.sock`, or
-/// `/run/user/<uid>/coucou.sock` when the variable is missing. Must match
-/// `socket_path()` in hook/src/unix.rs exactly.
+/// `/run/user/<uid>/coucou.sock` when the variable is missing. A directory
+/// that is not ours and private means no relay at all — never a fallback to a
+/// shared place like /tmp. Must match `socket_path()` in hook/src/unix.rs
+/// exactly.
 pub fn relay_socket_path() -> Option<PathBuf> {
     let dir = std::env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
-        .or_else(|| {
-            let p = PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() }));
-            p.is_dir().then_some(p)
-        })?;
-    Some(dir.join("coucou.sock"))
+        .unwrap_or_else(|| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
+    is_private_dir(&dir).then(|| dir.join("coucou.sock"))
 }
 
 // ── Processes ─────────────────────────────────────────────────────────────────
@@ -276,5 +296,51 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
             ));
             gdk_window.input_shape_combine_region(&region, 0, 0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {
+        let base = std::env::temp_dir().join(format!("coucou-rt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let dir = base.join("runtime");
+        std::fs::create_dir_all(&dir).unwrap();
+        let set = |mode| std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
+
+        set(0o700);
+        assert!(is_private_dir(&dir));
+
+        // Readable or reachable by group or others: no.
+        for open in [0o750, 0o705, 0o755, 0o777, 0o1777] {
+            set(open);
+            assert!(!is_private_dir(&dir), "{open:o} must be refused");
+        }
+
+        // A symlink to a private directory: no, the link itself is what we got.
+        set(0o700);
+        let link = base.join("link");
+        std::os::unix::fs::symlink(&dir, &link).unwrap();
+        assert!(!is_private_dir(&link));
+
+        // Missing: no.
+        assert!(!is_private_dir(&base.join("missing")));
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn private_dirs_are_closed_to_everyone_else() {
+        use std::os::unix::fs::MetadataExt;
+        let dir = std::env::temp_dir().join(format!("coucou-priv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        ensure_private_dir(&dir).unwrap();
+        assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

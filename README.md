@@ -77,7 +77,9 @@ rest of the differences.
 
 ### Linux
 
-Grab a package from [Releases](https://github.com/Louis-CFM/coucou/releases):
+Linux packages are published in [Releases](https://github.com/Louis-CFM/coucou/releases)
+under `linux-v*` tags; the first one is on its way. Until it lands, [build from source](#build-from-source).
+Once it's there:
 
 - **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`

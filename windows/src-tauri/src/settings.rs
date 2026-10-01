@@ -66,7 +66,7 @@ pub fn load() -> Settings {
 
 pub fn save(settings: &Settings) -> std::io::Result<()> {
     let dir = config_dir();
-    std::fs::create_dir_all(&dir)?;
+    crate::platform::ensure_private_dir(&dir)?;
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(settings_path(), json)

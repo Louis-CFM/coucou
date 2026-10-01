@@ -140,16 +140,26 @@ fn open_in_vscode(path: Option<String>) -> bool {
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
     // handing the path over as a separate argument keeps it a path.
+    let path = path.filter(|p| !p.is_empty());
+    // It arrives in a hook payload: only an existing folder, given by its full
+    // path, goes any further. `code` would read `--something` as an option, and
+    // xdg-open would launch a file with whatever handles its type.
+    if let Some(p) = path.as_deref() {
+        let p = std::path::Path::new(p);
+        if !(p.is_absolute() && p.is_dir()) {
+            return false;
+        }
+    }
     if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
-        if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+        if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
         }
     }
-    if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+    if let Some(p) = path.as_deref() {
         platform::reveal_folder(p);
     }
     false

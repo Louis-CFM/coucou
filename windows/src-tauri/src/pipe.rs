@@ -106,7 +106,7 @@ pub fn start(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         let Some(path) = crate::platform::relay_socket_path() else {
-            log::line("no runtime directory — Claude Code hooks are inactive");
+            log::line("no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive");
             return;
         };
         // A socket file left behind by a crash answers nothing and can go. One

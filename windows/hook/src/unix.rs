@@ -15,17 +15,25 @@ use std::time::{Duration, Instant};
 use crate::CONNECT_TIMEOUT;
 
 /// `$XDG_RUNTIME_DIR/coucou.sock`, or `/run/user/<uid>/coucou.sock` when the
-/// variable is missing (a hook started from a stripped-down environment).
+/// variable is missing (a hook started from a stripped-down environment). The
+/// directory must be ours and closed to everyone else, or there is no relay.
 /// Must match `platform::relay_socket_path()` in the app exactly.
 fn socket_path() -> Option<PathBuf> {
     let dir = std::env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
-        .or_else(|| {
-            let p = PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() }));
-            p.is_dir().then_some(p)
-        })?;
-    Some(dir.join("coucou.sock"))
+        .unwrap_or_else(|| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
+    is_private_dir(&dir).then(|| dir.join("coucou.sock"))
+}
+
+/// A real directory (not a symlink), owned by us, no access for group or others.
+fn is_private_dir(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    std::fs::symlink_metadata(dir)
+        .map(|m| {
+            m.file_type().is_dir() && m.uid() == unsafe { libc::getuid() } && m.mode() & 0o077 == 0
+        })
+        .unwrap_or(false)
 }
 
 /// Opens the socket. Retries only while the app's backlog is full: any other
@@ -100,5 +108,7 @@ fn server_is_same_user(stream: &UnixStream) -> bool {
             &mut len,
         )
     };
-    rc == 0 && cred.uid == unsafe { libc::getuid() }
+    rc == 0
+        && len as usize == std::mem::size_of::<libc::ucred>()
+        && cred.uid == unsafe { libc::getuid() }
 }

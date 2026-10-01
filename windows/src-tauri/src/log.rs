@@ -13,7 +13,7 @@ pub fn line(message: impl AsRef<str>) {
         t.year, t.month, t.day, t.hour, t.minute, t.second
     );
     let dir = settings::local_dir();
-    if std::fs::create_dir_all(&dir).is_err() {
+    if platform::ensure_private_dir(&dir).is_err() {
         return;
     }
     let path = dir.join("coucou.log");
@@ -21,7 +21,12 @@ pub fn line(message: impl AsRef<str>) {
     if std::fs::metadata(&path).map(|m| m.len() > 1_000_000).unwrap_or(false) {
         let _ = std::fs::remove_file(&path);
     }
-    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    // Readable by us only, like the macOS log.
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    if let Ok(mut file) = options.open(path) {
         let _ = writeln!(file, "{stamp} {}", message.as_ref());
     }
 }
