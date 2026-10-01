@@ -9,6 +9,13 @@ import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+/** Where API keys live on this platform, for the wording only. */
+let keyStore = "the Windows Credential Manager";
+
+/** `coucou-hook.exe` on Windows, `coucou-hook` on Linux — whatever the path ends in. */
+function hookFileName(path: string): string {
+  return path.split(/[\\/]/).pop() || "coucou-hook";
+}
 
 const root = document.getElementById("settings-root")!;
 
@@ -84,7 +91,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: `${hookFileName(status.hookPath)} is not in place yet. Restart Coucou; if it still fails, build it with \`cargo build -p coucou-hook\`.`,
       }));
     }
 
@@ -181,7 +188,7 @@ const MODELS: [string, string][] = [
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? `Key saved in ${keyStore}.` : "No key yet — the chat needs one." });
 
   const field = h("input", {
     type: "password",
@@ -199,7 +206,7 @@ function apiSection(hasKey: boolean): HTMLElement {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
+      ? `Key saved in ${keyStore}.`
       : "No key yet — the chat needs one.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
@@ -260,7 +267,7 @@ interface IntegrationDef {
   id: string;
   name: string;
   color: string;
-  /** Credential Manager keys, in the order they are shown. */
+  /** Key-store keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
 }
 
@@ -292,7 +299,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in ${keyStore}, never on disk.`;
   }
 
   for (const def of INTEGRATIONS) {
@@ -424,6 +431,7 @@ async function main() {
   if (boot) {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
+    if (boot.platform === "linux") keyStore = "your keyring (KWallet / GNOME Keyring)";
   }
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,

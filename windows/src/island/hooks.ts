@@ -1,7 +1,8 @@
 // Claude Code hook events → island state.
 // Port of HookServer.processEvent / processPermissionRequest from the macOS app.
-// Difference from macOS: no terminal filter. On Windows the hook fires from any
-// terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
+// Difference from macOS: no terminal filter. On Windows and Linux the hook fires
+// from any terminal (Windows Terminal, Konsole, VS Code, PowerShell…) and all of
+// them are handled.
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";

@@ -5,7 +5,7 @@
      the <select> popup is white text on white. */
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --ink: #f5f6f8;
   --dim: #9398a1;

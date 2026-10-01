@@ -26,6 +26,8 @@ export interface BootInfo {
   screen: { x: number; y: number; width: number; height: number; scale: number };
   version: string;
   hookPath: string;
+  /** "windows" or "linux". */
+  platform: string;
 }
 
 export const Bridge = {
@@ -57,7 +59,7 @@ export const Bridge = {
 
   openSettingsWindow: () => call<void>("open_settings_window"),
 
-  /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
+  /** Writes to coucou.log (%LOCALAPPDATA%\Coucou or ~/.local/share/coucou), next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),
 
   // ── Claude Code hooks ─────────────────────────────────────────────────────
@@ -146,6 +148,8 @@ export type BridgeEvent =
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
   paths?: string[];
+  /** Physical pixels, relative to the window. Only meaningful on Linux. */
+  position?: { x: number; y: number };
 }
 
 /** Files dragged onto the island. Only reaches us when the window takes the mouse. */

@@ -1,4 +1,5 @@
-// Dropped files are copied into %LOCALAPPDATA%\Coucou\inbox so the original is
+// Dropped files are copied into the inbox (%LOCALAPPDATA%\Coucou\inbox on
+// Windows, ~/.local/share/coucou/inbox on Linux) so the original is
 // never touched and the copy survives the drag source going away.
 // The inbox is swept of anything older than a week, as on macOS.
 

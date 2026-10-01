@@ -4,7 +4,7 @@
 :root {
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", sans-serif;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 
   --ink: #f5f6f8;        /* primary text */

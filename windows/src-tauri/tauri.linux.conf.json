@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["appimage", "rpm", "deb"],
+    "resources": {
+      "../target/release/coucou-hook.exe": null,
+      "../target/release/coucou-hook": "coucou-hook"
+    },
+    "shortDescription": "Mochi lives at the top of your screen",
+    "linux": {
+      "rpm": { "depends": ["webkit2gtk4.1", "libayatana-appindicator-gtk3"] },
+      "deb": { "depends": ["libwebkit2gtk-4.1-0", "libayatana-appindicator3-1"] },
+      "appimage": { "bundleMediaFramework": true }
+    }
+  }
+}

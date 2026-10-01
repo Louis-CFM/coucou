@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, type DragDropPayload } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -70,6 +70,8 @@ export class Island {
   private collapsed = false;
   private collapseTimer: number | null = null;
   private wasInIsland = false;
+  /** The cursor comes from DOM events rather than Rust (see `useDomCursor`). */
+  private domCursor = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
   private homeCollapseAt: number | null = null;
@@ -341,8 +343,14 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
-  private onDragDrop(e: { type: string; paths?: string[] }) {
+  private onDragDrop(e: DragDropPayload) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
+    // On Linux nothing else reports the cursor during a drag; GTK does send it
+    // with every drag event, in physical pixels.
+    if (this.domCursor && e.position && e.type !== "leave") {
+      const scale = window.devicePixelRatio || 1;
+      this.onCursor(e.position.x / scale, e.position.y / scale);
+    }
     if (State.paused) return;
     switch (e.type) {
       case "enter":
@@ -553,9 +561,26 @@ export class Island {
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
-    if (!IS_TAURI) {
-      window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
-    }
+    if (!IS_TAURI) this.useDomCursor();
+  }
+
+  /**
+   * Drives the cursor from the page's own mouse events instead of Rust's poll.
+   * Used in a plain browser, and on Linux, where Wayland tells no app where the
+   * pointer is outside its own window. The window only takes the mouse over the
+   * island there (an input region set from `setIslandRect`), so leaving the
+   * window is leaving the island.
+   */
+  useDomCursor() {
+    if (this.domCursor) return;
+    this.domCursor = true;
+    window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+    document.documentElement.addEventListener("mouseleave", (e) => {
+      // The exit point still sits inside the hit margin; push it just past it,
+      // below the island, so `onCursor` sees the mouse leave.
+      const rect = this.islandRect();
+      this.onCursor(e.clientX, Math.max(e.clientY, rect.y + rect.h + HIT_MARGIN + 1));
+    });
   }
 
   /** Cursor in window-logical coordinates. */

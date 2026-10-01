@@ -1,9 +1,13 @@
-// Named-pipe server for coucou-hook.
+// Relay server for coucou-hook: a named pipe on Windows, a Unix socket on Linux.
 //
-// `\\.\pipe\coucou-<sid>` — one instance per connection. Every hook event is
-// forwarded to the island as a `hook` event. `PermissionRequest` is the only one
-// that keeps its connection open: it waits for the island's decision and writes
-// it back on the same pipe, which is how approving from the island works.
+// Windows: `\\.\pipe\coucou-<sid>`, one instance per connection.
+// Linux: `$XDG_RUNTIME_DIR/coucou.sock`, in a folder only this user can enter,
+// and every connection is checked to come from the same user id.
+//
+// Every hook event is forwarded to the island as a `hook` event.
+// `PermissionRequest` is the only one that keeps its connection open: it waits
+// for the island's decision and writes it back on the same connection, which is
+// how approving from the island works.
 //
 // Claude Code is never blocked by us. Three things guarantee it:
 //   * coucou-hook gives the connection 300 ms and exits cleanly if we are closed;
@@ -24,8 +28,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::mpsc;
 
 use crate::island::WINDOW_LABEL;
@@ -56,46 +59,177 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
-/// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
-pub fn pipe_name() -> String {
-    let key = crate::win_user::current_user_sid()
-        .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\coucou-{key}")
+/// One accepted relay connection, whatever the transport.
+trait Conn: AsyncRead + AsyncWrite + Unpin + Send + 'static {
+    /// Ends the conversation; coucou-hook sees end-of-file.
+    fn close(&mut self);
 }
 
-pub fn start(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let name = pipe_name();
-        // first_pipe_instance also means we refuse to join a pipe somebody else
-        // already owns under our name, rather than serving on top of it.
-        let mut server = match ServerOptions::new().first_pipe_instance(true).create(&name) {
-            Ok(s) => s,
-            Err(err) => {
-                log::line(format!("cannot open the relay pipe: {err}"));
-                return;
-            }
-        };
-        loop {
-            if server.connect().await.is_err() {
-                tokio::time::sleep(Duration::from_millis(200)).await;
-                continue;
-            }
-            // Hand the connected instance to a task and listen on a fresh one.
-            let next = match ServerOptions::new().create(&name) {
+pub use transport::start;
+
+#[cfg(windows)]
+mod transport {
+    use std::time::Duration;
+
+    use tauri::AppHandle;
+    use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+
+    use super::{handle, Conn};
+    use crate::log;
+
+    impl Conn for NamedPipeServer {
+        fn close(&mut self) {
+            let _ = self.disconnect();
+        }
+    }
+
+    /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
+    fn pipe_name() -> String {
+        let key = crate::win_user::current_user_sid()
+            .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
+        format!(r"\\.\pipe\coucou-{key}")
+    }
+
+    pub fn start(app: AppHandle) {
+        tauri::async_runtime::spawn(async move {
+            let name = pipe_name();
+            // first_pipe_instance also means we refuse to join a pipe somebody else
+            // already owns under our name, rather than serving on top of it.
+            let mut server = match ServerOptions::new().first_pipe_instance(true).create(&name) {
                 Ok(s) => s,
                 Err(err) => {
-                    log::line(format!("cannot reopen the relay pipe: {err}"));
+                    log::line(format!("cannot open the relay pipe: {err}"));
                     return;
                 }
             };
-            let connected = std::mem::replace(&mut server, next);
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, connected).await });
-        }
-    });
+            loop {
+                if server.connect().await.is_err() {
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    continue;
+                }
+                // Hand the connected instance to a task and listen on a fresh one.
+                let next = match ServerOptions::new().create(&name) {
+                    Ok(s) => s,
+                    Err(err) => {
+                        log::line(format!("cannot reopen the relay pipe: {err}"));
+                        return;
+                    }
+                };
+                let connected = std::mem::replace(&mut server, next);
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { handle(app, connected).await });
+            }
+        });
+    }
 }
 
-async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
+#[cfg(unix)]
+mod transport {
+    use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+    use std::path::{Path, PathBuf};
+    use std::time::Duration;
+
+    use tauri::AppHandle;
+    use tokio::net::{UnixListener, UnixStream};
+
+    use super::{handle, Conn};
+    use crate::log;
+
+    impl Conn for UnixStream {
+        fn close(&mut self) {
+            // Dropping the stream closes it; nothing to tear down first.
+        }
+    }
+
+    fn uid() -> u32 {
+        unsafe { libc::getuid() }
+    }
+
+    /// The folder the socket lives in: $XDG_RUNTIME_DIR (private to this user by
+    /// definition), else systemd's /run/user/<uid>, else a 0700 folder in /tmp.
+    /// Must match coucou-hook's `socket_dir()` exactly.
+    fn socket_dir() -> PathBuf {
+        if let Some(dir) = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from) {
+            if dir.is_absolute() && dir.is_dir() {
+                return dir;
+            }
+        }
+        let run = PathBuf::from(format!("/run/user/{}", uid()));
+        if run.is_dir() {
+            return run;
+        }
+        PathBuf::from(format!("/tmp/coucou-{}", uid()))
+    }
+
+    fn socket_path() -> PathBuf {
+        socket_dir().join("coucou.sock")
+    }
+
+    /// The folder must exist, belong to us and let nobody else in — otherwise
+    /// another account could read every tool call or answer our prompts.
+    fn private_dir(dir: &Path) -> Result<(), String> {
+        if !dir.exists() {
+            std::fs::DirBuilder::new()
+                .mode(0o700)
+                .create(dir)
+                .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+        }
+        let meta = std::fs::symlink_metadata(dir).map_err(|e| e.to_string())?;
+        if !meta.is_dir() || meta.uid() != uid() || meta.permissions().mode() & 0o077 != 0 {
+            return Err(format!("{} is not a private folder of ours", dir.display()));
+        }
+        Ok(())
+    }
+
+    pub fn start(app: AppHandle) {
+        tauri::async_runtime::spawn(async move {
+            let path = socket_path();
+            if let Some(dir) = path.parent() {
+                if let Err(err) = private_dir(dir) {
+                    log::line(format!("cannot open the relay socket: {err}"));
+                    return;
+                }
+            }
+            // A socket file left by a crash answers nothing; a live one means
+            // another Coucou is already serving, and we leave it alone.
+            if path.exists() {
+                if std::os::unix::net::UnixStream::connect(&path).is_ok() {
+                    log::line(format!("{} is already served — not taking it over", path.display()));
+                    return;
+                }
+                let _ = std::fs::remove_file(&path);
+            }
+            let listener = match UnixListener::bind(&path) {
+                Ok(l) => l,
+                Err(err) => {
+                    log::line(format!("cannot open the relay socket: {err}"));
+                    return;
+                }
+            };
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+            loop {
+                let stream = match listener.accept().await {
+                    Ok((stream, _)) => stream,
+                    Err(_) => {
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                        continue;
+                    }
+                };
+                // Belt and braces on top of the private folder: only our own
+                // user's processes get heard.
+                let same_user = stream.peer_cred().map(|c| c.uid() == uid()).unwrap_or(false);
+                if !same_user {
+                    log::line("relay connection from another user refused");
+                    continue;
+                }
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { handle(app, stream).await });
+            }
+        });
+    }
+}
+
+async fn handle<C: Conn>(app: AppHandle, mut pipe: C) {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
@@ -128,7 +262,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     if event != "PermissionRequest" {
         log::line(format!("hook {event}"));
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
-        let _ = pipe.disconnect();
+        pipe.close();
         return;
     }
 
@@ -151,7 +285,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
         let _ = pipe.flush().await;
     }
-    let _ = pipe.disconnect();
+    pipe.close();
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.

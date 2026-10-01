@@ -1,10 +1,11 @@
 //! coucou-hook — the relay Claude Code runs on every hook event.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
-//! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
+//! Coucou over the named pipe `\\.\pipe\coucou-<sid>` on Windows, or the Unix
+//! socket `$XDG_RUNTIME_DIR/coucou.sock` on Linux.
 //!
 //! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
-//! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
+//! * If the pipe/socket does not exist — Coucou is closed — we exit 0 immediately with
 //!   nothing on stdout, and the session carries on untouched.
 //! * Every step runs under a deadline enforced by the main thread, so a pipe that
 //!   accepts the connection and then stops reading cannot wedge the session
@@ -17,7 +18,9 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(windows)]
+use std::time::Instant;
 
 /// Budget for getting a pipe connection. Beyond this Claude Code wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
@@ -26,10 +29,6 @@ const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
 
-/// `ERROR_PIPE_BUSY` — every instance is serving someone else right now. This is
-/// the one error worth retrying: the server exists and a slot will free up.
-const ERROR_PIPE_BUSY: i32 = 231;
-
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
 const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
@@ -37,11 +36,18 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
 
+#[cfg(windows)]
 mod win;
+
+/// `ERROR_PIPE_BUSY` — every instance is serving someone else right now. This is
+/// the one error worth retrying: the server exists and a slot will free up.
+#[cfg(windows)]
+const ERROR_PIPE_BUSY: i32 = 231;
 
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
+#[cfg(windows)]
 fn pipe_path() -> String {
     let key = win::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
@@ -50,6 +56,7 @@ fn pipe_path() -> String {
 
 /// Opens the pipe. Retries only while the server is busy: any other error means
 /// there is nothing to talk to, and waiting would only delay Claude Code.
+#[cfg(windows)]
 fn connect() -> Option<std::fs::File> {
     use std::os::windows::io::AsRawHandle;
     let path = pipe_path();
@@ -69,6 +76,46 @@ fn connect() -> Option<std::fs::File> {
             }
         }
     }
+}
+
+#[cfg(unix)]
+fn uid() -> u32 {
+    unsafe { libc::getuid() }
+}
+
+/// $XDG_RUNTIME_DIR, else /run/user/<uid>, else /tmp/coucou-<uid>.
+/// Must match `socket_dir()` in the app's pipe.rs exactly.
+#[cfg(unix)]
+fn socket_dir() -> std::path::PathBuf {
+    use std::path::PathBuf;
+    if let Some(dir) = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from) {
+        if dir.is_absolute() && dir.is_dir() {
+            return dir;
+        }
+    }
+    let run = PathBuf::from(format!("/run/user/{}", uid()));
+    if run.is_dir() {
+        return run;
+    }
+    PathBuf::from(format!("/tmp/coucou-{}", uid()))
+}
+
+/// Opens the socket. A missing socket or a refused connection means Coucou is
+/// closed: no retry, the session carries on at once. A socket that is not ours
+/// gets nothing from us.
+#[cfg(unix)]
+fn connect() -> Option<std::os::unix::net::UnixStream> {
+    use std::os::unix::fs::MetadataExt;
+    let path = socket_dir().join("coucou.sock");
+    let meta = std::fs::symlink_metadata(&path).ok()?;
+    if meta.uid() != uid() {
+        return None;
+    }
+    let stream = std::os::unix::net::UnixStream::connect(&path).ok()?;
+    // The main thread's deadline is the real guard; these just stop a stuck
+    // peer from keeping the worker busy for no reason.
+    let _ = stream.set_write_timeout(Some(CONNECT_TIMEOUT * 4));
+    Some(stream)
 }
 
 fn main() {
@@ -156,8 +203,9 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
-    // Which terminal the session runs in. Unlike macOS, Coucou on Windows accepts
-    // events from every terminal, so this is context only — never a filter.
+    // Which terminal the session runs in. Unlike macOS, Coucou on Windows and
+    // Linux accepts events from every terminal, so this is context only — never
+    // a filter.
     for (key, var) in [
         ("term_program", "TERM_PROGRAM"),
         ("wt_session", "WT_SESSION"),

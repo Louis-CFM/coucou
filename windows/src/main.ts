@@ -19,6 +19,9 @@ async function main() {
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+    // No global cursor on Linux (Wayland keeps it private): follow the page's
+    // own mouse events instead of the Win32 poll.
+    if (boot.platform === "linux") island.useDomCursor();
   }
   island.applySettings();
   State.loadIntegrationTasks();

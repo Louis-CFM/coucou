@@ -1,17 +1,22 @@
-// Coucou for Windows — app wiring and the commands the island calls.
+// Coucou for Windows and Linux — app wiring and the commands the island calls.
 
 mod claude;
+mod clock;
 mod files;
 mod hooks;
 mod integrations;
 mod island;
+#[cfg(target_os = "linux")]
+mod linux;
 mod log;
 mod pipe;
 mod secrets;
 mod settings;
 mod tray;
+#[cfg(windows)]
 mod win_user;
 
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -29,6 +34,7 @@ use pipe::Pending;
 use settings::Settings;
 
 /// Keeps spawned helpers from flashing a console window.
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub struct Shared {
@@ -43,6 +49,8 @@ pub struct BootInfo {
     screen: ScreenInfo,
     version: String,
     hook_path: String,
+    /// "windows" or "linux" — the front end words a few things differently.
+    platform: &'static str,
 }
 
 #[tauri::command]
@@ -56,6 +64,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
+        platform: std::env::consts::OS,
     }
 }
 
@@ -94,15 +103,24 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
-    island::set_ignore_cursor(&app, false);
-    shared.gate.forget_ignore_state();
+    #[cfg(windows)]
+    {
+        island::set_ignore_cursor(&app, false);
+        shared.gate.forget_ignore_state();
+    }
+    #[cfg(target_os = "linux")]
+    island::update_input_region(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
-fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
+fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    #[cfg(target_os = "linux")]
+    island::update_input_region(&app, &shared.gate);
+    #[cfg(not(target_os = "linux"))]
+    let _ = app;
 }
 
 #[tauri::command]
@@ -126,14 +144,18 @@ fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return;
     }
+    #[cfg(windows)]
     let _ = Command::new("rundll32.exe")
         .args(["url.dll,FileProtocolHandler", &url])
         .creation_flags(CREATE_NO_WINDOW)
         .spawn();
+    #[cfg(target_os = "linux")]
+    let _ = linux::clean_env(&mut Command::new("xdg-open")).arg(&url).spawn();
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to Explorer otherwise.
+/// and falls back to the file manager otherwise.
+#[cfg(windows)]
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
     // No `cmd /C` anywhere near this. The path is a project folder chosen by
@@ -158,6 +180,7 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
 /// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
 /// spawning `code.cmd` directly is safe.
+#[cfg(windows)]
 fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
     let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
     let dirs = std::env::var_os("PATH")?;
@@ -170,6 +193,29 @@ fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
         }
     }
     None
+}
+
+/// Linux: VS Code (or VSCodium) when one is on PATH, else the folder in the
+/// file manager through xdg-open. The path is always a separate argument —
+/// never through a shell.
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn open_in_vscode(path: Option<String>) -> bool {
+    let path = path.filter(|p| !p.is_empty());
+    for name in ["code", "codium", "code-oss"] {
+        let Some(code) = linux::find_on_path(name) else { continue };
+        let mut cmd = Command::new(code);
+        if let Some(p) = path.as_deref() {
+            cmd.arg(p);
+        }
+        if linux::clean_env(&mut cmd).spawn().is_ok() {
+            return true;
+        }
+    }
+    if let Some(p) = path.as_deref() {
+        let _ = linux::clean_env(&mut Command::new("xdg-open")).arg(p).spawn();
+    }
+    false
 }
 
 #[tauri::command]
@@ -279,7 +325,7 @@ fn secret_clear(key: String) -> Result<(), String> {
     secrets::clear(&key)
 }
 
-/// Opens the configured n8n instance — the URL lives in the Credential Manager.
+/// Opens the configured n8n instance — the URL lives in the key store.
 #[tauri::command]
 fn open_n8n() {
     if let Some(url) = secrets::get("n8n-url") {
@@ -366,6 +412,9 @@ fn open_settings_window(app: AppHandle) {
 }
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux::prepare_env();
+
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
 
@@ -410,7 +459,15 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            tray::build(&handle)?;
+            #[cfg(target_os = "linux")]
+            let tray_ok = linux::tray_available();
+            #[cfg(not(target_os = "linux"))]
+            let tray_ok = true;
+            if tray_ok {
+                tray::build(&handle)?;
+            } else {
+                log::line("no appindicator library — running without a tray icon");
+            }
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
 

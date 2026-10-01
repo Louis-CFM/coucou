@@ -4,6 +4,13 @@
 // There is no notch on a PC, so the island is a black shape drawn at the top
 // centre of the main display inside a borderless, transparent, always-on-top
 // window that never takes focus.
+//
+// Windows: Win32 window styles, a 60 Hz cursor poll and WS_EX_TRANSPARENT for
+// click-through.
+// Linux: GTK hints for the window, and an input region shaped like the island
+// for click-through. Wayland gives no app the global cursor position, so the
+// island follows the mouse from its own DOM events instead, and the poll thread
+// only watches for display changes.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -12,15 +19,18 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
-use windows::Win32::Foundation::{HWND, POINT};
+#[cfg(windows)]
 use windows::core::BOOL;
-use windows::Win32::Foundation::LPARAM;
+#[cfg(windows)]
+use windows::Win32::Foundation::{HWND, LPARAM, POINT};
+#[cfg(windows)]
 use windows::Win32::System::Ole::RevokeDragDrop;
+#[cfg(windows)]
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
-use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
+    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
@@ -37,6 +47,7 @@ pub const WINDOW_LABEL: &str = "island";
 const HIT_MARGIN: f64 = 14.0;
 
 #[derive(Serialize, Clone)]
+#[cfg_attr(not(windows), allow(dead_code))]
 pub struct CursorPayload {
     pub x: f64,
     pub y: f64,
@@ -69,6 +80,7 @@ pub struct PollGate {
     pub collapsed: AtomicBool,
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into Win32 when it changes.
+    #[cfg_attr(not(windows), allow(dead_code))]
     ignoring: AtomicBool,
 }
 
@@ -85,6 +97,10 @@ impl PollGate {
 
     pub fn set_rect(&self, rect: IslandRect) {
         *self.rect.lock().unwrap() = rect;
+    }
+
+    pub fn rect(&self) -> IslandRect {
+        *self.rect.lock().unwrap()
     }
 
     /// Forces the next poll tick to re-apply the flag (after a window resize).
@@ -114,13 +130,23 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
 }
 
-fn cursor_physical() -> Option<(f64, f64)> {
+#[cfg(windows)]
+fn cursor_physical(_app: &AppHandle) -> Option<(f64, f64)> {
     let mut p = POINT::default();
     unsafe { GetCursorPos(&mut p).ok()? };
     Some((p.x as f64, p.y as f64))
 }
 
-/// Lets dropped files reach the app again.
+/// Under X11 (and XWayland, where Coucou runs by default) this is the real
+/// pointer position, at least while it is over an X window; native Wayland has
+/// no answer at all. Only used to pick the display, so stale is good enough.
+#[cfg(not(windows))]
+fn cursor_physical(app: &AppHandle) -> Option<(f64, f64)> {
+    let p = app.cursor_position().ok()?;
+    Some((p.x, p.y))
+}
+
+/// Lets dropped files reach the app again (Windows only).
 ///
 /// wry installs its drop target by walking the webview's child windows **once**,
 /// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
@@ -131,6 +157,7 @@ fn cursor_physical() -> Option<(f64, f64)> {
 /// that feeds Tauri's drag events.
 ///
 /// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
+#[cfg(windows)]
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
         let Some(win) = app.get_webview_window(label) else { continue };
@@ -141,6 +168,7 @@ pub fn unblock_webview_drops(app: &AppHandle) {
     }
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
     let mut name = [0u16; 64];
     let len = unsafe { GetClassNameW(hwnd, &mut name) };
@@ -155,6 +183,7 @@ unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
 
 /// True while the left mouse button is held — the only signal we get that a
 /// drag might be in flight before it reaches the window.
+#[cfg(windows)]
 fn left_button_down() -> bool {
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
@@ -172,7 +201,7 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
     if pref == "cursor" {
-        if let Some((cx, cy)) = cursor_physical() {
+        if let Some((cx, cy)) = cursor_physical(app) {
             if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
                 return Some(m.clone());
             }
@@ -217,6 +246,13 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y;
 
+    // GTK never sizes a non-resizable window below its natural size (200 px
+    // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
+    // re-applies the config's `resizable: false` after the first configure, so
+    // this is asked every time, in order, just before the resize. Undecorated,
+    // the window still offers the user nothing to resize it by.
+    #[cfg(target_os = "linux")]
+    let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Moving across displays can rescale the window: re-assert the physical size.
@@ -224,6 +260,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_always_on_top(true);
 }
 
+#[cfg(windows)]
 fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
     let raw = win.hwnd().ok()?.0 as isize;
     if raw == 0 {
@@ -234,6 +271,7 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 
 /// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
 /// island out of Alt-Tab.
+#[cfg(windows)]
 pub fn make_non_activating(win: &WebviewWindow) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
@@ -244,6 +282,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
 }
 
 /// Temporarily allow activation so a text field inside the island can be typed in.
+#[cfg(windows)]
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
@@ -272,6 +311,7 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
 /// visible. Parked on a condvar the rest of the time.
+#[cfg(windows)]
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
@@ -305,7 +345,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 let Some(win) = window(&app) else { continue };
                 let Ok(origin) = win.outer_position() else { continue };
                 let scale = win.scale_factor().unwrap_or(1.0);
-                let Some((cx, cy)) = cursor_physical() else { continue };
+                let Some((cx, cy)) = cursor_physical(&app) else { continue };
                 let x = (cx - origin.x as f64) / scale;
                 let y = (cy - origin.y as f64) / scale;
                 let size = match win.inner_size() {
@@ -361,8 +401,95 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     });
 }
 
+#[cfg(windows)]
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
     }
+}
+
+// ── Linux ─────────────────────────────────────────────────────────────────────
+
+/// Keeps the island out of the taskbar, the pager and the focus chain, and above
+/// other windows. The window manager reads these as ordinary X11/GTK hints.
+#[cfg(target_os = "linux")]
+pub fn make_non_activating(win: &WebviewWindow) {
+    use gtk::prelude::*;
+    let Ok(gtk_win) = win.gtk_window() else { return };
+    gtk_win.set_accept_focus(false);
+    gtk_win.set_focus_on_map(false);
+    gtk_win.set_skip_taskbar_hint(true);
+    gtk_win.set_skip_pager_hint(true);
+    gtk_win.set_keep_above(true);
+}
+
+/// Temporarily accept focus so a text field inside the island can be typed in.
+#[cfg(target_os = "linux")]
+pub fn set_activating(win: &WebviewWindow, activating: bool) {
+    use gtk::prelude::*;
+    if let Ok(gtk_win) = win.gtk_window() {
+        gtk_win.set_accept_focus(activating);
+    }
+}
+
+/// Click-through on Linux: the window only takes the mouse inside the island
+/// shape (plus the usual margin), or inside the wake strip while hidden.
+///
+/// Toggling the whole window like Windows does cannot work here: under Wayland
+/// nobody can see the cursor over another app's window, so a fully click-through
+/// island would never learn that the mouse came back. An input region needs no
+/// cursor at all — the compositor does the hit test, and the webview's own
+/// mouse events tell the island where the pointer is.
+#[cfg(target_os = "linux")]
+pub fn update_input_region(app: &AppHandle, gate: &PollGate) {
+    let Some(win) = window(app) else { return };
+    let collapsed = gate.collapsed.load(Ordering::Relaxed);
+    let r = gate.rect();
+    let _ = app.run_on_main_thread(move || {
+        use gtk::cairo::{RectangleInt, Region};
+        use gtk::prelude::*;
+        let Ok(gtk_win) = win.gtk_window() else { return };
+        let region = if collapsed {
+            // Only the wake strip, even if the window manager kept the window
+            // larger than asked: an invisible block at the top of the screen
+            // swallowing clicks is the one thing this must never be.
+            Region::create_rectangle(&RectangleInt::new(0, 0, STRIP_W as i32, STRIP_H as i32))
+        } else if r.w > 0.0 {
+            let x = (r.x - HIT_MARGIN).max(0.0).floor() as i32;
+            let y = (r.y - HIT_MARGIN).max(0.0).floor() as i32;
+            let right = (r.x + r.w + HIT_MARGIN).min(PANEL_W).ceil() as i32;
+            let bottom = (r.y + r.h + HIT_MARGIN).min(PANEL_H).ceil() as i32;
+            Region::create_rectangle(&RectangleInt::new(x, y, (right - x).max(1), (bottom - y).max(1)))
+        } else {
+            // Nothing on screen yet: take no clicks at all (GTK has no truly
+            // empty input shape, so one corner pixel it is, as in tao).
+            Region::create_rectangle(&RectangleInt::new(0, 0, 1, 1))
+        };
+        gtk_win.input_shape_combine_region(Some(&region));
+    });
+}
+
+/// Watches for display changes about twice a second while the island is
+/// visible, and parks on the condvar while it is hidden. There is no cursor to
+/// poll on Linux (see the top of this file).
+#[cfg(target_os = "linux")]
+pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
+    std::thread::spawn(move || {
+        let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        loop {
+            gate.wait_until_active();
+            while gate.is_active() {
+                std::thread::sleep(Duration::from_millis(500));
+                let now = current_screen_key(&app);
+                if now.is_some() && now != last_screen {
+                    let first = last_screen.is_none();
+                    last_screen = now;
+                    if !first {
+                        crate::log::line("display layout changed — repositioning");
+                        let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
+                    }
+                }
+            }
+        }
+    });
 }

@@ -1,0 +1,101 @@
+name: Linux
+
+# Builds the Linux app (AppImage, .rpm, .deb) from the same Tauri sources as the
+# Windows one. Run it by hand from the Actions tab to get downloadable packages,
+# or push a tag like `linux-v0.1.1` to publish a release.
+
+on:
+  push:
+    tags:
+      - 'linux-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # The oldest supported Ubuntu with WebKitGTK 4.1: the AppImage then runs on
+    # anything at least as new, Bazzite and the rest of Fedora included.
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: linux-cargo-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the tag and every version agree
+        if: startsWith(github.ref, 'refs/tags/linux-v')
+        run: |
+          tag="${GITHUB_REF_NAME#linux-v}"
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          cargo=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "tag=$tag tauri.conf=$conf package.json=$pkg Cargo.toml=$cargo"
+          [ "$tag" = "$conf" ] && [ "$tag" = "$pkg" ] && [ "$tag" = "$cargo" ] || {
+            echo "::error::tag says $tag but the files disagree"; exit 1; }
+
+      # `npm run build` (run by tauri as beforeBuildCommand) builds coucou-hook
+      # first, which tauri.linux.conf.json bundles as a resource. `pack` copies
+      # the packages out of target/ under their shipping names.
+      - name: Build and pack
+        id: pack
+        run: |
+          npm run pack
+          echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+          ls -la release
+
+      # After the build: the app's tests compile against dist/ and the bundled
+      # relay, which only exist once `pack` has run.
+      - name: Test
+        run: cargo test --workspace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Coucou-Linux-${{ steps.pack.outputs.version }}
+          path: |
+            windows/release/Coucou-Linux-${{ steps.pack.outputs.version }}-x86_64.AppImage
+            windows/release/Coucou-Linux-${{ steps.pack.outputs.version }}-x86_64.rpm
+            windows/release/Coucou-Linux-${{ steps.pack.outputs.version }}-amd64.deb
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/linux-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.pack.outputs.version }}"
+          # --latest=false: the macOS `v*` releases own "Latest", which the
+          # site's download button points at.
+          gh release create "$GITHUB_REF_NAME" \
+            "release/Coucou-Linux-$v-x86_64.AppImage" \
+            "release/Coucou-Linux-$v-x86_64.rpm" \
+            "release/Coucou-Linux-$v-amd64.deb" \
+            --title "Coucou for Linux $v" \
+            --notes "Coucou for Linux $v — Mochi at the top of your screen. On Bazzite, download the AppImage, make it executable and run it." \
+            --latest=false

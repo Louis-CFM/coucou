@@ -17,6 +17,9 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 
 <img src="screenshots/greeting.png" width="640" alt="Mochi waving hello at launch">
 
+> **Linux too.** The same sources build a Linux app (AppImage, .rpm, .deb),
+> made with Bazzite in mind. See [Linux](#linux-bazzite-fedora-and-others).
+
 ---
 
 ## Install
@@ -126,8 +129,8 @@ windows/
     island/            state machine, hooks, integrations
     views/             every island view
     settings/          the settings window
-  src-tauri/           Rust backend: window, named pipe, Claude API, pollers
-  hook/                coucou-hook.exe, the Claude Code relay
+  src-tauri/           Rust backend: window, pipe/socket, chat, pollers
+  hook/                coucou-hook(.exe), the hook relay
   scripts/             icon generator
 ```
 
@@ -135,6 +138,85 @@ windows/
 
 `%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
+
+## Linux (Bazzite, Fedora and others)
+
+The same code runs on Linux; only the parts that touch the OS change:
+
+| | Windows | Linux |
+|---|---|---|
+| Relay | named pipe `\\.\pipe\coucou-<sid>` | Unix socket `$XDG_RUNTIME_DIR/coucou.sock` (mode 0600, same-user check) |
+| `coucou-hook` | `%LOCALAPPDATA%\Coucou\bin\` | `~/.local/share/coucou/bin/` |
+| Keys | Windows Credential Manager | Secret Service — KWallet on KDE, GNOME Keyring on GNOME |
+| Settings | `%APPDATA%\Coucou\settings.json` | `~/.config/coucou/settings.json` |
+| Log | `%LOCALAPPDATA%\Coucou\coucou.log` | `~/.local/share/coucou/coucou.log` |
+| Packages | NSIS installer | AppImage, .rpm, .deb |
+
+### Install on Bazzite
+
+Bazzite is an image-based Fedora, so the AppImage is the easy way in:
+
+1. Get `Coucou-Linux-x86_64.AppImage` — from the repo's **Actions → Linux → Run
+   workflow** (the packages are attached to the run), from a `linux-v*` release, or
+   [build it yourself](#build-it-on-bazzite).
+2. `chmod +x Coucou-Linux-x86_64.AppImage && ./Coucou-Linux-x86_64.AppImage`
+   (or open it with an AppImage manager such as Gear Lever, from Flathub, to add
+   it to the menu).
+3. Tray icon → **Settings… → Install hooks…**, exactly as on Windows.
+
+The .rpm works too (`rpm-ostree install ./Coucou-Linux-*.rpm`, then reboot), but
+layering packages on Bazzite is best kept for things that need it.
+
+### Build it on Bazzite
+
+Build inside a Fedora distrobox, so nothing is layered onto the host:
+
+```bash
+distrobox create --name coucou-build --image registry.fedoraproject.org/fedora-toolbox:latest
+distrobox enter coucou-build
+
+sudo dnf install -y webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel \
+  librsvg2-devel openssl-devel patchelf nodejs npm gcc
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.cargo/env
+
+cd coucou/windows      # your clone of this repo
+npm install
+# A container has no FUSE for linuxdeploy, and its `strip` is older than
+# Fedora's libraries: these two keep the AppImage step happy.
+export APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=1
+npm run pack           # → release/Coucou-Linux-X.Y.Z-x86_64.AppImage, .rpm, .deb
+```
+
+Then run the AppImage from the host as above. `npm run tauri dev` works inside the
+box as well, for live-reloading development.
+
+On Debian/Ubuntu the packages are `libwebkit2gtk-4.1-dev libgtk-3-dev
+libayatana-appindicator3-dev librsvg2-dev patchelf`.
+
+### What's different on Linux
+
+- **XWayland.** Wayland lets no ordinary window place itself, stay on top or
+  skip the taskbar, and the island needs all three. On a Wayland session (the
+  default on Bazzite, KDE and GNOME alike) Coucou therefore runs through XWayland,
+  which every Bazzite desktop includes. Set `COUCOU_NATIVE_WAYLAND=1` to stay on
+  native Wayland anyway — the island then goes wherever the compositor puts it —
+  and a `GDK_BACKEND` you set yourself always wins. On a HiDPI screen, if the
+  island looks too small, start it with `GDK_SCALE=2`.
+- **Mochi's eyes follow the mouse only over the island.** Wayland tells no app
+  where the pointer is over other windows. Hovering, clicking and the wake-up
+  strip at the top of the screen work as usual.
+- **Click-through** comes from an input region shaped like the island, so clicks
+  next to it reach the window underneath.
+- **Files** have to be dropped onto the island itself.
+- **NVIDIA.** On Bazzite's `-nvidia` images Coucou sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` for itself, which avoids WebKitGTK's blank
+  windows on that driver.
+- **Tray.** KDE shows it out of the box; GNOME needs the AppIndicator extension.
+  Without a tray Coucou still runs, and the island's own ⚙ view has a
+  **Settings…** button.
+- "Open terminal" opens the folder in VS Code (or VSCodium) when `code` is on
+  `PATH`, and in the file manager otherwise.
 
 ## What's different from the Mac version
 

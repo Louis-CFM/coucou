@@ -14,9 +14,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
-use windows::Win32::System::SystemInformation::GetLocalTime;
 
-use crate::settings;
+use crate::{clock, settings};
 
 /// Every event the island reacts to, with the hook timeout written to settings.json.
 /// PermissionRequest waits for a human, so it gets the decision timeout + 10 s.
@@ -58,8 +57,14 @@ pub struct HookPreview {
     pub fingerprint: String,
 }
 
+/// The variable that holds the home directory on this platform.
+#[cfg(windows)]
+const HOME_VAR: &str = "USERPROFILE";
+#[cfg(not(windows))]
+const HOME_VAR: &str = "HOME";
+
 fn home() -> PathBuf {
-    std::env::var_os("USERPROFILE")
+    std::env::var_os(HOME_VAR)
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
 }
@@ -197,11 +202,8 @@ fn pretty(v: &Value) -> String {
 /// Down to the second: installing then uninstalling in the same minute must not
 /// quietly overwrite the first backup.
 fn stamp() -> String {
-    let t = unsafe { GetLocalTime() };
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond
-    )
+    let (y, mo, d, h, mi, s) = clock::local_now();
+    format!("{y:04}{mo:02}{d:02}-{h:02}{mi:02}{s:02}")
 }
 
 fn backup_path() -> PathBuf {
@@ -303,9 +305,11 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     Ok(backup.to_string_lossy().to_string())
 }
 
-/// Copies coucou-hook.exe into %LOCALAPPDATA%\Coucou\bin on launch.
+/// Copies the relay into the app's data folder on launch: %LOCALAPPDATA%\Coucou\bin
+/// on Windows, ~/.local/share/coucou/bin on Linux. The hooks need a path that
+/// survives updates, and on Linux an AppImage's own files vanish when it exits.
 /// In a bundled install it comes from the app resources; in `tauri dev` it sits
-/// next to coucou.exe in the workspace target directory.
+/// next to the app binary in the workspace target directory.
 ///
 /// Every candidate is tried rather than just the first, because getting this
 /// wrong is silent and fatal: `resources` used to be a glob, which made NSIS
@@ -313,6 +317,7 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 /// the relay was simply never installed. It only looked healthy on a developer
 /// machine, where a leftover copy from `tauri dev` was already sitting in bin/.
 pub fn ensure_hook_exe(app: &AppHandle) {
+    let name = settings::HOOK_FILE_NAME;
     let dest = settings::hook_exe_path();
     let Some(dir) = dest.parent() else { return };
     if std::fs::create_dir_all(dir).is_err() {
@@ -320,24 +325,24 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     }
 
     let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(p) = app.path().resolve("coucou-hook.exe", tauri::path::BaseDirectory::Resource) {
+    if let Ok(p) = app.path().resolve(name, tauri::path::BaseDirectory::Resource) {
         candidates.push(p);
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             // Installed build, then `tauri dev` (target/debug) next to the
             // release hook the pre-build step produces.
-            candidates.push(parent.join("coucou-hook.exe"));
-            candidates.push(parent.join("../release/coucou-hook.exe"));
+            candidates.push(parent.join(name));
+            candidates.push(parent.join("../release").join(name));
             // Belt and braces: where the old glob form used to land it.
-            candidates.push(parent.join("_up_/target/release/coucou-hook.exe"));
+            candidates.push(parent.join("_up_/target/release").join(name));
         }
     }
 
     let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
-    let Some(src) = candidates.into_iter().find(|p| p.exists()) else {
+    let Some(src) = candidates.into_iter().find(|p| p.is_file()) else {
         crate::log::line(format!(
-            "coucou-hook.exe not found — Claude Code hooks cannot work. Looked in: {}",
+            "{name} not found — hooks cannot work. Looked in: {}",
             tried.join(", ")
         ));
         return;
@@ -350,13 +355,39 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     if same {
         return;
     }
-    // A hook may be running right now and hold the file open; keeping the old
-    // copy is fine, it is the same relay.
-    if let Err(err) = std::fs::copy(&src, &dest) {
+    if let Err(err) = install_relay(&src, &dest) {
         if !dest.exists() {
-            crate::log::line(format!("could not install coucou-hook.exe: {err}"));
+            crate::log::line(format!("could not install {name}: {err}"));
         }
     }
+}
+
+/// A hook may be running right now and hold the file open; keeping the old copy
+/// is fine, it is the same relay.
+#[cfg(windows)]
+fn install_relay(src: &Path, dest: &Path) -> std::io::Result<()> {
+    std::fs::copy(src, dest).map(|_| ())
+}
+
+/// Copy beside the target, then rename over it. Writing straight into a binary
+/// that a hook is executing fails with "text file busy"; a rename never does,
+/// and the running hook keeps its old inode.
+#[cfg(unix)]
+fn install_relay(src: &Path, dest: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = dest.with_extension(format!("new-{}", std::process::id()));
+    let result = std::fs::copy(src, &temp)
+        .and_then(|_| std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)))
+        .and_then(|_| {
+            // Keep the source's timestamp so the "same" check above holds next launch.
+            let modified = std::fs::metadata(src)?.modified()?;
+            std::fs::File::options().write(true).open(&temp)?.set_modified(modified)
+        })
+        .and_then(|_| std::fs::rename(&temp, dest));
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp);
+    }
+    result
 }
 
 // ── Minimal unified diff (LCS) ────────────────────────────────────────────────
@@ -512,13 +543,14 @@ mod tests {
     }
 
     /// Everything filesystem-shaped lives in one test on purpose: it points
-    /// USERPROFILE at a temp directory, and that is process-wide.
+    /// the home variable (USERPROFILE / HOME) at a temp directory, and that is
+    /// process-wide.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
         let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
-        std::env::set_var("USERPROFILE", &tmp);
+        std::env::set_var(HOME_VAR, &tmp);
 
         let path = settings_path();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");

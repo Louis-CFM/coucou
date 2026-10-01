@@ -10,6 +10,7 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-Bazzite%20%2F%20Fedora-FCC624?logo=linux&logoColor=black)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -39,8 +40,8 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
-- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
-- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
+- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
+- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux keyring (KWallet / GNOME Keyring). The app only talks to the services you plug in.
 
 <table>
 <tr>
@@ -72,6 +73,14 @@ There is no notch on a PC, so the island slides out of the top edge of the scree
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
 rest of the differences.
 
+### Linux (Bazzite and others)
+
+The Windows sources build a Linux app too: an AppImage, an .rpm and a .deb. On
+Bazzite, grab the AppImage from **Actions → Linux → Run workflow** (or a `linux-v*`
+release), `chmod +x` it and run it. It runs through XWayland so the island can sit
+at the top centre of the screen and stay above other windows. Install, build and
+differences: [`windows/README.md`](windows/README.md#linux-bazzite-fedora-and-others).
+
 ### Build from source
 
 **macOS** — requirements: macOS 15+, Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
@@ -93,15 +102,25 @@ npm install
 npm run pack                # installer lands in windows/release/
 ```
 
+**Linux** — requirements: Rust, Node 20+, WebKitGTK 4.1 and GTK 3 development
+packages. On Bazzite, build inside a Fedora distrobox — step by step in
+[`windows/README.md`](windows/README.md#build-it-on-bazzite).
+
+```bash
+cd coucou/windows
+npm install
+npm run pack                # AppImage, .rpm and .deb land in windows/release/
+```
+
 ## Setup
 
-Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) → **Settings…**
+Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Linux) → **Settings…**
 
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
-| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
+| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager / Linux keyring, all optional |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 
@@ -109,7 +128,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 
 | Do this | Mochi does that |
 |---|---|
-| Hover the notch (top edge on Windows) | peeks out and says hi 👋 |
+| Hover the notch (top edge on Windows and Linux) | peeks out and says hi 👋 |
 | Click it | opens |
 | Hover Mochi | blinks, eyes grow |
 | Click Mochi | squish + annoyed |
@@ -134,6 +153,11 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 - A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
 - Claude Code hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager.
 - Details and differences in [`windows/README.md`](windows/README.md).
+
+**Linux**
+
+- The same Tauri app. The relay talks over a private Unix socket in `$XDG_RUNTIME_DIR`, keys go to the Secret Service (KWallet / GNOME Keyring), and the window runs through XWayland so it can be placed and kept on top.
+- Details and differences in [`windows/README.md`](windows/README.md#linux-bazzite-fedora-and-others).
 
 ## Contributing
 

@@ -1,18 +1,14 @@
-// Small append-only log at %LOCALAPPDATA%\Coucou\coucou.log — the Windows
-// equivalent of nbLog() in HookServer.swift. Nothing leaves the machine.
+// Small append-only log at %LOCALAPPDATA%\Coucou\coucou.log on Windows and
+// ~/.local/share/coucou/coucou.log on Linux — the equivalent of nbLog() in
+// HookServer.swift. Nothing leaves the machine.
 
 use std::io::Write;
 
-use windows::Win32::System::SystemInformation::GetLocalTime;
-
-use crate::settings;
+use crate::{clock, settings};
 
 pub fn line(message: impl AsRef<str>) {
-    let t = unsafe { GetLocalTime() };
-    let stamp = format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond
-    );
+    let (y, mo, d, h, mi, s) = clock::local_now();
+    let stamp = format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02}:{s:02}");
     let dir = settings::local_dir();
     if std::fs::create_dir_all(&dir).is_err() {
         return;
