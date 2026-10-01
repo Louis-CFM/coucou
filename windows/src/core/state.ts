@@ -92,6 +92,10 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Chat provider used by the chat. */
+  provider: "anthropic" | "ollama";
+  /** Ollama-compatible chat endpoint. */
+  ollamaEndpoint: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +110,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  provider: "anthropic",
+  ollamaEndpoint: "http://127.0.0.1:11434/api/chat",
 };
 
 type Listener = () => void;

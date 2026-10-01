@@ -5,6 +5,9 @@ Règle d'or : **vérifier la doc officielle au moment d'implémenter**. Les form
 - API Claude (Messages, outil de recherche web, modèles) : https://docs.claude.com/en/api/overview
 - API publique n8n : `{URL de l'instance}/api/v1/docs` (playground de l'instance de Louis)
 
+Le fournisseur Ollama décrit ci-dessous concerne uniquement le chat intégré de
+Coucou. Il ne transforme pas Claude Code en client Ollama.
+
 ---
 
 ## 1. Claude Code (sessions de Louis)
@@ -19,6 +22,9 @@ claude (terminal, VS Code, app Claude)
 - `nb-hook` : cible séparée dans le projet, copiée dans `~/Library/Application Support/NotchBuddy/bin/nb-hook` au premier lancement.
 - Socket : `~/Library/Application Support/NotchBuddy/nb.sock`.
 - `nb-hook <Event>` lit le JSON du hook sur stdin, ajoute le contexte du terminal (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TERM_SESSION_ID`, `__CFBundleIdentifier`, le tty trouvé en remontant les processus parents, `cwd`), l'envoie à l'app.
+- Le hook observe et relaie un processus Claude Code déjà lancé ; il ne lance,
+  ne pilote et ne remplace jamais ce processus. Si Coucou est fermé ou lent,
+  Claude Code reprend son comportement normal dans le terminal.
 - **Si l'app ne répond pas en 300 ms, `nb-hook` sort en code 0 sans rien écrire** : Claude Code continue normalement. Jamais de blocage.
 
 ### Événements à brancher et état du bonhomme
@@ -109,6 +115,12 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 ---
 
 ## 5. API Claude (recherche)
+
+Le chat et les questions sur fichier peuvent aussi utiliser un serveur Ollama
+local compatible avec `/api/chat`. L'endpoint par défaut est
+`http://127.0.0.1:11434/api/chat`, et le modèle est réglable dans les réglages.
+Ollama ne demande pas de clé et reçoit des messages texte ; les pièces jointes
+non textuelles ne sont donc pas envoyées comme images ou PDF à ce fournisseur.
 
 - `POST https://api.anthropic.com/v1/messages`, en-têtes `x-api-key`, `anthropic-version`, `content-type: application/json` (versions à vérifier dans la doc).
 - Modèle par défaut : `claude-sonnet-5`, réglable dans les réglages. Vérifier la liste des modèles disponibles dans la doc.

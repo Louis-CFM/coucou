@@ -47,8 +47,28 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 18) {
 
                 // MARK: API
-                GroupBox("Anthropic API") {
+                GroupBox("Chat provider") {
                     VStack(alignment: .leading, spacing: 8) {
+                        Picker("Provider", selection: Binding(
+                            get: { UserDefaults.standard.string(forKey: "chatProvider") ?? "anthropic" },
+                            set: { UserDefaults.standard.set($0, forKey: "chatProvider") }
+                        )) {
+                            Text("Anthropic (cloud)").tag("anthropic")
+                            Text("Ollama (local)").tag("ollama")
+                        }
+                        TextField("Model", text: Binding(
+                            get: { UserDefaults.standard.string(forKey: "chatModel") ?? "claude-sonnet-4-6" },
+                            set: { UserDefaults.standard.set($0, forKey: "chatModel") }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        TextField(
+                            "Ollama endpoint",
+                            text: Binding(
+                                get: { UserDefaults.standard.string(forKey: "ollamaEndpoint") ?? "http://127.0.0.1:11434/api/chat" },
+                                set: { UserDefaults.standard.set($0, forKey: "ollamaEndpoint") }
+                            )
+                        )
+                        .textFieldStyle(.roundedBorder)
                         SecureField("API key (sk-ant-…)", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
                         Button("Save") {

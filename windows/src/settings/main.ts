@@ -171,7 +171,7 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── Chat provider section ─────────────────────────────────────────────────────
 
 const MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
@@ -180,8 +180,15 @@ const MODELS: [string, string][] = [
 ];
 
 function apiSection(hasKey: boolean): HTMLElement {
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "anthropic", text: "Anthropic (cloud)" }),
+    h("option", { value: "ollama", text: "Ollama (local)" }),
+  );
+  provider.value = settings.provider;
+
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint" });
 
   const field = h("input", {
     type: "password",
@@ -197,13 +204,27 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
+    dot.style.background = settings.provider === "ollama" || present ? "#22c55e" : "#f4505e";
+    state.textContent = settings.provider === "ollama"
+      ? "Runs locally; no API key is required."
+      : present ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
+
+  const endpoint = h("input", {
+    type: "url",
+    value: settings.ollamaEndpoint,
+    placeholder: "http://127.0.0.1:11434/api/chat",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  endpoint.addEventListener("change", () => {
+    const value = endpoint.value.trim();
+    if (value) {
+      settings.ollamaEndpoint = value;
+      void save();
+    }
+  });
 
   saveBtn.addEventListener("click", async () => {
     const value = field.value.trim();
@@ -240,15 +261,30 @@ function apiSection(hasKey: boolean): HTMLElement {
     settings.model = model.value;
     void save();
   });
+  provider.addEventListener("change", () => {
+    settings.provider = provider.value as Settings["provider"];
+    dot.style.background = settings.provider === "ollama" ? "#22c55e" : (hasKey ? "#22c55e" : "#f4505e");
+    field.disabled = settings.provider === "ollama";
+    clearBtn.disabled = settings.provider === "ollama";
+    endpoint.disabled = settings.provider !== "ollama";
+    void save();
+    void refresh();
+  });
 
   clearBtn.style.display = hasKey ? "" : "none";
+  field.disabled = settings.provider === "ollama";
+  clearBtn.disabled = settings.provider === "ollama";
+  endpoint.disabled = settings.provider !== "ollama";
+  void refresh();
 
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Chat provider" })),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Ollama endpoint" }), endpoint),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
   );

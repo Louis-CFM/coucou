@@ -108,9 +108,15 @@ final class ClaudeService {
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let anthropicVersion = "2023-06-01"
-    private let model = "claude-sonnet-4-6"
+    private let defaultModel = "claude-sonnet-4-6"
+    private let defaultOllamaEndpoint = "http://127.0.0.1:11434/api/chat"
 
     var apiKey: String? { KeychainStore.shared.get("anthropic-api-key") }
+    var provider: String { UserDefaults.standard.string(forKey: "chatProvider") ?? "anthropic" }
+    var model: String { UserDefaults.standard.string(forKey: "chatModel") ?? defaultModel }
+    var ollamaEndpoint: String {
+        UserDefaults.standard.string(forKey: "ollamaEndpoint") ?? defaultOllamaEndpoint
+    }
 
     // Multi-turn conversation messages (for API)
     private var conversationMessages: [[String: Any]] = []
@@ -133,7 +139,7 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
+        guard provider == "ollama" || (apiKey?.isEmpty == false) else {
             await showError("API key missing. Open settings.", state: state)
             return
         }
@@ -159,16 +165,10 @@ final class ClaudeService {
 
         conversationMessages.append(["role": "user", "content": userContent])
 
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 4096,
-            "tools": webSearchTools,
-            "system": systemPrompt,
-            "messages": conversationMessages,
-        ]
+        let body = requestBody(messages: conversationMessages, tools: webSearchTools)
 
         do {
-            let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            let data = try await callAPI(body: body, beta: "web-search-2025-03-05")
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
@@ -179,7 +179,7 @@ final class ClaudeService {
     // MARK: - Structured search (M8 — window attach + web search)
 
     func search(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
+        guard provider == "ollama" || (apiKey?.isEmpty == false) else {
             await showError("Anthropic API key missing. Open settings to configure it.", state: state)
             return
         }
@@ -211,16 +211,25 @@ final class ClaudeService {
             ["type": "web_search_20250305", "name": "web_search", "max_uses": 3]
         ]
 
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 1024,
-            "tools": tools,
-            "system": system,
-            "messages": [["role": "user", "content": userContent]],
-        ]
+        let body: [String: Any]
+        if provider == "ollama" {
+            body = [
+                "model": model,
+                "stream": false,
+                "messages": [["role": "user", "content": userContent.compactMap { $0["text"] as? String }.joined(separator: "\n")]],
+            ]
+        } else {
+            body = [
+                "model": model,
+                "max_tokens": 1024,
+                "tools": tools,
+                "system": system,
+                "messages": [["role": "user", "content": userContent]],
+            ]
+        }
 
         do {
-            let result = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            let result = try await callAPI(body: body, beta: "web-search-2025-03-05")
             await handleResult(result, state: state)
         } catch {
             await showError("Network error: \(error.localizedDescription)", state: state)
@@ -229,13 +238,17 @@ final class ClaudeService {
 
     // MARK: - API call
 
-    private func callAPI(body: [String: Any], key: String, beta: String? = nil) async throws -> Data {
-        var request = URLRequest(url: endpoint)
+    private func callAPI(body: [String: Any], beta: String? = nil) async throws -> Data {
+        let url = provider == "ollama" ? URL(string: ollamaEndpoint) : endpoint
+        guard let url else { throw NSError(domain: "Chat", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid chat endpoint."]) }
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
+        if provider != "ollama", let key = apiKey {
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+            request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
+        }
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        if let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
+        if provider != "ollama", let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 45
 
@@ -248,13 +261,38 @@ final class ClaudeService {
         return data
     }
 
+    private func requestBody(messages: [[String: Any]], tools: [[String: Any]]) -> [String: Any] {
+        if provider == "ollama" {
+            let flattened = messages.map { message -> [String: Any] in
+                let content = (message["content"] as? [[String: Any]]) ?? []
+                let text = content.compactMap { $0["text"] as? String }.joined(separator: "\n")
+                return ["role": message["role"] ?? "user", "content": text]
+            }
+            return ["model": model, "stream": false, "messages": flattened]
+        }
+        return ["model": model, "max_tokens": 4096, "tools": tools, "system": systemPrompt, "messages": messages]
+    }
+
     // MARK: - Chat result handler
 
     private func handleChatResult(_ data: Data, state: AppState) async {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]] else {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             await showError("Unexpected API response.", state: state)
             return
+        }
+        let content: [[String: Any]]
+        if provider == "ollama" {
+            guard let text = (json["message"] as? [String: Any])?["content"] as? String, !text.isEmpty else {
+                await showError("Unexpected Ollama response.", state: state)
+                return
+            }
+            content = [["type": "text", "text": text]]
+        } else {
+            guard let anthropicContent = json["content"] as? [[String: Any]] else {
+                await showError("Unexpected API response.", state: state)
+                return
+            }
+            content = anthropicContent
         }
 
         // Store full content (includes tool_use/tool_result blocks) for correct multi-turn context
@@ -278,10 +316,18 @@ final class ClaudeService {
 
     private func handleResult(_ data: Data, state: AppState) async {
         // Extract text from Anthropic response (may contain tool_use / web_search_tool_result blocks)
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let textBlock = content.first(where: { $0["type"] as? String == "text" }),
-              let text = textBlock["text"] as? String else {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            await showError("Unexpected API response.", state: state)
+            return
+        }
+        let text: String?
+        if provider == "ollama" {
+            text = (json["message"] as? [String: Any])?["content"] as? String
+        } else {
+            let content = json["content"] as? [[String: Any]]
+            text = content?.first(where: { $0["type"] as? String == "text" })?["text"] as? String
+        }
+        guard let text else {
             await showError("Unexpected API response.", state: state)
             return
         }

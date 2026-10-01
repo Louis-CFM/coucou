@@ -70,9 +70,18 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+**Settings… → Chat provider** supports Anthropic or a local Ollama-compatible
+endpoint. Anthropic keys live in the **Windows Credential Manager**, never on
+disk and never in the interface — the island can only ask whether a key exists.
+Ollama uses `http://127.0.0.1:11434/api/chat` by default and needs no key; set
+the endpoint and model in Settings. Ollama chat is text-only, so image/PDF
+attachments are reduced to any readable text context.
+
+The Claude Code hooks are not an agent backend: they observe an already-running
+Claude Code process and relay events/permission requests to Coucou. Selecting
+Ollama changes only Coucou's built-in chat/file-question view; it cannot make
+Claude Code use Ollama or replace its terminal process. If Coucou is closed or
+does not answer, the hook exits and Claude Code continues in the terminal.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.

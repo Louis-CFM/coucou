@@ -248,8 +248,16 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    claude::send(
+        &chat,
+        &settings.provider,
+        &settings.model,
+        &settings.ollama_endpoint,
+        query,
+        context,
+    )
+    .await
 }
 
 #[tauri::command]
