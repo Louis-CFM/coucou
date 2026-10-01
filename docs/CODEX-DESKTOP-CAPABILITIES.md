@@ -27,6 +27,12 @@ Codex masaüstü ve CLI, yapılandırılmış MCP sunucularını paylaşır. Bu,
 
 İlk canlı entegrasyon hook tabanlı izleme ve hook'un desteklediği onay akışıyla sınırlı tutulmalıdır. Aynı sohbete devam mesajı veya kesinti, kullanılabilir ve yetkilendirilmiş bir uygulama kontrol kanalı ayrıca doğrulanana kadar masaüstü uygulamasından yapılır.
 
+### Kontrol kanalının tekrar incelenmesi
+
+PR hazırlığında kurulu runtime'ın `app-server --help`, `app-server proxy --help` ve `remote-control --help` çıktıları ile daemon bağlantısı yeniden kontrol edildi. Daemon'a bağlantı yine başarısız; masaüstü runtime'ında dış istemci için WebSocket dinleyicisi bulunmadı. `remote-control start` ayrı daemon başlatır; çalışan masaüstü stdio runtime'ının sohbetlerini o daemon'a taşıdığı doğrulanmadı. Bu nedenle otomatik daemon başlatma, depolanmış thread'i başka runtime'da resume etme veya uygulama içi özel pipe'a yazma uygulanmadı.
+
+Bu eksikliği kapatmak için masaüstünün aynı runtime'ına ait belgelenmiş, yetkilendirilmiş bir bağlantı gerekir. Kabul testi: o bağlantının `thread/loaded/list` sonucunda masaüstündeki etkin thread bulunmalı; başka runtime'da thread oluşturmadan aynı thread'e `turn/steer`/`turn/start` ve o thread'in etkin turuna `turn/interrupt` uygulanmalı; masaüstü arayüzünde aynı değişiklikler görülmeli. Mevcut kurulum bu önkoşulu sağlamadığı için mesaj gönderme/durdurma özelliği tamamlanmış sayılmaz.
+
 ## Uygulama ve gerçek test sonucu
 
 Windows entegrasyonu `codex/desktop-live-integration` dalında uygulandı. Canlı oturum kartları ilk yerel sohbeti otomatik odaklar; diğer sohbetler erişilebilir kaydırmalı listede kalır. Eski tur olayları yeni turu geri alamaz; kesilmiş veya tamamlanmış tur geç gelen araç olaylarıyla tekrar çalışıyor durumuna dönmez. Uzun oturumlarda son işlem satırı güncellenir. İzin kapanışı sağlayıcı, oturum, tur ve istek kimliğiyle eşleşir; bağlantı kopması ve zaman aşımı kartı temizler.
@@ -44,4 +50,5 @@ Hook tanımları ve güven durumu bu doğrulama sırasında değiştirilmedi. De
 
 - [Codex hooks](https://learn.chatgpt.com/docs/hooks): hook kaynakları, olaylar, trust incelemesi ve araç kapsamı.
 - [Codex app-server](https://learn.chatgpt.com/docs/app-server): JSON-RPC protokolü, thread işlemleri ve app-server bağlantıları.
+- [Developer commands](https://learn.chatgpt.com/docs/developer-commands): WebSocket/stdio taşımaları ve ayrı remote-control daemon komutları.
 - [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp): masaüstü ve CLI'da MCP sunucusu desteği ve yapılandırma paylaşımı.
