@@ -152,8 +152,9 @@ final class HookServer: @unchecked Sendable {
 
 
     // MARK: - Event → AppState
-    // All Claude Code events route to the permanent "integration_claude" task.
-    // View switches only happen if VS Code is the currently focused mochi.
+    // Claude Code events route to the permanent "integration_claude" task.
+    // Events tagged with a valid coucou_agent route to a dynamic "integration_<agent>" task.
+    // View switches only happen if VS Code (or the agent pill) is currently focused.
     // When not focused: state updates animate the mini bot in the pill; badge shown for alerts.
 
     @MainActor
@@ -164,102 +165,147 @@ final class HookServer: @unchecked Sendable {
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
+        // Determine which pill this event belongs to.
+        // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
+        // Absent or invalid → Claude Code pill (integration_claude); no change in behaviour.
+        let rawAgent = payload["coucou_agent"] as? String ?? ""
+        let validAgent = Self.validateAgent(rawAgent)
+        let agentId = validAgent.map { "integration_\($0)" } ?? "integration_claude"
+        let isExternalAgent = validAgent != nil
+
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        // External agents bypass the VS Code filter (their relay runs in any terminal).
+        guard isExternalAgent || isVSCode else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
-        let focused = state.focusId == "integration_claude"
+        let focused = state.focusId == agentId
 
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            nbLog("SessionStart \(projectName) (\(sessionId.prefix(8)))")
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .thinking)
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
-                appendStep(id: "integration_claude", step: String(prompt.prefix(60)))
+                appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
             if state.isPresent { expandIfNeeded(to: .overview) }
 
         case "PreToolUse":
             activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .working)
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            state.updateTask(id: agentId, state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
-            appendStep(id: "integration_claude", step: step)
+            appendStep(id: agentId, step: step)
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
-            state.updateTask(id: "integration_claude", state: .working)
+            state.updateTask(id: agentId, state: .working)
 
         case "PostToolUseFailure":
-            state.updateTask(id: "integration_claude", state: .working)
-            appendStep(id: "integration_claude", step: "⚠ failed")
+            state.updateTask(id: agentId, state: .working)
+            appendStep(id: agentId, step: "⚠ failed")
 
         case "Notification":
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
-                state.updateTask(id: "integration_claude", state: .ratelimit)
+                state.updateTask(id: agentId, state: .ratelimit)
                 SoundEngine.shared.play("rate")
             } else if message.hasSuffix("?") {
-                state.updateTask(id: "integration_claude", state: .question)
-                appendStep(id: "integration_claude", step: message)
+                state.updateTask(id: agentId, state: .question)
+                appendStep(id: agentId, step: message)
             }
 
         case "Stop":
-            state.updateTask(id: "integration_claude", state: .finished)
+            state.updateTask(id: agentId, state: .finished)
             if let message = payload["message"] as? String, !message.isEmpty {
-                appendStep(id: "integration_claude", step: String(message.prefix(60)))
+                appendStep(id: agentId, step: String(message.prefix(60)))
             }
             SoundEngine.shared.play("finish")
             if focused {
                 expandIfNeeded(to: .finished)
             } else {
-                setPillBadge(id: "integration_claude", badge: .finished)
+                setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                state.updateTask(id: "integration_claude", state: .idle)
-                self.clearPillBadge(id: "integration_claude")
+                if isExternalAgent {
+                    AppState.shared.removeTask(id: agentId)
+                } else {
+                    state.updateTask(id: agentId, state: .idle)
+                    self.clearPillBadge(id: agentId)
+                }
             }
 
         case "StopFailure":
-            state.updateTask(id: "integration_claude", state: .error)
+            state.updateTask(id: agentId, state: .error)
             SoundEngine.shared.play("error")
             if focused {
                 expandIfNeeded(to: .error)
             } else {
-                setPillBadge(id: "integration_claude", badge: .error)
+                setPillBadge(id: agentId, badge: .error)
             }
 
         case "SessionEnd":
             activeSessionId = nil
-            state.updateTask(id: "integration_claude", state: .idle)
-            clearSession()
+            if isExternalAgent {
+                state.removeTask(id: agentId)
+            } else {
+                state.updateTask(id: agentId, state: .idle)
+                clearSession()
+            }
 
         case "SubagentStart":
-            appendStep(id: "integration_claude", step: "+ subagent")
+            appendStep(id: agentId, step: "+ subagent")
 
         case "SubagentStop":
-            appendStep(id: "integration_claude", step: "• subagent done")
+            appendStep(id: agentId, step: "• subagent done")
 
         default:
             break
         }
+    }
+
+    // MARK: - Agent validation + dynamic pill
+
+    /// Validates a coucou_agent name: lowercase, digits and hyphens, 1–24 chars.
+    /// Returns the name unchanged if valid, nil otherwise.
+    private static func validateAgent(_ raw: String) -> String? {
+        guard !raw.isEmpty, raw.count <= 24 else { return nil }
+        for scalar in raw.unicodeScalars {
+            let v = scalar.value
+            let ok = (v >= 0x61 && v <= 0x7A)  // a-z
+                  || (v >= 0x30 && v <= 0x39)   // 0-9
+                  || v == 0x2D                   // -
+            guard ok else { return nil }
+        }
+        return raw
+    }
+
+    /// Creates a dynamic pill for a third-party agent on first event, then no-ops.
+    @MainActor
+    private func upsertExternalAgent(id: String, name: String) {
+        let state = AppState.shared
+        guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
+        let color = IslandConst.colorForProject(name)
+        let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .claudeCode)
+        state.tasks.append(task)
+        if state.focusId == nil { state.focusId = id }
+        state.syncMode()
     }
 
     // MARK: - Helpers
@@ -717,7 +763,7 @@ private let nbHookShellWrapper = """
 # Coucou hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
 if xcode-select -p >/dev/null 2>&1; then
-    out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" 2>/dev/null)
+    out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
     rc=$?
     if [ "$rc" -eq 0 ] && [ -n "$out" ]; then
         printf '%s\\n' "$out"
@@ -742,6 +788,16 @@ def main():
         payload = json.loads(raw)
     except Exception:
         return
+
+    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
+    # Adds coucou_agent to the payload so the app can route to the right pill.
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == '--agent' and i + 1 < len(args):
+            payload.setdefault('coucou_agent', args[i + 1])
+            break
+        i += 1
 
     # Enrich with terminal context
     env = os.environ
@@ -834,6 +890,15 @@ def main():
         payload = json.loads(raw)
     except Exception:
         return
+
+    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == '--agent' and i + 1 < len(args):
+            payload.setdefault('coucou_agent', args[i + 1])
+            break
+        i += 1
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))

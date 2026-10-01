@@ -127,9 +127,26 @@ fn read_event() -> Option<(String, String)> {
     let mut payload = serde_json::from_slice::<serde_json::Value>(&raw).ok()?;
     let map = payload.as_object_mut()?;
 
-    // The event name is passed as argv[1] by the hook command; the JSON usually
-    // carries it too. Trust argv when the JSON is missing it.
-    let arg_event = std::env::args().nth(1).unwrap_or_default();
+    // Parse argv: "coucou-hook.exe [--agent <name>] [<EventName>]"
+    // --agent tags the payload with coucou_agent so the app routes to the right pill.
+    // Absent or invalid names are validated and discarded by the app, not here.
+    let mut agent = String::new();
+    let mut arg_event = String::new();
+    {
+        let mut it = std::env::args().skip(1);
+        while let Some(arg) = it.next() {
+            if arg == "--agent" {
+                agent = it.next().unwrap_or_default();
+            } else if arg_event.is_empty() {
+                arg_event = arg;
+            }
+        }
+    }
+    // Which agent this hook was installed for. Absent means Claude Code,
+    // so existing hook commands keep working unchanged.
+    if !agent.is_empty() {
+        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+    }
     let event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
