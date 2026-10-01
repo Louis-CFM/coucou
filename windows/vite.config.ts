@@ -45,7 +45,14 @@ function sharedSounds(): Plugin {
 export default defineConfig({
   plugins: [sharedSounds()],
   clearScreen: false,
-  server: { port: 1420, strictPort: true, host: "127.0.0.1" },
+  server: {
+    port: 1420,
+    strictPort: true,
+    host: "127.0.0.1",
+    // The Cargo workspace lives in windows/, so its target/ sits inside Vite's root.
+    // Watching it crashes Vite with EBUSY on Windows while cargo holds .pdb files open.
+    watch: { ignored: ["**/target/**", "**/src-tauri/**", "**/hook/**"] },
+  },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
     target: "chrome110",
