@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod gemini;
 mod jump;
+mod media;
 mod hooks;
 mod integrations;
 mod island;
@@ -327,6 +328,13 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// DOM-drop fallback: the page read the file itself (base64) because the
+/// OS-level drop target never delivered. Same inbox, same shape back.
+#[tauri::command]
+fn ingest_bytes(name: String, base64_data: String) -> Result<DroppedFile, String> {
+    files::ingest_bytes(&name, &base64_data)
+}
+
 /// Mochi drag-out: captures the window under the cursor into the inbox.
 /// The cursor is read server-side — the release happens outside our window.
 #[tauri::command]
@@ -478,6 +486,7 @@ pub fn run() {
             chat_send,
             chat_reset,
             ingest_file,
+            ingest_bytes,
             attach_window,
             secret_present,
             secret_set,

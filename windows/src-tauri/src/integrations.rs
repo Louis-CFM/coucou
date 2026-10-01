@@ -68,7 +68,9 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    // Spotify needs no key: toggling the pill is the only opt-in.
+    spawn(app, "integration_spotify", 10, 15, poll_media);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -113,6 +115,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_spotify" => poll_media(app).await,
         _ => {}
     }
 }
@@ -139,6 +142,32 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
         403 => unauthorised_hint.into(),
         _ => format!("API error {code}"),
     }
+}
+
+// ── Spotify (no key — reads the desktop app's window title) ──────────────────
+
+async fn poll_media(app: AppHandle) {
+    let np = tokio::task::block_in_place(crate::media::now_playing);
+    let track_id = if np.playing {
+        format!("{} — {}", np.artist, np.title)
+    } else {
+        "idle".into()
+    };
+    let event = if np.playing && is_new("spotify", &track_id) {
+        Some(IntegrationEvent {
+            success: true,
+            label: "♪ Now playing".into(),
+            detail: Some(track_id.clone()),
+        })
+    } else {
+        None
+    };
+    emit(&app, IntegrationUpdate {
+        id: "integration_spotify",
+        data: json!({ "artist": np.artist, "title": np.title, "playing": np.playing }),
+        error: None,
+        event,
+    });
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────

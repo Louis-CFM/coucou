@@ -37,6 +37,11 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_claude = { ...claude, configured: hooks };
+  // Spotify has no key: the pill is configured as soon as it exists.
+  const spotify = State.integrations.integration_spotify ?? {
+    data: {}, error: null, loaded: false, configured: false,
+  };
+  State.integrations.integration_spotify = { ...spotify, configured: true };
   State.notify();
 }
 

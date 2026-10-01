@@ -78,15 +78,22 @@ pub async fn send(
 
     let model = if model.is_empty() { DEFAULT_GEMINI_MODEL } else { model };
 
-    // First turn may carry file/window context as plain text (same as Claude).
+    // First turn may carry file/window context. Files ride as real parts —
+    // images/PDF as inlineData so the model actually sees them (a bare
+    // filename is what used to produce "I can't see images"), text inline.
+    let mut lead_parts: Vec<Value> = Vec::new();
     let mut full_query = String::new();
     if chat.is_empty() {
         match &context {
             Some(GeminiContext::File { name, path }) => {
-                if let Some(text) = inline_file(path) {
-                    full_query.push_str(&format!("File: {name}\nFile contents:\n{text}\n\n"));
-                } else {
-                    full_query.push_str(&format!("File: {name}\n\n"));
+                match content_block(path) {
+                    Some(block) => {
+                        lead_parts.push(block);
+                        full_query.push_str(&format!("File: {name}\n\n"));
+                    }
+                    None => {
+                        full_query.push_str(&format!("File: {name} (could not read contents)\n\n"));
+                    }
                 }
             }
             Some(GeminiContext::Window { app_name, title, url }) => {
@@ -100,8 +107,9 @@ pub async fn send(
         }
     }
     full_query.push_str(&query);
+    lead_parts.push(json!({ "text": full_query }));
 
-    chat.push(json!({ "role": "user", "parts": [{ "text": full_query }] }));
+    chat.push(json!({ "role": "user", "parts": lead_parts }));
 
     let body = json!({
         "system_instruction": { "parts": [{ "text": SYSTEM_PROMPT }] },
@@ -183,12 +191,42 @@ async fn call(url: &str, key: &str, body: &Value) -> Result<Value, String> {
     serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
 }
 
-fn inline_file(path: &str) -> Option<String> {
+/// File → Gemini part. Mirrors the Claude `file_block` mapping:
+/// PDF/images ride as inlineData (base64) so the model sees them;
+/// text/code rides inline; anything else is None (caller says so in text).
+fn content_block(path: &str) -> Option<Value> {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let media_type = match ext.as_str() {
+        "pdf" => Some("application/pdf"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        _ => None,
+    };
+
+    if let Some(media) = media_type {
+        // Captures and photos run a few MB — still fine for one turn.
+        if std::fs::metadata(path).ok()?.len() > 20_000_000 {
+            return None;
+        }
+        let bytes = std::fs::read(path).ok()?;
+        return Some(json!({
+            "inlineData": { "mimeType": media, "data": crate::claude::base64_for(&bytes) },
+        }));
+    }
+
     let len = std::fs::metadata(path).ok()?.len();
     if len > MAX_INLINE_TEXT {
         return None;
     }
-    std::fs::read_to_string(path).ok()
+    let text = std::fs::read_to_string(path).ok()?;
+    Some(json!({ "text": format!("File contents:\n{text}") }))
 }
 
 fn urlencoding_safe(model: &str) -> String {

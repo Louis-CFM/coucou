@@ -133,6 +133,7 @@ export class Island {
           integration_stripe: "https://dashboard.stripe.com/payments",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
+          integration_spotify: "https://open.spotify.com",
         };
         if (task.id === "integration_claude" || task.source === "claudeCode") {
           void Bridge.openInVSCode(task.sessionCwd ?? null);
@@ -454,6 +455,9 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
+  /** Guards the two drop transports (OS-level + DOM fallback) firing twice. */
+  private lastSwallowAt = 0;
+
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
@@ -486,10 +490,76 @@ export class Island {
           this.setView(State.defaultView());
           return;
         }
-        this.swallow(path);
+        this.swallowPath(path);
         break;
       }
     }
+  }
+
+  /**
+   * DOM fallback for drops WebView2 swallows itself: when its inner render
+   * target keeps the drop, the OS transport never fires and the cursor reads
+   * "prohibited" — but the page still gets HTML5 drop events with the file
+   * CONTENT (paths stay hidden). We read the bytes ourselves and hand them to
+   * `ingest_bytes`, so a drop works whichever target wins.
+   */
+  private wireDomDrop() {
+    document.addEventListener("dragover", (e) => {
+      if (State.paused) return;
+      if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes("Files")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!State.fileDragOver && State.mode === "expanded") {
+        State.fileDragOver = true;
+        this.engine.animateMorph(1);
+        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        this.alert("upload");
+      }
+    });
+    document.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget) return;
+      if (!State.fileDragOver) return;
+      State.fileDragOver = false;
+      this.engine.animateMorph(0);
+      UploadSeq.exitZone();
+      State.notify();
+    });
+    document.addEventListener("drop", (e) => {
+      if (State.paused) return;
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      e.preventDefault();
+      State.fileDragOver = false;
+      const file = files[0];
+      void Bridge.log(`dom-drop ${file.name} ${file.size}b`);
+      if (file.size > 25 * 1024 * 1024) {
+        State.noteMessage = "File too large (25 MB max).";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = String(reader.result ?? "");
+        const b64 = url.includes(",") ? url.split(",")[1] : "";
+        if (!b64) {
+          State.noteMessage = "Could not read that file.";
+          this.setView("note");
+          Sound.play("error");
+          window.setTimeout(() => this.setView(State.defaultView()), 2400);
+          return;
+        }
+        this.swallowBytes(file.name, b64);
+      };
+      reader.onerror = () => {
+        State.noteMessage = "Could not read that file.";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   /**
@@ -497,8 +567,29 @@ export class Island {
    * the inbox runs in the background and swaps the path in when it lands, so a
    * slow disk can never stall the animation — same as FileDropHandler on macOS.
    */
-  private swallow(path: string) {
+  private swallowPath(path: string) {
     const name = path.split(/[\\/]/).pop() || "file";
+    if (!this.beginSwallow(name, path)) return;
+    void Bridge.ingestFile(path).then(
+      (file) => this.finishSwallow(file.name, file.path),
+      (err) => this.failSwallow(err),
+    );
+  }
+
+  /** DOM transport: bytes already read by the page (see wireDomDrop). */
+  private swallowBytes(name: string, base64Data: string) {
+    if (!this.beginSwallow(name, name)) return;
+    void Bridge.ingestBytes(name, base64Data).then(
+      (file) => this.finishSwallow(file.name, file.path),
+      (err) => this.failSwallow(err),
+    );
+  }
+
+  /** Shared opening choreography. False = duplicate of a swallow in flight. */
+  private beginSwallow(name: string, path: string): boolean {
+    const now = performance.now();
+    if (now - this.lastSwallowAt < 1500) return false;
+    this.lastSwallowAt = now;
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
@@ -516,21 +607,22 @@ export class Island {
     State.uploadProgress = 0;
     this.setView("uploading");
     this.ensureRunning();
+    return true;
+  }
 
-    void Bridge.ingestFile(path)
-      .then((file) => {
-        State.droppedFile = { name: file.name, path: file.path };
-        State.promptContext = { kind: "file", name: file.name, path: file.path };
-        State.notify();
-      })
-      .catch((err) => {
-        UploadSeq.deactivate();
-        State.noteMessage = String(err).replace(/^Error:\s*/, "");
-        this.engine.animateMorph(0);
-        this.setView("note");
-        Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
-      });
+  private finishSwallow(name: string, path: string) {
+    State.droppedFile = { name, path };
+    State.promptContext = { kind: "file", name, path };
+    State.notify();
+  }
+
+  private failSwallow(err: unknown) {
+    UploadSeq.deactivate();
+    State.noteMessage = String(err).replace(/^Error:\s*/, "");
+    this.engine.animateMorph(0);
+    this.setView("note");
+    Sound.play("error");
+    window.setTimeout(() => this.setView(State.defaultView()), 2400);
   }
 
   /**
@@ -668,6 +760,7 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    this.wireDomDrop();
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.

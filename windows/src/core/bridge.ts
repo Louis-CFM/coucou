@@ -97,6 +97,9 @@ export const Bridge = {
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Stores a page-read file (base64) into the inbox. */
+  ingestBytes: (name: string, base64Data: string) =>
+    callOrThrow<DroppedFile>("ingest_bytes", { name, base64Data }),
   /** Captures the window under the cursor (Mochi drag-out). */
   attachWindow: () => callOrThrow<AttachedWindow>("attach_window"),
   /** Only ever tells you whether a key exists — never its value. */

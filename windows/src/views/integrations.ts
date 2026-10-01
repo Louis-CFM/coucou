@@ -58,8 +58,10 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
-  // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
+  // misleading here. Spotify needs no key either, just the desktop app playing.
+  const missing = task.id === "integration_claude" ? "Hooks not installed"
+    : task.id === "integration_spotify" ? "Nothing playing"
+    : "Key not configured";
   const label = error ?? (configured ? "Connected · loading…" : missing);
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
@@ -225,6 +227,41 @@ function githubCard(): HTMLElement {
       { class: "int-stats" },
       statRow(ICONS.star, "#F5A524", "Total stars", fmt(stars)),
       statRow(ICONS.stack, "#6B7079", "Repositories", String(repos)),
+    ),
+  );
+}
+
+// ── Spotify (no key — desktop app window title) ─────────────────────────────
+
+function spotifyCard(): HTMLElement {
+  const d = get("integration_spotify");
+  const artist = String(d.artist ?? "");
+  const title = String(d.title ?? "");
+  const playing = d.playing === true;
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#1DB954", "Spotify", playing ? "Now playing" : "Paused"),
+    h(
+      "div",
+      { class: "int-rows tight" },
+      listRow("#1DB954", true,
+        h("span", { class: "int-name", text: title || "—" }),
+      ),
+      h(
+        "div",
+        { class: "int-row" },
+        dot("#6B7079", 5),
+        h("span", { class: "int-name", text: artist || "Open Spotify and play something" }),
+      ),
+    ),
+    h("div", { class: "int-actions" },
+      h("button", {
+        class: "link-btn",
+        style: "color:#1DB954d9",
+        text: "Open Spotify",
+        onclick: () => void Bridge.openUrl("https://open.spotify.com"),
+      }),
     ),
   );
 }
@@ -398,6 +435,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_spotify":
+      return String(get(id).artist ?? "") !== "";
     default:
       return false;
   }
@@ -426,6 +465,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_spotify":
+      return spotifyCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

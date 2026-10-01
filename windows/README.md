@@ -163,5 +163,6 @@ problems. It stays on your machine.
 - New in this fork: drag Mochi onto any window to attach a screenshot of it as
   chat context, jump-to-terminal (focuses the console whose title shows the
   project folder, falls back to VS Code/Explorer), Gemini CLI + Antigravity
-  (`agy`) + opencode pills, and a Gemini chat provider. The island stays pinned
-  while a Drop view is open so it cannot retract mid-drag.
+  (`agy`) + opencode pills, a Gemini chat provider, and a keyless Spotify
+  now-playing pill (reads the desktop app's window title). The island stays
+  pinned while a Drop view is open so it cannot retract mid-drag.
