@@ -58,7 +58,13 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported. The pill lifecycle:
+All standard Claude Code hook events are supported, **except `PermissionRequest`**:
+approval cards are not yet implemented for third-party agents (only Claude Code gets
+one). A `PermissionRequest` from an external agent is answered immediately with no
+decision, so the relay writes nothing and the agent re-asks in its terminal.
+Approval support for other agents will be added with Codex support (n°20).
+
+The pill lifecycle:
 
 | Event | Effect |
 |---|---|

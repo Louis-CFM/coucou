@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -209,9 +209,37 @@ class AppState {
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
     // Keep the declared order so pills never shuffle.
+    // Dynamic agent_ pills (coucou_agent) are not in the order list — sort them last.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    this.tasks.sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      if (ia < 0 && ib < 0) return 0;
+      if (ia < 0) return 1;
+      if (ib < 0) return -1;
+      return ia - ib;
+    });
     if (!this.focusId) this.focusId = "integration_claude";
+    this.notify();
+  }
+
+  removeTask(id: string) {
+    const idx = this.tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    this.tasks.splice(idx, 1);
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    this.notify();
+  }
+
+  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists. */
+  upsertExternalAgent(id: string, name: string, color: string) {
+    if (this.tasks.some((t) => t.id === id)) return;
+    this.tasks.push({
+      id, name, color,
+      state: "idle", stepIndex: 0, steps: [],
+      source: "agent", isIntegration: false,
+    });
+    if (!this.focusId) this.focusId = id;
     this.notify();
   }
 

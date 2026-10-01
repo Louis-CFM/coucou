@@ -170,7 +170,7 @@ final class HookServer: @unchecked Sendable {
         // Absent or invalid → Claude Code pill (integration_claude); no change in behaviour.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let validAgent = Self.validateAgent(rawAgent)
-        let agentId = validAgent.map { "integration_\($0)" } ?? "integration_claude"
+        let agentId = validAgent.map { "agent_\($0)" } ?? "integration_claude"
         let isExternalAgent = validAgent != nil
 
         let termProgram = payload["term_program"] as? String ?? ""
@@ -283,9 +283,10 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Agent validation + dynamic pill
 
     /// Validates a coucou_agent name: lowercase, digits and hyphens, 1–24 chars.
+    /// "claude" is reserved and rejected so it cannot impersonate the Claude Code pill.
     /// Returns the name unchanged if valid, nil otherwise.
     private static func validateAgent(_ raw: String) -> String? {
-        guard !raw.isEmpty, raw.count <= 24 else { return nil }
+        guard !raw.isEmpty, raw.count <= 24, raw != "claude" else { return nil }
         for scalar in raw.unicodeScalars {
             let v = scalar.value
             let ok = (v >= 0x61 && v <= 0x7A)  // a-z
@@ -297,12 +298,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     /// Creates a dynamic pill for a third-party agent on first event, then no-ops.
+    /// ID format: "agent_<name>" — never collides with "integration_*" pills.
     @MainActor
     private func upsertExternalAgent(id: String, name: String) {
         let state = AppState.shared
         guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
         let color = IslandConst.colorForProject(name)
-        let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .claudeCode)
+        let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
         state.tasks.append(task)
         if state.focusId == nil { state.focusId = id }
         state.syncMode()
@@ -340,6 +342,19 @@ final class HookServer: @unchecked Sendable {
         let cwd       = payload["cwd"]        as? String ?? ""
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+
+        // External agents (coucou_agent) do not yet get an approval card — answering
+        // would show a card that looks like a Claude Code request. Reply immediately
+        // with no decision so the relay writes nothing and the agent re-asks in its
+        // terminal. Approval support for other agents will come with Codex (n°20).
+        let rawAgent = payload["coucou_agent"] as? String ?? ""
+        if Self.validateAgent(rawAgent) != nil {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
