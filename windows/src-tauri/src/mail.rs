@@ -60,26 +60,28 @@ pub fn check(account: &Account) -> Result<MailboxState, String> {
     let tls = native_tls::TlsConnector::new().map_err(|e| format!("TLS: {e}"))?;
     let client =
         imap::connect((account.host, 993), account.host, &tls).map_err(|e| format!("connect: {e}"))?;
+    // NOTE: login fails with (Error, Client) — the tuple has no Display.
     let mut session = client
         .login(&email, &pass)
-        .map_err(|e| format!("login failed — check the app password ({e})"))?;
+        .map_err(|(e, _)| format!("login failed — check the app password ({e:?})"))?;
 
     let result = (|| {
         session.select("INBOX").map_err(|e| format!("inbox: {e}"))?;
         let unseen = session.search("UNSEEN").map_err(|e| format!("search: {e}"))?;
 
         // Subjects: prefer the newest unseen, else the newest overall.
-        let mut ids: Vec<u32> = unseen.clone();
+        // Sequence numbers ascend with arrival, so larger == newer.
+        let mut ids: Vec<u32> = unseen.iter().copied().collect();
         if ids.len() < 3 {
             let all = session.search("ALL").map_err(|e| format!("search: {e}"))?;
-            for id in all.iter().rev().take(3) {
-                if !ids.contains(id) {
-                    ids.push(*id);
-                }
+            let mut rest: Vec<u32> = all.difference(&unseen).copied().collect();
+            rest.sort_unstable_by(|a, b| b.cmp(a));
+            for id in rest.into_iter().take(3 - ids.len()) {
+                ids.push(id);
             }
         }
-        ids.sort_unstable();
-        let ids: Vec<u32> = ids.into_iter().rev().take(3).collect();
+        ids.sort_unstable_by(|a, b| b.cmp(a));
+        let ids: Vec<u32> = ids.into_iter().take(3).collect();
 
         let mut latest = Vec::new();
         if !ids.is_empty() {
