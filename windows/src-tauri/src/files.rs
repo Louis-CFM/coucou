@@ -24,14 +24,17 @@ pub fn inbox_dir() -> PathBuf {
 }
 
 pub fn ingest(source: &str) -> Result<DroppedFile, String> {
+    ingest_in(source, &inbox_dir())
+}
+
+fn ingest_in(source: &str, dir: &Path) -> Result<DroppedFile, String> {
     let src = Path::new(source);
     let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
     if meta.is_dir() {
         return Err("Folders can't be dropped yet.".into());
     }
 
-    let dir = inbox_dir();
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     let name = src
         .file_name()
@@ -58,7 +61,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     if let Ok(file) = std::fs::File::options().write(true).open(&dest) {
         let _ = file.set_modified(SystemTime::now());
     }
-    sweep(&dir);
+    sweep(dir);
 
     Ok(DroppedFile {
         name,
@@ -92,20 +95,22 @@ mod tests {
         std::fs::create_dir_all(&tmp).unwrap();
         let source = tmp.join("note.txt");
         std::fs::write(&source, b"hello").unwrap();
+        let inbox = tmp.join("fixture-inbox");
 
-        let first = ingest(source.to_str().unwrap()).unwrap();
+        let first = ingest_in(source.to_str().unwrap(), &inbox).unwrap();
+        assert!(Path::new(&first.path).starts_with(&tmp));
         assert_eq!(first.name, "note.txt");
         assert_eq!(std::fs::read(&first.path).unwrap(), b"hello");
 
         // A second drop of the same name must not clobber the first copy.
         std::fs::write(&source, b"second").unwrap();
-        let second = ingest(source.to_str().unwrap()).unwrap();
+        let second = ingest_in(source.to_str().unwrap(), &inbox).unwrap();
         assert_ne!(first.path, second.path);
         assert_eq!(std::fs::read(&first.path).unwrap(), b"hello");
         assert_eq!(std::fs::read(&second.path).unwrap(), b"second");
 
         // Folders are refused rather than silently ignored.
-        assert!(ingest(tmp.to_str().unwrap()).is_err());
+        assert!(ingest_in(tmp.to_str().unwrap(), &inbox).is_err());
 
         // An ancient source must not arrive already older than the sweep window.
         let old_source = tmp.join("ancient.txt");
@@ -117,7 +122,7 @@ mod tests {
             .unwrap()
             .set_modified(long_ago)
             .unwrap();
-        let aged = ingest(old_source.to_str().unwrap()).unwrap();
+        let aged = ingest_in(old_source.to_str().unwrap(), &inbox).unwrap();
         assert!(
             Path::new(&aged.path).exists(),
             "a file copied just now was swept as if it were a week old"

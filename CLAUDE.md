@@ -1,5 +1,10 @@
 # Coucou — guide for AI coding agents
 
+Read [AGENTS.md](AGENTS.md) first for the shared macOS/Windows contribution
+guide, provider invariants and regression checks. This file retains the
+original Claude-specific notes. Codex coding hooks are separate from API chat;
+see [docs/CODEX.md](docs/CODEX.md).
+
 Coucou is a native macOS app: Mochi, a small animated character living in the MacBook notch, shows Claude Code sessions and a few integrations, and lets the user approve, answer, chat and drop files from the notch.
 
 ## Where things are

@@ -34,6 +34,7 @@ struct ApprovalInfo: Sendable {
     var sessionId: String
     var tool: String
     var command: String
+    var taskId: String = "integration_claude"
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
@@ -54,11 +55,15 @@ struct AgentTask: Identifiable, Equatable {
     var emote: BotEmote? = nil
     var miniEye: EyeShape? = nil
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
+    var sessionId: String? = nil
+    var agentModel: String? = nil
+    var isCodingAgent: Bool { source == .claudeCode || source == .codex }
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
 }
 
 enum AgentSource: Equatable {
     case claudeCode
+    case codex
     case n8n
 }
 
