@@ -7,6 +7,7 @@ mod integrations;
 mod island;
 mod log;
 mod pipe;
+mod providers;
 mod secrets;
 mod settings;
 mod tray;
@@ -119,6 +120,23 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+}
+
+/// The panel is laid out in CSS px against the window's own scale. If the webview
+/// reports a different devicePixelRatio (it ends up bigger than the window and gets
+/// cut), correct its zoom so one CSS px is one logical px again.
+#[tauri::command]
+fn fit_zoom(app: AppHandle, dpr: f64) {
+    let Some(win) = island::window(&app) else { return };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    if dpr <= 0.0 || (dpr - scale).abs() / scale < 0.02 {
+        return;
+    }
+    static ZOOM: std::sync::Mutex<f64> = std::sync::Mutex::new(1.0);
+    let mut zoom = ZOOM.lock().unwrap();
+    *zoom *= scale / dpr;
+    log::line(format!("webview dpr {dpr} != window scale {scale} - zoom {}", *zoom));
+    let _ = win.set_zoom(*zoom);
 }
 
 #[tauri::command]
@@ -248,8 +266,9 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    let target = providers::target(&settings)?;
+    claude::send(&chat, &target, &settings.model, query, context).await
 }
 
 #[tauri::command]
@@ -387,6 +406,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            fit_zoom,
             open_url,
             open_in_vscode,
             quit_app,

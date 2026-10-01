@@ -1,21 +1,19 @@
-// Claude API client — the same integration as ClaudeService.swift: multi-turn
+// AI chat client — the same integration as ClaudeService.swift: multi-turn
 // chat with web search, and files sent as document/image/text blocks.
 //
 // Everything happens here rather than in the island: the API key never leaves
 // the Credential Manager, and file bytes never cross the IPC boundary.
+// providers.rs decides the endpoint and wire format; the conversation state
+// below always stays in Anthropic block format and is translated per turn for
+// OpenAI-compatible providers.
 
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::secrets;
+use crate::providers::{openai_body, openai_text, post, ApiFormat, Target};
 
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION: &str = "2023-06-01";
-/// Server-side fallback: on a policy decline the API retries the same request on
-/// a fallback model inside the same call, so the island never shows a dead end.
-const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 const MAX_TOKENS: u32 = 4096;
 /// Text and code files are inlined; anything larger is skipped, as on macOS.
 const MAX_INLINE_TEXT: u64 = 200_000;
@@ -72,13 +70,11 @@ pub struct ChatReply {
 /// in the note view.
 pub async fn send(
     chat: &Chat,
+    target: &Target,
     model: &str,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
-
     let mut content: Vec<Value> = Vec::new();
 
     // File / window context rides along with the first message only, exactly
@@ -105,22 +101,45 @@ pub async fn send(
 
     chat.push(json!({ "role": "user", "content": content }));
 
-    let body = json!({
-        "model": model,
-        "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
-        "fallbacks": "default",
-        "messages": chat.snapshot(),
-    });
-
-    let response = match call(&key, &body).await {
-        Ok(v) => v,
-        Err(err) => {
-            chat.pop(); // keep the history consistent with what the model saw
-            return Err(err);
+    let response = match target.format {
+        ApiFormat::Anthropic => {
+            let body = json!({
+                "model": model,
+                "max_tokens": MAX_TOKENS,
+                "system": SYSTEM_PROMPT,
+                "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
+                "fallbacks": "default",
+                "messages": chat.snapshot(),
+            });
+            post_or_pop(chat, target, body).await?
+        }
+        ApiFormat::OpenAi => {
+            let body = match openai_body(model, SYSTEM_PROMPT, &chat.snapshot(), MAX_TOKENS) {
+                Ok(body) => body,
+                Err(err) => {
+                    chat.pop();
+                    return Err(err);
+                }
+            };
+            post_or_pop(chat, target, body).await?
         }
     };
+
+    if target.format == ApiFormat::OpenAi {
+        let text = match openai_text(&response) {
+            Some(text) => text.trim().to_string(),
+            None => {
+                chat.pop();
+                return Err("Unexpected API response.".into());
+            }
+        };
+        if text.is_empty() {
+            chat.pop();
+            return Err("No response text.".into());
+        }
+        chat.push(json!({ "role": "assistant", "content": [{ "type": "text", "text": text }] }));
+        return Ok(ChatReply { text });
+    }
 
     // A policy decline comes back as HTTP 200 with stop_reason "refusal".
     if response.get("stop_reason").and_then(Value::as_str) == Some("refusal") {
@@ -152,44 +171,22 @@ pub async fn send(
         .to_string();
 
     if text.is_empty() {
+        chat.pop();
         return Err("No response text.".into());
     }
     Ok(ChatReply { text })
 }
 
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(90))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let response = client
-        .post(ENDPOINT)
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
-        .header("content-type", "application/json")
-        .json(body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
-
-    let status = response.status();
-    let text = response.text().await.map_err(|e| e.to_string())?;
-    if !status.is_success() {
-        // Surface the API's own message, which is what makes a bad key obvious.
-        let detail = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("error")
-                    .and_then(|e| e.get("message"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-            })
-            .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Claude API {status}: {detail}"));
+/// Posts a turn, keeping the history consistent with what the model saw when
+/// the call fails.
+async fn post_or_pop(chat: &Chat, target: &Target, body: Value) -> Result<Value, String> {
+    match post(target, &body).await {
+        Ok(value) => Ok(value),
+        Err(err) => {
+            chat.pop();
+            Err(err)
+        }
     }
-    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
 }
 
 /// PDF → document block, image → image block, text/code → inline text.

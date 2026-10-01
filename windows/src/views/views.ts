@@ -464,7 +464,7 @@ function buildSettings(actions: ViewActions): ViewHost {
         h("span", { text: "Claude Code" }),
       );
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      apiBadge.append(dot(State.apiKeyPresent ? "#22C55E" : "#F4505E", 6), h("span", { text: "API" }));
     },
   };
 }

@@ -16,14 +16,32 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
-    /// Claude model used by the chat. Changeable in the settings window.
+    /// Model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// AI provider preset: anthropic (default), openai, openrouter, groq,
+    /// deepseek, ollama or custom. Unknown values fall back to anthropic.
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    /// Base URL override; empty = the preset's own URL. Never a secret.
+    #[serde(default)]
+    pub provider_url: String,
+    /// API format for the custom preset: "anthropic" or "openai".
+    #[serde(default = "default_provider_format")]
+    pub provider_format: String,
 }
 
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
+}
+
+fn default_provider() -> String {
+    "anthropic".into()
+}
+
+fn default_provider_format() -> String {
+    "openai".into()
 }
 
 impl Default for Settings {
@@ -43,6 +61,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            provider: default_provider(),
+            provider_url: String::new(),
+            provider_format: default_provider_format(),
         }
     }
 }

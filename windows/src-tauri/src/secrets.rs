@@ -8,6 +8,11 @@ const SERVICE: &str = "fr.louisraille.coucou";
 /// Every key Coucou may store. Anything outside this list is refused.
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
+    "openai-api-key",
+    "openrouter-api-key",
+    "groq-api-key",
+    "deepseek-api-key",
+    "custom-api-key",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",
@@ -35,7 +40,20 @@ pub fn set(key: &str, value: &str) -> Result<(), String> {
         let _ = entry.delete_credential();
         return Ok(());
     }
-    entry.set_password(value).map_err(|e| e.to_string())
+    entry.set_password(value).map_err(describe)
+}
+
+/// Windows reports a full credential store as "error code 8" (not enough
+/// memory) — turn that into something the settings window can act on.
+fn describe(err: keyring::Error) -> String {
+    let text = err.to_string();
+    if text.contains("Windows error code 8") {
+        "The Windows Credential Manager is full. Remove credentials you no longer need \
+         (Control Panel → Credential Manager → Windows Credentials) and try again."
+            .into()
+    } else {
+        text
+    }
 }
 
 pub fn clear(key: &str) -> Result<(), String> {

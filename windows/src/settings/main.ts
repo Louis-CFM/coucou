@@ -4,6 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { PROVIDERS, providerDef } from "../core/providers";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -171,7 +172,7 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── AI provider section ───────────────────────────────────────────────────────
 
 const MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
@@ -179,79 +180,156 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+function apiSection(present: Record<string, boolean>): HTMLElement {
+  const section = h("section", {});
+  let notice: { ok: boolean; text: string } | null = null;
 
-  const field = h("input", {
-    type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
-    style: "flex:1 1 auto;min-width:0",
-    autocomplete: "off",
-    spellcheck: "false",
-  }) as HTMLInputElement;
+  function draw() {
+    clear(section);
+    const def = providerDef(settings.provider);
+    const hasKey = !def.key || present[def.key];
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
-  const feedback = h("div", {});
+    const provider = h("select", {}) as HTMLSelectElement;
+    for (const p of PROVIDERS) provider.append(h("option", { value: p.id, text: p.name }));
+    provider.value = def.id;
+    provider.addEventListener("change", () => {
+      settings.provider = provider.value;
+      settings.providerUrl = "";
+      const next = providerDef(settings.provider);
+      if (next.model) settings.model = next.model;
+      notice = null;
+      void save();
+      draw();
+    });
 
-  async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
-    clearBtn.style.display = present ? "" : "none";
+    const url = h("input", {
+      type: "text",
+      placeholder: def.url || "https://your-endpoint.example/v1",
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    url.value = settings.providerUrl;
+    url.addEventListener("change", () => {
+      settings.providerUrl = url.value.trim();
+      void save();
+    });
+
+    const field = h("input", {
+      type: "password",
+      placeholder: def.key && present[def.key] ? "••••••••••••  (stored)" : def.keyHint || "API key",
+      style: "flex:1 1 auto;min-width:0",
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+
+    const saveKey = h("button", {
+      class: "primary",
+      text: "Save key",
+      onclick: async () => {
+        if (!def.key) return;
+        const value = field.value.trim();
+        if (!value) return;
+        try {
+          await Bridge.secretSet(def.key, value);
+          present[def.key] = true;
+          notice = { ok: true, text: "Saved. It never touches disk." };
+        } catch (err) {
+          notice = { ok: false, text: `Could not save: ${String(err)}` };
+        }
+        draw();
+      },
+    });
+
+    const removeKey = h("button", {
+      class: "danger",
+      text: "Remove",
+      onclick: async () => {
+        if (!def.key) return;
+        try {
+          await Bridge.secretClear(def.key);
+          present[def.key] = false;
+          notice = { ok: true, text: "Key removed." };
+        } catch (err) {
+          notice = { ok: false, text: `Could not remove: ${String(err)}` };
+        }
+        draw();
+      },
+    });
+
+    let modelRow: HTMLElement;
+    if (def.id === "anthropic") {
+      const model = h("select", {}) as HTMLSelectElement;
+      for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
+      if (!MODELS.some(([id]) => id === settings.model)) {
+        model.append(h("option", { value: settings.model, text: settings.model }));
+      }
+      model.value = settings.model;
+      model.addEventListener("change", () => {
+        settings.model = model.value;
+        void save();
+      });
+      modelRow = h("div", { class: "row" }, h("label", { text: "Model" }), model);
+    } else {
+      const model = h("input", {
+        type: "text",
+        placeholder: def.model || "model name",
+        style: "flex:1 1 auto;min-width:0",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+      model.value = settings.model;
+      model.addEventListener("change", () => {
+        settings.model = model.value.trim();
+        void save();
+      });
+      modelRow = h("div", { class: "row" }, h("label", { text: "Model" }), model);
+    }
+
+    section.append(
+      h("h2", {}, statusDot(hasKey), h("span", { text: "AI Provider" })),
+      h("div", {
+        class: "hint",
+        text: def.key
+          ? hasKey
+            ? `${def.name} key saved in the Windows Credential Manager.`
+            : `No ${def.name} key yet — the chat needs one.`
+          : "Runs on your local Ollama server — no API key needed.",
+      }),
+      h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
+      h("div", { class: "row" }, h("label", { text: "Base URL" }), url),
+      h("div", {
+        class: "hint",
+        text: "Leave empty to use the provider's own URL. The chat path (/v1/messages or /v1/chat/completions) is added automatically.",
+      }),
+    );
+
+    if (def.id === "custom") {
+      const format = h("select", {}) as HTMLSelectElement;
+      format.append(
+        h("option", { value: "openai", text: "OpenAI-compatible (/chat/completions)" }),
+        h("option", { value: "anthropic", text: "Anthropic (/v1/messages)" }),
+      );
+      format.value = settings.providerFormat;
+      format.addEventListener("change", () => {
+        settings.providerFormat = format.value;
+        void save();
+      });
+      section.append(h("div", { class: "row" }, h("label", { text: "API format" }), format));
+    }
+
+    section.append(modelRow);
+
+    if (def.key) {
+      section.append(
+        h("div", { class: "row" }, h("label", { text: "API key" }), field, saveKey, removeKey),
+      );
+    }
+    if (notice) {
+      section.append(h("div", { class: notice.ok ? "notice ok" : "notice err", text: notice.text }));
+    }
   }
 
-  saveBtn.addEventListener("click", async () => {
-    const value = field.value.trim();
-    if (!value) return;
-    clear(feedback);
-    try {
-      await Bridge.secretSet("anthropic-api-key", value);
-      field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
-    }
-  });
-
-  clearBtn.addEventListener("click", async () => {
-    clear(feedback);
-    try {
-      await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
-    }
-  });
-
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
-  });
-
-  clearBtn.style.display = hasKey ? "" : "none";
-
-  return h(
-    "section",
-    {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
-    state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
-    feedback,
-  );
+  draw();
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -429,9 +507,9 @@ async function main() {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-
   const keys = [
+    "anthropic-api-key", "openai-api-key", "openrouter-api-key",
+    "groq-api-key", "deepseek-api-key", "custom-api-key",
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
   ];
@@ -442,7 +520,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    apiSection(present),
     integrationsSection(present),
     generalSection(),
     h("div", {

@@ -90,8 +90,14 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
-  /** Claude model used by the chat. */
+  /** Model used by the chat. */
   model: string;
+  /** AI provider preset id — anthropic, openai, openrouter, groq, deepseek, ollama or custom. */
+  provider: string;
+  /** Base URL override; empty = the preset's own URL. */
+  providerUrl: string;
+  /** API format for the custom preset: "anthropic" or "openai". */
+  providerFormat: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  provider: "anthropic",
+  providerUrl: "",
+  providerFormat: "openai",
 };
 
 type Listener = () => void;
@@ -139,6 +148,9 @@ class AppState {
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
+
+  /** Whether the active AI provider's key exists (true for local servers). */
+  apiKeyPresent = false;
 
   lastActivity = performance.now();
 
