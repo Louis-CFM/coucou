@@ -1374,15 +1374,16 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ── Island themes ────────────────────────────────────────────────────────── */
 
-/* Embasa brand rule: a quiet 3px signature along the island's bottom edge,
-   in every theme. border-radius:inherit tracks the animated corner radius. */
+/* Embasa brand rule: a quiet 3px signature floating just above the island's
+   bottom edge. Inset (never touching the corners) so it reads clean in every
+   mode and size — compact pill included. */
 #embasa-rule {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 16px;
+  right: 16px;
+  bottom: 5px;
   height: 3px;
-  border-radius: inherit;
+  border-radius: 2px;
   background: linear-gradient(90deg,
     #305fa6 0%, #305fa6 30%,
     #2a82c3 30%, #2a82c3 48%,

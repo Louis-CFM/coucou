@@ -681,18 +681,31 @@ export class Island {
     State.uploadProgress = 0;
     this.setView("uploading");
     this.ensureRunning();
+    // Absolute fallback: whatever happens to the ingest promise or the frame
+    // loop, the uploading view must never trap the user. If we are still here
+    // past the choreography + margin, move on (paths swap in whenever the
+    // copy actually lands).
+    window.setTimeout(() => {
+      if (State.view === "uploading") {
+        void Bridge.log("swallow watchdog: forcing choose");
+        this.setView("choose");
+      }
+    }, (PRE_PROGRESS + State.uploadDuration + 1 + 4) * 1000);
     return true;
   }
 
   private finishSwallow(name: string, path: string) {
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
+    void Bridge.log(`swallow done ${name}`);
     State.notify();
   }
 
   private failSwallow(err: unknown) {
     UploadSeq.deactivate();
-    State.noteMessage = String(err).replace(/^Error:\s*/, "");
+    const message = String(err).replace(/^Error:\s*/, "");
+    void Bridge.log(`swallow failed ${message.slice(0, 120)}`);
+    State.noteMessage = message;
     this.engine.animateMorph(0);
     this.setView("note");
     Sound.play("error");
@@ -708,6 +721,13 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+
+    // The uploading card reads State.uploadProgress — nothing else ever writes
+    // it, so without this the bar sits at 0% and the drop looks frozen.
+    if (State.uploadProgress !== p) {
+      State.uploadProgress = p;
+      this.dirty = true;
+    }
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
