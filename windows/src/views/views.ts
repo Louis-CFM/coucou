@@ -24,6 +24,12 @@ export interface ViewActions {
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
+  /** Seconds from compact to fully reduced; 0 = never fully reduce. */
+  setAbsence(seconds: number): void;
+  /** Pins the island open (ignores outside clicks, Escape and auto-close). */
+  togglePin(): void;
+  /** Whether the reduced island wakes on hover or only on a click. */
+  toggleWakeOnHover(): void;
   openSettingsWindow(): void;
   blip(): void;
 }
@@ -98,6 +104,19 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // Pin keeps the island open: outside clicks, Escape and the auto-close timer
+  // all stop working until it is unpinned.
+  const pinBtn = h(
+    "button",
+    {
+      title: "Pin — keep the island open",
+      onclick: () => {
+        actions.blip();
+        actions.togglePin();
+      },
+    },
+    svg(ICONS.pin, 14),
+  );
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -108,7 +127,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, pinBtn, gearBtn, soundBtn),
   );
 
   return {
@@ -123,6 +142,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      pinBtn.classList.toggle("on", State.settings.pinIsland);
+      pinBtn.title = State.settings.pinIsland
+        ? "Pinned — click to unpin"
+        : "Pin — keep the island open";
+      clear(pinBtn);
+      pinBtn.append(svg(State.settings.pinIsland ? ICONS.pinFill : ICONS.pin, 14));
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -422,6 +447,15 @@ function buildNote(): ViewHost {
 
 // ── In-island settings ────────────────────────────────────────────────────────
 
+/** "90" → "1m 30s", so a fully-compact delay stays readable. */
+function formatSpan(seconds: number): string {
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  return rest === 0 ? `${m}m` : `${m}m ${rest}s`;
+}
+
 function buildSettings(actions: ViewActions): ViewHost {
   const soundSwitch = h("button", { class: "switch", onclick: () => actions.toggleSound() });
   const volume = h("input", {
@@ -429,9 +463,24 @@ function buildSettings(actions: ViewActions): ViewHost {
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
   const autoLabel = h("span", {});
-  const segButtons = [10, 15, 30].map((s) =>
-    h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
+  // 0 is "Off": the island stays open until it is dismissed.
+  const AUTO_VALUES = [0, 10, 30, 60];
+  const segButtons = AUTO_VALUES.map((s) =>
+    h("button", { onclick: () => actions.setAutoClose(s) }, s === 0 ? "Off" : `${s}s`),
   );
+  const fullLabel = h("span", {});
+  const FULL_VALUES = [0, 15, 30];
+  const fullButtons = FULL_VALUES.map((s) =>
+    h("button", { onclick: () => actions.setAbsence(s) }, s === 0 ? "Never" : `${s}s`),
+  );
+  // Free-form slider for any delay between 5s and 5m; "Never" (0) is off the
+  // left end so the bar always shows a real, movable time.
+  const fullSlider = h("input", {
+    type: "range", min: "5", max: "300", step: "5",
+    style: "width:96px",
+    oninput: (e: Event) => actions.setAbsence(Number((e.target as HTMLInputElement).value)),
+  }) as HTMLInputElement;
+  const hoverSwitch = h("button", { class: "switch", onclick: () => actions.toggleWakeOnHover() });
   const claudeBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
 
@@ -445,6 +494,22 @@ function buildSettings(actions: ViewActions): ViewHost {
       svg(ICONS.timer, 12),
       autoLabel,
       h("div", { class: "seg" }, ...segButtons),
+    ),
+    h(
+      "div",
+      { class: "settings-row" },
+      svg(ICONS.timer, 12),
+      fullLabel,
+      fullSlider,
+      h("div", { class: "seg" }, ...fullButtons),
+    ),
+    h(
+      "div",
+      { class: "settings-row" },
+      svg(ICONS.timer, 12),
+      h("span", { text: "Wake on hover" }),
+      h("div", { class: "grow" }),
+      hoverSwitch,
     ),
     h(
       "div",
@@ -471,8 +536,18 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
-      autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
-      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
+      autoLabel.textContent =
+        s.autoCloseInterval > 0 ? `Auto-close · ${Math.round(s.autoCloseInterval)}s` : "Auto-close · Off";
+      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === AUTO_VALUES[i]));
+      fullLabel.textContent =
+        s.absenceInterval > 0 ? `Fully compact · ${formatSpan(s.absenceInterval)}` : "Fully compact · Never";
+      fullButtons.forEach((b, i) => b.classList.toggle("on", s.absenceInterval === FULL_VALUES[i]));
+      // Never has no position on the bar; park it at the left end.
+      if (document.activeElement !== fullSlider) {
+        fullSlider.value = String(Math.max(5, s.absenceInterval || 5));
+      }
+      fullSlider.style.opacity = s.absenceInterval > 0 ? "1" : "0.45";
+      hoverSwitch.classList.toggle("on", s.wakeOnHover);
       clear(claudeBadge);
       claudeBadge.append(
         dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
