@@ -17,13 +17,13 @@ use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::Graphics::Gdi::{
     BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC,
     GetDIBits, ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
-    HDC, PW_RENDERFULLCONTENT, PrintWindow, SRCCOPY,
+    HDC, SRCCOPY,
 };
 use windows::Win32::System::ProcessStatus::GetModuleBaseNameW;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
-    WindowFromPoint,
+    PrintWindow, PW_CLIENTONLY, PW_RENDERFULLCONTENT, WindowFromPoint,
 };
 
 use crate::files;
@@ -41,8 +41,6 @@ pub struct AttachedWindow {
 
 fn our_hwnd(app: &AppHandle) -> Option<HWND> {
     island::window(app)
-        .ok()
-        .flatten()
         .and_then(|w| w.hwnd().ok())
         .map(|raw| HWND(raw.0 as *mut _))
 }
@@ -78,23 +76,23 @@ fn capture(hwnd: HWND, rect: RECT) -> Result<(u32, u32, Vec<u8>), String> {
         if screen_dc.is_invalid() {
             return Err("cannot access the screen".into());
         }
-        let mem_dc = CreateCompatibleDC(screen_dc);
+        let mem_dc = CreateCompatibleDC(Some(screen_dc));
         let bmp = CreateCompatibleBitmap(screen_dc, w, h);
         if mem_dc.is_invalid() || bmp.is_invalid() {
             ReleaseDC(None, screen_dc);
             return Err("cannot create capture buffer".into());
         }
-        let old = SelectObject(mem_dc, bmp);
+        let old = SelectObject(mem_dc, bmp.into());
 
         // PrintWindow renders even covered windows; some (Electron, browsers)
         // need the full-content flag, others only answer the classic one.
         let mut ok = PrintWindow(hwnd, mem_dc, PW_RENDERFULLCONTENT).as_bool();
         if !ok {
-            ok = PrintWindow(hwnd, mem_dc, Default::default()).as_bool();
+            ok = PrintWindow(hwnd, mem_dc, PW_CLIENTONLY).as_bool();
         }
         if !ok {
             // Last resort: copy what is actually on screen at that rect.
-            ok = BitBlt(mem_dc, 0, 0, w, h, screen_dc, rect.left, rect.top, SRCCOPY).is_ok();
+            ok = BitBlt(mem_dc, 0, 0, w, h, Some(screen_dc), rect.left, rect.top, SRCCOPY).is_ok();
         }
         SelectObject(mem_dc, old);
 
@@ -135,7 +133,7 @@ fn capture(hwnd: HWND, rect: RECT) -> Result<(u32, u32, Vec<u8>), String> {
             Err("window refused capture (try a normal resizable window)".into())
         };
 
-        let _ = DeleteObject(bmp);
+        let _ = DeleteObject(bmp.into());
         let _ = DeleteDC(mem_dc);
         ReleaseDC(None, screen_dc);
         result
