@@ -12,10 +12,6 @@ struct SettingsView: View {
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
-    #if APPSTORE
-    @State private var claudeAccessGranted: Bool = (UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") != nil)
-    @State private var codexAccessGranted: Bool = (UserDefaults.standard.data(forKey: "codexDirectoryBookmark") != nil)
-    #endif
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -84,22 +80,14 @@ struct SettingsView: View {
                             #endif
                         }
                         #if APPSTORE
-                        if claudeAccessGranted {
-                            Text("~/.claude/coucou/nb-hook")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            HStack(spacing: 10) {
-                                Button("Install hooks") { installHooksAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Uninstall") { uninstallHooksAppStore() }
-                                    .buttonStyle(.bordered)
-                            }
-                        } else {
-                            Text("Choose your ~/.claude folder so Coucou can add its hooks.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                            Button("Choose .claude folder…") { chooseClaudeFolder() }
+                        Text("~/.claude/coucou/nb-hook")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { installHooksAppStore() }
                                 .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { uninstallHooksAppStore() }
+                                .buttonStyle(.bordered)
                         }
                         #else
                         Text("nb-hook : \(HookServer.hookScriptPath)")
@@ -113,6 +101,7 @@ struct SettingsView: View {
                         }
                         #endif
 
+                        #if !APPSTORE
                         if showDiff {
                             ScrollView {
                                 Text(pendingHookJSON)
@@ -124,17 +113,13 @@ struct SettingsView: View {
                             .cornerRadius(6)
 
                             HStack {
-                                #if APPSTORE
-                                Button("Confirm & write") { confirmInstallAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                #else
                                 Button("Confirm & write") { confirmInstall() }
                                     .buttonStyle(.borderedProminent)
-                                #endif
                                 Button("Cancel") { showDiff = false; pendingHookJSON = "" }
                                     .buttonStyle(.bordered)
                             }
                         }
+                        #endif
                     }
                     .padding(6)
                 }
@@ -143,23 +128,9 @@ struct SettingsView: View {
                 GroupBox("Codex Hooks") {
                     VStack(alignment: .leading, spacing: 10) {
                         #if APPSTORE
-                        if codexAccessGranted {
-                            Text("~/.codex/coucou/nb-hook")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            HStack(spacing: 10) {
-                                Button("Install hooks") { installCodexHooksAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Uninstall") { uninstallCodexHooksAppStore() }
-                                    .buttonStyle(.bordered)
-                            }
-                        } else {
-                            Text("Choose your ~/.codex folder so Coucou can add its hooks.")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                            Button("Choose .codex folder…") { chooseCodexFolder() }
-                                .buttonStyle(.borderedProminent)
-                        }
+                        Text("Codex hooks are installed from the GitHub build for now.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                         #else
                         Text("hooks.json : \(HookServer.codexHooksURL.path)")
                             .font(.system(size: 11, design: .monospaced))
@@ -187,13 +158,8 @@ struct SettingsView: View {
                             .cornerRadius(6)
 
                             HStack {
-                                #if APPSTORE
-                                Button("Confirm & write") { confirmInstallCodexAppStore() }
-                                    .buttonStyle(.borderedProminent)
-                                #else
                                 Button("Confirm & write") { confirmInstallCodex() }
                                     .buttonStyle(.borderedProminent)
-                                #endif
                                 Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
                                     .buttonStyle(.bordered)
                             }
@@ -437,86 +403,48 @@ struct SettingsView: View {
     // MARK: - App Store: hooks via NSOpenPanel + security-scoped bookmark
 
     #if APPSTORE
-    private func chooseClaudeFolder() {
+    /// Opens NSOpenPanel to select ~/.claude, then writes hooks directly.
+    /// NSOpenPanel grants sandbox access immediately — no security-scoped bookmark needed.
+    private func pickClaudeFolder(prompt: String) -> URL? {
         let panel = NSOpenPanel()
-        panel.message = "Choose your .claude folder so Coucou can add its hooks"
-        panel.prompt = "Choose"
+        panel.message = "Select your .claude folder (press ⇧⌘. to show hidden files)"
+        panel.prompt = prompt
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-        if panel.runModal() == .OK, let url = panel.url {
-            do {
-                let data = try url.bookmarkData(
-                    options: .withSecurityScope,
-                    includingResourceValuesForKeys: nil,
-                    relativeTo: nil
-                )
-                UserDefaults.standard.set(data, forKey: "claudeDirectoryBookmark")
-                claudeAccessGranted = true
-                statusMessage = "✓ .claude folder access granted."
-            } catch {
-                statusMessage = "❌ Bookmark error: \(error.localizedDescription)"
-            }
-        }
-    }
-
-    private func resolveClaudeBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: "claudeDirectoryBookmark") else { return nil }
-        var isStale = false
-        guard let url = try? URL(resolvingBookmarkData: data,
-                                  options: .withSecurityScope,
-                                  relativeTo: nil,
-                                  bookmarkDataIsStale: &isStale) else { return nil }
-        if isStale {
-            // Re-prompt user if bookmark is stale
-            claudeAccessGranted = false
-            UserDefaults.standard.removeObject(forKey: "claudeDirectoryBookmark")
+        panel.showsHiddenFiles = true
+        // getpwuid bypasses CFFIXED_USER_HOME and always returns the real user home
+        let realHomePath = getpwuid(getuid()).flatMap { String(cString: $0.pointee.pw_dir, encoding: .utf8) }
+            ?? "/Users/\(NSUserName())"
+        panel.directoryURL = URL(fileURLWithPath: realHomePath)
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard url.lastPathComponent == ".claude" else {
+            statusMessage = "❌ Select the .claude folder (hidden, in your Home directory)."
             return nil
         }
         return url
     }
 
     private func installHooksAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost — choose the folder again."
-            return
-        }
+        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
+        let alert = NSAlert()
+        alert.messageText = "Install Coucou hooks in ~/.claude?"
+        alert.informativeText = "Will write:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)"
+        alert.addButton(withTitle: "Install")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
-            let accessing = claudeURL.startAccessingSecurityScopedResource()
-            defer { if accessing { claudeURL.stopAccessingSecurityScopedResource() } }
-            pendingHookJSON = try HookServer.shared.previewClaudeHooksAppStore(claudeURL: claudeURL)
-            showDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
+            hookNeedsUpdate = false
+            statusMessage = "✓ Hooks installed — restart VS Code to activate."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
 
-    private func confirmInstallAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost."
-            return
-        }
-        do {
-            try HookServer.shared.writeClaudeHooksAppStore(claudeURL: claudeURL)
-            showDiff = false
-            statusMessage = "✓ Hooks installed in ~/.claude/settings.json"
-            pendingHookJSON = ""
-            hookNeedsUpdate = false
-        } catch {
-            statusMessage = "❌ Write error: \(error.localizedDescription)"
-        }
-    }
-
     private func uninstallHooksAppStore() {
-        guard let claudeURL = resolveClaudeBookmark() else {
-            claudeAccessGranted = false
-            statusMessage = "❌ .claude folder access lost."
-            return
-        }
+        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         do {
             try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
             statusMessage = "✓ Hooks removed."
@@ -525,89 +453,6 @@ struct SettingsView: View {
         }
     }
 
-    private func chooseCodexFolder() {
-        let panel = NSOpenPanel()
-        panel.message = "Choose your .codex folder so Coucou can add its hooks"
-        panel.prompt = "Choose"
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-        if panel.runModal() == .OK, let url = panel.url {
-            do {
-                let data = try url.bookmarkData(
-                    options: .withSecurityScope,
-                    includingResourceValuesForKeys: nil,
-                    relativeTo: nil
-                )
-                UserDefaults.standard.set(data, forKey: "codexDirectoryBookmark")
-                codexAccessGranted = true
-                statusMessage = "✓ .codex folder access granted."
-            } catch {
-                statusMessage = "❌ Bookmark error: \(error.localizedDescription)"
-            }
-        }
-    }
-
-    private func resolveCodexBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: "codexDirectoryBookmark") else { return nil }
-        var isStale = false
-        guard let url = try? URL(resolvingBookmarkData: data,
-                                  options: .withSecurityScope,
-                                  relativeTo: nil,
-                                  bookmarkDataIsStale: &isStale) else { return nil }
-        if isStale {
-            codexAccessGranted = false
-            UserDefaults.standard.removeObject(forKey: "codexDirectoryBookmark")
-            return nil
-        }
-        return url
-    }
-
-    private func installCodexHooksAppStore() {
-        guard let codexURL = resolveCodexBookmark() else {
-            codexAccessGranted = false
-            statusMessage = "❌ .codex folder access lost — choose the folder again."
-            return
-        }
-        do {
-            pendingCodexJSON = try HookServer.shared.previewCodexHooksAppStore(codexURL: codexURL)
-            showCodexDiff = true
-            statusMessage = "Review the hooks.json below before confirming."
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
-    }
-
-    private func confirmInstallCodexAppStore() {
-        guard let codexURL = resolveCodexBookmark() else {
-            codexAccessGranted = false
-            statusMessage = "❌ .codex folder access lost."
-            return
-        }
-        do {
-            try HookServer.shared.writeCodexHooksAppStore(codexURL: codexURL)
-            showCodexDiff = false
-            pendingCodexJSON = ""
-            statusMessage = "✓ Codex hooks installed in ~/.codex/hooks.json"
-        } catch {
-            statusMessage = "❌ Write error: \(error.localizedDescription)"
-        }
-    }
-
-    private func uninstallCodexHooksAppStore() {
-        guard let codexURL = resolveCodexBookmark() else {
-            codexAccessGranted = false
-            statusMessage = "❌ .codex folder access lost."
-            return
-        }
-        do {
-            try HookServer.shared.uninstallCodexHooksAppStore(codexURL: codexURL)
-            statusMessage = "✓ Codex hooks removed."
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
-    }
     #endif
 
     private func installHooks() {
