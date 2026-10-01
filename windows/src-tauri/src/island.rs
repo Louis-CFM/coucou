@@ -13,11 +13,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
 use windows::Win32::Foundation::{HWND, POINT};
-use windows::core::BOOL;
-use windows::Win32::Foundation::LPARAM;
-use windows::Win32::System::Ole::RevokeDragDrop;
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
-use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW,
@@ -138,89 +134,11 @@ fn cursor_physical() -> Option<(f64, f64)> {
     Some((p.x as f64, p.y as f64))
 }
 
-/// Lets dropped files reach the app again.
-///
-/// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates render widgets later —
-/// possibly nested several levels deep — and registers its own targets on
-/// them; being the innermost windows, those win, and since the page has no
-/// HTML5 drop handler it refuses everything — the "no drop" cursor, with
-/// nothing reaching Tauri. Revoking every Chromium render widget in the whole
-/// subtree makes OLE fall through to the target wry registered on the parent
-/// widget, which is the one that feeds Tauri's drag events.
-///
-/// WebView2 may re-register its targets later (it owns those child windows),
-/// which is exactly the "first drop works, later drops refuse" failure mode:
-/// the revoke is refreshed throughout a drag, not trusted once. Cheap and
-/// idempotent.
+/// Lets dropped files reach the app again. Delegates to droptarget, which
+/// owns an IDropTarget on every descendant window: revoking proved
+/// unreliable (foreign COM apartments refuse it), owning the target does not.
 pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        let mut ctx = UnblockCtx::default();
-        unsafe {
-            let _ = EnumChildWindows(
-                Some(hwnd),
-                Some(walk_children),
-                LPARAM(&mut ctx as *mut UnblockCtx as isize),
-            );
-        }
-        if ctx.total > 0 {
-            let mut classes = ctx.classes.clone();
-            classes.sort();
-            classes.dedup();
-            let shown = classes.iter().take(8).cloned().collect::<Vec<_>>().join(",");
-            let hr = ctx
-                .last_hresult
-                .map(|c| format!(" last_hr=0x{:08X}", c as u32))
-                .unwrap_or_default();
-            crate::log::line(format!(
-                "unblock {label}: descendants={} render_widgets={} revoked={} failed={}{hr} classes=[{shown}]",
-                ctx.total, ctx.matched, ctx.revoked, ctx.failed,
-            ));
-        }
-    }
-}
-
-#[derive(Default)]
-struct UnblockCtx {
-    total: u32,
-    matched: u32,
-    revoked: u32,
-    failed: u32,
-    last_hresult: Option<i32>,
-    classes: Vec<String>,
-}
-
-unsafe extern "system" fn walk_children(hwnd: HWND, lparam: LPARAM) -> BOOL {
-    let ctx = unsafe { &mut *(lparam.0 as *mut UnblockCtx) };
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        ctx.total += 1;
-        if ctx.classes.len() < 16 {
-            ctx.classes.push(class.clone());
-        }
-        // Any Chromium render widget eats drops; class names gain suffixes
-        // across WebView2 releases, so match by prefix — at ANY depth, not
-        // just direct children.
-        if class.starts_with("Chrome_RenderWidgetHostHWND") {
-            ctx.matched += 1;
-            match unsafe { RevokeDragDrop(hwnd) } {
-                Ok(()) => ctx.revoked += 1,
-                Err(e) => {
-                    ctx.failed += 1;
-                    ctx.last_hresult = Some(e.code().0);
-                }
-            }
-        }
-    }
-    // Recurse: the render widget is usually a grandchild, not a direct child.
-    unsafe {
-        let _ = EnumChildWindows(Some(hwnd), Some(walk_children), lparam);
-    }
-    true.into()
+    crate::droptarget::ensure_all(app);
 }
 
 /// True while the left mouse button is held — the only signal we get that a

@@ -2,6 +2,7 @@
 
 mod claude;
 mod capture;
+mod droptarget;
 mod files;
 mod gemini;
 mod gmail;
@@ -561,6 +562,9 @@ pub fn run() {
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
+            // Own the drop targets early (the poll refresh keeps them ours as
+            // late WebView2 widgets appear).
+            crate::droptarget::ensure_all(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             Ok(())

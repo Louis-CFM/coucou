@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -822,6 +822,9 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    // Our own OLE target (droptarget.rs) emits the same shape when it wins
+    // the drop instead of wry's — one handler serves both transports.
+    void onEvent<{ type: string; paths?: string[] }>("ext-drag", (e) => this.onDragDrop(e));
     this.wireDomDrop();
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
