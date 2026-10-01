@@ -178,6 +178,23 @@ final class AppState: ObservableObject {
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 
+    // Which AI answers the chat — persisted. nil until the user picks one or the
+    // first chat auto-picks the first installed CLI.
+    @Published var chatEngine: ChatEngine? = nil {
+        didSet { UserDefaults.standard.set(chatEngine?.rawValue, forKey: "chatEngine") }
+    }
+
+    // AI CLIs found on this Mac (filled by LocalCLI.detectAll, from Settings or the first chat)
+    @Published var detectedCLIs: [ChatEngine: CLIInfo] = [:]
+    @Published var cliDetectionDone: Bool = false
+
+    /// Re-scans for the AI CLIs in the background.
+    func detectCLIs() async {
+        let found = await Task.detached { LocalCLI.detectAll() }.value
+        detectedCLIs = found
+        cliDetectionDone = true
+    }
+
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
@@ -197,6 +214,7 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
+        if let v = ud.string(forKey: "chatEngine") { chatEngine = ChatEngine(rawValue: v) }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),

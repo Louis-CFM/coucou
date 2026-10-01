@@ -117,6 +117,24 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        #if !APPSTORE
+        LocalCLIChat.shared.reset()
+        #endif
+    }
+
+    /// The engine the chat will use. The App Store build is sandboxed and can't
+    /// launch other programs, so it always talks to the API. Otherwise, with no
+    /// choice saved yet, the first installed CLI wins, falling back to the API.
+    func resolveEngine(state: AppState) async -> ChatEngine {
+        #if APPSTORE
+        return .api
+        #else
+        if let chosen = state.chatEngine { return chosen }
+        if !state.cliDetectionDone { await state.detectCLIs() }
+        let picked = ChatEngine.cliEngines.first { state.detectedCLIs[$0] != nil } ?? .api
+        state.chatEngine = picked
+        return picked
+        #endif
     }
 
     private let systemPrompt = """
@@ -133,6 +151,21 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        let engine = await resolveEngine(state: state)
+        if engine != .api {
+            let reply = await LocalCLIChat.shared.send(engine: engine, query: query, context: context)
+            if reply.isError {
+                await showError(reply.text, state: state)
+            } else {
+                state.chatHistory.append(ChatMessage(role: .assistant,
+                                                     content: reply.text.trimmingCharacters(in: .whitespacesAndNewlines)))
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+            return
+        }
+
         guard let key = apiKey, !key.isEmpty else {
             await showError("API key missing. Open settings.", state: state)
             return

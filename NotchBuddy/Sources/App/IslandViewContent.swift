@@ -2708,6 +2708,16 @@ struct SettingsIslandView: View {
         KeychainStore.shared.get("anthropic-api-key") != nil
     }
 
+    /// Chat engine badge: the chosen CLI is found on this Mac, or the API has a key.
+    private var chatEngineLabel: String { state.chatEngine?.badge ?? "Chat" }
+    private var chatEngineReady: Bool {
+        switch state.chatEngine {
+        case .api: return apiConnected
+        case .some(let e): return state.detectedCLIs[e] != nil
+        case nil: return !state.detectedCLIs.isEmpty || apiConnected
+        }
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: nil)
@@ -2755,7 +2765,7 @@ struct SettingsIslandView: View {
                 // Connection status
                 HStack(spacing: 14) {
                     StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    StatusBadge(label: chatEngineLabel, ok: chatEngineReady)
                     Spacer()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
@@ -2769,6 +2779,9 @@ struct SettingsIslandView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 14)
         }
+        #if !APPSTORE
+        .task { if !state.cliDetectionDone { await state.detectCLIs() } }
+        #endif
     }
 }
 
