@@ -56,6 +56,11 @@ const PT: Record<string, string> = {
   // Upload / choose
   "Drop your files here": "Solte seus arquivos aqui",
   "Drop your file here": "Solte seu arquivo aqui",
+  "PDF": "PDF",
+  "Images": "Imagens",
+  "Code": "Código",
+  "Docs": "Documentos",
+  "Choose file": "Escolher arquivo",
   "Uploading": "Enviando",
   "File": "Arquivo",
   "file": "arquivo",

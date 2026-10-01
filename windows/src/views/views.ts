@@ -18,6 +18,8 @@ export interface ViewActions {
   collapse(): void;
   /** Clears the chat, drops any attached file and goes back to overview. */
   newChat(): void;
+  /** Opens the system file picker (drag fallback that always works). */
+  pickFile(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
@@ -511,7 +513,7 @@ export function buildViews(
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(actions, onChatHeightChange));
-  map.set("upload", buildUpload());
+  map.set("upload", buildUpload(actions));
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.

@@ -229,6 +229,19 @@ body {
   color: var(--ink);
 }
 
+/* Language badge: same row, deliberately quiet and small. */
+.tab.lang-badge {
+  width: auto;
+  height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  align-self: center;
+}
+
 .header-actions {
   margin-left: auto;
   display: flex;

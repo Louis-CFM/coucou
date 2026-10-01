@@ -28,19 +28,25 @@ function dashedFrame(): SVGSVGElement {
   return el;
 }
 
-export function buildUpload(): ViewHost {
+export function buildUpload(actions: ViewActions): ViewHost {
   const frame = dashedFrame();
   const title = h("div", { class: "drop-title", text: t("Drop your files here") });
   const tags = h(
     "div",
     { class: "drop-tags" },
-    ...["PDF", "Images", "Code", "Docs"].map((t) => h("span", { text: t })),
+    ...["PDF", "Images", "Code", "Docs"].map((tg) => h("span", { text: t(tg) })),
+  );
+  // Guaranteed ingestion when the OS refuses the drag: the system picker
+  // always delivers, no drop target involved.
+  const pick = h(
+    "button",
+    { class: "btn secondary", text: t("Choose file"), onclick: () => actions.pickFile() },
   );
   const card = h(
     "div",
     { class: "card drop-card" },
     frame,
-    h("div", { class: "drop-body" }, title, tags),
+    h("div", { class: "drop-body" }, title, tags, pick),
   );
   const el = h("div", { class: "view" }, card);
 

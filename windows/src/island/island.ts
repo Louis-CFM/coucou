@@ -126,6 +126,7 @@ export class Island {
         Sound.play("blip");
         this.setView(State.defaultView());
       },
+      pickFile: () => this.pickFile(),
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
@@ -613,6 +614,45 @@ export class Island {
       (file) => this.finishSwallow(file.name, file.path),
       (err) => this.failSwallow(err),
     );
+  }
+
+  /** System file picker: ingestion that cannot be refused by any drop target. */
+  private pickFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      void Bridge.log(`picker ${file.name} ${file.size}b`);
+      if (file.size > 25 * 1024 * 1024) {
+        State.noteMessage = "File too large (25 MB max).";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = String(reader.result ?? "");
+        const b64 = url.includes(",") ? url.split(",")[1] : "";
+        if (!b64) {
+          State.noteMessage = "Could not read that file.";
+          this.setView("note");
+          Sound.play("error");
+          window.setTimeout(() => this.setView(State.defaultView()), 2400);
+          return;
+        }
+        this.swallowBytes(file.name, b64);
+      };
+      reader.onerror = () => {
+        State.noteMessage = "Could not read that file.";
+        this.setView("note");
+        Sound.play("error");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }
 
   /** Shared opening choreography. False = duplicate of a swallow in flight. */
