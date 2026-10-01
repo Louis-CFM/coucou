@@ -13,7 +13,9 @@
 //!   island is the whole point. No answer means empty stdout, and Claude Code
 //!   asks in the terminal exactly as if Coucou were not installed.
 //!
-//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON).
+//! Usage: `coucou-hook <EventName> [<WslDistro>]` (the name is also read from
+//! the JSON). The distro is set by hooks installed inside WSL, where `cwd` is a
+//! Linux path.
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -171,11 +173,29 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
+    // From WSL: `/home/me/proj` means nothing to Windows. `\\wsl$\<distro>\…`
+    // is a folder Explorer and VS Code can open, and its last component is
+    // still the project name.
+    if let Some(distro) = std::env::args().nth(2).filter(|d| !d.is_empty()) {
+        let unc = map.get("cwd").and_then(|v| v.as_str()).and_then(|c| wsl_unc(&distro, c));
+        if let Some(unc) = unc {
+            map.insert("cwd".into(), serde_json::Value::String(unc));
+        }
+        map.insert("wsl_distro".into(), serde_json::Value::String(distro));
+    }
+
     truncate_strings(&mut payload);
 
     let mut line = payload.to_string();
     line.push('\n');
     Some((line, event))
+}
+
+/// `/home/me/proj` in `Ubuntu` → `\\wsl$\Ubuntu\home\me\proj`. None for a path
+/// that is not a Linux one.
+fn wsl_unc(distro: &str, cwd: &str) -> Option<String> {
+    cwd.starts_with('/')
+        .then(|| format!(r"\\wsl$\{distro}{}", cwd.replace('/', "\\")))
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
@@ -253,6 +273,12 @@ mod tests {
         assert!(decision_json("maybe").is_none());
         // The shape the app used to send must not be mistaken for a decision.
         assert!(decision_json(r#"{"permissionDecision":"allow"}"#).is_none());
+    }
+
+    #[test]
+    fn a_wsl_cwd_becomes_a_path_windows_can_open() {
+        assert_eq!(wsl_unc("Ubuntu", "/home/me/proj").unwrap(), r"\\wsl$\Ubuntu\home\me\proj");
+        assert!(wsl_unc("Ubuntu", r"C:\work").is_none());
     }
 
     #[test]

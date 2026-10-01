@@ -68,6 +68,13 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+**Claude Code in WSL.** Each installed WSL distro gets its own section in
+Settings, with the same diff, backup and click before anything is written to
+that distro's `~/.claude/settings.json` (reached at `\\wsl$\<distro>\…`). The
+hooks there call the same `coucou-hook.exe` through WSL interop, so nothing has
+to be installed inside Linux. "Open terminal" opens the folder with VS Code's
+WSL remote. Opening Settings starts any distro that is stopped.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

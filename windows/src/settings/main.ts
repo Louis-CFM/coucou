@@ -45,21 +45,23 @@ function renderDiff(text: string): HTMLElement {
 
 function claudeSection(status: HookStatus): HTMLElement {
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const distro = status.distro;
+  const title = distro ? `Claude Code in WSL · ${distro}` : "Claude Code";
   const section = h(
     "section",
     {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
+    h("h2", {}, statusDot(status.installed), h("span", { text: title })),
     body,
   );
 
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
+    const fresh = await Bridge.hooksStatus(distro).catch(() => null);
     if (fresh) Object.assign(status, fresh);
     clear(body);
     draw();
     const head = section.querySelector("h2")!;
     clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
+    head.append(statusDot(status.installed), h("span", { text: title }));
   };
 
   function draw() {
@@ -114,7 +116,7 @@ function claudeSection(status: HookStatus): HTMLElement {
   async function showPreview(install: boolean) {
     let preview;
     try {
-      preview = await Bridge.hooksPreview(install);
+      preview = await Bridge.hooksPreview(distro, install);
     } catch (err) {
       // An unreadable or invalid settings.json stops here rather than being
       // treated as empty and written over.
@@ -149,7 +151,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
+        const backup = await Bridge.hooksApply(distro, install, preview.fingerprint);
         clear(body);
         body.append(h("div", {
           class: "notice ok",
@@ -425,8 +427,8 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  const status = (await Bridge.hooksStatus().catch(() => null)) ?? {
+    installed: false, distro: null, settingsPath: "", hookPath: "", hookReady: false,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
@@ -454,6 +456,21 @@ async function main() {
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
   });
+
+  // One section per WSL distro, after the rest: asking a distro starts it,
+  // which can take a few seconds.
+  const wslSlot = h("div", {});
+  root.children[1].after(wslSlot);
+  for (const distro of (await Bridge.wslDistros()) ?? []) {
+    try {
+      wslSlot.append(claudeSection(await Bridge.hooksStatus(distro)));
+    } catch (err) {
+      wslSlot.append(h("section", {},
+        h("h2", {}, statusDot(false), h("span", { text: `Claude Code in WSL · ${distro}` })),
+        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+      ));
+    }
+  }
 }
 
 void main();

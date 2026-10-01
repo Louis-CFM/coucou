@@ -11,6 +11,7 @@ mod secrets;
 mod settings;
 mod tray;
 mod win_user;
+mod wsl;
 
 use std::os::windows::process::CommandExt;
 use std::process::Command;
@@ -23,7 +24,7 @@ use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
 use files::DroppedFile;
-use hooks::{HookPreview, HookStatus};
+use hooks::{HookPreview, HookStatus, Target};
 use island::{PollGate, ScreenInfo};
 use pipe::Pending;
 use settings::Settings;
@@ -49,7 +50,7 @@ pub struct BootInfo {
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    settings.hooks_installed = hooks::status(&Target::windows()).installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -143,7 +144,11 @@ fn open_in_vscode(path: Option<String>) -> bool {
     if let Some(code) = find_on_path("code") {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
-            cmd.arg(p);
+            // A WSL session: open it in the distro, as `code .` from WSL would.
+            match wsl::split_unc(p) {
+                Some((distro, linux)) => cmd.args(["--remote", &format!("wsl+{distro}"), &linux]),
+                None => cmd.arg(p),
+            };
         }
         if cmd.creation_flags(CREATE_NO_WINDOW).spawn().is_ok() {
             return true;
@@ -186,28 +191,42 @@ fn set_paused(paused: bool) {
 
 // ── Claude Code hooks ─────────────────────────────────────────────────────────
 
-#[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
+// `distro: None` is Windows' own settings.json, `Some` a WSL distro's. The WSL
+// path runs wsl.exe, which can take seconds to start a distro: hence `async`,
+// which keeps these off the main thread.
+
+#[tauri::command(async)]
+fn hooks_status(distro: Option<String>) -> Result<HookStatus, String> {
+    Ok(hooks::status(&Target::from(distro.as_deref())?))
+}
+
+#[tauri::command(async)]
+fn wsl_distros() -> Vec<String> {
+    wsl::distros()
 }
 
 /// Returns the diff the user has to look at before anything is written.
-#[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
+#[tauri::command(async)]
+fn hooks_preview(distro: Option<String>, install: bool) -> Result<HookPreview, String> {
+    hooks::preview(&Target::from(distro.as_deref())?, install)
 }
 
 /// Only ever called from an explicit click in the settings window.
-#[tauri::command]
+#[tauri::command(async)]
 fn hooks_apply(
     app: AppHandle,
     shared: State<Shared>,
+    distro: Option<String>,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
+    let backup = hooks::write(&Target::from(distro.as_deref())?, install, &fingerprint)?;
+    // `hooks_installed` is about Windows' own settings.json.
+    if distro.is_some() {
+        return Ok(backup);
+    }
     let updated = {
         let mut current = shared.settings.lock().unwrap();
         current.hooks_installed = install;
@@ -393,6 +412,7 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            wsl_distros,
             approval_decision,
             approval_ack,
             approval_decline,
