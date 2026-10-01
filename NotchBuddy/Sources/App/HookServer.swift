@@ -299,13 +299,18 @@ final class HookServer: @unchecked Sendable {
 
     /// Creates a dynamic pill for a third-party agent on first event, then no-ops.
     /// ID format: "agent_<name>" — never collides with "integration_*" pills.
+    /// Inserted right after integration_claude so it appears in the visible prefix(4).
     @MainActor
     private func upsertExternalAgent(id: String, name: String) {
         let state = AppState.shared
         guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
         let color = IslandConst.colorForProject(name)
         let task = AgentTask(id: id, name: name, color: color, state: .idle, steps: [], source: .agent)
-        state.tasks.append(task)
+        if let claudeIdx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) {
+            state.tasks.insert(task, at: claudeIdx + 1)
+        } else {
+            state.tasks.append(task)
+        }
         if state.focusId == nil { state.focusId = id }
         state.syncMode()
     }

@@ -208,16 +208,21 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Keep the declared order so pills never shuffle.
-    // Dynamic agent_ pills (coucou_agent) are not in the order list — sort them last.
+    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
+    // then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => {
-      const ia = order.indexOf(a.id);
-      const ib = order.indexOf(b.id);
-      if (ia < 0 && ib < 0) return 0;
-      if (ia < 0) return 1;
-      if (ib < 0) return -1;
-      return ia - ib;
+      const isAgentA = a.id.startsWith("agent_");
+      const isAgentB = b.id.startsWith("agent_");
+      // integration_claude always first
+      if (a.id === "integration_claude") return -1;
+      if (b.id === "integration_claude") return 1;
+      // agent_* before other integrations; preserve insertion order among themselves
+      if (isAgentA && !isAgentB) return -1;
+      if (isAgentB && !isAgentA) return 1;
+      if (isAgentA && isAgentB) return 0;
+      // both known integrations → declaration order
+      return order.indexOf(a.id) - order.indexOf(b.id);
     });
     if (!this.focusId) this.focusId = "integration_claude";
     this.notify();
