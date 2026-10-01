@@ -20,7 +20,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    WS_EX_TOOLWINDOW, WindowFromPoint, GetAncestor, GA_ROOT, GA_ROOTOWNER,
 };
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
@@ -60,6 +60,11 @@ pub struct IslandRect {
     pub y: f64,
     pub w: f64,
     pub h: f64,
+}
+
+fn outside_press(rect: IslandRect, x: f64, y: f64, down: bool, was_down: bool) -> bool {
+    down && !was_down && rect.w > 0.0 && rect.h > 0.0
+        && !(x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h)
 }
 
 /// Wakes / parks the cursor poll thread so a hidden island costs literally nothing.
@@ -274,12 +279,12 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 /// visible. Parked on a condvar the rest of the time.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
-        let mut was_down = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
         loop {
             gate.wait_until_active();
+            let mut was_down = left_button_down();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
@@ -312,6 +317,26 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+                // Sample button edges before the stationary-cursor fast path. A click
+                // outside must dismiss even when the pointer has stopped moving.
+                let down = left_button_down();
+                let pressed = down && !was_down;
+                let r = *gate.rect.lock().unwrap();
+                if outside_press(r, x, y, down, was_down) {
+                    // Native select popups belong to our window even when their
+                    // menu extends beyond the island's painted bounds.
+                    let own_popup = win.hwnd().is_ok_and(|hwnd| unsafe {
+                        let hit = WindowFromPoint(POINT { x: cx as i32, y: cy as i32 });
+                        GetAncestor(hit, GA_ROOT).0 != hwnd.0 as *mut _
+                            && GetAncestor(hit, GA_ROOTOWNER).0 == hwnd.0 as *mut _
+                    });
+                    if !own_popup { let _ = win.emit("outside-click", ()); }
+                }
+                was_down = down;
+                if pressed {
+                    let handle = app.clone();
+                    let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
+                }
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -320,7 +345,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // Click-through: the window only takes the mouse over the island
                 // shape. A small entry margin means the flag is already off by the
                 // time a moving cursor reaches a button.
-                let r = *gate.rect.lock().unwrap();
                 let on_island = r.w > 0.0
                     && x >= r.x - HIT_MARGIN
                     && x <= r.x + r.w + HIT_MARGIN
@@ -336,13 +360,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
-                }
-                was_down = down;
-
                 let dragging = down
                     && x >= 0.0
                     && x <= size.0
@@ -364,5 +381,21 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn outside_click_is_a_press_edge_outside_the_painted_rect() {
+        let rect = IslandRect { x: 50.0, y: 10.0, w: 300.0, h: 150.0 };
+        assert!(outside_press(rect, 400.0, 50.0, true, false));
+        assert!(!outside_press(rect, 400.0, 50.0, true, true));
+        assert!(!outside_press(rect, 400.0, 50.0, false, true));
+        assert!(!outside_press(rect, 150.0, 50.0, true, false));
+        assert!(!outside_press(rect, 350.0, 160.0, true, false));
+        assert!(!outside_press(IslandRect::default(), 400.0, 50.0, true, false));
     }
 }

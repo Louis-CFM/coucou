@@ -323,6 +323,11 @@ export class Island {
     this.fsm.forcePetit();
   }
 
+  /** Explicit outside click closes the panel, while approval cards stay actionable. */
+  dismissOutside() {
+    if (State.mode === "expanded" && !State.isPinned) this.collapse();
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
@@ -555,6 +560,9 @@ export class Island {
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) {
       window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+      window.addEventListener("pointerdown", (e) => {
+        if (!this.islandEl.contains(e.target as Node)) this.dismissOutside();
+      });
     }
   }
 
