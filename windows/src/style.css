@@ -1375,8 +1375,8 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Island themes ────────────────────────────────────────────────────────── */
 
 /* Embasa brand rule: a quiet 3px signature floating just above the island's
-   bottom edge. Inset (never touching the corners) so it reads clean in every
-   mode and size — compact pill included. */
+   bottom edge, only while expanded (in the compact pill it would sit on
+   Mochi). Inset so it never touches the animated corners. */
 #embasa-rule {
   position: absolute;
   left: 16px;
@@ -1393,6 +1393,11 @@ input[type="range"]::-webkit-slider-thumb {
     #e8a033 92%, #e8a033 100%);
   opacity: 0.85;
   pointer-events: none;
+  display: none;
+}
+
+#island.expanded #embasa-rule {
+  display: block;
 }
 
 /* Ice — minimalist frost white. */

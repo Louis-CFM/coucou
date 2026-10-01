@@ -181,7 +181,7 @@ const MODELS: [string, string][] = [
 ];
 
 const GEMINI_MODELS: [string, string][] = [
-  ["gemini-2.5-flash", "Gemini 2.5 Flash"],
+  ["gemini-3.8-flash", "Gemini 3.8 Flash"],
   ["gemini-2.5-pro", "Gemini 2.5 Pro"],
   ["gemini-2.0-flash", "Gemini 2.0 Flash"],
 ];
@@ -260,10 +260,16 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
   provider.append(h("option", { value: "claude", text: t("Claude (Anthropic)") }));
   provider.append(h("option", { value: "gemini", text: t("Gemini (Google)") }));
   provider.value = settings.chatProvider ?? "claude";
+  const applyProvider = () => {
+    const isGemini = provider.value === "gemini";
+    claudeRows.style.display = isGemini ? "none" : "";
+    geminiRows.style.display = isGemini ? "" : "none";
+    geminiModelRow.style.display = isGemini ? "" : "none";
+  };
   provider.addEventListener("change", () => {
     settings.chatProvider = provider.value;
     void save();
-    geminiModelRow.style.display = provider.value === "gemini" ? "" : "none";
+    applyProvider();
   });
 
   const geminiField = h("input", {
@@ -300,13 +306,23 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
   if (!GEMINI_MODELS.some(([id]) => id === settings.geminiModel)) {
     geminiModel.append(h("option", { value: settings.geminiModel, text: settings.geminiModel }));
   }
-  geminiModel.value = settings.geminiModel ?? "gemini-2.5-flash";
+  geminiModel.value = settings.geminiModel ?? "gemini-3.8-flash";
   geminiModel.addEventListener("change", () => {
     settings.geminiModel = geminiModel.value;
     void save();
   });
   const geminiModelRow = h("div", { class: "row" }, h("label", { text: t("Gemini model") }), geminiModel);
-  geminiModelRow.style.display = provider.value === "gemini" ? "" : "none";
+
+  // Provider → model → key, one provider visible at a time.
+  const claudeRows = h("div", { style: "display:flex;flex-direction:column;gap:12px" },
+    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    h("div", { class: "row" }, h("label", { text: t("Claude key") }), field, saveBtn, clearBtn),
+  );
+  const geminiRows = h("div", { style: "display:flex;flex-direction:column;gap:12px" },
+    geminiModelRow,
+    h("div", { class: "row" }, h("label", { text: t("Gemini key") }), geminiField, geminiSave, geminiClear),
+  );
+  applyProvider();
 
   return h(
     "section",
@@ -314,10 +330,8 @@ function apiSection(hasKey: boolean, hasGeminiKey: boolean): HTMLElement {
     h("h2", {}, dot, h("span", { text: t("Chat AI") })),
     state,
     h("div", { class: "row" }, h("label", { text: t("Provider") }), provider),
-    h("div", { class: "row" }, h("label", { text: t("Claude key") }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
-    h("div", { class: "row" }, h("label", { text: t("Gemini key") }), geminiField, geminiSave, geminiClear),
-    geminiModelRow,
+    claudeRows,
+    geminiRows,
     feedback,
   );
 }

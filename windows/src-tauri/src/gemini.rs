@@ -12,10 +12,10 @@ use crate::secrets;
 
 const MAX_INLINE_TEXT: u64 = 200_000;
 
-pub const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-flash";
+pub const DEFAULT_GEMINI_MODEL: &str = "gemini-3.8-flash";
 
 pub const GEMINI_MODELS: &[&str] = &[
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
 ];

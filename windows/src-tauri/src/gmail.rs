@@ -148,10 +148,14 @@ fn header(payload: &Value, name: &str) -> String {
         .to_string()
 }
 
-/// Unread count + newest subjects over REST. 401 refreshes once and retries.
+/// Unread count + newest subjects over REST. Counts only mail actually
+/// fetched (`in:inbox`, recent first) — never the server's estimate, which
+/// happily reports years of archived unread. 401 refreshes once and retries.
 pub async fn unread() -> Result<MailboxState, String> {
     let token = access_token().await?;
-    let list_url = format!("{API_ME}/messages?q=is%3Aunread&maxResults=20");
+    let list_url = format!(
+        "{API_ME}/messages?q=is%3Aunread+in%3Ainbox+newer_than%3A30d&maxResults=20"
+    );
     let list = match get_json(&list_url, &token).await {
         Err(e) if e == "unauthorized" => {
             let store = load().ok_or_else(|| "not signed in".to_string())?;
@@ -162,24 +166,21 @@ pub async fn unread() -> Result<MailboxState, String> {
         }
         other => other?,
     };
-    let unread = list
-        .get("resultSizeEstimate")
-        .and_then(Value::as_u64)
-        .unwrap_or(0) as u32;
     let ids: Vec<String> = list
         .get("messages")
         .and_then(Value::as_array)
         .map(|ms| {
             ms.iter()
                 .filter_map(|m| m.get("id").and_then(Value::as_str).map(str::to_string))
-                .take(3)
+                .take(20)
                 .collect()
         })
         .unwrap_or_default();
+    let unread = ids.len() as u32;
 
     let token2 = access_token().await?;
     let mut latest = Vec::new();
-    for id in ids {
+    for id in ids.into_iter().take(3) {
         let url = format!(
             "{API_ME}/messages/{id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From"
         );
