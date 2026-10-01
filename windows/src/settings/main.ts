@@ -81,8 +81,8 @@ interface Change {
 }
 
 const HOOKS_CHANGE: Change = {
-  preview: Bridge.hooksPreview,
-  apply: Bridge.hooksApply,
+  preview: (install) => Bridge.hooksPreview(null, install),
+  apply: (install, fingerprint) => Bridge.hooksApply(null, install, fingerprint),
   get installText() { return t("This is exactly what will change in your settings.json. Your own hooks are left untouched."); },
   get removeText() { return t("This removes Coucou's entries only. Your own hooks are left untouched."); },
   get installButton() { return t("Back up and write"); },
@@ -165,25 +165,33 @@ async function reviewChange(
 // ── Claude Code section ───────────────────────────────────────────────────────
 
 function claudeSection(status: HookStatus): HTMLElement {
+  const distro = status.distro;
+  const title = distro ? t("Claude Code in WSL · {distro}", { distro }) : "Claude Code";
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
   const section = h(
     "section",
     {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
+    h("h2", {}, statusDot(status.installed), h("span", { text: title })),
     body,
   );
+  // This distro's settings.json, not this machine's.
+  const change: Change = {
+    ...HOOKS_CHANGE,
+    preview: (install) => Bridge.hooksPreview(distro, install),
+    apply: (install, fingerprint) => Bridge.hooksApply(distro, install, fingerprint),
+  };
 
   const redraw = () => {
     clear(body);
     draw();
   };
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
+    const fresh = await Bridge.hooksStatus(distro).catch(() => null);
     if (fresh) Object.assign(status, fresh);
     redraw();
     const head = section.querySelector("h2")!;
     clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
+    head.append(statusDot(status.installed), h("span", { text: title }));
   };
 
   function draw() {
@@ -216,7 +224,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     const install = h("button", {
       class: "primary",
       text: status.installed ? t("Reinstall hooks…") : t("Install hooks…"),
-      onclick: () => void reviewChange(body, HOOKS_CHANGE, true, redraw, () => void rebuild()),
+      onclick: () => void reviewChange(body, change, true, redraw, () => void rebuild()),
     });
     // Writing hook commands that point at a relay which isn't there would give
     // every Claude Code session a broken hook and nothing to show for it.
@@ -229,7 +237,7 @@ function claudeSection(status: HookStatus): HTMLElement {
       actions.append(h("button", {
         class: "danger",
         text: t("Uninstall hooks…"),
-        onclick: () => void reviewChange(body, HOOKS_CHANGE, false, redraw, () => void rebuild()),
+        onclick: () => void reviewChange(body, change, false, redraw, () => void rebuild()),
       }));
     }
     body.append(actions);
@@ -237,6 +245,30 @@ function claudeSection(status: HookStatus): HTMLElement {
 
   draw();
   return section;
+}
+
+/**
+ * One section per WSL distro, under Claude Code's. Asking a distro starts it,
+ * which can take a few seconds: all of them are asked at once, and each one
+ * says so until it answers.
+ */
+function wslSections(): HTMLElement {
+  const slot = h("div", { style: "display:contents" });
+  void Bridge.wslDistros().then((distros) => {
+    for (const distro of distros ?? []) {
+      const heading = () => h("h2", {}, statusDot(false), h("span", { text: t("Claude Code in WSL · {distro}", { distro }) }));
+      const placeholder = h("section", {}, heading(), h("div", { class: "hint", text: t("Starting {distro}…", { distro }) }));
+      slot.append(placeholder);
+      Bridge.hooksStatus(distro).then(
+        (status) => placeholder.replaceWith(claudeSection(status)),
+        (err) => placeholder.replaceWith(h("section", {},
+          heading(),
+          h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+        )),
+      );
+    }
+  });
+  return slot;
 }
 
 // ── Plan usage section ────────────────────────────────────────────────────────
@@ -264,7 +296,7 @@ function planSection(status: HookStatus): HTMLElement {
     draw();
   };
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
+    const fresh = await Bridge.hooksStatus().catch(() => null);
     if (fresh) Object.assign(status, fresh);
     settings.planRelayInstalled = status.planRelayInstalled;
     // Cancelled or failed: a switch that was waiting for the install falls back.
@@ -1356,8 +1388,8 @@ let notchPage: PageId = "general";
 
 /** Reads what the sections of the Notch page show and draws them. */
 async function render() {
-  const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, planRelayInstalled: false, settingsPath: "", hookPath: "", hookReady: false,
+  const status = (await Bridge.hooksStatus().catch(() => null)) ?? {
+    installed: false, planRelayInstalled: false, distro: null, settingsPath: "", hookPath: "", hookReady: false,
   };
   const agents = await Bridge.agentHooksList();
 
@@ -1400,7 +1432,7 @@ async function render() {
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
-    agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
+    agents: () => [claudeSection(status), wslSections(), agentsSection(agents), planSection(status)],
     chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
