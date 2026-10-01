@@ -41,6 +41,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focus": false,
+        "focusable": false,
+        "visibleOnAllWorkspaces": true,
         "visible": false,
         "center": false,
         "maximizable": false,
