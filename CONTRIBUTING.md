@@ -11,6 +11,12 @@ cd NotchBuddy && xcodegen && open NotchBuddy.xcodeproj
 
 Never edit `NotchBuddy.xcodeproj` by hand: change `project.yml` and run `xcodegen`.
 
+For Windows, see [windows/README.md](windows/README.md). Run the checks in
+[AGENTS.md](AGENTS.md) for both affected provider/platform boundaries; report
+native builds separately from frontend or fixture tests. The Codex provider
+[analysis](docs/PROJECT_ANALYSIS.md) and [review proposal](docs/CODEX_CONTRIBUTION.md)
+describe the optional upstream contribution, not a rebranded product.
+
 ## Good first contributions
 
 - A new integration (a poller + a pill + a detail card). Look at `StripePoller.swift` for a compact example.

@@ -1,4 +1,4 @@
-//! coucou-hook — the relay Claude Code runs on every hook event.
+//! coucou-hook — the local relay for Claude Code and opt-in Codex events.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
 //! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
@@ -51,11 +51,14 @@ fn pipe_path() -> String {
 /// Opens the pipe. Retries only while the server is busy: any other error means
 /// there is nothing to talk to, and waiting would only delay Claude Code.
 fn connect() -> Option<std::fs::File> {
+    connect_to(&pipe_path())
+}
+
+fn connect_to(path: &str) -> Option<std::fs::File> {
     use std::os::windows::io::AsRawHandle;
-    let path = pipe_path();
     let deadline = Instant::now() + CONNECT_TIMEOUT;
     loop {
-        match std::fs::OpenOptions::new().read(true).write(true).open(&path) {
+        match std::fs::OpenOptions::new().read(true).write(true).open(path) {
             Ok(file) => {
                 let handle = windows::Win32::Foundation::HANDLE(file.as_raw_handle());
                 // Somebody else's server on our pipe name gets nothing from us.
@@ -119,23 +122,39 @@ fn read_event() -> Option<(String, String)> {
     if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() {
         return None;
     }
-    // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
-    if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        raw.drain(..3);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let (codex, arg_event) = invocation(&args)?;
+    normalize_event(&raw, codex, &arg_event)
+}
+
+/// Old `coucou-hook Event` commands keep working. The provider is never guessed.
+fn invocation(args: &[String]) -> Option<(bool, String)> {
+    match args.first().map(String::as_str) {
+        Some("--codex") => Some((true, args.get(1).cloned().unwrap_or_default())),
+        Some("--provider") => {
+            let codex = match args.get(1).map(String::as_str) {
+                Some("codex") => true,
+                Some("claude") => false,
+                _ => return None,
+            };
+            Some((codex, args.get(2).cloned().unwrap_or_default()))
+        }
+        Some(flag) if flag.starts_with("--") => None,
+        _ => Some((false, args.first().cloned().unwrap_or_default())),
     }
+}
 
-    let mut payload = serde_json::from_slice::<serde_json::Value>(&raw).ok()?;
+fn normalize_event(raw: &[u8], codex: bool, arg_event: &str) -> Option<(String, String)> {
+    let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
+    let mut payload = serde_json::from_slice::<serde_json::Value>(raw).ok()?;
     let map = payload.as_object_mut()?;
-
-    // The event name is passed as argv[1] by the hook command; the JSON usually
-    // carries it too. Trust argv when the JSON is missing it.
-    let arg_event = std::env::args().nth(1).unwrap_or_default();
+    map.insert("agent_provider".into(), serde_json::Value::String(if codex { "codex" } else { "claude" }.into()));
     let event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
-        .unwrap_or(arg_event);
+        .unwrap_or_else(|| arg_event.to_string());
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
 
     for field in DROPPED_FIELDS {
@@ -200,7 +219,10 @@ fn truncate_strings(value: &mut serde_json::Value) {
 
 /// Connect, send, and — for a permission request — wait for the island's word.
 fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
-    let mut pipe = connect()?;
+    talk_on_pipe(connect()?, payload, waits_for_answer)
+}
+
+fn talk_on_pipe(mut pipe: std::fs::File, payload: &str, waits_for_answer: bool) -> Option<String> {
 
     if pipe.write_all(payload.as_bytes()).is_err() {
         return None;
@@ -232,6 +254,83 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codex_payload_round_trips_over_an_isolated_same_user_pipe() {
+        use std::ffi::c_void;
+        use std::os::windows::io::{AsRawHandle, FromRawHandle};
+        // Test-only Win32 server. No runtime option can redirect the production
+        // relay; these unique names never open the developer's Coucou channel.
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn CreateNamedPipeW(name: *const u16, open_mode: u32, mode: u32,
+                instances: u32, out_size: u32, in_size: u32, timeout: u32,
+                attributes: *const c_void) -> *mut c_void;
+            fn ConnectNamedPipe(pipe: *mut c_void, overlapped: *mut c_void) -> i32;
+            fn GetLastError() -> u32;
+        }
+        for answer in ["allow\n", "deny\n", ""] {
+            let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let path = format!(r"\\.\pipe\coucou-test-{}-{nonce}", std::process::id());
+            let wide: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+            let handle = unsafe { CreateNamedPipeW(wide.as_ptr(), 3, 0, 1, 4096, 4096, 0, std::ptr::null()) };
+            assert_ne!(handle as isize, -1);
+            let mut server = unsafe { std::fs::File::from_raw_handle(handle) };
+            let peer = std::thread::spawn(move || {
+                let connected = unsafe { ConnectNamedPipe(server.as_raw_handle(), std::ptr::null_mut()) };
+                assert!(connected != 0 || unsafe { GetLastError() } == 535);
+                let mut input = Vec::new();
+                let mut byte = [0u8];
+                while server.read(&mut byte).unwrap() > 0 {
+                    input.push(byte[0]); if byte[0] == b'\n' { break; }
+                }
+                let payload: serde_json::Value = serde_json::from_slice(&input).unwrap();
+                assert_eq!(payload["agent_provider"], "codex");
+                assert_eq!(payload["session_id"], "fixture-session");
+                server.write_all(answer.as_bytes()).unwrap();
+                if !answer.is_empty() { server.flush().unwrap(); }
+            });
+            let (payload, _) = normalize_event(br#"{"hook_event_name":"PermissionRequest","session_id":"fixture-session"}"#, true, "").unwrap();
+            let result = talk_on_pipe(connect_to(&path).expect("fixture peer must be same user"), &payload, true);
+            assert_eq!(result.as_deref(), if answer.is_empty() { None } else { Some(answer.trim()) });
+            peer.join().unwrap();
+            assert!(connect_to(&path).is_none());
+        }
+    }
+
+    #[test]
+    fn invocation_keeps_legacy_commands_and_accepts_explicit_providers() {
+        let args = |values: &[&str]| values.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(invocation(&args(&["PreToolUse"])), Some((false, "PreToolUse".into())));
+        assert_eq!(invocation(&args(&["--provider", "codex", "Stop"])), Some((true, "Stop".into())));
+        assert_eq!(invocation(&args(&["--codex", "Stop"])), Some((true, "Stop".into())));
+        assert!(invocation(&args(&["--provider", "unknown"])).is_none());
+    }
+
+    #[test]
+    fn codex_payload_is_tagged_and_retains_session_turn_and_model() {
+        let raw = br#"{"hook_event_name":"PreToolUse","agent_provider":"claude","session_id":"s","turn_id":"t","model":"fixture-model","tool_name":"apply_patch","tool_input":{"command":"patch"},"tool_response":"discard","transcript_path":"private"}"#;
+        let (line, event) = normalize_event(raw, true, "").unwrap();
+        let value: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(event, "PreToolUse");
+        assert_eq!(value["agent_provider"], "codex");
+        assert_eq!(value["session_id"], "s");
+        assert_eq!(value["turn_id"], "t");
+        assert_eq!(value["model"], "fixture-model");
+        assert!(value.get("tool_response").is_none());
+        assert!(value.get("transcript_path").is_none());
+    }
+
+    #[test]
+    fn malformed_inputs_are_silent_and_bom_is_accepted() {
+        for raw in [b"null".as_slice(), b"[]", b"invalid", b""] {
+            assert!(normalize_event(raw, true, "Stop").is_none());
+        }
+        let mut raw = vec![0xEF, 0xBB, 0xBF]; raw.extend_from_slice(b"{}");
+        let (line, event) = normalize_event(&raw, false, "SessionStart").unwrap();
+        assert_eq!(event, "SessionStart");
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&line).unwrap()["agent_provider"], "claude");
+    }
 
     #[test]
     fn decision_json_matches_the_documented_shape() {

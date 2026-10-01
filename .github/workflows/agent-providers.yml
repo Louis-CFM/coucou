@@ -1,0 +1,47 @@
+name: Agent provider regression checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build:frontend
+      - run: cargo build --release -p coucou-hook --locked
+      - run: cargo test -p coucou-hook --locked
+      - run: cargo test -p coucou --lib --release --locked
+      - run: cargo build --release -p coucou --locked
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Test Codex hook installer on disposable files
+        run: |
+          swiftc NotchBuddy/Sources/App/CodexHooks.swift tests/codex-hooks/main.swift -o /tmp/coucou-codex-tests
+          /tmp/coucou-codex-tests
+      - run: brew install xcodegen
+      - run: cd NotchBuddy && xcodegen
+      - name: Build both native variants
+        run: |
+          for scheme in NotchBuddy CoucouAppStore; do
+            xcodebuild -project NotchBuddy/NotchBuddy.xcodeproj -scheme "$scheme" -configuration Debug build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          done

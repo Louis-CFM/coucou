@@ -3,7 +3,7 @@ import Darwin
 import AppKit
 
 // MARK: - HookServer
-// Listens on a Unix domain socket for events from nb-hook (Claude Code hooks).
+// Listens on a Unix domain socket for Claude Code and opt-in Codex hooks.
 // Thread-safe: socket I/O on background threads, state updates dispatched to main queue.
 
 final class HookServer: @unchecked Sendable {
@@ -25,11 +25,12 @@ final class HookServer: @unchecked Sendable {
         #endif
     }
 
-    // No approval blocking state — notch is notification-only, user answers in VS Code
-
     private var serverFD: Int32 = -1
     private var pendingApprovalFD: Int32 = -1   // held open while user decides
-    private var activeSessionId: String? = nil  // current Claude Code session
+    private var activeSessionIds: [String: String] = [:]
+    private var completionGeneration: [String: Int] = [:]
+    private var pendingApprovalTaskId = "integration_claude"
+    private var approvalGeneration = 0
 
     private init() {}
 
@@ -115,6 +116,11 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processEvent(name: String, payload: [String: Any]) {
         let state = AppState.shared
+        let provider = payload["agent_provider"] as? String ?? "claude"
+        guard provider == "claude" || provider == "codex" else { return }
+        let isCodex = provider == "codex"
+        let taskId = isCodex ? "integration_codex" : "integration_claude"
+        if isCodex { state.ensureCodexTask() }
         let sessionId = payload["session_id"] as? String ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
@@ -124,94 +130,113 @@ final class HookServer: @unchecked Sendable {
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        guard isCodex || isVSCode else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
-        let focused = state.focusId == "integration_claude"
+        let focused = state.focusId == taskId
+        let startsWork = ["SessionStart", "UserPromptSubmit", "PreToolUse"].contains(name)
+        if !startsWork, let active = activeSessionIds[taskId], active != sessionId { return }
+        if let pending = state.pendingApproval, pending.taskId == taskId,
+           startsWork || (pending.sessionId == sessionId && ["SessionEnd", "Interrupt", "Stop", "PostToolUse"].contains(name)) {
+            sendApprovalDecision("ask")
+        }
+        if startsWork || ["Stop", "SessionEnd", "Interrupt"].contains(name) {
+            completionGeneration[taskId, default: 0] += 1
+        }
+        if startsWork, activeSessionIds[taskId] != sessionId { clearSession(id: taskId) }
+        if let model = payload["model"] as? String,
+           let index = state.tasks.firstIndex(where: { $0.id == taskId }) { state.tasks[index].agentModel = model }
 
         switch name {
 
         case "SessionStart":
-            activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
+            activeSessionIds[taskId] = sessionId
+            upsertTask(id: taskId, sessionId: sessionId, projectName: projectName, cwd: cwd)
             nbLog("SessionStart \(projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
         case "UserPromptSubmit":
-            activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .thinking)
+            activeSessionIds[taskId] = sessionId
+            upsertTask(id: taskId, sessionId: sessionId, projectName: projectName, cwd: cwd)
+            state.updateTask(id: taskId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
-                appendStep(id: "integration_claude", step: String(prompt.prefix(60)))
+                appendStep(id: taskId, step: String(prompt.prefix(60)))
             }
             if state.isPresent { expandIfNeeded(to: .overview) }
 
         case "PreToolUse":
-            activeSessionId = sessionId
-            upsertTask(projectName: projectName, cwd: cwd)
-            state.updateTask(id: "integration_claude", state: .working)
+            activeSessionIds[taskId] = sessionId
+            upsertTask(id: taskId, sessionId: sessionId, projectName: projectName, cwd: cwd)
+            state.updateTask(id: taskId, state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
-            appendStep(id: "integration_claude", step: step)
+            appendStep(id: taskId, step: step)
             nbLog("PreToolUse \(step)")
 
         case "PostToolUse":
-            state.updateTask(id: "integration_claude", state: .working)
+            state.updateTask(id: taskId, state: .working)
 
         case "PostToolUseFailure":
-            state.updateTask(id: "integration_claude", state: .working)
-            appendStep(id: "integration_claude", step: "⚠ failed")
+            state.updateTask(id: taskId, state: .working)
+            appendStep(id: taskId, step: "⚠ failed")
 
         case "Notification":
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
-                state.updateTask(id: "integration_claude", state: .ratelimit)
+                state.updateTask(id: taskId, state: .ratelimit)
                 SoundEngine.shared.play("rate")
             } else if message.hasSuffix("?") {
-                state.updateTask(id: "integration_claude", state: .question)
-                appendStep(id: "integration_claude", step: message)
+                state.updateTask(id: taskId, state: .question)
+                appendStep(id: taskId, step: message)
             }
 
         case "Stop":
-            state.updateTask(id: "integration_claude", state: .finished)
-            if let message = payload["message"] as? String, !message.isEmpty {
-                appendStep(id: "integration_claude", step: String(message.prefix(60)))
+            state.updateTask(id: taskId, state: .finished)
+            if let message = payload["last_assistant_message"] as? String ?? payload["message"] as? String, !message.isEmpty {
+                appendStep(id: taskId, step: String(message.prefix(60)))
             }
             SoundEngine.shared.play("finish")
             if focused {
                 expandIfNeeded(to: .finished)
             } else {
-                setPillBadge(id: "integration_claude", badge: .finished)
+                setPillBadge(id: taskId, badge: .finished)
             }
+            let generation = completionGeneration[taskId, default: 0]
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                state.updateTask(id: "integration_claude", state: .idle)
-                self.clearPillBadge(id: "integration_claude")
+                guard self.completionGeneration[taskId] == generation else { return }
+                state.updateTask(id: taskId, state: .idle)
+                self.clearPillBadge(id: taskId)
             }
 
         case "StopFailure":
-            state.updateTask(id: "integration_claude", state: .error)
+            state.updateTask(id: taskId, state: .error)
             SoundEngine.shared.play("error")
             if focused {
                 expandIfNeeded(to: .error)
             } else {
-                setPillBadge(id: "integration_claude", badge: .error)
+                setPillBadge(id: taskId, badge: .error)
             }
 
         case "SessionEnd":
-            activeSessionId = nil
-            state.updateTask(id: "integration_claude", state: .idle)
-            clearSession()
+            activeSessionIds.removeValue(forKey: taskId)
+            state.updateTask(id: taskId, state: .idle)
+            clearSession(id: taskId)
+
+        case "Interrupt":
+            state.updateTask(id: taskId, state: .idle)
+            appendStep(id: taskId, step: "• interrupted")
+            clearPillBadge(id: taskId)
 
         case "SubagentStart":
-            appendStep(id: "integration_claude", step: "+ subagent")
+            appendStep(id: taskId, step: "+ subagent")
 
         case "SubagentStop":
-            appendStep(id: "integration_claude", step: "• subagent done")
+            appendStep(id: taskId, step: "• subagent done")
 
         default:
             break
@@ -246,6 +271,14 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
         let state = AppState.shared
+        let provider = payload["agent_provider"] as? String ?? "claude"
+        guard provider == "claude" || provider == "codex" else {
+            close(fd)
+            return
+        }
+        let isCodex = provider == "codex"
+        let taskId = isCodex ? "integration_codex" : "integration_claude"
+        if isCodex { state.ensureCodexTask() }
         let sessionId = payload["session_id"] as? String ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
@@ -255,7 +288,7 @@ final class HookServer: @unchecked Sendable {
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isVSCode = termProgram.lowercased().contains("vscode") ||
                        bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        guard isCodex || isVSCode else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -266,34 +299,39 @@ final class HookServer: @unchecked Sendable {
         let tool = payload["tool_name"] as? String ?? "Tool"
         var command = tool
         if let input = payload["tool_input"] as? [String: Any] {
-            command = input["command"] as? String ?? tool
+            for field in ["command", "file_path", "path", "url", "query", "pattern", "prompt"] {
+                if let value = input[field] as? String, !value.isEmpty { command = "\(tool) · \(value)"; break }
+            }
         }
         nbLog("PermissionRequest \(tool): \(command)")
 
         if pendingApprovalFD >= 0 {
-            let old = pendingApprovalFD
             Task.detached { [weak self] in
-                // "ask" → nb-hook outputs nothing → Claude Code re-asks
-                self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                close(old)
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
             }
+            return
         }
         pendingApprovalFD = fd
-        activeSessionId = sessionId
+        approvalGeneration += 1
+        activeSessionIds[taskId] = sessionId
+        pendingApprovalTaskId = taskId
+        completionGeneration[taskId, default: 0] += 1
 
-        upsertTask(projectName: projectName, cwd: cwd)
-        state.updateTask(id: "integration_claude", state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
+        upsertTask(id: taskId, sessionId: sessionId, projectName: projectName, cwd: cwd)
+        state.updateTask(id: taskId, state: .approval)
+        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command, taskId: taskId)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
         // Approval always forces the island open — user must be able to respond
-        state.focusId = "integration_claude"
+        state.focusId = taskId
         expandIfNeeded(to: .approval)
 
         let captured = fd
+        let generation = approvalGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
-            guard let self, self.pendingApprovalFD == captured else { return }
+            guard let self, self.pendingApprovalFD == captured, self.approvalGeneration == generation else { return }
             // "ask" → nb-hook outputs nothing → Claude Code re-asks rather than denying
             self.sendApprovalDecision("ask")
         }
@@ -302,8 +340,10 @@ final class HookServer: @unchecked Sendable {
     /// Called by ApprovalView buttons. Writes the decision to the waiting nb-hook and cleans up.
     @MainActor
     func sendApprovalDecision(_ decision: String) {
+        let taskId = pendingApprovalTaskId
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
+        approvalGeneration += 1
 
         let json: String
         switch decision {
@@ -323,17 +363,18 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.pendingApproval = nil
         state.isPinned = false
-        state.updateTask(id: "integration_claude", state: .working)
-        clearPillBadge(id: "integration_claude")
+        state.updateTask(id: taskId, state: .working)
+        clearPillBadge(id: taskId)
         state.view = state.tasks.isEmpty ? .empty : .overview
     }
 
-    /// Updates integration_claude with the current session project name and cwd.
+    /// Updates the correct provider with the current session project name and cwd.
     @MainActor
-    private func upsertTask(projectName: String, cwd: String = "") {
+    private func upsertTask(id: String, sessionId: String, projectName: String, cwd: String = "") {
         let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
+        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
         state.tasks[idx].name = projectName
+        state.tasks[idx].sessionId = sessionId
         if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
     }
 
@@ -353,14 +394,17 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].pillBadge = nil
     }
 
-    /// Resets integration_claude to idle, clears steps and project name.
+    /// Clears only this provider's session context.
     @MainActor
-    private func clearSession() {
+    private func clearSession(id: String) {
         let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
+        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
         state.tasks[idx].steps = []
         state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
+        state.tasks[idx].name = id == "integration_codex" ? "Codex" : "VS Code"
+        state.tasks[idx].sessionId = nil
+        state.tasks[idx].sessionCwd = nil
+        state.tasks[idx].agentModel = nil
         state.tasks[idx].pillBadge = nil
     }
 
@@ -389,6 +433,9 @@ final class HookServer: @unchecked Sendable {
     private func frenchStep(tool: String, input: [String: Any]) -> String {
         let labels: [String: String] = [
             "Bash":       "Exécute",
+            "apply_patch": "Modifie",
+            "exec_command": "Exécute",
+            "spawn_agent": "Agent",
             "Read":       "Lit",
             "Write":      "Écrit",
             "Edit":       "Modifie",
@@ -465,6 +512,21 @@ final class HookServer: @unchecked Sendable {
             [.posixPermissions: 0o755 as NSNumber],
             ofItemAtPath: scriptURL.path
         )
+        #endif
+    }
+
+    func installCodexRelay(directory: URL) throws {
+        #if APPSTORE
+        let dir = directory.appendingPathComponent("coucou")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let path = dir.appendingPathComponent("nb-hook")
+        try nbHookScriptAppStore.write(to: path, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: path.path)
+        #else
+        let dir = Self.supportDir
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try nbHookScript.write(toFile: Self.hookScriptPath, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: Self.hookScriptPath)
         #endif
     }
 
@@ -695,6 +757,9 @@ def main():
         if not raw:
             return
         payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            return
+        payload['agent_provider'] = 'codex' if '--codex' in sys.argv[1:] else 'claude'
     except Exception:
         return
 
@@ -707,6 +772,8 @@ def main():
     if 'cwd' not in payload or not payload['cwd']:
         payload['cwd'] = os.getcwd()
 
+    payload.pop('tool_response', None)
+    payload.pop('transcript_path', None)
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
@@ -716,8 +783,9 @@ def main():
         # Block and wait for Coucou's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
+            s.settimeout(0.3)
             s.connect(socket_path)
+            s.settimeout(118)
             s.sendall((json.dumps(payload) + '\\n').encode())
             chunks = []
             while True:
@@ -735,12 +803,12 @@ def main():
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
-                if decision == 'allow':
+                if decision == 'allow' or (decision == 'always' and payload['agent_provider'] == 'codex'):
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and payload['agent_provider'] != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
@@ -787,6 +855,9 @@ def main():
         if not raw:
             return
         payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            return
+        payload['agent_provider'] = 'codex' if '--codex' in sys.argv[1:] else 'claude'
     except Exception:
         return
 
@@ -798,6 +869,8 @@ def main():
     if 'cwd' not in payload or not payload['cwd']:
         payload['cwd'] = os.getcwd()
 
+    payload.pop('tool_response', None)
+    payload.pop('transcript_path', None)
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
         '~/Library/Containers/fr.louisraille.Coucou/Data/Library/Application Support/NotchBuddy/nb.sock'
@@ -807,8 +880,9 @@ def main():
         # Block and wait for Coucou's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
+            s.settimeout(0.3)
             s.connect(socket_path)
+            s.settimeout(118)
             s.sendall((json.dumps(payload) + '\\n').encode())
             chunks = []
             while True:
@@ -826,12 +900,12 @@ def main():
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
-                if decision == 'allow':
+                if decision == 'allow' or (decision == 'always' and payload['agent_provider'] == 'codex'):
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and payload['agent_provider'] != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
