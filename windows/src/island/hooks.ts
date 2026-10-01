@@ -9,7 +9,6 @@ import { State } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
-const CODEX_ID = "integration_codex";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -22,16 +21,8 @@ interface HookPayload {
   message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
-  /** Codex sends the turn's last message under this name. */
-  last_assistant_message?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
-  /** Written by the relay: "claude" (or absent) / "codex". */
-  coucou_agent?: string;
-  /** Codex sends `source` on SessionStart; "compact" arrives mid-turn. */
-  source?: string;
-  /** Claude and Codex both report the subagent type. */
-  agent_type?: string;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -50,12 +41,6 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** Collapses newlines so a multi-line command stays one ticker row. */
-function oneLine(text: string, limit = 60): string {
-  const collapsed = text.split(/\s+/).filter(Boolean).join(" ");
-  return collapsed.length > limit ? collapsed.slice(0, limit) + "…" : collapsed;
-}
-
 /** frenchStep() — same labels as the macOS app. */
 const TOOL_LABELS: Record<string, string> = {
   Bash: "Exécute",
@@ -72,61 +57,19 @@ const TOOL_LABELS: Record<string, string> = {
   MultiEdit: "Modifie",
   NotebookEdit: "Notebook",
   PowerShell: "Exécute",
-  // Codex's own tools, where Claude has Task / TodoWrite.
-  apply_patch: "Modifie",
-  update_plan: "Tâches",
-  spawn_agent: "Agent",
 };
 
-/**
- * Verb for a shell command. Codex reads, searches and tests through the shell
- * instead of using Claude's Read/Grep tools, so the verb comes from the command —
- * on Windows those commands are the cmd/PowerShell ones.
- */
-function bashVerb(command: string): string {
-  const first = command.trim().split(/\s+/)[0] ?? "";
-  const readers = ["cat", "bat", "head", "tail", "less", "more", "nl", "type", "Get-Content"];
-  if (readers.includes(first)) return "Lit";
-  const searchers = ["rg", "grep", "find", "fd", "ls", "tree", "wc", "dir",
-                     "findstr", "where", "Select-String", "Get-ChildItem"];
-  if (searchers.includes(first)) return "Cherche";
-  const runners = ["unittest", "pytest", "vitest", "jest", "npm test", "npm run test",
-                   "cargo test", "go test", "dotnet test", "ctest"];
-  if (runners.some((r) => command.includes(r))) return "Teste";
-  return "Exécute";
-}
-
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  let label = TOOL_LABELS[tool] ?? tool;
-  // Codex MCP tools arrive as mcp__server__tool — show "server · tool".
-  if (tool.startsWith("mcp__")) {
-    const parts = tool.slice(5).split("__");
-    label = parts.length >= 2 ? `${parts[0]} · ${parts.slice(1).join("__")}` : tool.slice(5);
-  }
+  const label = TOOL_LABELS[tool] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
   const cmd = str("command");
-  if (cmd) {
-    // Codex sends the whole patch for apply_patch: show the first file it touches.
-    if (tool === "apply_patch") {
-      for (const line of cmd.split("\n")) {
-        for (const prefix of ["*** Update File: ", "*** Add File: ", "*** Delete File: "]) {
-          if (line.startsWith(prefix)) {
-            return `${label} · ${lastPathComponent(line.slice(prefix.length))}`;
-          }
-        }
-      }
-      return label;
-    }
-    // Codex reads, searches and tests through the shell: take the verb from the command.
-    const verb = tool === "Bash" || tool === "PowerShell" ? bashVerb(cmd) : label;
-    return `${verb} · ${oneLine(cmd, 120)}`;
-  }
+  if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
   const path = str("path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
   const file = str("file_path");
   if (file) return `${label} · ${lastPathComponent(file)}`;
   const query = str("query");
-  if (query) return `${label} · ${oneLine(query, 120)}`;
+  if (query) return `${label} · ${query.slice(0, 40)}`;
   return label;
 }
 
@@ -158,29 +101,20 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(id: string, projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === id);
+function upsert(projectName: string, cwd: string) {
+  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
 }
 
-function clearSession(id: string, isCodex: boolean) {
-  const t = State.tasks.find((x) => x.id === id);
+function clearSession() {
+  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
-  t.name = isCodex ? "Codex" : "VS Code";
+  t.name = "VS Code";
   t.pillBadge = null;
-}
-
-function taskState(id: string) {
-  return State.tasks.find((x) => x.id === id)?.state;
-}
-
-/** "+ subagent (reviewer)" when the payload says which subagent it is. */
-function subagentSuffix(payload: HookPayload): string {
-  return payload.agent_type ? ` (${oneLine(payload.agent_type, 20)})` : "";
 }
 
 export function registerHookHandlers(island: Island) {
@@ -197,13 +131,10 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
-  // The relay tags every payload with coucou_agent; absent means Claude Code.
-  const isCodex = (payload.coucou_agent ?? "claude") === "codex";
-  const taskId = isCodex ? CODEX_ID : CLAUDE_ID;
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
-  const focused = State.focusId === taskId;
+  const focused = State.focusId === CLAUDE_ID;
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -218,98 +149,82 @@ function handleHook(island: Island, payload: HookPayload) {
 
   switch (name) {
     case "SessionStart":
-      upsert(taskId, projectName, cwd);
-      // A real session start clears a pill left behind by a session that died
-      // without Stop. Codex also fires SessionStart mid-turn when it compacts,
-      // and that one must not interrupt a running turn.
-      if (payload.source !== "compact") State.updateTask(taskId, "idle");
+      upsert(projectName, cwd);
       surface("overview", false);
       Sound.play("work");
       break;
 
     case "UserPromptSubmit": {
-      upsert(taskId, projectName, cwd);
-      State.updateTask(taskId, "thinking");
+      upsert(projectName, cwd);
+      State.updateTask(CLAUDE_ID, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(taskId, oneLine(asked, 120));
+      if (asked) State.appendStep(CLAUDE_ID, asked.slice(0, 60));
       surface("overview", false);
       break;
     }
 
     case "PreToolUse": {
-      upsert(taskId, projectName, cwd);
-      State.updateTask(taskId, "working");
+      upsert(projectName, cwd);
+      State.updateTask(CLAUDE_ID, "working");
       const tool = payload.tool_name ?? "Tool";
-      State.appendStep(taskId, stepLabel(tool, payload.tool_input ?? {}));
+      State.appendStep(CLAUDE_ID, stepLabel(tool, payload.tool_input ?? {}));
       surface("overview", false);
       break;
     }
 
     case "PostToolUse":
-      // Codex can deliver a PostToolUse after the turn ended (it arrives when a
-      // polled command finishes). A late event must not resurrect a finished pill.
-      if (taskState(taskId) === "finished" || taskState(taskId) === "idle") break;
-      State.updateTask(taskId, "working");
+      State.updateTask(CLAUDE_ID, "working");
       break;
 
     case "PostToolUseFailure":
-      if (taskState(taskId) === "finished" || taskState(taskId) === "idle") break;
-      State.updateTask(taskId, "working");
-      State.appendStep(taskId, "⚠ failed");
+      State.updateTask(CLAUDE_ID, "working");
+      State.appendStep(CLAUDE_ID, "⚠ failed");
       break;
 
     case "Notification": {
       const message = payload.message ?? "";
       const lower = message.toLowerCase();
       if (lower.includes("rate limit") || lower.includes("limite d")) {
-        State.updateTask(taskId, "ratelimit");
+        State.updateTask(CLAUDE_ID, "ratelimit");
         Sound.play("rate");
       } else if (message.endsWith("?")) {
-        State.updateTask(taskId, "question");
-        State.appendStep(taskId, oneLine(message));
+        State.updateTask(CLAUDE_ID, "question");
+        State.appendStep(CLAUDE_ID, message);
       }
       break;
     }
 
     case "Stop":
-      State.updateTask(taskId, "finished");
-      // Claude Code sends `message`; Codex sends `last_assistant_message`.
-      const said = payload.message ?? payload.last_assistant_message;
-      if (said) State.appendStep(taskId, oneLine(said));
+      State.updateTask(CLAUDE_ID, "finished");
+      if (payload.message) State.appendStep(CLAUDE_ID, payload.message.slice(0, 60));
       Sound.play("finish");
       if (focused) surface("finished", true);
-      else State.setPillBadge(taskId, "finished");
+      else State.setPillBadge(CLAUDE_ID, "finished");
       window.setTimeout(() => {
-        State.updateTask(taskId, "idle");
-        State.setPillBadge(taskId, null);
+        State.updateTask(CLAUDE_ID, "idle");
+        State.setPillBadge(CLAUDE_ID, null);
       }, 5200);
       break;
 
     case "StopFailure":
-      State.updateTask(taskId, "error");
+      State.updateTask(CLAUDE_ID, "error");
       Sound.play("error");
       if (focused) surface("error", true);
-      else State.setPillBadge(taskId, "error");
-      break;
-
-    case "Interrupt":
-      // Codex only: the user stopped the turn.
-      State.updateTask(taskId, "idle");
-      State.appendStep(taskId, "Interrompu");
+      else State.setPillBadge(CLAUDE_ID, "error");
       break;
 
     case "SessionEnd":
-      State.updateTask(taskId, "idle");
-      clearSession(taskId, isCodex);
+      State.updateTask(CLAUDE_ID, "idle");
+      clearSession();
       break;
 
     case "SubagentStart":
-      State.appendStep(taskId, `+ subagent${subagentSuffix(payload)}`);
+      State.appendStep(CLAUDE_ID, "+ subagent");
       break;
 
     case "SubagentStop":
-      State.appendStep(taskId, `• subagent done${subagentSuffix(payload)}`);
+      State.appendStep(CLAUDE_ID, "• subagent done");
       break;
 
     case "PermissionRequest": {
@@ -321,7 +236,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(taskId, projectName, cwd);
+      upsert(projectName, cwd);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
@@ -334,7 +249,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(taskId, "approval");
+      State.updateTask(CLAUDE_ID, "approval");
       State.isPinned = true;
       Sound.play("approval");
       if (focused) {
@@ -343,7 +258,7 @@ function handleHook(island: Island, payload: HookPayload) {
         // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
         // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(taskId, "approval");
+        State.setPillBadge(CLAUDE_ID, "approval");
         island.reveal();
       }
       // Coucou answers within 108 s or not at all; after that the terminal has
@@ -354,8 +269,8 @@ function handleHook(island: Island, payload: HookPayload) {
         State.pendingApproval = null;
         State.isPinned = false;
         island.dropPin();
-        State.updateTask(taskId, "working");
-        State.setPillBadge(taskId, null);
+        State.updateTask(CLAUDE_ID, "working");
+        State.setPillBadge(CLAUDE_ID, null);
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);

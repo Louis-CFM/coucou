@@ -78,8 +78,6 @@ export class Ticker {
   private queue: string[] = [];
   private startMs: number | null = null;
   private displayIndex = -1;
-  /** True when the task is no longer running: the current row must not shimmer. */
-  private settled = false;
 
   constructor() {
     this.el = h("div", { class: "ticker" }, this.a.el, this.b.el, this.c.el);
@@ -89,9 +87,7 @@ export class Ticker {
   /** The state between transitions: completed on top, current below. */
   private rest() {
     place(this.a, 0, 1, 1);
-    // The current row only settled when a new step arrived, so a finished session
-    // kept shimmering and read as "still running". Settle it once the task stops.
-    place(this.b, ROW_H, this.settled ? 1 : 0, 1);
+    place(this.b, ROW_H, 0, 1);
     place(this.c, ROW_H * 2, 0, 0);
   }
 
@@ -100,7 +96,6 @@ export class Ticker {
   }
 
   sync(task: AgentTask | null) {
-    this.settled = !!task && (task.state === "idle" || task.state === "finished");
     const steps = task && task.steps.length > 0 ? task.steps : ["…"];
     const idx = task ? Math.min(task.stepIndex, steps.length - 1) : -1;
 
