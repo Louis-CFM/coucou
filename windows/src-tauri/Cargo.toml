@@ -19,7 +19,7 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "process", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
@@ -29,6 +29,7 @@ windows = { version = "0.61", features = [
   "Win32_System_Ole",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  "Win32_System_JobObjects",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }

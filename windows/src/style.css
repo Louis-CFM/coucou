@@ -502,15 +502,36 @@ body {
 /* ── Agent pills ────────────────────────────────────────────────────────── */
 
 .pills {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
   z-index: 1;
-  height: 100%;
+  height: 60px; /* Two rows stay visible; further rows scroll inside the card. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 28px;
   gap: 4px;
-  align-content: center;
+  align-content: start;
   padding: 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.pills::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pills::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pills::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
 .pill {
@@ -605,16 +626,17 @@ body {
 }
 
 .code {
-  font: 400 12px var(--mono);
+  font: 400 11px/1.3 var(--mono);
   color: #e8e9ec;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
-  padding: 5px 10px;
+  padding: 6px 10px;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-height: 72px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   user-select: text;
 }
 
@@ -755,6 +777,60 @@ input[type="range"]::-webkit-slider-thumb {
 
 .chip-row:empty {
   display: none;
+}
+
+.chat-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  flex: 0 0 auto;
+}
+
+.chat-provider-label {
+  color: var(--dim-2);
+  font: 400 10.5px var(--font);
+}
+
+.chat-provider,
+.chat-model {
+  height: 24px;
+  min-width: 78px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  font: 400 10.5px var(--font);
+}
+
+.chat-model {
+  min-width: 0;
+  width: 190px;
+  max-width: 55%;
+}
+
+.chat-provider,
+.chat-model {
+  color-scheme: dark;
+  color: var(--ink-2);
+  background-color: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  outline: none;
+  cursor: pointer;
+}
+
+.chat-provider:focus-visible,
+.chat-model:focus-visible {
+  border-color: rgba(129, 140, 248, 0.65);
+}
+
+.chat-provider option,
+.chat-model option {
+  background: #202124;
+  color: #e5e7eb;
+}
+
+.chat-model:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .chip {

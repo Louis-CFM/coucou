@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod codex;
 mod files;
 mod hooks;
 mod integrations;
@@ -19,14 +20,14 @@ use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use claude::{Chat, ChatContext, ChatReply};
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
 use pipe::Pending;
-use settings::Settings;
+use settings::{ChatProvider, CodexAuthMode, Settings};
 
 /// Keeps spawned helpers from flashing a console window.
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -60,20 +61,36 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 }
 
 #[tauri::command]
-fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
+fn save_settings(
+    app: AppHandle,
+    shared: State<Shared>,
+    chat: State<Chat>,
+    codex_chat: State<codex::Chat>,
+    settings: Settings,
+) -> Result<(), String> {
     let (screen_changed, autostart_changed) = {
         let mut current = shared.settings.lock().unwrap();
+        settings::save(&settings).map_err(|err| format!("Could not save settings: {err}"))?;
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        if current.chat_provider != settings.chat_provider
+            || current.model != settings.model
+            || current.codex_model != settings.codex_model
+            || current.codex_auth_mode != settings.codex_auth_mode
+        {
+            chat.reset();
+            codex_chat.reset();
+        }
         *current = settings.clone();
         (screen_changed, autostart_changed)
     };
-    if let Err(err) = settings::save(&settings) {
-        eprintln!("[coucou] could not save settings: {err}");
-    }
     if autostart_changed {
         let manager = app.autolaunch();
-        let result = if settings.autostart { manager.enable() } else { manager.disable() };
+        let result = if settings.autostart {
+            manager.enable()
+        } else {
+            manager.disable()
+        };
         if let Err(err) = result {
             eprintln!("[coucou] autostart: {err}");
         }
@@ -84,6 +101,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
+    Ok(())
 }
 
 /// Hidden island → shrink the window to the invisible wake strip and park the
@@ -102,12 +120,19 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
 fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
-    shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    shared.gate.set_rect(island::IslandRect {
+        x,
+        y,
+        w: width,
+        h: height,
+    });
 }
 
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
-    let Some(win) = island::window(&app) else { return };
+    let Some(win) = island::window(&app) else {
+        return;
+    };
     island::set_activating(&win, focused);
     if focused {
         let _ = win.set_focus();
@@ -187,14 +212,14 @@ fn set_paused(paused: bool) {
 // ── Claude Code hooks ─────────────────────────────────────────────────────────
 
 #[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
+fn hooks_status(provider: Option<String>) -> Result<HookStatus, String> {
+    hooks::status_for(provider.as_deref().unwrap_or("claude"))
 }
 
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
+fn hooks_preview(install: bool, provider: Option<String>) -> Result<HookPreview, String> {
+    hooks::preview_for(provider.as_deref().unwrap_or("claude"), install)
 }
 
 /// Only ever called from an explicit click in the settings window.
@@ -204,13 +229,17 @@ fn hooks_apply(
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
+    provider: Option<String>,
 ) -> Result<String, String> {
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
+    let provider = provider.as_deref().unwrap_or("claude");
+    let backup = hooks::write_for(provider, install, &fingerprint)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.hooks_installed = install;
+        if provider == "claude" {
+            current.hooks_installed = install;
+        }
         let _ = settings::save(&current);
         current.clone()
     };
@@ -245,16 +274,61 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    codex_chat: State<'_, codex::Chat>,
     query: String,
     context: Option<ChatContext>,
+    provider: Option<String>,
+    model: Option<String>,
+    auth_mode: Option<String>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    let selected_model = match settings.chat_provider {
+        ChatProvider::Claude => settings.model,
+        ChatProvider::Codex => settings.codex_model,
+    };
+    if provider
+        .as_deref()
+        .is_some_and(|p| p != settings.chat_provider.as_str())
+        || model.as_deref().is_some_and(|m| m != selected_model)
+    {
+        return Err("Chat settings changed. Try sending your message again.".into());
+    }
+    if settings.chat_provider == ChatProvider::Codex
+        && auth_mode
+            .as_deref()
+            .is_some_and(|mode| mode != settings.codex_auth_mode.as_str())
+    {
+        return Err("Chat settings changed. Try sending your message again.".into());
+    }
+    match settings.chat_provider {
+        ChatProvider::Claude => claude::send(&chat, &selected_model, query, context).await,
+        ChatProvider::Codex => {
+            codex::send(
+                &codex_chat,
+                &selected_model,
+                settings.codex_auth_mode,
+                query,
+                context,
+            )
+            .await
+        }
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, codex_chat: State<codex::Chat>) {
     chat.reset();
+    codex_chat.reset();
+}
+
+#[tauri::command]
+async fn codex_status() -> codex::Status {
+    codex::status().await
+}
+
+#[tauri::command]
+async fn codex_models(auth_mode: CodexAuthMode) -> Result<Vec<codex::CodexModel>, String> {
+    codex::models(auth_mode).await
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -373,13 +447,17 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
         }))
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(codex::Chat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -399,6 +477,8 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            codex_status,
+            codex_models,
             ingest_file,
             secret_present,
             secret_set,
@@ -423,7 +503,10 @@ pub fn run() {
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
-            log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            log::line(format!(
+                "--- Coucou {} started ---",
+                env!("CARGO_PKG_VERSION")
+            ));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());

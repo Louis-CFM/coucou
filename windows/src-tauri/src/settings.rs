@@ -20,6 +20,58 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// New fields default individually so older preferences remain readable.
+    #[serde(default)]
+    pub chat_provider: ChatProvider,
+    #[serde(default)]
+    pub codex_model: String,
+    /// Selects which saved Codex CLI login may handle chat turns.
+    #[serde(default)]
+    pub codex_auth_mode: CodexAuthMode,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatProvider {
+    Codex,
+    #[default]
+    #[serde(other)]
+    Claude,
+}
+
+impl ChatProvider {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Claude => "claude",
+            Self::Codex => "codex",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CodexAuthMode {
+    Api,
+    /// Unknown or missing values use the subscription route for safe upgrades.
+    #[default]
+    #[serde(other)]
+    Subscription,
+}
+
+impl CodexAuthMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Subscription => "subscription",
+            Self::Api => "api",
+        }
+    }
+
+    pub fn forced_login_method(self) -> &'static str {
+        match self {
+            Self::Subscription => "chatgpt",
+            Self::Api => "api",
+        }
+    }
 }
 
 fn default_model() -> String {
@@ -43,6 +95,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: ChatProvider::Claude,
+            codex_model: String::new(),
+            codex_auth_mode: CodexAuthMode::Subscription,
         }
     }
 }
@@ -84,4 +139,68 @@ pub fn save(settings: &Settings) -> std::io::Result<()> {
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(settings_path(), json)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn older_settings_preserve_preferences_and_default_to_claude() {
+        let mut old = serde_json::to_value(Settings::default()).unwrap();
+        old.as_object_mut().unwrap().remove("chatProvider");
+        old.as_object_mut().unwrap().remove("codexModel");
+        old.as_object_mut().unwrap().remove("codexAuthMode");
+        old["soundVolume"] = serde_json::json!(0.42);
+        old["model"] = serde_json::json!("custom-claude");
+        let restored: Settings = serde_json::from_value(old).unwrap();
+        assert_eq!(restored.chat_provider, ChatProvider::Claude);
+        assert_eq!(restored.model, "custom-claude");
+        assert_eq!(restored.sound_volume, 0.42);
+        assert!(restored.codex_model.is_empty());
+        assert_eq!(restored.codex_auth_mode, CodexAuthMode::Subscription);
+    }
+
+    #[test]
+    fn codex_preferences_roundtrip_and_future_provider_preserves_preferences() {
+        let mut configured = Settings::default();
+        configured.chat_provider = ChatProvider::Codex;
+        configured.codex_model = "my-model".into();
+        configured.codex_auth_mode = CodexAuthMode::Api;
+        let mut value = serde_json::to_value(&configured).unwrap();
+        let restored: Settings = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(restored.chat_provider, ChatProvider::Codex);
+        assert_eq!(restored.codex_model, "my-model");
+        assert_eq!(restored.codex_auth_mode, CodexAuthMode::Api);
+        value["chatProvider"] = serde_json::json!("unknown");
+        value["soundVolume"] = serde_json::json!(0.42);
+        let restored: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(restored.chat_provider, ChatProvider::Claude);
+        assert_eq!(restored.sound_volume, 0.42);
+        assert_eq!(restored.codex_model, "my-model");
+        assert_eq!(restored.codex_auth_mode, CodexAuthMode::Api);
+    }
+
+    #[test]
+    fn codex_auth_mode_uses_lowercase_values_and_unknown_defaults_to_subscription() {
+        let mut settings = Settings::default();
+        settings.codex_auth_mode = CodexAuthMode::Api;
+        let value = serde_json::to_value(&settings).unwrap();
+        assert_eq!(value["codexAuthMode"], "api");
+        assert_eq!(
+            serde_json::from_value::<Settings>(value)
+                .unwrap()
+                .codex_auth_mode,
+            CodexAuthMode::Api
+        );
+
+        let mut unknown = serde_json::to_value(Settings::default()).unwrap();
+        unknown["codexAuthMode"] = serde_json::json!("future-mode");
+        assert_eq!(
+            serde_json::from_value::<Settings>(unknown)
+                .unwrap()
+                .codex_auth_mode,
+            CodexAuthMode::Subscription
+        );
+    }
 }

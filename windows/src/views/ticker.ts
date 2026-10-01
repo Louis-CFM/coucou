@@ -20,6 +20,22 @@ const MAX_QUEUE = 4;
 const COMPLETED_SCALE = 11.5 / 13; // 0.885 — the completed font size
 const EASE = cubicBezier(0.4, 0, 0.2, 1);
 
+/** Find items appended to a bounded rolling step list since the last render. */
+export function unseenTickerSteps(previous: string[], current: string[]): string[] {
+  const maxOverlap = Math.min(previous.length, current.length);
+  for (let overlap = maxOverlap; overlap > 0; overlap--) {
+    let matches = true;
+    for (let i = 0; i < overlap; i++) {
+      if (previous[previous.length - overlap + i] !== current[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return current.slice(overlap);
+  }
+  return current;
+}
+
 interface Row {
   el: HTMLElement;
   chevron: SVGElement;
@@ -78,6 +94,9 @@ export class Ticker {
   private queue: string[] = [];
   private startMs: number | null = null;
   private displayIndex = -1;
+  private taskId: string | null = null;
+  private sourceRevision = -1;
+  private sourceSteps: string[] = [];
 
   constructor() {
     this.el = h("div", { class: "ticker" }, this.a.el, this.b.el, this.c.el);
@@ -98,10 +117,17 @@ export class Ticker {
   sync(task: AgentTask | null) {
     const steps = task && task.steps.length > 0 ? task.steps : ["…"];
     const idx = task ? Math.min(task.stepIndex, steps.length - 1) : -1;
+    const taskId = task?.id ?? null;
+    const revision = task?.stepRevision ?? idx;
 
-    // First render: drop straight into place, no animation.
-    if (this.displayIndex < 0) {
+    // First render and task switches seed from that task's own history.
+    if (this.displayIndex < 0 || taskId !== this.taskId) {
+      this.taskId = taskId;
       this.displayIndex = idx;
+      this.sourceRevision = revision;
+      this.sourceSteps = steps.slice();
+      this.queue = [];
+      this.startMs = null;
       setText(this.a, idx > 0 ? steps[idx - 1] : "…");
       setText(this.b, steps[Math.max(idx, 0)]);
       this.rest();
@@ -109,18 +135,30 @@ export class Ticker {
     }
 
     // The session restarted (steps were cleared): re-seed rather than scroll.
-    if (idx < this.displayIndex) {
+    if (idx < this.displayIndex || revision < this.sourceRevision ||
+        (task !== null && task.steps.length === 0 && this.sourceSteps[0] !== "…")) {
       this.queue = [];
       this.startMs = null;
       this.displayIndex = idx;
+      this.sourceRevision = revision;
+      this.sourceSteps = steps.slice();
       setText(this.a, idx > 0 ? steps[idx - 1] : "…");
       setText(this.b, steps[Math.max(idx, 0)]);
       this.rest();
       return;
     }
 
-    for (let i = this.displayIndex + 1; i <= idx; i++) this.queue.push(steps[i]);
+    if (idx > this.displayIndex) {
+      for (let i = this.displayIndex + 1; i <= idx; i++) this.queue.push(steps[i]);
+    } else if (revision > this.sourceRevision) {
+      // At the 20-step cap, stepIndex remains 19 while older entries roll off.
+      // Compare the snapshots to keep the newest action moving through the ticker.
+      const unseen = unseenTickerSteps(this.sourceSteps, steps);
+      this.queue.push(...(unseen.length ? unseen : [steps[idx]]));
+    }
     this.displayIndex = idx;
+    this.sourceRevision = revision;
+    this.sourceSteps = steps.slice();
     if (this.queue.length > MAX_QUEUE) {
       this.queue = this.queue.slice(-MAX_QUEUE);
     }

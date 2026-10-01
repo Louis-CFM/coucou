@@ -4,9 +4,11 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
+import { reconcileChatSession, waitForChatSessionReady } from "../core/chat-session";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
+import { codexModelPicker } from "./codex-model-picker";
 
 let nextId = 1;
 
@@ -39,6 +41,16 @@ function contextChip(label: string): HTMLElement {
 export function buildPrompt(onHeightChange: () => void): ViewHost {
   const chipRow = h("div", { class: "chip-row" });
   const log = h("div", { class: "chat-log" });
+  const provider = h("select", { class: "chat-provider", "aria-label": "Chat provider" }) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "claude", text: "Claude" }),
+    h("option", { value: "codex", text: "Codex" }),
+  );
+  const modelPicker = codexModelPicker("chat-model", () => changeConfig(State.settings.chatProvider, ""));
+  const codexModel = modelPicker.select;
+  const controls = h("div", { class: "chat-controls" },
+    h("span", { class: "chat-provider-label", text: "Chat with" }), provider, codexModel,
+  );
   const input = h("input", {
     type: "text",
     class: "chat-input",
@@ -51,21 +63,49 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const el = h(
     "div",
     { class: "view" },
-    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, bar)),
+    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, controls, chipRow, log, bar)),
   );
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
-  let sending = false;
+  let activeGeneration: number | null = null;
   let renderedCount = -1;
+
+  function currentModel(providerName: "claude" | "codex"): string {
+    return providerName === "codex" ? State.settings.codexModel : State.settings.model;
+  }
+
+  function changeConfig(providerName: "claude" | "codex", modelOverride = State.settings.codexModel) {
+    State.settings.chatProvider = providerName;
+    State.settings.codexModel = modelOverride.trim();
+    reconcileChatSession(true);
+  }
+
+  provider.addEventListener("change", () => {
+    changeConfig(provider.value as "claude" | "codex");
+  });
+  codexModel.addEventListener("change", () => {
+    changeConfig(State.settings.chatProvider, codexModel.value);
+  });
 
   async function submit() {
     const query = input.value.trim();
-    if (!query || sending) return;
+    if (!query) return;
+    if (State.settings.chatProvider === "codex") {
+      try { await modelPicker.ready(); }
+      catch (error) { State.noteMessage = String(error).replace(/^Error:\s*/, ""); State.view = "note"; State.notify(); onHeightChange(); return; }
+    }
+    reconcileChatSession(false, Boolean(query));
+    const generation = State.chatGeneration;
+    if (!query || activeGeneration === generation) return;
     input.value = "";
-    sending = true;
+    activeGeneration = generation;
+    const chatProvider = State.settings.chatProvider;
+    const model = currentModel(chatProvider);
+    const authMode = State.settings.codexAuthMode;
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    const userMessage = { id: nextId++, role: "user" as const, content: query };
+    State.chatHistory.push(userMessage);
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
@@ -75,20 +115,30 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      await waitForChatSessionReady();
+      if (generation !== State.chatGeneration) return;
+      const reply = await Bridge.chatSend(query, context, chatProvider, model, authMode);
+      if (generation !== State.chatGeneration) return;
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
+      if (generation !== State.chatGeneration) return;
+      State.chatHistory = State.chatHistory.filter((message) => message.id !== userMessage.id);
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      const detail = String(err).replace(/^Error:\s*/, "");
+      State.noteMessage = chatProvider === "codex" && context?.kind === "file" && /\.pdf$/i.test(context.name)
+        ? "Codex chat does not support PDF files yet. Try a text file, an image, or paste the relevant text."
+        : detail;
       State.view = "note";
       Sound.play("error");
     } finally {
-      sending = false;
-      State.notify();
-      onHeightChange();
-      input.focus();
+      if (activeGeneration === generation) activeGeneration = null;
+      if (generation === State.chatGeneration) {
+        State.notify();
+        onHeightChange();
+        input.focus();
+      }
     }
   }
 
@@ -104,6 +154,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   return {
     el,
     sync() {
+      reconcileChatSession();
+      if (document.activeElement !== provider) provider.value = State.settings.chatProvider;
+      if (State.settings.chatProvider === "codex") modelPicker.sync(State.settings.codexAuthMode, State.settings.codexModel);
+      codexModel.style.display = State.settings.chatProvider === "codex" ? "" : "none";
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";
       if (chipRow.dataset.label !== wantChip) {
@@ -123,7 +177,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       }
 
       input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
-      input.disabled = sending;
+      input.disabled = activeGeneration === State.chatGeneration;
     },
     focus() {
       input.focus();

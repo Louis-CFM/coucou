@@ -30,6 +30,7 @@ export type BotStateName =
   | "searching"
   | "approval"
   | "question"
+  | "interrupted"
   | "error"
   | "finished"
   | "ratelimit"
@@ -167,6 +168,8 @@ export function botGlowColor(s: BotStateName): string {
       return "#6366F1";
     case "approval":
       return "#F5A524";
+    case "interrupted":
+      return "#F0A64A";
     case "error":
       return "#F4505E";
     case "finished":

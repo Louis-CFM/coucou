@@ -3,8 +3,10 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
-export type PillBadge = "approval" | "finished" | "error";
+export type CodeProvider = "claude" | "codex";
+export type CodexAuthMode = "subscription" | "api";
+export type AgentSource = "claudeCode" | "codex" | "n8n";
+export type PillBadge = "approval" | "finished" | "interrupted" | "error";
 
 export interface AgentTask {
   id: string;
@@ -12,9 +14,14 @@ export interface AgentTask {
   color: string;
   state: BotStateName;
   stepIndex: number;
+  stepRevision: number;
+  activityOrder: number;
   steps: string[];
   source: AgentSource;
   isIntegration: boolean;
+  /** Provider/session identity for dynamically-created coding sessions. */
+  provider?: CodeProvider;
+  sessionId?: string;
   emote?: BotEmoteName | null;
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
@@ -24,6 +31,9 @@ export interface AgentTask {
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
+  turnId: string | null;
+  taskId: string;
+  provider: CodeProvider;
   tool: string;
   command: string;
 }
@@ -53,12 +63,13 @@ export interface SearchResult {
 const task = (
   id: string, name: string, color: string, source: AgentSource,
 ): AgentTask => ({
-  id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
+  id, name, color, state: "idle", stepIndex: 0, stepRevision: 0, activityOrder: 0, steps: [], source, isIntegration: true, pillBadge: null,
 });
 
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_codex", "Codex", "#35A67A", "codex"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -92,6 +103,11 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  chatProvider: CodeProvider;
+  /** Codex CLI login to use for chat; subscription-backed by default. */
+  codexAuthMode: CodexAuthMode;
+  /** Empty means use the Codex CLI's configured default model. */
+  codexModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +122,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  codexAuthMode: "subscription",
+  codexModel: "",
 };
 
 type Listener = () => void;
@@ -136,6 +155,8 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** Incremented whenever the provider/model changes; old replies are discarded. */
+  chatGeneration = 0;
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
@@ -145,6 +166,7 @@ class AppState {
   settings: Settings = { ...DEFAULT_SETTINGS };
 
   private listeners = new Set<Listener>();
+  private activityClock = 0;
 
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
@@ -165,7 +187,29 @@ class AppState {
   }
 
   get otherTasks(): AgentTask[] {
-    return this.tasks.filter((t) => t.id !== this.focusId);
+    const others = this.tasks.filter((t) => t.id !== this.focusId);
+    const sessions = others.filter((t) => !t.isIntegration);
+    const integrations = others.filter((t) => t.isIntegration);
+    const priority = (state: BotStateName): number => {
+      switch (state) {
+        case "approval": return 0;
+        case "working":
+        case "thinking":
+        case "searching": return 1;
+        case "question":
+        case "ratelimit":
+        case "error": return 2;
+        case "finished":
+        case "interrupted": return 3;
+        default: return 4;
+      }
+    };
+    sessions.sort((a, b) => priority(a.state) - priority(b.state) || b.activityOrder - a.activityOrder);
+    return [...sessions, ...integrations];
+  }
+
+  private touchTask(task: AgentTask) {
+    task.activityOrder = ++this.activityClock;
   }
 
   setFocus(id: string) {
@@ -176,10 +220,17 @@ class AppState {
     this.notify();
   }
 
+  /** Focus the first live coding session while the default provider card is idle. */
+  focusCodeSessionIfIdle(id: string) {
+    const focused = this.focusTask;
+    if (!this.focusId || (focused?.isIntegration && focused.state === "idle")) this.setFocus(id);
+  }
+
   updateTask(id: string, state: BotStateName) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     t.state = state;
+    this.touchTask(t);
     this.notify();
   }
 
@@ -187,6 +238,8 @@ class AppState {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     t.steps.push(step);
+    t.stepRevision++;
+    this.touchTask(t);
     if (t.steps.length > 20) t.steps.shift();
     t.stepIndex = t.steps.length - 1;
     this.notify();
@@ -199,24 +252,88 @@ class AppState {
     this.notify();
   }
 
+  upsertCodeSession(provider: CodeProvider, sessionId: string, name: string, cwd: string): string {
+    const id = codeSessionTaskId(provider, sessionId);
+    let task = this.tasks.find((x) => x.id === id);
+    if (!task) {
+      task = {
+        id,
+        name,
+        color: provider === "codex" ? "#35A67A" : "#F5F6F8",
+        state: "idle",
+        stepIndex: 0,
+        stepRevision: 0,
+        activityOrder: ++this.activityClock,
+        steps: [],
+        source: provider === "codex" ? "codex" : "claudeCode",
+        isIntegration: false,
+        pillBadge: null,
+        provider,
+        sessionId,
+      };
+      this.tasks.push(task);
+    }
+    // Hook sessions need to stay visible in the pill row even when optional
+    // integrations are loaded. loadIntegrationTasks also keeps this order.
+    this.tasks = [
+      ...this.tasks.filter((item) => !item.isIntegration),
+      ...this.tasks.filter((item) => item.isIntegration),
+    ];
+    if (cwd && name) task.name = name;
+    task.sessionCwd = cwd || task.sessionCwd;
+    this.touchTask(task);
+    this.notify();
+    return id;
+  }
+
+  removeCodeSession(provider: CodeProvider, sessionId: string) {
+    const id = codeSessionTaskId(provider, sessionId);
+    const index = this.tasks.findIndex((x) => x.id === id);
+    if (index < 0) return;
+    this.tasks.splice(index, 1);
+    if (this.focusId === id) {
+      const nextSession = this.tasks.find((x) => !x.isIntegration);
+      const providerFallback = provider === "codex" ? "integration_codex" : "integration_claude";
+      this.focusId = nextSession?.id ?? (this.tasks.some((x) => x.id === providerFallback)
+        ? providerFallback
+        : this.tasks[0]?.id ?? null);
+    }
+    this.notify();
+  }
+
+  clearChatForConfigChange() {
+    this.chatGeneration++;
+    this.chatHistory = [];
+    if (this.stateOverride === "thinking") this.stateOverride = null;
+    this.notify();
+  }
+
   /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        proto.id === "integration_claude" || proto.id === "integration_codex" ||
+        this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
+    // Session tasks are live hook sessions, not integration pollers. Preserve
+    // them when settings are reloaded and keep them ahead of optional services.
+    const sessions = this.tasks.filter((t) => !t.isIntegration);
     // Keep the declared order so pills never shuffle.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    if (!this.focusId) this.focusId = "integration_claude";
+    this.tasks = [...sessions, ...this.tasks.filter((t) => t.isIntegration)].sort((a, b) => {
+      if (!a.isIntegration && b.isIntegration) return -1;
+      if (a.isIntegration && !b.isIntegration) return 1;
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = "integration_claude";
     this.notify();
   }
 
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    if (id === "integration_claude" || id === "integration_codex") return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);
@@ -231,6 +348,12 @@ class AppState {
   defaultView(): IslandViewName {
     return this.tasks.length === 0 ? "empty" : "overview";
   }
+}
+
+export function codeSessionTaskId(provider: CodeProvider, sessionId: string): string {
+  // Base64-free stable encoding: session IDs can contain colons, slashes or
+  // spaces and must never collide across providers.
+  return `session_${provider}_${encodeURIComponent(sessionId)}`;
 }
 
 export const State = new AppState();

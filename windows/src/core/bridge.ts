@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { CodeProvider, CodexAuthMode, Settings } from "./state";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -31,7 +31,8 @@ export interface BootInfo {
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
 
-  saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
+  saveSettings: (settings: Settings) => IS_TAURI
+    ? callOrThrow<void>("save_settings", { settings }) : Promise.resolve(),
 
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   setCollapsed: (collapsed: boolean) => call<void>("set_collapsed", { collapsed }),
@@ -61,15 +62,19 @@ export const Bridge = {
   log: (message: string) => call<void>("log_line", { message }),
 
   // ── Claude Code hooks ─────────────────────────────────────────────────────
-  hooksStatus: () => call<HookStatus>("hooks_status"),
+  hooksStatus: (provider: CodeProvider = "claude") => call<HookStatus>("hooks_status", { provider }),
   /** Diff to show before anything is written. `install: false` previews removal. */
-  hooksPreview: (install: boolean) => callOrThrow<HookPreview>("hooks_preview", { install }),
+  hooksPreview: (install: boolean, provider: CodeProvider = "claude") =>
+    callOrThrow<HookPreview>("hooks_preview", { install, provider }),
   /**
-   * Writes ~/.claude/settings.json — only ever after an explicit click, and only
-   * when the file still matches the preview the user looked at.
+   * Writes only the selected provider's hook settings, after an explicit click
+   * and only when the file still matches the preview the user looked at.
    */
-  hooksApply: (install: boolean, fingerprint: string) =>
-    callOrThrow<string>("hooks_apply", { install, fingerprint }),
+  hooksApply: (install: boolean, fingerprint: string, provider: CodeProvider = "claude") =>
+    callOrThrow<string>("hooks_apply", { install, fingerprint, provider }),
+  /** Codex CLI availability and saved-login status; never returns credentials. */
+  codexStatus: () => call<CodexStatus>("codex_status"),
+  codexModels: (authMode: CodexAuthMode) => callOrThrow<CodexModel[]>("codex_models", { authMode }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -79,10 +84,11 @@ export const Bridge = {
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
-  /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
-  chatReset: () => call<void>("chat_reset"),
+  /** One chat turn. API keys and file bytes never leave Rust. */
+  chatSend: (query: string, context: ChatContext | null, provider: CodeProvider, model: string, authMode?: CodexAuthMode) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, provider, model, authMode }),
+  chatReset: (provider?: CodeProvider, model?: string) => IS_TAURI
+    ? callOrThrow<void>("chat_reset", provider ? { provider, model } : undefined) : Promise.resolve(),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -121,6 +127,20 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+}
+
+export interface CodexStatus {
+  installed: boolean;
+  version: string | null;
+  authenticated: boolean;
+  authMode: string | null;
+  error: string | null;
+}
+
+export interface CodexModel {
+  model: string;
+  displayName: string;
+  isDefault: boolean;
 }
 
 export interface HookPreview {
