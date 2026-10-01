@@ -86,19 +86,43 @@ fn main() {
         let _ = tx.send(talk(&payload, waits_for_answer));
     });
 
-    if let Ok(Some(decision)) = rx.recv_timeout(budget) {
-        if let Some(json) = decision_json(&decision) {
-            let mut out = std::io::stdout();
-            let _ = writeln!(out, "{json}");
-            let _ = out.flush();
-        }
+    let output = match rx.recv_timeout(budget) {
+        Ok(Some(response)) => hook_output(&event, &response),
+        // A non-approval Codex hook still needs valid JSON when Coucou is
+        // closed or the relay times out. Keep PermissionRequest silent so
+        // Codex falls back to its normal interactive prompt.
+        _ if !waits_for_answer => Some(default_hook_output(&event)),
+        _ => None,
+    };
+    if let Some(json) = output {
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "{json}");
+        let _ = out.flush();
     }
-    // Nothing printed: Claude Code asks in the terminal, as if we were not here.
+    // A missing approval response lets Claude Code/Codex ask in the terminal.
     std::process::exit(0);
 }
 
-/// The documented PermissionRequest output. Anything we do not recognise prints
-/// nothing at all rather than guessing — silence is the safe answer.
+/// Builds the output Codex expects for a completed relay call.
+fn hook_output(event: &str, response: &str) -> Option<String> {
+    if event == "PermissionRequest" {
+        return decision_json(response);
+    }
+    Some(default_hook_output(event))
+}
+
+/// Codex accepts an empty JSON object for informational hooks. Stop supports
+/// the common `continue` field, which makes the response explicit and valid.
+fn default_hook_output(event: &str) -> String {
+    if event == "Stop" {
+        r#"{"continue":true}"#.to_string()
+    } else {
+        "{}".to_string()
+    }
+}
+
+/// The documented PermissionRequest output. Anything we do not recognise
+/// returns no decision so the terminal can ask normally.
 /// See https://code.claude.com/docs/en/hooks
 fn decision_json(decision: &str) -> Option<String> {
     let behavior = match decision.trim() {
@@ -248,7 +272,17 @@ mod tests {
     }
 
     #[test]
-    fn anything_unrecognised_prints_nothing() {
+    fn informational_events_always_have_valid_json() {
+        for event in ["SessionStart", "PreToolUse", "PostToolUse", "Stop"] {
+            let output = hook_output(event, "{}").unwrap();
+            assert!(serde_json::from_str::<serde_json::Value>(&output).is_ok());
+        }
+        assert_eq!(default_hook_output("Stop"), r#"{"continue":true}"#);
+        assert_eq!(default_hook_output("SessionStart"), "{}");
+    }
+
+    #[test]
+    fn anything_unrecognised_permission_response_prints_nothing() {
         assert!(decision_json("").is_none());
         assert!(decision_json("maybe").is_none());
         // The shape the app used to send must not be mistaken for a decision.
