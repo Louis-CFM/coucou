@@ -128,7 +128,7 @@ struct OverviewView: View {
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
-            NSWorkspace.shared.open(URL(string: "https://github.com")!)
+            NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -978,7 +978,7 @@ struct IntegrationCardView: View {
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
-        case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
+        case "integration_github":  return appState.githubAuthSource != nil
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
@@ -994,7 +994,7 @@ struct IntegrationCardView: View {
             if let s = KeychainStore.shared.get("n8n-url") { return URL(string: s) }
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
-        case "integration_github":  return URL(string: "https://github.com")
+        case "integration_github":  return URL(string: "https://github.com/pulls")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
@@ -1023,9 +1023,9 @@ struct IntegrationCardView: View {
         task.id == "integration_resend" && !appState.resendEmails.isEmpty
     }
 
-    // GitHub with stats loaded
+    // GitHub with pull requests loaded
     private var githubHasData: Bool {
-        task.id == "integration_github" && appState.githubStats != nil
+        task.id == "integration_github" && appState.githubSummary != nil
     }
 
     // Stripe: show card as soon as first poll completes (balance OR payments)
@@ -1063,7 +1063,7 @@ struct IntegrationCardView: View {
             ResendCardView(emails: appState.resendEmails, total: appState.resendTotal)
                 .transition(.opacity)
         } else if githubHasData {
-            GitHubStatsCardView(stats: appState.githubStats!)
+            GitHubPRCardView(summary: appState.githubSummary!)
                 .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
@@ -1493,10 +1493,17 @@ struct ResendCardView: View {
     }
 }
 
-// MARK: - GitHub Stats Card View
+// MARK: - GitHub Pull Requests Card View
 
-struct GitHubStatsCardView: View {
-    let stats: GitHubStats
+struct GitHubPRCardView: View {
+    let summary: GitHubSummary
+
+    /// Up to 3 rows: reviews waiting on the user first, then their own PRs.
+    private var rows: [(pr: GitHubPR, isReview: Bool)] {
+        let reviews = summary.reviewRequests.prefix(2).map { (pr: $0, isReview: true) }
+        let mine = summary.mine.prefix(3 - reviews.count).map { (pr: $0, isReview: false) }
+        return Array(reviews + mine)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1508,57 +1515,110 @@ struct GitHubStatsCardView: View {
                 Text("GitHub")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Overview")
+                Text("Pull requests")
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
+                if summary.reviewCount > 0 {
+                    Text("\(summary.reviewCount) to review")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "#F5A524"))
+                        .monospacedDigit()
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
             .padding(.trailing, 36)
 
-            // Stats rows
-            VStack(alignment: .leading, spacing: 5) {
-                StatRow(icon: "star.fill", color: "#F5A524",
-                        label: "Total stars", value: formatCount(stats.totalStars))
-                StatRow(icon: "square.stack.fill", color: "#6B7079",
-                        label: "Repositories", value: "\(stats.totalRepos)")
+            VStack(alignment: .leading, spacing: 3) {
+                if rows.isEmpty {
+                    Text("Nothing waiting on you.")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                }
+                ForEach(Array(rows.enumerated()), id: \.element.pr.id) { index, row in
+                    GitHubPRRow(pr: row.pr, isReview: row.isReview, highlighted: index == 0)
+                }
             }
-            .padding(.top, 8)
+            .padding(.top, 5)
             .padding(.leading, 108)
             .padding(.trailing, 12)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
     }
-
-    private func formatCount(_ n: Int) -> String {
-        if n >= 1000 { return String(format: "%.1fk", Double(n) / 1000) }
-        return "\(n)"
-    }
 }
 
-private struct StatRow: View {
-    let icon: String
-    let color: String
-    let label: String
-    let value: String
+private struct GitHubPRRow: View {
+    let pr: GitHubPR
+    let isReview: Bool
+    let highlighted: Bool
+
+    /// Review requests are amber; the user's own PRs take their CI colour.
+    private var accent: Color {
+        if isReview { return Color(hex: "#F5A524") }
+        switch pr.ci {
+        case .success: return Color(hex: "#22C55E")
+        case .failure: return Color(hex: "#F4505E")
+        case .pending: return Color(hex: "#F5A524")
+        case nil:      return Color(hex: "#6B7079")
+        }
+    }
+
+    private var detail: String {
+        if isReview { return pr.author.map { "by \($0)" } ?? "review" }
+        if pr.isDraft { return "draft" }
+        switch pr.reviewDecision {
+        case "APPROVED":          return "approved"
+        case "CHANGES_REQUESTED": return "changes requested"
+        default: break
+        }
+        switch pr.ci {
+        case .failure: return "CI failing"
+        case .pending: return "CI running"
+        case .success: return "CI passed"
+        case nil:      return ""
+        }
+    }
 
     var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .font(.system(size: 10))
-                .foregroundColor(Color(hex: color))
-                .frame(width: 14)
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundColor(Color(hex: "#6B7079"))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Color(hex: "#C5C8CD"))
-                .monospacedDigit()
+        Button {
+            if let url = URL(string: pr.url) { NSWorkspace.shared.open(url) }
+        } label: {
+            HStack(spacing: 5) {
+                if isReview {
+                    Image(systemName: "eye.fill")
+                        .font(.system(size: 7))
+                        .foregroundColor(accent)
+                        .frame(width: 5)
+                } else {
+                    Circle().fill(accent).frame(width: 5, height: 5)
+                }
+                Text("\(pr.repoShort)#\(pr.number)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                    .lineLimit(1)
+                    .fixedSize()
+                Text(pr.title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: highlighted ? "#C5C8CD" : "#9398A1"))
+                    .lineLimit(1).truncationMode(.tail)
+                    .layoutPriority(1)
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(highlighted ? accent.opacity(0.08) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
     }
 }
 
@@ -2708,6 +2768,16 @@ struct SettingsIslandView: View {
         KeychainStore.shared.get("anthropic-api-key") != nil
     }
 
+    /// Chat engine badge: the chosen CLI is found on this Mac, or the API has a key.
+    private var chatEngineLabel: String { state.chatEngine?.badge ?? "Chat" }
+    private var chatEngineReady: Bool {
+        switch state.chatEngine {
+        case .api: return apiConnected
+        case .some(let e): return state.detectedCLIs[e] != nil
+        case nil: return !state.detectedCLIs.isEmpty || apiConnected
+        }
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: nil)
@@ -2755,7 +2825,7 @@ struct SettingsIslandView: View {
                 // Connection status
                 HStack(spacing: 14) {
                     StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    StatusBadge(label: chatEngineLabel, ok: chatEngineReady)
                     Spacer()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
@@ -2769,6 +2839,9 @@ struct SettingsIslandView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 14)
         }
+        #if !APPSTORE
+        .task { if !state.cliDetectionDone { await state.detectCLIs() } }
+        #endif
     }
 }
 

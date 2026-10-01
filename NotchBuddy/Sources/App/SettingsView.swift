@@ -34,6 +34,9 @@ struct SettingsView: View {
     @State private var n8nWorkflows: [String] = []
     @State private var loadingN8n: Bool = false
 
+    // Chat engine detection in progress
+    @State private var detectingCLIs: Bool = false
+
     // Bindings in minutes for the absence field
     private var absenceMinutes: Binding<Double> {
         Binding(
@@ -46,19 +49,55 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
 
-                // MARK: API
+                // MARK: Chat engine
+                #if APPSTORE
                 GroupBox("Anthropic API") {
                     VStack(alignment: .leading, spacing: 8) {
-                        SecureField("API key (sk-ant-…)", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                            statusMessage = "✓ Key saved."
-                        }
-                        .buttonStyle(.borderedProminent)
+                        apiKeyField
                     }
                     .padding(6)
                 }
+                #else
+                GroupBox("Chat") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Who answers in the notch chat. Local CLIs use the login you already have — no API key.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        ForEach(ChatEngine.allCases) { engine in
+                            engineRow(engine)
+                        }
+
+                        HStack(spacing: 8) {
+                            Button("Detect again") {
+                                detectingCLIs = true
+                                Task {
+                                    await state.detectCLIs()
+                                    detectingCLIs = false
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(detectingCLIs)
+                            if detectingCLIs {
+                                ProgressView().controlSize(.small)
+                            }
+                        }
+
+                        if state.chatEngine == .api {
+                            apiKeyField
+                        }
+                    }
+                    .padding(6)
+                }
+                .task {
+                    if !state.cliDetectionDone {
+                        detectingCLIs = true
+                        await state.detectCLIs()
+                        detectingCLIs = false
+                    }
+                }
+                #endif
 
                 // MARK: Hooks
                 GroupBox("Claude Code Hooks") {
@@ -180,8 +219,17 @@ struct SettingsView: View {
                                 Circle().fill(Color(hex: "#F4505E")).frame(width: 8, height: 8)
                                 Text("GitHub").font(.system(size: 12, weight: .semibold))
                             }
+                            Text(githubStatus)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(state.githubError == nil ? .secondary : .orange)
+                                .lineLimit(2)
+                            #if APPSTORE
                             SecureField("Personal Access Token", text: $githubToken)
                                 .textFieldStyle(.roundedBorder)
+                            #else
+                            SecureField("Personal Access Token (optional — overrides gh)", text: $githubToken)
+                                .textFieldStyle(.roundedBorder)
+                            #endif
                         }
 
                         // Stripe
@@ -342,6 +390,61 @@ struct SettingsView: View {
         .frame(width: 480, height: 720)
     }
 
+    // MARK: - Chat engine
+
+    private var apiKeyField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SecureField("API key (sk-ant-…)", text: $apiKey)
+                .textFieldStyle(.roundedBorder)
+            Button("Save") {
+                KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+                statusMessage = "✓ Key saved."
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private func engineRow(_ engine: ChatEngine) -> some View {
+        let info = state.detectedCLIs[engine]
+        let available = engine == .api || info != nil
+        let selected = state.chatEngine == engine
+
+        let detail: String
+        if engine == .api {
+            detail = KeychainStore.shared.get("anthropic-api-key") == nil ? "Needs an API key" : "API key saved"
+        } else if let info {
+            detail = [info.version, info.path].compactMap { $0 }.joined(separator: " · ")
+        } else {
+            detail = state.cliDetectionDone ? "Not installed" : "Looking…"
+        }
+
+        return Button {
+            guard !selected else { return }
+            state.chatEngine = engine
+            // A new engine starts a new conversation.
+            ClaudeService.shared.clearConversation()
+            state.chatHistory = []
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    .foregroundColor(selected ? .accentColor : .secondary)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(engine.label).font(.system(size: 12, weight: .semibold))
+                    Text(detail)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(available ? .secondary : .orange)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!available)
+        .opacity(available ? 1 : 0.55)
+    }
+
     // MARK: - Actions
 
     private func toggleStartup(_ on: Bool) {
@@ -449,7 +552,26 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        GithubPoller.shared.pollNow()
         statusMessage = "✓ Integration keys saved."
+    }
+
+    /// Which GitHub login the pill uses, or why there isn't one.
+    private var githubStatus: String {
+        let who = state.githubSummary.map { " as \($0.login)" } ?? ""
+        let source: String
+        switch state.githubAuthSource {
+        case .gh:     source = "Using gh login\(who)"
+        case .manual: source = "Using the token below\(who)"
+        case nil:
+            #if APPSTORE
+            return "Paste a token to connect."
+            #else
+            return "gh not found or not logged in — run gh auth login, or paste a token."
+            #endif
+        }
+        if let err = state.githubError { return "\(source) — \(err)" }
+        return source
     }
 
     /// Saves non-empty value; removes only if key was previously set (explicit user clear).

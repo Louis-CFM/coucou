@@ -154,8 +154,10 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats (populated by GithubPoller)
-    @Published var githubStats: GitHubStats? = nil
+    // GitHub pull requests (populated by GithubPoller)
+    @Published var githubSummary: GitHubSummary? = nil
+    @Published var githubAuthSource: GitHubAuthSource? = nil   // nil = no token found
+    @Published var githubError: String? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -178,6 +180,23 @@ final class AppState: ObservableObject {
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 
+    // Which AI answers the chat — persisted. nil until the user picks one or the
+    // first chat auto-picks the first installed CLI.
+    @Published var chatEngine: ChatEngine? = nil {
+        didSet { UserDefaults.standard.set(chatEngine?.rawValue, forKey: "chatEngine") }
+    }
+
+    // AI CLIs found on this Mac (filled by LocalCLI.detectAll, from Settings or the first chat)
+    @Published var detectedCLIs: [ChatEngine: CLIInfo] = [:]
+    @Published var cliDetectionDone: Bool = false
+
+    /// Re-scans for the AI CLIs in the background.
+    func detectCLIs() async {
+        let found = await Task.detached { LocalCLI.detectAll() }.value
+        detectedCLIs = found
+        cliDetectionDone = true
+    }
+
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
@@ -197,6 +216,7 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
+        if let v = ud.string(forKey: "chatEngine") { chatEngine = ChatEngine(rawValue: v) }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
@@ -367,9 +387,46 @@ struct ResendEmail: Identifiable {
 
 // MARK: - GitHub
 
-struct GitHubStats {
-    let totalRepos: Int
-    let totalStars: Int
+/// Where the GitHub token comes from: pasted in Settings, or the local `gh` login.
+enum GitHubAuthSource: Equatable {
+    case manual
+    case gh
+}
+
+enum GitHubCIState: Equatable {
+    case success, failure, pending
+
+    /// Maps GraphQL `StatusState` (SUCCESS, FAILURE, ERROR, PENDING, EXPECTED).
+    init?(rollup: String?) {
+        switch rollup {
+        case "SUCCESS": self = .success
+        case "FAILURE", "ERROR": self = .failure
+        case "PENDING", "EXPECTED": self = .pending
+        default: return nil
+        }
+    }
+}
+
+struct GitHubPR: Identifiable, Equatable {
+    let url: String
+    let number: Int
+    let title: String
+    let repo: String          // owner/name
+    let author: String?
+    let ci: GitHubCIState?
+    let reviewDecision: String?   // APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED
+    let isDraft: Bool
+
+    var id: String { url }
+    var repoShort: String { repo.split(separator: "/").last.map(String.init) ?? repo }
+}
+
+struct GitHubSummary: Equatable {
+    let login: String
+    let reviewCount: Int
+    let reviewRequests: [GitHubPR]   // PRs waiting for the user's review
+    let mineCount: Int
+    let mine: [GitHubPR]             // the user's own open PRs, most recently updated first
 }
 
 // MARK: - Stripe
