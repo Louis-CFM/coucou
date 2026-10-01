@@ -170,8 +170,12 @@ pub fn unblock_webview_drops(app: &AppHandle) {
             classes.sort();
             classes.dedup();
             let shown = classes.iter().take(8).cloned().collect::<Vec<_>>().join(",");
+            let hr = ctx
+                .last_hresult
+                .map(|c| format!(" last_hr=0x{:08X}", c as u32))
+                .unwrap_or_default();
             crate::log::line(format!(
-                "unblock {label}: descendants={} render_widgets={} revoked={} failed={} classes=[{shown}]",
+                "unblock {label}: descendants={} render_widgets={} revoked={} failed={}{hr} classes=[{shown}]",
                 ctx.total, ctx.matched, ctx.revoked, ctx.failed,
             ));
         }
@@ -184,6 +188,7 @@ struct UnblockCtx {
     matched: u32,
     revoked: u32,
     failed: u32,
+    last_hresult: Option<i32>,
     classes: Vec<String>,
 }
 
@@ -202,10 +207,12 @@ unsafe extern "system" fn walk_children(hwnd: HWND, lparam: LPARAM) -> BOOL {
         // just direct children.
         if class.starts_with("Chrome_RenderWidgetHostHWND") {
             ctx.matched += 1;
-            if unsafe { RevokeDragDrop(hwnd) }.is_ok() {
-                ctx.revoked += 1;
-            } else {
-                ctx.failed += 1;
+            match unsafe { RevokeDragDrop(hwnd) } {
+                Ok(()) => ctx.revoked += 1,
+                Err(e) => {
+                    ctx.failed += 1;
+                    ctx.last_hresult = Some(e.code().0);
+                }
             }
         }
     }
@@ -460,15 +467,25 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let dragging = down && in_window;
 
-                let accept = on_island || dragging;
-                if gate.ignoring.load(Ordering::Relaxed) == accept {
-                    gate.ignoring.store(!accept, Ordering::Relaxed);
-                    if down {
+                // While ANY button is held, never go transparent: flipping
+                // WS_EX_TRANSPARENT mid-drag makes Explorer drop the target and
+                // show "prohibited" for the rest of the drag — the refusal the
+                // log kept showing as take/ignore flapping. The flag is
+                // re-evaluated on release.
+                if down {
+                    if gate.ignoring.load(Ordering::Relaxed) {
+                        gate.ignoring.store(false, Ordering::Relaxed);
                         crate::log::line(format!(
                             "drop target take (on_island={on_island} dragging={dragging})"
                         ));
+                        let _ = win.set_ignore_cursor_events(false);
                     }
-                    let _ = win.set_ignore_cursor_events(!accept);
+                } else {
+                    let accept = on_island;
+                    if gate.ignoring.load(Ordering::Relaxed) == accept {
+                        gate.ignoring.store(!accept, Ordering::Relaxed);
+                        let _ = win.set_ignore_cursor_events(!accept);
+                    }
                 }
 
                 let _ = win.emit("cursor", CursorPayload { x, y, down });
