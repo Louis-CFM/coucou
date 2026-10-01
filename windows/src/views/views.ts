@@ -27,7 +27,7 @@ export interface ViewActions {
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
   blip(): void;
-  /** Hides Alfred completely. Only offered when that is set to the close button. */
+  /** Hides Coucou completely. Only offered when that is set to the close button. */
   dismiss(): void;
 }
 
@@ -89,7 +89,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
   const hideBtn = h(
     "button",
-    { title: "Hide Alfred", hidden: true, onclick: () => actions.dismiss() },
+    { title: "Hide Coucou", hidden: true, onclick: () => actions.dismiss() },
     svg(ICONS.xmark, 12),
   );
 
@@ -426,7 +426,7 @@ function buildQuestion(): ViewHost {
       const task = State.focusTask;
       title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
       clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Alfred can't reply for you yet." }));
+      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
   };
 }

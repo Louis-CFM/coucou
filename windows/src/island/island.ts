@@ -172,7 +172,7 @@ export class Island {
     this.countdown = h("div", { id: "countdown" });
     this.dismissBtn = h(
       "button",
-      { id: "dismiss", type: "button", title: "Hide Alfred" },
+      { id: "dismiss", type: "button", title: "Hide Coucou" },
       svg(ICONS.xmark, 10),
     ) as HTMLButtonElement;
     this.dismissBtn.addEventListener("mousedown", (e) => {
@@ -237,17 +237,17 @@ export class Island {
           this.setMode("hidden");
           break;
         case "petit":
-          if (from === "alfred") this.greeting.interrupt();
+          if (from === "coucou") this.greeting.interrupt();
           else if (from === "hidden") Sound.play("peek");
           this.setMode("compact");
-          if (from === "alfred") State.view = State.defaultView();
+          if (from === "coucou") State.view = State.defaultView();
           if (!this.wasInIsland) this.fsm.mouseLeft();
           break;
         case "home":
           this.expand(State.defaultView());
           if (!this.wasInIsland) this.fsm.mouseLeft();
           break;
-        case "alfred":
+        case "coucou":
           this.expand("greeting");
           this.greeting.start();
           break;
@@ -640,7 +640,7 @@ export class Island {
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
 
     if (inIsland && !this.wasInIsland) {
-      if (this.fsm.state === "alfred") this.greeting.hover();
+      if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
       this.homeCollapseAt = null;
     }

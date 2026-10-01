@@ -1,22 +1,22 @@
-//! alfred-hook — the relay Claude Code runs on every hook event.
+//! coucou-hook — the relay Claude Code runs on every hook event.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
-//! Alfred over the named pipe `\\.\pipe\alfred-<sid>`.
+//! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
 //!
 //! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
-//! * If the pipe does not exist — Alfred is closed — we exit 0 immediately with
+//! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
 //!   nothing on stdout, and the session carries on untouched.
 //! * Every step runs under a deadline enforced by the main thread, so a pipe that
 //!   accepts the connection and then stops reading cannot wedge the session
 //!   either: we abandon the worker and exit.
 //! * Only `PermissionRequest` waits for an answer, because approving from the
 //!   island is the whole point. No answer means empty stdout, and Claude Code
-//!   asks in the terminal exactly as if Alfred were not installed.
+//!   asks in the terminal exactly as if Coucou were not installed.
 //!
 //! Usage:
-//! * `alfred-hook <EventName>` — Claude Code. The name is also read from the JSON.
-//! * `alfred-hook --cursor` — Cursor agent hooks. Ordinary work (reads, edits
-//!   inside the project, sandboxed commands) is allowed straight away. Alfred
+//! * `coucou-hook <EventName>` — Claude Code. The name is also read from the JSON.
+//! * `coucou-hook --cursor` — Cursor agent hooks. Ordinary work (reads, edits
+//!   inside the project, sandboxed commands) is allowed straight away. Coucou
 //!   asks only when Cursor itself would: a command that cannot stay in the
 //!   sandbox, a file delete, or a change outside the workspace. No click on
 //!   one of those means deny.
@@ -52,13 +52,13 @@ const MAX_FIELD_LEN: usize = 2_000;
 
 mod win;
 
-/// `\\.\pipe\alfred-<sid>`. The SID keeps two accounts on the same machine from
+/// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
 fn pipe_path() -> String {
     let key = win::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\alfred-{key}")
+    format!(r"\\.\pipe\coucou-{key}")
 }
 
 /// Opens the pipe. Retries only while the server is busy: any other error means
@@ -114,7 +114,7 @@ fn main() {
     std::process::exit(0);
 }
 
-/// Fields Cursor puts on the payload that Alfred must not keep: an email
+/// Fields Cursor puts on the payload that Coucou must not keep: an email
 /// address, a transcript, or a whole tool result.
 const CURSOR_DROPPED: &[&str] = &["user_email", "transcript_path", "tool_output"];
 
@@ -123,7 +123,7 @@ const CURSOR_DROPPED: &[&str] = &["user_email", "transcript_path", "tool_output"
 /// invalid stdout on those events blocks the agent.
 const CURSOR_SAFE: &str = r#"{"permission":"allow","continue":true}"#;
 const CURSOR_ALLOW: &str = r#"{"permission":"allow"}"#;
-const CURSOR_DENY: &str = r#"{"permission":"deny","user_message":"Denied from Alfred","agent_message":"Denied from Alfred"}"#;
+const CURSOR_DENY: &str = r#"{"permission":"deny","user_message":"Denied from Coucou","agent_message":"Denied from Coucou"}"#;
 
 struct CursorEvent {
     line: Option<String>,
@@ -246,7 +246,7 @@ fn path_outside_workspace(map: &serde_json::Map<String, serde_json::Value>) -> b
     compared
 }
 
-/// The word Alfred wrote back. Only an explicit allow lets the tool run.
+/// The word Coucou wrote back. Only an explicit allow lets the tool run.
 fn cursor_decision_json(decision: &str) -> String {
     match decision.trim() {
         "allow" | "always" => CURSOR_ALLOW.to_string(),
@@ -281,7 +281,7 @@ fn cursor_reply(event: &str) -> &'static str {
     }
 }
 
-/// Builds the line forwarded to Alfred and the stdout Cursor must see.
+/// Builds the line forwarded to Coucou and the stdout Cursor must see.
 fn prepare_cursor(raw: &[u8]) -> CursorEvent {
     let text = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     let mut payload = match serde_json::from_slice::<serde_json::Value>(text) {
@@ -342,7 +342,7 @@ fn decision_json(decision: &str) -> Option<String> {
         // "always" still answers a plain allow; remembering it is the island's
         // business, not Claude Code's.
         "allow" | "always" => r#"{"behavior":"allow"}"#.to_string(),
-        "deny" => r#"{"behavior":"deny","message":"Denied from Alfred"}"#.to_string(),
+        "deny" => r#"{"behavior":"deny","message":"Denied from Coucou"}"#.to_string(),
         _ => return None,
     };
     Some(format!(
@@ -393,7 +393,7 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
-    // Which terminal the session runs in. Unlike macOS, Alfred on Windows accepts
+    // Which terminal the session runs in. Unlike macOS, Coucou on Windows accepts
     // events from every terminal, so this is context only — never a filter.
     for (key, var) in [
         ("term_program", "TERM_PROGRAM"),
@@ -503,7 +503,7 @@ mod tests {
         );
         assert_eq!(
             decision_json("deny").unwrap(),
-            r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Alfred"}}}"#
+            r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#
         );
         // "always" is an island concept; Claude Code just gets an allow.
         assert!(decision_json("always").unwrap().contains(r#""behavior":"allow""#));
@@ -559,7 +559,7 @@ mod tests {
     fn a_cursor_deny_is_the_documented_permission_object() {
         assert_eq!(
             cursor_decision_json("deny"),
-            r#"{"permission":"deny","user_message":"Denied from Alfred","agent_message":"Denied from Alfred"}"#
+            r#"{"permission":"deny","user_message":"Denied from Coucou","agent_message":"Denied from Coucou"}"#
         );
         assert_eq!(cursor_decision_json("allow"), CURSOR_ALLOW);
         assert_eq!(cursor_decision_json("deny"), CURSOR_DENY);

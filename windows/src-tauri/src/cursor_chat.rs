@@ -1,6 +1,6 @@
 // Chat with the local Cursor agent.
 //
-// Alfred does not talk to Cursor's cloud itself. It runs the `agent` CLI the
+// Coucou does not talk to Cursor's cloud itself. It runs the `agent` CLI the
 // user already logged into. Agent mode edits the remembered project, even
 // when the Cursor window is closed.
 // Ask mode only answers. Follow-ups resume the same CLI chat until the island
@@ -57,7 +57,7 @@ pub async fn send(
     let workspace = cwd.filter(|dir| std::path::Path::new(dir).is_dir());
     if edit && workspace.is_none() {
         return Err(
-            "Choose a project first. The folder button in the chat picks it, and Alfred keeps it after Cursor closes.".into(),
+            "Choose a project first. The folder button in the chat picks it, and Coucou keeps it after Cursor closes.".into(),
         );
     }
 
@@ -171,7 +171,7 @@ $owner = New-Object System.Windows.Forms.Form
 $owner.TopMost = $true
 $owner.ShowInTaskbar = $false
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Choose the project Alfred will edit'
+$dialog.Description = 'Choose the project Coucou will edit'
 if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
   [Console]::Out.Write($dialog.SelectedPath)
 }

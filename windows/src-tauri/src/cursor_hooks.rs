@@ -7,7 +7,7 @@
 // not Claude's nested `hooks` arrays.
 //
 // A permission hook is `failClosed`: if the relay is killed or prints nothing,
-// Cursor blocks that call. Alfred asks only when Cursor itself would — an
+// Cursor blocks that call. Coucou asks only when Cursor itself would — an
 // unsandboxed command, a delete, or a file outside the project.
 
 use std::path::{Path, PathBuf};
@@ -46,8 +46,8 @@ fn timeout_for(event: &str) -> u64 {
     if is_permission_event(event) { PERMISSION_TIMEOUT } else { OBSERVE_TIMEOUT }
 }
 
-/// Marker that identifies a Alfred entry inside hooks.json.
-const MARKER: &str = "alfred-hook";
+/// Marker that identifies a Coucou entry inside hooks.json.
+const MARKER: &str = "coucou-hook";
 
 fn home() -> PathBuf {
     std::env::var_os("USERPROFILE")
@@ -75,9 +75,9 @@ fn parse_hooks(bytes: &[u8], path: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{path} isn't a JSON object — Alfred won't touch it.")),
+        Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
         Err(err) => Err(format!(
-            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Alfred won't overwrite it."
+            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
         )),
     }
 }
@@ -256,7 +256,7 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let mut text = pretty(&next);
     text.push('\n');
 
-    let temp = path.with_extension(format!("json.alfred-{}", std::process::id()));
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
     if let Err(err) = std::fs::rename(&temp, &path) {
         let _ = std::fs::remove_file(&temp);
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn writing_backs_up_and_refuses_a_changed_file() {
         let _guard = crate::hooks::lock_test_home();
-        let tmp = std::env::temp_dir().join(format!("alfred-cursor-hooks-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("coucou-cursor-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".cursor")).unwrap();
         std::env::set_var("USERPROFILE", &tmp);
@@ -337,7 +337,7 @@ mod tests {
         std::fs::write(&path, original).unwrap();
 
         let plan = preview(true).expect("preview");
-        assert!(plan.diff.contains("alfred-hook"));
+        assert!(plan.diff.contains("coucou-hook"));
         let backup = write(true, &plan.fingerprint).expect("install");
         assert_eq!(std::fs::read(&backup).unwrap(), original.as_bytes());
 

@@ -106,7 +106,7 @@ export interface Settings {
   cursorProject: string | null;
   /** Claude model used by the chat. */
   model: string;
-  /** Pill focused when Alfred starts, and whenever the current one disappears. */
+  /** Pill focused when Coucou starts, and whenever the current one disappears. */
   defaultPill: string;
   /**
    * How the compact island disappears completely.

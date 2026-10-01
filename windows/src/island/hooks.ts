@@ -286,7 +286,7 @@ function handleHook(island: Island, payload: HookPayload) {
       upsert(projectName, cwd);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
-      // Alfred answers within 108 s or not at all; after that the terminal has
+      // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       showApproval(island, {
         requestId: payload.request_id ?? "",

@@ -1,4 +1,4 @@
-// Preferences, stored as plain JSON in %APPDATA%\Alfred\settings.json.
+// Preferences, stored as plain JSON in %APPDATA%\Coucou\settings.json.
 // No secret ever lands here — API keys live in the Windows Credential Manager.
 
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
-    /// Pill focused when Alfred starts. An older settings.json has no such field.
+    /// Pill focused when Coucou starts. An older settings.json has no such field.
     #[serde(default = "default_pill")]
     pub default_pill: String,
     /// How the compact island disappears completely.
@@ -35,7 +35,7 @@ pub struct Settings {
     #[serde(default = "default_hide_mode")]
     pub hide_mode: String,
     /// How the expanded island shrinks back to compact.
-    /// "timer" = after the mouse has left it. "outside" = on a click outside Alfred.
+    /// "timer" = after the mouse has left it. "outside" = on a click outside Coucou.
     #[serde(default = "default_shrink_mode")]
     pub shrink_mode: String,
 }
@@ -82,24 +82,24 @@ impl Default for Settings {
     }
 }
 
-/// %APPDATA%\Alfred
+/// %APPDATA%\Coucou
 pub fn config_dir() -> PathBuf {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Alfred")
+    base.join("Coucou")
 }
 
-/// %LOCALAPPDATA%\Alfred — where alfred-hook.exe and the log live.
+/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe and the log live.
 pub fn local_dir() -> PathBuf {
     let base = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Alfred")
+    base.join("Coucou")
 }
 
 pub fn hook_exe_path() -> PathBuf {
-    local_dir().join("bin").join("alfred-hook.exe")
+    local_dir().join("bin").join("coucou-hook.exe")
 }
 
 fn settings_path() -> PathBuf {

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128.png" width="96" alt="Alfred icon">
+<img src="src-tauri/icons/128x128.png" width="96" alt="Coucou icon">
 
-# Alfred for Windows
+# Coucou for Windows
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
@@ -53,10 +53,10 @@ Everything else happens on its own: a Claude Code or Cursor permission request
 opens the island with **Deny / Allow**, a finished session shows what it did,
 and your integrations sit in the coloured pills next to Mochi.
 
-Which pill is open when Alfred starts is set in **Settings… → General →
+Which pill is open when Coucou starts is set in **Settings… → General →
 Default pill**: VS Code, Cursor, Spotify, or any integration you have switched
 on. Clicking another pill keeps that one until the next launch. Turn the chosen
-integration off and Alfred goes back to VS Code.
+integration off and Coucou goes back to VS Code.
 
 **Settings… → General** also controls when the island goes away:
 
@@ -72,32 +72,32 @@ integration off and Alfred goes back to VS Code.
 Open **Settings… → Claude Code → Install hooks…**. You get the exact diff of what
 will change in `%USERPROFILE%\.claude\settings.json`, the path of the dated backup
 that will be taken, and nothing is written until you click. Your own hooks are
-never touched, and uninstalling removes only Alfred's entries.
+never touched, and uninstalling removes only Coucou's entries.
 
-The relay is a tiny executable, `alfred-hook.exe`, copied to
-`%LOCALAPPDATA%\Alfred\bin\` at launch. It is given 300 ms to reach Alfred and
+The relay is a tiny executable, `coucou-hook.exe`, copied to
+`%LOCALAPPDATA%\Coucou\bin\` at launch. It is given 300 ms to reach Coucou and
 exits cleanly if the app is closed, slow or crashed — **a Claude Code session is
-never blocked or slowed down by Alfred.** If nobody answers a permission request
-in time, Alfred stays quiet and Claude Code asks in the terminal as usual.
+never blocked or slowed down by Coucou.** If nobody answers a permission request
+in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ## Cursor
 
-Open **Settings… → Cursor → Install hooks…**. Alfred shows the diff for
+Open **Settings… → Cursor → Install hooks…**. Coucou shows the diff for
 `%USERPROFILE%\.cursor\hooks.json`, takes a dated backup, and writes nothing
 until you click. Your own hooks are left untouched.
 
-The same `alfred-hook.exe` relays the events, in `--cursor` mode. The pill
+The same `coucou-hook.exe` relays the events, in `--cursor` mode. The pill
 shows the project, the prompt, tool steps, subagents, and when the run finishes
 or fails. **Deny / Allow** opens only when Cursor itself would ask: a command
 that cannot stay in the sandbox, a file delete, or a change outside the
-project. Edits inside the project are not interrupted. If Alfred is closed, or
+project. Edits inside the project are not interrupted. If Coucou is closed, or
 nobody clicks, that call is **denied** — unlike Claude Code, Cursor never falls
 back to asking in the IDE. Cloud agents do not run these hooks.
 
 Hooks installed before this can still let the tool through when the wait runs
-out. Reinstall them once from **Settings… → Cursor** (Alfred shows a banner when
+out. Reinstall them once from **Settings… → Cursor** (Coucou shows a banner when
 the install is outdated).
 
 While Cursor works, the overview can show the last file it changed. Click the
@@ -108,7 +108,7 @@ landed. A denied call never leaves a false trail.
 The island chat can talk to that same local agent, with the Cursor window
 closed. Open **Ask**, click **Claude** until it says **Cursor**, then pick
 **Agent** (it can edit the project and run commands there) or **Ask** (it only
-answers). The **Folder** button chooses the project; Alfred remembers it after
+answers). The **Folder** button chooses the project; Coucou remembers it after
 Cursor closes and after a restart. The next message resumes the same thread.
 
 Install the [Cursor CLI](https://cursor.com/docs/cli/installation) first
@@ -117,9 +117,9 @@ Install the [Cursor CLI](https://cursor.com/docs/cli/installation) first
 
 ## Spotify
 
-Turn on **Settings… → Integrations → Spotify**. Alfred reads whatever the Spotify
+Turn on **Settings… → Integrations → Spotify**. Coucou reads whatever the Spotify
 desktop app is already playing through Windows’ media session — no Spotify
-account and no network call from Alfred. The pill shows the track and lets you
+account and no network call from Coucou. The pill shows the track and lets you
 pause, skip or open the app. A new track never pops the island open.
 
 ## Chat and keys
@@ -129,7 +129,7 @@ Credential Manager**, never on disk and never in the interface — the island ca
 only ask whether a key exists. Same for every integration key. Spotify needs
 none.
 
-No telemetry. The only network requests Alfred makes are to the services you
+No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
 ## Build it yourself
@@ -154,11 +154,11 @@ otherwise needs a real drag from Explorer to see. Neither page ships in the app.
 workflow publishes:
 
 ```
-Alfred-Windows-X.Y.Z-setup.exe    the versioned installer
-Alfred-Windows-setup.exe          the same file under the rolling name
+Coucou-Windows-X.Y.Z-setup.exe    the versioned installer
+Coucou-Windows-setup.exe          the same file under the rolling name
 ```
 
-Installing is optional — `target/release/alfred.exe` runs on its own. There is no
+Installing is optional — `target/release/coucou.exe` runs on its own. There is no
 window in the taskbar and no console: the island at the top of the screen and the
 Mochi in the notification area are the whole app, and Quit lives in its menu.
 
@@ -185,13 +185,13 @@ windows/
     settings/          the settings window
   src-tauri/           Rust backend: window, named pipe, Claude API, pollers
     src/media.rs       Spotify via the Windows media session
-  hook/                alfred-hook.exe, the Claude Code and Cursor relay
+  hook/                coucou-hook.exe, the Claude Code and Cursor relay
   scripts/             icon generator
 ```
 
 ### Log
 
-`%LOCALAPPDATA%\Alfred\alfred.log` — hook events, permission decisions, poller
+`%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
 
 ## What's different from the Mac version

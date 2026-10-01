@@ -96,7 +96,7 @@ function hooksSection(copy: HookSectionCopy, status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "alfred-hook.exe is not in place yet. Restart Alfred; if it still fails, build it with `cargo build -p alfred-hook`.",
+        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
       }));
     }
     if (status.hooksOutdated && copy.outdated) {
@@ -187,10 +187,10 @@ function hooksSection(copy: HookSectionCopy, status: HookStatus): HTMLElement {
 const CLAUDE_HOOKS: HookSectionCopy = {
   title: "Claude Code",
   fileLabel: "settings.json",
-  installed: "Alfred is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.",
+  installed: "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.",
   missing: "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
   previewInstall: "This is exactly what will change in your settings.json. Your own hooks are left untouched.",
-  previewRemove: "This removes Alfred's entries only. Your own hooks are left untouched.",
+  previewRemove: "This removes Coucou's entries only. Your own hooks are left untouched.",
   done: (backup) => `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
   load: () => Bridge.hooksStatus(),
   preview: (install) => Bridge.hooksPreview(install),
@@ -200,10 +200,10 @@ const CLAUDE_HOOKS: HookSectionCopy = {
 const CURSOR_HOOKS: HookSectionCopy = {
   title: "Cursor",
   fileLabel: "hooks.json",
-  installed: "Alfred watches your local Cursor agent sessions. Deny / Allow appears only when Cursor itself would ask: a command that needs full access, a file delete, or a change outside the project. Cloud agents are not included.",
+  installed: "Coucou watches your local Cursor agent sessions. Deny / Allow appears only when Cursor itself would ask: a command that needs full access, a file delete, or a change outside the project. Cloud agents are not included.",
   missing: "Install the hooks to see your local Cursor agent sessions, and to answer the permissions Cursor would ask for. Edits inside the project are not interrupted. Cloud agents are not included.",
   previewInstall: "This is exactly what will change in your hooks.json. Your own hooks are left untouched.",
-  previewRemove: "This removes Alfred's entries only. Your own hooks are left untouched.",
+  previewRemove: "This removes Coucou's entries only. Your own hooks are left untouched.",
   done: (backup) => `Done. Previous hooks saved as ${backup}. Start a new Cursor agent chat to pick the hooks up.`,
   outdated: "Reinstall the hooks. The copy installed now can let Cursor run the tool when the wait runs out, before you have clicked.",
   load: () => Bridge.cursorHooksStatus(),
@@ -535,7 +535,7 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: "Default pill" }),
       pill,
-      h("span", { class: "hint", text: "Shown when Alfred starts" }),
+      h("span", { class: "hint", text: "Shown when Coucou starts" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
@@ -571,7 +571,7 @@ async function main() {
 
   clear(root);
   root.append(
-    h("h1", {}, h("span", { text: "Alfred" }), h("span", { class: "version", text: version })),
+    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     hooksSection(CLAUDE_HOOKS, status),
     hooksSection(CURSOR_HOOKS, cursorStatus),
     apiSection(hasKey),

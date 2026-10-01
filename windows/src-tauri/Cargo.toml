@@ -1,6 +1,6 @@
 [package]
-name = "alfred"
-description = "Alfred for Windows — Mochi lives at the top of your screen"
+name = "coucou"
+description = "Coucou for Windows — Mochi lives at the top of your screen"
 authors = ["Louis Raille"]
 version.workspace = true
 edition.workspace = true

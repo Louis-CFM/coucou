@@ -318,7 +318,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Err(_) => (PANEL_W, PANEL_H),
                 };
                 // The button is read even when the cursor is still: a click outside
-                // Alfred often doesn't move the pointer, and the webview never sees
+                // Coucou often doesn't move the pointer, and the webview never sees
                 // it because the window is click-through there.
                 let down = left_button_down();
                 let pressed = down && !was_down;
@@ -345,7 +345,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 }
                 if released {
                     // Shrink on a finished click that both started and ended outside,
-                    // so dragging a file onto Alfred does not close it first.
+                    // so dragging a file onto Coucou does not close it first.
                     if armed_outside && !on_island {
                         let _ = win.emit("outside-click", ());
                     }

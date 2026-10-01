@@ -1,6 +1,6 @@
-// Named-pipe server for alfred-hook.
+// Named-pipe server for coucou-hook.
 //
-// `\\.\pipe\alfred-<sid>` — one instance per connection. Every hook event is
+// `\\.\pipe\coucou-<sid>` — one instance per connection. Every hook event is
 // forwarded to the island. `PermissionRequest` (Claude Code) and a Cursor tool
 // marked `await_decision` keep the connection open: they wait for the island's
 // decision and write it back on the same pipe. Claude Code gets silence if
@@ -8,7 +8,7 @@
 // tool does not run until someone clicks Allow.
 //
 // Claude Code is never blocked by us. Three things guarantee it:
-//   * alfred-hook gives the connection 300 ms and exits cleanly if we are closed;
+//   * coucou-hook gives the connection 300 ms and exits cleanly if we are closed;
 //   * we only wait for a human once the island has *confirmed* the card is on
 //     screen, so a paused island or a webview that is not listening costs a few
 //     hundred milliseconds, not two minutes;
@@ -16,7 +16,7 @@
 //     the terminal takes over.
 //
 // What we write back is the bare word `allow` or `deny`. Turning that into the
-// documented hookSpecificOutput JSON is alfred-hook's job, so the wire format
+// documented hookSpecificOutput JSON is coucou-hook's job, so the wire format
 // Claude Code expects lives in exactly one place.
 
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ use tokio::sync::mpsc;
 use crate::island::WINDOW_LABEL;
 use crate::log;
 
-/// Slightly under alfred-hook's own 110 s wait, so we always answer first.
+/// Slightly under coucou-hook's own 110 s wait, so we always answer first.
 /// Cursor permissions use the same window: the tool waits for a click.
 const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// How long the island gets to say "the card is up". This is the whole of B4:
@@ -59,11 +59,11 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
-/// `\\.\pipe\alfred-<sid>` — must match alfred-hook's `pipe_path()` exactly.
+/// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
 pub fn pipe_name() -> String {
     let key = crate::win_user::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\alfred-{key}")
+    format!(r"\\.\pipe\coucou-{key}")
 }
 
 pub fn start(app: AppHandle) {
@@ -185,8 +185,8 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
     let decision = wait_for_decision(&id, &mut rx, DECISION_TIMEOUT, Unanswered::Silence).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
-    // No decision: say nothing at all. alfred-hook then writes nothing to stdout
-    // and Claude Code asks in the terminal, exactly as if Alfred were closed.
+    // No decision: say nothing at all. coucou-hook then writes nothing to stdout
+    // and Claude Code asks in the terminal, exactly as if Coucou were closed.
     if let Some(d) = decision {
         let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
         let _ = pipe.flush().await;
@@ -284,7 +284,7 @@ pub fn decline(app: &AppHandle, request_id: &str) {
 }
 
 /// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
-/// it into Claude Code's JSON is alfred-hook's job.
+/// it into Claude Code's JSON is coucou-hook's job.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     let word = match decision {
         "allow" | "always" => "allow",
