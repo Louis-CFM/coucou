@@ -68,6 +68,86 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Codex CLI
+
+Coucou can also follow the OpenAI Codex CLI on Windows. In **Settings… → Codex CLI**,
+click **Install Codex hook…**, review the diff, and confirm the dated backup. This
+merges `hooks.json` under `%CODEX_HOME%` (or `%USERPROFILE%\.codex\hooks.json`)
+without replacing your existing hooks. Then open Codex, run `/hooks`, and trust the
+new Coucou command when Codex asks. Codex's hook trust is a required safety step;
+Coucou does not bypass it.
+
+Codex and Claude use the same relay executable. Session, tool, prompt, stop and
+compact/interrupt lifecycle events plus `PermissionRequest` are forwarded to Mochi.
+Allow/Deny works for Codex
+approval prompts because Codex documents the `PermissionRequest` response
+`hookSpecificOutput.decision.behavior` with `allow` or `deny`. If the hook is
+untrusted, disabled, unavailable, or times out, Codex keeps its normal approval
+prompt. Coucou cannot answer approvals for tools that do not emit
+`PermissionRequest`, and it never simulates keyboard input.
+
+Codex CLI must be installed and signed in separately. The supported local hook
+configuration is available in current Codex releases; verify with `codex --version`
+and `/hooks`. Project-local hooks may be ignored until that project is trusted, so
+the Coucou installer intentionally uses the user-level file. `CODEX_HOME`, when
+set, takes precedence over `%USERPROFILE%\.codex`.
+
+### Diagnose the installed relay
+
+`Stop` requires a JSON object on stdout. Coucou returns `{}` for this event:
+it is valid JSON and does not ask Codex to continue the turn. Run this from
+PowerShell to test the binary that Codex actually invokes:
+
+```powershell
+$hook = "$env:LOCALAPPDATA\Coucou\bin\coucou-hook.exe"
+$payload = '{"session_id":"diagnostic","cwd":"C:\\Temp","hook_event_name":"Stop","turn_id":"diagnostic","stop_hook_active":false,"last_assistant_message":"diagnostic"}'
+$stdout = $payload | & $hook Stop 2> "$env:TEMP\coucou-hook.stderr"
+if ($LASTEXITCODE -ne 0) { throw "coucou-hook.exe exited with $LASTEXITCODE" }
+$stdout | ConvertFrom-Json | ConvertTo-Json -Compress
+Get-FileHash $hook -Algorithm SHA256
+```
+
+The first command must print `{}` (and no non-JSON text). Compare the hash
+with the freshly built `windows\target\release\coucou-hook.exe` if an older
+installer may still be installed. The launcher now compares relay bytes rather
+than timestamps before replacing the copy in `%LOCALAPPDATA%\Coucou\bin`.
+
+To inspect the effective `Stop` configuration and prove which process emits
+the response, run:
+
+```powershell
+$hooks = if ($env:CODEX_HOME) { Join-Path $env:CODEX_HOME 'hooks.json' } else { Join-Path $env:USERPROFILE '.codex\hooks.json' }
+$config = Get-Content -Raw $hooks | ConvertFrom-Json
+$config.hooks.Stop | ConvertTo-Json -Depth 20
+$hook = "$env:LOCALAPPDATA\Coucou\bin\coucou-hook.exe"
+$payload = [ordered]@{ session_id='diagnostic'; cwd=(Get-Location).Path; hook_event_name='Stop'; model='diagnostic'; turn_id='diagnostic'; permission_mode='default'; stop_hook_active=$false; last_assistant_message='diagnostic' } | ConvertTo-Json -Compress
+$stdoutFile = Join-Path $env:TEMP 'coucou-stop.stdout'
+$stderrFile = Join-Path $env:TEMP 'coucou-stop.stderr'
+$payload | & $hook Stop 1> $stdoutFile 2> $stderrFile
+Write-Host "exit=$LASTEXITCODE"
+Write-Host 'stdout bytes:'
+[BitConverter]::ToString([IO.File]::ReadAllBytes($stdoutFile))
+Write-Host 'stderr bytes:'
+[BitConverter]::ToString([IO.File]::ReadAllBytes($stderrFile))
+Get-Content -Raw $stdoutFile | ConvertFrom-Json | ConvertTo-Json -Compress
+```
+
+The Coucou entry must show both `command` and `commandWindows` ending in
+`"coucou-hook.exe" Stop`. Expected stdout bytes are `7B-7D-0D-0A` (or
+`7B-7D-0A`) and stderr must be empty. If another `Stop` entry is present,
+disable it temporarily or test its command separately: Codex validates every
+matching hook, not only Coucou's entry.
+
+After installing a new Coucou build, hooks are not migrated automatically.
+Quit the old Coucou instance, install and launch the new Windows installer,
+then open **Settings… → Codex CLI → Reinstall Codex hook…**, review the diff,
+and confirm it. This rewrites both `command` and `commandWindows` for every
+Coucou event. Restart Codex and use `/hooks` to trust the changed definition.
+Verify that the displayed `Stop` commands end with `coucou-hook.exe" Stop`
+before testing a session. If the old entry remains, click **Uninstall Codex
+hook…**, confirm, then click **Install Codex hook…** and confirm again; this
+removes only Coucou's entries and preserves unrelated hooks.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

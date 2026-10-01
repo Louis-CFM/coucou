@@ -343,8 +343,10 @@ pub fn ensure_hook_exe(app: &AppHandle) {
         return;
     };
 
-    let same = match (std::fs::metadata(&src), std::fs::metadata(&dest)) {
-        (Ok(a), Ok(b)) => a.len() == b.len() && a.modified().ok() == b.modified().ok(),
+    // Compare bytes rather than timestamps: an installer/resource rebuild can
+    // preserve size and coarse file times while still shipping a new relay.
+    let same = match (std::fs::read(&src), std::fs::read(&dest)) {
+        (Ok(a), Ok(b)) => a == b,
         _ => false,
     };
     if same {
@@ -362,7 +364,7 @@ pub fn ensure_hook_exe(app: &AppHandle) {
 // ── Minimal unified diff (LCS) ────────────────────────────────────────────────
 
 /// settings.json is short, so a plain O(n·m) LCS is the simplest honest diff.
-fn unified_diff(before: &str, after: &str) -> String {
+pub(crate) fn unified_diff(before: &str, after: &str) -> String {
     let a: Vec<&str> = before.lines().collect();
     let b: Vec<&str> = after.lines().collect();
     let (n, m) = (a.len(), b.len());

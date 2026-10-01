@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookStatus, type CodexHookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -165,6 +165,110 @@ function claudeSection(status: HookStatus): HTMLElement {
       text: "Cancel",
       onclick: () => { clear(body); draw(); },
     })));
+  }
+
+  draw();
+  return section;
+}
+
+function codexSection(status: CodexHookStatus): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h("section", {},
+    h("h2", {}, statusDot(status.installed), h("span", { text: "Codex CLI" })),
+    body,
+  );
+
+  const draw = () => {
+    clear(body);
+    body.append(
+      h("div", {
+        class: "hint",
+        text: status.installed
+          ? "Codex lifecycle events and approval requests appear in Mochi. Codex must trust the hook from its /hooks screen."
+          : "Install a user-level Codex hook to follow sessions and approve PermissionRequest events from Mochi.",
+      }),
+      h("div", { class: "row" },
+        h("label", { text: "hooks.json" }),
+        h("span", { class: "path", text: status.settingsPath }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Relay" }),
+        h("span", { class: "path", text: status.hookPath }),
+        statusDot(status.hookReady),
+      ),
+    );
+    if (!status.hookReady) {
+      body.append(h("div", {
+        class: "notice warn",
+        text: "The relay is not installed yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+      }));
+    }
+    const actions = h("div", { class: "row" });
+    const install = h("button", {
+      class: "primary",
+      text: status.installed ? "Reinstall Codex hook…" : "Install Codex hook…",
+      onclick: () => showPreview(true),
+    });
+    install.disabled = !status.hookReady;
+    actions.append(install);
+    if (status.installed) {
+      actions.append(h("button", {
+        class: "danger",
+        text: "Uninstall Codex hook…",
+        onclick: () => showPreview(false),
+      }));
+    }
+    body.append(actions);
+  };
+
+  async function showPreview(install: boolean) {
+    let preview;
+    try {
+      preview = await Bridge.codexHooksPreview(install);
+    } catch (err) {
+      clear(body);
+      body.append(
+        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+        h("button", { text: "Back", onclick: draw }),
+      );
+      return;
+    }
+    if (!preview) return;
+    clear(body);
+    body.append(
+      h("div", {
+        class: "hint",
+        text: install
+          ? "Review this exact change. Existing Codex hooks remain untouched."
+          : "Only Coucou's Codex entries will be removed.",
+      }),
+      renderDiff(preview.diff),
+      h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
+    );
+    const confirm = h("button", {
+      class: install ? "primary" : "danger",
+      text: install ? "Back up and write" : "Back up and remove",
+    });
+    confirm.addEventListener("click", async () => {
+      confirm.disabled = true;
+      try {
+        const backup = await Bridge.codexHooksApply(install, preview.fingerprint);
+        clear(body);
+        body.append(h("div", {
+          class: "notice ok",
+          text: `Done. Previous hooks saved as ${backup}. Open Codex and run /hooks to trust the new hook.`,
+        }));
+        window.setTimeout(async () => {
+          const fresh = await Bridge.codexHooksStatus();
+          if (fresh) Object.assign(status, fresh);
+          draw();
+        }, 2600);
+      } catch (err) {
+        confirm.disabled = false;
+        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+      }
+    });
+    body.append(h("div", { class: "row" }, confirm, h("button", { text: "Cancel", onclick: draw })));
   }
 
   draw();
@@ -428,6 +532,9 @@ async function main() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
+  const codexStatus = (await Bridge.codexHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
 
@@ -442,6 +549,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    codexSection(codexStatus),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),

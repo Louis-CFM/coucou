@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod codex;
 mod files;
 mod hooks;
 mod integrations;
@@ -219,6 +220,21 @@ fn hooks_apply(
 }
 
 #[tauri::command]
+fn codex_hooks_status() -> codex::CodexStatus {
+    codex::status()
+}
+
+#[tauri::command]
+fn codex_hooks_preview(install: bool) -> Result<codex::CodexPreview, String> {
+    codex::preview(install)
+}
+
+#[tauri::command]
+fn codex_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    codex::write(install, &fingerprint)
+}
+
+#[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
 }
@@ -393,6 +409,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            codex_hooks_status,
+            codex_hooks_preview,
+            codex_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,
