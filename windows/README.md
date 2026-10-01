@@ -145,6 +145,16 @@ The Coucou entry must show both `command` and `commandWindows` ending in
 disable it temporarily or test its command separately: Codex validates every
 matching hook, not only Coucou's entry.
 
+After installing a new Coucou build, hooks are not migrated automatically.
+Quit the old Coucou instance, install and launch the new Windows installer,
+then open **Settings… → Codex CLI → Reinstall Codex hook…**, review the diff,
+and confirm it. This rewrites both `command` and `commandWindows` for every
+Coucou event. Restart Codex and use `/hooks` to trust the changed definition.
+Verify that the displayed `Stop` commands end with `coucou-hook.exe" Stop`
+before testing a session. If the old entry remains, click **Uninstall Codex
+hook…**, confirm, then click **Install Codex hook…** and confirm again; this
+removes only Coucou's entries and preserves unrelated hooks.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
