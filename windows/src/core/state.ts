@@ -90,8 +90,16 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
-  /** Claude model used by the chat. */
+  /** Claude model used by the chat (official provider). */
   model: string;
+  /** "anthropic" = the official Claude API, "custom" = any compatible endpoint. */
+  providerMode: "anthropic" | "custom";
+  /** Custom endpoint base URL, e.g. "http://127.0.0.1:20128". */
+  customBaseUrl: string;
+  /** Dialect of the custom endpoint. */
+  customApiStyle: "anthropic" | "openai";
+  /** Model for the custom endpoint; empty falls back to `model`. */
+  customModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +114,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  providerMode: "anthropic",
+  customBaseUrl: "",
+  customApiStyle: "anthropic",
+  customModel: "",
 };
 
 type Listener = () => void;

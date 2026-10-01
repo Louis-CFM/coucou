@@ -60,14 +60,23 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 }
 
 #[tauri::command]
-fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed) = {
+fn save_settings(app: AppHandle, shared: State<Shared>, chat: State<Chat>, settings: Settings) {
+    let (screen_changed, autostart_changed, provider_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let provider_changed = current.model != settings.model
+            || current.provider_mode != settings.provider_mode
+            || current.custom_base_url != settings.custom_base_url
+            || current.custom_api_style != settings.custom_api_style
+            || current.custom_model != settings.custom_model;
         *current = settings.clone();
-        (screen_changed, autostart_changed)
+        (screen_changed, autostart_changed, provider_changed)
     };
+    // A different provider or model means a different history shape and dialect.
+    if provider_changed {
+        chat.reset();
+    }
     if let Err(err) = settings::save(&settings) {
         eprintln!("[coucou] could not save settings: {err}");
     }
@@ -248,8 +257,16 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let cfg = {
+        let s = shared.settings.lock().unwrap();
+        claude::ChatConfig {
+            mode: s.provider_mode.clone(),
+            model: s.resolved_model(),
+            base_url: s.custom_base_url.clone(),
+            api_style: s.custom_api_style.clone(),
+        }
+    };
+    claude::send(&chat, &cfg, query, context).await
 }
 
 #[tauri::command]
