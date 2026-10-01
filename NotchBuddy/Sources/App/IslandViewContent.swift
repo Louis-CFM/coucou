@@ -2409,20 +2409,12 @@ struct AgentPill: View {
         Button(action: { onTap() }) {
             ZStack(alignment: .topTrailing) {
                 ZStack {
-                    // Base background
                     Capsule()
-                        .fill(Color(hex: "#0D0E10"))
-                    // Top gradient accent
-                    LinearGradient(
-                        colors: [Color(hex: task.color).opacity(0.45), .clear],
-                        startPoint: .top,
-                        endPoint: UnitPoint(x: 0.5, y: 0.7)
-                    )
-                    .clipShape(Capsule())
-                    // Border
+                        .fill(isHovered
+                              ? Color(hex: task.color).opacity(0.18)
+                              : Color(hex: "#0E0F11"))
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.5 : 0.22), lineWidth: 1)
-                    // Mini Mochi + label
+                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
@@ -2430,17 +2422,18 @@ struct AgentPill: View {
                             .padding(.leading, 8)
                         Spacer()
                     }
-                    Text(displayName.uppercased())
-                        .font(.system(size: 9, weight: .black))
-                        .tracking(0.8)
-                        .foregroundColor(Color(hex: task.color).opacity(isHovered ? 1.0 : 0.75))
+                    Text(displayName)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(isHovered
+                                         ? Color(hex: task.color).lighter(by: 0.3)
+                                         : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.3 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {

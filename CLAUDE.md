@@ -22,4 +22,5 @@ cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug 
 - Never send an email or approve a Claude Code permission without an explicit click.
 - Performance: 0 % CPU when the island is hidden.
 - Keep the bundle identifier `fr.louisraille.NotchBuddy` (Keychain items, preferences and permissions depend on it).
-- Visual changes must match the prototype and the screenshots in `design/captures/`.
+- Never restyle what already ships (pills, cards, Settings, chat…): existing views stay exactly as they are in `main`, which is the App Store build. Change the look of an existing view only when explicitly asked.
+- New views follow the existing app style. `design/prototype/notch-buddy.html` and `design/captures/` are references for new work, not a reason to change existing views.
