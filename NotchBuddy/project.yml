@@ -24,6 +24,24 @@ settings:
       OTHER_CODE_SIGN_FLAGS: "--timestamp"
       CODE_SIGN_ENTITLEMENTS: Resources/Coucou.entitlements
 
+schemes:
+  NotchBuddy:
+    build:
+      targets:
+        NotchBuddy: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  CoucouAppStore:
+    build:
+      targets:
+        CoucouAppStore: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   NotchBuddy:
     type: application
@@ -42,8 +60,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "1"
-        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "2"
+        CFBundleShortVersionString: "0.1.1"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -76,7 +94,7 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "1"
+        CFBundleVersion: "4"
         CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
@@ -96,3 +114,4 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStore.entitlements
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
+        CODE_SIGNING_ALLOWED: YES

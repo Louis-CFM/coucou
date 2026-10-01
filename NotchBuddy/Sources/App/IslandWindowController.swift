@@ -42,11 +42,13 @@ final class IslandWindowController: NSWindowController {
     // Notch real dimensions (set on init)
     private var notchW: CGFloat = IslandConst.notchWidth
     private var notchH: CGFloat = IslandConst.notchHeight
+    private var hasNotch = true
 
     convenience init() {
         let screen = Self.notchScreen() ?? NSScreen.main!
-        let nW = Self.notchWidth(for: screen)
-        let nH = Self.notchHeight(for: screen)
+        let geometry = Self.screenGeometry(for: screen)
+        let nW = geometry.width
+        let nH = geometry.height
 
         let panelW: CGFloat = 720
         let panelH: CGFloat = 320
@@ -64,6 +66,7 @@ final class IslandWindowController: NSWindowController {
         self.islandPanel = panel
         self.notchW = nW
         self.notchH = nH
+        self.hasNotch = geometry.hasNotch
         setupPanel(screen: screen)
     }
 
@@ -79,6 +82,7 @@ final class IslandWindowController: NSWindowController {
         // Propagate real notch dimensions to AppState
         AppState.shared.notchWidth  = notchW
         AppState.shared.notchHeight = notchH
+        AppState.shared.hasNotch = hasNotch
 
         let contentSize = panel.contentRect(forFrameRect: panel.frame).size
 
@@ -210,7 +214,11 @@ final class IslandWindowController: NSWindowController {
 
         // Island rect in panel coords
         let islandRect = panel.currentIslandFrame(nw: notchW, nh: notchH)
-        let inIsland   = islandRect.insetBy(dx: -6, dy: -6).contains(local)
+        // On a screen without a notch, the resting bar must not intercept clicks
+        // in the app window immediately below the menu bar.
+        let hoverRect = !hasNotch && state.mode != .expanded
+            ? islandRect : islandRect.insetBy(dx: -6, dy: -6)
+        let inIsland = hoverRect.contains(local)
 
         // Toggle click-through
         let shouldAcceptMouse = inIsland || inAttachDrag || attachDragStart != nil
@@ -740,7 +748,7 @@ final class IslandWindowController: NSWindowController {
         let islandMinX = (panelW - islandW) / 2
         let (cx, cy, diameter, _) = botPosition(mode: s.mode, view: s.view,
                                                   islandW: islandW, islandH: islandH,
-                                                  uploadProgress: s.uploadProgress)
+                                                  uploadProgress: s.uploadProgress, hasNotch: s.hasNotch)
         let radius = (diameter / 0.6) / 2
         // botPosition cy is from island TOP; panel AppKit coords have y=0 at bottom
         // island top in AppKit coords = panelH (island glued to top of panel/screen)
@@ -757,16 +765,18 @@ final class IslandWindowController: NSWindowController {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     }
 
-    static func notchWidth(for screen: NSScreen) -> CGFloat {
-        let aux = (screen.auxiliaryTopLeftArea?.width ?? 0) +
-                  (screen.auxiliaryTopRightArea?.width ?? 0)
-        let w = screen.frame.width - aux
-        return w > 0 ? w : IslandConst.notchWidth
-    }
-
-    static func notchHeight(for screen: NSScreen) -> CGFloat {
-        let h = screen.safeAreaInsets.top
-        return h > 0 ? h : IslandConst.notchHeight
+    static func screenGeometry(for screen: NSScreen) -> IslandScreenGeometry {
+        let visibleMenuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
+        // visibleFrame includes the menu bar only while it is visible. Keep a
+        // small resting bar when menus auto-hide or the app is in full screen.
+        let menuBarHeight = visibleMenuBarHeight > 0
+            ? visibleMenuBarHeight : NSStatusBar.system.thickness
+        return IslandScreenGeometry(
+            screenWidth: screen.frame.width, safeAreaTop: screen.safeAreaInsets.top,
+            auxiliaryLeftWidth: screen.auxiliaryTopLeftArea?.width,
+            auxiliaryRightWidth: screen.auxiliaryTopRightArea?.width,
+            menuBarHeight: menuBarHeight
+        )
     }
 
     nonisolated func cleanup() {

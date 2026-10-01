@@ -911,11 +911,14 @@ struct ResultView: View {
                     }
 
                     HStack(spacing: 8) {
+                        // The URL comes from the model, which may have read attacker-controlled
+                        // files or pages: only plain web links may leave the app.
+                        let openURL = safeWebURL(result.items.first?.url)
                         PrimaryButton("Open") {
-                            if let urlStr = result.items.first?.url, let url = URL(string: urlStr) {
-                                NSWorkspace.shared.open(url)
-                            }
+                            if let openURL { NSWorkspace.shared.open(openURL) }
                         }
+                        .disabled(openURL == nil)
+                        .help(openURL?.absoluteString ?? "")
                         SecondaryButton("Copy") {
                             let text = result.items.map { "\($0.label): \($0.detail)" }.joined(separator: "\n")
                             NSPasteboard.general.clearContents()
@@ -958,14 +961,20 @@ struct IntegrationCardView: View {
     private var isConfigured: Bool {
         switch task.id {
         case "integration_claude":
+            #if APPSTORE
+            // Sandboxed: can't read ~/.claude directly — check install flag set by HookServer
+            return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
+            #else
             let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/settings.json")
             guard let data = try? Data(contentsOf: url),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let hooks = json["hooks"] as? [String: Any],
                   let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
             return ss.contains { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
+                let cmd = $0["command"] as? String
+                return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
+            #endif
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -1953,7 +1962,7 @@ struct NotionCardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(appState.notionPages.prefix(3)) { page in
                     Button {
-                        if let url = URL(string: page.url) { NSWorkspace.shared.open(url) }
+                        if let url = safeWebURL(page.url) { NSWorkspace.shared.open(url) }
                     } label: {
                         HStack(spacing: 6) {
                             if let emoji = page.emoji {

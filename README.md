@@ -4,7 +4,7 @@
 
 # Coucou
 
-**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your coding sessions. Claude Code on macOS; Claude Code and Codex on Windows.**
+**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your coding sessions. Claude Code on macOS; Claude Code and Codex on Windows.**
 
 Approve permissions, watch your agents work, drop a file, chat with Claude or Codex — all without leaving what you're doing.
 
@@ -40,6 +40,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
+- 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
 
 <table>
@@ -61,11 +62,12 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 2. Unzip and move **Coucou.app** to `/Applications`.
 3. Launch. This build isn't notarized by Apple yet, so the first time macOS says it can't verify the developer: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (only once).
 
-### Download for Windows
+### Windows
 
-1. Grab [`Coucou-Windows-setup.exe`](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe) — always the newest Windows build.
-2. Run it. The installer isn't code-signed yet, so SmartScreen warns about it: click **More info → Run anyway**. It installs for your user only and asks for no administrator rights.
-3. Launch — Mochi appears at the top of your main screen.
+The Windows installer is **temporarily unavailable**. Microsoft Defender wrongly
+flags the unsigned installer as malware; a false-positive report is under review
+at Microsoft and the installer will come back once it is cleared and signed.
+Until then you can [build it from source](#build-from-source).
 
 There is no notch on a PC, so the island slides out of the top edge of the screen
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
