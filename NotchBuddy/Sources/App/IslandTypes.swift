@@ -63,6 +63,54 @@ enum AgentSource: Equatable {
     case agent   // third-party agent via coucou_agent field
 }
 
+// MARK: - Chat provider
+
+enum ChatProvider: String, CaseIterable, Codable {
+    case anthropic = "anthropic"
+    case google    = "google"
+    case openai    = "openai"
+
+    var displayName: String {
+        switch self {
+        case .anthropic: "Anthropic"
+        case .google:    "Google"
+        case .openai:    "OpenAI"
+        }
+    }
+
+    var accentHex: String {
+        switch self {
+        case .anthropic: "#E07950"
+        case .google:    "#4285F4"
+        case .openai:    "#10A37F"
+        }
+    }
+
+    var defaultModel: String {
+        switch self {
+        case .anthropic: "claude-sonnet-4-6"
+        case .google:    "gemini-2.0-flash"
+        case .openai:    "gpt-4o"
+        }
+    }
+
+    var staticModels: [String] {
+        switch self {
+        case .anthropic: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"]
+        case .google:    ["gemini-2.5-pro-preview", "gemini-2.0-flash", "gemini-1.5-pro"]
+        case .openai:    ["gpt-4o", "gpt-4o-mini", "o3", "o4-mini"]
+        }
+    }
+
+    var keychainKey: String {
+        switch self {
+        case .anthropic: "anthropic-api-key"
+        case .google:    "google-api-key"
+        case .openai:    "openai-api-key"
+        }
+    }
+}
+
 // MARK: - View dimensions (from VIEWS in prototype)
 
 struct ViewLayout {

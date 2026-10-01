@@ -717,6 +717,7 @@ struct PromptView: View {
     @ObservedObject var state: AppState
     @State private var text: String = ""
     @FocusState private var focused: Bool
+    @State private var showModelPicker = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -759,6 +760,37 @@ struct PromptView: View {
                 } else {
                     Spacer()
                 }
+
+                HStack(spacing: 0) {
+                    Spacer()
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            showModelPicker.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hex: state.chatProvider.accentHex))
+                                .frame(width: 6, height: 6)
+                            Text(state.activeChatModel)
+                                .font(.system(size: 10.5, weight: .medium))
+                                .foregroundColor(Color(hex: "#7B8089"))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 8))
+                                .foregroundColor(Color(hex: "#5C6370"))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
+                        ModelPickerView(state: state, isPresented: $showModelPicker)
+                            .frame(width: 300)
+                    }
+                }
+                .padding(.horizontal, 10)
 
                 HStack(spacing: 8) {
                     TextField(state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…", text: $text)
@@ -803,6 +835,91 @@ struct PromptView: View {
     }
 }
 
+
+// MARK: - Model / provider picker
+
+struct ModelPickerView: View {
+    @ObservedObject var state: AppState
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Provider chips
+            HStack(spacing: 6) {
+                ForEach(ChatProvider.allCases, id: \.self) { provider in
+                    Button {
+                        guard provider != state.chatProvider else { return }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            state.chatProvider = provider
+                        }
+                        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+                        SoundEngine.shared.play("pop")
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hex: provider.accentHex))
+                                .frame(width: 7, height: 7)
+                            Text(provider.displayName)
+                                .font(.system(size: 12, weight: state.chatProvider == provider ? .semibold : .regular))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(state.chatProvider == provider
+                                    ? Color(hex: provider.accentHex).opacity(0.18)
+                                    : Color.white.opacity(0.06))
+                        .overlay(Capsule().stroke(
+                            state.chatProvider == provider
+                                ? Color(hex: provider.accentHex).opacity(0.5)
+                                : Color.white.opacity(0.1),
+                            lineWidth: 1))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Divider().opacity(0.2)
+
+            // Model list for current provider
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(state.chatProvider.staticModels, id: \.self) { model in
+                    Button {
+                        switch state.chatProvider {
+                        case .anthropic: state.claudeModel = model
+                        case .google:    state.googleChatModel = model
+                        case .openai:    state.openAIChatModel = model
+                        }
+                        isPresented = false
+                        SoundEngine.shared.play("blip")
+                    } label: {
+                        HStack {
+                            Text(model)
+                                .font(.system(size: 12))
+                                .foregroundColor(state.activeChatModel == model
+                                                 ? Color(hex: state.chatProvider.accentHex)
+                                                 : Color(hex: "#C8CDD4"))
+                            Spacer()
+                            if state.activeChatModel == model {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(Color(hex: state.chatProvider.accentHex))
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(state.activeChatModel == model
+                                    ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
+                                    : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(hex: "#16171B"))
+    }
+}
 
 struct ChatBubble: View {
     let message: ChatMessage
@@ -2292,12 +2409,20 @@ struct AgentPill: View {
         Button(action: { onTap() }) {
             ZStack(alignment: .topTrailing) {
                 ZStack {
+                    // Base background
                     Capsule()
-                        .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
-                              : Color(hex: "#0E0F11"))
+                        .fill(Color(hex: "#0D0E10"))
+                    // Top gradient accent
+                    LinearGradient(
+                        colors: [Color(hex: task.color).opacity(0.45), .clear],
+                        startPoint: .top,
+                        endPoint: UnitPoint(x: 0.5, y: 0.7)
+                    )
+                    .clipShape(Capsule())
+                    // Border
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.5 : 0.22), lineWidth: 1)
+                    // Mini Mochi + label
                     HStack(spacing: 0) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
@@ -2305,18 +2430,17 @@ struct AgentPill: View {
                             .padding(.leading, 8)
                         Spacer()
                     }
-                    Text(displayName)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
-                                         : Color(hex: "#6B7079"))
+                    Text(displayName.uppercased())
+                        .font(.system(size: 9, weight: .black))
+                        .tracking(0.8)
+                        .foregroundColor(Color(hex: task.color).opacity(isHovered ? 1.0 : 0.75))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.3 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {

@@ -80,6 +80,26 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
     }
 
+    // In-chat provider + model — picked via the model selector in the prompt view
+    @Published var chatProvider: ChatProvider = .anthropic {
+        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+    }
+    @Published var googleChatModel: String = ChatProvider.google.defaultModel {
+        didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
+    }
+    @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
+        didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
+    }
+
+    /// The model currently active for chat (provider-aware).
+    var activeChatModel: String {
+        switch chatProvider {
+        case .anthropic: return claudeModel
+        case .google:    return googleChatModel
+        case .openai:    return openAIChatModel
+        }
+    }
+
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
     @Published var soundVolume: Double = 0.12 {
         didSet {
@@ -196,6 +216,9 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
+        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
+        if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v

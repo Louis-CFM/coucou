@@ -44,6 +44,10 @@ struct SettingsView: View {
     @State private var agyPendingInstall: Bool = true
     #endif
 
+    // Multi-provider chat keys
+    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
     @State private var resendFrom: String   = KeychainStore.shared.get("resend-from")     ?? ""
@@ -117,6 +121,41 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(6)
+                }
+
+                GroupBox("Chat — autres fournisseurs") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Pour utiliser Google Gemini ou OpenAI depuis le chat. Les clés sont stockées dans le Trousseau.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
+                            Text("Google AI").font(.system(size: 12, weight: .semibold))
+                        }
+                        SecureField("Clé API Google (AI Studio)", text: $googleKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Enregistrer") {
+                            KeychainStore.shared.set("google-api-key", value: googleKey)
+                            statusMessage = "✓ Clé Google enregistrée."
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Divider()
+
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
+                            Text("OpenAI").font(.system(size: 12, weight: .semibold))
+                        }
+                        SecureField("Clé API OpenAI (sk-…)", text: $openAIKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Enregistrer") {
+                            KeychainStore.shared.set("openai-api-key", value: openAIKey)
+                            statusMessage = "✓ Clé OpenAI enregistrée."
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 // MARK: Hooks

@@ -538,11 +538,11 @@ code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;backgroun
     <p>Variantes à comparer avant d'écrire le Swift. Les écrans existants restent inchangés.</p>
     <div class="setrow" style="margin-bottom:14px;row-gap:10px">
       <b>Pastilles agents</b>
-      <span class="seg" id="segPill"><button data-pv="a" class="on">A — fond teinté</button><button data-pv="b">B — accentuation haute</button></span>
+      <span class="seg" id="segPill"><button data-pv="a">A — fond teinté</button><button data-pv="b" class="on">B — accentuation haute</button></span>
       <b>Sélecteur modèle</b>
-      <span class="seg" id="segMp"><button data-mv="a" class="on">A — listes déroulantes</button><button data-mv="b">B — chips fournisseur</button></span>
+      <span class="seg" id="segMp"><button data-mv="a">A — listes déroulantes</button><button data-mv="b" class="on">B — chips fournisseur</button></span>
       <b>Animation fournisseur</b>
-      <span class="seg" id="segPA"><button data-pa="wink" class="on">A — clin d'œil</button><button data-pa="surprised">B — surpris</button></span>
+      <span class="seg" id="segPA"><button data-pa="wink">A — clin d'œil</button><button data-pa="surprised" class="on">B — surpris</button></span>
     </div>
     <div class="btns" id="newBtns"></div>
   </div>
@@ -1069,8 +1069,8 @@ $('#demoBtn').addEventListener('click',runDemo);
 /* ---------------- NOUVEAUTÉS : pastilles / modèle / réglages ---------------- */
 
 // État nouvelles fonctions
-app.mpVariant='a'; app.provAnim='wink'; app.currentModel='claude-sonnet-4-6'; app.currentProv='anthropic';
-island.dataset.pill='a';
+app.mpVariant='b'; app.provAnim='surprised'; app.currentModel='claude-sonnet-4-6'; app.currentProv='anthropic';
+island.dataset.pill='b';
 
 // Couleurs et modèles par fournisseur
 const PROV_COLORS={anthropic:'#E07950',google:'#4285F4',openai:'#10A37F'};
