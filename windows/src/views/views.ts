@@ -133,7 +133,7 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
-  const pills = h("div", { class: "pills" });
+  const pills = h("div", { class: "pills", tabindex: 0, "aria-label": "Sessions and integrations" });
   const right = card(null, pills);
 
   const el = h("div", { class: "view overview" },
@@ -142,6 +142,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   );
 
   let pillIds = "";
+  let pillOrder = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
   let mode: "ticker" | "card" | null = null;
@@ -221,7 +222,8 @@ function buildOverview(actions: ViewActions): ViewHost {
 
       jump.style.display = detailOpen ? "none" : "";
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks;
+      const nextOrder = others.map((t) => t.id).join("|");
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -229,6 +231,8 @@ function buildOverview(actions: ViewActions): ViewHost {
         for (const t of others) pills.append(buildPill(t, actions));
         pruneMiniBots();
       }
+      if (nextOrder !== pillOrder) pills.scrollTop = 0;
+      pillOrder = nextOrder;
     },
   };
 }
@@ -257,8 +261,8 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
   });
 
   if (task.pillBadge) {
-    const colors = { approval: "#F5A524", finished: "#22C55E", error: "#F4505E" } as const;
-    const icons = { approval: ICONS.bang, finished: ICONS.check, error: ICONS.xmark } as const;
+    const colors = { approval: "#F5A524", finished: "#22C55E", interrupted: "#F0A64A", error: "#F4505E" } as const;
+    const icons = { approval: ICONS.bang, finished: ICONS.check, interrupted: ICONS.pause, error: ICONS.xmark } as const;
     const inner = h("i", { style: `background:${colors[task.pillBadge]}` }, svg(icons[task.pillBadge], 6, { stroke: task.pillBadge === "finished" ? 3 : 0 }));
     const badge = h("div", { class: "pill-badge" }, inner);
     badge.style.boxShadow = `0 0 4px ${colors[task.pillBadge]}99`;
@@ -377,17 +381,22 @@ function buildError(actions: ViewActions): ViewHost {
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
+  const open = btn("Open terminal", "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
-    btn("Open terminal", "primary", () => actions.openTerminal()),
+    open,
     btn("OK", "secondary", () => actions.collapse()),
   );
   const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
   return {
     el,
     sync() {
+      const task = State.focusTask;
+      const codexSession = task?.source === "codex" && !task.isIntegration;
+      open.querySelector("span")!.textContent = codexSession ? "Open folder" : "Open terminal";
+      open.title = codexSession ? "Opens this session folder in VS Code." : "";
       clear(who);
-      who.append(agentWho(State.focusTask, `${providerLabel(State.focusTask)} finished`));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      who.append(agentWho(task, `${providerLabel(task)} finished`));
+      title.textContent = task?.steps.at(-1) ?? "Session finished";
     },
   };
 }

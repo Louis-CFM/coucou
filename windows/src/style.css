@@ -502,15 +502,36 @@ body {
 /* ── Agent pills ────────────────────────────────────────────────────────── */
 
 .pills {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
   z-index: 1;
-  height: 100%;
+  height: 60px; /* Two rows stay visible; further rows scroll inside the card. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 28px;
   gap: 4px;
-  align-content: center;
+  align-content: start;
   padding: 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.pills::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pills::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pills::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
 .pill {

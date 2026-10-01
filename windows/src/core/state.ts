@@ -6,7 +6,7 @@ import type { EyeShape } from "../mochi/engine";
 export type CodeProvider = "claude" | "codex";
 export type CodexAuthMode = "subscription" | "api";
 export type AgentSource = "claudeCode" | "codex" | "n8n";
-export type PillBadge = "approval" | "finished" | "error";
+export type PillBadge = "approval" | "finished" | "interrupted" | "error";
 
 export interface AgentTask {
   id: string;
@@ -14,6 +14,8 @@ export interface AgentTask {
   color: string;
   state: BotStateName;
   stepIndex: number;
+  stepRevision: number;
+  activityOrder: number;
   steps: string[];
   source: AgentSource;
   isIntegration: boolean;
@@ -29,6 +31,7 @@ export interface AgentTask {
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
+  turnId: string | null;
   taskId: string;
   provider: CodeProvider;
   tool: string;
@@ -60,7 +63,7 @@ export interface SearchResult {
 const task = (
   id: string, name: string, color: string, source: AgentSource,
 ): AgentTask => ({
-  id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true, pillBadge: null,
+  id, name, color, state: "idle", stepIndex: 0, stepRevision: 0, activityOrder: 0, steps: [], source, isIntegration: true, pillBadge: null,
 });
 
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
@@ -163,6 +166,7 @@ class AppState {
   settings: Settings = { ...DEFAULT_SETTINGS };
 
   private listeners = new Set<Listener>();
+  private activityClock = 0;
 
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
@@ -183,7 +187,29 @@ class AppState {
   }
 
   get otherTasks(): AgentTask[] {
-    return this.tasks.filter((t) => t.id !== this.focusId);
+    const others = this.tasks.filter((t) => t.id !== this.focusId);
+    const sessions = others.filter((t) => !t.isIntegration);
+    const integrations = others.filter((t) => t.isIntegration);
+    const priority = (state: BotStateName): number => {
+      switch (state) {
+        case "approval": return 0;
+        case "working":
+        case "thinking":
+        case "searching": return 1;
+        case "question":
+        case "ratelimit":
+        case "error": return 2;
+        case "finished":
+        case "interrupted": return 3;
+        default: return 4;
+      }
+    };
+    sessions.sort((a, b) => priority(a.state) - priority(b.state) || b.activityOrder - a.activityOrder);
+    return [...sessions, ...integrations];
+  }
+
+  private touchTask(task: AgentTask) {
+    task.activityOrder = ++this.activityClock;
   }
 
   setFocus(id: string) {
@@ -194,10 +220,17 @@ class AppState {
     this.notify();
   }
 
+  /** Focus the first live coding session while the default provider card is idle. */
+  focusCodeSessionIfIdle(id: string) {
+    const focused = this.focusTask;
+    if (!this.focusId || (focused?.isIntegration && focused.state === "idle")) this.setFocus(id);
+  }
+
   updateTask(id: string, state: BotStateName) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     t.state = state;
+    this.touchTask(t);
     this.notify();
   }
 
@@ -205,6 +238,8 @@ class AppState {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     t.steps.push(step);
+    t.stepRevision++;
+    this.touchTask(t);
     if (t.steps.length > 20) t.steps.shift();
     t.stepIndex = t.steps.length - 1;
     this.notify();
@@ -227,6 +262,8 @@ class AppState {
         color: provider === "codex" ? "#35A67A" : "#F5F6F8",
         state: "idle",
         stepIndex: 0,
+        stepRevision: 0,
+        activityOrder: ++this.activityClock,
         steps: [],
         source: provider === "codex" ? "codex" : "claudeCode",
         isIntegration: false,
@@ -236,8 +273,15 @@ class AppState {
       };
       this.tasks.push(task);
     }
+    // Hook sessions need to stay visible in the pill row even when optional
+    // integrations are loaded. loadIntegrationTasks also keeps this order.
+    this.tasks = [
+      ...this.tasks.filter((item) => !item.isIntegration),
+      ...this.tasks.filter((item) => item.isIntegration),
+    ];
     if (cwd && name) task.name = name;
     task.sessionCwd = cwd || task.sessionCwd;
+    this.touchTask(task);
     this.notify();
     return id;
   }
@@ -247,7 +291,13 @@ class AppState {
     const index = this.tasks.findIndex((x) => x.id === id);
     if (index < 0) return;
     this.tasks.splice(index, 1);
-    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? null;
+    if (this.focusId === id) {
+      const nextSession = this.tasks.find((x) => !x.isIntegration);
+      const providerFallback = provider === "codex" ? "integration_codex" : "integration_claude";
+      this.focusId = nextSession?.id ?? (this.tasks.some((x) => x.id === providerFallback)
+        ? providerFallback
+        : this.tasks[0]?.id ?? null);
+    }
     this.notify();
   }
 

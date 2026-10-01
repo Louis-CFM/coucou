@@ -14,6 +14,7 @@ interface HookPayload {
   provider?: CodeProvider;
   hook_event_name?: string;
   request_id?: string;
+  resolution?: string;
   session_id?: string;
   turn_id?: string;
   event_seq?: number;
@@ -32,12 +33,19 @@ interface HookPayload {
 
 interface SessionRuntime {
   turnId: string | null;
+  retiredTurnIds: string[];
   lastSequence: number | null;
   runToken: number;
   finishTimer: number | null;
+  started: boolean;
+  ended: boolean;
+  terminal: boolean;
 }
 
 const sessions = new Map<string, SessionRuntime>();
+const endedSessionOrder: string[] = [];
+const MAX_ENDED_SESSION_TOMBSTONES = 256;
+const MAX_RETIRED_TURNS = 32;
 const approvalTimers = new Map<string, number>();
 let nextRunToken = 1;
 
@@ -72,10 +80,41 @@ function runtimeFor(provider: CodeProvider, sessionId: string): SessionRuntime |
   const key = sessionKey(provider, sessionId);
   let runtime = sessions.get(key);
   if (!runtime) {
-    runtime = { turnId: null, lastSequence: null, runToken: nextRunToken++, finishTimer: null };
+    runtime = {
+      turnId: null,
+      retiredTurnIds: [],
+      lastSequence: null,
+      runToken: nextRunToken++,
+      finishTimer: null,
+      started: false,
+      ended: false,
+      terminal: false,
+    };
     sessions.set(key, runtime);
   }
   return runtime;
+}
+
+function forgetEndedSession(key: string) {
+  const index = endedSessionOrder.indexOf(key);
+  if (index >= 0) endedSessionOrder.splice(index, 1);
+}
+
+function rememberEndedSession(key: string, runtime: SessionRuntime) {
+  runtime.ended = true;
+  forgetEndedSession(key);
+  endedSessionOrder.push(key);
+  while (endedSessionOrder.length > MAX_ENDED_SESSION_TOMBSTONES) {
+    const expiredKey = endedSessionOrder.shift()!;
+    const expired = sessions.get(expiredKey);
+    if (expired?.ended) sessions.delete(expiredKey);
+  }
+}
+
+function retireTurn(runtime: SessionRuntime, turnId: string | null) {
+  if (!turnId || runtime.retiredTurnIds.includes(turnId)) return;
+  runtime.retiredTurnIds.push(turnId);
+  if (runtime.retiredTurnIds.length > MAX_RETIRED_TURNS) runtime.retiredTurnIds.shift();
 }
 
 function acceptOrdering(
@@ -86,25 +125,64 @@ function acceptOrdering(
   if (!runtime) return true;
   const sequence = payload.event_seq;
   if (typeof sequence === "number" && runtime.lastSequence != null && sequence <= runtime.lastSequence) return false;
-  if (typeof sequence === "number") runtime.lastSequence = sequence;
+
+  // SessionEnd tombstones stop delayed events from recreating removed cards.
+  // A later explicit SessionStart can reuse the same provider/session ID.
+  if (runtime.ended && eventName !== "SessionStart") return false;
 
   if (eventName === "SessionStart") {
+    if (runtime.started && !runtime.ended) return false;
+    if (runtime.ended && payload.turn_id && runtime.retiredTurnIds.includes(payload.turn_id)) return false;
+    if (runtime.turnId && runtime.turnId !== payload.turn_id) retireTurn(runtime, runtime.turnId);
     runtime.turnId = payload.turn_id ?? null;
     runtime.runToken = nextRunToken++;
+    runtime.started = true;
+    runtime.ended = false;
+    runtime.terminal = false;
+    forgetEndedSession(sessionKey(payload.provider === "codex" ? "codex" : "claude", payload.session_id ?? ""));
     if (runtime.finishTimer != null) window.clearTimeout(runtime.finishTimer);
     runtime.finishTimer = null;
+    if (typeof sequence === "number") runtime.lastSequence = sequence;
     return true;
   }
   if (eventName === "UserPromptSubmit") {
-    // A new turn invalidates delayed completion hooks and old finish timers.
+    // Turn IDs retire old prompts so a delayed submit cannot rewind the session.
+    if (payload.turn_id && runtime.retiredTurnIds.includes(payload.turn_id)) return false;
+    if (payload.turn_id && runtime.turnId === payload.turn_id) return false;
+    retireTurn(runtime, runtime.turnId);
     if (runtime.finishTimer != null) window.clearTimeout(runtime.finishTimer);
     runtime.finishTimer = null;
     runtime.runToken = nextRunToken++;
-    runtime.turnId = payload.turn_id ?? null;
+    if (payload.turn_id) runtime.turnId = payload.turn_id;
+    runtime.started = true;
+    runtime.terminal = false;
+    if (typeof sequence === "number") runtime.lastSequence = sequence;
     return true;
   }
+  if (eventName === "SessionEnd") {
+    // Session end is scoped by provider/session identity; a stale turn ID must
+    // not keep a genuinely closed session card alive.
+    retireTurn(runtime, runtime.turnId);
+    if (typeof sequence === "number") runtime.lastSequence = sequence;
+    if (runtime.finishTimer != null) window.clearTimeout(runtime.finishTimer);
+    runtime.finishTimer = null;
+    runtime.terminal = true;
+    runtime.started = true;
+    rememberEndedSession(sessionKey(payload.provider === "codex" ? "codex" : "claude", payload.session_id ?? ""), runtime);
+    return true;
+  }
+  if (runtime.terminal) return false;
+  // Turn IDs are the strongest available ordering signal. Codex's terminal
+  // lifecycle events should carry one; if one is missing after a known turn,
+  // do not let that ambiguous event finish or interrupt the active turn.
+  if (payload.turn_id && runtime.retiredTurnIds.includes(payload.turn_id)) return false;
   if (payload.turn_id && runtime.turnId && payload.turn_id !== runtime.turnId) return false;
+  if (!payload.turn_id && runtime.turnId && sequence == null &&
+      ["Stop", "Interrupt", "Interrupted", "StopFailure"].includes(eventName)) return false;
   if (payload.turn_id && !runtime.turnId) runtime.turnId = payload.turn_id;
+  if (typeof sequence === "number") runtime.lastSequence = sequence;
+  if (["Stop", "Interrupt", "Interrupted", "StopFailure"].includes(eventName)) runtime.terminal = true;
+  runtime.started = true;
   return true;
 }
 
@@ -168,16 +246,76 @@ function clearApprovalTimeout(requestId: string) {
   approvalTimers.delete(requestId);
 }
 
-function clearPendingApproval(island: Island) {
-  const pending = State.pendingApproval;
-  if (!pending) return;
+function clearPendingApproval(island: Island, expected = State.pendingApproval): boolean {
+  if (!expected || State.pendingApproval !== expected) return false;
+  const pending = expected;
   clearApprovalTimeout(pending.requestId);
   State.pendingApproval = null;
   State.isPinned = false;
   island.dropPin();
-  State.updateTask(pending.taskId, "working");
+  if (State.tasks.find((task) => task.id === pending.taskId)?.state === "approval") {
+    State.updateTask(pending.taskId, "working");
+  }
   State.setPillBadge(pending.taskId, null);
   if (State.view === "approval") island.setView(State.defaultView());
+  return true;
+}
+
+function approvalMatchesEvent(
+  pending: NonNullable<typeof State.pendingApproval>,
+  provider: CodeProvider,
+  sessionId: string,
+  turnId: string | undefined,
+): boolean {
+  return pending.provider === provider && pending.sessionId === sessionId &&
+    pending.turnId === (turnId ?? null);
+}
+
+function providerName(provider: CodeProvider): string {
+  return provider === "codex" ? "Codex" : "Claude Code";
+}
+
+function cancelApprovalForEvent(
+  island: Island,
+  provider: CodeProvider,
+  sessionId: string,
+  turnId: string | undefined,
+  sessionEnd = false,
+) {
+  const pending = State.pendingApproval;
+  if (!pending || pending.provider !== provider || pending.sessionId !== sessionId) return;
+  if (!sessionEnd && pending.turnId !== (turnId ?? null)) return;
+  if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
+  clearPendingApproval(island, pending);
+}
+
+function cancelApprovalForSession(island: Island, provider: CodeProvider, sessionId: string) {
+  const pending = State.pendingApproval;
+  if (!pending || pending.provider !== provider || pending.sessionId !== sessionId) return;
+  if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
+  clearPendingApproval(island, pending);
+}
+
+function handlePermissionRequestClosed(
+  island: Island,
+  payload: HookPayload,
+  provider: CodeProvider,
+  sessionId: string,
+) {
+  const requestId = payload.request_id ?? "";
+  const pending = State.pendingApproval;
+  if (pending?.requestId === requestId &&
+      !approvalMatchesEvent(pending, provider, sessionId, payload.turn_id)) return;
+  if (requestId) clearApprovalTimeout(requestId);
+  if (!requestId || !pending || pending.requestId !== requestId) return;
+
+  if (payload.resolution === "disconnected" || payload.resolution === "declined" || payload.resolution === "fallback") {
+    State.appendStep(pending.taskId, `Approval returned to ${providerName(provider)}`);
+  } else if (payload.resolution === "ack_timeout" || payload.resolution === "decision_timeout") {
+    State.appendStep(pending.taskId, `Approval timed out; returned to ${providerName(provider)}`);
+  }
+  clearPendingApproval(island, pending);
+  State.notify();
 }
 
 /** Pause returns an active permission request to its terminal immediately. */
@@ -195,23 +333,30 @@ export function registerHookHandlers(island: Island) {
 
 function handleHook(island: Island, payload: HookPayload) {
   const provider: CodeProvider = payload.provider === "codex" ? "codex" : "claude";
-  if (State.paused) {
+  const name = payload.hook_event_name ?? "";
+  const sessionId = payload.session_id ?? "";
+  if (name === "PermissionRequestClosed") {
+    handlePermissionRequestClosed(island, payload, provider, sessionId);
+    return;
+  }
+  if (State.paused && name !== "SessionEnd") {
     if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
     if (State.pendingApproval?.requestId === payload.request_id) clearPendingApproval(island);
     return;
   }
 
-  const name = payload.hook_event_name ?? "";
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || (provider === "codex" ? "Codex session" : "Session"));
-  const sessionId = payload.session_id ?? "";
   const runtime = runtimeFor(provider, sessionId);
   if (!acceptOrdering(runtime, payload, name)) {
     if (name === "PermissionRequest" && payload.request_id) void Bridge.approvalDecline(payload.request_id);
     return;
   }
+  const hadSessionTask = sessionId && State.tasks.some((candidate) =>
+    candidate.provider === provider && candidate.sessionId === sessionId);
   const taskId = taskIdFor(provider, sessionId, projectName, cwd);
+  if (sessionId && !hadSessionTask) State.focusCodeSessionIfIdle(taskId);
   const task = State.tasks.find((candidate) => candidate.id === taskId);
   const focused = State.focusId === taskId;
 
@@ -230,7 +375,8 @@ function handleHook(island: Island, payload: HookPayload) {
       if (task) {
         task.steps = [];
         task.stepIndex = 0;
-        task.state = "idle";
+        task.stepRevision++;
+        State.updateTask(taskId, "idle");
         task.pillBadge = null;
       }
       surface("overview", false);
@@ -238,6 +384,8 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "UserPromptSubmit": {
+      // A new turn supersedes any unanswered request from the same session.
+      cancelApprovalForSession(island, provider, sessionId);
       State.updateTask(taskId, "thinking");
       State.setPillBadge(taskId, null);
       const asked = payload.prompt ?? payload.message;
@@ -291,6 +439,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      cancelApprovalForEvent(island, provider, sessionId, payload.turn_id);
       State.updateTask(taskId, "finished");
       const message = payload.last_assistant_message ?? payload.message;
       if (message) State.appendStep(taskId, message.slice(0, 120));
@@ -314,14 +463,16 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "Interrupt":
     case "Interrupted":
-      State.updateTask(taskId, "idle");
+      cancelApprovalForEvent(island, provider, sessionId, payload.turn_id);
+      State.updateTask(taskId, "interrupted");
       State.appendStep(taskId, "Interrupted");
-      State.setPillBadge(taskId, null);
+      State.setPillBadge(taskId, "interrupted");
       if (runtime?.finishTimer != null) window.clearTimeout(runtime.finishTimer);
       if (runtime) runtime.finishTimer = null;
       break;
 
     case "StopFailure":
+      cancelApprovalForEvent(island, provider, sessionId, payload.turn_id);
       State.updateTask(taskId, "error");
       if (payload.error) State.appendStep(taskId, payload.error.slice(0, 120));
       Sound.play("error");
@@ -330,17 +481,15 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
-      if (runtime?.finishTimer != null) window.clearTimeout(runtime.finishTimer);
-      if (runtime) runtime.finishTimer = null;
+      cancelApprovalForEvent(island, provider, sessionId, payload.turn_id, true);
       if (sessionId) {
-        if (State.pendingApproval?.taskId === taskId) clearPendingApproval(island);
-        sessions.delete(sessionKey(provider, sessionId));
         State.removeCodeSession(provider, sessionId);
       } else {
         State.updateTask(taskId, "idle");
         if (task) {
           task.steps = [];
           task.stepIndex = 0;
+          task.stepRevision++;
           task.name = provider === "codex" ? "Codex" : "VS Code";
           task.pillBadge = null;
         }
@@ -357,7 +506,10 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PermissionRequest": {
       const requestId = payload.request_id ?? "";
-      if (State.pendingApproval && (!requestId || State.pendingApproval.requestId !== requestId)) {
+      if (!requestId) break;
+      const active = State.pendingApproval;
+      if (active) {
+        if (active.requestId === requestId) break;
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
@@ -366,6 +518,7 @@ function handleHook(island: Island, payload: HookPayload) {
       State.pendingApproval = {
         requestId,
         sessionId,
+        turnId: payload.turn_id ?? null,
         taskId,
         provider,
         tool,
@@ -380,11 +533,16 @@ function handleHook(island: Island, payload: HookPayload) {
       clearApprovalTimeout(requestId);
       const requestedTaskId = taskId;
       const requestedSessionId = sessionId;
-      const timer = window.setTimeout(() => {
-        approvalTimers.delete(requestId);
-        if (State.pendingApproval?.requestId !== requestId) return;
-        if (State.pendingApproval.taskId !== requestedTaskId || State.pendingApproval.sessionId !== requestedSessionId) return;
-        clearPendingApproval(island);
+      const requestedTurnId = payload.turn_id ?? null;
+      const request = State.pendingApproval;
+      let timer = 0;
+      timer = window.setTimeout(() => {
+        if (approvalTimers.get(requestId) === timer) approvalTimers.delete(requestId);
+        if (State.pendingApproval !== request || request.requestId !== requestId) return;
+        if (request.taskId !== requestedTaskId || request.sessionId !== requestedSessionId || request.turnId !== requestedTurnId) return;
+        void Bridge.approvalDecline(requestId);
+        State.appendStep(requestedTaskId, `Approval timed out; returned to ${providerName(request.provider)}`);
+        clearPendingApproval(island, request);
         State.notify();
       }, 110_000);
       approvalTimers.set(requestId, timer);

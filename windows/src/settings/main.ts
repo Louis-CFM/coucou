@@ -71,7 +71,9 @@ function hooksSection(provider: "claude" | "codex", status: HookStatus, initialC
       h("div", {
         class: "hint",
         text: status.installed
-          ? `Coucou is hooked into your ${title} sessions. Tool calls and permission requests show up in the island.`
+          ? provider === "codex"
+            ? "Coucou's hook definitions are installed. After Codex trusts them, activity from local chats appears in the island."
+            : `Coucou is hooked into your ${title} sessions. Tool calls and permission requests show up in the island.`
           : `Install the hooks to see ${title} sessions in the island and review permission requests there.`,
       }),
       h("div", { class: "row" },
@@ -101,7 +103,7 @@ function hooksSection(provider: "claude" | "codex", status: HookStatus, initialC
         h("div", { class: cli?.authenticated ? "notice ok" : "notice warn", text: cliText }),
         h("div", {
           class: "hint",
-          text: "Sign in from a terminal with `codex login`. Hook trust is reviewed in Codex with `/hooks`. Codex chat uses the authentication and billing mode selected below; API-key login is billed separately through the OpenAI API. The Claude API key above is a separate service.",
+          text: "Review and trust the current hook definitions with `/hooks` in Codex CLI. Hooks observe local Codex app and CLI chats; remote or cloud chats need their own integration. Coucou's built-in Codex chat starts a separate conversation. Sign in with `codex login`; API-key login is billed separately through the OpenAI API.",
         }),
       );
       if (cli?.error) body.append(h("div", { class: "notice err", text: cli.error }));
