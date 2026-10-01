@@ -212,6 +212,7 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
             }
         }
     }
+}
 
 /// PDF → document block, image → image block, text/code → inline text.
 /// Mirrors readFileAsBlock() in ClaudeService.swift.
