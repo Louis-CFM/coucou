@@ -51,6 +51,11 @@ Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
 
+Which pill is open when Alfred starts is set in **Settings… → General →
+Default pill**: VS Code, Cursor, or any integration you have switched on.
+Clicking another pill keeps that one until the next launch. Turn the chosen
+integration off and Alfred goes back to VS Code.
+
 ## Claude Code
 
 <img src="screenshots/settings.png" width="562" alt="The settings window">
@@ -85,7 +90,10 @@ closed. Open **Ask**, click **Claude** until it says **Cursor**, then pick
 **Agent** (it can edit the project and run commands there) or **Ask** (it only
 answers). The **Folder** button chooses the project; Alfred remembers it after
 Cursor closes and after a restart. The next message resumes the same thread.
-The CLI has to be installed and logged in (`agent login`).
+
+Install the [Cursor CLI](https://cursor.com/docs/cli/installation) first
+(`irm 'https://cursor.com/install?win32=true' | iex` on Windows), then
+`agent login`.
 
 ## Chat and keys
 

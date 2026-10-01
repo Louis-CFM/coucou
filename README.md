@@ -4,9 +4,9 @@
 
 # Alfred
 
-**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
+**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code and Cursor sessions.**
 
-Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
+Approve permissions, watch your agents work, drop a file, chat with Claude or Cursor — all without leaving what you're doing.
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
@@ -33,6 +33,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 - 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
 - ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
+- 🖱️ **Cursor agent, live** *(Windows)* — watch local Cursor agent sessions in the island (project, prompt, tools, subagents). Approvals stay in Cursor. Chat with that same agent from the island, even with Cursor closed (`agent` CLI).
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Ask Claude anything** — built-in chat, straight from the notch.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
@@ -101,10 +102,11 @@ Click the Alfred icon in the menu bar (macOS) or in the system tray (Windows) �
 | What | Why | Where the key goes |
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Alfred backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
+| **Cursor hooks** *(Windows)* | live local agent sessions | **Settings… → Cursor → Install hooks…** — same backup + diff flow for `%USERPROFILE%\.cursor\hooks.json`. Cloud agents are not included |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
-If Alfred isn't running, the hook exits immediately: **Claude Code is never blocked.**
+If Alfred isn't running, the hook exits immediately: **Claude Code and Cursor are never blocked.** For Cursor chat from the island, install the [Cursor CLI](https://cursor.com/docs/cli/installation) and run `agent login`.
 
 ## Things to try
 
@@ -133,7 +135,7 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 **Windows**
 
 - A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
-- Claude Code hooks go through a tiny `alfred-hook.exe` and a named pipe; keys live in Windows Credential Manager.
+- Claude Code and Cursor hooks go through a tiny `alfred-hook.exe` and a named pipe; keys live in Windows Credential Manager. Cursor support also covers chatting with the local agent via the `agent` CLI.
 - Details and differences in [`windows/README.md`](windows/README.md).
 
 ## Contributing
