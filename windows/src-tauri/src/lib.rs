@@ -100,9 +100,6 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-        // "cursor" reads the pointer once and then sticks, so a preference change is
-        // the only thing that should make it look again.
-        island::forget_cursor_placement();
         island::apply_geometry(&app, &settings.screen, collapsed, settings.notch_position);
     }
     // Keep the other window in step (island ⇄ settings window).
@@ -153,6 +150,16 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     };
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed, position);
+}
+
+/// Marks the start and end of a sideways drag.
+///
+/// Only matters for the "display under the cursor" preference: while dragging, the
+/// island holds the display it started on instead of following the pointer across
+/// the boundary mid-drag, which would fight the drag.
+#[tauri::command]
+fn set_dragging(dragging: bool) {
+    island::set_dragging(dragging);
 }
 
 /// Moves the resting island sideways without waiting for the settings window to
@@ -549,6 +556,7 @@ pub fn run() {
             focus_window,
             reposition,
             set_notch_position,
+            set_dragging,
             open_url,
             open_in_vscode,
             quit_app,

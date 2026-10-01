@@ -409,7 +409,13 @@ private outsideClicks: number[] = [];
     const onMove = (ev: MouseEvent) => {
       const dx = ev.screenX - this.dragStartX;
       if (!this.dragMoved && Math.abs(dx) < 4) return;
-      this.dragMoved = true;
+      if (!this.dragMoved) {
+        this.dragMoved = true;
+        // Tells the server to hold this display for the drag. Without it, "display
+        // under the cursor" would follow the pointer across a boundary mid-drag and
+        // fight the drag.
+        void Bridge.setDragging(true);
+      }
       const span = Math.max(1, screen.width - barW);
       // screenX is in physical pixels; divide by the scale factor the server
       // reported so the maths matches the logical pixels Rust positions with.
@@ -423,6 +429,9 @@ private outsideClicks: number[] = [];
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       if (this.dragMoved) {
+        // Release the display hold before the final placement, so releasing the bar
+        // over a different display moves it there rather than pinning it back.
+        void Bridge.setDragging(false);
         // Persist once more so the resting place survives a restart even if the
         // last move event landed a hair short of the release point.
         void Bridge.setNotchPosition(State.settings.notchPosition);

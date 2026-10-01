@@ -206,32 +206,33 @@ fn secondary_monitor(app: &AppHandle, monitors: &[Monitor]) -> Option<Monitor> {
         .cloned()
 }
 
-/// Set once the display under the pointer has been resolved, so later placements
-/// stick to the display the island is already on. See `target_monitor`.
-static CURSOR_PLACED: AtomicBool = AtomicBool::new(false);
+/// True while the island is being dragged sideways. The display under the pointer
+/// is held steady for the duration, so the bar cannot hop displays mid-drag.
+static DRAGGING: AtomicBool = AtomicBool::new(false);
 
-/// Keeps the "staying put" line to one per state rather than one per placement
-/// call, which the collapse loop makes far too often to be readable.
-static CURSOR_LOGGED: AtomicBool = AtomicBool::new(false);
+/// Keeps the "holding still" line to one per drag rather than one per placement
+/// call, which the drag loop makes far too often to be readable.
+static DRAG_LOGGED: AtomicBool = AtomicBool::new(false);
 
-/// Lets "cursor" re-read the pointer on the next placement.
-pub fn forget_cursor_placement() {
-    CURSOR_PLACED.store(false, Ordering::Relaxed);
-    CURSOR_LOGGED.store(false, Ordering::Relaxed);
+/// Records that a drag has begun or ended. The front end owns that, since it is
+/// what starts the drag.
+pub fn set_dragging(dragging: bool) {
+    DRAGGING.store(dragging, Ordering::Relaxed);
+    if !dragging {
+        DRAG_LOGGED.store(false, Ordering::Relaxed);
+    }
 }
 
 /// The display the island lives on.
 ///
-/// "primary" and "secondary" name a specific display, so they are resolved from the
-/// setting every time — honouring them only when the island had no home yet meant
-/// changing the setting did nothing, since a placed island always sits on some
-/// display.
+/// All three preferences are resolved from the setting on every placement, so
+/// changing the picker takes effect immediately and the island tracks the pointer
+/// when that is what was chosen. Keeping a placed island on whatever display it
+/// happened to land on made every preference a one-shot that only worked before
+/// first placement.
 ///
-/// "cursor" is the exception. A resting bar dragged toward an edge takes the cursor
-/// with it, so re-resolving from the pointer on every frame would hop the island onto
-/// the neighbouring monitor mid-drag and fight the drag. It therefore picks the
-/// pointer's display once and then stays put, which also keeps a drag to the left or
-/// right edge on the screen the user started on.
+/// The one exception is a drag, where the current display is held for the duration;
+/// see the "cursor" branch below.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
     if pref == "primary" {
@@ -250,18 +251,17 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
             .or_else(|| monitors.into_iter().next());
     }
     if pref == "cursor" {
-        // Known-broken: the display under the pointer is read once at launch and
-        // then never again, so moving the mouse to another screen does nothing. The
-        // "stick to the current monitor" early return below predates the secondary
-        // option; it is what makes this the default path once the island has a home,
-        // and it is why `cursor` only ever worked in the narrow window before first
-        // placement. Logged once per change of state, not per call, so the trace is
-        // readable.
-        if CURSOR_PLACED.load(Ordering::Relaxed) {
+        // The pointer is read on every placement, so moving the mouse to another
+        // display moves the island with it. The one exception is a drag: a bar being
+        // dragged sideways takes the pointer with it, so resolving from the pointer
+        // mid-drag would hop the island onto the neighbouring display and fight the
+        // drag. Holding the current display for the duration keeps the drag on the
+        // screen it started on.
+        if DRAGGING.load(Ordering::Relaxed) {
             if let Some(m) = current_monitor(app, &monitors) {
-                if !CURSOR_LOGGED.swap(true, Ordering::Relaxed) {
+                if !DRAG_LOGGED.swap(true, Ordering::Relaxed) {
                     crate::log::line(format!(
-                        "[monitor] cursor: staying on {:?}, not following the pointer",
+                        "[monitor] cursor: holding {:?} for the drag",
                         m.name()
                     ));
                 }

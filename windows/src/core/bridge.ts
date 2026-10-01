@@ -49,6 +49,10 @@ export const Bridge = {
   reposition: () => call<void>("reposition"),
   /** Moves the resting island sideways; `position` is 0 = left, 1 = right. */
   setNotchPosition: (position: number) => call<void>("set_notch_position", { position }),
+  /** Marks a sideways drag, so the island holds its display instead of following the
+   * pointer across a boundary mid-drag. Only affects the "display under the cursor"
+   * preference. */
+  setDragging: (dragging: boolean) => call<void>("set_dragging", { dragging }),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
