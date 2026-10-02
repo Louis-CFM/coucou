@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
+windows-core = "0.61"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
@@ -32,6 +33,7 @@ windows = { version = "0.61", features = [
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
   "Win32_System_Ole",
   "Win32_System_ProcessStatus",
   "Win32_System_SystemInformation",
