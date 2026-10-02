@@ -737,9 +737,9 @@ struct SettingsView: View {
             try HookServer.shared.writeCodexHooks()
             showCodexDiff = false
             pendingCodexJSON = ""
-            codexHooksInstalled = codexPendingInstall
+            codexHooksInstalled = HookServer.codexHooksInstalled()
             statusMessage = codexPendingInstall
-                ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
+                ? "✓ Codex hooks written — run /hooks in Codex or open Hooks in the app's settings to trust them."
                 : "✓ Codex hooks removed."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"

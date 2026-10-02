@@ -1178,8 +1178,13 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
-        case "agent_cursor", "agent_codex":
-            return false  // coming soon
+        case "agent_cursor": return false  // coming soon
+        case "agent_codex":
+            #if !APPSTORE
+            return HookServer.codexHooksInstalled()
+            #else
+            return false
+            #endif
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
@@ -1464,10 +1469,9 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    // Settings button: shown when not configured, except cursor/codex (coming soon)
+                    // Settings button: shown when the integration needs setup.
                     if !isConfigured
-                       && task.id != "agent_cursor"
-                       && task.id != "agent_codex" {
+                       && task.id != "agent_cursor" {
                         Button("Settings…") {
                             NotificationCenter.default.post(name: .openFullSettings, object: nil)
                         }
@@ -2554,9 +2558,13 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // Workspace pills keep their tool labels while the active project appears in the card.
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        switch task.id {
+        case "integration_claude": "VS Code"
+        case "agent_codex": "Codex"
+        default: task.name
+        }
     }
 
     var body: some View {
