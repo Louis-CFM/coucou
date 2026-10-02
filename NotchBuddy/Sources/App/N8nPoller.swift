@@ -45,7 +45,7 @@ final class N8nPoller: @unchecked Sendable {
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue(apiKey, forHTTPHeaderField: "X-N8N-API-KEY")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        n8nLog("Polling \(url.absoluteString)")
+        n8nLog("Polling \(url.host ?? "?")\(url.path)")
 
         URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
@@ -59,8 +59,7 @@ final class N8nPoller: @unchecked Sendable {
                 self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
                 return
             }
-            let preview = String(data: data.prefix(300), encoding: .utf8) ?? "?"
-            self.n8nLog("HTTP \(code) · \(preview)")
+            self.n8nLog("HTTP \(code) · \(data.count) bytes")
             guard code == 200 else {
                 self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
                 return
@@ -129,21 +128,17 @@ final class N8nPoller: @unchecked Sendable {
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
-                self.n8nLog("Detail HTTP \(code) for \(url.absoluteString)")
+                self.n8nLog("Detail HTTP \(code) \(url.host ?? "?")\(url.path)")
                 self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
                 return
             }
-            // Log raw response to help diagnose structure issues
-            let rawPreview = String(data: data.prefix(600), encoding: .utf8) ?? "?"
-            self.n8nLog("Detail raw: \(rawPreview)")
-
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
                 return
             }
             let name = self.extractWorkflowName(from: json)
             let detail = self.parseDetail(from: json, success: success)
-            self.n8nLog("Parsed: \(name) · \(detail ?? "no detail")")
+            self.n8nLog("Parsed: \(name)")
             self.dispatch(success: success, name: name, detail: detail)
         }.resume()
     }
@@ -256,17 +251,6 @@ final class N8nPoller: @unchecked Sendable {
     // MARK: - Logging
 
     private func n8nLog(_ message: String) {
-        let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs/NotchBuddy")
-        try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
-        let logFile = logsDir.appendingPathComponent("n8n.log")
-        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
-        let line = "\(f.string(from: Date())) · \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
-        if FileManager.default.fileExists(atPath: logFile.path) {
-            if let fh = try? FileHandle(forWritingTo: logFile) {
-                fh.seekToEndOfFile(); fh.write(data); try? fh.close()
-            }
-        } else { try? data.write(to: logFile) }
+        appendAppLog("n8n.log", message, timestampFormat: "HH:mm:ss")
     }
 }

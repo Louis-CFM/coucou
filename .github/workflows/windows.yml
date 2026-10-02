@@ -78,11 +78,29 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           Get-ChildItem release | Format-Table Name, Length
 
+      # Upload only on a manual run or when publishing a release.
+      # The repo is public, so artifacts are downloadable by any signed-in GitHub
+      # user; the condition keeps them off automatic tag builds while downloads
+      # are paused. retention-days: 3 limits exposure.
       - uses: actions/upload-artifact@v4
-        if: env.PUBLISH == 'true'
+        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
         with:
           name: Coucou-Windows-setup
           path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}-setup.exe
+          retention-days: 3
+
+      # The unsigned NSIS installer is what Defender false-positives on, so the
+      # bare binaries go up as well. hooks.rs already falls back to looking for
+      # coucou-hook.exe next to coucou.exe, which is exactly this layout, so the
+      # portable pair runs with working Claude Code hooks and no installer.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
+        with:
+          name: Coucou-Windows-portable
+          path: |
+            windows/target/release/coucou.exe
+            windows/target/release/coucou-hook.exe
+          retention-days: 3
 
       - name: Publish the release
         if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')

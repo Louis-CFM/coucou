@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, COMPACT_W, NO_NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -816,13 +816,11 @@ if (now - this.lastDismiss < 50) return;
 
     void onDragDrop((e) => this.onDragDrop(e));
 
-    // Outside Tauri (plain browser) drive the cursor from DOM events so the
-    // island can be inspected with `npm run dev`.
-    // A click that lands on the island window but not on the island itself has to reach
+// A click that lands on the island window but not on the island itself has to reach
     // `dismissOutside`, because the native poll does not always deliver it: the window
     // only receives the mouse over the island shape, and the click-through state is
     // only re-evaluated while the cursor moves. Registering this only outside Tauri
-    // left the real app with a single, lossy route — which is why the second outside
+    // left the real app with a single, lossy route, which is why the second outside
     // click failed to compact the bar until a drag had refreshed that state.
     //
     // The native poll still reports clicks that land outside the window entirely, so
@@ -831,6 +829,23 @@ if (now - this.lastDismiss < 50) return;
     window.addEventListener("pointerdown", (e) => {
       if (this.islandEl.contains(e.target as Node)) return;
       this.dismissOutside(this.isNearIsland(e.clientX, e.clientY));
+    });
+
+    // Wayland has no global cursor position, so outside Tauri the cursor comes from
+    // the page's own events rather than Rust's poll.
+    if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * Takes the cursor from the page's own mouse events instead of Rust's poll.
+   * Used where the OS has no global cursor position (Wayland): the events only
+   * fire while the pointer is over the island, so leaving the window is
+   * reported as a cursor far away, which is what the poll would have said.
+   */
+  followPageCursor() {
+    window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+    window.addEventListener("mouseout", (e) => {
+      if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
     });
   }
 

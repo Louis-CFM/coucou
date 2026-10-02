@@ -12,16 +12,14 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
-use windows::Win32::Foundation::{HWND, POINT};
-use windows::core::BOOL;
-use windows::Win32::Foundation::LPARAM;
-use windows::Win32::System::Ole::RevokeDragDrop;
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
-use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW, WindowFromPoint, GetAncestor, GA_ROOT, GA_ROOTOWNER,
-};
+use crate::platform::{self, cursor_physical, left_button_down};
+// The popup check below still needs the raw Win32 calls: it asks whether the window
+// under the pointer is one of our own native select menus, which is a Win32-only
+// question. Everything else that used to live here moved into `platform`.
+#[cfg(windows)]
+use windows::Win32::Foundation::POINT;
+#[cfg(windows)]
+use windows::Win32::UI::WindowsAndMessaging::{GetAncestor, WindowFromPoint, GA_ROOT, GA_ROOTOWNER};
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
 pub const PANEL_W: f64 = 720.0;
@@ -98,7 +96,7 @@ pub struct PollGate {
     cv: Condvar,
     pub collapsed: AtomicBool,
     pub rect: Mutex<IslandRect>,
-    /// Mirrors the window flag so we only call into Win32 when it changes.
+    /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
 }
 
@@ -142,51 +140,6 @@ impl PollGate {
 
 pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
-}
-
-fn cursor_physical() -> Option<(f64, f64)> {
-    let mut p = POINT::default();
-    unsafe { GetCursorPos(&mut p).ok()? };
-    Some((p.x as f64, p.y as f64))
-}
-
-/// Lets dropped files reach the app again.
-///
-/// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
-/// later and registers its own target on it; being the innermost window, that one
-/// wins, and since the page has no HTML5 drop handler it refuses everything — the
-/// "no drop" cursor, with nothing reaching Tauri. Revoking it makes OLE fall
-/// through to the target wry registered on the parent widget, which is the one
-/// that feeds Tauri's drag events.
-///
-/// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
-pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
-        }
-    }
-}
-
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
-        }
-    }
-    true.into()
-}
-
-/// True while the left mouse button is held — the only signal we get that a
-/// drag might be in flight before it reaches the window.
-fn left_button_down() -> bool {
-    unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
 
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
@@ -377,39 +330,6 @@ let x = island_left(mp.x, ms.width, pw, scale, position);
     let _ = win.set_always_on_top(true);
 }
 
-fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
-    let raw = win.hwnd().ok()?.0 as isize;
-    if raw == 0 {
-        return None;
-    }
-    Some(HWND(raw as *mut _))
-}
-
-/// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
-/// island out of Alt-Tab.
-pub fn make_non_activating(win: &WebviewWindow) {
-    let Some(hwnd) = hwnd_of(win) else { return };
-    unsafe {
-        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let want = ex | WS_EX_NOACTIVATE.0 as isize | WS_EX_TOOLWINDOW.0 as isize;
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
-    }
-}
-
-/// Temporarily allow activation so a text field inside the island can be typed in.
-pub fn set_activating(win: &WebviewWindow, activating: bool) {
-    let Some(hwnd) = hwnd_of(win) else { return };
-    unsafe {
-        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let want = if activating {
-            ex & !(WS_EX_NOACTIVATE.0 as isize)
-        } else {
-            ex | WS_EX_NOACTIVATE.0 as isize
-        };
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
-    }
-}
-
 /// Position, size and scale of the monitor the island lives on. Any change here
 /// means the island has to be placed again.
 fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
@@ -498,7 +418,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 was_down = down;
                 if pressed {
                     let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));
+                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
                 }
                 // The island slides sideways while a bar is dragged, so the cursor
                 // can end up outside the painted rect mid-gesture. Keep the mouse
@@ -534,7 +454,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives.
-                // While reduced the window is only 80x24, so it always takes the mouse. Relying on
+// While reduced the window is only 80x24, so it always takes the mouse. Relying on
                 // the poll's own hit test alone is what #28 is about: this setter goes
                 // through the event-loop queue, so a collapse on the main thread and the
                 // last poll tick can land in either order and leave the window
@@ -552,6 +472,36 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
         }
     });
+}
+
+/// Re-applies click-through after the window or the island changed shape.
+///
+/// With the cursor poll (Windows) the window takes the mouse again and the next
+/// tick decides from the cursor. Without it (Linux) the input region is set to
+/// the island itself, or to the whole wake strip while collapsed.
+pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
+    if platform::CURSOR_POLL {
+        set_ignore_cursor(app, false);
+        gate.forget_ignore_state();
+        return;
+    }
+    let Some(win) = window(app) else { return };
+    let region = if gate.collapsed.load(Ordering::Relaxed) {
+        None
+    } else {
+        let r = *gate.rect.lock().unwrap();
+        if r.w <= 0.0 {
+            // Nothing drawn yet: nothing takes the mouse.
+            Some((0.0, 0.0, 0.0, 0.0))
+        } else {
+            let x0 = (r.x - HIT_MARGIN).max(0.0);
+            let y0 = (r.y - HIT_MARGIN).max(0.0);
+            let x1 = r.x + r.w + HIT_MARGIN;
+            let y1 = r.y + r.h + HIT_MARGIN;
+            Some((x0, y0, x1 - x0, y1 - y0))
+        }
+    };
+    platform::set_input_region(&win, region);
 }
 
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {

@@ -15,17 +15,30 @@
 <p>The current Mac build isn’t notarized by Apple yet. The first time, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. You only need to do it once.</p>
 <h3>Where is the Windows download?</h3>
 <p>It is paused for now. Microsoft Defender wrongly flags the unsigned Windows installer as malware; a false-positive report is under review at Microsoft, and the installer will come back once it’s cleared and signed. Until then you can <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">build it from source</a>.</p>
+<h3>Is there a Linux version?</h3>
+<p>Yes, in beta: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it opens as a regular window. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi doesn’t show my Claude Code sessions</h3>
 <p>Open Settings → Claude Code → <b>Install hooks</b>, review the changes, confirm, then start a new Claude Code session.</p>
+<h3>Can I use Coucou with Gemini CLI or Antigravity (agy)? (macOS)</h3>
+<p>Yes. Open <b>Settings → Gemini CLI → Install hooks</b> or <b>Settings → Antigravity → Install hooks</b>. The same backup-and-diff flow as Claude Code applies. Once installed, each <code>gemini</code> or <code>agy</code> session gets its own pill in the island.</p>
 <h3>The chat doesn’t answer</h3>
-<p>Add your Anthropic API key in Settings. API usage is billed by Anthropic, separately from a Claude subscription.</p>
+<p>Add your API key in Settings: <b>Settings → Anthropic API</b> for Claude, or <b>Settings → Chat — other providers</b> <i>(macOS)</i> for Google AI (Gemini) or OpenAI. API usage is billed by the provider, separately from any subscription.</p>
 <h3>An integration pill stays grey</h3>
-<p>Check its key in Settings → Integrations. Up to 4 integrations can be shown at once.</p>
+<p>Check its key in Settings. Up to 4 pills (other than VS Code) can be active at once — see <b>Settings → Active pills</b>.</p>
+<h3>What are Active pills? (macOS)</h3>
+<p>Active pills are the coding tools, agents and AI providers you declare in <b>Settings → Active pills</b>. VS Code is always there; you can add up to 4 more, including Gemini CLI, Antigravity, Anthropic, Google AI, OpenAI and service integrations. When Cursor or Codex is checked, a Main pill menu lets you choose which one opens in the big card. An agent that sends <code>coucou_agent</code> in its hook payload still gets its own automatic pill regardless.</p>
+<h3>When are Cursor and Codex sessions available?</h3>
+<p>Cursor and Codex pills are already in <b>Settings → Active pills</b> <i>(Codex: GitHub build only)</i>. You can declare them and set either as the Main pill. Support for their actual sessions is coming in a future version.</p>
 <h3>No sound</h3>
 <p>Check the speaker icon in the notch header and the volume in Settings.</p>
+<h3>Which model does the chat use?</h3>
+<p>On Mac, Claude Sonnet 4.6 by default (Anthropic). Switch provider and model by clicking the model name above the chat box. For Anthropic, the model can also be set in <b>Settings → Anthropic API</b>. Each model is billed at its own price by the provider.</p>
+<h3>Does it work without a notch?</h3>
+<p>Yes. On an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the main screen. With the lid open, it stays in the notch.</p>
 <h3>How do I uninstall?</h3>
-<p>Settings → Claude Code → <b>Uninstall</b> (removes only Coucou’s hooks), then quit the app and move it to the Trash. Optionally delete <code>~/Library/Application Support/NotchBuddy</code>.</p>
+<p>Remove hooks first: <b>Settings → Claude Code → Uninstall</b>, and if you installed them, also <b>Settings → Gemini CLI → Uninstall</b> and <b>Settings → Antigravity → Uninstall</b>. Then quit the app and move it to the Trash. Optionally delete <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>On Windows: same <b>Uninstall</b> button for the hooks, then Windows Settings → Apps → <b>Coucou</b> → Uninstall. Optionally delete <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>On Linux: same <b>Uninstall</b> button for the hooks, then <code>sudo apt remove coucou</code> or <code>sudo dnf remove coucou</code>, or delete the AppImage. Optionally delete <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> and <code>~/.cache/coucou</code>.</p>
 </section>
 <hr>
 <section id="fr" lang="fr">
@@ -39,16 +52,29 @@
 <p>La version Mac actuelle n’est pas encore notarisée par Apple. La première fois, ouvre <b>Réglages Système → Confidentialité et sécurité</b>, descends et clique sur <b>Ouvrir quand même</b>. Une seule fois suffit.</p>
 <h3>Où est le téléchargement Windows ?</h3>
 <p>Il est en pause pour le moment. Microsoft Defender détecte à tort l’installeur Windows (non signé) comme un malware ; un signalement de faux positif est en cours d’analyse chez Microsoft, et l’installeur reviendra dès que ce sera réglé et signé. En attendant, tu peux <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">le compiler depuis le code source</a>.</p>
+<h3>Y a-t-il une version Linux ?</h3>
+<p>Oui, en bêta : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle s’ouvre dans une fenêtre normale. Gemini CLI, Antigravity et le chat avec Google AI et OpenAI sont pour l’instant réservés au Mac. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi n’affiche pas mes sessions Claude Code</h3>
 <p>Réglages → Claude Code → <b>Install hooks</b>, vérifie les changements, confirme, puis lance une nouvelle session Claude Code.</p>
+<h3>Puis-je utiliser Coucou avec Gemini CLI ou Antigravity (agy) ? (macOS)</h3>
+<p>Oui. Ouvre <b>Réglages → Gemini CLI → Install hooks</b> ou <b>Réglages → Antigravity → Install hooks</b>. Le même flux sauvegarde + diff qu’avec Claude Code s’applique. Une fois installé, chaque session <code>gemini</code> ou <code>agy</code> obtient sa propre pastille dans l’island.</p>
 <h3>Le chat ne répond pas</h3>
-<p>Ajoute ta clé d’API Anthropic dans les Réglages. L’API est facturée par Anthropic, à part d’un abonnement Claude.</p>
-<h3>Une pastille d’intégration reste grise</h3>
-<p>Vérifie sa clé dans Réglages → Intégrations. Jusqu’à 4 intégrations s’affichent en même temps.</p>
+<p>Ajoute ta clé d’API dans les Réglages : <b>Réglages → Anthropic API</b> pour Claude, ou <b>Réglages → Chat — other providers</b> <i>(macOS)</i> pour Google AI (Gemini) ou OpenAI. L’API est facturée par le fournisseur, à part de tout abonnement.</p>
+<h3>Une pastille reste grise</h3>
+<p>Vérifie sa clé dans les Réglages. Jusqu’à 4 pastilles (hors VS Code) peuvent être actives en même temps — voir <b>Réglages → Active pills</b>.</p>
+<h3>Qu’est-ce que les Active pills ? (macOS)</h3>
+<p>Les Active pills sont les outils de code, agents et fournisseurs IA que tu déclares dans <b>Réglages → Active pills</b>. VS Code est toujours présent ; tu peux en ajouter jusqu’à 4 autres, dont Gemini CLI, Antigravity, Anthropic, Google AI, OpenAI et des intégrations de services. Quand Cursor ou Codex est coché, un menu Main pill te permet de choisir lequel s’affiche dans la grande carte de l’island. Un agent qui envoie <code>coucou_agent</code> dans son payload obtient quand même sa pastille automatique.</p>
+<h3>Quand les sessions Cursor et Codex seront-elles disponibles ?</h3>
+<p>Les pastilles Cursor et Codex sont déjà dans <b>Réglages → Active pills</b> <i>(Codex : version GitHub uniquement)</i>. Tu peux les déclarer et en faire la Main pill. La prise en charge de leurs sessions arrivera dans une prochaine version.</p>
 <h3>Pas de son</h3>
 <p>Vérifie l’icône haut-parleur dans l’en-tête du notch et le volume dans les Réglages.</p>
+<h3>Quel modèle utilise le chat ?</h3>
+<p>Sur Mac, Claude Sonnet 4.6 par défaut (Anthropic). Change de fournisseur et de modèle en cliquant sur le nom du modèle au-dessus du champ de chat. Pour Anthropic, le modèle peut aussi être défini dans <b>Réglages → Anthropic API</b>. Chaque modèle est facturé à son propre tarif par le fournisseur.</p>
+<h3>Ça marche sans notch ?</h3>
+<p>Oui. Sur un iMac, un Mac mini ou un MacBook capot fermé branché à un écran externe, Mochi s’affiche dans une petite barre en haut de l’écran principal. Capot ouvert, il reste dans le notch.</p>
 <h3>Comment désinstaller ?</h3>
-<p>Réglages → Claude Code → <b>Uninstall</b> (retire seulement les hooks de Coucou), puis quitte l’app et mets-la à la corbeille. Tu peux aussi supprimer <code>~/Library/Application Support/NotchBuddy</code>.</p>
+<p>Retire d’abord les hooks : <b>Réglages → Claude Code → Uninstall</b>, et si tu les as installés, aussi <b>Réglages → Gemini CLI → Uninstall</b> et <b>Réglages → Antigravity → Uninstall</b>. Puis quitte l’app et mets-la à la corbeille. Tu peux aussi supprimer <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>Sous Windows : le même bouton <b>Uninstall</b> pour les hooks, puis Paramètres Windows → Applications → <b>Coucou</b> → Désinstaller. Tu peux aussi supprimer <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>Sous Linux : le même bouton <b>Uninstall</b> pour les hooks, puis <code>sudo apt remove coucou</code> ou <code>sudo dnf remove coucou</code>, ou supprime l’AppImage. Tu peux aussi supprimer <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> et <code>~/.cache/coucou</code>.</p>
 </section>
 <footer>© 2026 Louis Raillé · Coucou is free and open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>

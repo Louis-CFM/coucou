@@ -61,7 +61,7 @@ pub fn resolve_bin(configured: &str) -> Option<PathBuf> {
         }
         return None;
     }
-    if let Some(p) = crate::find_on_path("opencode") {
+    if let Some(p) = crate::platform::find_on_path("opencode") {
         return Some(p);
     }
     if let Some(home) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
@@ -111,7 +111,7 @@ pub fn resolve_server_bin(configured: &str) -> Option<PathBuf> {
         }
     }
     // Nothing but PATH — take it rather than fail, shim included.
-    crate::find_on_path("opencode")
+    crate::platform::find_on_path("opencode")
 }
 
 /// One chat turn. Returns the assistant's text, or a message the island shows

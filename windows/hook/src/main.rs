@@ -1,7 +1,8 @@
 //! coucou-hook — the relay Claude Code runs on every hook event.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
-//! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
+//! Coucou over the named pipe `\\.\pipe\coucou-<sid>` (Windows) or the Unix
+//! socket `$XDG_RUNTIME_DIR/coucou.sock` (Linux).
 //!
 //! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
 //! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
@@ -17,7 +18,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Budget for getting a pipe connection. Beyond this Claude Code wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
@@ -26,10 +27,6 @@ const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
 
-/// `ERROR_PIPE_BUSY` — every instance is serving someone else right now. This is
-/// the one error worth retrying: the server exists and a slot will free up.
-const ERROR_PIPE_BUSY: i32 = 231;
-
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
 const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
@@ -37,39 +34,15 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
 
+#[cfg(windows)]
 mod win;
+#[cfg(windows)]
+use win::connect;
 
-/// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
-/// ever meeting on the same pipe; the name falls back to the user name only if
-/// the SID cannot be read at all, which should not happen.
-fn pipe_path() -> String {
-    let key = win::current_user_sid()
-        .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\coucou-{key}")
-}
-
-/// Opens the pipe. Retries only while the server is busy: any other error means
-/// there is nothing to talk to, and waiting would only delay Claude Code.
-fn connect() -> Option<std::fs::File> {
-    use std::os::windows::io::AsRawHandle;
-    let path = pipe_path();
-    let deadline = Instant::now() + CONNECT_TIMEOUT;
-    loop {
-        match std::fs::OpenOptions::new().read(true).write(true).open(&path) {
-            Ok(file) => {
-                let handle = windows::Win32::Foundation::HANDLE(file.as_raw_handle());
-                // Somebody else's server on our pipe name gets nothing from us.
-                return win::pipe_server_is_same_user(handle).then_some(file);
-            }
-            Err(err) => {
-                if err.raw_os_error() != Some(ERROR_PIPE_BUSY) || Instant::now() >= deadline {
-                    return None;
-                }
-                std::thread::sleep(Duration::from_millis(15));
-            }
-        }
-    }
-}
+#[cfg(target_os = "linux")]
+mod unix;
+#[cfg(target_os = "linux")]
+use unix::connect;
 
 fn main() {
     let Some((payload, event)) = read_event() else { std::process::exit(0) };
@@ -127,9 +100,26 @@ fn read_event() -> Option<(String, String)> {
     let mut payload = serde_json::from_slice::<serde_json::Value>(&raw).ok()?;
     let map = payload.as_object_mut()?;
 
-    // The event name is passed as argv[1] by the hook command; the JSON usually
-    // carries it too. Trust argv when the JSON is missing it.
-    let arg_event = std::env::args().nth(1).unwrap_or_default();
+    // Parse argv: "coucou-hook.exe [--agent <name>] [<EventName>]"
+    // --agent tags the payload with coucou_agent so the app routes to the right pill.
+    // Absent or invalid names are validated and discarded by the app, not here.
+    let mut agent = String::new();
+    let mut arg_event = String::new();
+    {
+        let mut it = std::env::args().skip(1);
+        while let Some(arg) = it.next() {
+            if arg == "--agent" {
+                agent = it.next().unwrap_or_default();
+            } else if arg_event.is_empty() {
+                arg_event = arg;
+            }
+        }
+    }
+    // Which agent this hook was installed for. Absent means Claude Code,
+    // so existing hook commands keep working unchanged.
+    if !agent.is_empty() {
+        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+    }
     let event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
@@ -156,7 +146,7 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
-    // Which terminal the session runs in. Unlike macOS, Coucou on Windows accepts
+    // Which terminal the session runs in. Unlike macOS, Coucou here accepts
     // events from every terminal, so this is context only — never a filter.
     for (key, var) in [
         ("term_program", "TERM_PROGRAM"),

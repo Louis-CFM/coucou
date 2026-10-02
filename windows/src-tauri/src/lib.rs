@@ -10,12 +10,11 @@ mod opencode;
 mod opencode_chat;
 mod opencode_server;
 mod pipe;
+mod platform;
 mod secrets;
 mod settings;
 mod tray;
-mod win_user;
 
-use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
@@ -32,9 +31,6 @@ use opencode::{OpencodePreview, OpencodeStatus};
 use pipe::Pending;
 use settings::Settings;
 
-/// Keeps spawned helpers from flashing a console window.
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
 pub struct Shared {
     pub settings: Mutex<Settings>,
     pub gate: Arc<PollGate>,
@@ -47,6 +43,9 @@ pub struct BootInfo {
     screen: ScreenInfo,
     version: String,
     hook_path: String,
+    /// False where the OS has no global cursor (Wayland): the page then reports
+    /// the cursor from its own mouse events.
+    cursor_poll: bool,
 }
 
 #[tauri::command]
@@ -64,6 +63,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         screen,
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
+        cursor_poll: platform::CURSOR_POLL,
     }
 }
 
@@ -115,28 +115,32 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
         (current.screen.clone(), current.notch_position)
     };
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed, position);
+island::apply_geometry(&app, &pref, collapsed, position);
     // The reduced stub must always take the mouse, and a resize invalidates the flag.
-    island::set_ignore_cursor(&app, false);
-    shared.gate.forget_ignore_state();
-    // The poll keeps running while reduced. It used to be parked, because the
-    // resting state was an invisible strip with nothing to see; the stub is a
-    // real, visible island now, and parking the poll left the click-through flag
-    // frozen, so a stub that drifted under the cursor could not be woken again.
-    // The window is only 80x24 here, so polling it stays cheap.
-    shared.gate.set_active(true);
+    island::refresh_click_through(&app, &shared.gate);
+    // The poll keeps running while reduced on platforms that have a global cursor
+    // position. It used to be parked outright, because the resting state was an
+    // invisible strip with nothing to see; the stub is a real, visible island now,
+    // and parking the poll left the click-through flag frozen, so a stub that
+    // drifted under the cursor could not be woken again. Platforms without a cursor
+    // poll (Wayland) still park it, since there is nothing to poll.
+    shared.gate.set_active(platform::CURSOR_POLL || !collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
-fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
+fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    // Without the cursor poll the input region is the click-through: it follows the island.
+    if !platform::CURSOR_POLL {
+        island::refresh_click_through(&app, &shared.gate);
+    }
 }
 
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
-    island::set_activating(&win, focused);
+    platform::set_activating(&win, focused);
     if focused {
         let _ = win.set_focus();
     }
@@ -186,52 +190,43 @@ fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return;
     }
-    let _ = Command::new("rundll32.exe")
-        .args(["url.dll,FileProtocolHandler", &url])
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn();
+    platform::open_url(&url);
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to Explorer otherwise.
+/// and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
-    // No `cmd /C` anywhere near this. The path is a project folder chosen by
-    // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
-    // in a folder name as syntax. Finding the launcher ourselves and handing the
-    // path over as a separate argument keeps it a path.
-    if let Some(code) = find_on_path("code") {
+    // No shell anywhere near this. The path is a project folder chosen by
+    // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
+    // or `$` in a folder name as syntax. Finding the launcher ourselves and
+    // handing the path over as a separate argument keeps it a path.
+    let path = path.filter(|p| !p.is_empty());
+    // It arrives in a hook payload: only an existing folder, given by its full
+    // path, goes any further. `code` would read `--something` as an option, and
+    // xdg-open would launch a file with whatever handles its type.
+    if let Some(p) = path.as_deref() {
+        let p = std::path::Path::new(p);
+        if !(p.is_absolute() && p.is_dir()) {
+            return false;
+        }
+    }
+    if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
-        if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+        if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
-        if cmd.creation_flags(CREATE_NO_WINDOW).spawn().is_ok() {
+        if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
         }
     }
-    if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
-        let _ = Command::new("explorer").arg(p).spawn();
+    if let Some(p) = path.as_deref() {
+        platform::reveal_folder(p);
     }
     false
 }
 
-/// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
-/// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
-/// spawning `code.cmd` directly is safe.
-pub(crate) fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
-    let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
-    let dirs = std::env::var_os("PATH")?;
-    for dir in std::env::split_paths(&dirs) {
-        for ext in exts.split(';').filter(|e| !e.is_empty()) {
-            let candidate = dir.join(format!("{stem}{}", ext.to_lowercase()));
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
-    }
-    None
-}
-
+// `find_on_path` now lives in `platform`, alongside the Linux equivalent.
 #[tauri::command]
 fn quit_app(app: AppHandle) {
     // Coucou may have started an opencode server of its own; do not leave it
@@ -523,6 +518,7 @@ fn open_settings_window(app: AppHandle) {
 }
 
 pub fn run() {
+    platform::prepare_environment();
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
     // "Keep a server open for as long as the app is" starts here rather than on
@@ -595,7 +591,7 @@ chat_send,
             create_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
-island::make_non_activating(&win);
+platform::make_non_activating(&win);
                 // Always open centred, whatever resting place was saved last time.
                 // The saved position is where the user parks the bar, not where the
                 // app should appear — surprising as that would be on launch — so the
@@ -606,6 +602,11 @@ island::make_non_activating(&win);
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);
+            // Nothing drawn yet, so nothing takes the mouse until the page
+            // reports the island's shape.
+            if !platform::CURSOR_POLL {
+                island::refresh_click_through(&handle, &gate);
+            }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
