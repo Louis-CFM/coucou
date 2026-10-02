@@ -226,6 +226,10 @@ function cancel() {
 }
 
 void listen("roam-cancel", cancel);
+// Linux: the overlay holds the keyboard while Mochi roams (Windows polls Esc).
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") cancel();
+});
 
 /** Carried too long or shaken too hard: Mochi gets dizzy and wanders home. */
 function goDizzy() {

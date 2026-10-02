@@ -152,6 +152,11 @@ pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
     });
 }
 
+/// Linux feeds the carried pointer from the island (roam_linux.rs); here the
+/// cursor is polled instead, so there is nothing to do.
+#[tauri::command]
+pub fn roam_pointer(_x: f64, _y: f64, _phase: String) {}
+
 fn key_down(vk: u16) -> bool {
     unsafe { (GetAsyncKeyState(vk as i32) as u16 & 0x8000) != 0 }
 }

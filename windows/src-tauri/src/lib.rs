@@ -8,7 +8,7 @@ mod island;
 mod log;
 mod pipe;
 mod platform;
-#[cfg_attr(not(windows), path = "roam_stub.rs")]
+#[cfg_attr(not(windows), path = "roam_linux.rs")]
 mod roam;
 mod secrets;
 mod settings;
@@ -304,6 +304,22 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// A file dropped on the island, as its bytes, with its name in the
+/// `x-file-name` header (see wireFileDrop in island.ts).
+#[tauri::command]
+fn ingest_bytes(request: tauri::ipc::Request<'_>) -> Result<DroppedFile, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file's contents".into());
+    };
+    let name = request
+        .headers()
+        .get("x-file-name")
+        .and_then(|v| v.to_str().ok())
+        .map(files::percent_decode)
+        .unwrap_or_else(|| "file".into());
+    files::ingest_bytes(&name, bytes)
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -449,6 +465,7 @@ pub fn run() {
             chat_reset,
             endpoint_key,
             ingest_file,
+            ingest_bytes,
             secret_present,
             secret_set,
             secret_clear,
@@ -458,6 +475,7 @@ pub fn run() {
             set_paused,
             roam::roam_start,
             roam::roam_capture,
+            roam::roam_pointer,
             roam::roam_end,
         ])
         .setup(move |app| {
@@ -480,7 +498,6 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
-            island::spawn_drop_guard(handle.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);

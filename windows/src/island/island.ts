@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -391,12 +391,11 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
-  private onDragDrop(e: { type: string; paths?: string[] }) {
-    if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
+  private onDragDrop(e: { type: "enter" | "leave" | "drop"; file?: File }) {
+    void Bridge.log(`drag ${e.type}${e.file ? ` ${e.file.name}` : ""}`);
     if (State.paused) return;
     switch (e.type) {
-      case "enter":
-      case "over": {
+      case "enter": {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
         this.engine.animateMorph(1);
@@ -417,13 +416,12 @@ export class Island {
       }
       case "drop": {
         State.fileDragOver = false;
-        const path = e.paths?.[0];
-        if (!path) {
+        if (!e.file) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
           return;
         }
-        this.swallow(path);
+        this.swallow(e.file);
         break;
       }
     }
@@ -434,10 +432,11 @@ export class Island {
    * the inbox runs in the background and swaps the path in when it lands, so a
    * slow disk can never stall the animation — same as FileDropHandler on macOS.
    */
-  private swallow(path: string) {
-    const name = path.split(/[\\/]/).pop() || "file";
-    State.droppedFile = { name, path };
-    State.promptContext = { kind: "file", name, path };
+  private swallow(file: File) {
+    const name = file.name || "file";
+    // The inbox path arrives with the copy; until then the file is known by name.
+    State.droppedFile = { name, path: "" };
+    State.promptContext = { kind: "file", name, path: "" };
     State.chatHistory = [];
     void Bridge.chatReset();
 
@@ -454,7 +453,7 @@ export class Island {
     this.setView("uploading");
     this.ensureRunning();
 
-    void Bridge.ingestFile(path)
+    void Bridge.ingestBytes(file)
       .then((file) => {
         State.droppedFile = { name: file.name, path: file.path };
         State.promptContext = { kind: "file", name: file.name, path: file.path };
@@ -581,6 +580,12 @@ export class Island {
       if (State.mode === "hidden") this.fsm.mouseEntered();
     });
 
+    window.addEventListener("mousedown", (e) => {
+      if (carrying && e.button === 2) {
+        carrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "cancel");
+      }
+    });
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
@@ -594,16 +599,27 @@ export class Island {
         this.botPress = { x: e.screenX, y: e.screenY };
       }
     });
+    // Linux (Wayland): a held drag keeps going to the window it started in, so
+    // while Mochi is carried the island feeds the pointer to the roam overlay.
+    // Windows polls the cursor itself.
+    const forwardPointer = navigator.userAgent.includes("Linux");
+    let carrying = false;
     window.addEventListener("mousemove", (e) => {
+      if (carrying) void Bridge.roamPointer(e.clientX, e.clientY, "move");
       if (!this.botPress) return;
       if (Math.hypot(e.screenX - this.botPress.x, e.screenY - this.botPress.y) < 8) return;
       this.botPress = null;
       State.roaming = true;
+      carrying = forwardPointer;
       void Bridge.roamStart({ state: this.engine.state, bodyColor: this.engine.bodyColor, outfit: this.engine.outfit });
       // Mochi has left: the island goes straight back to its idle size.
       this.collapse();
     });
-    window.addEventListener("mouseup", () => {
+    window.addEventListener("mouseup", (e) => {
+      if (carrying && e.button === 0) {
+        carrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "drop");
+      }
       if (this.botPress) this.engine.slap();
       this.botPress = null;
     });
@@ -613,11 +629,49 @@ export class Island {
       State.lastActivity = performance.now();
     });
 
-    void onDragDrop((e) => this.onDragDrop(e));
+    this.wireFileDrop();
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * Files dropped on the island, as a plain HTML5 drop. On Windows the window
+   * Windows asks during a drag is WebView2's own (it belongs to WebView2's
+   * browser process, so nothing can unregister it), which is why Tauri's
+   * native drop events never arrived; with those off (dragDropEnabled: false)
+   * the page takes the drop itself. The same code serves WebKitGTK on Linux.
+   * The page reports the cursor during the drag too: there is no mousemove.
+   */
+  private wireFileDrop() {
+    const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+    // dragenter / dragleave fire for every element crossed; count to know
+    // when the drag really leaves the window.
+    let depth = 0;
+    window.addEventListener("dragenter", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      this.onCursor(e.clientX, e.clientY);
+      if (depth++ === 0) this.onDragDrop({ type: "enter" });
+    });
+    window.addEventListener("dragover", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      this.onCursor(e.clientX, e.clientY);
+    });
+    window.addEventListener("dragleave", (e) => {
+      if (!hasFiles(e) || --depth > 0) return;
+      depth = 0;
+      this.onDragDrop({ type: "leave" });
+    });
+    window.addEventListener("drop", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      this.onDragDrop({ type: "drop", file: e.dataTransfer?.files[0] });
+    });
   }
 
   /**

@@ -105,36 +105,6 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
 }
 
-/// Keeps the island able to receive dropped files, whatever state it is in.
-///
-/// WebView2 registers a drop target that refuses everything (see
-/// `unblock_webview_drops`), and does so late, after the webview is up. Revoking
-/// it only from the cursor poll missed most drags: the poll is parked while the
-/// island is hidden, and a drag starts in Explorer, not on the island. So this
-/// small thread clears it a few times after launch, then again within 100 ms of
-/// any mouse press anywhere, which is always before a dragged file can reach the
-/// top of the screen. Ten cheap key-state reads a second: no measurable CPU.
-pub fn spawn_drop_guard(app: AppHandle) {
-    std::thread::spawn(move || {
-        let unblock = |app: &AppHandle| {
-            let handle = app.clone();
-            let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
-        };
-        for delay in [500u64, 1000, 1500, 3000, 4000] {
-            std::thread::sleep(Duration::from_millis(delay));
-            unblock(&app);
-        }
-        let mut was_down = false;
-        loop {
-            std::thread::sleep(Duration::from_millis(100));
-            let down = left_button_down();
-            if down && !was_down {
-                unblock(&app);
-            }
-            was_down = down;
-        }
-    });
-}
 
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
     let p = m.position();
@@ -277,7 +247,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // (The drop target itself is kept ours by spawn_drop_guard.)
+                // WebView2 itself then takes the drop (wireFileDrop in island.ts).
                 let down = left_button_down();
 
                 let dragging = down

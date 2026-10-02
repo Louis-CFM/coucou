@@ -222,6 +222,7 @@ function apiSection(hasKey: boolean): HTMLElement {
   });
 
   clearBtn.addEventListener("click", async () => {
+    if (!window.confirm("Remove the saved Claude API key? The chat won't work until you add it again.")) return;
     clear(feedback);
     try {
       await Bridge.secretClear("anthropic-api-key");
@@ -518,10 +519,22 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       }) as HTMLInputElement;
       const saveBtn = h("button", { text: "Save" });
       const dotEl = statusDot(present[field.key] ?? false);
+      // Saving an empty field used to store an empty key, wiping the real one.
+      // With a key stored and nothing typed, the button says what it does.
+      const clearing = () => !!present[field.key] && !input.value.trim();
+      const syncButton = () => {
+        saveBtn.textContent = clearing() ? "Clear key" : "Save";
+        saveBtn.className = clearing() ? "danger" : "";
+      };
+      input.addEventListener("input", syncButton);
+      syncButton();
       saveBtn.addEventListener("click", async () => {
         const value = input.value.trim();
+        if (!value && !present[field.key]) return;
+        if (!value && !window.confirm(`Clear the saved ${field.label}? ${def.name} won't work until you add it again.`)) return;
         try {
-          await Bridge.secretSet(field.key, value);
+          if (value) await Bridge.secretSet(field.key, value);
+          else await Bridge.secretClear(field.key);
           present[field.key] = value.length > 0;
           input.value = "";
           input.placeholder = value ? "••••••••  (stored)" : field.placeholder;
@@ -529,6 +542,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         } catch {
           dotEl.style.background = "#f5a524";
         }
+        syncButton();
       });
       rows.append(
         h("div", { class: "row" },

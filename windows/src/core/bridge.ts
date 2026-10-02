@@ -4,7 +4,6 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { Outfit } from "../mochi/wardrobe";
 
@@ -98,8 +97,18 @@ export const Bridge = {
 
   /** Mochi was dragged out of the island: the roam overlay takes over. */
   roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
+  /** Linux: the carried pointer, in island coordinates ("move", "drop", "cancel"). */
+  roamPointer: (x: number, y: number, phase: "move" | "drop" | "cancel") =>
+    call<void>("roam_pointer", { x, y, phase }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Copies a dropped file's contents into the inbox: an HTML5 drop has no path. */
+  ingestBytes: async (file: File): Promise<DroppedFile> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<DroppedFile>("ingest_bytes", new Uint8Array(await file.arrayBuffer()), {
+      headers: { "x-file-name": encodeURIComponent(file.name) },
+    });
+  },
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -158,19 +167,6 @@ export type BridgeEvent =
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null }
   | { name: "roam-end"; payload: string | null };
-
-export interface DragDropPayload {
-  type: "enter" | "over" | "drop" | "leave";
-  paths?: string[];
-}
-
-/** Files dragged onto the island. Only reaches us when the window takes the mouse. */
-export async function onDragDrop(handler: (e: DragDropPayload) => void) {
-  if (!IS_TAURI) return () => {};
-  return getCurrentWebview().onDragDropEvent((event) => {
-    handler(event.payload as DragDropPayload);
-  });
-}
 
 export async function onEvent<T>(name: string, handler: (payload: T) => void) {
   if (!IS_TAURI) return () => {};
