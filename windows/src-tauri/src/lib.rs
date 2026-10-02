@@ -12,6 +12,7 @@ mod platform;
 mod roam;
 mod secrets;
 mod settings;
+mod shot;
 mod tray;
 
 use std::process::Command;

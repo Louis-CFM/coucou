@@ -9,6 +9,10 @@
 // island, which opens the prompt with the screenshot attached. Esc, right-click
 // or a drop on the island cancels at any point.
 //
+// Shift held while carrying pins the spot Mochi was at and stretches an area
+// from it to the cursor; dropped, Mochi hops onto the area's edge, scans only
+// inside it and captures only it. Letting go of Shift drops the area.
+//
 // The page only animates while a roam is in progress: no frame loop otherwise.
 
 import { invoke } from "@tauri-apps/api/core";
@@ -34,6 +38,16 @@ const INSPECT_TO = 1950;
 const HOP_MS = 500; // time on each spot
 const LOCK_TO = 2400; // brackets close in on the whole screen
 const SNAP_AT = 2520;
+
+// Area scan timeline: brackets snap onto the area, one sweep runs down it,
+// then a pulse locks it in.
+const AREA_IN_MS = 320;
+const AREA_SWEEP_FROM = 200;
+const AREA_SWEEP_TO = 1100;
+const AREA_LOCK_TO = 1380;
+const AREA_SNAP_AT = 1450;
+/** Smaller than this (CSS px) and the drop scans the whole screen. */
+const AREA_MIN = 24;
 
 // Quick screenshot (setting): a short pause after the drop, one fast sweep.
 const QUICK_DELAY_MS = 200;
@@ -69,6 +83,15 @@ let quick = false;
 let bubble: { text: string; at: number } | null = null;
 let shot: string | null = null;
 let cancelled = false;
+/** Shift is held (polled by Rust on Windows, keys on Linux). */
+let shiftHeld = false;
+/** Where the area being picked started; null when not picking. */
+let anchor: { x: number; y: number } | null = null;
+/** The area being scanned and captured; null for the whole screen. */
+let area: Rect | null = null;
+let hopFrom = { x: 0, y: 0 };
+let perch = { x: 0, y: 0 };
+let perched = false;
 let flyFrom = { x: 0, y: 0 };
 let flyZoom = 1;
 // Frame stats for the log, so a slow overlay shows up as a number.
@@ -121,6 +144,9 @@ void listen<{ x: number; y: number; look: RoamLook | null }>("roam-begin", (e) =
   bubble = null;
   shot = null;
   cancelled = false;
+  shiftHeld = false;
+  anchor = null;
+  area = null;
   dizziness = 0;
   endReason = "";
   frames = 0;
@@ -135,9 +161,31 @@ void listen<{ x: number; y: number; look: RoamLook | null }>("roam-begin", (e) =
   start();
 });
 
-void listen<{ x: number; y: number }>("roam-cursor", (e) => {
-  Object.assign(cursor, e.payload);
+void listen<{ x: number; y: number; shift?: boolean }>("roam-cursor", (e) => {
+  cursor.x = e.payload.x;
+  cursor.y = e.payload.y;
+  if (e.payload.shift !== undefined) shiftHeld = e.payload.shift;
 });
+
+/** The area between the pinned corner and the cursor. */
+function selection(): Rect | null {
+  if (!anchor) return null;
+  return {
+    x: Math.min(anchor.x, cursor.x),
+    y: Math.min(anchor.y, cursor.y),
+    w: Math.abs(cursor.x - anchor.x),
+    h: Math.abs(cursor.y - anchor.y),
+  };
+}
+
+/** Where Mochi sits on a picked area: on its top edge, or under it when the
+ *  area starts too close to the top of the screen. */
+function perchOn(r: Rect) {
+  const x = clamp(r.x + r.w / 2, BOT, innerWidth - BOT);
+  return r.y > BOT * 1.2
+    ? { x, y: r.y - BOT * 0.29 }
+    : { x, y: Math.min(r.y + r.h + BOT * 0.36, innerHeight - BOT * 0.6) };
+}
 
 /** Dropped back on the island: Mochi just goes home. */
 function overIsland(p: { x: number; y: number }) {
@@ -146,9 +194,24 @@ function overIsland(p: { x: number; y: number }) {
 
 void listen<{ x: number; y: number }>("roam-drop", (e) => {
   if (phase !== "carried") return; // dizzy or cancelled: already going home
-  Object.assign(cursor, e.payload);
+  cursor.x = e.payload.x;
+  cursor.y = e.payload.y;
   if (overIsland(cursor)) {
     cancel();
+    return;
+  }
+  const sel = selection();
+  anchor = null;
+  if (sel && sel.w >= AREA_MIN && sel.h >= AREA_MIN) {
+    // An area: Mochi hops from the cursor onto its edge (see "landing").
+    area = sel;
+    hopFrom = { ...pos };
+    perch = perchOn(sel);
+    perched = false;
+    engine.eyeOverride = null;
+    engine.eyeOverrideUntil = 0;
+    Sound.play("blip");
+    setPhase("landing");
     return;
   }
   // Land fully on screen, wherever the cursor let go.
@@ -172,7 +235,14 @@ async function snap() {
   // Two frames so the cleared canvas is actually on screen before the capture.
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   try {
-    shot = await invoke<string>("roam_capture");
+    // As fractions of the overlay, which is the whole monitor.
+    const part = area && {
+      x: area.x / innerWidth,
+      y: area.y / innerHeight,
+      w: area.w / innerWidth,
+      h: area.h / innerHeight,
+    };
+    shot = await invoke<string>("roam_capture", { area: part });
   } catch (err) {
     console.error("[coucou] screenshot failed", err);
     shot = null;
@@ -199,7 +269,10 @@ async function snap() {
     engine.eyeOverride = "star";
     engine.eyeOverrideUntil = performance.now() / 1000 + 0.9;
     engine.emit("spark", 7);
-    bubble = { text: "Got it! What's wrong on screen?", at: performance.now() + 650 };
+    bubble = {
+      text: area ? "Got it! What's in there?" : "Got it! What's wrong on screen?",
+      at: performance.now() + 650,
+    };
     setTimeout(() => engine.blink(), 700);
     setTimeout(() => Sound.play("question"), 650);
   } else {
@@ -217,6 +290,8 @@ function cancel() {
   shot = null;
   scanT = -1;
   bubble = null;
+  anchor = null;
+  area = null;
   wearLook();
   engine.eyeOverride = null;
   engine.eyeOverrideUntil = 0;
@@ -229,6 +304,10 @@ void listen("roam-cancel", cancel);
 // Linux: the overlay holds the keyboard while Mochi roams (Windows polls Esc).
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") cancel();
+  if (e.key === "Shift") shiftHeld = true;
+});
+window.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") shiftHeld = false;
 });
 
 /** Carried too long or shaken too hard: Mochi gets dizzy and wanders home. */
@@ -322,8 +401,16 @@ function frame(nowMs: number) {
       engine.dragVel.y = vel.y;
       engine.lookX = clamp(vel.x / 700, -1, 1);
       engine.lookY = clamp(-vel.y / 700, -1, 1);
+      // Shift pins where the area starts; letting go of it drops the area.
+      if (shiftHeld && !anchor) {
+        anchor = { ...cursor };
+        Sound.play("tick");
+      } else if (!shiftHeld && anchor) {
+        anchor = null;
+      }
       // ~12 s held still, a few seconds dragged around, under 2 s shaken.
-      dizziness += dt * (0.08 + Math.hypot(vel.x, vel.y) / 3000);
+      // Picking an area takes the time it takes: no dizziness meanwhile.
+      if (!anchor) dizziness += dt * (0.08 + Math.hypot(vel.x, vel.y) / 3000);
       if (dizziness > 0.65 && engine.eyeOverride !== "spiral") {
         engine.eyeOverride = "spiral"; // a warning before it gives up
         engine.eyeOverrideUntil = Number.POSITIVE_INFINITY;
@@ -340,6 +427,21 @@ function frame(nowMs: number) {
       engine.dragVel.x = engine.dragVel.y = 0;
       swing = lerp(swing, 0, 1 - Math.pow(0.0001, dt));
       engine.lookX = engine.lookY = 0;
+      if (area) {
+        // A hop in an arc onto the area's edge, then a peek into it.
+        const p = clamp(t / 420, 0, 1);
+        const e = Ease.inOut(p);
+        pos.x = lerp(hopFrom.x, perch.x, e);
+        pos.y = lerp(hopFrom.y, perch.y, e) - Math.sin(p * Math.PI) * 70;
+        if (p >= 1 && !perched) {
+          perched = true;
+          engine.squash();
+          Sound.play("pop");
+        }
+        engine.lookY = perch.y < area.y ? -0.7 : 0.7;
+        if (t > (quick ? 420 + QUICK_DELAY_MS : 650)) startScan();
+        break;
+      }
       if (quick ? t > QUICK_DELAY_MS : t > 550) startScan();
       break;
     case "scanning": {
@@ -353,7 +455,13 @@ function frame(nowMs: number) {
         engine.lookX = 0;
         engine.lookY = 0.1;
       }
-      if (t > (quick ? QUICK_SWEEP_MS : SNAP_AT)) void snap();
+      if (area) {
+        // Eyes on the sweep running down the area.
+        const sweep = area.y + areaSweep(t) * area.h;
+        engine.lookX = Math.tanh((area.x + area.w / 2 - pos.x) / 320);
+        engine.lookY = -Math.tanh((sweep - pos.y) / 200);
+      }
+      if (t > (quick ? QUICK_SWEEP_MS : area ? AREA_SNAP_AT : SNAP_AT)) void snap();
       break;
     }
     case "peer": {
@@ -416,9 +524,21 @@ function draw() {
     drawScan(scanT);
     dirty = full;
   }
+  if (phase === "carried" && anchor) {
+    const sel = selection();
+    if (sel) drawSelection(sel);
+    dirty = full;
+  }
+  if (area && phase === "landing") {
+    dimOutside(area, 1);
+    brackets(area, 16, 1);
+    dirty = full;
+  }
   if (flash > 0) {
+    // Only the part that was captured lights up.
+    const lit = area ?? full;
     ctx.fillStyle = `rgba(255,255,255,${flash * 0.55})`;
-    ctx.fillRect(0, 0, innerWidth, innerHeight);
+    ctx.fillRect(lit.x, lit.y, lit.w, lit.h);
     dirty = full;
   }
 
@@ -445,7 +565,9 @@ function draw() {
 }
 
 function drawHint() {
-  const text = "Drop to scan  ·  Esc or drop on the island to cancel";
+  const text = anchor
+    ? "Drop to scan this area  ·  let go of Shift for the whole screen"
+    : "Drop to scan  ·  hold Shift to pick an area  ·  Esc to cancel";
   ctx.save();
   ctx.font = `500 12px system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif`;
   const w = ctx.measureText(text).width + 20;
@@ -516,6 +638,10 @@ function grid(): CanvasPattern | null {
 }
 
 function drawScan(t: number) {
+  if (area) {
+    drawAreaScan(area, t);
+    return;
+  }
   if (quick) {
     drawSweep(Ease.inOut(clamp(t / QUICK_SWEEP_MS, 0, 1)) * innerHeight);
     return;
@@ -581,6 +707,106 @@ function drawScan(t: number) {
       Sound.play("peek");
     }
   }
+}
+
+// ── Area pick and scan ───────────────────────────────────────────────────────
+
+/** Everything but `r` darkened, so the area reads as the subject. */
+function dimOutside(r: Rect, a: number) {
+  ctx.save();
+  ctx.fillStyle = `rgba(8,9,14,${0.42 * a})`;
+  ctx.beginPath();
+  ctx.rect(0, 0, innerWidth, innerHeight);
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.fill("evenodd");
+  ctx.restore();
+}
+
+/** The area being picked: marching dashes, corner brackets and its size. */
+function drawSelection(r: Rect) {
+  dimOutside(r, 1);
+  ctx.save();
+  ctx.setLineDash([7, 5]);
+  ctx.lineDashOffset = -performance.now() / 40;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = `rgba(${SCAN_COLOR},0.95)`;
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+  brackets(r, 16, 1);
+
+  const label = `${Math.round(r.w)} × ${Math.round(r.h)}`;
+  ctx.save();
+  ctx.font = `600 11.5px system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif`;
+  const w = ctx.measureText(label).width + 16;
+  const below = r.y + r.h + 30 < innerHeight;
+  const x = clamp(r.x, 8, innerWidth - w - 8);
+  const y = below ? r.y + r.h + 8 : r.y - 30;
+  ctx.fillStyle = `rgba(${SCAN_COLOR},0.92)`;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, 22, 11);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x + 8, y + 11.5);
+  ctx.restore();
+}
+
+/** How far down the area the sweep is (0…1) at `t`. */
+function areaSweep(t: number): number {
+  const [from, to] = quick ? [0, QUICK_SWEEP_MS] : [AREA_SWEEP_FROM, AREA_SWEEP_TO];
+  return Ease.inOut(clamp((t - from) / (to - from), 0, 1));
+}
+
+/** The area's own scan: brackets snap onto it, a grid and one sweep run
+ *  inside it only, then a pulse locks it in. */
+function drawAreaScan(r: Rect, t: number) {
+  const dt = Math.min(0.05, Math.max(0, t - lastScanDraw) / 1000);
+  lastScanDraw = t;
+  const sweepTo = quick ? QUICK_SWEEP_MS : AREA_SWEEP_TO;
+  dimOutside(r, 1);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.clip();
+  const gridAlpha = 0.3 * clamp(t / 250, 0, 1) * (1 - clamp((t - sweepTo) / 250, 0, 1));
+  const pattern = grid();
+  if (gridAlpha > 0 && pattern) {
+    ctx.globalAlpha = gridAlpha;
+    ctx.fillStyle = pattern;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.globalAlpha = 1;
+  }
+  if (t < sweepTo) {
+    const y = r.y + areaSweep(t) * r.h;
+    drawSweep(y);
+    for (let i = 0; i < 2; i++) {
+      sparks.push({ x: r.x + Math.random() * r.w, y, vy: -40 - Math.random() * 90, age: 0, life: 0.35 + Math.random() * 0.4 });
+    }
+  }
+  sparks = sparks.filter((s) => (s.age += dt) < s.life);
+  for (const s of sparks) {
+    ctx.fillStyle = `rgba(200,202,255,${1 - s.age / s.life})`;
+    ctx.fillRect(s.x - 1.5, s.y + s.vy * s.age - 1.5, 3, 3);
+  }
+  ctx.restore();
+
+  // Brackets fly in from outside the area and land on its corners.
+  const pIn = clamp(t / AREA_IN_MS, 0, 1);
+  let out = lerp(36, 0, Ease.back(pIn));
+  if (!quick && t >= AREA_SWEEP_TO) {
+    // Lock: the area pulses once, and the brackets breathe out with it.
+    const p = clamp((t - AREA_SWEEP_TO) / (AREA_LOCK_TO - AREA_SWEEP_TO), 0, 1);
+    const pulse = Math.sin(p * Math.PI);
+    out = -pulse * 6;
+    ctx.fillStyle = `rgba(${SCAN_COLOR},${0.14 * pulse})`;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (lastHop !== -2) {
+      lastHop = -2;
+      Sound.play("peek");
+    }
+  }
+  brackets({ x: r.x - out, y: r.y - out, w: r.w + out * 2, h: r.h + out * 2 }, 22, pIn);
 }
 
 /** The sweep line at height `y`: a fading trail above a glowing line. */

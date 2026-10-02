@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, WebviewWindowBuilder};
 
+use crate::shot::{crop_png, Area};
 use crate::{island, log, platform};
 
 pub const LABEL: &str = "roam";
@@ -112,13 +113,19 @@ pub fn roam_pointer(app: AppHandle, x: f64, y: f64, phase: String) {
     };
 }
 
-/// Captures the screen (the overlay has already hidden Mochi for this frame)
-/// and returns the path of the PNG.
+/// Captures the screen, or only `area` of it (the overlay has already hidden
+/// Mochi for this frame), and returns the path of the PNG. The tools only take
+/// the whole screen, so an area is cut out of that afterwards.
+// ponytail: assumes the tool captured just this monitor (spectacle -m does);
+// on multi-monitor GNOME/grim the crop lands off, pass grim -g if that matters.
 #[tauri::command]
-pub async fn roam_capture(_app: AppHandle) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(|| {
+pub async fn roam_capture(_app: AppHandle, area: Option<Area>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
         let path = std::env::temp_dir().join("coucou-screenshot.png");
         capture(&path)?;
+        if let Some(area) = area {
+            crop_png(&path, area)?;
+        }
         Ok(path.to_string_lossy().into_owned())
     })
     .await

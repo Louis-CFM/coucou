@@ -2,7 +2,8 @@
 // transparent, click-through overlay over the whole monitor. It follows the
 // cursor while the button is held, lands where it is dropped, scans the screen,
 // takes a screenshot, then flies back to the island, which opens the prompt with
-// the screenshot attached.
+// the screenshot attached. Shift held while carrying picks an area instead, and
+// only that area is captured.
 //
 // The overlay never takes a click: the cursor is polled here and sent to it, the
 // same way the island's own cursor tracking works.
@@ -27,8 +28,9 @@ use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
 };
 use windows::core::{Interface, HSTRING};
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE, VK_RBUTTON};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE, VK_RBUTTON, VK_SHIFT};
 
+use crate::shot::Area;
 use crate::{island, log};
 
 pub const LABEL: &str = "roam";
@@ -43,6 +45,8 @@ static ACTIVE: AtomicBool = AtomicBool::new(false);
 struct Point {
     x: f64,
     y: f64,
+    /// Shift is held: the overlay is picking an area.
+    shift: bool,
 }
 
 /// Created hidden at launch next to the settings window (see
@@ -114,6 +118,7 @@ pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
     let to_local = move |(x, y): (f64, f64)| Point {
         x: (x - origin.x as f64) / scale,
         y: (y - origin.y as f64) / scale,
+        shift: key_down(VK_SHIFT.0),
     };
     // `look` is the island Mochi's state and colour, so the one on the screen is
     // the same Mochi, not a fresh white one.
@@ -130,6 +135,7 @@ pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
     // lives as long as the roam, watching for Esc / right-click to cancel it.
     std::thread::spawn(move || {
         let mut last = (f64::NAN, f64::NAN);
+        let mut last_shift = false;
         let mut carried = true;
         while ACTIVE.load(Ordering::SeqCst) {
             std::thread::sleep(Duration::from_millis(8));
@@ -144,9 +150,13 @@ pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
             if !crate::platform::left_button_down() {
                 let _ = app.emit_to(LABEL, "roam-drop", to_local(cursor));
                 carried = false;
-            } else if cursor != last {
-                let _ = app.emit_to(LABEL, "roam-cursor", to_local(cursor));
-                last = cursor;
+            } else {
+                let point = to_local(cursor);
+                if cursor != last || point.shift != last_shift {
+                    last = cursor;
+                    last_shift = point.shift;
+                    let _ = app.emit_to(LABEL, "roam-cursor", point);
+                }
             }
         }
     });
@@ -161,16 +171,21 @@ fn key_down(vk: u16) -> bool {
     unsafe { (GetAsyncKeyState(vk as i32) as u16 & 0x8000) != 0 }
 }
 
-/// Captures the monitor the overlay covers (the overlay has already hidden
-/// Mochi for this frame) and returns the path of the PNG.
+/// Captures the monitor the overlay covers, or only `area` of it (the overlay
+/// has already hidden Mochi for this frame) and returns the path of the PNG.
 #[tauri::command]
-pub async fn roam_capture(app: AppHandle) -> Result<String, String> {
+pub async fn roam_capture(app: AppHandle, area: Option<Area>) -> Result<String, String> {
     let win = app.get_webview_window(LABEL).ok_or("no roam window")?;
     let pos = win.outer_position().map_err(|e| e.to_string())?;
     let size = win.outer_size().map_err(|e| e.to_string())?;
+    let (w, h) = (size.width as f64, size.height as f64);
+    let a = area.unwrap_or(Area { x: 0.0, y: 0.0, w: 1.0, h: 1.0 });
+    let x0 = (a.x * w).round() as i32;
+    let y0 = (a.y * h).round() as i32;
+    let (cw, ch) = ((a.w * w).round() as i32, (a.h * h).round() as i32);
     tauri::async_runtime::spawn_blocking(move || {
         let path = std::env::temp_dir().join("coucou-screenshot.png");
-        capture(pos.x, pos.y, size.width as i32, size.height as i32, &path)?;
+        capture(pos.x + x0, pos.y + y0, cw, ch, &path)?;
         Ok(path.to_string_lossy().into_owned())
     })
     .await

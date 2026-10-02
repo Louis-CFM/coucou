@@ -44,6 +44,8 @@ installs for the current user only — no admin prompt.
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Drag Mochi out of the island and drop it | It scans the screen and brings a screenshot back to the chat |
+| Hold `Shift` while dragging Mochi | Pick an area instead: only that part is scanned and captured |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
