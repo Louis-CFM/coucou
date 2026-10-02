@@ -62,7 +62,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 1. Grab the latest `Coucou.zip` from [Releases](https://github.com/Louis-CFM/coucou/releases).
 2. Unzip and move **Coucou.app** to `/Applications`.
-3. Launch. This build isn't notarized by Apple yet, so the first time macOS says it can't verify the developer: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (only once).
+3. Launch it, and click **Open** when macOS asks you to confirm. Updating from 0.1.0? macOS may ask you, once for each key you saved, to let Coucou use it: enter your Mac password and click **Always Allow**.
 
 ### Windows
 

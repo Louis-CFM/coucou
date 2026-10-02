@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — October 2, 2026
 
 - Declare the tools you use in Settings: Gemini CLI, Antigravity, Anthropic, Google AI and OpenAI pills join the existing ones (Cursor and Codex pills are coming soon), and you pick the main pill.
 - Chat now supports Google AI (Gemini) and OpenAI in addition to Anthropic; switch provider and model by clicking the model name in the chat view, on macOS.
