@@ -20,6 +20,10 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Custom editor command to open project folders (e.g. "cursor", "zed", "code").
+    /// Falls back to $VISUAL, $EDITOR, then "code".
+    #[serde(default)]
+    pub editor: Option<String>,
 }
 
 fn default_model() -> String {
@@ -43,6 +47,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            editor: None,
         }
     }
 }

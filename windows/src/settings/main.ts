@@ -392,6 +392,16 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const editor = h("input", {
+    type: "text",
+    placeholder: "code (or $VISUAL / $EDITOR)",
+    value: settings.editor ?? "",
+  }) as HTMLInputElement;
+  editor.addEventListener("change", () => {
+    settings.editor = editor.value.trim() || null;
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -405,6 +415,11 @@ function generalSection(): HTMLElement {
       h("label", { text: "Auto-close" }),
       autoClose,
       h("span", { class: "hint", text: "seconds after you leave the island" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Editor command" }),
+      editor,
+      h("span", { class: "hint", text: "e.g. cursor, zed, code" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
