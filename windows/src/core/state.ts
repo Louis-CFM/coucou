@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n";
+export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -216,10 +216,45 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Keep the declared order so pills never shuffle.
+    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
+    // then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    this.tasks.sort((a, b) => {
+      const isAgentA = a.id.startsWith("agent_");
+      const isAgentB = b.id.startsWith("agent_");
+      // integration_claude always first
+      if (a.id === "integration_claude") return -1;
+      if (b.id === "integration_claude") return 1;
+      // agent_* before other integrations; preserve insertion order among themselves
+      if (isAgentA && !isAgentB) return -1;
+      if (isAgentB && !isAgentA) return 1;
+      if (isAgentA && isAgentB) return 0;
+      // both known integrations → declaration order
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
     if (!this.focusId) this.focusId = "integration_claude";
+    this.notify();
+  }
+
+  removeTask(id: string) {
+    const idx = this.tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    this.tasks.splice(idx, 1);
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    this.notify();
+  }
+
+  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
+   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  upsertExternalAgent(id: string, name: string, color: string) {
+    if (this.tasks.some((t) => t.id === id)) return;
+    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
+    this.tasks.splice(at, 0, {
+      id, name, color,
+      state: "idle", stepIndex: 0, steps: [],
+      source: "agent", isIntegration: false,
+    });
+    if (!this.focusId) this.focusId = id;
     this.notify();
   }
 

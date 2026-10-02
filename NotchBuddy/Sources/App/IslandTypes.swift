@@ -60,6 +60,47 @@ struct AgentTask: Identifiable, Equatable {
 enum AgentSource: Equatable {
     case claudeCode
     case n8n
+    case agent   // third-party agent via coucou_agent field
+}
+
+// MARK: - Chat provider
+
+enum ChatProvider: String, CaseIterable, Codable {
+    case anthropic = "anthropic"
+    case google    = "google"
+    case openai    = "openai"
+
+    var displayName: String {
+        switch self {
+        case .anthropic: "Anthropic"
+        case .google:    "Google"
+        case .openai:    "OpenAI"
+        }
+    }
+
+    var accentHex: String {
+        switch self {
+        case .anthropic: "#E07950"
+        case .google:    "#4285F4"
+        case .openai:    "#10A37F"
+        }
+    }
+
+    var defaultModel: String {
+        switch self {
+        case .anthropic: "claude-sonnet-4-6"
+        case .google:    "gemini-2.0-flash"
+        case .openai:    "gpt-4o"
+        }
+    }
+
+    var keychainKey: String {
+        switch self {
+        case .anthropic: "anthropic-api-key"
+        case .google:    "google-api-key"
+        case .openai:    "openai-api-key"
+        }
+    }
 }
 
 // MARK: - View dimensions (from VIEWS in prototype)
@@ -124,22 +165,6 @@ enum IslandConst {
     ]
 
     static let fallbackColors = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"]
-
-    // Available integration pills (matches AgentTask.integrationAgents)
-    struct IntegrationMeta {
-        let id: String
-        let name: String
-        let color: String
-    }
-    static let allIntegrations: [IntegrationMeta] = [
-        .init(id: "integration_resend",  name: "Resend",  color: "#22C55E"),
-        .init(id: "integration_n8n",     name: "n8n",     color: "#F29B38"),
-        .init(id: "integration_vercel",  name: "Vercel",  color: "#7C5CFF"),
-        .init(id: "integration_github",  name: "GitHub",  color: "#F4505E"),
-        .init(id: "integration_notion",  name: "Notion",  color: "#8C8C8C"),
-        .init(id: "integration_calcom",  name: "Cal.com", color: "#C9956A"),
-        .init(id: "integration_stripe",  name: "Stripe",  color: "#0570DE"),
-    ]
 
     /// Returns the fixed project color for a display name, or a stable fallback.
     static func colorForProject(_ name: String) -> String {

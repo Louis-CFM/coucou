@@ -562,9 +562,20 @@ export class Island {
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
-    if (!IS_TAURI) {
-      window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
-    }
+    if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * Takes the cursor from the page's own mouse events instead of Rust's poll.
+   * Used where the OS has no global cursor position (Wayland): the events only
+   * fire while the pointer is over the island, so leaving the window is
+   * reported as a cursor far away, which is what the poll would have said.
+   */
+  followPageCursor() {
+    window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+    window.addEventListener("mouseout", (e) => {
+      if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
+    });
   }
 
   /** Cursor in window-logical coordinates. */

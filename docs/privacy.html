@@ -5,7 +5,7 @@
 <div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
 <section id="en">
 <h1>Privacy Policy</h1>
-<div class="meta">Last updated: September 30, 2026</div>
+<div class="meta">Last updated: October 2, 2026</div>
 <div class="card"><b>In short:</b> Coucou has no account, no analytics, no ads and no tracking. The developer receives none of your data. Everything stays on your computer (Mac or PC), except what you choose to send to the services you connect yourself.</div>
 
 <h2>1. Who is responsible</h2>
@@ -17,30 +17,32 @@
 <h2>3. Data stored on your computer</h2>
 <table>
 <tr><th>What</th><th>Where</th><th>Why</th></tr>
-<tr><td>API keys and tokens you enter (Anthropic, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>macOS Keychain, or Windows Credential Manager</td><td>To call these services on your behalf</td></tr>
-<tr><td>Preferences (sound, delays, active integrations, shortcut)</td><td>App preferences on your Mac, or <code>%APPDATA%\Coucou</code> on Windows</td><td>To remember your settings</td></tr>
-<tr><td>Files you drop on the notch</td><td>A copy in the app’s own folder (on Windows: <code>%LOCALAPPDATA%\Coucou</code>)</td><td>So you can ask a question about them or attach them to an email</td></tr>
+<tr><td>API keys and tokens you enter (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>macOS Keychain, Windows Credential Manager, or the Secret Service on Linux (GNOME Keyring, KWallet)</td><td>To call these services on your behalf</td></tr>
+<tr><td>Preferences (sound, delays, active pill selection, chat provider and model, shortcut)</td><td>App preferences on your Mac, or <code>%APPDATA%\Coucou</code> on Windows; <code>~/.config/coucou</code> on Linux</td><td>To remember your settings</td></tr>
+<tr><td>Files you drop on the notch</td><td>A copy in the app’s own folder (on Windows: <code>%LOCALAPPDATA%\Coucou</code>; on Linux: <code>~/.local/share/coucou</code>)</td><td>So you can ask a question about them or attach them to an email</td></tr>
 <tr><td>Claude Code session events (project name, current step, permission requests)</td><td>In memory only</td><td>To show them in the notch</td></tr>
-<tr><td>Diagnostic log (event and tool names, project names, HTTP status codes — no commands, content or API keys)</td><td><code>~/Library/Logs/NotchBuddy</code> on Mac (App Store: same path inside the container); <code>%LOCALAPPDATA%\Coucou\coucou.log</code> on Windows. Capped at 1 MB. Never leaves your computer.</td><td>To help diagnose connection issues between Claude Code and Coucou</td></tr>
+<tr><td>Diagnostic log (event and tool names, project names, HTTP status codes — no commands, content or API keys)</td><td><code>~/Library/Logs/NotchBuddy</code> on Mac (App Store: same path inside the container); <code>%LOCALAPPDATA%\Coucou\coucou.log</code> on Windows; <code>~/.local/share/coucou/coucou.log</code> on Linux. Capped at 1 MB. Never leaves your computer.</td><td>To help diagnose connection issues between Claude Code and Coucou</td></tr>
 </table>
-<p>You can delete all of this at any time by removing your keys in Settings, then deleting the app and its folder in <code>~/Library/Application Support/NotchBuddy</code> (or the app’s container for the App Store version). On Windows: uninstall Coucou from Settings → Apps, then delete <code>%APPDATA%\Coucou</code> and <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>You can delete all of this at any time by removing your keys in Settings, then deleting the app and its folder in <code>~/Library/Application Support/NotchBuddy</code> (or the app’s container for the App Store version). On Windows: uninstall Coucou from Settings → Apps, then delete <code>%APPDATA%\Coucou</code> and <code>%LOCALAPPDATA%\Coucou</code>. On Linux: remove the package (<code>sudo apt remove coucou</code> or <code>sudo dnf remove coucou</code>) or delete the AppImage, then delete <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> and <code>~/.cache/coucou</code>.</p>
 
 <h2>4. Services you connect yourself</h2>
 <p>Coucou only talks to the services you configure, directly from your Mac, using your own keys. Those services process your data under their own privacy policies:</p>
 <ul>
-<li><b>Anthropic (Claude API)</b> — when you chat with Claude or ask about a file or a window, the text you type, the file content and/or the window context you chose are sent to Anthropic. <a href="https://www.anthropic.com/legal/privacy">Anthropic privacy policy</a>.</li>
+<li><b>Anthropic (Claude API)</b> — when you chat using Anthropic or ask about a file or a window, the text you type, the file content and/or the window context you chose are sent to Anthropic. When you open the chat or Settings, the list of available models is also fetched from the Anthropic API using your key. <a href="https://www.anthropic.com/legal/privacy">Anthropic privacy policy</a>.</li>
+<li><b>Google AI (Gemini API)</b> <i>(macOS)</i> — when you chat using Google AI, the text you type and the current conversation are sent to Google's Gemini API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic). The list of available models is fetched when you open the chat. <a href="https://policies.google.com/privacy">Google privacy policy</a>.</li>
+<li><b>OpenAI</b> <i>(macOS)</i> — when you chat using OpenAI, the text you type and the current conversation are sent to the OpenAI API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic). The list of available models is fetched when you open the chat. <a href="https://openai.com/policies/privacy-policy">OpenAI privacy policy</a>.</li>
 <li><b>Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n</b> — Coucou reads data from your own accounts (payments, repositories, deployments, emails, pages, bookings, workflow runs) to display them. Coucou only reads from them.</li>
 </ul>
 <p>We have no access to these requests or their responses.</p>
 
-<h2>5. Claude Code</h2>
-<p>If you install the Claude Code hooks, Claude Code sends session events to Coucou through a local connection on your computer. These events never leave your computer through Coucou. Before changing <code>~/.claude/settings.json</code>, Coucou makes a dated backup and shows you the changes.</p>
+<h2>5. Claude Code, Gemini CLI and Antigravity hooks</h2>
+<p>If you install the Claude Code hooks, Claude Code sends session events to Coucou through a local connection on your computer. If you install the Gemini CLI or Antigravity hooks, those agents send their session events the same way. These events never leave your computer through Coucou. Before changing any settings file (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>), Coucou makes a dated backup and shows you the changes.</p>
 
 <h2>6. Email</h2>
 <p>When you send a file by email, the message is created and sent by your own Mail app. Coucou never sends email by itself.</p>
 
 <h2>7. System permissions</h2>
-<p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows version asks for no special permission and no administrator rights.</p>
+<p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows and Linux versions ask for no special permission. On Linux, installing the .deb or .rpm package needs administrator rights; the AppImage doesn't.</p>
 
 <h2>8. Children</h2>
 <p>Coucou is a developer tool and is not directed at children.</p>
@@ -55,7 +57,7 @@
 <hr>
 <section id="fr" lang="fr">
 <h1>Politique de confidentialité</h1>
-<div class="meta">Dernière mise à jour : 30 septembre 2026</div>
+<div class="meta">Dernière mise à jour : 2 octobre 2026</div>
 <div class="card"><b>En bref :</b> Coucou n’a ni compte, ni statistiques, ni publicité, ni pistage. Le développeur ne reçoit aucune de tes données. Tout reste sur ton ordinateur (Mac ou PC), sauf ce que tu choisis d’envoyer aux services que tu connectes toi-même.</div>
 
 <h2>1. Responsable</h2>
@@ -67,29 +69,32 @@
 <h2>3. Données stockées sur ton ordinateur</h2>
 <table>
 <tr><th>Quoi</th><th>Où</th><th>Pourquoi</th></tr>
-<tr><td>Clés d’API et jetons saisis (Anthropic, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>Trousseau macOS, ou Gestionnaire d’identifiants Windows</td><td>Appeler ces services pour toi</td></tr>
-<tr><td>Préférences (son, délais, intégrations actives, raccourci)</td><td>Préférences de l’app sur ton Mac, ou <code>%APPDATA%\Coucou</code> sous Windows</td><td>Garder tes réglages</td></tr>
-<tr><td>Fichiers déposés sur le notch</td><td>Une copie dans le dossier de l’app (sous Windows : <code>%LOCALAPPDATA%\Coucou</code>)</td><td>Pouvoir poser une question dessus ou les joindre à un mail</td></tr>
+<tr><td>Clés d’API et jetons saisis (Anthropic, Google AI, OpenAI, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n)</td><td>Trousseau macOS, Gestionnaire d’identifiants Windows, ou Secret Service sous Linux (GNOME Keyring, KWallet)</td><td>Appeler ces services pour toi</td></tr>
+<tr><td>Préférences (son, délais, pastilles actives, fournisseur et modèle du chat, raccourci)</td><td>Préférences de l’app sur ton Mac, ou <code>%APPDATA%\Coucou</code> sous Windows ; <code>~/.config/coucou</code> sous Linux</td><td>Garder tes réglages</td></tr>
+<tr><td>Fichiers déposés sur le notch</td><td>Une copie dans le dossier de l’app (sous Windows : <code>%LOCALAPPDATA%\Coucou</code> ; sous Linux : <code>~/.local/share/coucou</code>)</td><td>Pouvoir poser une question dessus ou les joindre à un mail</td></tr>
 <tr><td>Événements des sessions Claude Code (nom du projet, étape en cours, demandes de permission)</td><td>En mémoire uniquement</td><td>Les afficher dans le notch</td></tr>
+<tr><td>Journal de diagnostic (noms d’événements et d’outils, noms de projets, codes HTTP — aucune commande, contenu ni clé)</td><td><code>~/Library/Logs/NotchBuddy</code> sur Mac (App Store : même chemin dans le conteneur) ; <code>%LOCALAPPDATA%\Coucou\coucou.log</code> sous Windows ; <code>~/.local/share/coucou/coucou.log</code> sous Linux. Plafonné à 1 Mo. Ne quitte jamais ton ordinateur.</td><td>Aider à diagnostiquer les problèmes de connexion entre les agents et Coucou</td></tr>
 </table>
-<p>Tu peux tout supprimer à tout moment : retire tes clés dans les Réglages, puis supprime l’app et son dossier <code>~/Library/Application Support/NotchBuddy</code> (ou le conteneur de l’app pour la version App Store). Sous Windows : désinstalle Coucou depuis Paramètres → Applications, puis supprime <code>%APPDATA%\Coucou</code> et <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>Tu peux tout supprimer à tout moment : retire tes clés dans les Réglages, puis supprime l’app et son dossier <code>~/Library/Application Support/NotchBuddy</code> (ou le conteneur de l’app pour la version App Store). Sous Windows : désinstalle Coucou depuis Paramètres → Applications, puis supprime <code>%APPDATA%\Coucou</code> et <code>%LOCALAPPDATA%\Coucou</code>. Sous Linux : désinstalle le paquet (<code>sudo apt remove coucou</code> ou <code>sudo dnf remove coucou</code>) ou supprime l’AppImage, puis supprime <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> et <code>~/.cache/coucou</code>.</p>
 
 <h2>4. Services que tu connectes toi-même</h2>
 <p>Coucou ne communique qu’avec les services que tu configures, directement depuis ton Mac, avec tes propres clés. Ces services traitent tes données selon leur propre politique :</p>
 <ul>
-<li><b>Anthropic (API Claude)</b> : quand tu discutes avec Claude ou poses une question sur un fichier ou une fenêtre, le texte saisi, le contenu du fichier et/ou le contexte de la fenêtre choisie sont envoyés à Anthropic. <a href="https://www.anthropic.com/legal/privacy">Politique de confidentialité d’Anthropic</a>.</li>
+<li><b>Anthropic (API Claude)</b> : quand tu discutes via Anthropic ou poses une question sur un fichier ou une fenêtre, le texte saisi, le contenu du fichier et/ou le contexte de la fenêtre choisie sont envoyés à Anthropic. À l’ouverture du chat ou des Réglages, la liste des modèles disponibles est aussi récupérée depuis l’API d’Anthropic avec ta clé. <a href="https://www.anthropic.com/legal/privacy">Politique de confidentialité d’Anthropic</a>.</li>
+<li><b>Google AI (API Gemini)</b> <i>(macOS)</i> : quand tu discutes via Google AI, le texte saisi et la conversation en cours sont envoyés à l’API Gemini de Google. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://policies.google.com/privacy">Politique de confidentialité de Google</a>.</li>
+<li><b>OpenAI</b> <i>(macOS)</i> : quand tu discutes via OpenAI, le texte saisi et la conversation en cours sont envoyés à l’API OpenAI. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://openai.com/policies/privacy-policy">Politique de confidentialité d’OpenAI</a>.</li>
 <li><b>Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n</b> : Coucou lit les données de tes propres comptes (paiements, dépôts, déploiements, e-mails, pages, rendez-vous, exécutions de workflows) pour les afficher. Coucou ne fait que lire.</li>
 </ul>
 <p>Le développeur n’a accès ni à ces requêtes ni à leurs réponses.</p>
 
-<h2>5. Claude Code</h2>
-<p>Si tu installes les hooks Claude Code, Claude Code envoie les événements de session à Coucou par une connexion locale sur ton ordinateur. Coucou ne les fait jamais sortir de ton ordinateur. Avant de modifier <code>~/.claude/settings.json</code>, Coucou en fait une sauvegarde datée et te montre les changements.</p>
+<h2>5. Claude Code, Gemini CLI et Antigravity</h2>
+<p>Si tu installes les hooks Claude Code, Claude Code envoie les événements de session à Coucou par une connexion locale sur ton ordinateur. Si tu installes les hooks Gemini CLI ou Antigravity, ces agents envoient leurs événements de la même façon. Coucou ne les fait jamais sortir de ton ordinateur. Avant de modifier un fichier de configuration (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>), Coucou en fait une sauvegarde datée et te montre les changements.</p>
 
 <h2>6. E-mail</h2>
 <p>Quand tu envoies un fichier par e-mail, le message est créé et envoyé par ta propre app Mail. Coucou n’envoie jamais d’e-mail de lui-même.</p>
 
 <h2>7. Autorisations système</h2>
-<p>Selon la version et les fonctions utilisées, macOS peut te demander d’autoriser l’Automatisation (Mail, Terminal), l’Accessibilité (lire le titre de la fenêtre que tu attaches) ou l’Enregistrement de l’écran (capturer une fenêtre que tu attaches). Elles ne servent qu’à la fonction que tu as déclenchée et se retirent à tout moment dans Réglages Système → Confidentialité et sécurité. La version Windows ne demande aucune autorisation particulière ni droit administrateur.</p>
+<p>Selon la version et les fonctions utilisées, macOS peut te demander d’autoriser l’Automatisation (Mail, Terminal), l’Accessibilité (lire le titre de la fenêtre que tu attaches) ou l’Enregistrement de l’écran (capturer une fenêtre que tu attaches). Elles ne servent qu’à la fonction que tu as déclenchée et se retirent à tout moment dans Réglages Système → Confidentialité et sécurité. Les versions Windows et Linux ne demandent aucune autorisation particulière. Sous Linux, l’installation du paquet .deb ou .rpm nécessite des droits administrateur ; l’AppImage non.</p>
 
 <h2>8. Enfants</h2>
 <p>Coucou est un outil pour développeurs, il ne s’adresse pas aux enfants.</p>

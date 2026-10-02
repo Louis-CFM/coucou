@@ -22,6 +22,7 @@ async function main() {
   }
   island.applySettings();
   State.loadIntegrationTasks();
+  if (boot && !boot.cursorPoll) island.followPageCursor();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
 

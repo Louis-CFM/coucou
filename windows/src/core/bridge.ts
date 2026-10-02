@@ -33,6 +33,8 @@ export interface BootInfo {
   screen: { x: number; y: number; width: number; height: number; scale: number };
   version: string;
   hookPath: string;
+  /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
+  cursorPoll: boolean;
 }
 
 export const Bridge = {
