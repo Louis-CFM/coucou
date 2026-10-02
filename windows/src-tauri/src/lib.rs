@@ -8,13 +8,15 @@ mod island;
 mod log;
 mod pipe;
 mod platform;
+mod providers;
 mod secrets;
 mod settings;
 mod tray;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -46,7 +48,7 @@ pub struct BootInfo {
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
-    let mut settings = shared.settings.lock().unwrap().clone();
+    let mut settings = shared.settings.lock().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
     settings.hooks_installed = hooks::status().installed;
     let screen = island::screen_info(&app, &settings.screen);
@@ -62,7 +64,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     let (screen_changed, autostart_changed) = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         *current = settings.clone();
@@ -90,7 +92,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
@@ -119,7 +121,7 @@ fn focus_window(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
 }
@@ -202,7 +204,7 @@ fn hooks_apply(
     // settings.json that changed in between is refused rather than overwritten.
     let backup = hooks::write(install, &fingerprint)?;
     let updated = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock();
         current.hooks_installed = install;
         let _ = settings::save(&current);
         current.clone()
@@ -241,8 +243,71 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, route) = {
+        let guard = shared.settings.lock();
+        let route = providers::route(&guard.chat_provider, &guard)?;
+        (guard.chat_provider.clone(), route)
+    };
+    claude::send(&chat, &provider, &route, query, context).await
+}
+
+/// The models a provider offers, for the Settings picker. Empty for a provider omp's
+/// catalog does not carry — the local engines — and the UI falls back to free text there.
+#[tauri::command]
+fn chat_models(id: String) -> Vec<[String; 2]> {
+    providers::models_or_default(&id)
+}
+
+/// The provider table for the Settings list, with key *presence* folded in so the UI
+/// makes one call instead of one per row — and never sees a key, only whether one is
+/// stored, which is all the keyring has ever exposed to the front end.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProviderRow {
+    #[serde(flatten)]
+    provider: providers::Provider,
+    key_present: bool,
+    is_custom: bool,
+}
+
+#[tauri::command]
+fn chat_providers(shared: State<'_, Shared>) -> Vec<ProviderRow> {
+    let custom_dialect = shared.settings.lock().custom_dialect;
+    let rows: Vec<ProviderRow> = providers::PROVIDERS
+        .iter()
+        .map(|p| ProviderRow {
+            key_present: secrets::present(&providers::key_for(p.id)),
+            provider: providers::Provider {
+                id: p.id,
+                label: p.label,
+                dialect: p.dialect,
+                base_url: p.base_url,
+                default_model: p.default_model,
+                env_var: p.env_var,
+                accent: p.accent,
+                keyless: p.keyless,
+                unavailable: p.unavailable,
+            },
+            is_custom: false,
+        })
+        .collect();
+    let mut all = rows;
+    all.push(ProviderRow {
+        provider: providers::Provider {
+            id: providers::CUSTOM_ID,
+            label: "Custom gateway",
+            dialect: custom_dialect,
+            base_url: "",
+            default_model: "",
+            env_var: None,
+            accent: "#8C8C8C",
+            keyless: false,
+            unavailable: None,
+        },
+        key_present: secrets::present(&providers::key_for(providers::CUSTOM_ID)),
+        is_custom: true,
+    });
+    all
 }
 
 #[tauri::command]
@@ -393,6 +458,8 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            chat_providers,
+            chat_models,
             ingest_file,
             secret_present,
             secret_set,

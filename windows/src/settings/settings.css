@@ -87,6 +87,53 @@ section > h2 {
   font-size: 12.5px;
 }
 
+/* The expanded half of a provider row.
+   `.row` wraps, which is right for the flat settings lists but wrong here: a model
+   picker next to a password field and two buttons needs a fixed label column and a
+   control cell that never breaks. Everything inside `.ctl` stays on one line; the
+   input takes the slack, the buttons keep their size. */
+.prow {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.prow > label {
+  color: var(--dim);
+  font-size: 12.5px;
+}
+
+.prow > .ctl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The input grows, the count never does. `min-width: 0` is what lets a flex child
+   shrink below its content width instead of forcing the row wider. */
+.prow > .ctl > input,
+.prow > .ctl > select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.prow > .ctl > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* The stack that holds the expanded rows. `.prow` is a two-column grid, so the space
+   between rows has to live on the parent — without it the controls of one row sit
+   against the label of the next. The indent keeps the eye inside the card it opened. */
+.pbody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 2px 4px 6px;
+}
+
 .spacer {
   flex: 1 1 auto;
 }

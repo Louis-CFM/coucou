@@ -90,7 +90,14 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
-  /** Claude model used by the chat. */
+  /** Active chat provider id — a providers.rs entry, or "custom". */
+  chatProvider: string;
+  /** Per-provider model override; absent means the provider's catalog default. */
+  providerModels: Record<string, string>;
+  customBaseUrl: string;
+  customModel: string;
+  customDialect: "anthropic" | "openAI";
+  /** Legacy single-model field. Superseded by providerModels; still deserialised. */
   model: string;
 }
 
@@ -105,6 +112,11 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  chatProvider: "anthropic",
+  providerModels: {},
+  customBaseUrl: "",
+  customModel: "gpt-4o-mini",
+  customDialect: "openAI",
   model: "claude-opus-5",
 };
 
@@ -135,8 +147,30 @@ class AppState {
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
-  chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+
+  /**
+   * One conversation per provider, mirroring the Rust side. Anthropic and OpenAI
+   * message shapes are not interchangeable — a thread carrying `tool_use` blocks into
+   * a `/chat/completions` request comes back as a 400 — so switching provider switches
+   * threads instead of mixing them. Kept as a getter so every call site reads the
+   * active provider's thread without knowing any of this.
+   */
+  private chatThreads: Record<string, ChatMessage[]> = {};
+
+  get chatHistory(): ChatMessage[] {
+    const id = this.settings.chatProvider;
+    return (this.chatThreads[id] ??= []);
+  }
+
+  set chatHistory(messages: ChatMessage[]) {
+    this.chatThreads[this.settings.chatProvider] = messages;
+  }
+
+  /** Drops every provider's thread, not just the active one. */
+  resetChats(): void {
+    this.chatThreads = {};
+  }
 
   integrations: Record<string, IntegrationInfo> = {};
 

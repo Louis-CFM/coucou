@@ -14,7 +14,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 use gtk::glib::translate::ToGlibPtr;
 use gtk::prelude::*;
@@ -248,13 +248,13 @@ pub fn make_non_activating(win: &WebviewWindow) {
     // right after the first map, gets it drawing for good.
     let remapped = std::cell::Cell::new(false);
     gw.connect_map_event(move |w, _| {
-        apply_input_region(w, *INPUT_REGION.lock().unwrap());
+        apply_input_region(w, *INPUT_REGION.lock());
         if !remapped.replace(true) {
             let w = w.clone();
             gtk::glib::idle_add_local_once(move || {
                 w.hide();
                 w.show_all();
-                apply_input_region(&w, *INPUT_REGION.lock().unwrap());
+                apply_input_region(&w, *INPUT_REGION.lock());
             });
         }
         gtk::glib::Propagation::Proceed
@@ -278,7 +278,7 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 /// Only this rectangle (window-logical pixels) takes the mouse; `None` means
 /// the whole window does. Everything outside goes to the window underneath.
 pub fn set_input_region(win: &WebviewWindow, rect: Region) {
-    *INPUT_REGION.lock().unwrap() = rect;
+    *INPUT_REGION.lock() = rect;
     let Ok(gw) = win.gtk_window() else { return };
     apply_input_region(&gw, rect);
 }

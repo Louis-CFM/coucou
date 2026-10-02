@@ -30,6 +30,31 @@ export interface BootInfo {
   cursorPoll: boolean;
 }
 
+/** The two request shapes Coucou speaks. Mirrors providers::Dialect on the Rust side. */
+export type Dialect = "anthropic" | "openAI";
+
+/**
+ * One row of the provider table, exactly as `providers.rs` declares it. `unavailable`
+ * carries the reason Coucou cannot drive that provider — it is rendered greyed out
+ * rather than hidden, so the list matches omp's catalog without pretending.
+ */
+export interface ChatProvider {
+  id: string;
+  label: string;
+  dialect: Dialect;
+  baseUrl: string;
+  defaultModel: string;
+  /** omp's environment variable for this provider — a hint, never read by Coucou. */
+  envVar: string | null;
+  accent: string;
+  /** Local engines answer without a key. */
+  keyless: boolean;
+  unavailable: string | null;
+  /** Whether a key is stored. The key itself never crosses this boundary. */
+  keyPresent: boolean;
+  isCustom: boolean;
+}
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
 
@@ -85,6 +110,10 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** The provider table plus key presence. One call, so the UI never asks per row. */
+  chatProviders: () => call<ChatProvider[]>("chat_providers"),
+  /** The models a provider offers, as `[id, label]` pairs. Empty for local engines. */
+  chatModels: (id: string) => call<[string, string][]>("chat_models", { id }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */

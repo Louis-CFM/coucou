@@ -18,15 +18,51 @@ pub const KNOWN_KEYS: &[&str] = &[
     "calcom-api-key",
 ];
 
-fn entry(key: &str) -> Option<Entry> {
-    if !KNOWN_KEYS.contains(&key) {
+/// Provider credentials live under `provider-<id>`. Accepting the prefix is the one
+/// widening of the allowlist, and it stays bounded: the suffix must name a provider
+/// Coucou can actually route to, so the UI still cannot invent a key name. Anything
+/// else — an integration key, a bare string, a non-routable provider — is refused.
+const PROVIDER_PREFIX: &str = "provider-";
+
+fn provider_entry(id: &str) -> Option<Entry> {
+    let key = id.strip_prefix(PROVIDER_PREFIX)?;
+    if !crate::providers::is_routable(key) {
         return None;
     }
-    Entry::new(SERVICE, key).ok()
+    Entry::new(SERVICE, id).ok()
+}
+
+fn entry(key: &str) -> Option<Entry> {
+    if KNOWN_KEYS.contains(&key) {
+        return Entry::new(SERVICE, key).ok();
+    }
+    provider_entry(key)
+}
+
+/// The Anthropic key used to live at `anthropic-api-key` before providers existed.
+/// Coucou is young and nobody depends on the old name, but silently orphaning a key
+/// the user already typed is the kind of thing that reads as data loss — so the old
+/// name is read as a fallback for Anthropic only.
+fn legacy_for(key: &str) -> Option<&'static str> {
+    match key {
+        "provider-anthropic" => Some("anthropic-api-key"),
+        _ => None,
+    }
 }
 
 pub fn get(key: &str) -> Option<String> {
-    entry(key)?.get_password().ok().filter(|v| !v.is_empty())
+    let stored = entry(key)?.get_password().ok().filter(|v| !v.is_empty());
+    if stored.is_some() {
+        return stored;
+    }
+    let legacy = legacy_for(key).and_then(|old| {
+        Entry::new(SERVICE, old)
+            .ok()?
+            .get_password()
+            .ok()
+            .filter(|v| !v.is_empty())
+    });
+    legacy
 }
 
 pub fn set(key: &str, value: &str) -> Result<(), String> {

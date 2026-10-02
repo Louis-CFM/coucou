@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type ChatProvider, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -171,87 +171,286 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── Chat providers section ────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
-  ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
-];
+/**
+ * The gateway list, as an accordion.
+ *
+ * Every provider Coucou knows is listed, whether or not it can be reached: a row
+ * missing reads as "not supported", while a greyed row tells you why. The dot is the
+ * whole status in one glance — green when a key is stored or the provider is keyless,
+ * red when one is needed and missing, hollow when the provider is out of reach.
+ *
+ * Clicking a row expands it to the two things a provider actually needs: which model
+ * to call and which key to call it with. Neither is editable from the collapsed row,
+ * because a 1 100-entry list next to a password field is not a list anyone reads.
+ */
+function chatSection(): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  const feedback = h("div", {});
+  const note = h("span", {
+    class: "hint",
+    text: "Pick the gateway Mochi talks to. Keys stay in the Windows Credential Manager.",
+  });
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  async function load() {
+    const rows = (await Bridge.chatProviders()) ?? [];
+    clear(list);
+    if (rows.length === 0) {
+      list.append(h("div", { class: "hint", text: "Loading…" }));
+      return;
+    }
+    for (const p of rows) list.append(providerRow(p, load, feedback));
+  }
 
-  const field = h("input", {
-    type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
-    style: "flex:1 1 auto;min-width:0",
-    autocomplete: "off",
+  void load();
+  return h("section", {}, h("h2", {}, h("span", { text: "Chat" })), note, list, feedback);
+}
+
+/** Green when reachable, red when a key is missing, hollow when out of reach. */
+function stateDot(p: ChatProvider): HTMLElement {
+  if (p.unavailable !== null) {
+    return h("i", {
+      style: "width:8px;height:8px;border-radius:50%;flex:0 0 auto;" +
+        "box-shadow:inset 0 0 0 1.5px #6b6b73;background:transparent;",
+      title: p.unavailable,
+    });
+  }
+  const on = p.keyPresent || p.keyless;
+  return h("i", {
+    style: `width:8px;height:8px;border-radius:50%;flex:0 0 auto;` +
+      `background:${on ? "#22c55e" : "#f4505e"};`,
+    title: on ? "Connected" : "No key yet",
+  });
+}
+
+function providerRow(
+  p: ChatProvider,
+  reload: () => Promise<void>,
+  feedback: HTMLElement,
+): HTMLElement {
+  const body = h("div", { class: "pbody" });
+  const chevron = h("span", { class: "hint", style: "flex:0 0 auto", text: "▸" });
+  const isDefault = settings.chatProvider === p.id;
+  const reachable = p.unavailable === null;
+
+  const head = h(
+    "button",
+    {
+      type: "button",
+      style: "display:flex;align-items:center;gap:9px;width:100%;text-align:left;" +
+        `border:1px solid ${isDefault ? p.accent : "#2a2a30"};` +
+        `background:${isDefault ? "rgba(255,255,255,0.05)" : "transparent"};` +
+        "border-radius:9px;padding:8px 11px;color:inherit;cursor:pointer;" +
+        "font:inherit;",
+      title: reachable ? `Configure ${p.label}` : (p.unavailable ?? ""),
+    },
+    stateDot(p),
+    h(
+      "span",
+      { style: "display:flex;flex-direction:column;gap:1px;flex:1;min-width:0" },
+      h("strong", { text: p.label }),
+      h("span", {
+        class: "hint",
+        text: !reachable
+          ? (p.unavailable ?? "Unavailable")
+          : p.keyless
+            ? "Local engine — no key needed"
+            : p.keyPresent
+              ? "Key saved"
+              : p.envVar
+                ? `No key yet · ${p.envVar}`
+                : "No key yet",
+      }),
+    ),
+    isDefault ? h("span", { class: "hint", text: "default" }) : null,
+    reachable ? chevron : null,
+  );
+
+  let expanded = false;
+  head.addEventListener("click", () => {
+    if (!reachable) return;
+    expanded = !expanded;
+    chevron.textContent = expanded ? "▾" : "▸";
+    if (expanded) {
+      if (body.childElementCount === 0) body.append(...providerBody(p, feedback, reload));
+      body.style.display = "";
+    } else {
+      body.style.display = "none";
+    }
+  });
+
+  body.style.display = "none";
+  return h("div", { style: "display:flex;flex-direction:column;gap:6px" }, head, body);
+}
+
+/** The expanded half of a provider: which model, which key, and a way to make it default. */
+function providerBody(
+  p: ChatProvider,
+  feedback: HTMLElement,
+  reload: () => Promise<void>,
+): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const key = `provider-${p.id}`;
+
+  // ── Model ────────────────────────────────────────────────────────────────────
+  // The count sits after the picker, not before it: it is a detail, and putting it
+  // first pushed the select onto its own line.
+  const modelCtl = h("div", { class: "ctl" });
+  const modelNote = h("span", { class: "hint", style: "flex:0 0 auto", text: "…" });
+
+  const current = () => settings.providerModels[p.id] ?? p.defaultModel;
+  const select = h("select", {}) as HTMLSelectElement;
+  const typed = h("input", {
+    value: current(),
+    style: "display:none;",
     spellcheck: "false",
+    autocomplete: "off",
   }) as HTMLInputElement;
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
-  const feedback = h("div", {});
+  const applyModel = (value: string) => {
+    settings.providerModels[p.id] = value || p.defaultModel;
+    void save();
+  };
+  select.addEventListener("change", () => applyModel(select.value));
+  typed.addEventListener("change", () => applyModel(typed.value.trim()));
 
-  async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
-    clearBtn.style.display = present ? "" : "none";
-  }
+  modelCtl.append(select, typed, modelNote);
+  out.push(h("div", { class: "prow" }, h("label", { text: "Model" }), modelCtl));
 
-  saveBtn.addEventListener("click", async () => {
-    const value = field.value.trim();
-    if (!value) return;
-    clear(feedback);
-    try {
-      await Bridge.secretSet("anthropic-api-key", value);
-      field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+  void Bridge.chatModels(p.id).then((rows) => {
+    const list = rows ?? [];
+    clear(modelNote);
+    if (list.length === 0) {
+      // A local engine's roster is whatever the user pulled locally, so there is
+      // nothing to enumerate — a free-text field is the honest control.
+      select.style.display = "none";
+      typed.style.display = "";
+      modelNote.textContent = "type it";
+      return;
     }
+    modelNote.textContent = `${list.length}`;
+    for (const [id, label] of list) {
+      select.append(h("option", { value: id, text: id === label ? id : `${label} · ${id}` }));
+    }
+    // A model the user set by hand is not in the roster; keep it selectable rather
+    // than silently resetting their choice to the catalog default.
+    const chosen = current();
+    if (!list.some(([id]) => id === chosen)) {
+      select.append(h("option", { value: chosen, text: `${chosen} · custom` }));
+    }
+    select.value = chosen;
   });
 
-  clearBtn.addEventListener("click", async () => {
-    clear(feedback);
-    try {
-      await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
-    }
-  });
+  // ── Key ──────────────────────────────────────────────────────────────────────
+  if (!p.keyless) {
+    const field = h("input", {
+      type: "password",
+      placeholder: p.keyPresent ? "••••••••••••  (stored)" : (p.envVar ?? "API key"),
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const saveBtn = h("button", { class: "primary", text: "Save key" });
+    const clearBtn = h("button", { class: "danger", text: "Remove" });
+    clearBtn.style.display = p.keyPresent ? "" : "none";
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
+    saveBtn.addEventListener("click", async () => {
+      const value = field.value.trim();
+      if (!value) return;
+      clear(feedback);
+      try {
+        await Bridge.secretSet(key, value);
+        field.value = "";
+        feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+        await reload();
+      } catch (err) {
+        feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      }
+    });
+
+    clearBtn.addEventListener("click", async () => {
+      clear(feedback);
+      try {
+        await Bridge.secretClear(key);
+        feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+        await reload();
+      } catch (err) {
+        feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      }
+    });
+
+    out.push(
+      h("div", { class: "prow" }, h("label", { text: "Key" }),
+        h("div", { class: "ctl" }, field, saveBtn, clearBtn)),
+    );
+  } else {
+    out.push(h("div", { class: "hint", text: "This engine runs locally and needs no key." }));
   }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
+
+  // ── Default ──────────────────────────────────────────────────────────────────
+  if (p.isCustom) {
+    out.push(...customFields());
+  }
+  const makeDefault = h("button", {
+    class: "primary",
+    text: settings.chatProvider === p.id ? "This is the default" : "Set as default",
+    disabled: settings.chatProvider === p.id,
+  }) as HTMLButtonElement;
+  if (settings.chatProvider !== p.id) {
+    makeDefault.addEventListener("click", () => {
+      settings.chatProvider = p.id;
+      void save();
+      void reload();
+    });
+  }
+  out.push(h("div", { class: "prow" }, h("label", { text: "Default" }),
+    h("div", { class: "ctl" }, makeDefault)));
+  return out;
+}
+
+/** The custom gateway: endpoint, dialect and model, since none come from a catalog. */
+function customFields(): HTMLElement[] {
+  const url = h("input", {
+    value: settings.customBaseUrl,
+    placeholder: "https://gateway.example.com/v1",
+    style: "flex:1 1 auto;min-width:0",
+    spellcheck: "false",
+    autocomplete: "off",
+  }) as HTMLInputElement;
+  url.addEventListener("change", () => {
+    settings.customBaseUrl = url.value.trim();
     void save();
   });
 
-  clearBtn.style.display = hasKey ? "" : "none";
+  const dialect = h("select", {}) as HTMLSelectElement;
+  dialect.append(h("option", { value: "openAI", text: "OpenAI compatible" }));
+  dialect.append(h("option", { value: "anthropic", text: "Anthropic Messages" }));
+  dialect.value = settings.customDialect;
+  dialect.addEventListener("change", () => {
+    settings.customDialect = dialect.value as "openAI" | "anthropic";
+    void save();
+  });
 
-  return h(
-    "section",
-    {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
-    state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
-    feedback,
-  );
+  const model = h("input", {
+    value: settings.customModel,
+    placeholder: "model id",
+    style: "flex:1 1 auto;min-width:0",
+    spellcheck: "false",
+    autocomplete: "off",
+  }) as HTMLInputElement;
+  model.addEventListener("change", () => {
+    settings.customModel = model.value.trim();
+    void save();
+  });
+
+  return [
+    h("div", { class: "prow" }, h("label", { text: "Base URL" }),
+      h("div", { class: "ctl" }, url)),
+    h("div", { class: "prow" }, h("label", { text: "API shape" }),
+      h("div", { class: "ctl" }, dialect)),
+    h("div", { class: "prow" }, h("label", { text: "Model id" }),
+      h("div", { class: "ctl" }, model)),
+  ];
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -429,7 +628,8 @@ async function main() {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  // Provider keys report their own presence through chat_providers, so this pass only
+  // asks about the integration keys that still have their own fields.
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -442,7 +642,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    chatSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {

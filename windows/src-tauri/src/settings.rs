@@ -16,10 +16,34 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
-    /// Claude model used by the chat. Changeable in the settings window.
-    /// Defaulted explicitly so a settings.json written by an older build still loads.
+    /// Active chat provider id — a `providers::PROVIDERS` entry, or `custom`.
+    /// Defaulted explicitly so a settings.json written before providers existed
+    /// still loads; that is also the migration path for `model` below.
+    #[serde(default = "default_provider")]
+    pub chat_provider: String,
+    /// Per-provider model override. A provider absent from the map uses its
+    /// catalog default, so a new provider works without touching settings.
+    #[serde(default)]
+    pub provider_models: std::collections::HashMap<String, String>,
+    /// The custom gateway: any OpenAI- or Anthropic-compatible endpoint.
+    #[serde(default)]
+    pub custom_base_url: String,
+    #[serde(default = "default_custom_model")]
+    pub custom_model: String,
+    #[serde(default)]
+    pub custom_dialect: crate::providers::Dialect,
+    /// Legacy single-model field, kept so an older settings.json deserializes. Read
+    /// once as the Anthropic model override; superseded by `provider_models`.
     #[serde(default = "default_model")]
     pub model: String,
+}
+
+fn default_provider() -> String {
+    "anthropic".to_string()
+}
+
+fn default_custom_model() -> String {
+    "gpt-4o-mini".to_string()
 }
 
 fn default_model() -> String {
@@ -42,6 +66,11 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
+            chat_provider: default_provider(),
+            provider_models: std::collections::HashMap::new(),
+            custom_base_url: String::new(),
+            custom_model: default_custom_model(),
+            custom_dialect: crate::providers::Dialect::OpenAI,
             model: default_model(),
         }
     }

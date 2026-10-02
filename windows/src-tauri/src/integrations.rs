@@ -9,7 +9,7 @@
 // request goes anywhere the user has not configured.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::time::Duration;
 
 use serde::Serialize;
@@ -75,7 +75,7 @@ pub fn start(app: AppHandle) {
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
-            let settings = shared.settings.lock().unwrap();
+            let settings = shared.settings.lock();
             settings.active_integrations.iter().any(|x| x == id)
         })
         .unwrap_or(false)
@@ -126,7 +126,7 @@ static SEEN: std::sync::LazyLock<Seen> =
 /// Returns true the first time a given id is seen (and false on the very first
 /// load, which only fills the card).
 fn is_new(key: &'static str, id: &str) -> bool {
-    let mut map = SEEN.0.lock().unwrap();
+    let mut map = SEEN.0.lock();
     match map.insert(key, id.to_string()) {
         Some(previous) => previous != id,
         None => false, // first poll: populate silently, like the Swift pollers
