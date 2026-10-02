@@ -32,6 +32,27 @@ struct SettingsView: View {
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
 
+    #if !APPSTORE
+    @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
+    @State private var showGeminiDiff: Bool = false
+    @State private var pendingGeminiJSON: String = ""
+    @State private var geminiPendingInstall: Bool = true
+
+    @State private var agyHooksInstalled: Bool = HookServer.agyHooksInstalled()
+    @State private var showAgyDiff: Bool = false
+    @State private var pendingAgyJSON: String = ""
+    @State private var agyPendingInstall: Bool = true
+
+    @State private var codexHooksInstalled: Bool = HookServer.codexHooksInstalled()
+    @State private var showCodexDiff: Bool = false
+    @State private var pendingCodexJSON: String = ""
+    @State private var codexPendingInstall: Bool = true
+    #endif
+
+    // Multi-provider chat keys
+    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
     @State private var resendFrom: String   = KeychainStore.shared.get("resend-from")     ?? ""
@@ -107,6 +128,41 @@ struct SettingsView: View {
                     .padding(6)
                 }
 
+                GroupBox("Chat — other providers") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
+                            Text("Google AI").font(.system(size: 12, weight: .semibold))
+                        }
+                        SecureField("API key (AI Studio)", text: $googleKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Save") {
+                            KeychainStore.shared.set("google-api-key", value: googleKey)
+                            statusMessage = "✓ Google key saved."
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Divider()
+
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
+                            Text("OpenAI").font(.system(size: 12, weight: .semibold))
+                        }
+                        SecureField("API key (sk-…)", text: $openAIKey)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Save") {
+                            KeychainStore.shared.set("openai-api-key", value: openAIKey)
+                            statusMessage = "✓ OpenAI key saved."
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 // MARK: Hooks
                 GroupBox("Claude Code Hooks") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -168,6 +224,108 @@ struct SettingsView: View {
                     }
                     .padding(6)
                 }
+
+                // MARK: Gemini CLI Hooks / Antigravity Hooks
+                #if !APPSTORE
+                GroupBox("Gemini CLI Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(geminiHooksInstalled
+                             ? "Hooks installed — restart Gemini CLI to activate"
+                             : "~/.gemini/settings.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerGeminiPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerGeminiPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showGeminiDiff {
+                            ScrollView {
+                                Text(pendingGeminiJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmGeminiOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+
+                GroupBox("Antigravity Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(agyHooksInstalled
+                             ? "Hooks installed — restart Antigravity to activate"
+                             : "~/.gemini/config/hooks.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerAgyPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerAgyPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showAgyDiff {
+                            ScrollView {
+                                Text(pendingAgyJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmAgyOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+
+                GroupBox("Codex Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(codexHooksInstalled
+                             ? "Hooks installed — open Codex and run /hooks or open Hooks in the app's settings to trust them"
+                             : "~/.codex/hooks.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerCodexPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerCodexPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showCodexDiff {
+                            ScrollView {
+                                Text(pendingCodexJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmCodexOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+                #endif
 
                 // MARK: Integrations
                 GroupBox("Integrations") {
@@ -308,40 +466,36 @@ struct SettingsView: View {
                 // MARK: Active pills
                 GroupBox("Active pills") {
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("VS Code")
-                                .font(.system(size: 12, weight: .semibold))
-                            Circle().fill(Color(hex: "#F5F6F8")).frame(width: 8, height: 8)
-                            Spacer()
-                            Text("Always active")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Divider()
+                        Text("Choose the tools you use. Coucou only shows what you declare here.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
 
                         Text("\(state.activeIntegrations.count)/4 slots used")
                             .font(.system(size: 11))
                             .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
-                        ForEach(AgentTask.toggleableIntegrationIds, id: \.self) { id in
-                            let task = AgentTask.integrationAgents.first { $0.id == id }!
-                            let isOn = state.activeIntegrations.contains(id)
-                            let atMax = state.activeIntegrations.count >= 4 && !isOn
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(Color(hex: task.color))
-                                    .frame(width: 10, height: 10)
-                                Text(task.name)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(atMax ? .secondary : .primary)
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { isOn },
-                                    set: { _ in state.toggleIntegration(id) }
-                                ))
-                                .labelsHidden()
-                                .disabled(atMax)
+                        Picker("Main", selection: $state.mainPillId) {
+                            ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
+                                Text(def.name).tag(def.id)
+                            }
+                        }
+                        .onChange(of: state.mainPillId) { _, newId in
+                            state.activeIntegrations.remove(newId)  // main pill never in activeIntegrations
+                            state.loadIntegrationTasks()
+                            state.setFocus(newId)
+                        }
+
+                        // All categories — main pill shown with "Main" label instead of toggle
+                        ForEach(PillCategory.allCases, id: \.self) { cat in
+                            let catPills = PillCatalog.available.filter { $0.category == cat }
+                            if !catPills.isEmpty {
+                                Divider()
+                                Text(cat.title)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                ForEach(catPills, id: \.id) { def in
+                                    pillRow(def)
+                                }
                             }
                         }
                     }
@@ -510,6 +664,89 @@ struct SettingsView: View {
         }
     }
 
+    #if !APPSTORE
+    private func triggerGeminiPreview(install: Bool) {
+        do {
+            geminiPendingInstall = install
+            pendingGeminiJSON = try HookServer.shared.previewGeminiHooks(install: install)
+            showGeminiDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmGeminiOp() {
+        do {
+            try HookServer.shared.writeGeminiHooks()
+            showGeminiDiff = false
+            pendingGeminiJSON = ""
+            geminiHooksInstalled = geminiPendingInstall
+            statusMessage = geminiPendingInstall
+                ? "✓ Gemini CLI hooks installed in ~/.gemini/settings.json"
+                : "✓ Gemini CLI hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerAgyPreview(install: Bool) {
+        do {
+            agyPendingInstall = install
+            pendingAgyJSON = try HookServer.shared.previewAgyHooks(install: install)
+            showAgyDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmAgyOp() {
+        do {
+            try HookServer.shared.writeAgyHooks()
+            showAgyDiff = false
+            pendingAgyJSON = ""
+            agyHooksInstalled = agyPendingInstall
+            statusMessage = agyPendingInstall
+                ? "✓ Antigravity hooks installed in ~/.gemini/config/hooks.json"
+                : "✓ Antigravity hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerCodexPreview(install: Bool) {
+        do {
+            codexPendingInstall = install
+            pendingCodexJSON = try HookServer.shared.previewCodexHooks(install: install)
+            showCodexDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmCodexOp() {
+        do {
+            try HookServer.shared.writeCodexHooks()
+            showCodexDiff = false
+            pendingCodexJSON = ""
+            codexHooksInstalled = codexPendingInstall
+            statusMessage = codexPendingInstall
+                ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
+                : "✓ Codex hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+    #endif
+
     private func saveIntegrations() {
         saveKey("resend-api-key",  value: resendKey)
         saveKey("resend-from",     value: resendFrom)
@@ -599,6 +836,55 @@ struct SettingsView: View {
                 if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
             }
         }.resume()
+    }
+
+    @ViewBuilder
+    private func pillRow(_ def: PillDefinition) -> some View {
+        let isMain = def.id == state.mainPillId
+        let isOn   = state.activeIntegrations.contains(def.id)
+        let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
+        // Status hint: shown in 11pt gray before the toggle (not shown for main pill)
+        let hint: String? = {
+            if isMain { return nil }
+            if def.comingSoon { return "Coming soon" }
+            #if !APPSTORE
+            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
+            if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
+            if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
+            #endif
+            if def.category == .ai {
+                let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
+                           : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
+                if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
+            }
+            return nil
+        }()
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(hex: def.color))
+                .frame(width: 10, height: 10)
+            Text(def.name)
+                .font(.system(size: 12))
+                .foregroundColor(atMax ? .secondary : .primary)
+            Spacer()
+            if isMain {
+                Text("Main")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            } else {
+                if let h = hint {
+                    Text(h)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                Toggle("", isOn: Binding(
+                    get: { isOn },
+                    set: { _ in state.toggleIntegration(def.id) }
+                ))
+                .labelsHidden()
+                .disabled(atMax)
+            }
+        }
     }
 }
 

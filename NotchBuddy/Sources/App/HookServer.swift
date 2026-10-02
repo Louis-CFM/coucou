@@ -1,6 +1,8 @@
 import Foundation
 import Darwin
 import AppKit
+import SwiftUI
+import CryptoKit
 
 // MARK: - HookServer
 // Listens on a Unix domain socket for events from nb-hook (Claude Code hooks).
@@ -36,10 +38,57 @@ final class HookServer: @unchecked Sendable {
     private var serverFD: Int32 = -1
     private let connectionLock = NSLock()
     private var connectionCount = 0
-    private var pendingApprovalFD: Int32 = -1   // held open while user decides
-    private var activeSessionId: String? = nil  // current Claude Code session
+    private var pendingApprovalFD: Int32 = -1         // held open while user decides
+    private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
+    private var activeSessionId: String? = nil        // current Claude Code session
+    private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
 
     private init() {}
+
+    // MARK: - Approval fd helpers
+
+    @MainActor
+    private func cancelApprovalFDSource() {
+        approvalFDSource?.cancel()
+        approvalFDSource = nil
+    }
+
+    /// Cancels the approval fd source (which closes the fd via its cancel handler), shows a
+    /// 3-second note, clears approval state, then collapses the island.
+    @MainActor
+    private func dismissApprovalCard(note: String) {
+        // cancelApprovalFDSource() triggers the cancel handler which closes the fd.
+        // Never close the fd here directly — Apple requires it to happen in the cancel handler.
+        cancelApprovalFDSource()
+        pendingApprovalFD = -1
+        let state = AppState.shared
+        let pillId = state.pendingApproval?.pillId ?? "integration_claude"
+        state.pendingApproval = nil
+        state.isPinned = false
+        state.updateTask(id: pillId, state: .working)
+        clearPillBadge(id: pillId)
+        // Restore focus to the pill that was focused before the approval card appeared.
+        if let prev = focusBeforeApproval {
+            focusBeforeApproval = nil
+            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
+        state.noteMessage = note
+        state.view = .note
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        }
+    }
+
+    /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
+    /// Same computation used in processPermissionRequest and processEvent to match PostToolUse.
+    private static func approvalInputKey(_ input: [String: Any]) -> String {
+        guard !input.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: input, options: .sortedKeys),
+              let str = String(data: data, encoding: .utf8) else { return "" }
+        return str
+    }
 
     // MARK: - Start
 
@@ -160,43 +209,103 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processEvent(name: String, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
-        // Absent or invalid → Claude Code pill (integration_claude); no change in behaviour.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let validAgent = Self.validateAgent(rawAgent)
-        let agentId = validAgent.map { "agent_\($0)" } ?? "integration_claude"
-        let isExternalAgent = validAgent != nil
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        // External agents bypass the VS Code filter (their relay runs in any terminal).
-        guard isExternalAgent || isVSCode else {
+
+        // Cursor identified solely by its stable Electron bundle ID.
+        // ToDesktop builds other apps too — do not match on "todesktop" alone.
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+
+        // Routing:
+        // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
+        // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
+        // • Cursor bundle ID → agent_cursor
+        // • VS Code → integration_claude
+        #if !APPSTORE
+        let isCodexEvent = rawAgent == "codex"
+        #else
+        let isCodexEvent = false
+        #endif
+        let agentId: String
+        let isExternalAgent: Bool
+        if isCodexEvent {
+            agentId = "agent_codex"
+            isExternalAgent = false
+        } else if let agent = validAgent {
+            agentId = "agent_\(agent)"
+            isExternalAgent = true
+        } else if isCursorEditor {
+            agentId = "agent_cursor"
+            isExternalAgent = false
+        } else if isVSCodeEditor {
+            agentId = "integration_claude"
+            isExternalAgent = false
+        } else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
         let focused = state.focusId == agentId
 
+        // While a permission request is pending, dismiss when the resolving event arrives,
+        // then continue normal processing. Only skip normal processing when unresolved.
+        if let pending = state.pendingApproval, agentId == pending.pillId {
+            let handledNote: String
+            switch pending.pillId {
+            case "agent_cursor": handledNote = "Handled in Cursor."
+            case "agent_codex":  handledNote = "Handled in Codex."
+            default:             handledNote = "Handled in VS Code."
+            }
+            var resolved = false
+            switch name {
+            case "PostToolUse", "PostToolUseFailure":
+                // Only dismiss when this exact tool call finished — same session, tool and input.
+                // Other parallel tools finishing must not close the card.
+                if sessionId == pending.sessionId,
+                   (payload["tool_name"] as? String ?? "") == pending.tool,
+                   Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:]) == pending.inputKey {
+                    dismissApprovalCard(note: handledNote)
+                    resolved = true
+                }
+            case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt":
+                // Turn ended or session interrupted — the permission is moot.
+                if sessionId == pending.sessionId {
+                    dismissApprovalCard(note: handledNote)
+                    resolved = true
+                }
+            default: break
+            }
+            if !resolved { return }
+            // Approval dismissed — fall through so the resolving event updates state normally.
+        }
+
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
@@ -205,7 +314,7 @@ final class HookServer: @unchecked Sendable {
 
         case "PreToolUse":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
@@ -246,7 +355,7 @@ final class HookServer: @unchecked Sendable {
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
-                    state.updateTask(id: agentId, state: .idle)
+                    AppState.shared.updateTask(id: agentId, state: .idle)
                     self.clearPillBadge(id: agentId)
                 }
             }
@@ -260,14 +369,15 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .error)
             }
 
+        case "Interrupt":
+            // Codex: user stopped the turn
+            activeSessionId = nil
+            state.updateTask(id: agentId, state: .idle)
+            clearPillBadge(id: agentId)
+
         case "SessionEnd":
             activeSessionId = nil
-            if isExternalAgent {
-                state.removeTask(id: agentId)
-            } else {
-                state.updateTask(id: agentId, state: .idle)
-                clearSession()
-            }
+            state.removeTask(id: agentId)
 
         case "SubagentStart":
             appendStep(id: agentId, step: "+ subagent")
@@ -326,8 +436,12 @@ final class HookServer: @unchecked Sendable {
         default: isAlert = false
         }
         if state.mode == .expanded {
-            // Only force-switch view for alerts — leave user on their current view otherwise
-            if isAlert { state.view = view }
+            // Approval always wins; other alerts are blocked while a card is showing
+            if view == .approval {
+                state.view = view
+            } else if isAlert && state.pendingApproval == nil {
+                state.view = view
+            }
         } else if isAlert {
             // Alerts always force-expand
             NotificationCenter.default.post(name: .hookExpand, object: view)
@@ -343,17 +457,30 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
-        // External agents (coucou_agent) do not yet get an approval card — answering
-        // would show a card that looks like a Claude Code request. Reply immediately
-        // with no decision so the relay writes nothing and the agent re-asks in its
-        // terminal. Approval support for other agents will come with Codex support.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
-        if Self.validateAgent(rawAgent) != nil {
+        let termProgram = payload["term_program"] as? String ?? ""
+        let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+
+        // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
+        // Other external agents (any other coucou_agent) answer immediately with "ask"
+        // so the agent re-asks in its own terminal — they do not get a notch card.
+        #if !APPSTORE
+        let isCodexRequest = rawAgent == "codex"
+        #else
+        let isCodexRequest = false
+        #endif
+        if !isCodexRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -361,11 +488,16 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let termProgram = payload["term_program"] as? String ?? ""
-        let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        // Determine which workspace pill owns the request.
+        let pillId: String
+        if isCodexRequest {
+            pillId = "agent_codex"
+        } else if isCursorEditor {
+            pillId = "agent_cursor"
+        } else {
+            pillId = "integration_claude"
+        }
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -374,38 +506,69 @@ final class HookServer: @unchecked Sendable {
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
-        var command = tool
-        if let input = payload["tool_input"] as? [String: Any] {
-            command = input["command"] as? String ?? tool
-        }
-        nbLog("PermissionRequest \(tool)")
+        let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
+        var command = toolInput["command"] as? String ?? tool
+        let inputKey = Self.approvalInputKey(toolInput)
+        nbLog("PermissionRequest \(tool) [\(pillId)]")
 
         if pendingApprovalFD >= 0 {
+            // Displace the previous request: write "ask" then cancel its source.
+            // The cancel handler closes the old fd — never close it directly.
             let old = pendingApprovalFD
+            let oldSource = approvalFDSource
+            approvalFDSource = nil
             Task.detached { [weak self] in
                 // "ask" → nb-hook outputs nothing → Claude Code re-asks
                 self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                close(old)
+                DispatchQueue.main.async { oldSource?.cancel() }
             }
         }
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertTask(projectName: projectName, cwd: cwd)
-        state.updateTask(id: "integration_claude", state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        state.updateTask(id: pillId, state: .approval)
+        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
+                                              command: command, inputKey: inputKey, pillId: pillId)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
-        // Approval always forces the island open — user must be able to respond
-        state.focusId = "integration_claude"
+        // Approval always forces the island open — user must be able to respond.
+        // Save current focus so we can restore it when the card is dismissed.
+        if focusBeforeApproval == nil { focusBeforeApproval = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
         expandIfNeeded(to: .approval)
 
+        // Monitor fd: if the editor closes the connection (handled externally), dismiss the card.
+        // The cancel handler closes the fd — never close it anywhere else.
+        let capturedPillId = pillId
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.pendingApprovalFD == fd else { return }
+            let note: String
+            switch capturedPillId {
+            case "agent_cursor": note = "Handled in Cursor."
+            case "agent_codex":  note = "Handled in Codex."
+            default:             note = "Handled in VS Code."
+            }
+            self.dismissApprovalCard(note: note)
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        approvalFDSource = source
+
+        // 115s safety timeout — show a note and cancel without sending a decision.
+        // nb-hook reads EOF from the cancel handler's close and exits; Claude Code / Codex re-asks.
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
             guard let self, self.pendingApprovalFD == captured else { return }
-            // "ask" → nb-hook outputs nothing → Claude Code re-asks rather than denying
-            self.sendApprovalDecision("ask")
+            let note: String
+            switch capturedPillId {
+            case "agent_cursor": note = "Still waiting in Cursor."
+            case "agent_codex":  note = "Still waiting in Codex."
+            default:             note = "Still waiting in VS Code."
+            }
+            self.dismissApprovalCard(note: note)
         }
     }
 
@@ -414,6 +577,10 @@ final class HookServer: @unchecked Sendable {
     func sendApprovalDecision(_ decision: String) {
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
+        // Capture source before nulling — we send the decision first, then cancel the source.
+        // The cancel handler closes the fd; never close it directly.
+        let source = approvalFDSource
+        approvalFDSource = nil
 
         let json: String
         switch decision {
@@ -425,26 +592,54 @@ final class HookServer: @unchecked Sendable {
 
         if fd >= 0 {
             Task.detached { [weak self] in
+                // Write decision while fd is still valid, then cancel source → cancel handler closes fd
                 self?.sendLine(fd: fd, text: json)
-                close(fd)
+                DispatchQueue.main.async { source?.cancel() }
             }
+        } else {
+            source?.cancel()
         }
 
         let state = AppState.shared
+        let pillId = state.pendingApproval?.pillId ?? "integration_claude"
         state.pendingApproval = nil
         state.isPinned = false
-        state.updateTask(id: "integration_claude", state: .working)
-        clearPillBadge(id: "integration_claude")
+        state.updateTask(id: pillId, state: .working)
+        clearPillBadge(id: pillId)
+        // Restore focus to the pill that was focused before the approval card appeared.
+        if let prev = focusBeforeApproval {
+            focusBeforeApproval = nil
+            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
         state.view = state.tasks.isEmpty ? .empty : .overview
     }
 
-    /// Updates integration_claude with the current session project name and cwd.
+    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
+    /// If the task already exists (persistent), just updates name/cwd.
+    /// If missing (transient), creates it and inserts after the main pill.
     @MainActor
-    private func upsertTask(projectName: String, cwd: String = "") {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "") {
         let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].name = projectName
-        if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+        if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
+            state.tasks[idx].name = projectName
+            if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            return
+        }
+        // Transient: create and insert after the main pill
+        let def = PillCatalog.definition(for: id)
+        let color = def?.color ?? "#C0C4CC"
+        let source = def?.source ?? .agent
+        let task = AgentTask(id: id, name: projectName, color: color,
+                             state: .idle, steps: [], source: source, isIntegration: true)
+        if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
+            state.tasks.insert(task, at: mainIdx + 1)
+        } else {
+            state.tasks.insert(task, at: 0)
+        }
+        if state.focusId == nil { state.focusId = id }
+        state.syncMode()
     }
 
     // MARK: - Badge helpers
@@ -460,17 +655,6 @@ final class HookServer: @unchecked Sendable {
     private func clearPillBadge(id: String) {
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].pillBadge = nil
-    }
-
-    /// Resets integration_claude to idle, clears steps and project name.
-    @MainActor
-    private func clearSession() {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].steps = []
-        state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
         state.tasks[idx].pillBadge = nil
     }
 
@@ -498,32 +682,83 @@ final class HookServer: @unchecked Sendable {
 
     private func frenchStep(tool: String, input: [String: Any]) -> String {
         let labels: [String: String] = [
-            "Bash":       "Exécute",
-            "Read":       "Lit",
-            "Write":      "Écrit",
-            "Edit":       "Modifie",
-            "Glob":       "Cherche",
-            "Grep":       "Recherche",
-            "WebSearch":  "Recherche web",
-            "WebFetch":   "Récupère",
-            "TodoWrite":  "Tâches",
-            "Task":       "Agent",
-            "LS":         "Liste",
-            "MultiEdit":  "Modifie",
+            "Bash":        "Exécute",
+            "Read":        "Lit",
+            "Write":       "Écrit",
+            "Edit":        "Modifie",
+            "Glob":        "Cherche",
+            "Grep":        "Recherche",
+            "WebSearch":   "Recherche web",
+            "WebFetch":    "Récupère",
+            "TodoWrite":   "Tâches",
+            "Task":        "Agent",
+            "LS":          "Liste",
+            "MultiEdit":   "Modifie",
             "NotebookEdit": "Notebook",
+            // Codex tools
+            "apply_patch": "Modifie",
+            "update_plan": "Tâches",
+            "spawn_agent": "Agent",
         ]
-        let label = labels[tool] ?? tool
+        var label = labels[tool] ?? tool
+
+        // Codex MCP tools arrive as mcp__server__tool — show "server · tool"
+        if tool.hasPrefix("mcp__") {
+            let rest = String(tool.dropFirst(5))
+            let parts = rest.components(separatedBy: "__")
+            label = parts.count >= 2 ? "\(parts[0]) · \(parts.dropFirst().joined(separator: "__"))" : rest
+        }
+
+        // Bash: infer a more precise verb from the command
+        if tool == "Bash", let cmd = input["command"] as? String {
+            return "\(bashVerb(cmd)) · \(oneLine(cmd))"
+        }
+
+        // apply_patch: extract the first file name from the patch
+        if tool == "apply_patch", let patch = input["command"] as? String {
+            for line in patch.split(separator: "\n") {
+                for prefix in ["*** Update File: ", "*** Add File: ", "*** Delete File: "] {
+                    if line.hasPrefix(prefix) {
+                        let path = String(line.dropFirst(prefix.count))
+                        return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
+                    }
+                }
+            }
+            return label
+        }
+
         if let cmd = input["command"] as? String {
-            let short = String(cmd.prefix(40))
-            return "\(label) · \(short)"
+            return "\(label) · \(oneLine(cmd))"
         } else if let path = input["path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
         } else if let file = input["file_path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: file).lastPathComponent)"
         } else if let query = input["query"] as? String {
-            return "\(label) · \(String(query.prefix(40)))"
+            return "\(label) · \(oneLine(query))"
         }
         return label
+    }
+
+    /// Infers a French verb from a shell command's first word.
+    private func bashVerb(_ command: String) -> String {
+        let first = command.split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? ""
+        switch first {
+        case "cat", "bat", "head", "tail", "less", "more", "nl": return "Lit"
+        case "rg", "grep", "find", "fd", "ls", "tree", "wc":    return "Cherche"
+        default: break
+        }
+        let testRunners = ["pytest", "vitest", "jest", "npm test", "npm run test",
+                           "cargo test", "go test", "swift test", "make test",
+                           "xcodebuild test", "unittest"]
+        if testRunners.contains(where: { command.contains($0) }) { return "Teste" }
+        return "Exécute"
+    }
+
+    /// Collapses whitespace so a multi-line command stays one ticker row.
+    private func oneLine(_ text: String, limit: Int = 60) -> String {
+        let collapsed = text.split(whereSeparator: { $0.isNewline || $0 == "\t" })
+                            .joined(separator: " ")
+        return collapsed.count > limit ? String(collapsed.prefix(limit)) + "…" : collapsed
     }
 
     // MARK: - Logging
@@ -764,6 +999,406 @@ final class HookServer: @unchecked Sendable {
         return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
     }
     #endif
+
+    // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
+
+    #if !APPSTORE
+    private static var geminiSettingsURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/settings.json")
+    }
+    private static var agyHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/config/hooks.json")
+    }
+
+    // MARK: Installed-state detection
+
+    static func geminiHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: geminiSettingsURL),
+              let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let hooks = settings["hooks"] as? [String: Any] else { return false }
+        for value in hooks.values {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                if let innerHooks = group["hooks"] as? [[String: Any]] {
+                    for hook in innerHooks {
+                        if let cmd = hook["command"] as? String,
+                           cmd.contains("nb-hook"), cmd.contains("--agent gemini") { return true }
+                    }
+                }
+                // Legacy flat entry
+                if let cmd = group["command"] as? String,
+                   cmd.contains("nb-hook"), cmd.contains("--agent gemini") { return true }
+            }
+        }
+        return false
+    }
+
+    static func agyHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: agyHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let coucou = root["coucou"] else { return false }
+        let json = (try? JSONSerialization.data(withJSONObject: coucou))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        return json.contains("nb-hook")
+    }
+
+    // MARK: Gemini CLI – preview / write
+
+    private var _pendingGeminiData: Data?
+    private var _pendingGeminiFingerprint: String?
+
+    func previewGeminiHooks(install: Bool) throws -> String {
+        let url = Self.geminiSettingsURL
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        if !install && !exists {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Gemini CLI hooks to remove."
+            ])
+        }
+        let current = exists ? try Data(contentsOf: url) : Data()
+        _pendingGeminiFingerprint = sha256Hex(current)
+        let newData = install ? try buildGeminiHooksData() : try withoutGeminiHooks()
+        _pendingGeminiData = newData
+        return String(data: newData, encoding: .utf8) ?? ""
+    }
+
+    func writeGeminiHooks() throws {
+        guard let data = _pendingGeminiData, let fp = _pendingGeminiFingerprint else { return }
+        let url = Self.geminiSettingsURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/settings.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "settings.json")
+        _pendingGeminiData = nil
+        _pendingGeminiFingerprint = nil
+    }
+
+    private func buildGeminiHooksData() throws -> Data {
+        var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
+                                                     label: "~/.gemini/settings.json")
+        if let raw = settings["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        let base = hookBase()
+        // (Gemini event key, normalized event name passed via argv, timeout in ms)
+        let events: [(String, String, Int)] = [
+            ("SessionStart", "SessionStart", 10000),
+            ("SessionEnd",   "SessionEnd",   10000),
+            ("BeforeTool",   "PreToolUse",   5000),
+            ("AfterTool",    "PostToolUse",  5000),
+            ("BeforeAgent",  "UserPromptSubmit", 5000),
+            ("AfterAgent",   "Stop",         5000),
+        ]
+        var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        for (geminiEvent, normalizedEvent, timeout) in events {
+            if let raw = hooks[geminiEvent], !(raw is [[String: Any]]) {
+                throw NSError(domain: "Coucou", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\"[\"\(geminiEvent)\"] has an unexpected type — Coucou has not touched it."
+                ])
+            }
+            var groups = hooks[geminiEvent] as? [[String: Any]] ?? []
+            // Remove legacy flat entries and groups whose inner hooks contain nb-hook
+            groups = removeNbHookEntries(from: groups)
+            let hookEntry: [String: Any] = [
+                "type": "command",
+                "command": "\(base) --agent gemini \(normalizedEvent)",
+                "timeout": timeout,
+            ]
+            groups.append(["matcher": "*", "hooks": [hookEntry]])
+            hooks[geminiEvent] = groups
+        }
+        settings["hooks"] = hooks
+        return try JSONSerialization.data(withJSONObject: settings,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    private func withoutGeminiHooks() throws -> Data {
+        var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
+                                                     label: "~/.gemini/settings.json")
+        if let raw = settings["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        if var hooks = settings["hooks"] as? [String: Any] {
+            for key in hooks.keys {
+                if let groups = hooks[key] as? [[String: Any]] {
+                    let cleaned = removeNbHookEntries(from: groups)
+                    if cleaned.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = cleaned }
+                }
+            }
+            if hooks.isEmpty { settings.removeValue(forKey: "hooks") } else { settings["hooks"] = hooks }
+        }
+        return try JSONSerialization.data(withJSONObject: settings,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    // MARK: Antigravity – preview / write
+
+    private var _pendingAgyData: Data?
+    private var _pendingAgyFingerprint: String?
+
+    func previewAgyHooks(install: Bool) throws -> String {
+        let url = Self.agyHooksURL
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        if !install && !exists {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Antigravity hooks to remove."
+            ])
+        }
+        let current = exists ? try Data(contentsOf: url) : Data()
+        _pendingAgyFingerprint = sha256Hex(current)
+        let newData = install ? try buildAgyHooksData() : try withoutAgyHooks()
+        _pendingAgyData = newData
+        return String(data: newData, encoding: .utf8) ?? ""
+    }
+
+    func writeAgyHooks() throws {
+        guard let data = _pendingAgyData, let fp = _pendingAgyFingerprint else { return }
+        let url = Self.agyHooksURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        _pendingAgyData = nil
+        _pendingAgyFingerprint = nil
+    }
+
+    private func buildAgyHooksData() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.agyHooksURL,
+                                                 label: "~/.gemini/config/hooks.json")
+        let base = hookBase()
+        // PreToolUse / PostToolUse: tool-level hooks — use matcher group
+        // PreInvocation / PostInvocation / Stop: lifecycle hooks — direct handler, no matcher
+        var coucou: [String: Any] = [:]
+        for event in ["PreToolUse", "PostToolUse"] {
+            let hook: [String: Any] = ["type": "command",
+                                       "command": "\(base) --agent antigravity \(event)",
+                                       "timeout": 10]
+            coucou[event] = [["matcher": "*", "hooks": [hook]]]
+        }
+        for event in ["PreInvocation", "PostInvocation", "Stop"] {
+            let hook: [String: Any] = ["type": "command",
+                                       "command": "\(base) --agent antigravity \(event)",
+                                       "timeout": 10]
+            coucou[event] = [hook]
+        }
+        root["coucou"] = coucou
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    private func withoutAgyHooks() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.agyHooksURL,
+                                                 label: "~/.gemini/config/hooks.json")
+        root.removeValue(forKey: "coucou")
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    // MARK: Shared helpers
+
+    /// /bin/sh "<hookScriptPath>" — quoted for paths containing spaces (Application Support).
+    private func hookBase() -> String {
+        let path = Self.hookScriptPath.replacingOccurrences(of: "\"", with: "\\\"")
+        return "/bin/sh \"\(path)\""
+    }
+
+    /// Reads a JSON object from url.
+    /// Absent file → empty dict. Present but invalid → throws with a user-facing message.
+    private static func strictReadJSONObject(at url: URL, label: String) throws -> [String: Any] {
+        guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
+        let data: Data
+        do { data = try Data(contentsOf: url) }
+        catch {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "\(label) cannot be read — Coucou has not touched it."
+            ])
+        }
+        guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "\(label) is not valid JSON — Coucou has not touched it."
+            ])
+        }
+        return obj
+    }
+
+    /// Backs up the existing file (throws on failure), creates parent dirs, then atomically writes.
+    private func writeJSONFile(_ data: Data, to url: URL, suffix: String) throws {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: url.path) {
+            let fmt = DateFormatter()
+            fmt.locale = Locale(identifier: "en_US_POSIX")
+            fmt.dateFormat = "yyyyMMdd-HHmmss"
+            let backupURL = url.deletingLastPathComponent()
+                .appendingPathComponent("\(suffix).bak-\(fmt.string(from: Date()))")
+            do { try fm.copyItem(at: url, to: backupURL) }
+            catch {
+                throw NSError(domain: "Coucou", code: 3, userInfo: [
+                    NSLocalizedDescriptionKey: "Could not back up \(url.lastPathComponent): \(error.localizedDescription)"
+                ])
+            }
+        }
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
+
+    /// Removes entries containing "nb-hook" from a Gemini-format groups array.
+    /// Handles both new group format (matcher + hooks[]) and legacy flat format (command at top level).
+    /// Returns the cleaned array; empty groups (after inner-hook removal) are dropped.
+    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
+        groups.compactMap { group -> [String: Any]? in
+            // Legacy flat entry — command at group level
+            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
+            // Group format — filter inner hooks
+            if var innerHooks = group["hooks"] as? [[String: Any]] {
+                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
+                if innerHooks.isEmpty { return nil }
+                var updated = group
+                updated["hooks"] = innerHooks
+                return updated
+            }
+            return group
+        }
+    }
+
+    // MARK: - Codex hook installer  (#if !APPSTORE only)
+
+    static var codexHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
+    }
+
+    /// True when ~/.codex/hooks.json already routes Codex events to Coucou's nb-hook.
+    static func codexHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: codexHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let hooks = root["hooks"] as? [String: Any] else { return false }
+        for value in hooks.values {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                if let innerHooks = group["hooks"] as? [[String: Any]] {
+                    for hook in innerHooks {
+                        if let cmd = hook["command"] as? String,
+                           cmd.contains("nb-hook"), cmd.contains("--agent codex") { return true }
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private var _pendingCodexData: Data?
+    private var _pendingCodexFingerprint: String?
+
+    func previewCodexHooks(install: Bool) throws -> String {
+        let url = Self.codexHooksURL
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        if !install && !exists {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Codex hooks to remove."
+            ])
+        }
+        let current = exists ? try Data(contentsOf: url) : Data()
+        _pendingCodexFingerprint = sha256Hex(current)
+        let newData = install ? try buildCodexHooksData() : try withoutCodexHooks()
+        _pendingCodexData = newData
+        return String(data: newData, encoding: .utf8) ?? ""
+    }
+
+    func writeCodexHooks() throws {
+        guard let data = _pendingCodexData, let fp = _pendingCodexFingerprint else { return }
+        let url = Self.codexHooksURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        _pendingCodexData = nil
+        _pendingCodexFingerprint = nil
+    }
+
+    private func buildCodexHooksData() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        let base = hookBase()
+        // Events, timeouts in seconds (Codex format).
+        // PermissionRequest uses 120s + a statusMessage shown in the Codex UI while waiting.
+        let events: [(String, Int, String?)] = [
+            ("SessionStart",    10,  nil),
+            ("UserPromptSubmit", 10, nil),
+            ("PreToolUse",      10,  nil),
+            ("PermissionRequest", 120, "Waiting for your answer in the notch (Coucou)"),
+            ("PostToolUse",     10,  nil),
+            ("Stop",            10,  nil),
+            ("SubagentStart",   10,  nil),
+            ("SubagentStop",    10,  nil),
+            ("Interrupt",        3,  nil),
+            ("SessionEnd",       3,  nil),
+        ]
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for (event, timeout, statusMsg) in events {
+            if let raw = hooks[event], !(raw is [[String: Any]]) {
+                throw NSError(domain: "Coucou", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                ])
+            }
+            var groups = hooks[event] as? [[String: Any]] ?? []
+            // Remove existing Coucou entries
+            groups = removeNbHookEntries(from: groups)
+            var hookEntry: [String: Any] = [
+                "type": "command",
+                "command": "\(base) --agent codex",
+                "timeout": timeout,
+            ]
+            if let msg = statusMsg { hookEntry["statusMessage"] = msg }
+            groups.append(["hooks": [hookEntry]])
+            hooks[event] = groups
+        }
+        root["hooks"] = hooks
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    private func withoutCodexHooks() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        if var hooks = root["hooks"] as? [String: Any] {
+            for key in hooks.keys {
+                if let groups = hooks[key] as? [[String: Any]] {
+                    let cleaned = removeNbHookEntries(from: groups)
+                    if cleaned.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = cleaned }
+                }
+            }
+            if hooks.isEmpty { root.removeValue(forKey: "hooks") } else { root["hooks"] = hooks }
+        }
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    // MARK: SHA-256 fingerprint
+
+    private func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+    #endif
 }
 
 // MARK: - Notification names for hook server → controller communication
@@ -796,9 +1431,45 @@ exit 0
 
 private let nbHookPythonGitHub = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou hook relay for Claude Code (GitHub version)
+# nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
 # Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
 import sys, json, os, socket
+
+def normalize_event(name):
+    mapping = {
+        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
+        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
+        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
+        'startup': 'SessionStart', 'exit': 'SessionEnd',
+        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
+    }
+    return mapping.get(name, name)
+
+def normalize_tool_fields(payload):
+    if 'tool_name' in payload:
+        return
+    tool = payload.get('toolCall')
+    if not isinstance(tool, dict):
+        tool = {}
+    name = tool.get('name') or payload.get('tool', '')
+    if name:
+        payload['tool_name'] = name
+    if 'tool_input' not in payload and isinstance(tool.get('args'), dict):
+        flat = dict(tool['args'])
+        for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
+                         ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
+            if src in flat:
+                flat[dst] = flat[src]
+        payload['tool_input'] = flat
+    if 'session_id' not in payload:
+        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
+            if payload.get(k):
+                payload['session_id'] = payload[k]
+                break
+        if 'session_id' not in payload:
+            sid = os.environ.get('GEMINI_SESSION_ID', '')
+            if sid:
+                payload['session_id'] = sid
 
 def main():
     try:
@@ -809,15 +1480,23 @@ def main():
     except Exception:
         return
 
-    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
-    # Adds coucou_agent to the payload so the app can route to the right pill.
+    # Parse --agent <name> and optional positional event from argv.
+    # --agent tags the payload with coucou_agent so the app routes to the right pill.
+    # The positional arg is a fallback event name for agents that do not set hook_event_name.
     args = sys.argv[1:]
+    agent = ''
+    arg_event = ''
     i = 0
     while i < len(args):
         if args[i] == '--agent' and i + 1 < len(args):
-            payload.setdefault('coucou_agent', args[i + 1])
-            break
-        i += 1
+            agent = args[i + 1]
+            i += 2
+        else:
+            if not arg_event:
+                arg_event = args[i]
+            i += 1
+    if agent:
+        payload.setdefault('coucou_agent', agent)
 
     # Enrich with terminal context
     env = os.environ
@@ -826,7 +1505,20 @@ def main():
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        payload['cwd'] = os.getcwd()
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
+    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
+    try:
+        raw_event = payload.get('hook_event_name', '') or arg_event
+        if raw_event:
+            payload['hook_event_name'] = normalize_event(raw_event)
+        normalize_tool_fields(payload)
+    except Exception:
+        pass
 
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
@@ -861,10 +1553,16 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and agent != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'always':
+                    # Codex rejects updatedPermissions — answer a plain allow instead
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -873,11 +1571,11 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code re-asks
+                # 'ask' or unknown: fall through → no output → agent re-asks
         except Exception:
             pass
         # App unreachable, timed out, or no explicit decision — print nothing
-        # Claude Code will handle the absence of output (re-ask or default behaviour)
+        # Claude Code / Codex will handle the absence of output (re-ask or default behaviour)
         sys.exit(0)
 
     # All other events: fire-and-forget (0.3s timeout, never blocks)
@@ -888,7 +1586,12 @@ def main():
         s.sendall((json.dumps(payload) + '\\n').encode())
         s.close()
     except Exception:
-        pass  # Always exit cleanly — never block Claude Code
+        pass  # Always exit cleanly — never block the agent
+
+    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
+    if agent in ('gemini', 'antigravity'):
+        sys.stdout.write('{}\\n')
+        sys.stdout.flush()
 
 main()
 sys.exit(0)
@@ -898,9 +1601,45 @@ sys.exit(0)
 
 private let nbHookPythonAppStore = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou (App Store) hook relay for Claude Code
+# nb-hook.py — Coucou (App Store) hook relay for Claude Code and third-party agents
 # Socket lives inside the sandboxed container; script runs outside the sandbox.
 import sys, json, os, socket
+
+def normalize_event(name):
+    mapping = {
+        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
+        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
+        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
+        'startup': 'SessionStart', 'exit': 'SessionEnd',
+        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
+    }
+    return mapping.get(name, name)
+
+def normalize_tool_fields(payload):
+    if 'tool_name' in payload:
+        return
+    tool = payload.get('toolCall')
+    if not isinstance(tool, dict):
+        tool = {}
+    name = tool.get('name') or payload.get('tool', '')
+    if name:
+        payload['tool_name'] = name
+    if 'tool_input' not in payload and isinstance(tool.get('args'), dict):
+        flat = dict(tool['args'])
+        for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
+                         ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
+            if src in flat:
+                flat[dst] = flat[src]
+        payload['tool_input'] = flat
+    if 'session_id' not in payload:
+        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
+            if payload.get(k):
+                payload['session_id'] = payload[k]
+                break
+        if 'session_id' not in payload:
+            sid = os.environ.get('GEMINI_SESSION_ID', '')
+            if sid:
+                payload['session_id'] = sid
 
 def main():
     try:
@@ -911,14 +1650,23 @@ def main():
     except Exception:
         return
 
-    # Parse --agent <name> from argv (passed by the shell wrapper via "$@").
+    # Parse --agent <name> and optional positional event from argv.
+    # --agent tags the payload with coucou_agent so the app routes to the right pill.
+    # The positional arg is a fallback event name for agents that do not set hook_event_name.
     args = sys.argv[1:]
+    agent = ''
+    arg_event = ''
     i = 0
     while i < len(args):
         if args[i] == '--agent' and i + 1 < len(args):
-            payload.setdefault('coucou_agent', args[i + 1])
-            break
-        i += 1
+            agent = args[i + 1]
+            i += 2
+        else:
+            if not arg_event:
+                arg_event = args[i]
+            i += 1
+    if agent:
+        payload.setdefault('coucou_agent', agent)
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
@@ -926,7 +1674,20 @@ def main():
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        payload['cwd'] = os.getcwd()
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
+    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
+    try:
+        raw_event = payload.get('hook_event_name', '') or arg_event
+        if raw_event:
+            payload['hook_event_name'] = normalize_event(raw_event)
+        normalize_tool_fields(payload)
+    except Exception:
+        pass
 
     event = payload.get('hook_event_name', '')
     socket_path = os.path.expanduser(
@@ -961,10 +1722,16 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and agent != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'always':
+                    # Codex rejects updatedPermissions — answer a plain allow instead
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -973,7 +1740,7 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code re-asks
+                # 'ask' or unknown: fall through → no output → agent re-asks
         except Exception:
             pass
         # App unreachable, timed out, or no explicit decision — print nothing
@@ -986,7 +1753,12 @@ def main():
         s.sendall((json.dumps(payload) + '\\n').encode())
         s.close()
     except Exception:
-        pass  # Always exit cleanly — never block Claude Code
+        pass  # Always exit cleanly — never block the agent
+
+    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
+    if agent in ('gemini', 'antigravity'):
+        sys.stdout.write('{}\\n')
+        sys.stdout.flush()
 
 main()
 sys.exit(0)

@@ -16,7 +16,7 @@ claude (terminal, VS Code, app Claude)
                          └─ socket Unix ─► Notch Buddy.app
                          ◄─ décision (pour PermissionRequest)
 ```
-- `nb-hook` : cible séparée dans le projet, copiée dans `~/Library/Application Support/NotchBuddy/bin/nb-hook` au premier lancement.
+- `nb-hook` (script shell) et `nb-hook.py` (relais Python) : écrits par l'app (`HookServer.swift`). Version GitHub : au lancement, dans `~/Library/Application Support/NotchBuddy/`. Version App Store : à l'installation des hooks, dans `~/.claude/coucou/`. Voir `docs/AGENTS.md` pour les autres agents qui utilisent ces scripts.
 - Socket : `~/Library/Application Support/NotchBuddy/nb.sock` (version GitHub) ou `~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock` (version App Store). Dossier en 0700, socket en 0600. Connexions du même utilisateur seulement (vérification `getpeereid`). 1 Mio et 5 s maximum par message, 32 connexions simultanées.
 - `nb-hook [--agent <nom>] <Event>` lit le JSON du hook sur stdin, ajoute le contexte du terminal (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TERM_SESSION_ID`, `__CFBundleIdentifier`, le tty trouvé en remontant les processus parents, `cwd`) et, si `--agent` est fourni, le champ `coucou_agent`, puis l'envoie à l'app.
 - **Si l'app ne répond pas en 300 ms, `nb-hook` sort en code 0 sans rien écrire** : Claude Code continue normalement. Jamais de blocage.
@@ -112,7 +112,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 ## 5. API Claude (recherche)
 
 - `POST https://api.anthropic.com/v1/messages`, en-têtes `x-api-key`, `anthropic-version`, `content-type: application/json` (versions à vérifier dans la doc).
-- Modèle par défaut : `claude-sonnet-4-6`, choisi dans Settings → Anthropic API. La liste est récupérée au chargement des réglages via `GET /v1/models?limit=100` (en-têtes `x-api-key` et `anthropic-version: 2023-06-01`) ; si l'appel échoue ou qu'il n'y a pas de clé, une liste de secours est utilisée (`claude-sonnet-4-6`, `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5-20251001`). Un champ libre permet d'entrer n'importe quel identifiant. Si le modèle sauvegardé n'est pas dans la liste, le sélecteur reste sur « Custom… ».
+- Modèle par défaut : `claude-sonnet-4-6`, choisi dans Settings → Anthropic API **ou depuis la puce de modèle dans la vue `.prompt`**. La liste est récupérée à l'ouverture des réglages via `GET /v1/models?limit=100` (en-têtes `x-api-key` et `anthropic-version: 2023-06-01`) ; si l'appel échoue ou qu'il n'y a pas de clé, une liste de secours est utilisée (`claude-sonnet-4-6`, `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5-20251001`). Un champ libre permet d'entrer n'importe quel identifiant. Si le modèle sauvegardé n'est pas dans la liste, le sélecteur reste sur « Custom… ». Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « sonnet », sinon le premier de la liste.
 - Erreurs de l'API : affiche `error.message` au lieu du JSON brut. Pour un `not_found_error`, affiche « Model not found: \<id\>. Pick another one in Settings. »
 - Outil de recherche web côté serveur de l'API : l'identifiant de type à jour est dans la doc (au moment d'écrire, `web_search_20250305`) ; `max_uses` 5.
 - Prompt système (français) : répondre court, pour un affichage dans le notch, au format JSON strict :
@@ -125,6 +125,19 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 - Boutons du résultat : « Ouvrir » (premier lien, seulement s'il est en http ou https ; sinon le bouton est grisé), « Copier » (texte), « Fermer ».
 - Erreur réseau ou clé invalide : état `error`, vue `note` avec la raison en une phrase et « Ouvre les réglages pour vérifier la clé ».
 - Micro (bouton du champ) : dictée `SFSpeechRecognizer` en `fr-FR`, sur l'appareil si possible. Optionnel (M9). Si la permission est refusée, masquer le bouton.
+
+---
+
+## 5bis. Autres fournisseurs du chat (Google AI, OpenAI)
+
+Clés dans Settings → Chat — other providers (Trousseau : `google-api-key`, `openai-api-key`). La liste des modèles est récupérée à l'ouverture du chat selon le fournisseur :
+
+- **Google AI (Gemini)** : `GET https://generativelanguage.googleapis.com/v1beta/openai/models` (en-tête `Authorization: Bearer <clé>`) — on retire le préfixe `models/`, on filtre les modèles dont l'identifiant contient `embed`, `imagen`, `veo`, `aqa`, `tts`, `audio` ou `live`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « flash », sinon le premier de la liste. Endpoint du chat : `POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
+- **OpenAI** : `GET https://api.openai.com/v1/models` (en-tête `Authorization: Bearer <clé>`) — triés par champ `created` décroissant, on filtre les modèles dont l'identifiant contient `embed`, `tts`, `whisper`, `dall-e`, `audio`, `realtime`, `moderat`, `codex`, `computer-use`, `transcribe`, `image`, `sora`, `babbage`, `davinci` ou `instruct`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « mini », sinon le premier de la liste. Endpoint du chat : `POST https://api.openai.com/v1/chat/completions`.
+
+Ce qui est envoyé au fournisseur lors d'un échange : le texte saisi et la conversation en cours. Si une fenêtre est attachée : nom de l'app, titre et URL. Si un fichier est attaché : son nom seulement (le contenu d'un fichier ne part que chez Anthropic).
+
+Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de pastilles ») pour les pastilles `ai_google` et `ai_openai`.
 
 ---
 

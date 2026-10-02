@@ -75,7 +75,7 @@ rouge `rgba(244,80,94,.55)`, vert `rgba(52,211,153,.5)`, rose `rgba(244,114,182,
 | `uploading` | 150 | sur la barre, Ø 28 | « Envoi de fichier » + %, barre verte, le bonhomme est le curseur de la barre | 10 |
 | `choose` | 170 | 60, 52 | « fichier est prêt. », Poser une question dessus, Envoyer par mail | 11 |
 | `mail` | 210 | 56, 46 | champs À, Objet (+ Message optionnel), Envoyer, Annuler | 12 |
-| `prompt` | 156 | 52, 44 | pastille de contexte + champ + micro + envoyer | 13 |
+| `prompt` | 156 | 52, 44 | pastille de contexte + puce de modèle (clic → sélecteur fournisseur/modèle) + champ + micro + envoyer | 13 |
 | `searching` | 156 | 52, 44 | contexte + texte scintillant « Claude lit la page et cherche sur le web… » | 14 |
 | `result` | 262 (s'adapte au contenu, max 320) | 52, 44 | titre, 3 lignes de résultat, boutons | 15 |
 | `note` | 136 | 60, 50 | message court (mail envoyé, copié, j'ouvre n8n…), se ferme seul après 2 s | — |
@@ -90,6 +90,28 @@ Centre vertical du bonhomme : 36 + (hauteur − 46) / 2, sauf `result` (y = 86).
 
 ### Pastilles (overview)
 - 132 × 34, rayon 17, fond couleur de l'agent à 13 %, bord à 32 %, mini-bonhomme Ø 24 centré à 17 pt du bord gauche, libellé 12 pt couleur de l'agent éclaircie de 25 %. Deux colonnes, écart 8, centrées verticalement dans la carte droite (qui commence à x = 342).
+
+### Catalogue de pastilles
+Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source de vérité unique). Quatre catégories :
+
+| Catégorie | Titre | Pastilles | Subtitle (repos) | Subtitle (session) |
+|---|---|---|---|---|
+| `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
+| `agent` | Agents | Gemini CLI *(GitHub only)* | Agent | Agent |
+| `ai` | AI for the chat | Anthropic, Google AI, OpenAI | Chat | — |
+| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe | Integration | — |
+
+Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, pastilles IA = `ChatProvider.accentHex`.
+
+Règles :
+- **`mainPillId`** (défaut `integration_claude`) est la pastille workspace toujours chargée. Elle ne compte pas dans les 4 places. Modifiable via le sélecteur Main dans Settings.
+- Quand `mainPillId != "integration_claude"`, la pastille VS Code est chargée seulement si une session VS Code est active (transient) ou si elle est cochée dans `activeIntegrations`.
+- Max 4 pastilles autres que `mainPillId` actives à la fois (`activeIntegrations`, persisté).
+- `removeTask` sur `mainPillId` ou une pastille déclarée + active → reset à `.idle` + `pillBadge = nil` + nom du catalogue (pas de suppression). Sinon → suppression normale.
+- `sortTasksByCatalog` : pastilles du catalogue dans l'ordre du catalogue ; pastilles hors catalogue juste après `integration_claude`.
+- Pastilles `githubOnly` : exclues des builds App Store (`#if APPSTORE`).
+- Hooks (Gemini CLI, Antigravity, Codex) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` / `codexHooksInstalled()` sous `#if !APPSTORE`. La section Codex Hooks dans Settings installe les hooks dans `~/.codex/hooks.json` avec le même flux backup + preview que Gemini CLI. Après l'installation, la carte affiche : « run /hooks in Codex or open Hooks in the app's settings to trust them ». Approbations Codex : carte avec Allow et Deny seulement (pas Always) ; updatedPermissions jamais envoyé ; notes « Handled in Codex. » / « Still waiting in Codex. ».
+- Pastilles IA : `isConfigured` = clé API dans le Keychain. Bouton « Chat with… » → change le fournisseur et ouvre la vue `.prompt`.
 
 ### Boutons
 - Pilule, 12,5 pt medium, fond blanc 9 % (survol 15 %), primaire : fond `#F5F6F8` texte `#0B0C0E`. Appui : échelle 0,94. Raccourcis affichés en petite pastille bordée (Y, N).
@@ -185,13 +207,18 @@ Pas de son pour les mises à jour silencieuses (défilé de tâches, mini-bonhom
 
 Petit item dans la barre de menus (icône : silhouette du Mochi, monochrome). Menu : Ouvrir le notch, Lancer la démo (⌃⌥⌘D), Réglages…, Debug ▸ (forcer chaque vue, chaque état, chaque émote, ajouter des tâches factices), Quitter.
 
-Fenêtre Réglages (SwiftUI, simple) :
-- Clé API Anthropic (Trousseau), modèle (par défaut voir INTEGRATIONS §5).
-- n8n : URL de l'instance, clé API (Trousseau), intervalle de polling, workflows suivis (tous par défaut).
-- Claude Code : état des hooks (installés / non), bouton Installer / Désinstaller, délai d'attente d'une décision (défaut 110 s).
-- Son on/off, volume. Fermeture auto (défaut 60 s). Délai d'absence (défaut 3 min).
-- Lancer au démarrage (`SMAppService.mainApp`).
-- Alias de noms de projets et couleurs.
+Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
+- **Anthropic API** : clé (Trousseau), modèle (défaut `claude-sonnet-4-6` ; liste depuis l'API, voir INTEGRATIONS §5).
+- **Chat — other providers** : clé Google AI (Trousseau) ; clé OpenAI (Trousseau). Les modèles se choisissent dans le chat (voir INTEGRATIONS §5bis).
+- **Claude Code Hooks** : état des hooks, bouton Installer / Désinstaller.
+- **Gemini CLI Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
+- **Antigravity Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
+- **Integrations** : clé ou token (Trousseau) pour chaque service (n8n, Stripe, GitHub, Vercel, Resend, Notion, Cal.com).
+- **Sound** : son on/off, volume.
+- **Behavior** : fermeture après N s d'inactivité ; masquage après N min sans mouvement.
+- **Active pills** : pastilles actives (VS Code toujours actif + jusqu'à 4 autres) ; sélecteur de pastille principale (affiché uniquement si une pastille workspace est active) ; liste par catégorie (voir catalogue §5).
+- **Hotkey** : raccourci global pour ouvrir le notch.
+- **Startup** : lancer au démarrage (`SMAppService.mainApp`).
 
 ## 11. Jalons
 

@@ -1,5 +1,5 @@
-// Preferences, stored as plain JSON in %APPDATA%\Coucou\settings.json.
-// No secret ever lands here — API keys live in the Windows Credential Manager.
+// Preferences, stored as plain JSON in settings.json under platform::config_dir().
+// No secret ever lands here — API keys live in the OS keychain (see secrets.rs).
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -47,24 +47,10 @@ impl Default for Settings {
     }
 }
 
-/// %APPDATA%\Coucou
-pub fn config_dir() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
-}
-
-/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe and the log live.
-pub fn local_dir() -> PathBuf {
-    let base = std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
-}
+pub use crate::platform::{config_dir, local_dir};
 
 pub fn hook_exe_path() -> PathBuf {
-    local_dir().join("bin").join("coucou-hook.exe")
+    local_dir().join("bin").join(crate::platform::HOOK_EXE)
 }
 
 fn settings_path() -> PathBuf {
@@ -80,7 +66,7 @@ pub fn load() -> Settings {
 
 pub fn save(settings: &Settings) -> std::io::Result<()> {
     let dir = config_dir();
-    std::fs::create_dir_all(&dir)?;
+    crate::platform::ensure_private_dir(&dir)?;
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(settings_path(), json)
