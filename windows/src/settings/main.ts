@@ -5,6 +5,7 @@
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { applyTheme } from "../core/theme";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -392,6 +393,19 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "system", text: "System" }),
+    h("option", { value: "light", text: "Light" }),
+    h("option", { value: "dark", text: "Dark" }),
+  );
+  theme.value = settings.theme;
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    applyTheme(settings.theme);
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -411,6 +425,10 @@ function generalSection(): HTMLElement {
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: "Theme" }),
+      theme,
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
@@ -425,6 +443,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  applyTheme(settings.theme);
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
@@ -453,6 +472,7 @@ async function main() {
 
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
+    applyTheme(settings.theme);
   });
 }
 
