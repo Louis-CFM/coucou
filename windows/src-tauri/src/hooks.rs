@@ -1,9 +1,9 @@
-// Claude Code hook installation.
+// Hook installation, for every coding harness Coucou can observe.
 //
-// The rule from CLAUDE.md is strict and is followed to the letter:
-// read %USERPROFILE%\.claude\settings.json, take a dated backup, merge without
-// touching anybody else's hooks, show the diff, and write only after an explicit
-// click. Uninstall removes Coucou's entries and nothing else.
+// The rule from CLAUDE.md is strict and is followed to the letter for every target:
+// read the harness's own config, take a dated backup, merge without touching
+// anybody else's hooks, show the diff, and write only after an explicit click.
+// Uninstall removes Coucou's entries and nothing else.
 //
 // The command is only the quoted exe path in forward slashes plus the event name:
 // on Windows Claude Code runs hook commands through Git Bash, and anything with
@@ -16,24 +16,121 @@ use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 use crate::{platform, settings};
 
-/// Every event the island reacts to, with the hook timeout written to settings.json.
-/// PermissionRequest waits for a human, so it gets the decision timeout + 10 s.
-pub const HOOK_EVENTS: &[(&str, u64)] = &[
-    ("SessionStart", 10),
-    ("SessionEnd", 10),
-    ("UserPromptSubmit", 10),
-    ("PreToolUse", 10),
-    ("PostToolUse", 10),
-    ("PostToolUseFailure", 10),
-    ("PermissionRequest", 120),
-    ("Notification", 10),
-    ("Stop", 10),
-    ("StopFailure", 10),
-    ("SubagentStart", 10),
-    ("SubagentStop", 10),
+/// How a harness shapes one hook entry.
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Shape {
+    /// `{"hooks": {"Event": [{"matcher": …, "hooks": [{…}]}]}}` — Claude Code, Codex.
+    Nested,
+    /// `{"version": 1, "hooks": {"event": [{"command": …, "matcher": …}]}}` — Cursor.
+    Flat,
+}
+
+/// One coding harness Coucou can install hooks into.
+pub struct Harness {
+    pub id: &'static str,
+    pub label: &'static str,
+    /// Path relative to the user's home directory.
+    pub rel_path: &'static str,
+    pub shape: Shape,
+    /// The events the island reacts to, with the hook timeout written to the config.
+    /// A permission event waits for a human, so it gets the longer timeout.
+    pub events: &'static [(&'static str, u64)],
+    /// Whether the harness can hand a permission decision back to us. When it cannot,
+    /// the session still shows in the island — there is just no Allow/Deny card.
+    pub approval: bool,
+    /// Shown in Settings under the row. Empty when there is nothing worth saying.
+    pub note: &'static str,
+}
+
+/// 120 s for the event that waits on a human; 10 s for everything else, which only
+/// has to spawn a process and speak JSON to a named pipe.
+const TIMEOUT_QUICK: u64 = 10;
+const TIMEOUT_PERMISSION: u64 = 120;
+
+/// In the order Settings lists them: the harness that already works, then the two
+/// that need a per-harness event set.
+pub const HARNESSES: &[Harness] = &[
+    Harness {
+        id: "claude",
+        label: "Claude Code",
+        rel_path: ".claude/settings.json",
+        shape: Shape::Nested,
+        events: &[
+            ("SessionStart", TIMEOUT_QUICK),
+            ("SessionEnd", TIMEOUT_QUICK),
+            ("UserPromptSubmit", TIMEOUT_QUICK),
+            ("PreToolUse", TIMEOUT_QUICK),
+            ("PostToolUse", TIMEOUT_QUICK),
+            ("PostToolUseFailure", TIMEOUT_QUICK),
+            ("PermissionRequest", TIMEOUT_PERMISSION),
+            ("Notification", TIMEOUT_QUICK),
+            ("Stop", TIMEOUT_QUICK),
+            ("StopFailure", TIMEOUT_QUICK),
+            ("SubagentStart", TIMEOUT_QUICK),
+            ("SubagentStop", TIMEOUT_QUICK),
+        ],
+        approval: true,
+        note: "",
+    },
+    Harness {
+        id: "cursor",
+        label: "Cursor",
+        rel_path: ".cursor/hooks.json",
+        shape: Shape::Flat,
+        // Cursor names its events in camelCase and splits the Claude set differently:
+        // `UserPromptSubmit` becomes `beforeSubmitPrompt`, there is no
+        // `PermissionRequest`, and it adds `preCompact`.
+        events: &[
+            ("sessionStart", TIMEOUT_QUICK),
+            ("sessionEnd", TIMEOUT_QUICK),
+            ("beforeSubmitPrompt", TIMEOUT_QUICK),
+            ("preToolUse", TIMEOUT_QUICK),
+            ("postToolUse", TIMEOUT_QUICK),
+            ("postToolUseFailure", TIMEOUT_QUICK),
+            ("subagentStart", TIMEOUT_QUICK),
+            ("subagentStop", TIMEOUT_QUICK),
+            ("preCompact", TIMEOUT_QUICK),
+            ("stop", TIMEOUT_QUICK),
+        ],
+        approval: false,
+        note: "Cursor has no PermissionRequest event, so its sessions appear in the island but cannot be approved from it.",
+    },
+    Harness {
+        id: "codex",
+        label: "Codex",
+        rel_path: ".codex/hooks.json",
+        shape: Shape::Nested,
+        // Same names and nesting as Claude Code. Codex has `Interrupt` and
+        // `PostCompact` where Claude Code has `Notification` and `StopFailure`.
+        events: &[
+            ("SessionStart", TIMEOUT_QUICK),
+            ("SessionEnd", TIMEOUT_QUICK),
+            ("UserPromptSubmit", TIMEOUT_QUICK),
+            ("PreToolUse", TIMEOUT_QUICK),
+            ("PostToolUse", TIMEOUT_QUICK),
+            ("PreCompact", TIMEOUT_QUICK),
+            ("PostCompact", TIMEOUT_QUICK),
+            ("SubagentStart", TIMEOUT_QUICK),
+            ("SubagentStop", TIMEOUT_QUICK),
+            ("Stop", TIMEOUT_QUICK),
+            ("Interrupt", TIMEOUT_QUICK),
+            ("PermissionRequest", TIMEOUT_PERMISSION),
+        ],
+        approval: true,
+        note: "Codex reviews hooks before running them: trust this one once with /hooks, or they stay skipped.",
+    },
 ];
 
-/// Marker that identifies a Coucou entry inside settings.json.
+pub fn harness(id: &str) -> Option<&'static Harness> {
+    HARNESSES.iter().find(|h| h.id == id)
+}
+
+/// Claude Code, kept as the default so an older call site keeps working.
+pub fn harness_or_default(id: &str) -> &'static Harness {
+    harness(id).unwrap_or(&HARNESSES[0])
+}
+
+/// Marker that identifies a Coucou entry inside a harness config.
 const MARKER: &str = "coucou-hook";
 
 #[derive(Serialize)]
@@ -43,6 +140,9 @@ pub struct HookStatus {
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
+    pub approval: bool,
+    /// Shown under the row in Settings. Empty when there is nothing worth saying.
+    pub note: String,
 }
 
 #[derive(Serialize)]
@@ -56,18 +156,22 @@ pub struct HookPreview {
     pub fingerprint: String,
 }
 
-pub fn settings_path() -> PathBuf {
-    platform::home_dir().join(".claude").join("settings.json")
+pub fn settings_path(h: &Harness) -> PathBuf {
+    let mut path = platform::home_dir();
+    for part in h.rel_path.split('/') {
+        path.push(part);
+    }
+    path
 }
 
-/// Reads `~/.claude/settings.json`.
+/// Reads a harness's own config.
 ///
 /// The only error that means "start from nothing" is the file not being there.
 /// Everything else — a lock held by another process, a permission problem, JSON
 /// we cannot parse — is reported, because the alternative is treating somebody's
 /// unreadable settings as an empty object and then writing that back over them.
-fn read_settings() -> Result<Value, String> {
-    let path = settings_path();
+fn read_settings(h: &Harness) -> Result<Value, String> {
+    let path = settings_path(h);
     match std::fs::read(&path) {
         Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
@@ -99,8 +203,8 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
 /// The settings as they are, or an empty object when we cannot tell. Only for
 /// read-only paths like `status()`, which must never fail loudly; anything that
 /// writes uses `read_settings()` and surfaces the error instead.
-fn read_settings_lossy() -> Value {
-    read_settings().unwrap_or_else(|_| json!({}))
+fn read_settings_lossy(h: &Harness) -> Value {
+    read_settings(h).unwrap_or_else(|_| json!({}))
 }
 
 #[cfg(windows)]
@@ -124,23 +228,39 @@ fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
-fn entry_is_ours(entry: &Value) -> bool {
-    entry
-        .get("hooks")
-        .and_then(Value::as_array)
-        .map(|hooks| {
-            hooks.iter().any(|h| {
-                h.get("command")
-                    .and_then(Value::as_str)
-                    .map(|c| c.contains(MARKER))
-                    .unwrap_or(false)
-            })
-        })
-        .unwrap_or(false)
+/// True when this entry is one of ours. The command sits one level deeper in the
+/// nested shape and directly on the flat one, so the shape decides where to look —
+/// miss it and the uninstall would leave our entries behind.
+fn entry_is_ours(entry: &Value, shape: Shape) -> bool {
+    let command = |h: &Value| {
+        h.get("command")
+            .and_then(Value::as_str)
+            .map(|c| c.contains(MARKER))
+            .unwrap_or(false)
+    };
+    match shape {
+        Shape::Nested => entry
+            .get("hooks")
+            .and_then(Value::as_array)
+            .map(|hooks| hooks.iter().any(command))
+            .unwrap_or(false),
+        Shape::Flat => command(entry),
+    }
 }
 
-/// Settings with Coucou's hooks added; everything else is left untouched.
-fn merged(existing: &Value) -> Value {
+/// One entry in the harness's own shape.
+fn entry_for(h: &Harness, event: &str, timeout: u64) -> Value {
+    let command = hook_command(event);
+    match h.shape {
+        Shape::Nested => json!({
+            "hooks": [{ "type": "command", "command": command, "timeout": timeout }]
+        }),
+        Shape::Flat => json!({ "command": command, "timeout": timeout }),
+    }
+}
+
+/// The harness config with Coucou's hooks added; everything else left untouched.
+fn merged(existing: &Value, h: &Harness) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = root
         .get("hooks")
@@ -148,29 +268,28 @@ fn merged(existing: &Value) -> Value {
         .cloned()
         .unwrap_or_else(Map::new);
 
-    for (event, timeout) in HOOK_EVENTS {
+    for (event, timeout) in h.events {
         let mut list = hooks
             .get(*event)
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        list.retain(|entry| !entry_is_ours(entry));
-        list.push(json!({
-            "hooks": [{
-                "type": "command",
-                "command": hook_command(event),
-                "timeout": timeout,
-            }]
-        }));
+        list.retain(|entry| !entry_is_ours(entry, h.shape));
+        list.push(entry_for(h, event, *timeout));
         hooks.insert((*event).to_string(), Value::Array(list));
     }
 
+    // Cursor's schema declares a version at the root; Claude Code's does not, and
+    // adding one there would be a key the app has no business inventing.
+    if h.shape == Shape::Flat {
+        root.entry("version").or_insert(json!(1));
+    }
     root.insert("hooks".into(), Value::Object(hooks));
     Value::Object(root)
 }
 
 /// Settings with every Coucou entry removed, and nothing else changed.
-fn without_ours(existing: &Value) -> Value {
+fn without_ours(existing: &Value, h: &Harness) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let Some(hooks) = root.get("hooks").and_then(Value::as_object).cloned() else {
         return Value::Object(root);
@@ -180,7 +299,7 @@ fn without_ours(existing: &Value) -> Value {
         match value.as_array() {
             Some(list) => {
                 let kept: Vec<Value> =
-                    list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
+                    list.iter().filter(|e| !entry_is_ours(e, h.shape)).cloned().collect();
                 if !kept.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
@@ -212,9 +331,13 @@ fn stamp() -> String {
     )
 }
 
-fn backup_path() -> PathBuf {
-    let p = settings_path();
-    p.with_file_name(format!("settings.json.bak-{}", stamp()))
+fn backup_path(h: &Harness) -> PathBuf {
+    let p = settings_path(h);
+    let name = p
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "settings.json".to_string());
+    p.with_file_name(format!("{name}.bak-{}", stamp()))
 }
 
 /// Identifies the exact bytes a preview was computed from. FNV-1a is plenty:
@@ -228,8 +351,8 @@ fn fingerprint(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
-fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
+fn current_fingerprint(h: &Harness) -> String {
+    match std::fs::read(settings_path(h)) {
         Ok(bytes) => fingerprint(&bytes),
         Err(_) => fingerprint(b""),
     }
@@ -237,8 +360,8 @@ fn current_fingerprint() -> String {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-pub fn status() -> HookStatus {
-    let current = read_settings_lossy();
+pub fn status(h: &Harness) -> HookStatus {
+    let current = read_settings_lossy(h);
     let installed = current
         .get("hooks")
         .and_then(Value::as_object)
@@ -247,26 +370,32 @@ pub fn status() -> HookStatus {
                 .values()
                 .filter_map(Value::as_array)
                 .flatten()
-                .any(entry_is_ours)
+                .any(|e| entry_is_ours(e, h.shape))
         })
         .unwrap_or(false);
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,
-        settings_path: settings_path().to_string_lossy().to_string(),
+        settings_path: settings_path(h).to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
+        approval: h.approval,
+        note: h.note.to_string(),
     }
 }
 
-pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_settings()?;
-    let next = if install { merged(&current) } else { without_ours(&current) };
+pub fn preview(h: &Harness, install: bool) -> Result<HookPreview, String> {
+    let current = read_settings(h)?;
+    let next = if install {
+        merged(&current, h)
+    } else {
+        without_ours(&current, h)
+    };
     Ok(HookPreview {
         diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path().to_string_lossy().to_string(),
-        settings_path: settings_path().to_string_lossy().to_string(),
-        fingerprint: current_fingerprint(),
+        backup: backup_path(h).to_string_lossy().to_string(),
+        settings_path: settings_path(h).to_string_lossy().to_string(),
+        fingerprint: current_fingerprint(h),
     })
 }
 
@@ -276,27 +405,31 @@ pub fn preview(install: bool) -> Result<HookPreview, String> {
 /// in between — another tool, another window, the user's own editor — we stop
 /// and make them look at a fresh diff, because the only thing worse than not
 /// installing the hooks is silently reverting somebody else's edit.
-pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = settings_path();
+pub fn write(h: &Harness, install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = settings_path(h);
     let dir = path.parent().unwrap_or(Path::new("."));
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     // Read before the backup: an unreadable file must abort before we touch
     // anything at all.
-    let current = read_settings()?;
-    if current_fingerprint() != fingerprint {
+    let current = read_settings(h)?;
+    if current_fingerprint(h) != fingerprint {
         return Err(format!(
             "{} changed since the preview. Nothing was written — review the new diff.",
             path.display()
         ));
     }
 
-    let backup = backup_path();
+    let backup = backup_path(h);
     if path.exists() {
         std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
     }
 
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    let next = if install {
+        merged(&current, h)
+    } else {
+        without_ours(&current, h)
+    };
     let mut text = pretty(&next);
     text.push('\n');
 
@@ -307,7 +440,7 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 
     // Write beside the target and rename over it: a crash or a full disk leaves
     // the original settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    let temp = path.with_extension(format!("coucou-{}", std::process::id()));
     if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
         let _ = std::fs::remove_file(&temp);
         return Err(format!("write failed: {err}"));
@@ -509,6 +642,11 @@ fn unified_diff(before: &str, after: &str) -> String {
 mod tests {
     use super::*;
 
+    // Every test here drives Claude Code, the harness that shipped first.
+    fn claude() -> &'static Harness {
+        harness_or_default("claude")
+    }
+
     const WHERE: &str = "settings.json";
 
     #[test]
@@ -556,7 +694,7 @@ mod tests {
             }
         });
 
-        let after = merged(&existing);
+        let after = merged(&existing, claude());
         assert_eq!(after["model"], "claude-opus-5");
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["enabledPlugins"], serde_json::json!(["a", "b"]));
@@ -566,11 +704,11 @@ mod tests {
             pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("someone-elses-tool.exe")),
             "another tool's hook was dropped"
         );
-        assert!(pre.iter().any(entry_is_ours), "our own hook was not added");
+        assert!(pre.iter().any(|e| entry_is_ours(e, Shape::Nested)), "our own hook was not added");
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
         // And removing ours puts it back exactly as it was.
-        let cleaned = without_ours(&after);
+        let cleaned = without_ours(&after, claude());
         assert_eq!(cleaned, existing);
     }
 
@@ -630,7 +768,7 @@ mod tests {
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
         std::env::set_var(platform::HOME_VAR, &tmp);
 
-        let path = settings_path();
+        let path = settings_path(claude());
         assert!(path.starts_with(&tmp), "the test must not touch the real home");
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
@@ -640,9 +778,9 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
 
         // Install.
-        let plan = preview(true).expect("a BOM must not stop the preview");
+        let plan = preview(claude(), true).expect("a BOM must not stop the preview");
         assert!(plan.diff.contains("coucou-hook"), "the diff must show what changes");
-        let backup = write(true, &plan.fingerprint).expect("install should succeed");
+        let backup = write(claude(), true, &plan.fingerprint).expect("install should succeed");
 
         // The backup holds the original bytes, BOM and all.
         assert_eq!(std::fs::read(&backup).unwrap(), bytes);
@@ -654,22 +792,103 @@ mod tests {
         assert_eq!(after["tui"]["x"], 1);
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
-        assert!(status().installed);
+        assert!(status(claude()).installed);
 
         // A file that moved since the preview is refused, and left alone.
-        let stale = preview(false).unwrap();
+        let stale = preview(claude(), false).unwrap();
         std::fs::write(&path, br#"{"model":"someone-else-edited-this"}"#).unwrap();
-        let err = write(false, &stale.fingerprint).unwrap_err();
+        let err = write(claude(), false, &stale.fingerprint).unwrap_err();
         assert!(err.contains("changed since the preview"), "got: {err}");
         let untouched: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(untouched["model"], "someone-else-edited-this");
 
         // Content we cannot parse is refused before anything is written.
         std::fs::write(&path, b"{ broken").unwrap();
-        assert!(preview(true).is_err());
-        assert!(write(true, "whatever").is_err());
+        assert!(preview(claude(), true).is_err());
+        assert!(write(claude(), true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn every_harness_has_its_own_config_and_something_to_install() {
+        let mut paths: Vec<&str> = HARNESSES.iter().map(|h| h.rel_path).collect();
+        let before = paths.len();
+        paths.sort_unstable();
+        paths.dedup();
+        assert_eq!(paths.len(), before, "two harnesses share a config file");
+
+        for h in HARNESSES {
+            assert!(!h.events.is_empty(), "{} installs no events", h.id);
+            assert!(!h.label.is_empty());
+            assert!(
+                h.rel_path.contains('/') && h.rel_path.ends_with(".json"),
+                "{} needs a path under the home directory",
+                h.id
+            );
+            // A harness that claims approval has to actually ship the event that
+            // asks for one, or the island would show a card nothing can answer.
+            assert_eq!(
+                h.approval,
+                h.events.iter().any(|(e, _)| *e == "PermissionRequest"),
+                "{} disagrees with its own event list",
+                h.id
+            );
+        }
+    }
+
+    #[test]
+    fn the_flat_shape_writes_cursor_entries_and_a_version() {
+        let cursor = harness("cursor").expect("cursor is in the catalog");
+        let after = merged(&json!({}), cursor);
+
+        assert_eq!(after["version"], 1, "Cursor's schema declares a version");
+        // Flat means the command sits on the entry, not one level down.
+        let entry = after["hooks"]["sessionStart"].as_array().unwrap()[0].clone();
+        assert!(entry["command"].is_string(), "flat shape, flat command");
+        assert!(entry["hooks"].is_null(), "flat shape must not nest");
+        assert!(entry_is_ours(&entry, Shape::Flat));
+        // And the nested reader must NOT claim it — the two shapes are different
+        // files, and confusing them is how an uninstall leaves entries behind.
+        assert!(!entry_is_ours(&entry, Shape::Nested));
+    }
+
+    #[test]
+    fn installing_twice_does_not_stack_and_uninstall_returns_the_original() {
+        for id in ["claude", "cursor", "codex"] {
+            let h = harness(id).unwrap();
+            let once = merged(&json!({ "model": "keep-me" }), h);
+            let twice = merged(&once, h);
+            assert_eq!(
+                serde_json::to_string(&once).unwrap(),
+                serde_json::to_string(&twice).unwrap(),
+                "{id} stacked a second copy of itself"
+            );
+            let cleaned = without_ours(&twice, h);
+            assert_eq!(cleaned["model"], "keep-me", "{id} dropped a foreign setting");
+            assert!(cleaned["hooks"].is_null(), "{id} left hooks behind");
+        }
+    }
+
+    #[test]
+    fn a_foreign_hook_survives_in_every_shape() {
+        let cursor = harness("cursor").unwrap();
+        let existing = json!({
+            "hooks": {
+                "beforeSubmitPrompt": [{ "command": "someone-elses-tool.sh", "timeout": 5 }]
+            }
+        });
+        let after = merged(&existing, cursor);
+        let list = after["hooks"]["beforeSubmitPrompt"].as_array().unwrap();
+        assert!(list.iter().any(|e| e["command"] == "someone-elses-tool.sh"));
+        // Only ours goes. `version` stays: it belongs to Cursor's schema, not to us,
+        // and removing it would leave the file in a shape Cursor does not expect.
+        let cleaned = without_ours(&after, cursor);
+        assert_eq!(cleaned["version"], 1);
+        assert_eq!(
+            cleaned["hooks"]["beforeSubmitPrompt"],
+            json!([{ "command": "someone-elses-tool.sh", "timeout": 5 }])
+        );
     }
 }

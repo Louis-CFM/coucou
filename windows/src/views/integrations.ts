@@ -59,20 +59,57 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const error = info?.error ?? null;
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
   // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
+  // The Claude Code pill is about hooks, not a key — but "hooks" is plural now. The
+  // card used to say "Hooks not installed" off one flag that only ever tracked Claude
+  // Code, so a user with Codex hooked was told, in red, that nothing was hooked.
+  const hooked = State.harnesses.filter((x) => x.installed).map((x) => x.label);
+  const hookLine =
+    hooked.length === 0
+      ? "No harness hooked"
+      : hooked.length === 1
+        ? `Hooked · ${hooked[0]}`
+        : `Hooked · ${hooked.join(", ")}`;
+  // "VS Code" was a stand-in for "Claude Code" back when that was the only harness.
+  // With three of them the title has to follow what is actually hooked, or the card
+  // reads "VS Code / Hooked · Codex" and contradicts itself.
+  const cardTitle =
+    hooked.length === 0 ? "Claude Code"
+    : hooked.length === 1 ? hooked[0]
+    : "Coding agents";
+  const missing = task.id === "integration_claude" ? hookLine : "Key not configured";
   const label = error ?? (configured ? "Connected · loading…" : missing);
-  const statusColor = error || !configured ? "#F4505E" : "#22C55E";
+  // Red only when there is genuinely nothing running: a hook that never arrives
+  // because the harness has not trusted it yet is a different problem, and painting
+  // it red sends the user hunting in the wrong place.
+  const statusColor = error ? "#F4505E" : task.id === "integration_claude"
+    ? (hooked.length > 0 ? "#22C55E" : "#8e939c")
+    : configured ? "#22C55E" : "#F4505E";
 
   const actions = h("div", { class: "int-actions" });
   if (task.id === "integration_claude") {
-    actions.append(
-      h("button", {
-        class: "link-btn",
-        style: `color:${task.color}b3`,
-        text: "Open Visual Studio Code",
-        onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
-      }),
-    );
+    if (hooked.length === 0) {
+      actions.append(
+        h("button", {
+          class: "link-btn",
+          style: `color:${task.color}d9`,
+          text: "Install hooks…",
+          onclick: openSettings,
+        }),
+      );
+    }
+    // Offering "Open Visual Studio Code" while Codex is the hooked harness sends the
+    // user to the wrong editor; it only belongs there when Claude Code is the one
+    // running, or when nothing is hooked and VS Code is still a reasonable guess.
+    if (hooked.length === 0 || hooked.includes("Claude Code")) {
+      actions.append(
+        h("button", {
+          class: "link-btn",
+          style: `color:${task.color}b3`,
+          text: "Open Visual Studio Code",
+          onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
+        }),
+      );
+    }
   } else if (task.id === "integration_n8n") {
     actions.append(
       h("button", {
@@ -110,7 +147,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? cardTitle : task.name, "Integration"),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );

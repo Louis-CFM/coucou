@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type ChatProvider, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type ChatProvider, type HookHarness } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -41,107 +41,137 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
-// ── Claude Code section ───────────────────────────────────────────────────────
+// ── Hooks section ────────────────────────────────────────────────────────────
 
-function claudeSection(status: HookStatus): HTMLElement {
-  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
-  const section = h(
-    "section",
-    {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
-    body,
+/**
+ * Every coding harness Coucou can watch, one row each.
+ *
+ * The collapsed row is the whole story at a glance: a dot for the state, and whether
+ * the harness can hand a permission decision back. Only Claude Code and Codex can, so
+ * the note under Cursor's row is not decoration — a Cursor user needs to know before
+ * installing that their sessions will appear but that nothing in the island can approve.
+ *
+ * Clicking expands into where the config lives and the button that writes it; the
+ * button opens a preview inside that same panel, because the diff is the thing the
+ * user has to read before clicking, and a system dialog would truncate it.
+ */
+function hooksSection(): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  const note = h("span", {
+    class: "hint",
+    text: "Hook your coding agents to Mochi. Each harness keeps its own config, and only yours is touched.",
+  });
+
+  async function load() {
+    clear(list);
+    const rows = (await Bridge.hookHarnesses()) ?? [];
+    if (rows.length === 0) {
+      list.append(h("div", { class: "hint", text: "Loading…" }));
+      return;
+    }
+    for (const row of rows) list.append(harnessRow(row, load));
+  }
+
+  void load();
+  return h("section", {}, h("h2", {}, h("span", { text: "Hooks" })), note, list);
+}
+
+function harnessRow(row: HookHarness, reload: () => Promise<void>): HTMLElement {
+  const s = row.status;
+  const body = h("div", { class: "pbody" });
+  const chevron = h("span", { class: "hint", style: "flex:0 0 auto", text: "▸" });
+
+  const head = h(
+    "button",
+    {
+      type: "button",
+      style: "display:flex;align-items:center;gap:9px;width:100%;text-align:left;" +
+        "border:1px solid #2a2a30;background:transparent;border-radius:9px;" +
+        "padding:8px 11px;color:inherit;cursor:pointer;font:inherit;",
+      title: `Configure ${row.label}`,
+    },
+    statusDot(s.installed),
+    h(
+      "span",
+      { style: "display:flex;flex-direction:column;gap:1px;flex:1;min-width:0" },
+      h("strong", { text: row.label }),
+      h("span", {
+        class: "hint",
+        text: s.installed
+          ? (s.approval ? "Hooked in — sessions and approvals" : "Hooked in — sessions only")
+          : "Not hooked in",
+      }),
+    ),
+    chevron,
   );
 
-  const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
-    if (fresh) Object.assign(status, fresh);
+  function drawBody() {
     clear(body);
-    draw();
-    const head = section.querySelector("h2")!;
-    clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
-  };
-
-  function draw() {
     body.append(
-      h("div", {
-        class: "hint",
-        text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
-      }),
-      h("div", { class: "row" },
-        h("label", { text: "settings.json" }),
-        h("span", { class: "path", text: status.settingsPath }),
-      ),
-      h("div", { class: "row" },
-        h("label", { text: "Relay" }),
-        h("span", { class: "path", text: status.hookPath }),
-        statusDot(status.hookReady),
-      ),
+      h("div", { class: "prow" }, h("label", { text: "Config" }),
+        h("div", { class: "ctl" }, h("span", { class: "path", text: s.settingsPath }))),
+      h("div", { class: "prow" }, h("label", { text: "Relay" }),
+        h("div", { class: "ctl" }, h("span", { class: "path", text: s.hookPath }),
+          statusDot(s.hookReady))),
     );
-
-    if (!status.hookReady) {
+    if (s.note) body.append(h("div", { class: "hint", text: s.note }));
+    if (!s.hookReady) {
       body.append(h("div", {
         class: "notice warn",
         text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
       }));
     }
+    body.append(h("div", { style: "display:flex;gap:8px" }, ...actions()));
+  }
 
-    const actions = h("div", { class: "row" });
+  function actions(): HTMLElement[] {
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
-      onclick: () => showPreview(true),
-    });
-    // Writing hook commands that point at a relay which isn't there would give
-    // every Claude Code session a broken hook and nothing to show for it.
-    if (!status.hookReady) {
+      text: s.installed ? "Reinstall hooks…" : "Install hooks…",
+    }) as HTMLButtonElement;
+    install.addEventListener("click", () => void showPreview(true));
+    // Writing hook commands that point at a relay which is not there would give
+    // every session a broken hook and nothing to show for it.
+    if (!s.hookReady) {
       install.disabled = true;
-      install.title = "The relay isn't installed yet.";
+      install.title = "The relay isn't in place yet.";
     }
-    actions.append(install);
-    if (status.installed) {
-      actions.append(h("button", {
-        class: "danger",
-        text: "Uninstall hooks…",
-        onclick: () => showPreview(false),
-      }));
+    const out: HTMLElement[] = [install];
+    if (s.installed) {
+      const uninstall = h("button", { class: "danger", text: "Uninstall hooks…" });
+      uninstall.addEventListener("click", () => void showPreview(false));
+      out.push(uninstall);
     }
-    body.append(actions);
+    return out;
   }
 
   async function showPreview(install: boolean) {
     let preview;
     try {
-      preview = await Bridge.hooksPreview(install);
+      preview = await Bridge.hooksPreview(row.id, install);
     } catch (err) {
-      // An unreadable or invalid settings.json stops here rather than being
-      // treated as empty and written over.
+      // An unreadable or invalid config stops here rather than being treated as
+      // empty and written over.
       clear(body);
-      body.append(
-        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
-        h("div", { class: "row" }, h("button", {
-          text: "Back",
-          onclick: () => { clear(body); draw(); },
-        })),
-      );
+      body.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+      const back = h("button", { text: "Back" });
+      back.addEventListener("click", drawBody);
+      body.append(h("div", { style: "display:flex;gap:8px" }, back));
       return;
     }
-    if (!preview) return;
+
     clear(body);
     body.append(
       h("div", {
         class: "hint",
         text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+          ? `This is exactly what will change in ${row.label}'s config. Your own hooks are left untouched.`
+          : `This removes Coucou's entries from ${row.label}'s config. Your own hooks are left untouched.`,
       }),
       renderDiff(preview.diff),
-      h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
-      ),
+      h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
     );
+
     const confirm = h("button", {
       class: install ? "primary" : "danger",
       text: install ? "Back up and write" : "Back up and remove",
@@ -149,26 +179,45 @@ function claudeSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
+        const backup = await Bridge.hooksApply(row.id, install, preview.fingerprint);
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: `Done. Previous config saved as ${backup}. Open a new ${row.label} session to pick the hooks up.`,
         }));
-        window.setTimeout(() => void rebuild(), 2600);
+        const back = h("button", { text: "Close" });
+        back.addEventListener("click", () => {
+          expanded = false;
+          chevron.textContent = "▸";
+          body.style.display = "none";
+        });
+        body.append(h("div", { style: "display:flex;gap:8px" }, back));
+        await reload();
       } catch (err) {
         confirm.disabled = false;
         body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
       }
     });
-    body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
-      onclick: () => { clear(body); draw(); },
-    })));
+
+    const cancel = h("button", { text: "Cancel" });
+    cancel.addEventListener("click", drawBody);
+    body.append(h("div", { style: "display:flex;gap:8px" }, confirm, cancel));
   }
 
-  draw();
-  return section;
+  let expanded = false;
+  head.addEventListener("click", () => {
+    expanded = !expanded;
+    chevron.textContent = expanded ? "▾" : "▸";
+    if (expanded) {
+      if (body.childElementCount === 0) drawBody();
+      body.style.display = "";
+    } else {
+      body.style.display = "none";
+    }
+  });
+
+  body.style.display = "none";
+  return h("div", { style: "display:flex;flex-direction:column;gap:6px" }, head, body);
 }
 
 // ── Chat providers section ────────────────────────────────────────────────────
@@ -624,11 +673,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
-  };
-
-  // Provider keys report their own presence through chat_providers, so this pass only
+  // The harness list fetches its own state through hook_harnesses; this pass only
   // asks about the integration keys that still have their own fields.
 
   const keys = [
@@ -641,7 +686,7 @@ async function main() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
+    hooksSection(),
     chatSection(),
     integrationsSection(present),
     generalSection(),

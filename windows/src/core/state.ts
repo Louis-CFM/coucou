@@ -178,6 +178,9 @@ class AppState {
 
   settings: Settings = { ...DEFAULT_SETTINGS };
 
+  /** Which harnesses are hooked. Filled by `boot`; empty outside Tauri. */
+  harnesses: { id: string; label: string; installed: boolean }[] = [];
+
   private listeners = new Set<Listener>();
 
   subscribe(fn: Listener): () => void {

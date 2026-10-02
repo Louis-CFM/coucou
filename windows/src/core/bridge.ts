@@ -28,6 +28,8 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+  /** Which harnesses are hooked, so the island never claims "no hooks" when one is. */
+  harnesses: { id: string; label: string; installed: boolean }[];
 }
 
 /** The two request shapes Coucou speaks. Mirrors providers::Dialect on the Rust side. */
@@ -53,6 +55,13 @@ export interface ChatProvider {
   /** Whether a key is stored. The key itself never crosses this boundary. */
   keyPresent: boolean;
   isCustom: boolean;
+}
+
+/** One row of the harness list in Settings. */
+export interface HookHarness {
+  id: string;
+  label: string;
+  status: HookStatus;
 }
 
 export const Bridge = {
@@ -87,16 +96,18 @@ export const Bridge = {
   /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),
 
-  // ── Claude Code hooks ─────────────────────────────────────────────────────
-  hooksStatus: () => call<HookStatus>("hooks_status"),
+  // ── Harness hooks ─────────────────────────────────────────────────────────
+  /** Every harness Coucou can install hooks into, with its current state. */
+  hookHarnesses: () => call<HookHarness[]>("hook_harnesses"),
   /** Diff to show before anything is written. `install: false` previews removal. */
-  hooksPreview: (install: boolean) => callOrThrow<HookPreview>("hooks_preview", { install }),
+  hooksPreview: (id: string, install: boolean) =>
+    callOrThrow<HookPreview>("hooks_preview", { id, install }),
   /**
-   * Writes ~/.claude/settings.json — only ever after an explicit click, and only
+   * Writes the harness's own config — only ever after an explicit click, and only
    * when the file still matches the preview the user looked at.
    */
-  hooksApply: (install: boolean, fingerprint: string) =>
-    callOrThrow<string>("hooks_apply", { install, fingerprint }),
+  hooksApply: (id: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("hooks_apply", { id, install, fingerprint }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -152,6 +163,10 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  /** Whether the harness can hand a permission decision back to us. */
+  approval: boolean;
+  /** Shown under the row. Empty when there is nothing worth saying. */
+  note: string;
 }
 
 export interface HookPreview {

@@ -34,6 +34,14 @@ pub struct Shared {
     pub gate: Arc<PollGate>,
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HarnessSummary {
+    pub id: String,
+    pub label: String,
+    pub installed: bool,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BootInfo {
@@ -44,13 +52,18 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+    /// Which harnesses are hooked, so the island can say something true. One
+    /// `hooksInstalled` flag for Claude Code alone stopped being the whole story the
+    /// moment Cursor and Codex became installable too.
+    harnesses: Vec<HarnessSummary>,
 }
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    // The real state of ~/.claude/settings.json wins over whatever we stored. Only
+    // Claude Code drives this one flag; the other harnesses have their own rows.
+    settings.hooks_installed = hooks::status(hooks::harness_or_default("claude")).installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -58,6 +71,14 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
+        harnesses: hooks::HARNESSES
+            .iter()
+            .map(|h| HarnessSummary {
+                id: h.id.to_string(),
+                label: h.label.to_string(),
+                installed: hooks::status(h).installed,
+            })
+            .collect(),
     }
 }
 
@@ -179,17 +200,35 @@ fn set_paused(paused: bool) {
     integrations::set_paused(paused);
 }
 
-// ── Claude Code hooks ─────────────────────────────────────────────────────────
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HarnessStatus {
+    id: &'static str,
+    label: &'static str,
+    status: HookStatus,
+}
+
+// ── Harness hooks ────────────────────────────────────────────────────────────
+
+/// Every harness Coucou can install hooks into, with its current state. One call so
+/// the settings window does not ask once per row.
+#[tauri::command]
+fn hook_harnesses() -> Vec<HarnessStatus> {
+    hooks::HARNESSES
+        .iter()
+        .map(|h| HarnessStatus { id: h.id, label: h.label, status: hooks::status(h) })
+        .collect()
+}
 
 #[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
+fn hooks_status(id: String) -> HookStatus {
+    hooks::status(hooks::harness_or_default(&id))
 }
 
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
+fn hooks_preview(id: String, install: bool) -> Result<HookPreview, String> {
+    hooks::preview(hooks::harness_or_default(&id), install)
 }
 
 /// Only ever called from an explicit click in the settings window.
@@ -197,15 +236,19 @@ fn hooks_preview(install: bool) -> Result<HookPreview, String> {
 fn hooks_apply(
     app: AppHandle,
     shared: State<Shared>,
+    id: String,
     install: bool,
     fingerprint: String,
 ) -> Result<String, String> {
     // The fingerprint comes from the preview the user actually looked at, so a
-    // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
+    // config that changed in between is refused rather than overwritten.
+    let backup = hooks::write(hooks::harness_or_default(&id), install, &fingerprint)?;
     let updated = {
         let mut current = shared.settings.lock();
-        current.hooks_installed = install;
+        // Only Claude Code drives the one flag the rest of the app reads.
+        if id == "claude" {
+            current.hooks_installed = install;
+        }
         let _ = settings::save(&current);
         current.clone()
     };
@@ -449,6 +492,7 @@ pub fn run() {
             open_url,
             open_in_vscode,
             quit_app,
+            hook_harnesses,
             hooks_status,
             hooks_preview,
             hooks_apply,
