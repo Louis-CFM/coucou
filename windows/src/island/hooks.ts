@@ -123,15 +123,19 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string, payload: HookPayload) {
+function upsert(projectName: string, cwd: string) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
-  if (Array.isArray(payload.terminal_pids)) {
-    t.sessionPids = payload.terminal_pids.filter((p) => Number.isInteger(p));
-    t.sessionHwnd = Number.isInteger(payload.console_hwnd) ? payload.console_hwnd! : null;
-  }
+}
+
+/** Every event carries it, so the ↗ works right after Coucou restarts too. */
+function rememberTerminal(payload: HookPayload) {
+  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+  if (!t || !Array.isArray(payload.terminal_pids)) return;
+  t.sessionPids = payload.terminal_pids.filter((p) => Number.isInteger(p));
+  t.sessionHwnd = Number.isInteger(payload.console_hwnd) ? payload.console_hwnd! : null;
 }
 
 function clearSession() {
@@ -166,6 +170,7 @@ function handleHook(island: Island, payload: HookPayload) {
   const validAgent = validateAgent(payload.coucou_agent);
   const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
   const isExternalAgent = validAgent !== null;
+  if (!isExternalAgent) rememberTerminal(payload);
 
   const focused = State.focusId === agentId;
 
@@ -185,7 +190,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
-      upsert(projectName, cwd, payload);
+      upsert(projectName, cwd);
     }
   };
 
@@ -294,7 +299,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd, payload);
+      upsert(projectName, cwd);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
