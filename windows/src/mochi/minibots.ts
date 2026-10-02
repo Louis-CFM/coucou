@@ -2,7 +2,7 @@
 // Each canvas owns a BotEngine; the island's frame loop ticks every live one.
 
 import { BotEngine, hexToRGB } from "./engine";
-import type { AgentTask } from "../core/state";
+import { devicePixels, type AgentTask } from "../core/state";
 
 interface MiniBot {
   canvas: HTMLCanvasElement;
@@ -30,7 +30,7 @@ export function createMiniBot(task: AgentTask, bodySize: number): HTMLElement {
 
   const canvas = document.createElement("canvas");
   const engineSize = bodySize / 0.6;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const dpr = devicePixels();
   canvas.width = Math.round(engineSize * dpr);
   canvas.height = Math.round(engineSize * dpr);
   canvas.style.width = `${engineSize}px`;
@@ -73,8 +73,15 @@ export function syncMiniBotStates(tasks: AgentTask[]) {
 }
 
 export function tickMiniBots(dt: number) {
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const dpr = devicePixels();
   for (const mb of live.values()) {
+    // The UI scale can move under a mini Mochi that is already on screen; a
+    // backing store sized for the old one stays soft until its view is rebuilt.
+    const size = Math.round(mb.cssSize * dpr);
+    if (mb.canvas.width !== size) {
+      mb.canvas.width = size;
+      mb.canvas.height = size;
+    }
     const ctx = mb.canvas.getContext("2d");
     if (!ctx) continue;
     mb.engine.update(dt);

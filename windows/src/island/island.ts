@@ -10,7 +10,7 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, applyUiZoom, devicePixels, uiScale } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -72,6 +72,11 @@ export class Island {
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
+  /** UI scale the document is currently drawn at; 0 until settings have been read. */
+  private zoomApplied = 0;
+  /** DPR the two Mochi canvases were last sized for — they follow a scale change. */
+  private canvasDpr = 0;
+  private greetingDpr = 0;
   private homeCollapseAt: number | null = null;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
@@ -211,14 +216,25 @@ export class Island {
       this.countdown,
     );
 
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.sizeGreeting();
+
+    this.root.append(this.wakeStrip, this.islandEl);
+    this.applyGeometry();
+  }
+
+  /**
+   * The greeting canvas, sized for the scale the document is at. Its backing
+   * store has to move with the UI scale, not just with the screen: at 1.5× a
+   * canvas left at 1.0 is a sprite, magnified along with everything else.
+   */
+  private sizeGreeting() {
+    const dpr = devicePixels();
+    if (this.greetingDpr === dpr) return;
+    this.greetingDpr = dpr;
     this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
     this.greetingCanvas.height = Math.round(150 * dpr);
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
-
-    this.root.append(this.wakeStrip, this.islandEl);
-    this.applyGeometry();
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -484,7 +500,11 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    // Everything above is in document units: what the zoomed document lays out.
+    // What Rust is given has to be the pixels those units land on, or the input
+    // region and the drawn island drift apart the moment the scale moves.
+    const s = uiScale();
+    const rect = { x: ((PANEL_W - w) / 2) * s, y: 0, w: w * s, h: hh * s };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -492,7 +512,12 @@ export class Island {
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /**
+   * Island rect in document units — origin at the top-left of the 720×320
+   * panel, the space every constant in layout.ts is written in and the space
+   * `State.mouse` is converted into. Not the pixels Rust is handed: see
+   * `applyGeometry`.
+   */
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
@@ -569,11 +594,17 @@ export class Island {
     });
   }
 
-  /** Cursor in window-logical coordinates. */
+  /** Cursor in window pixels (which the zoom turns into document units). */
   onCursor(x: number, y: number) {
-    State.mouse = { x, y };
+    // The one boundary between the two coordinate spaces: Rust and the webview's
+    // own mouse events both speak pixels on the window, while the island lays
+    // itself out — bot position, its own rect, the drop zone — in document
+    // units. Dividing here is what keeps those consistent whichever path the
+    // pointer arrived by.
+    const s = uiScale();
+    State.mouse = { x: x / s, y: y / s };
     const rect = this.islandRect();
-    State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
+    State.mouseInIsland = { x: State.mouse.x - rect.x, y: State.mouse.y - rect.y };
 
     // Windows sends no cursor position with an OLE drag, so the drop sequence is
     // fed from the Win32 cursor poll instead — it runs throughout the drag.
@@ -701,7 +732,8 @@ export class Island {
     if (greetingActive) {
       const gctx = this.greetingCanvas.getContext("2d");
       if (gctx) {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        this.sizeGreeting();
+        const dpr = this.greetingDpr;
         gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.greeting.draw(gctx);
       }
@@ -773,9 +805,10 @@ export class Island {
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (this.canvasPx !== w) {
+    const dpr = devicePixels();
+    if (this.canvasPx !== w || this.canvasDpr !== dpr) {
       this.canvasPx = w;
+      this.canvasDpr = dpr;
       this.botCanvas.width = Math.round(w * dpr);
       this.botCanvas.height = Math.round(hCss * dpr);
       this.botCanvas.style.width = `${w}px`;
@@ -880,11 +913,22 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
-  /** Applies settings coming from Rust at boot. */
+  /** Applies settings coming from Rust at boot, and on every later change. */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+
+    // The document's zoom and the shape Rust believes in are the same number,
+    // so the shape goes out again whenever the scale moves — including the
+    // first time, because the constructor had already drawn and pushed with
+    // whatever the defaults said, before settings had been read at all.
+    const scale = uiScale();
+    const previous = this.zoomApplied;
+    this.zoomApplied = scale;
+    applyUiZoom();
+    if (previous !== scale) this.applyGeometry();
+
     State.notify();
   }
 

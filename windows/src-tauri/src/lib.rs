@@ -17,7 +17,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, PhysicalSize, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
@@ -60,13 +60,17 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 }
 
 #[tauri::command]
-fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed) = {
+fn save_settings(app: AppHandle, shared: State<Shared>, mut settings: Settings) {
+    // Clamped before anything reads it: the window size, the island's pushed
+    // shape and the zoom all take this one number as given.
+    settings.clamp_ui_scale();
+    let (screen_changed, autostart_changed, previous_scale) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let previous_scale = current.ui_scale;
         *current = settings.clone();
-        (screen_changed, autostart_changed)
+        (screen_changed, autostart_changed, previous_scale)
     };
     if let Err(err) = settings::save(&settings) {
         eprintln!("[coucou] could not save settings: {err}");
@@ -78,7 +82,19 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
             eprintln!("[coucou] autostart: {err}");
         }
     }
-    if screen_changed {
+    // A UI that grew needs a frame that grew: content drawn 1.5× inside the
+    // window it booted in would run off the bottom. The *ratio* is applied, so
+    // a window the user resized by hand stays the size they chose.
+    let scale_changed = previous_scale != settings.ui_scale;
+    if scale_changed {
+        let ratio = if previous_scale.is_finite() && previous_scale > 0.0 {
+            settings.ui_scale / previous_scale
+        } else {
+            1.0
+        };
+        resize_settings_window(&app, ratio);
+    }
+    if screen_changed || scale_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
@@ -313,17 +329,30 @@ fn settings_page_url(app: &AppHandle) -> WebviewUrl {
     WebviewUrl::App("settings.html".into())
 }
 
+/// The settings window at a 1.0 UI, logical px — the size it was designed at.
+const SETTINGS_W: f64 = 560.0;
+const SETTINGS_H: f64 = 680.0;
+const SETTINGS_MIN_W: f64 = 460.0;
+const SETTINGS_MIN_H: f64 = 480.0;
+
 /// The settings window is created hidden at launch and only ever shown and
 /// hidden afterwards. A WebView2 window created later — on the main thread or
 /// not — silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
+    // Scaled at birth, not later: the page zooms its own document to the UI
+    // scale as soon as it boots, and content drawn 1.5× inside a 560×680
+    // window would run off the bottom before anyone touched a slider.
+    let scale = app
+        .try_state::<Shared>()
+        .and_then(|shared| shared.settings.lock().ok().map(|guard| guard.ui_scale))
+        .unwrap_or(1.0);
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
         .title("Settings — Coucou")
-        .inner_size(560.0, 680.0)
-        .min_inner_size(460.0, 480.0)
+        .inner_size(SETTINGS_W * scale, SETTINGS_H * scale)
+        .min_inner_size(SETTINGS_MIN_W * scale, SETTINGS_MIN_H * scale)
         .resizable(true)
         .visible(false)
         .center()
@@ -341,6 +370,28 @@ fn create_settings_window(app: &AppHandle) {
         }
         Err(err) => log::line(format!("settings window failed: {err}")),
     }
+}
+
+/// Carries the settings window's frame along with a change of UI scale,
+/// keeping whatever size the user left it at, and moves the minimum with it so
+/// the window cannot be dragged below what its own contents need.
+fn resize_settings_window(app: &AppHandle, ratio: f64) {
+    let Some(win) = app.get_webview_window("settings") else { return };
+    let scale = app
+        .try_state::<Shared>()
+        .and_then(|shared| shared.settings.lock().ok().map(|guard| guard.ui_scale))
+        .unwrap_or(1.0);
+
+    // `inner_size` is physical, but a ratio is unitless — scaling with it is
+    // right whatever the monitor's factor happens to be.
+    if let Ok(size) = win.inner_size() {
+        let scaled = |px: u32| ((px as f64 * ratio).round() as u32).max(1);
+        let _ = win.set_size(PhysicalSize::new(scaled(size.width), scaled(size.height)));
+    }
+    let _ = win.set_min_size(Some(tauri::LogicalSize::new(
+        SETTINGS_MIN_W * scale,
+        SETTINGS_MIN_H * scale,
+    )));
 }
 
 pub fn show_settings_window(app: &AppHandle) {
