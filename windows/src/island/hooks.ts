@@ -111,6 +111,20 @@ const APPROVAL_FIELDS = [
 ] as const;
 
 function approvalTarget(tool: string, input: Record<string, unknown>): string {
+  if (tool === "AskUserQuestion") {
+    const questions = input.questions;
+    if (Array.isArray(questions) && questions.length > 0) {
+      const q = questions[0];
+      if (typeof q === "object" && q != null && typeof (q as Record<string, unknown>).question === "string") {
+        const text = ((q as Record<string, unknown>).question as string).trim();
+        if (text) return text;
+      }
+    }
+    if (typeof input.question === "string" && input.question.trim()) {
+      return input.question.trim();
+    }
+  }
+
   for (const field of APPROVAL_FIELDS) {
     const value = input[field];
     if (typeof value === "string" && value.trim()) {

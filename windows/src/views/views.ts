@@ -297,22 +297,31 @@ function buildApproval(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
+      const isQuestion = State.pendingApproval?.tool === "AskUserQuestion";
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      who.append(agentWho(State.focusTask, isQuestion ? "is asking a question" : "needs permission"));
       // The whole point of approving here rather than in the terminal: this line
-      // is the command, the file path or the URL being authorised, not just the
-      // name of the tool asking.
+      // is the command, the file path, the URL, or the question being authorised.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
+
+      const key = isQuestion ? "question" : "approval";
+      if (rowKey === key) return;
+      rowKey = key;
       clear(row);
-      row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
-        btn("Allow", "primary", () => actions.decide("allow"), "Y"),
-      );
+      if (isQuestion) {
+        row.append(
+          btn("Deny", "secondary", () => actions.decide("deny"), "N"),
+          btn("Reply in terminal", "primary", () => {
+            actions.decide("allow");
+            actions.openTerminal();
+          }, "Y"),
+        );
+      } else {
+        row.append(
+          btn("Deny", "secondary", () => actions.decide("deny"), "N"),
+          btn("Allow", "primary", () => actions.decide("allow"), "Y"),
+        );
+      }
     },
   };
 }

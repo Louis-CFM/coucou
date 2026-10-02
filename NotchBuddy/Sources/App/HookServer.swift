@@ -473,6 +473,14 @@ final class HookServer: @unchecked Sendable {
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
         var command = toolInput["command"] as? String ?? tool
+        if tool == "AskUserQuestion" {
+            if let questions = toolInput["questions"] as? [[String: Any]],
+               let firstQ = questions.first?["question"] as? String, !firstQ.isEmpty {
+                command = firstQ
+            } else if let q = toolInput["question"] as? String, !q.isEmpty {
+                command = q
+            }
+        }
         let inputKey = Self.approvalInputKey(toolInput)
         nbLog("PermissionRequest \(tool) [\(pillId)]")
 

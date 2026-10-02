@@ -234,17 +234,25 @@ struct ApprovalView: View {
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
+                let isQuestion = approval?.tool == "AskUserQuestion"
+                AgentWho(task: state.focusTask, label: isQuestion ? "is asking a question" : "needs permission")
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
                         HookServer.shared.sendApprovalDecision("deny")
                     }
-                    PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow")
-                    }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+                    if isQuestion {
+                        PrimaryButton("Reply in terminal") {
+                            HookServer.shared.sendApprovalDecision("allow")
+                            openVSCode()
+                        }
+                    } else {
+                        PrimaryButton("Allow") {
+                            HookServer.shared.sendApprovalDecision("allow")
+                        }
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
                     }
                 }
             }
