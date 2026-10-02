@@ -162,6 +162,29 @@ npm run tauri dev      # live-reloading development build
 npm run pack           # AppImage, .deb and .rpm in windows/release/
 ```
 
+### Install
+
+```bash
+sudo dpkg -i windows/release/Coucou-Linux-0.1.1-amd64.deb   # Debian, Ubuntu
+sudo rpm -i windows/release/Coucou-Linux-0.1.1-x86_64.rpm   # Fedora
+```
+
+The `.deb` and `.rpm` depend on `libgtk-layer-shell0` / `gtk-layer-shell` and
+`libayatana-appindicator3-1`; `apt` or `dnf` pulls them in, and the build step
+above already needs the matching `-dev` packages.
+
+The AppImage needs nothing installed at all:
+
+```bash
+chmod +x windows/release/Coucou-Linux-0.1.1-x86_64.AppImage
+./windows/release/Coucou-Linux-0.1.1-x86_64.AppImage
+```
+
+First run on GNOME: the island sits just under the top bar, leaving the clock
+and date visible. On KDE, Sway, Hyprland and COSMIC it sits at the very top edge,
+over the panel — there is a real notch-equivalent there. `coucou.log` in
+`~/.local/share/coucou/` records which path was taken, as `backend: …`.
+
 What changes on Linux:
 
 - **The island** is a gtk-layer-shell overlay anchored to the top edge on
