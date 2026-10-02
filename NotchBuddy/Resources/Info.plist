@@ -25,7 +25,7 @@
 	<key>NSAccessibilityUsageDescription</key>
 	<string>Pour lire le titre de la fenêtre active et l'attacher comme contexte.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pour sauter au terminal et envoyer des mails.</string>
+	<string>Pour sauter au terminal, envoyer des mails et piloter Musique.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

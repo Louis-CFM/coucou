@@ -31,10 +31,28 @@ struct BotCanvasView: View {
                 engine.bodyColor = (state.focusTask?.isIntegration == true)
                     ? cgColorFromHex(state.focusTask!.color)
                     : nil
+
+                // Compute shouldDance per-frame (no observer lag)
+                let dancing: Bool = {
+                    #if !APPSTORE
+                    guard AppState.shared.musicPlaying else { return false }
+                    guard AppState.shared.activeIntegrations.contains("integration_music") else { return false }
+                    let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
+                    guard allowed.contains(state.effectiveState) else { return false }
+                    if state.mode == .compact { return true }
+                    return state.mode == .expanded && state.view == .overview && state.focusId == "integration_music"
+                    #else
+                    return false
+                    #endif
+                }()
+                engine.setDancing(dancing)
+
                 engine.update(dt: dt)
-                engine.drawHandsBehind(context: context, size: size)
-                engine.draw(context: context, size: size)
-                engine.drawHandsAndExtras(context: context, size: size)
+                var ctx = context
+                engine.applyDance(&ctx, size: size)
+                engine.drawHandsBehind(context: ctx, size: size)
+                engine.draw(context: ctx, size: size)
+                engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
         .onChange(of: state.effectiveState) { _, newState in
@@ -121,10 +139,12 @@ struct BotCanvasView: View {
 /// Mini bot canvas (for agent pills/column)
 struct MiniBotCanvasView: View {
     let task: AgentTask
+    var isDancing: Bool = false
     @StateObject private var engine: BotEngine
 
-    init(task: AgentTask) {
+    init(task: AgentTask, isDancing: Bool = false) {
         self.task = task
+        self.isDancing = isDancing
         _engine = StateObject(wrappedValue: {
             let e = BotEngine()
             e.isMini = true
@@ -138,8 +158,11 @@ struct MiniBotCanvasView: View {
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dt = min(0.05, now - engine.lastTime)
+                engine.setDancing(isDancing)
                 engine.update(dt: dt)
-                engine.draw(context: context, size: size)
+                var ctx = context
+                engine.applyDance(&ctx, size: size)
+                engine.draw(context: ctx, size: size)
             }
         }
         .onChange(of: task.state) { _, newState in

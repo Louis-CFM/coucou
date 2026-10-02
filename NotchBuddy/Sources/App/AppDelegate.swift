@@ -98,5 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotionPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
                                                name: .openFullSettings, object: nil)
+        #if !APPSTORE
+        _ = MusicController.shared
+        #endif
     }
 }
