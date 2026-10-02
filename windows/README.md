@@ -164,10 +164,30 @@ npm run pack           # AppImage, .deb and .rpm in windows/release/
 
 What changes on Linux:
 
-- **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
-  top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
-  and other wlroots compositors. GNOME has no layer-shell, so there the island
-  is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **The island** is a gtk-layer-shell overlay anchored to the top edge on
+  compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway and other
+  wlroots compositors. GNOME has no layer-shell, so there the island is a regular
+  window placed by the window manager instead — see below.
+  `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **The GDK backend is chosen at startup** so the island actually reaches the
+  top of the screen. A Wayland app has no say over where its window goes, so
+  without layer-shell the island ended up centred vertically — mid-screen, and
+  re-centred by the compositor on every resize. So: layer-shell available →
+  Wayland; no layer-shell but an X server reachable → X11, where the window
+  manager does honour the placement. GNOME sessions export
+  `GDK_BACKEND=wayland` for every app they launch, so that value is overridden
+  here. `COUCOU_GDK_BACKEND=x11|wayland` forces one, `GDK_BACKEND` is honoured as
+  before. The choice is written to the log as `backend: …`.
+- **The island sits just under the top panel**, not over it, unless it is a
+  layer surface. With one (KDE Plasma, Sway, Hyprland, COSMIC and other wlroots
+  compositors) the compositor anchors it to the very top edge, over the panel —
+  the notch-like placement, and why the Mac layout is possible at all. Without
+  one (GNOME, and anything else on X11) the island is an ordinary window and the
+  top edge belongs to the clock and the date: drawn over it, the island hid both.
+  So there it goes below the panel, at the depth reported by the window manager's
+  own work area, not a hardcoded number. The island is never hinted as a dock:
+  that would buy nothing now and, on window managers that honour dock struts
+  (XFCE, MATE, Cinnamon, i3), would reserve desktop space for it.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
