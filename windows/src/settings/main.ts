@@ -179,9 +179,9 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
+function apiSection(hasKey: boolean, claudePath: string | null): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: "" });
 
   const field = h("input", {
     type: "password",
@@ -195,15 +195,41 @@ function apiSection(hasKey: boolean): HTMLElement {
   const clearBtn = h("button", { class: "danger", text: "Remove" });
   const feedback = h("div", {});
 
-  async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
+  const backend = h("select", {}) as HTMLSelectElement;
+  backend.append(
+    h("option", { value: "subscription", text: "Claude subscription (Claude Code)" }),
+    h("option", { value: "api", text: "Anthropic API key" }),
+  );
+  backend.value = settings.chatBackend;
+  const keyRow = h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn);
+
+  // The dot and hint follow whichever backend the chat actually uses.
+  function paint(present: boolean) {
+    const sub = settings.chatBackend === "subscription";
+    keyRow.style.display = sub ? "none" : "";
+    const ok = sub ? claudePath !== null : present;
+    dot.style.background = ok ? "#22c55e" : "#f4505e";
+    state.textContent = sub
+      ? claudePath
+        ? `Chat runs through Claude Code (${claudePath}) and uses your Claude plan's quota. Run \`claude\` once in a terminal and /login if you haven't yet.`
+        : "Claude Code not found. Install it (claude.ai/code), run `claude` once to sign in, then restart Coucou."
+      : present
+        ? "Key saved in the Windows Credential Manager."
+        : "No key yet — the chat needs one.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
+
+  async function refresh() {
+    paint((await Bridge.secretPresent("anthropic-api-key")) ?? false);
+  }
+
+  backend.addEventListener("change", () => {
+    settings.chatBackend = backend.value as Settings["chatBackend"];
+    void save();
+    void Bridge.chatReset(); // the two backends don't share a conversation
+    void refresh();
+  });
 
   saveBtn.addEventListener("click", async () => {
     const value = field.value.trim();
@@ -241,14 +267,15 @@ function apiSection(hasKey: boolean): HTMLElement {
     void save();
   });
 
-  clearBtn.style.display = hasKey ? "" : "none";
+  paint(hasKey);
 
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Chat uses" }), backend),
+    keyRow,
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
   );
@@ -430,6 +457,7 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const claudePath = (await Bridge.claudeCodePath()) ?? null;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -442,7 +470,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    apiSection(hasKey, claudePath),
     integrationsSection(present),
     generalSection(),
     h("div", {

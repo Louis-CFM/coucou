@@ -20,6 +20,16 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Who answers the chat: "subscription" = the local Claude Code CLI on the
+    /// user's Claude plan, "api" = the Anthropic API with a stored key.
+    #[serde(default = "default_backend")]
+    pub chat_backend: String,
+}
+
+pub const BACKEND_SUBSCRIPTION: &str = "subscription";
+
+fn default_backend() -> String {
+    BACKEND_SUBSCRIPTION.to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +53,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_backend: default_backend(),
         }
     }
 }

@@ -70,7 +70,17 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
+**Settings… → Claude → Chat uses** picks who answers the chat:
+
+- **Claude subscription (Claude Code)** — the default. Each turn runs the local
+  `claude` CLI (`claude -p`), so it counts against your Pro / Max plan and needs
+  no API key. Install Claude Code and run `claude` once to sign in. The chat
+  only gets read-only tools (web search, web fetch, reading the dropped file),
+  and it skips `~/.claude/settings.json` so it never shows up as a session in
+  the island.
+- **Anthropic API key** — the direct API, billed per token.
+
+Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 

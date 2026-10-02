@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod claude_code;
 mod files;
 mod hooks;
 mod integrations;
@@ -241,8 +242,21 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (model, backend) = {
+        let s = shared.settings.lock().unwrap();
+        (s.model.clone(), s.chat_backend.clone())
+    };
+    if backend == settings::BACKEND_SUBSCRIPTION {
+        claude_code::send(&chat, &model, query, context).await
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
+}
+
+/// Path of the `claude` CLI the subscription chat would use, if installed.
+#[tauri::command]
+fn claude_code_path() -> Option<String> {
+    claude_code::find().map(|p| p.display().to_string())
 }
 
 #[tauri::command]
@@ -393,6 +407,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            claude_code_path,
             ingest_file,
             secret_present,
             secret_set,
