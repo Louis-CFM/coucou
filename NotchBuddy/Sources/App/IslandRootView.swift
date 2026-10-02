@@ -502,6 +502,19 @@ struct IslandHeader: View {
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
                 .buttonStyle(.plain)
+
+                // Hidden while an approval is pending: the card stays until it is answered.
+                if state.pendingApproval == nil {
+                    Button(action: {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }) {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Minimize")
+                }
             }
             .padding(.trailing, 16)
         }
