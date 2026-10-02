@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 — October 2, 2026
+
+- Codex support (GitHub build): sessions show up live on the Codex pill, and permission requests get Allow and Deny in the notch. Install from Settings → Codex Hooks, then trust the hooks once with /hooks in Codex (#130) — thanks @lacatu5
+- Cursor: Claude Code started in Cursor's terminal shows up on the Cursor pill, and you can answer its permission requests from the notch (#120).
+- Pick your main coding tool in Settings → Active pills: VS Code, Cursor, Codex or Antigravity (Codex and Antigravity: GitHub build). It stays on and no longer takes one of the 4 slots (#120).
+- The permission card stays in the notch until you answer it: the mouse no longer folds it, and reopening the island shows the request again (#117).
+- The permission card also shows when the island is already open, and the pill you were on comes back once you answer (#120).
+
 ## 0.1.1 — October 2, 2026
 
 - Declare the tools you use in Settings: Gemini CLI, Antigravity, Anthropic, Google AI and OpenAI pills join the existing ones (Cursor and Codex pills are coming soon), and you pick the main pill.
