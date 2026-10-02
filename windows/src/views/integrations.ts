@@ -223,9 +223,26 @@ function githubCard(): HTMLElement {
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   const runs = arr("integration_github", "runs");
   const pushes = arr("integration_github", "pushes");
-  if (runs.length || pushes.length) {
+  const live = State.githubPush;
+  if (live || runs.length || pushes.length) {
     const rows = h("div", { class: "int-rows" });
     let n = 0;
+    // A push Claude Code is running right now: its own row, on top.
+    if (live) {
+      const pushing = live.state === "pushing";
+      const accent = pushing ? "#F5A524" : live.state === "done" ? "#22C55E" : "#F4505E";
+      const name = h("span", {
+        class: "int-name",
+        text: pushing ? `Pushing ${live.repo}` : live.state === "done" ? `Pushed ${live.repo}` : `Push failed: ${live.repo}`,
+      });
+      const tail = pushing
+        ? h("span", { class: "int-progress busy" }, h("i"))
+        : h("span", { class: "int-ago", text: "just now" });
+      const row = listRow(accent, true, name, tail);
+      if (pushing) row.classList.add("running");
+      rows.append(row);
+      n++;
+    }
     for (const r of runs) {
       if (n >= 3) break;
       const running = r.status !== "completed";

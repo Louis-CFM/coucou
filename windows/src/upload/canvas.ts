@@ -7,11 +7,28 @@
 
 import { State } from "../core/state";
 import {
+  drawPieces, halfWidthAt, hatFor, shapeOf, shapePoint,
+  type Outfit, type ShapeDef,
+} from "../mochi/wardrobe";
+import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
 } from "./sequence";
 
 const FONT = 'system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif';
+
+type RGB = readonly [number, number, number]; // 0…1, as in the engine
+
+/** The white Mochi's green, used when no coloured Mochi is focused. */
+const GREEN: RGB = [52 / 255, 211 / 255, 153 / 255];
+
+/** `c` moved towards white (t > 0) or black (t < 0), as a CSS colour. */
+function shade(c: RGB, t: number, a = 1): string {
+  const to = t > 0 ? 1 : 0;
+  const k = Math.abs(t);
+  const v = c.map((x) => Math.round((x + (to - x) * k) * 255));
+  return `rgba(${v[0]},${v[1]},${v[2]},${a})`;
+}
 
 /** Mirrors the reference `rr()`: a rounded rect, radius clamped to the box. */
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -20,24 +37,32 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.roundRect(x, y, w, h, rad);
 }
 
-/** Superellipse body — port of usBodyPath(m, R). */
-function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number): { rx: number; ry: number } {
+/** The worn shape's R, so it is as wide as the reference body (rx 1.04 R). */
+const shapeR = (shape: ShapeDef, R: number) => (R * 1.04) / shape.rx;
+
+/**
+ * Superellipse body — port of usBodyPath(m, R) — starting from the worn
+ * shape, so Mochi keeps its own shape until it turns into the box.
+ */
+function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number, shape: ShapeDef): { rx: number; ry: number } {
   const mc = Math.max(0, Math.min(m, 1));
   const n = 2.15 + (5.5 - 2.15) * mc;
   const rx = R * (1.04 - 0.04 * mc);
   const ry = R * (0.97 - 0.03 * mc);
+  const Rs = shapeR(shape, R);
   ctx.beginPath();
   for (let i = 0; i <= 96; i++) {
     const a = (i / 96) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const px = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-    const py = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const sp = shapePoint(shape, ca, sa);
+    const px = lerp(sp.x * Rs, rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n), mc);
+    const py = lerp(sp.y * Rs, ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n), mc);
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
   ctx.closePath();
-  return { rx, ry };
+  return { rx: lerp(shape.rx * Rs, rx, mc), ry: lerp(shape.ry * Rs, ry, mc) };
 }
 
 function text(
@@ -72,6 +97,15 @@ export class UploadCanvas {
   private ctx: CanvasRenderingContext2D | null;
   private overlay: HTMLElement;
   private sizedFor = 0;
+  /** The focused Mochi's colour (null: the white Mochi). Drives its body and
+   *  every accent, so a red Mochi eats with a red bar. */
+  tint: RGB | null = null;
+  /** And its shape and hat. */
+  outfit: Outfit | null = null;
+
+  private get accent(): RGB {
+    return this.tint ?? GREEN;
+  }
 
   constructor(actions: UploadCanvasActions) {
     this.canvas = document.createElement("canvas");
@@ -140,9 +174,9 @@ export class UploadCanvas {
       const gx = USC.CARD_X + USC.CARD_W / 2;
       const gy = USC.CARD_Y + USC.CARD_H;
       const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, USC.CARD_H * 1.5);
-      g.addColorStop(0, `rgba(40,212,130,${f.greenWash * 0.9})`);
-      g.addColorStop(0.55, `rgba(40,212,130,${f.greenWash * 0.3})`);
-      g.addColorStop(1, "rgba(40,212,130,0)");
+      g.addColorStop(0, shade(this.accent, -0.1, f.greenWash * 0.9));
+      g.addColorStop(0.55, shade(this.accent, -0.1, f.greenWash * 0.3));
+      g.addColorStop(1, shade(this.accent, 0, 0));
       ctx.fillStyle = g;
       ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
     }
@@ -152,7 +186,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? shade(this.accent, 0, 0.55) : "rgba(255,255,255,0.14)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -209,7 +243,7 @@ export class UploadCanvas {
       ctx.scale(f.check, f.check);
       ctx.beginPath();
       ctx.arc(0, 0, 8, 0, Math.PI * 2);
-      ctx.fillStyle = "#34D399";
+      ctx.fillStyle = shade(this.accent, 0);
       ctx.fill();
       ctx.beginPath();
       ctx.moveTo(-3.6, 0.2);
@@ -235,12 +269,9 @@ export class UploadCanvas {
     // Fill.
     const fx = lerp(x0, x1, f.progress);
     if (fx > x0 + 1) {
-      const flashGreen = `rgb(${Math.round(lerp(52, 110, f.flash))},${Math.round(
-        lerp(211, 231, f.flash),
-      )},${Math.round(lerp(153, 183, f.flash))})`;
       const g = ctx.createLinearGradient(x0, 0, fx, 0);
-      g.addColorStop(0, "#1FA87A");
-      g.addColorStop(1, flashGreen);
+      g.addColorStop(0, shade(this.accent, -0.25));
+      g.addColorStop(1, shade(this.accent, 0.3 * f.flash));
       ctx.fillStyle = g;
       rr(ctx, x0, by - 3, fx - x0, 6, 3);
       ctx.fill();
@@ -253,8 +284,8 @@ export class UploadCanvas {
           progressAt(f.t, USC.T_PROG_START, f.progEnd)) / 0.01;
       const tl = Math.max(8, Math.min(34, 8 + v * 40));
       const g = ctx.createLinearGradient(fx - tl, 0, fx, 0);
-      g.addColorStop(0, "rgba(52,212,153,0)");
-      g.addColorStop(1, "rgba(110,231,183,0.6)");
+      g.addColorStop(0, shade(this.accent, 0, 0));
+      g.addColorStop(1, shade(this.accent, 0.3, 0.6));
       ctx.save();
       ctx.filter = "blur(3px)";
       ctx.fillStyle = g;
@@ -299,13 +330,19 @@ export class UploadCanvas {
     ctx.rotate(f.tilt);
     ctx.scale(f.sx, f.sy);
 
-    const { rx, ry } = bodyPath(ctx, f.morph, R);
+    const shape = shapeOf(this.outfit?.shape);
+    this.drawHat(ctx, "back", R, mc, shape);
+    const { rx, ry } = bodyPath(ctx, f.morph, R, shape);
 
-    // Body.
-    const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
-    bg.addColorStop(0, "#EDEDEF");
-    bg.addColorStop(1, "#C4C5CA");
-    ctx.fillStyle = bg;
+    // Body: the focused Mochi's colour, flat like the island draws it.
+    if (this.tint) {
+      ctx.fillStyle = shade(this.tint, 0);
+    } else {
+      const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
+      bg.addColorStop(0, "#EDEDEF");
+      bg.addColorStop(1, "#C4C5CA");
+      ctx.fillStyle = bg;
+    }
     ctx.fill();
 
     // Edge shadow.
@@ -318,7 +355,7 @@ export class UploadCanvas {
 
     // The body path is reused as a clip for everything drawn inside it.
     ctx.save();
-    bodyPath(ctx, f.morph, R);
+    bodyPath(ctx, f.morph, R, shape);
     ctx.clip();
 
     // Top rim, once Mochi is box-shaped enough to have one.
@@ -372,7 +409,19 @@ export class UploadCanvas {
     }
 
     ctx.restore(); // body clip
+    this.drawHat(ctx, "front", R, mc, shape);
     ctx.restore(); // transform
+  }
+
+  /** The hat sits where the island puts it (engine drawHat), riding the box top. */
+  private drawHat(ctx: CanvasRenderingContext2D, layer: "back" | "front", R: number, mc: number, shape: ShapeDef) {
+    const hat = hatFor(this.outfit?.head);
+    if (!hat) return;
+    const Rs = shapeR(shape, R);
+    const seat = hat.seat ?? { x: 100, y: 56, half: 28, yn: -1, fit: 1 };
+    const sc = ((halfWidthAt(shape, seat.yn) * Rs) / seat.half) * seat.fit;
+    const seatY = lerp(seat.yn * shape.ry * Rs, -R * 0.94, mc);
+    drawPieces(ctx, layer === "back" ? hat.back : hat.front, seat, 0, seatY, sc, sc, 1, () => 0);
   }
 
   // ── The file, and the suction ─────────────────────────────────────────────
@@ -443,7 +492,7 @@ export class UploadCanvas {
       const rad = 2.2 * (1 - k * 0.5);
       ctx.beginPath();
       ctx.arc(px, py, rad, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(52,212,153,${1 - k})`;
+      ctx.fillStyle = shade(this.accent, 0, 1 - k);
       ctx.fill();
     }
   }

@@ -154,11 +154,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   const bar = h("div", { class: "chat-bar" }, input, picker, send);
 
-  // Under Mochi: start the conversation over (the dropped file stays attached).
+  // Under Mochi: start the conversation over, dropped file included, so an
+  // unrelated question doesn't carry (and pay for) it again.
   const clearChat = h("button", { class: "chat-clear", title: "Clear chat" }, svg(ICONS.trash, 11), h("span", { text: "Clear" }));
   clearChat.addEventListener("click", () => {
     if (sending) return;
     State.chatHistory = [];
+    State.dropAttachment();
     void Bridge.chatReset();
     renderedCount = -1;
     State.notify();
@@ -268,7 +270,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         }
       }
 
-      clearChat.style.display = State.chatHistory.length ? "" : "none";
+      clearChat.style.display = State.chatHistory.length || State.droppedFile ? "" : "none";
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);
       if (count !== renderedCount) {

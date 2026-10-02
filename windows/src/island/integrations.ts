@@ -86,3 +86,79 @@ function handle(island: Island, update: IntegrationUpdate) {
 
   State.notify();
 }
+
+// ── Live pushes ───────────────────────────────────────────────────────────────
+
+const GITHUB = "integration_github";
+let pushCommand: string | null = null;
+let pushTimer: number | null = null;
+let pushIsland: Island | null = null;
+
+/** The command of a Bash tool call, if it is a `git push`. */
+export function gitPushCommand(tool: string, input: Record<string, unknown>): string | null {
+  const command = typeof input.command === "string" ? input.command : "";
+  return tool === "Bash" && /\bgit\b[^;&|]*\bpush\b/.test(command) ? command : null;
+}
+
+/**
+ * Claude Code is running `git push`: GitHub can't see a push in flight, but the
+ * hook can. The GitHub pill pops up with the push in progress, and the moment
+ * it ends the card refreshes from GitHub so the push itself shows.
+ */
+export function pushStarted(island: Island, command: string, cwd: string | undefined) {
+  if (!State.settings.activeIntegrations.includes(GITHUB)) return;
+  // The folder pushed from: a `cd <dir>` or `git -C <dir>` in the command wins
+  // over Claude Code's working folder.
+  const moved = [...command.matchAll(/(?:\bcd|\bgit\s+-C)\s+("[^"]+"|'[^']+'|[^\s;&|]+)/g)].pop()?.[1];
+  const dir = (moved ?? cwd ?? "").replace(/^["']|["']$/g, "");
+  const repo = dir.split(/[\\/]/).filter(Boolean).pop() ?? "repo";
+  pushCommand = command;
+  if (pushTimer != null) window.clearTimeout(pushTimer);
+  State.githubPush = { repo, state: "pushing", startedAt: Date.now() };
+  const task = State.tasks.find((t) => t.id === GITHUB);
+  if (task) {
+    task.state = "working";
+    task.steps = [`Pushing ${repo}`];
+    task.stepIndex = 0;
+  }
+  // Pop up: show the GitHub card with the push, and give the view back after.
+  if (State.focusId !== GITHUB) {
+    State.returnFocusId = State.focusId;
+    State.focusId = GITHUB;
+  }
+  // Held open for the whole push: the usual auto-close (3 s for some) would
+  // fold the card away long before a big push ends.
+  pushIsland = island;
+  island.alert("overview");
+  island.hold(true);
+  // No end ever comes if Claude Code is killed mid-push: give up after 10 min.
+  pushTimer = window.setTimeout(() => pushEnded(command, false), 600_000);
+  Sound.play("send");
+  State.notify();
+}
+
+/** The push's tool call ended (ok or failed). */
+export function pushEnded(command: string, ok: boolean) {
+  if (!State.githubPush || command !== pushCommand) return;
+  pushCommand = null;
+  if (pushTimer != null) window.clearTimeout(pushTimer);
+  State.githubPush = { ...State.githubPush, state: ok ? "done" : "failed" };
+  const task = State.tasks.find((t) => t.id === GITHUB);
+  if (task) {
+    task.state = ok ? "finished" : "error";
+    task.steps = [`${ok ? "Pushed" : "Push failed"}: ${State.githubPush.repo}`];
+    task.stepIndex = 0;
+  }
+  Sound.play(ok ? "finish" : "error");
+  void Bridge.refreshIntegration(GITHUB);
+  State.notify();
+  pushTimer = window.setTimeout(() => {
+    pushTimer = null;
+    State.githubPush = null;
+    const t = State.tasks.find((x) => x.id === GITHUB);
+    if (t && (t.state === "finished" || t.state === "error")) t.state = "idle";
+    if (State.focusId === GITHUB) State.restoreFocus();
+    pushIsland?.hold(false);
+    State.notify();
+  }, 8000);
+}

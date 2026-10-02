@@ -152,6 +152,38 @@ body {
   width: 0;
 }
 
+/* Compact middle, between Mochi and the mini grid: the current step, or the
+   time when nothing is going on. */
+#compact-status {
+  position: absolute;
+  top: 0;
+  left: 60px;
+  right: 64px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  font: 500 11.5px var(--font);
+  color: #e6e7ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
+#compact-status.clock {
+  color: #8b9099;
+  font-variant-numeric: tabular-nums;
+}
+
+#compact-status.ok {
+  color: var(--green-2);
+}
+
+#compact-status.bad {
+  color: #f4505e;
+}
+
 /* Compact 2×2 mini grid, to the right of the notch. */
 #mini-grid {
   position: absolute;
@@ -932,12 +964,12 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .drop-card.over {
-  background: radial-gradient(200px 200px at 50% 100%, rgba(34, 197, 94, 0.13), transparent 70%),
+  background: radial-gradient(200px 200px at 50% 100%, color-mix(in srgb, var(--tint, #22c55e) 13%, transparent), transparent 70%),
     var(--card-flat);
 }
 
 .drop-card.over .drop-frame rect {
-  stroke: rgba(34, 197, 94, 0.65);
+  stroke: color-mix(in srgb, var(--tint, #22c55e) 65%, transparent);
   animation: dash-march 1.1s linear infinite;
 }
 
@@ -968,7 +1000,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .drop-card.over .drop-title {
-  color: var(--green-2);
+  color: var(--tint, var(--green-2));
 }
 
 .drop-tags {
@@ -987,12 +1019,12 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Uploading ──────────────────────────────────────────────────────────── */
 
 .up-card {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.14), transparent 70%),
+  background: radial-gradient(260px 260px at 50% 140%, color-mix(in srgb, var(--tint, #34d399) 14%, transparent), transparent 70%),
     var(--card);
 }
 
 .up-card.done {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.28), transparent 70%),
+  background: radial-gradient(260px 260px at 50% 140%, color-mix(in srgb, var(--tint, #34d399) 28%, transparent), transparent 70%),
     var(--card);
 }
 
@@ -1015,7 +1047,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .up-name.done {
-  color: var(--green-2);
+  color: var(--tint, var(--green-2));
   font-weight: 600;
 }
 
@@ -1038,7 +1070,7 @@ input[type="range"]::-webkit-slider-thumb {
 .up-fill {
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #1fa87a, #34d399);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tint, #34d399), black 25%), var(--tint, #34d399));
 }
 
 .up-glow {
@@ -1048,7 +1080,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 28px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(110, 231, 183, 0.45);
+  background: color-mix(in srgb, var(--tint, #34d399), white 30%);
   filter: blur(5px);
   pointer-events: none;
 }
@@ -1904,4 +1936,19 @@ input[type="range"]::-webkit-slider-thumb {
 .chat-clear:hover {
   background: rgba(244, 80, 94, 0.18);
   color: #ff8d97;
+}
+
+/* A push in flight: its size isn't known, so the bar sweeps. */
+.int-progress.busy i {
+  width: 40%;
+  animation: int-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes int-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
 }

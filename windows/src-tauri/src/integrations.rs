@@ -66,7 +66,7 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
-    // Ticks every 20 s, but only does the work every 5 minutes unless a
+    // Ticks every 20 s, but only does the work every minute unless a
     // workflow run is going (see poll_github_tick).
     spawn(app.clone(), "integration_github", 7, 20, poll_github_tick);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
@@ -270,12 +270,12 @@ async fn poll_stripe(app: AppHandle) {
 static GITHUB_BUSY: AtomicBool = AtomicBool::new(false);
 static GITHUB_LAST: Mutex<Option<Instant>> = Mutex::new(None);
 
-/// Every 5 minutes when nothing is running, every tick (20 s) while a run is.
+/// Every minute when nothing is running, every tick (20 s) while a run is.
 async fn poll_github_tick(app: AppHandle) {
     let due = GITHUB_LAST
         .lock()
         .unwrap()
-        .is_none_or(|last| last.elapsed() >= Duration::from_secs(300));
+        .is_none_or(|last| last.elapsed() >= Duration::from_secs(60));
     if due || GITHUB_BUSY.load(Ordering::Relaxed) {
         poll_github(app).await;
     }
@@ -394,30 +394,49 @@ async fn poll_github(app: AppHandle) {
     runs.sort_by_key(|r| !active(r));
     GITHUB_BUSY.store(runs.iter().any(active), Ordering::Relaxed);
 
-    // Your latest pushes, from your public activity feed (private repos too
-    // when the token can see them).
-    let pushes: Vec<Value> = gh_get(&http, &token, &format!("https://api.github.com/users/{login}/events?per_page=30"))
+    // Your latest pushes. A repo's `pushed_at` changes the moment a push
+    // lands, while the activity feed runs minutes behind and no longer
+    // carries commits, so it only tells the branch when it has caught up.
+    let events: Vec<Value> = gh_get(&http, &token, &format!("https://api.github.com/users/{login}/events?per_page=30"))
         .await
         .and_then(|v| v.as_array().cloned())
-        .unwrap_or_default()
-        .iter()
-        .filter(|e| e.get("type").and_then(Value::as_str) == Some("PushEvent"))
-        .take(3)
-        .map(|e| {
-            let payload = e.get("payload");
-            let commits = payload.and_then(|p| p.get("commits")).and_then(Value::as_array);
-            json!({
-                "repo": e.pointer("/repo/name").and_then(Value::as_str).and_then(|n| n.split('/').next_back()).unwrap_or(""),
-                "branch": payload.and_then(|p| p.get("ref")).and_then(Value::as_str).map(|r| r.trim_start_matches("refs/heads/")).unwrap_or(""),
-                "commits": payload.and_then(|p| p.get("size")).and_then(Value::as_i64).unwrap_or(commits.map_or(0, |c| c.len() as i64)),
-                "message": commits.and_then(|c| c.last()).and_then(|c| c.get("message")).and_then(Value::as_str).map(first_line).unwrap_or_default(),
-                "createdAt": e.get("created_at").and_then(Value::as_str).unwrap_or(""),
+        .unwrap_or_default();
+    let mut pushes = Vec::new();
+    for repo in repos.iter().take(3) {
+        let (Some(full), Some(pushed_at)) = (
+            repo.get("full_name").and_then(Value::as_str),
+            repo.get("pushed_at").and_then(Value::as_str),
+        ) else {
+            continue;
+        };
+        if !chrono_age_hours(pushed_at).is_some_and(|h| h < 24.0 * 7.0) {
+            continue;
+        }
+        let branch = events
+            .iter()
+            .find(|e| {
+                e.get("type").and_then(Value::as_str) == Some("PushEvent")
+                    && e.pointer("/repo/name").and_then(Value::as_str) == Some(full)
             })
-        })
-        .collect();
+            .and_then(|e| e.pointer("/payload/ref").and_then(Value::as_str))
+            .map(|r| r.trim_start_matches("refs/heads/").to_string())
+            .or_else(|| repo.get("default_branch").and_then(Value::as_str).map(str::to_string))
+            .unwrap_or_default();
+        let message = gh_get(&http, &token, &format!("https://api.github.com/repos/{full}/commits/{branch}"))
+            .await
+            .and_then(|c| c.pointer("/commit/message").and_then(Value::as_str).map(first_line))
+            .unwrap_or_default();
+        pushes.push(json!({
+            "repo": full.split('/').next_back().unwrap_or(full),
+            "fullName": full,
+            "branch": branch,
+            "message": message,
+            "createdAt": pushed_at,
+        }));
+    }
 
-    // A run that just finished is the news (a pill badge and a sound).
-    let event = runs.iter().find(|r| !active(r)).and_then(|r| {
+    // News, in order: a run that just finished, else a push that just landed.
+    let run_event = runs.iter().find(|r| !active(r)).and_then(|r| {
         let id = r.get("id")?.as_i64()?.to_string();
         if !is_new("github_run", &id) {
             return None;
@@ -428,6 +447,18 @@ async fn poll_github(app: AppHandle) {
             detail: None,
         })
     });
+    let push_event = pushes.first().and_then(|p| {
+        let key = format!("{}@{}", p.get("fullName")?.as_str()?, p.get("createdAt")?.as_str()?);
+        if !is_new("github_push", &key) {
+            return None;
+        }
+        Some(IntegrationEvent {
+            success: true,
+            label: format!("Pushed to {} → {}", p.get("repo")?.as_str()?, p.get("branch")?.as_str()?),
+            detail: p.get("message").and_then(Value::as_str).filter(|m| !m.is_empty()).map(str::to_string),
+        })
+    });
+    let event = run_event.or(push_event);
 
     emit(&app, IntegrationUpdate {
         id: "integration_github",

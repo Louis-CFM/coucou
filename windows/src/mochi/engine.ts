@@ -516,6 +516,22 @@ export class BotEngine {
   emit(type: Particle["type"], count: number) {
     for (let i = 0; i < count; i++) {
       const isZ = type === "z";
+      if (type === "sweat") {
+        // A bead forms at a temple and runs down, not up like the others.
+        const side = Math.random() < 0.5 ? -1 : 1;
+        this.particles.push({
+          type,
+          x: side * (0.55 + Math.random() * 0.1),
+          y: -0.45 - Math.random() * 0.1,
+          vx: side * 0.08,
+          vy: 0.05,
+          age: -i * 0.14,
+          life: 1.1 + Math.random() * 0.3,
+          rot: 0,
+          size: 0.13 + Math.random() * 0.05,
+        });
+        continue;
+      }
       this.particles.push({
         type,
         x: (Math.random() - 0.5) * 0.9 + (isZ ? 0.55 : 0),
@@ -1270,7 +1286,9 @@ export class BotEngine {
       const k = p.age / p.life;
       const a = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8;
       const px = cx + (p.x + p.vx * p.age) * R * 1.3;
-      const py = cy + (p.y + p.vy * p.age) * R * 1.3;
+      // Sweat falls: it speeds up as it runs down.
+      const fall = p.type === "sweat" ? 0.6 * p.age * p.age : 0;
+      const py = cy + (p.y + p.vy * p.age + fall) * R * 1.3;
       const sz = R * p.size * (1 + k * 0.4);
 
       x.save();

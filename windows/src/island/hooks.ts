@@ -7,6 +7,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type AskQuestion } from "../core/state";
 import type { Island } from "./island";
+import { gitPushCommand, pushEnded, pushStarted } from "./integrations";
 
 const CLAUDE_ID = "integration_claude";
 
@@ -60,22 +61,22 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
+/** frenchStep() on macOS, in English here. */
 const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
+  Bash: "Run",
+  Read: "Read",
+  Write: "Write",
+  Edit: "Edit",
+  Glob: "Find",
+  Grep: "Search",
+  WebSearch: "Web search",
+  WebFetch: "Fetch",
+  TodoWrite: "Tasks",
   Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
+  LS: "List",
+  MultiEdit: "Edit",
   NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+  PowerShell: "Run",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
@@ -259,18 +260,26 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
+      const push = gitPushCommand(tool, payload.tool_input ?? {});
+      if (push) pushStarted(island, push, payload.cwd);
+      else surface("overview", false);
       break;
     }
 
-    case "PostToolUse":
+    case "PostToolUse": {
       State.updateTask(agentId, "working");
+      const push = gitPushCommand(payload.tool_name ?? "", payload.tool_input ?? {});
+      if (push) pushEnded(push, true);
       break;
+    }
 
-    case "PostToolUseFailure":
+    case "PostToolUseFailure": {
       State.updateTask(agentId, "working");
       State.appendStep(agentId, "⚠ failed");
+      const push = gitPushCommand(payload.tool_name ?? "", payload.tool_input ?? {});
+      if (push) pushEnded(push, false);
       break;
+    }
 
     case "Notification": {
       const message = payload.message ?? "";

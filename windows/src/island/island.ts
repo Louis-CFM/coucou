@@ -45,6 +45,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  /** The closed island's middle: what the focused Mochi is doing, else the time. */
+  private compactStatus!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -189,6 +191,11 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactStatus = h("div", { id: "compact-status" });
+    // The clock moves on its own; a timer this slow costs nothing.
+    window.setInterval(() => {
+      if (State.mode === "compact") this.syncCompactStatus();
+    }, 15_000);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -222,6 +229,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactStatus,
       this.countdown,
     );
 
@@ -353,6 +361,13 @@ export class Island {
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
+  }
+
+  /** Hold the island open while something runs (a push), without the
+   *  approval pin; `false` lets it auto-close again as usual. */
+  hold(on: boolean) {
+    this.fsm.pinned = on || State.isPinned;
+    if (!on && !this.wasInIsland) this.fsm.mouseLeft();
   }
 
   /** The request card is answered or handed back: unpin and go home. */
@@ -848,7 +863,11 @@ export class Island {
     }
 
     const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    if (uploadActive) {
+      this.uploadCanvas.tint = this.engine.bodyColor;
+      this.uploadCanvas.outfit = this.engine.outfit;
+      this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    }
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
@@ -1014,8 +1033,27 @@ export class Island {
       }
     }
 
+    this.compactStatus.style.opacity = showGrid ? "1" : "0";
+    if (showGrid) this.syncCompactStatus();
+    // An off-screen shimmer would keep the compositor busy while hidden.
+    else this.compactStatus.classList.remove("shimmer");
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  private syncCompactStatus() {
+    const t = State.focusTask;
+    const step = t && t.state !== "idle" && t.steps.length > 0
+      ? t.steps[Math.min(t.stepIndex, t.steps.length - 1)]
+      : null;
+    const text = step ?? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (this.compactStatus.textContent !== text) this.compactStatus.textContent = text;
+    const live = !!step && t!.state !== "finished" && t!.state !== "error";
+    this.compactStatus.classList.toggle("shimmer", live);
+    this.compactStatus.classList.toggle("clock", !step);
+    this.compactStatus.classList.toggle("ok", !!step && t!.state === "finished");
+    this.compactStatus.classList.toggle("bad", !!step && t!.state === "error");
   }
 
   /** Applies settings coming from Rust at boot. */

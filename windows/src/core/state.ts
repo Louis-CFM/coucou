@@ -183,6 +183,8 @@ class AppState {
   focusId: string | null = null;
   /** The Mochi that had the view before a Claude Code card took it over. */
   returnFocusId: string | null = null;
+  /** A `git push` Claude Code is running right now, for the GitHub card. */
+  githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
 
   stateOverride: BotStateName | null = null;
 
