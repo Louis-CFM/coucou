@@ -113,22 +113,69 @@ final class ClaudeService {
 
     // MARK: - Model list
 
-    /// Fetches available models from the Anthropic API in the order the API returns them
-    /// (newest first). Returns an empty array on any error — callers fall back to a static list.
-    static func fetchModels(apiKey: String) async -> [(id: String, label: String)] {
-        guard let url = URL(string: "https://api.anthropic.com/v1/models?limit=100") else { return [] }
+    /// What `GET /v1/models` said about a key.
+    enum KeyCheck {
+        /// The key works; the models it can reach, newest first.
+        case valid([(id: String, label: String)])
+        /// The API answered, but refused the key or the request.
+        case refused(String)
+        /// The call never got an answer (offline, timeout, bad response).
+        case unreachable(String)
+    }
+
+    /// Prefix of the OAuth tokens a Claude Code login and `claude setup-token` hand out.
+    /// Such a token is a real credential, but only as a bearer token; sent as `x-api-key`
+    /// the API answers "API key is invalid.", which says nothing about why. Naming it is
+    /// the whole point of the check — it is the key people paste by mistake.
+    private static let subscriptionTokenPrefix = "sk-ant-oat"
+
+    /// Asks the API what models the key can reach. This doubles as the key check:
+    /// it is the cheapest authenticated call, and a key that cannot list models
+    /// cannot run the chat either.
+    static func checkKey(_ apiKey: String) async -> KeyCheck {
+        if apiKey.hasPrefix(subscriptionTokenPrefix) {
+            return .refused("That is a Claude Code subscription token, not a Console API key. "
+                            + "Get one on console.anthropic.com/settings/keys.")
+        }
+        guard let url = URL(string: "https://api.anthropic.com/v1/models?limit=100") else {
+            return .unreachable("Could not build the request URL.")
+        }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = json["data"] as? [[String: Any]] else { return [] }
-        return items.compactMap { item in
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: req)
+        } catch {
+            return .unreachable(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            return .unreachable("Unexpected response from the API.")
+        }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        guard http.statusCode == 200 else {
+            // Anthropic error format: {"type":"error","error":{"type":"…","message":"…"}}
+            let message = (json?["error"] as? [String: Any])?["message"] as? String
+            return .refused(message ?? "HTTP \(http.statusCode)")
+        }
+        guard let items = json?["data"] as? [[String: Any]] else {
+            return .unreachable("The model list came back in an unexpected shape.")
+        }
+        return .valid(items.compactMap { item in
             guard let id = item["id"] as? String,
                   let name = item["display_name"] as? String else { return nil }
             return (id: id, label: name)
-        }
+        })
+    }
+
+    /// Fetches available models from the Anthropic API in the order the API returns them
+    /// (newest first). Returns an empty array on any error — callers fall back to a static list.
+    static func fetchModels(apiKey: String) async -> [(id: String, label: String)] {
+        if case .valid(let models) = await checkKey(apiKey) { return models }
+        return []
     }
 
     /// Fetches Gemini models via the OpenAI-compatible endpoint.
