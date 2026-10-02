@@ -239,7 +239,13 @@ export class Island {
           break;
         case "home":
           this.expand(State.defaultView());
-          if (!this.wasInIsland) this.fsm.mouseLeft();
+          if (!this.wasInIsland) {
+            this.fsm.mouseLeft();
+            if (!State.isPinned) {
+              this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+              this.ensureRunning();
+            }
+          }
           break;
         case "coucou":
           this.expand("greeting");
@@ -294,7 +300,11 @@ export class Island {
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
     State.lastActivity = performance.now();
-    this.homeCollapseAt = null;
+    this.homeCollapseAt =
+      !this.wasInIsland && !State.isPinned
+        ? performance.now() + State.settings.autoCloseInterval * 1000
+        : null;
+    this.ensureRunning();
     State.notify();
   }
 
@@ -328,6 +338,11 @@ export class Island {
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
+    if (!this.wasInIsland && !State.isPinned) {
+      this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+      this.fsm.mouseLeft();
+      this.ensureRunning();
+    }
   }
 
   reveal() {
@@ -564,6 +579,9 @@ export class Island {
    */
   followPageCursor() {
     window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+    document.addEventListener("mouseleave", () => this.onCursor(-10_000, -10_000));
+    window.addEventListener("blur", () => this.onCursor(-10_000, -10_000));
+    this.islandEl.addEventListener("mouseleave", () => this.onCursor(-10_000, -10_000));
     window.addEventListener("mouseout", (e) => {
       if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
     });
@@ -594,6 +612,7 @@ export class Island {
       this.fsm.mouseLeft();
       if (this.fsm.state === "home" && !State.isPinned) {
         this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+        this.ensureRunning();
       }
     }
     this.wasInIsland = inIsland;
@@ -729,11 +748,14 @@ export class Island {
     // spends most of its life in. Geometry still has to finish retracting.
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
+    const countdownActive =
+      State.mode === "expanded" && !State.isPinned && this.homeCollapseAt != null;
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || UploadSeq.isActive ||
+        countdownActive;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -826,6 +848,12 @@ export class Island {
     const autoClose = State.settings.autoCloseInterval;
     const windowS = Math.min(10, autoClose * 0.6);
     const remaining = (this.homeCollapseAt - nowMs) / 1000;
+    if (remaining <= 0) {
+      this.homeCollapseAt = null;
+      this.countdown.style.width = "0px";
+      this.collapse();
+      return;
+    }
     this.countdown.style.width =
       remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
   }
