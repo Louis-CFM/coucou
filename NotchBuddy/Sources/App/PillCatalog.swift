@@ -33,7 +33,11 @@ struct PillDefinition {
 
     /// Label shown in the active-session card header (workspace/agent pills only).
     var sessionSubtitle: String {
-        id == "integration_claude" ? "Claude Code" : "Agent"
+        switch id {
+        case "integration_claude": return "Claude Code"
+        case "agent_cursor":       return "Cursor"
+        default:                   return "Agent"
+        }
     }
 }
 
@@ -46,13 +50,13 @@ enum PillCatalog {
         .init(id: "integration_claude",  name: "VS Code",     color: "#F5F6F8",
               category: .workspace, subtitle: "Integration",  source: .claudeCode),
         .init(id: "agent_cursor",        name: "Cursor",      color: "#C0C4CC",
-              category: .workspace, subtitle: "Integration",  source: .agent,  comingSoon: true),
+              category: .workspace, subtitle: "Integration",  source: .agent),
+        .init(id: "agent_antigravity",   name: "Antigravity", color: "#E879F9",
+              category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
         .init(id: "agent_codex",         name: "Codex",       color: "#2DD4BF",
               category: .workspace, subtitle: "Integration",  source: .agent,  comingSoon: true, githubOnly: true),
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
-              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
-        .init(id: "agent_antigravity",   name: "Antigravity", color: "#E879F9",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,

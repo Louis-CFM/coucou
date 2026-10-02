@@ -1,6 +1,7 @@
 import Foundation
 import Darwin
 import AppKit
+import SwiftUI
 import CryptoKit
 
 // MARK: - HookServer
@@ -40,6 +41,7 @@ final class HookServer: @unchecked Sendable {
     private var pendingApprovalFD: Int32 = -1         // held open while user decides
     private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
     private var activeSessionId: String? = nil        // current Claude Code session
+    private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
 
     private init() {}
 
@@ -60,10 +62,18 @@ final class HookServer: @unchecked Sendable {
         cancelApprovalFDSource()
         pendingApprovalFD = -1
         let state = AppState.shared
+        let pillId = state.pendingApproval?.pillId ?? "integration_claude"
         state.pendingApproval = nil
         state.isPinned = false
-        state.updateTask(id: "integration_claude", state: .working)
-        clearPillBadge(id: "integration_claude")
+        state.updateTask(id: pillId, state: .working)
+        clearPillBadge(id: pillId)
+        // Restore focus to the pill that was focused before the approval card appeared.
+        if let prev = focusBeforeApproval {
+            focusBeforeApproval = nil
+            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
         state.noteMessage = note
         state.view = .note
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
@@ -199,67 +209,86 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processEvent(name: String, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
-        // Absent or invalid → Claude Code pill (integration_claude); no change in behaviour.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let validAgent = Self.validateAgent(rawAgent)
-        let agentId = validAgent.map { "agent_\($0)" } ?? "integration_claude"
-        let isExternalAgent = validAgent != nil
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        // External agents bypass the VS Code filter (their relay runs in any terminal).
-        guard isExternalAgent || isVSCode else {
+
+        // Cursor identified solely by its stable Electron bundle ID.
+        // ToDesktop builds other apps too — do not match on "todesktop" alone.
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+
+        // Routing: coucou_agent → external pill; Cursor → agent_cursor; VS Code → integration_claude.
+        let agentId: String
+        let isExternalAgent: Bool
+        if let agent = validAgent {
+            agentId = "agent_\(agent)"
+            isExternalAgent = true
+        } else if isCursorEditor {
+            agentId = "agent_cursor"
+            isExternalAgent = false
+        } else if isVSCodeEditor {
+            agentId = "integration_claude"
+            isExternalAgent = false
+        } else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
         let focused = state.focusId == agentId
 
-        // While a permission request is pending on the Claude Code pill, skip events to
-        // preserve the .approval state and keep the card visible.
-        if state.pendingApproval != nil && agentId == "integration_claude" {
-            if let pending = state.pendingApproval {
-                switch name {
-                case "PostToolUse", "PostToolUseFailure":
-                    // Only dismiss when this exact tool call finished — same session, tool and input.
-                    // Other parallel tools finishing must not close the card.
-                    if sessionId == pending.sessionId,
-                       (payload["tool_name"] as? String ?? "") == pending.tool,
-                       Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:]) == pending.inputKey {
-                        dismissApprovalCard(note: "Handled in VS Code.")
-                    }
-                case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd":
-                    // Turn ended or session interrupted — the permission is moot.
-                    if sessionId == pending.sessionId {
-                        dismissApprovalCard(note: "Handled in VS Code.")
-                    }
-                default: break
+        // While a permission request is pending, dismiss when the resolving event arrives,
+        // then continue normal processing. Only skip normal processing when unresolved.
+        if let pending = state.pendingApproval, agentId == pending.pillId {
+            let handledNote = pending.pillId == "agent_cursor" ? "Handled in Cursor." : "Handled in VS Code."
+            var resolved = false
+            switch name {
+            case "PostToolUse", "PostToolUseFailure":
+                // Only dismiss when this exact tool call finished — same session, tool and input.
+                // Other parallel tools finishing must not close the card.
+                if sessionId == pending.sessionId,
+                   (payload["tool_name"] as? String ?? "") == pending.tool,
+                   Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:]) == pending.inputKey {
+                    dismissApprovalCard(note: handledNote)
+                    resolved = true
                 }
+            case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd":
+                // Turn ended or session interrupted — the permission is moot.
+                if sessionId == pending.sessionId {
+                    dismissApprovalCard(note: handledNote)
+                    resolved = true
+                }
+            default: break
             }
-            return
+            if !resolved { return }
+            // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
@@ -268,7 +297,7 @@ final class HookServer: @unchecked Sendable {
 
         case "PreToolUse":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertTask(projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
@@ -309,7 +338,7 @@ final class HookServer: @unchecked Sendable {
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
-                    state.updateTask(id: agentId, state: .idle)
+                    AppState.shared.updateTask(id: agentId, state: .idle)
                     self.clearPillBadge(id: agentId)
                 }
             }
@@ -325,12 +354,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionEnd":
             activeSessionId = nil
-            if isExternalAgent {
-                state.removeTask(id: agentId)
-            } else {
-                state.updateTask(id: agentId, state: .idle)
-                clearSession()
-            }
+            state.removeTask(id: agentId)
 
         case "SubagentStart":
             appendStep(id: agentId, step: "+ subagent")
@@ -389,8 +413,12 @@ final class HookServer: @unchecked Sendable {
         default: isAlert = false
         }
         if state.mode == .expanded {
-            // Don't hijack the approval card for other alerts
-            if isAlert && state.pendingApproval == nil { state.view = view }
+            // Approval always wins; other alerts are blocked while a card is showing
+            if view == .approval {
+                state.view = view
+            } else if isAlert && state.pendingApproval == nil {
+                state.view = view
+            }
         } else if isAlert {
             // Alerts always force-expand
             NotificationCenter.default.post(name: .hookExpand, object: view)
@@ -406,7 +434,9 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
         let state = AppState.shared
-        let sessionId = payload["session_id"] as? String ?? "unknown"
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
@@ -426,9 +456,13 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        // Cursor identified solely by its stable Electron bundle ID.
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+        let pillId = isCursorEditor ? "agent_cursor" : "integration_claude"
+        guard isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -440,7 +474,7 @@ final class HookServer: @unchecked Sendable {
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
         var command = toolInput["command"] as? String ?? tool
         let inputKey = Self.approvalInputKey(toolInput)
-        nbLog("PermissionRequest \(tool)")
+        nbLog("PermissionRequest \(tool) [\(pillId)]")
 
         if pendingApprovalFD >= 0 {
             // Displace the previous request: write "ask" then cancel its source.
@@ -457,23 +491,27 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertTask(projectName: projectName, cwd: cwd)
-        state.updateTask(id: "integration_claude", state: .approval)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
-                                              command: command, inputKey: inputKey)
+                                              command: command, inputKey: inputKey, pillId: pillId)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
-        // Approval always forces the island open — user must be able to respond
-        state.focusId = "integration_claude"
+        // Approval always forces the island open — user must be able to respond.
+        // Save current focus so we can restore it when the card is dismissed.
+        if focusBeforeApproval == nil { focusBeforeApproval = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
         expandIfNeeded(to: .approval)
 
-        // Monitor fd: if VS Code closes the connection (handled externally), dismiss the card.
+        // Monitor fd: if the editor closes the connection (handled externally), dismiss the card.
         // The cancel handler closes the fd — never close it anywhere else.
+        let capturedPillId = pillId
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         source.setEventHandler { [weak self] in
             guard let self, self.pendingApprovalFD == fd else { return }
-            self.dismissApprovalCard(note: "Handled in VS Code.")
+            let note = capturedPillId == "agent_cursor" ? "Handled in Cursor." : "Handled in VS Code."
+            self.dismissApprovalCard(note: note)
         }
         source.setCancelHandler { close(fd) }
         source.resume()
@@ -484,7 +522,8 @@ final class HookServer: @unchecked Sendable {
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
             guard let self, self.pendingApprovalFD == captured else { return }
-            self.dismissApprovalCard(note: "Still waiting in VS Code.")
+            let note = capturedPillId == "agent_cursor" ? "Still waiting in Cursor." : "Still waiting in VS Code."
+            self.dismissApprovalCard(note: note)
         }
     }
 
@@ -517,20 +556,45 @@ final class HookServer: @unchecked Sendable {
         }
 
         let state = AppState.shared
+        let pillId = state.pendingApproval?.pillId ?? "integration_claude"
         state.pendingApproval = nil
         state.isPinned = false
-        state.updateTask(id: "integration_claude", state: .working)
-        clearPillBadge(id: "integration_claude")
+        state.updateTask(id: pillId, state: .working)
+        clearPillBadge(id: pillId)
+        // Restore focus to the pill that was focused before the approval card appeared.
+        if let prev = focusBeforeApproval {
+            focusBeforeApproval = nil
+            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
         state.view = state.tasks.isEmpty ? .empty : .overview
     }
 
-    /// Updates integration_claude with the current session project name and cwd.
+    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
+    /// If the task already exists (persistent), just updates name/cwd.
+    /// If missing (transient), creates it and inserts after the main pill.
     @MainActor
-    private func upsertTask(projectName: String, cwd: String = "") {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "") {
         let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].name = projectName
-        if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+        if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
+            state.tasks[idx].name = projectName
+            if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            return
+        }
+        // Transient: create and insert after the main pill
+        let def = PillCatalog.definition(for: id)
+        let color = def?.color ?? "#C0C4CC"
+        let source = def?.source ?? .agent
+        let task = AgentTask(id: id, name: projectName, color: color,
+                             state: .idle, steps: [], source: source, isIntegration: true)
+        if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
+            state.tasks.insert(task, at: mainIdx + 1)
+        } else {
+            state.tasks.insert(task, at: 0)
+        }
+        if state.focusId == nil { state.focusId = id }
+        state.syncMode()
     }
 
     // MARK: - Badge helpers
@@ -546,17 +610,6 @@ final class HookServer: @unchecked Sendable {
     private func clearPillBadge(id: String) {
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
-        state.tasks[idx].pillBadge = nil
-    }
-
-    /// Resets integration_claude to idle, clears steps and project name.
-    @MainActor
-    private func clearSession() {
-        let state = AppState.shared
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_claude" }) else { return }
-        state.tasks[idx].steps = []
-        state.tasks[idx].stepIndex = 0
-        state.tasks[idx].name = "VS Code"
         state.tasks[idx].pillBadge = nil
     }
 
@@ -1233,7 +1286,7 @@ def main():
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths', [])
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:
             payload['cwd'] = paths[0]
         else:
@@ -1396,7 +1449,7 @@ def main():
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
     if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths', [])
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:
             payload['cwd'] = paths[0]
         else:

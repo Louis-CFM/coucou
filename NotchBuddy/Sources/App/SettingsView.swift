@@ -428,19 +428,6 @@ struct SettingsView: View {
                 // MARK: Active pills
                 GroupBox("Active pills") {
                     VStack(alignment: .leading, spacing: 10) {
-                        // VS Code: always active (mirrors main branch row exactly)
-                        HStack {
-                            Text("VS Code")
-                                .font(.system(size: 12, weight: .semibold))
-                            Circle().fill(Color(hex: "#F5F6F8")).frame(width: 8, height: 8)
-                            Spacer()
-                            Text("Always active")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Divider()
-
                         Text("Choose the tools you use. Coucou only shows what you declare here.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
@@ -449,28 +436,20 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
-                        // Main pill picker: shown only when a workspace pill (Cursor/Codex) is active
-                        let workspacePills = PillCatalog.available.filter {
-                            $0.category == .workspace && $0.id != "integration_claude"
-                                && state.activeIntegrations.contains($0.id)
+                        Picker("Main", selection: $state.mainPillId) {
+                            ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
+                                Text(def.name).tag(def.id)
+                            }
                         }
-                        if !workspacePills.isEmpty {
-                            Picker("Main pill", selection: $state.mainPillId) {
-                                Text("VS Code").tag("integration_claude")
-                                ForEach(workspacePills, id: \.id) { def in
-                                    Text(def.name).tag(def.id)
-                                }
-                            }
-                            .onChange(of: state.mainPillId) { _, newId in
-                                state.setFocus(newId)
-                            }
+                        .onChange(of: state.mainPillId) { _, newId in
+                            state.activeIntegrations.remove(newId)  // main pill never in activeIntegrations
+                            state.loadIntegrationTasks()
+                            state.setFocus(newId)
                         }
 
-                        // Categories — integration_claude excluded (shown above)
+                        // All categories — main pill shown with "Main" label instead of toggle
                         ForEach(PillCategory.allCases, id: \.self) { cat in
-                            let catPills = PillCatalog.available.filter {
-                                $0.category == cat && $0.id != "integration_claude"
-                            }
+                            let catPills = PillCatalog.available.filter { $0.category == cat }
                             if !catPills.isEmpty {
                                 Divider()
                                 Text(cat.title)
@@ -796,10 +775,12 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func pillRow(_ def: PillDefinition) -> some View {
-        let isOn  = state.activeIntegrations.contains(def.id)
-        let atMax = state.activeIntegrations.count >= 4 && !isOn
-        // Status hint: shown in 11pt gray before the toggle
+        let isMain = def.id == state.mainPillId
+        let isOn   = state.activeIntegrations.contains(def.id)
+        let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
+        // Status hint: shown in 11pt gray before the toggle (not shown for main pill)
         let hint: String? = {
+            if isMain { return nil }
             if def.comingSoon { return "Coming soon" }
             #if !APPSTORE
             if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled() { return "Hooks not installed" }
@@ -820,17 +801,23 @@ struct SettingsView: View {
                 .font(.system(size: 12))
                 .foregroundColor(atMax ? .secondary : .primary)
             Spacer()
-            if let h = hint {
-                Text(h)
+            if isMain {
+                Text("Main")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+            } else {
+                if let h = hint {
+                    Text(h)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                Toggle("", isOn: Binding(
+                    get: { isOn },
+                    set: { _ in state.toggleIntegration(def.id) }
+                ))
+                .labelsHidden()
+                .disabled(atMax)
             }
-            Toggle("", isOn: Binding(
-                get: { isOn },
-                set: { _ in state.toggleIntegration(def.id) }
-            ))
-            .labelsHidden()
-            .disabled(atMax)
         }
     }
 }

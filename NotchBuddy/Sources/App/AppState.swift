@@ -193,7 +193,7 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Active integration pills (VS Code excluded — always on). Max 4.
+    // Active integration pills (main workspace pill excluded). Max 4.
     @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
         didSet {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
@@ -267,9 +267,7 @@ final class AppState: ObservableObject {
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
-           v == "integration_claude" ||
-           (PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace })
-            && activeIntegrations.contains(v)) {
+           PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v
         }
 
@@ -301,9 +299,9 @@ final class AppState: ObservableObject {
     }
 
     func removeTask(id: String) {
-        // integration_claude: ALWAYS reset, never remove (Claude Code sessions pass through it)
-        // mainPillId: also always reset (the active workspace pill)
-        let isProtected = id == "integration_claude" || id == mainPillId
+        // mainPillId: always reset, never remove (the active workspace tool)
+        // activeIntegrations: also reset (user declared it active, keep it as idle)
+        let isProtected = id == mainPillId
         let isActiveDecl = PillCatalog.definition(for: id) != nil && activeIntegrations.contains(id)
         if isProtected || isActiveDecl {
             if let idx = tasks.firstIndex(where: { $0.id == id }) {
@@ -355,25 +353,22 @@ final class AppState: ObservableObject {
         // Sanitize: remove saved IDs not in catalog
         let catalogIds = Set(catalog.map { $0.id })
         activeIntegrations = activeIntegrations.filter { catalogIds.contains($0) }
-        // Validate mainPillId: must be integration_claude or a checked workspace pill
-        if mainPillId != "integration_claude",
-           !(PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .workspace })
-             && activeIntegrations.contains(mainPillId)) {
-            mainPillId = "integration_claude"
+        // Validate mainPillId: must be a non-comingSoon workspace pill in the catalog
+        if !PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .workspace && !$0.comingSoon }) {
+            mainPillId = PillCatalog.defaultMainPillId
         }
+        // mainPillId must never be in activeIntegrations (migration + invariant)
+        activeIntegrations.remove(mainPillId)
         for def in catalog {
-            // integration_claude always loads; mainPillId always loads; activeIntegrations load
-            let shouldLoad = def.id == "integration_claude"
-                          || def.id == mainPillId
-                          || activeIntegrations.contains(def.id)
+            // mainPillId always loads; activeIntegrations load
+            let shouldLoad = def.id == mainPillId || activeIntegrations.contains(def.id)
             let loaded = tasks.contains(where: { $0.id == def.id })
             if shouldLoad && !loaded {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
                                      state: .idle, steps: [], source: def.source, isIntegration: true)
                 tasks.append(task)
             }
-            if !shouldLoad && loaded
-               && def.id != "integration_claude" && def.id != mainPillId {
+            if !shouldLoad && loaded {
                 tasks.removeAll { $0.id == def.id }
             }
         }
@@ -383,16 +378,14 @@ final class AppState: ObservableObject {
     }
 
     /// Toggle a catalog pill on/off.
-    /// integration_claude: never toggleable.
-    /// mainPillId (workspace): can be unchecked — resets mainPillId to integration_claude.
-    /// Max 4 non-claude pills active at once.
+    /// mainPillId: never toggleable (change via the Main picker first).
+    /// Max 4 non-main pills active at once.
     func toggleIntegration(_ id: String) {
-        guard id != "integration_claude" else { return }
+        guard id != mainPillId else { return }
         guard PillCatalog.available.contains(where: { $0.id == id }) else { return }
         if activeIntegrations.contains(id) {
             activeIntegrations.remove(id)
             tasks.removeAll { $0.id == id }
-            if mainPillId == id { mainPillId = "integration_claude" }
             if focusId == id { focusId = mainPillId }
         } else {
             guard activeIntegrations.count < 4 else { return }

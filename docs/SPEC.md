@@ -96,18 +96,18 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 
 | Catégorie | Titre | Pastilles | Subtitle (repos) | Subtitle (session) |
 |---|---|---|---|---|
-| `workspace` | Where you code | VS Code, Cursor *(coming soon)*, Codex *(coming soon, GitHub only)* | Integration | Claude Code / Agent |
-| `agent` | Agents | Gemini CLI *(GitHub only)*, Antigravity *(GitHub only)* | Agent | Agent |
+| `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(coming soon, GitHub only)* | Integration | Claude Code / Cursor / Agent |
+| `agent` | Agents | Gemini CLI *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI | Chat | — |
 | `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe | Integration | — |
 
 Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, pastilles IA = `ChatProvider.accentHex`.
 
 Règles :
-- **`integration_claude` est toujours chargée, jamais retirée, jamais décochée.** Elle ne compte pas dans les 4 places.
-- `mainPillId` (défaut `integration_claude`) peut valoir une pastille workspace cochée (ex. Cursor). Si on décoche la principale, `mainPillId` revient à `integration_claude`.
-- Max 4 pastilles autres qu'`integration_claude` actives à la fois (`activeIntegrations`, persisté). Cursor/Codex comptent dans les 4.
-- `removeTask` sur `integration_claude` ou `mainPillId` ou une pastille déclarée + active → reset à `.idle` + `pillBadge = nil` + nom du catalogue (pas de suppression). Sinon → suppression normale.
+- **`mainPillId`** (défaut `integration_claude`) est la pastille workspace toujours chargée. Elle ne compte pas dans les 4 places. Modifiable via le sélecteur Main dans Settings.
+- Quand `mainPillId != "integration_claude"`, la pastille VS Code est chargée seulement si une session VS Code est active (transient) ou si elle est cochée dans `activeIntegrations`.
+- Max 4 pastilles autres que `mainPillId` actives à la fois (`activeIntegrations`, persisté).
+- `removeTask` sur `mainPillId` ou une pastille déclarée + active → reset à `.idle` + `pillBadge = nil` + nom du catalogue (pas de suppression). Sinon → suppression normale.
 - `sortTasksByCatalog` : pastilles du catalogue dans l'ordre du catalogue ; pastilles hors catalogue juste après `integration_claude`.
 - Pastilles `githubOnly` : exclues des builds App Store (`#if APPSTORE`).
 - Hooks (Gemini CLI, Antigravity) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` sous `#if !APPSTORE`.
