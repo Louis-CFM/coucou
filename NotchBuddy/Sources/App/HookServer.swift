@@ -306,6 +306,7 @@ final class HookServer: @unchecked Sendable {
         case "UserPromptSubmit":
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            focusCodexIfCurrentTaskIsIdle(agentId)
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
@@ -315,6 +316,7 @@ final class HookServer: @unchecked Sendable {
         case "PreToolUse":
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            focusCodexIfCurrentTaskIsIdle(agentId)
             state.updateTask(id: agentId, state: .working)
             let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
@@ -391,6 +393,17 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Agent validation + dynamic pill
+
+    /// Codex activity should drive the main bot when the currently selected pill is idle.
+    /// Leave an active task or approval card in place when multiple agents run together.
+    @MainActor
+    private func focusCodexIfCurrentTaskIsIdle(_ agentId: String) {
+        guard agentId == "agent_codex" else { return }
+        let state = AppState.shared
+        guard state.focusId != agentId, state.pendingApproval == nil,
+              state.focusTask?.state == .idle else { return }
+        state.setFocus(agentId)
+    }
 
     /// Validates a coucou_agent name: lowercase, digits and hyphens, 1–24 chars.
     /// "claude" is reserved and rejected so it cannot impersonate the Claude Code pill.
@@ -1278,21 +1291,22 @@ final class HookServer: @unchecked Sendable {
 
     /// True when ~/.codex/hooks.json already routes Codex events to Coucou's nb-hook.
     static func codexHooksInstalled() -> Bool {
+        let relay = URL(fileURLWithPath: hookScriptPath)
+        guard FileManager.default.fileExists(atPath: relay.path),
+              FileManager.default.fileExists(atPath: relay.deletingLastPathComponent().appendingPathComponent("nb-hook.py").path) else { return false }
         guard let data = try? Data(contentsOf: codexHooksURL),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let hooks = root["hooks"] as? [String: Any] else { return false }
-        for value in hooks.values {
-            guard let groups = value as? [[String: Any]] else { continue }
-            for group in groups {
-                if let innerHooks = group["hooks"] as? [[String: Any]] {
-                    for hook in innerHooks {
-                        if let cmd = hook["command"] as? String,
-                           cmd.contains("nb-hook"), cmd.contains("--agent codex") { return true }
-                    }
-                }
-            }
+        for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"] {
+            guard let groups = hooks[event] as? [[String: Any]],
+                  groups.contains(where: { group in
+                      (group["hooks"] as? [[String: Any]])?.contains(where: { hook in
+                          let cmd = hook["command"] as? String ?? ""
+                          return cmd.contains(hookScriptPath) && cmd.contains("--agent codex")
+                      }) == true
+                  }) else { return false }
         }
-        return false
+        return true
     }
 
     private var _pendingCodexData: Data?
