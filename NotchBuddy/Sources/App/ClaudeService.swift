@@ -190,12 +190,25 @@ final class ClaudeService {
         conversationMessages = []
     }
 
-    private let systemPrompt = """
-    You are Mochi, Louis's personal AI assistant embedded in the notch of his Mac. \
-    You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
-    Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-    No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.
-    """
+    /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
+    /// while the app runs.
+    private let systemPrompt = ClaudeService.makeSystemPrompt()
+
+    /// Greets the user by their macOS first name when there is one worth using, and stays
+    /// neutral otherwise — same wording as the Windows build.
+    private nonisolated static func makeSystemPrompt() -> String {
+        let opening = if let firstName = resolveUserFirstName() {
+            "You are Mochi, \(firstName)'s personal AI assistant embedded in the notch of their Mac."
+        } else {
+            "You are Mochi, a personal AI assistant embedded in the notch of the user's Mac."
+        }
+        return """
+        \(opening) \
+        You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
+        Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
+        No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.
+        """
+    }
 
     private let webSearchTools: [[String: Any]] = [
         ["type": "web_search_20250305", "name": "web_search", "max_uses": 5]
