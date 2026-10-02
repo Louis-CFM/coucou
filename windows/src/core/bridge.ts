@@ -85,7 +85,7 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
-  fetchModels: (url: string) => callOrThrow<string[]>("fetch_models", { url }),
+  fetchModels: (url: string, key?: string) => callOrThrow<string[]>("fetch_models", { url, key }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */

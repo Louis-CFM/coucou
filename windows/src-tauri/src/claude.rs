@@ -86,7 +86,7 @@ pub fn resolve_endpoint(custom: Option<&str>) -> (String, bool) {
 }
 
 /// Fetches available models from a custom endpoint URL (GET /v1/models or GET /models).
-pub async fn fetch_models(url: &str) -> Result<Vec<String>, String> {
+pub async fn fetch_models(url: &str, direct_key: Option<&str>) -> Result<Vec<String>, String> {
     let trimmed = url.trim().trim_end_matches('/');
     if trimmed.is_empty() {
         return Err("Tunnel URL is required.".to_string());
@@ -99,7 +99,12 @@ pub async fn fetch_models(url: &str) -> Result<Vec<String>, String> {
         format!("{trimmed}/v1/models")
     };
 
-    let key = secrets::get("custom-endpoint-key").unwrap_or_default();
+    let key = direct_key
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .map(str::to_string)
+        .or_else(|| secrets::get("custom-endpoint-key"))
+        .unwrap_or_default();
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))

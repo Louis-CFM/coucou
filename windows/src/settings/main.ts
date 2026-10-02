@@ -355,11 +355,20 @@ function endpointSection(hasKey: boolean): HTMLElement {
       modelFeedback.append(h("div", { class: "notice err", text: "Enter a Tunnel URL first." }));
       return;
     }
+    const typedKey = keyField.value.trim();
+    if (typedKey) {
+      try {
+        await Bridge.secretSet("custom-endpoint-key", typedKey);
+        await refreshKey();
+      } catch {
+        // Continue with typed key even if storage fails
+      }
+    }
     fetchBtn.disabled = true;
     fetchBtn.textContent = "Fetching...";
     clear(modelFeedback);
     try {
-      const models = await Bridge.fetchModels(url);
+      const models = await Bridge.fetchModels(url, typedKey || undefined);
       fetchBtn.disabled = false;
       fetchBtn.textContent = "Fetch models";
       if (!models || models.length === 0) {

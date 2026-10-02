@@ -259,8 +259,8 @@ async fn chat_send(
 }
 
 #[tauri::command]
-async fn fetch_models(url: String) -> Result<Vec<String>, String> {
-    claude::fetch_models(&url).await
+async fn fetch_models(url: String, key: Option<String>) -> Result<Vec<String>, String> {
+    claude::fetch_models(&url, key.as_deref()).await
 }
 
 #[tauri::command]
