@@ -55,6 +55,7 @@ struct AgentTask: Identifiable, Equatable {
     var miniEye: EyeShape? = nil
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
+    var sessionClient: HookClient = .vscode  // app the last Claude Code session ran in
 }
 
 enum AgentSource: Equatable {

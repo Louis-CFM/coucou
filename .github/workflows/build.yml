@@ -24,6 +24,9 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test hook clients
+        run: bash scripts/test-hook-client.sh
+
       - name: Build
         run: |
           xcodebuild \
