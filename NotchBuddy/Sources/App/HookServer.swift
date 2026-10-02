@@ -37,10 +37,48 @@ final class HookServer: @unchecked Sendable {
     private var serverFD: Int32 = -1
     private let connectionLock = NSLock()
     private var connectionCount = 0
-    private var pendingApprovalFD: Int32 = -1   // held open while user decides
-    private var activeSessionId: String? = nil  // current Claude Code session
+    private var pendingApprovalFD: Int32 = -1         // held open while user decides
+    private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
+    private var activeSessionId: String? = nil        // current Claude Code session
 
     private init() {}
+
+    // MARK: - Approval fd helpers
+
+    @MainActor
+    private func cancelApprovalFDSource() {
+        approvalFDSource?.cancel()
+        approvalFDSource = nil
+    }
+
+    /// Cancels the approval fd source (which closes the fd via its cancel handler), shows a
+    /// 3-second note, clears approval state, then collapses the island.
+    @MainActor
+    private func dismissApprovalCard(note: String) {
+        // cancelApprovalFDSource() triggers the cancel handler which closes the fd.
+        // Never close the fd here directly — Apple requires it to happen in the cancel handler.
+        cancelApprovalFDSource()
+        pendingApprovalFD = -1
+        let state = AppState.shared
+        state.pendingApproval = nil
+        state.isPinned = false
+        state.updateTask(id: "integration_claude", state: .working)
+        clearPillBadge(id: "integration_claude")
+        state.noteMessage = note
+        state.view = .note
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        }
+    }
+
+    /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
+    /// Same computation used in processPermissionRequest and processEvent to match PostToolUse.
+    private static func approvalInputKey(_ input: [String: Any]) -> String {
+        guard !input.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: input, options: .sortedKeys),
+              let str = String(data: data, encoding: .utf8) else { return "" }
+        return str
+    }
 
     // MARK: - Start
 
@@ -186,6 +224,30 @@ final class HookServer: @unchecked Sendable {
 
         let focused = state.focusId == agentId
 
+        // While a permission request is pending on the Claude Code pill, skip events to
+        // preserve the .approval state and keep the card visible.
+        if state.pendingApproval != nil && agentId == "integration_claude" {
+            if let pending = state.pendingApproval {
+                switch name {
+                case "PostToolUse", "PostToolUseFailure":
+                    // Only dismiss when this exact tool call finished — same session, tool and input.
+                    // Other parallel tools finishing must not close the card.
+                    if sessionId == pending.sessionId,
+                       (payload["tool_name"] as? String ?? "") == pending.tool,
+                       Self.approvalInputKey(payload["tool_input"] as? [String: Any] ?? [:]) == pending.inputKey {
+                        dismissApprovalCard(note: "Handled in VS Code.")
+                    }
+                case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd":
+                    // Turn ended or session interrupted — the permission is moot.
+                    if sessionId == pending.sessionId {
+                        dismissApprovalCard(note: "Handled in VS Code.")
+                    }
+                default: break
+                }
+            }
+            return
+        }
+
         switch name {
 
         case "SessionStart":
@@ -327,8 +389,8 @@ final class HookServer: @unchecked Sendable {
         default: isAlert = false
         }
         if state.mode == .expanded {
-            // Only force-switch view for alerts — leave user on their current view otherwise
-            if isAlert { state.view = view }
+            // Don't hijack the approval card for other alerts
+            if isAlert && state.pendingApproval == nil { state.view = view }
         } else if isAlert {
             // Alerts always force-expand
             NotificationCenter.default.post(name: .hookExpand, object: view)
@@ -375,18 +437,21 @@ final class HookServer: @unchecked Sendable {
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
-        var command = tool
-        if let input = payload["tool_input"] as? [String: Any] {
-            command = input["command"] as? String ?? tool
-        }
+        let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
+        var command = toolInput["command"] as? String ?? tool
+        let inputKey = Self.approvalInputKey(toolInput)
         nbLog("PermissionRequest \(tool)")
 
         if pendingApprovalFD >= 0 {
+            // Displace the previous request: write "ask" then cancel its source.
+            // The cancel handler closes the old fd — never close it directly.
             let old = pendingApprovalFD
+            let oldSource = approvalFDSource
+            approvalFDSource = nil
             Task.detached { [weak self] in
                 // "ask" → nb-hook outputs nothing → Claude Code re-asks
                 self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
-                close(old)
+                DispatchQueue.main.async { oldSource?.cancel() }
             }
         }
         pendingApprovalFD = fd
@@ -394,7 +459,8 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(projectName: projectName, cwd: cwd)
         state.updateTask(id: "integration_claude", state: .approval)
-        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool, command: command)
+        state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
+                                              command: command, inputKey: inputKey)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -402,11 +468,23 @@ final class HookServer: @unchecked Sendable {
         state.focusId = "integration_claude"
         expandIfNeeded(to: .approval)
 
+        // Monitor fd: if VS Code closes the connection (handled externally), dismiss the card.
+        // The cancel handler closes the fd — never close it anywhere else.
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.pendingApprovalFD == fd else { return }
+            self.dismissApprovalCard(note: "Handled in VS Code.")
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        approvalFDSource = source
+
+        // 115s safety timeout — show a note and cancel without sending a decision.
+        // nb-hook reads EOF from the cancel handler's close and exits; Claude Code re-asks.
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
             guard let self, self.pendingApprovalFD == captured else { return }
-            // "ask" → nb-hook outputs nothing → Claude Code re-asks rather than denying
-            self.sendApprovalDecision("ask")
+            self.dismissApprovalCard(note: "Still waiting in VS Code.")
         }
     }
 
@@ -415,6 +493,10 @@ final class HookServer: @unchecked Sendable {
     func sendApprovalDecision(_ decision: String) {
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
+        // Capture source before nulling — we send the decision first, then cancel the source.
+        // The cancel handler closes the fd; never close it directly.
+        let source = approvalFDSource
+        approvalFDSource = nil
 
         let json: String
         switch decision {
@@ -426,9 +508,12 @@ final class HookServer: @unchecked Sendable {
 
         if fd >= 0 {
             Task.detached { [weak self] in
+                // Write decision while fd is still valid, then cancel source → cancel handler closes fd
                 self?.sendLine(fd: fd, text: json)
-                close(fd)
+                DispatchQueue.main.async { source?.cancel() }
             }
+        } else {
+            source?.cancel()
         }
 
         let state = AppState.shared

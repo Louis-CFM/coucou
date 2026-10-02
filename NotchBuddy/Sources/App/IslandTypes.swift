@@ -34,6 +34,8 @@ struct ApprovalInfo: Sendable {
     var sessionId: String
     var tool: String
     var command: String
+    /// tool_input serialized to JSON with sortedKeys, "" if absent — used to match PostToolUse.
+    var inputKey: String
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
