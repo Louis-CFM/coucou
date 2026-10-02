@@ -76,17 +76,36 @@ pub async fn start_oauth(app: AppHandle) -> Result<String, String> {
     result
 }
 
+fn get_client_id() -> String {
+    secrets::get("openai-client-id")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "dynamic_agent_client".to_string())
+}
+
+fn get_or_create_host_id() -> String {
+    if let Some(host_id) = secrets::get("openai-host-id") {
+        if !host_id.is_empty() {
+            return host_id;
+        }
+    }
+    let host_id = format!("host_{}", generate_random_string(32));
+    let _ = secrets::set("openai-host-id", &host_id);
+    host_id
+}
+
 async fn run_oauth_flow(_app: AppHandle) -> Result<String, String> {
     let verifier = generate_random_string(48);
     let challenge = base64url(&sha256(verifier.as_bytes()));
     let state = generate_random_string(24);
+    let client_id = get_client_id();
+    let host_id = get_or_create_host_id();
 
     let listener = TcpListener::bind(format!("127.0.0.1:{CALLBACK_PORT}"))
         .await
         .map_err(|e| format!("Cannot start local OAuth callback listener on port {CALLBACK_PORT}: {e}"))?;
 
     let auth_url = format!(
-        "{AUTH_URL}?client_id={CLIENT_ID}&response_type=code&redirect_uri={}&scope=openid%20profile%20email%20model.request%20offline_access&code_challenge={challenge}&code_challenge_method=S256&state={state}",
+        "{AUTH_URL}?client_id={client_id}&response_type=code&redirect_uri={}&scope=openid%20profile%20email%20chatgpt.tokens.use.direct%20model.request%20offline_access&code_challenge={challenge}&code_challenge_method=S256&state={state}&agent_name_hint=Coucou%20Mochi&ext_agent_host_id={host_id}",
         urlencoding(CALLBACK_URI)
     );
 
@@ -114,6 +133,12 @@ async fn run_oauth_flow(_app: AppHandle) -> Result<String, String> {
     let code = query_params.get("code").cloned();
     let returned_state = query_params.get("state").cloned();
     let error_param = query_params.get("error").cloned();
+    let issued_client_id = query_params.get("client_id").cloned();
+
+    // If client_id was returned in callback query, save it for future reauth
+    if let Some(ref cid) = issued_client_id {
+        let _ = secrets::set("openai-client-id", cid);
+    }
 
     // Serve a friendly HTML response to the browser tab
     let html_body = if code.is_some() {
@@ -152,9 +177,10 @@ async fn exchange_code_for_tokens(code: &str, verifier: &str) -> Result<String, 
         .build()
         .map_err(|e| e.to_string())?;
 
+    let client_id = get_client_id();
     let params = [
         ("grant_type", "authorization_code"),
-        ("client_id", CLIENT_ID),
+        ("client_id", &client_id),
         ("code", code),
         ("redirect_uri", CALLBACK_URI),
         ("code_verifier", verifier),
@@ -213,9 +239,10 @@ pub async fn refresh_access_token() -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let client_id = get_client_id();
     let params = [
         ("grant_type", "refresh_token"),
-        ("client_id", CLIENT_ID),
+        ("client_id", &client_id),
         ("refresh_token", &refresh_token),
     ];
 

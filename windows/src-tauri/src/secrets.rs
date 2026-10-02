@@ -9,6 +9,8 @@ const SERVICE: &str = "fr.louisraille.coucou";
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
     "openai-api-key",
+    "openai-client-id",
+    "openai-host-id",
     "openai-oauth-token",
     "openai-refresh-token",
     "openai-account-email",
