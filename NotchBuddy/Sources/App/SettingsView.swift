@@ -487,11 +487,21 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                let installed = HookServer.statusLineInstalled()
                 HStack(spacing: 10) {
-                    Button("Install") { installStatusLine() }
-                        .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { uninstallStatusLine() }
-                        .buttonStyle(.bordered)
+                    if installed {
+                        Text("Installed")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button("Uninstall") { uninstallStatusLine() }
+                            .buttonStyle(.bordered)
+                    } else {
+                        Text("Not installed")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button("Install") { installStatusLine() }
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
                 if showStatusLineDiff {
                     ScrollView {

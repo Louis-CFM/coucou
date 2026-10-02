@@ -2726,9 +2726,20 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
+    private var effectiveColor: String {
+        if task.id == "integration_claude_plan" {
+            return ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+        }
+        return task.color
+    }
+
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        if task.id == "integration_claude" { return "VS Code" }
+        if task.id == "integration_claude_plan" {
+            return ClaudePlanGauge.pillLabel(state.claudePlanUsage)
+        }
+        return task.name
     }
 
     var body: some View {
@@ -2737,12 +2748,15 @@ struct AgentPill: View {
                 ZStack {
                     Capsule()
                         .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
+                              ? Color(hex: effectiveColor).opacity(0.18)
                               : Color(hex: "#0E0F11"))
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                        .stroke(Color(hex: effectiveColor).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
-                        MiniBotCanvasView(task: task)
+                        MiniBotCanvasView(task: task.id == "integration_claude_plan"
+                                              ? AgentTask(id: task.id, name: task.name, color: effectiveColor,
+                                                          state: task.state, steps: task.steps, source: task.source)
+                                              : task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
                             .frame(width: 22, height: 22, alignment: .center)
                             .padding(.leading, 8)
@@ -2751,7 +2765,7 @@ struct AgentPill: View {
                     Text(displayName)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
+                                         ? Color(hex: effectiveColor).lighter(by: 0.3)
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -2759,11 +2773,11 @@ struct AgentPill: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: effectiveColor).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {
-                    PillBadgeView(badge: badge, taskColor: task.color)
+                    PillBadgeView(badge: badge, taskColor: effectiveColor)
                         .offset(x: 3, y: -3)
                 }
             }

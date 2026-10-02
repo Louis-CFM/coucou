@@ -950,15 +950,99 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingStatusLineData: Data?
+    private var _pendingPreviousData: Data?
+    private var _pendingDeletePrevious: Bool = false
 
-    /// Returns preview JSON without writing — call writeStatusLine() to confirm.
+    /// Returns a diff string (only the statusLine key: before → after) without writing anything.
     func previewStatusLine(install: Bool) throws -> String {
-        let data = try buildStatusLineData(install: install)
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        var settings: [String: Any] = [:]
+        if let d = try? Data(contentsOf: settingsURL),
+           let parsed = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] {
+            settings = parsed
+        }
+        let hookPath = Self.hookScriptPath
+        let quotedPath = hookPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let quotedCmd = "\"\(quotedPath)\" --statusline"
+
+        // Reset pending side-effects
+        _pendingPreviousData = nil
+        _pendingDeletePrevious = false
+
+        let oldSL = settings["statusLine"] as? [String: Any]
+        let newSL: [String: Any]?
+
+        if install {
+            // Check that Python 3 is available (requires Command Line Tools)
+            let clCheck = Process()
+            clCheck.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
+            clCheck.arguments = ["-p"]
+            clCheck.standardOutput = FileHandle.nullDevice
+            clCheck.standardError = FileHandle.nullDevice
+            try? clCheck.run()
+            clCheck.waitUntilExit()
+            if clCheck.terminationStatus != 0 {
+                throw NSError(domain: "Coucou", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey:
+                                  "Command Line Tools are required but not installed. Run: xcode-select --install"])
+            }
+
+            if let existing = oldSL,
+               let cmd = existing["command"] as? String, !cmd.contains("nb-hook") {
+                // Keep existing object but swap command; save old for later restoration
+                var updated = existing
+                updated["command"] = quotedCmd
+                newSL = updated
+                _pendingPreviousData = try? JSONSerialization.data(withJSONObject: existing,
+                                                                   options: [.prettyPrinted, .sortedKeys])
+            } else if let existing = oldSL,
+                      let cmd = existing["command"] as? String, cmd.contains("nb-hook") {
+                // Already installed — rebuild to update path if needed, keep other fields
+                var updated = existing
+                updated["command"] = quotedCmd
+                newSL = updated
+            } else {
+                newSL = ["type": "command", "command": quotedCmd]
+            }
+        } else {
+            // Uninstall: only if it's ours
+            if let cur = oldSL, let cmd = cur["command"] as? String, cmd.contains("nb-hook") {
+                if let prevData = try? Data(contentsOf: statusLinePreviousURL),
+                   let prevObj = (try? JSONSerialization.jsonObject(with: prevData)) as? [String: Any] {
+                    newSL = prevObj
+                    _pendingDeletePrevious = true
+                } else {
+                    newSL = nil
+                }
+            } else {
+                newSL = oldSL  // not ours — leave unchanged
+            }
+        }
+
+        // Build the full settings.json with the new statusLine
+        var newSettings = settings
+        if let sl = newSL {
+            newSettings["statusLine"] = sl
+        } else {
+            newSettings.removeValue(forKey: "statusLine")
+        }
+        let data = try JSONSerialization.data(withJSONObject: newSettings,
+                                              options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         _pendingStatusLineData = data
-        return String(data: data, encoding: .utf8) ?? ""
+
+        // Build a compact diff: show only the statusLine key before → after
+        func slJSON(_ val: [String: Any]?) throws -> String {
+            guard let v = val else { return "(none)" }
+            let d = try JSONSerialization.data(withJSONObject: v, options: [.prettyPrinted, .sortedKeys])
+            return String(data: d, encoding: .utf8) ?? "(none)"
+        }
+        let before = try slJSON(oldSL)
+        let after  = try slJSON(newSL)
+        return "statusLine\nBefore:\n\(before)\n\nAfter:\n\(after)"
     }
 
-    /// Writes settings.json (call after user confirms preview).
+    /// Writes settings.json and commits side effects (call after user confirms).
     func writeStatusLine() throws {
         guard let data = _pendingStatusLineData else { return }
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
@@ -972,51 +1056,16 @@ final class HookServer: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: settingsURL.deletingLastPathComponent(),
                                                   withIntermediateDirectories: true)
         try data.write(to: settingsURL, options: .atomic)
+        // Commit side effects only after successful write
+        if let prevData = _pendingPreviousData {
+            try? prevData.write(to: statusLinePreviousURL, options: .atomic)
+        }
+        if _pendingDeletePrevious {
+            try? FileManager.default.removeItem(at: statusLinePreviousURL)
+        }
         _pendingStatusLineData = nil
-    }
-
-    private func buildStatusLineData(install: Bool) throws -> Data {
-        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        var settings: [String: Any] = [:]
-        if let d = try? Data(contentsOf: settingsURL),
-           let parsed = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] {
-            settings = parsed
-        }
-        let hookPath = Self.hookScriptPath
-        let quotedPath = hookPath.replacingOccurrences(of: "\"", with: "\\\"")
-        let quotedCmd = "\"\(quotedPath)\" --statusline"
-
-        if install {
-            // If there's already a statusLine that isn't ours, save it for later restoration
-            if let existing = settings["statusLine"] as? [String: Any],
-               let cmd = existing["command"] as? String, !cmd.contains("nb-hook") {
-                let prevData = try JSONSerialization.data(withJSONObject: existing,
-                                                          options: [.prettyPrinted, .sortedKeys])
-                try prevData.write(to: statusLinePreviousURL, options: .atomic)
-                var updated = existing
-                updated["command"] = quotedCmd
-                settings["statusLine"] = updated
-            } else {
-                settings["statusLine"] = ["type": "command", "command": quotedCmd]
-            }
-        } else {
-            // Uninstall: only touch it if it's still ours
-            guard let current = settings["statusLine"] as? [String: Any],
-                  let cmd = current["command"] as? String, cmd.contains("nb-hook") else {
-                return try JSONSerialization.data(withJSONObject: settings,
-                                                  options: [.prettyPrinted, .sortedKeys])
-            }
-            if let prevData = try? Data(contentsOf: statusLinePreviousURL),
-               let prevObj = (try? JSONSerialization.jsonObject(with: prevData)) as? [String: Any] {
-                settings["statusLine"] = prevObj
-                try? FileManager.default.removeItem(at: statusLinePreviousURL)
-            } else {
-                settings.removeValue(forKey: "statusLine")
-            }
-        }
-        return try JSONSerialization.data(withJSONObject: settings,
-                                          options: [.prettyPrinted, .sortedKeys])
+        _pendingPreviousData = nil
+        _pendingDeletePrevious = false
     }
 
     // MARK: - App Store: hooks via security-scoped bookmark
@@ -1576,14 +1625,18 @@ def normalize_tool_fields(payload):
                 payload['session_id'] = sid
 
 def main():
+    raw = b''
+    payload = {}
     try:
         raw = sys.stdin.buffer.read()
         if not raw:
-            return
-        payload = json.loads(raw)
+            if '--statusline' not in sys.argv[1:]:
+                return
+        else:
+            payload = json.loads(raw)
     except Exception:
-        raw = b''
-        payload = {}
+        if '--statusline' not in sys.argv[1:]:
+            return
 
     socket_path = os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
@@ -1781,14 +1834,18 @@ def normalize_tool_fields(payload):
                 payload['session_id'] = sid
 
 def main():
+    raw = b''
+    payload = {}
     try:
         raw = sys.stdin.buffer.read()
         if not raw:
-            return
-        payload = json.loads(raw)
+            if '--statusline' not in sys.argv[1:]:
+                return
+        else:
+            payload = json.loads(raw)
     except Exception:
-        raw = b''
-        payload = {}
+        if '--statusline' not in sys.argv[1:]:
+            return
 
     socket_path = os.path.expanduser(
         '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'

@@ -40,12 +40,32 @@ enum ClaudePlanGaugeTests {
         // Missing rate_limits → nil
         checkTrue("missing rate_limits → nil",        ClaudePlanGauge.parse(payload: [:]) == nil)
 
-        // Absurd pct (>100) → nil window
+        // Absurd pct (>200) → nil window  (150 is now clamped to 100)
         let badPct: [String: Any] = ["rate_limits": [
-            "five_hour": ["used_percentage": 150.0, "resets_at": futureEpoch],
+            "five_hour": ["used_percentage": 250.0, "resets_at": futureEpoch],
         ]]
         let badUsage = ClaudePlanGauge.parse(payload: badPct)
-        checkTrue("absurd pct (150) → nil window",    badUsage?.fiveHour == nil)
+        checkTrue("absurd pct (250) → nil window",    badUsage?.fiveHour == nil)
+
+        // pct 150 → clamped to 100 (not rejected)
+        let clampPct: [String: Any] = ["rate_limits": [
+            "five_hour": ["used_percentage": 150.0, "resets_at": futureEpoch],
+        ]]
+        let clampUsage = ClaudePlanGauge.parse(payload: clampPct)
+        checkTrue("pct 150 → clamped to 100",         clampUsage?.fiveHour?.usedPct == 100.0)
+
+        // pct 201 → rejected
+        let tooBig: [String: Any] = ["rate_limits": [
+            "five_hour": ["used_percentage": 201.0, "resets_at": futureEpoch],
+        ]]
+        checkTrue("pct 201 → nil window",             ClaudePlanGauge.parse(payload: tooBig)?.fiveHour == nil)
+
+        // resets_at > 400 days → rejected
+        let farFuture = Date().timeIntervalSince1970 + 401 * 86400
+        let msEpoch: [String: Any] = ["rate_limits": [
+            "five_hour": ["used_percentage": 50.0, "resets_at": farFuture],
+        ]]
+        checkTrue("resets_at > 400d → nil window",    ClaudePlanGauge.parse(payload: msEpoch)?.fiveHour == nil)
 
         // Negative pct → nil window
         let negPct: [String: Any] = ["rate_limits": [

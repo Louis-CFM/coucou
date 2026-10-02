@@ -37,9 +37,9 @@ struct ClaudePlanCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
-        // Update countdown every second, only while visible
+        // Update countdown every 30 seconds, only while visible
         .background(
-            TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            TimelineView(.periodic(from: .now, by: 30)) { ctx in
                 Color.clear.onChange(of: ctx.date) { _, d in now = d }
             }
         )
@@ -57,6 +57,13 @@ struct ClaudePlanCardView: View {
 }
 
 // MARK: - Gauge Row
+
+private let weeklyResetFormatter: DateFormatter = {
+    let fmt = DateFormatter()
+    fmt.locale = Locale(identifier: "en_US_POSIX")
+    fmt.dateFormat = "EEE H:mm"
+    return fmt
+}()
 
 private struct GaugeRowView: View {
     let label: String
@@ -108,10 +115,7 @@ private struct GaugeRowView: View {
         let secs = w.resetsAt.timeIntervalSince(now)
         guard secs > 0 else { return "Resetting…" }
         if weekly {
-            // "Resets Mon 9:00"
-            let fmt = DateFormatter()
-            fmt.dateFormat = "EEE H:mm"
-            return "Resets \(fmt.string(from: w.resetsAt))"
+            return "Resets \(weeklyResetFormatter.string(from: w.resetsAt))"
         } else {
             // "Resets in 1 h 20" or "Resets in 45 min"
             let h = Int(secs / 3600)

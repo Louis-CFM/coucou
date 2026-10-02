@@ -34,13 +34,16 @@ enum ClaudePlanGauge {
         if let v = d["used_percentage"] as? Double { rawPct = v }
         else if let v = d["used_percentage"] as? Int { rawPct = Double(v) }
         else { return nil }
-        guard rawPct >= 0, rawPct <= 100 else { return nil }
-        let pct = max(0, min(100, rawPct))
+        guard rawPct >= 0, rawPct <= 200 else { return nil }
+        let pct = min(100, rawPct)   // clamp 100–200 down to 100
         let rawEpoch: Double
         if let v = d["resets_at"] as? Double { rawEpoch = v }
         else if let v = d["resets_at"] as? Int { rawEpoch = Double(v) }
         else { return nil }
         guard rawEpoch > 0 else { return nil }
+        // Reject if more than 400 days in the future (likely milliseconds, not seconds)
+        let maxEpoch = Date().timeIntervalSince1970 + 400 * 86400
+        guard rawEpoch <= maxEpoch else { return nil }
         return PlanWindow(usedPct: pct, resetsAt: Date(timeIntervalSince1970: rawEpoch))
     }
 

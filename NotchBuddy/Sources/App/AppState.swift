@@ -300,13 +300,6 @@ final class AppState: ObservableObject {
                let data = try? JSONEncoder().encode(u) {
                 UserDefaults.standard.set(data, forKey: "claudePlanUsage")
             }
-            // Update pill label and color
-            let label = ClaudePlanGauge.pillLabel(claudePlanUsage)
-            let colorHex = ClaudePlanGauge.color(for: claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
-            if let idx = tasks.firstIndex(where: { $0.id == "integration_claude_plan" }) {
-                tasks[idx].name = label
-                tasks[idx].color = colorHex
-            }
         }
     }
 
