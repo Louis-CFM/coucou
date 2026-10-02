@@ -241,16 +241,8 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let (model, endpoint) = {
-        let s = shared.settings.lock().unwrap();
-        let ep = if s.custom_endpoint_enabled && !s.custom_endpoint_url.trim().is_empty() {
-            Some(s.custom_endpoint_url.trim().to_string())
-        } else {
-            None
-        };
-        (s.model.clone(), ep)
-    };
-    claude::send(&chat, &model, endpoint.as_deref(), query, context).await
+    let model = shared.settings.lock().unwrap().model.clone();
+    claude::send(&chat, &model, query, context).await
 }
 
 #[tauri::command]
