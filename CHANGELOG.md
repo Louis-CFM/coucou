@@ -13,3 +13,4 @@
 - Windows build artifacts are now downloadable from a manual CI run — thanks @MysJofR
 - Any agent can talk to Mochi: tag a hook payload with `coucou_agent` (e.g. `nb-hook --agent my-agent`) and it gets its own pill in the island (#7, #9) — thanks @lacatu5
 - Gemini CLI and Antigravity (agy) hook support on macOS: install from Settings and their sessions show up in the island — thanks @corefusiion
+- Settings → General has an interface-size slider (100 % to 200 %): text, buttons and the island all grow together, and the island's window grows with them so nothing is cropped.

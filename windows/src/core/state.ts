@@ -92,6 +92,12 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /**
+   * How much of the app is drawn — text, spacing, and the island itself. 1 is
+   * the size everything was designed at; the window grows by the same factor,
+   * so scaling up never crops what it grew.
+   */
+  uiScale: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  uiScale: 1,
 };
 
 type Listener = () => void;
@@ -269,3 +276,40 @@ class AppState {
 }
 
 export const State = new AppState();
+
+/**
+ * How much everything on this page is drawn at. Read from settings on every
+ * call rather than cached: the slider writes it, and the island's window size,
+ * its pushed shape and this number all have to agree on the very next frame.
+ */
+export function uiScale(): number {
+  const scale = State.settings.uiScale;
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+/**
+ * Applies the UI scale to this document. Each window zooms itself — there is
+ * no reaching into another window's webview from here — so the island and the
+ * settings window each call this with the settings they were handed.
+ *
+ * `zoom` rather than a root font-size or a transform: it is the one that
+ * scales layout *and* text together, grows `getBoundingClientRect` with them,
+ * and WebKit — the engine Tauri uses here — honours it on the document
+ * element, which was checked before any of this was written.
+ */
+export function applyUiZoom() {
+  document.documentElement.style.zoom = String(uiScale());
+}
+
+/**
+ * Device pixels behind one document unit — the screen's DPR *and* the UI scale.
+ *
+ * A canvas backing store sized from `devicePixelRatio` alone is a sprite: it is
+ * exactly as sharp as it was designed to be, and gets magnified along with
+ * everything else after that. So scaling the island up would scale Mochi's face
+ * down in quality. The cap is 3 rather than the usual 2 because the scale is
+ * now part of the product.
+ */
+export function devicePixels(): number {
+  return Math.min(3, (window.devicePixelRatio || 1) * uiScale());
+}

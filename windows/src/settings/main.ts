@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, applyUiZoom, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -15,6 +15,9 @@ const root = document.getElementById("settings-root")!;
 async function save() {
   await Bridge.saveSettings(settings);
 }
+
+/** "1.25" → "125%" — the readout beside the interface-size slider. */
+const percent = (scale: number) => `${Math.round(scale * 100)}%`;
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
@@ -361,6 +364,24 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 // ── General section ───────────────────────────────────────────────────────────
 
 function generalSection(): HTMLElement {
+  // Written on `change`, not `input`: every commit resizes two windows, and a
+  // slider dragged across its range would fire dozens of them. The readout
+  // moves live, so the number under your thumb is never stale.
+  const uiScale = h("input", {
+    type: "range", min: "1", max: "2", step: "0.05",
+    value: String(settings.uiScale),
+  }) as HTMLInputElement;
+  const uiScaleReadout = h("span", { class: "hint", text: percent(settings.uiScale) });
+  uiScale.addEventListener("input", () => {
+    uiScaleReadout.textContent = percent(Number(uiScale.value));
+  });
+  uiScale.addEventListener("change", () => {
+    settings.uiScale = Number(uiScale.value);
+    uiScaleReadout.textContent = percent(settings.uiScale);
+    applyUiZoom();
+    void save();
+  });
+
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -397,6 +418,12 @@ function generalSection(): HTMLElement {
     {},
     h("h2", {}, h("span", { text: "General" })),
     h("div", { class: "row" },
+      h("label", { text: "Interface size" }),
+      uiScale,
+      uiScaleReadout,
+      h("span", { class: "hint", text: "text, buttons and the island" }),
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Sound" }),
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
@@ -425,6 +452,10 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  // Before anything is laid out: this window zooms its own document, and at a
+  // scale read from disk the content would otherwise be built at the wrong size
+  // and only corrected the next time somebody moved the slider.
+  applyUiZoom();
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
@@ -453,6 +484,7 @@ async function main() {
 
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
+    applyUiZoom();
   });
 }
 
