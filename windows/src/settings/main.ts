@@ -277,19 +277,24 @@ function codexSection(status: CodexHookStatus): HTMLElement {
 
 // ── Claude API section ────────────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
+const CLAUDE_MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
   ["claude-sonnet-5", "Claude Sonnet 5"],
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
+const OPENAI_MODELS: [string, string][] = [
+  ["gpt-4o-mini", "GPT-4o mini"],
+  ["gpt-4o", "GPT-4o"],
+  ["gpt-4.1", "GPT-4.1"],
+];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElement {
+  const dot = statusDot(hasAnthropicKey || hasOpenAiKey);
+  const state = h("span", { class: "hint" });
 
   const field = h("input", {
     type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
+    placeholder: "sk-ant-...",
     style: "flex:1 1 auto;min-width:0",
     autocomplete: "off",
     spellcheck: "false",
@@ -300,12 +305,13 @@ function apiSection(hasKey: boolean): HTMLElement {
   const feedback = h("div", {});
 
   async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+    const keyName = settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key";
+    const present = (await Bridge.secretPresent(keyName)) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
       ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
+      : "No key yet — the selected provider needs one.";
+    field.placeholder = present ? "••••••••••••  (stored)" : settings.provider === "openai" ? "sk-..." : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
 
@@ -314,7 +320,7 @@ function apiSection(hasKey: boolean): HTMLElement {
     if (!value) return;
     clear(feedback);
     try {
-      await Bridge.secretSet("anthropic-api-key", value);
+      await Bridge.secretSet(settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key", value);
       field.value = "";
       feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
       await refresh();
@@ -326,7 +332,7 @@ function apiSection(hasKey: boolean): HTMLElement {
   clearBtn.addEventListener("click", async () => {
     clear(feedback);
     try {
-      await Bridge.secretClear("anthropic-api-key");
+      await Bridge.secretClear(settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key");
       feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
       await refresh();
     } catch (err) {
@@ -334,24 +340,37 @@ function apiSection(hasKey: boolean): HTMLElement {
     }
   });
 
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(h("option", { value: "claude", text: "Claude API" }), h("option", { value: "openai", text: "OpenAI API" }));
+  provider.value = settings.provider;
   const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
+  const refreshModels = () => {
+    clear(model);
+    const models = settings.provider === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
+    for (const [id, label] of models) model.append(h("option", { value: id, text: label }));
+    if (!models.some(([id]) => id === settings.model)) settings.model = models[0][0];
+    model.value = settings.model;
+    void refresh();
+  };
+  provider.addEventListener("change", () => {
+    settings.provider = provider.value as Settings["provider"];
+    refreshModels();
+    void save();
+  });
   model.addEventListener("change", () => {
     settings.model = model.value;
     void save();
   });
 
-  clearBtn.style.display = hasKey ? "" : "none";
+  clearBtn.style.display = (settings.provider === "openai" ? hasOpenAiKey : hasAnthropicKey) ? "" : "none";
+  refreshModels();
 
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Chat provider" })),
     state,
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
@@ -536,7 +555,8 @@ async function main() {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasAnthropicKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasOpenAiKey = (await Bridge.secretPresent("openai-api-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -550,7 +570,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     codexSection(codexStatus),
-    apiSection(hasKey),
+    apiSection(hasAnthropicKey, hasOpenAiKey),
     integrationsSection(present),
     generalSection(),
     h("div", {

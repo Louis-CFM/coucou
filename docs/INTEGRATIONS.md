@@ -92,7 +92,23 @@ still requires the user to review and trust the command in `/hooks`; Coucou does
 not bypass that trust gate. Events that do not produce `PermissionRequest` cannot
 be approved from Mochi, and no keyboard simulation is used as a fallback.
 
-## 3. n8n (workflows de Louis)
+## 3. Chat API (Windows)
+
+The Windows chat has an explicit provider selector: **Claude API** or
+**OpenAI API**. Each provider has its own model list and its own key in
+Windows Credential Manager (`anthropic-api-key` and `openai-api-key`). Keys
+are never written to settings JSON, logs, or sent to the frontend.
+
+OpenAI requests use `POST https://api.openai.com/v1/chat/completions` with an
+Authorization header carrying the API key and preserve a separate multi-turn history from
+Claude. A missing or invalid key is reported without falling back to another
+provider, so changing providers is always an explicit settings action.
+
+An OpenAI API key is not the same credential as ChatGPT or Codex CLI OAuth.
+ChatGPT/Codex sign-in does not make the API key available to Coucou; Coucou
+does not read or store those OAuth tokens.
+
+## 4. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.
 - Le Mac joint n8n, pas l'inverse : **polling** toutes les 5 s de l'API publique :
@@ -109,7 +125,7 @@ be approved from Mochi, and no keyboard simulation is used as a fallback.
 
 ---
 
-## 3. Fichiers déposés
+## 5. Fichiers déposés
 
 - Glisser-déposer natif sur la panel (types `fileURL`). Copier les fichiers dans `~/Library/Application Support/NotchBuddy/inbox/` (c'est la phase `uploading`).
 - Vue `choose` :
@@ -119,7 +135,7 @@ be approved from Mochi, and no keyboard simulation is used as a fallback.
 
 ---
 
-## 4. Attacher le bonhomme à une fenêtre
+## 6. Attacher le bonhomme à une fenêtre
 
 1. Au lâcher, trouver la fenêtre sous le point : `CGWindowListCopyWindowInfo(.optionOnScreenOnly)`, première fenêtre de couche 0 qui n'est pas la nôtre et contient le point. Récupérer app, titre, cadre.
 2. Afficher le **halo** : une panel transparente, non cliquable, posée sur le cadre de la fenêtre. Bordure conique arc-en-ciel de 3 pt qui tourne en 3 s (`#FF6B5B → #F7B32B → #2DD4A7 → #38BDF8 → #A78BFA → #F472B6`), voile multicolore en mode multiply qui respire (voir `.attach` du prototype), fondu d'entrée 600 ms. Son `attach`, émote Clin d'œil.
@@ -133,7 +149,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 5. API Claude (recherche)
+## 7. API Claude (recherche)
 
 - `POST https://api.anthropic.com/v1/messages`, en-têtes `x-api-key`, `anthropic-version`, `content-type: application/json` (versions à vérifier dans la doc).
 - Modèle par défaut : `claude-sonnet-5`, réglable dans les réglages. Vérifier la liste des modèles disponibles dans la doc.
@@ -151,7 +167,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 6. Mail (app Mail du Mac)
+## 8. Mail (app Mail du Mac)
 
 - Vue `mail` : À (obligatoire, validation d'adresse), Objet (prérempli : nom du fichier), Message (optionnel, une ligne).
 - Envoi uniquement au clic sur « Envoyer », via AppleScript (`NSAppleScript`) sur Mail :
@@ -171,7 +187,7 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 7. Permissions macOS demandées (récapitulatif pour Louis)
+## 9. Permissions macOS demandées (récapitulatif pour Louis)
 
 | Permission | Pourquoi | Quand |
 |---|---|---|

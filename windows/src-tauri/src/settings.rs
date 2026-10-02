@@ -20,10 +20,17 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Chat provider selected explicitly by the user.
+    #[serde(default = "default_provider")]
+    pub provider: String,
 }
 
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
+}
+
+fn default_provider() -> String {
+    "claude".into()
 }
 
 impl Default for Settings {
@@ -43,6 +50,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            provider: default_provider(),
         }
     }
 }

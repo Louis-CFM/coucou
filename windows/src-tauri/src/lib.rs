@@ -7,6 +7,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod openai;
 mod pipe;
 mod secrets;
 mod settings;
@@ -261,16 +262,22 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    openai_chat: State<'_, openai::Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    if settings.provider == "openai" {
+        openai::send(&openai_chat, &settings.model, query, context).await
+    } else {
+        claude::send(&chat, &settings.model, query, context).await
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, openai_chat: State<openai::Chat>) {
     chat.reset();
+    openai_chat.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -396,6 +403,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(openai::Chat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,

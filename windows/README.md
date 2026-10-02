@@ -158,9 +158,15 @@ removes only Coucou's entries and preserves unrelated hooks.
 
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+**Settings… → Chat provider** has an explicit provider selector for Claude API
+and OpenAI API, plus a separate model selector. The selected API key is stored
+in the **Windows Credential Manager**, never in settings files, logs, or the
+frontend — the island can only ask whether a key exists. Claude uses the
+Anthropic API key (`sk-ant-…`); OpenAI uses an OpenAI API key (`sk-…`).
+
+This API-key integration is separate from ChatGPT or Codex CLI OAuth
+authentication. Signing into ChatGPT/Codex does not provide Coucou with an
+OpenAI API key, and Coucou never reads or stores those OAuth tokens.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
