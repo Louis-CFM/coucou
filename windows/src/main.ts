@@ -33,6 +33,7 @@ async function main() {
     void Bridge.setPaused(on);
   };
 
+  await onEvent<string | null>("roam-end", (path) => island.onRoamEnd(path));
   await onEvent<string>("tray", (what) => {
     switch (what) {
       case "settings":

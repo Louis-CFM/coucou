@@ -8,6 +8,8 @@ mod island;
 mod log;
 mod pipe;
 mod platform;
+#[cfg_attr(not(windows), path = "roam_stub.rs")]
+mod roam;
 mod secrets;
 mod settings;
 mod tray;
@@ -236,13 +238,59 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (entry, name) = {
+        let s = shared.settings.lock().unwrap();
+        let entry = s.models.iter().find(|m| m.id == s.active_model).or(s.models.first()).cloned();
+        (entry, s.mochi_name.clone())
+    };
+    let entry = entry.ok_or("No model set up yet. Add one in Settings → Models.")?;
+    let provider = if entry.kind == "claude" {
+        claude::Provider::Claude { model: entry.model.clone() }
+    } else {
+        claude::Provider::Custom {
+            endpoint: entry.endpoint.clone(),
+            model: entry.model.clone(),
+            key: secrets::endpoint_key(&entry.endpoint),
+        }
+    };
+    let result = claude::send(&chat, &provider, &name, query, context, text_only.unwrap_or(false)).await;
+
+    // Remember whether this model reads images, so next time the island can ask
+    // before an image is sent to a model that can't see it.
+    let learnt = match &result {
+        Err(e) if e == claude::IMAGES_UNSUPPORTED => Some(false),
+        Ok(r) if r.sent_image => Some(true),
+        _ => None,
+    };
+    if let Some(vision) = learnt {
+        let updated = {
+            let mut s = shared.settings.lock().unwrap();
+            match s.models.iter_mut().find(|m| m.id == entry.id) {
+                Some(m) if m.vision != Some(vision) => {
+                    m.vision = Some(vision);
+                    Some(s.clone())
+                }
+                _ => None,
+            }
+        };
+        if let Some(s) = updated {
+            let _ = settings::save(&s);
+            let _ = app.emit("settings-changed", s);
+        }
+    }
+    result
+}
+
+#[tauri::command]
+fn endpoint_key(endpoint: String) -> String {
+    secrets::endpoint_key(&endpoint)
 }
 
 #[tauri::command]
@@ -294,23 +342,26 @@ fn log_line(message: String) {
 
 // ── Settings window ───────────────────────────────────────────────────────────
 
+/// `--renderer-process-limit=1`: the island, settings and roam windows share one
+/// renderer process instead of one each (~130 MB apiece).
+///
 /// WebView2 allows exactly one browser environment per app, and its options are
 /// fixed by whichever webview is created first. Every window must therefore ask
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
+/// In a dev build the pages are served by Vite, so the extra windows need the
+/// absolute dev URL; a bundled build resolves them inside the app bundle.
+fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
+        base.set_path(&format!("/{page}"));
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("settings.html".into())
+    WebviewUrl::App(page.into())
 }
 
 /// The settings window is created hidden at launch and only ever shown and
@@ -318,7 +369,7 @@ fn settings_page_url(app: &AppHandle) -> WebviewUrl {
 /// not — silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
-    let url = settings_page_url(app);
+    let url = page_url(app, "settings.html");
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
         .title("Settings — Coucou")
@@ -330,12 +381,14 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
+            platform::set_memory_low(&win, true);
             // Closing it must only hide it, or it could never be reopened.
             let hidden = win.clone();
             win.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = hidden.hide();
+                    platform::set_memory_low(&hidden, true);
                 }
             });
         }
@@ -348,6 +401,7 @@ pub fn show_settings_window(app: &AppHandle) {
         log::line("settings window missing");
         return;
     };
+    platform::set_memory_low(&win, false);
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
@@ -393,6 +447,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            endpoint_key,
             ingest_file,
             secret_present,
             secret_set,
@@ -401,12 +456,16 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            roam::roam_start,
+            roam::roam_capture,
+            roam::roam_end,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
+            roam::create_window(&handle, page_url(&handle, "roam.html"), BROWSER_ARGS);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
@@ -421,6 +480,7 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_drop_guard(handle.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);

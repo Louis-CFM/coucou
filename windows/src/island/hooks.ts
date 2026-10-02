@@ -5,7 +5,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type AskQuestion } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -110,6 +110,28 @@ const APPROVAL_FIELDS = [
   "prompt", // Task
 ] as const;
 
+/** The questions of an AskUserQuestion call, or null if the input isn't one. */
+function askQuestions(input: Record<string, unknown>): AskQuestion[] | null {
+  const raw = input.questions;
+  if (!Array.isArray(raw)) return null;
+  const out: AskQuestion[] = [];
+  for (const q of raw) {
+    if (!q || typeof q.question !== "string" || !Array.isArray(q.options)) return null;
+    out.push({
+      question: q.question,
+      header: typeof q.header === "string" ? q.header : undefined,
+      multiSelect: q.multiSelect === true,
+      options: q.options
+        .filter((o: unknown) => o && typeof (o as { label?: unknown }).label === "string")
+        .map((o: { label: string; description?: unknown }) => ({
+          label: o.label,
+          description: typeof o.description === "string" ? o.description : undefined,
+        })),
+    });
+  }
+  return out.length ? out : null;
+}
+
 function approvalTarget(tool: string, input: Record<string, unknown>): string {
   for (const field of APPROVAL_FIELDS) {
     const value = input[field];
@@ -132,12 +154,37 @@ function clearSession() {
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
-  t.name = "VS Code";
+  t.name = State.settings.mochiName?.trim() || "Mochi";
   t.pillBadge = null;
 }
 
 export function registerHookHandlers(island: Island) {
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  // The relay hung up: the request was answered in the terminal.
+  void onEvent<string>("hook-resolved", (id) => {
+    if (State.pendingApproval?.requestId === id) resolvedElsewhere(island, false);
+  });
+}
+
+/** Events that only happen once Claude Code has moved past a pending card. */
+const MOVED_ON = new Set([
+  "PostToolUse", "PostToolUseFailure", "UserPromptSubmit", "Stop", "StopFailure", "SessionEnd",
+]);
+
+/**
+ * The card's question was settled somewhere else (the terminal), so it goes:
+ * a card that keeps asking a question already answered is worse than none.
+ * `release` also lets go of the relay, when it hasn't hung up by itself.
+ */
+function resolvedElsewhere(island: Island, release: boolean) {
+  const req = State.pendingApproval;
+  if (!req) return;
+  if (pendingTimeout != null) {
+    window.clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+  }
+  if (release) void Bridge.approvalDecline(req.requestId);
+  island.dismissRequest();
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -150,6 +197,14 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
+  // Claude Code carried on while a card was up: it was answered in the terminal.
+  if (
+    State.pendingApproval &&
+    MOVED_ON.has(name) &&
+    (!payload.session_id || payload.session_id === State.pendingApproval.sessionId)
+  ) {
+    resolvedElsewhere(island, true);
+  }
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
@@ -291,27 +346,28 @@ function handleHook(island: Island, payload: HookPayload) {
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
+      const questions = tool === "AskUserQuestion" ? askQuestions(input) : null;
       State.pendingApproval = {
         requestId,
         sessionId: payload.session_id ?? "",
         tool,
         command: approvalTarget(tool, input),
+        questions: questions ?? undefined,
       };
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
+      State.updateTask(CLAUDE_ID, questions ? "question" : "approval");
       State.isPinned = true;
-      Sound.play("approval");
-      if (focused) {
-        island.alert("approval");
-      } else {
-        // Another agent holds the view, so the card would yank it away. The badge
-        // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
-        island.reveal();
+      Sound.play(questions ? "question" : "approval");
+      // Claude Code is waiting on a human, so its card always takes the view, even
+      // from another Mochi (a badge alone went unnoticed). The other Mochi gets
+      // the view back once the card is answered or times out.
+      if (!focused) {
+        State.returnFocusId = State.focusId;
+        State.focusId = CLAUDE_ID;
       }
+      island.alert(questions ? "question" : "approval");
       // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {
@@ -322,7 +378,8 @@ function handleHook(island: Island, payload: HookPayload) {
         island.dropPin();
         State.updateTask(CLAUDE_ID, "working");
         State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval") island.setView(State.defaultView());
+        State.restoreFocus();
+        if (State.view === "approval" || State.view === "question") island.setView(State.defaultView());
         State.notify();
       }, 110_000);
       break;

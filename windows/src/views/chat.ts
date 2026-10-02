@@ -5,6 +5,7 @@ import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
+import { renderMarkdown } from "./markdown";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
 
@@ -18,7 +19,16 @@ function bubble(message: ChatMessage): HTMLElement {
       h("div", { class: "bubble", text: message.content }),
     );
   }
-  return h("div", { class: "chat-row" }, h("div", { class: "reply", text: message.content }));
+  const reply = h("div", { class: "reply md" });
+  reply.append(renderMarkdown(message.content));
+  return h(
+    "div",
+    { class: "chat-row" },
+    h("div", {},
+      message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
+      reply,
+    ),
+  );
 }
 
 function typingDots(): HTMLElement {
@@ -29,11 +39,32 @@ function typingDots(): HTMLElement {
   );
 }
 
-/** The coloured chip showing what the question is about (a dropped file). */
-function contextChip(label: string): HTMLElement {
-  const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }));
+/** The coloured chip showing what the question is about (a dropped file), with
+ *  an x to drop it. */
+function contextChip(label: string, onRemove: () => void): HTMLElement {
+  const remove = h("button", { class: "chip-x", title: "Remove" }, svg(ICONS.xmark, 9));
+  remove.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onRemove();
+  });
+  const chip = h(
+    "div",
+    { class: "chip" },
+    h("i", { class: "chip-dot" }),
+    h("span", { text: label }),
+    remove,
+  );
   requestAnimationFrame(() => chip.classList.add("settled"));
   return chip;
+}
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp)$/i;
+/** The error chat_send reports when a text-only model refuses an image. */
+const IMAGES_UNSUPPORTED = "IMAGES_UNSUPPORTED";
+
+function activeModel() {
+  const models = State.settings.models ?? [];
+  return models.find((m) => m.id === State.settings.activeModel) ?? models[0] ?? null;
 }
 
 export function buildPrompt(onHeightChange: () => void): ViewHost {
@@ -46,23 +77,106 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+
+  // Model picker, next to Send (like the Claude website).
+  const modelBtn = h("button", { class: "model-btn", title: "Choose the model" });
+  const modelMenu = h("div", { class: "model-menu" });
+  const picker = h("div", { class: "model-picker" }, modelMenu, modelBtn);
+  let menuOpen = false;
+  const setMenu = (open: boolean) => {
+    menuOpen = open;
+    modelMenu.classList.toggle("open", open);
+    if (open) drawMenu();
+  };
+  function drawMenu() {
+    clear(modelMenu);
+    for (const m of State.settings.models ?? []) {
+      const item = h(
+        "button",
+        { class: m.id === activeModel()?.id ? "model-item on" : "model-item" },
+        h("span", { class: "model-name", text: m.label || m.model }),
+        m.vision === true ? h("span", { class: "model-tag eye", title: "Sees images" }, svg(ICONS.eye, 10)) : null,
+        m.vision === false ? h("span", { class: "model-tag", text: "text" }) : null,
+      );
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        State.settings.activeModel = m.id;
+        void Bridge.saveSettings(State.settings);
+        setMenu(false);
+        askImage = askImage && !(m.vision === true || m.kind === "claude") ? askImage : false;
+        State.notify();
+        input.focus();
+      });
+      modelMenu.append(item);
+    }
+    const manage = h("button", { class: "model-item manage", text: "Manage models…" });
+    manage.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setMenu(false);
+      void Bridge.openSettingsWindow();
+    });
+    modelMenu.append(manage);
+  }
+  modelBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setMenu(!menuOpen);
+  });
+  document.addEventListener("click", () => menuOpen && setMenu(false));
+
+  // "This model can't see images": asked instead of wasting a request.
+  let askImage = false;
+  let pendingQuery = "";
+  const askText = h("span", {});
+  const sendTextOnly = h("button", { class: "btn primary small", text: "Send without image" });
+  const switchModel = h("button", { class: "btn secondary small", text: "Switch model" });
+  const cancelAsk = h("button", { class: "btn secondary small", text: "Cancel" });
+  const ask = h("div", { class: "image-ask" }, askText, h("div", { class: "image-ask-btns" }, sendTextOnly, switchModel, cancelAsk));
+  sendTextOnly.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    void submit(true);
+  });
+  switchModel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setMenu(true);
+  });
+  cancelAsk.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    State.notify();
+    onHeightChange();
+  });
+
+  const bar = h("div", { class: "chat-bar" }, input, picker, send);
 
   const el = h(
     "div",
     { class: "view" },
-    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, bar)),
+    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, ask, bar)),
   );
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
   let renderedCount = -1;
 
-  async function submit() {
+  async function submit(textOnly = false) {
     const query = input.value.trim();
     if (!query || sending) return;
+    const file = State.droppedFile;
+    const firstTurn = State.chatHistory.length === 0;
+    const withImage = firstTurn && !!file && IMAGE_FILE.test(file.path) && !textOnly;
+    // Known text-only model: ask before sending the image, don't spend a request.
+    const model = activeModel();
+    if (withImage && model?.vision === false) {
+      pendingQuery = query;
+      askImage = true;
+      State.notify();
+      onHeightChange();
+      return;
+    }
     input.value = "";
     sending = true;
+    askImage = false;
     Sound.play("send");
 
     State.chatHistory.push({ id: nextId++, role: "user", content: query });
@@ -70,20 +184,28 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
     const context: ChatContext | null =
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      const reply = await Bridge.chatSend(query, context, textOnly);
+      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      const message = String(err).replace(/^Error:\s*/, "");
+      if (message === IMAGES_UNSUPPORTED) {
+        // The model turned the image down: take the question back and ask.
+        State.chatHistory.pop();
+        pendingQuery = query;
+        askImage = true;
+        Sound.play("blip");
+      } else {
+        State.noteMessage = message;
+        State.view = "note";
+        Sound.play("error");
+      }
     } finally {
       sending = false;
       State.notify();
@@ -109,7 +231,14 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
-        if (wantChip) chipRow.append(contextChip(wantChip));
+        if (wantChip) {
+          chipRow.append(
+            contextChip(wantChip, () => {
+              State.dropAttachment();
+              onHeightChange();
+            }),
+          );
+        }
       }
 
       const thinking = State.stateOverride === "thinking";
@@ -122,8 +251,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         log.scrollTop = log.scrollHeight;
       }
 
-      input.placeholder = State.chatHistory.length === 0 ? "Ask me anything…" : "Continue…";
+      const name = State.settings.mochiName?.trim() || "me";
+      input.placeholder = State.chatHistory.length === 0 ? `Ask ${name} anything…` : "Continue…";
       input.disabled = sending;
+
+      const model = activeModel();
+      modelBtn.textContent = `${model?.label || model?.model || "No model"} \u25BE`;
+      ask.classList.toggle("open", askImage);
+      askText.textContent = `${model?.label || model?.model || "This model"} can't see images.`;
+      if (menuOpen) drawMenu();
     },
     focus() {
       input.focus();

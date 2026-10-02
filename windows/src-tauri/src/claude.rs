@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::secrets;
+use crate::{log, secrets};
 
 const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -22,10 +22,19 @@ const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
 
-const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
+/// Follows "You are <name>, " (see `system_prompt`).
+const SYSTEM_PROMPT: &str = "a personal AI assistant living at the top of the user's screen. \
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
+Format with Markdown: short paragraphs, lists where they help, code in backticks or fenced blocks. \
+Put the key words and phrases the user should notice in **bold** (a few per answer, never whole sentences).";
+
+/// The system prompt, with the name the user gave Mochi in Settings.
+fn system_prompt(name: &str) -> String {
+    let name: String = name.trim().chars().take(32).collect();
+    let name = if name.is_empty() { "Mochi".to_string() } else { name };
+    format!("You are {name}, {SYSTEM_PROMPT}")
+}
 
 #[derive(Default)]
 pub struct Chat {
@@ -66,18 +75,46 @@ pub enum ChatContext {
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    /// Something the user should know about how this answer was made, e.g. the
+    /// image was left out.
+    pub notice: Option<String>,
+    /// An image went to the model (and it answered): it can see images.
+    pub sent_image: bool,
+}
+
+/// The error a text-only model's image refusal is reported as, so the island
+/// can ask whether to send without the image instead of wasting a request.
+pub const IMAGES_UNSUPPORTED: &str = "IMAGES_UNSUPPORTED";
+
+/// Where a chat turn goes: the Claude API, or any OpenAI-compatible
+/// `/chat/completions` endpoint, with the Credential Manager name of its key.
+pub enum Provider {
+    Claude { model: String },
+    Custom { endpoint: String, model: String, key: String },
+}
+
+fn is_image(path: &str) -> bool {
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp")
 }
 
 /// One chat turn. Returns the assistant's text, or a message the island shows
 /// in the note view.
 pub async fn send(
     chat: &Chat,
-    model: &str,
+    provider: &Provider,
+    name: &str,
     query: String,
     context: Option<ChatContext>,
+    text_only: bool,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let system = system_prompt(name);
+    let key = match provider {
+        Provider::Claude { .. } => secrets::get("anthropic-api-key"),
+        // The older single custom key still works for any provider.
+        Provider::Custom { key, .. } => secrets::get(key).or_else(|| secrets::get("custom-api-key")),
+    }
+    .ok_or_else(|| "No API key for this model's provider yet. Add it in Settings → Models.".to_string())?;
 
     let mut content: Vec<Value> = Vec::new();
 
@@ -86,7 +123,9 @@ pub async fn send(
     if chat.is_empty() {
         match &context {
             Some(ChatContext::File { name, path }) => {
-                if let Some(block) = file_block(path) {
+                if text_only && is_image(path) {
+                    content.push(json!({ "type": "text", "text": format!("[An image ({name}) was attached, but the user chose to send text only.]") }));
+                } else if let Some(block) = file_block(path) {
                     content.push(block);
                 }
                 content.push(json!({ "type": "text", "text": format!("File: {name}") }));
@@ -103,12 +142,32 @@ pub async fn send(
     }
     content.push(json!({ "type": "text", "text": query }));
 
+    let sent_image = content.iter().any(|b| b["type"] == "image");
+    let left_out = text_only && matches!(&context, Some(ChatContext::File { path, .. }) if is_image(path));
     chat.push(json!({ "role": "user", "content": content }));
+    let notice = left_out.then(|| "Sent without the image.".to_string());
+
+    let model = match provider {
+        Provider::Claude { model } => model,
+        Provider::Custom { endpoint, model, .. } => {
+            return match call_openai(&key, endpoint, model, &system, &chat.snapshot(), sent_image).await {
+                Ok(text) => {
+                    // Stored in the Claude shape so switching provider mid-chat still works.
+                    chat.push(json!({ "role": "assistant", "content": [{ "type": "text", "text": text }] }));
+                    Ok(ChatReply { text, notice, sent_image })
+                }
+                Err(err) => {
+                    chat.pop();
+                    Err(err)
+                }
+            };
+        }
+    };
 
     let body = json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
+        "system": system,
         "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
         "fallbacks": "default",
         "messages": chat.snapshot(),
@@ -154,7 +213,7 @@ pub async fn send(
     if text.is_empty() {
         return Err("No response text.".into());
     }
-    Ok(ChatReply { text })
+    Ok(ChatReply { text, notice, sent_image })
 }
 
 async fn call(key: &str, body: &Value) -> Result<Value, String> {
@@ -190,6 +249,128 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
         return Err(format!("Claude API {status}: {detail}"));
     }
     serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
+}
+
+/// One OpenAI-compatible turn (no web search: that tool is Claude-only). Many
+/// models (most of Groq's, for one) take text only and reject an image outright
+/// with a 4xx: that comes back as IMAGES_UNSUPPORTED, so the island can ask
+/// before sending again without it.
+async fn call_openai(
+    key: &str,
+    endpoint: &str,
+    model: &str,
+    system: &str,
+    history: &[Value],
+    with_image: bool,
+) -> Result<String, String> {
+    if model.trim().is_empty() {
+        return Err("This model has no model name. Fix it in Settings → Models.".into());
+    }
+    let base = endpoint.trim().trim_end_matches('/');
+    let url = if base.ends_with("/chat/completions") {
+        base.to_string()
+    } else {
+        format!("{base}/chat/completions")
+    };
+
+    let mut messages = vec![json!({ "role": "system", "content": system })];
+    messages.extend(history.iter().map(|m| to_openai(m, true)));
+    let body = json!({ "model": model.trim(), "max_tokens": MAX_TOKENS, "messages": messages });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(90))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client
+        .post(&url)
+        .bearer_auth(key)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {e}"))?;
+
+    let status = response.status();
+    let text = response.text().await.map_err(|e| e.to_string())?;
+    let parsed: Option<Value> = serde_json::from_str(&text).ok();
+    if !status.is_success() {
+        // OpenRouter: {error:{message}}; NIM: {detail} or {error:"..."}.
+        let detail = parsed
+            .as_ref()
+            .and_then(|v| {
+                v.pointer("/error/message")
+                    .or_else(|| v.get("error"))
+                    .or_else(|| v.get("detail"))
+                    .map(|d| d.as_str().map(str::to_string).unwrap_or_else(|| d.to_string()))
+            })
+            .unwrap_or_else(|| text.chars().take(200).collect());
+        if with_image && matches!(status.as_u16(), 400 | 415 | 422) {
+            log::line(format!("custom provider refused the image: {status} {detail}"));
+            return Err(IMAGES_UNSUPPORTED.into());
+        }
+        return Err(friendly_error(status.as_u16(), &detail, model));
+    }
+    let reply = parsed
+        .as_ref()
+        .and_then(|v| v.pointer("/choices/0/message/content"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    if reply.is_empty() {
+        return Err("No response text.".into());
+    }
+    Ok(reply.to_string())
+}
+
+/// An API failure in words a non-technical user can act on. The raw detail is
+/// kept at the end for anyone who needs it.
+fn friendly_error(status: u16, detail: &str, model: &str) -> String {
+    let hint = match status {
+        401 | 403 => "The API key was refused. Check it in Settings.".to_string(),
+        404 => format!("The model \"{}\" wasn't found at this provider. Check the model name in Settings.", model.trim()),
+        413 => "That was too much to send at once. Try a shorter message or a smaller file.".to_string(),
+        429 => "The provider is rate-limiting you. Wait a moment and try again.".to_string(),
+        500..=599 => "The provider is having trouble right now. Try again in a moment.".to_string(),
+        _ => "The provider couldn't handle that request.".to_string(),
+    };
+    format!("{hint}\n\n({status}: {detail})")
+}
+
+/// One Claude-shaped history message → OpenAI shape. Text-only turns become a
+/// plain string (the most widely supported form); images become data URLs, or
+/// a note that one was attached when `images` is false (text-only models);
+/// PDFs and tool blocks have no portable equivalent and are dropped.
+fn to_openai(message: &Value, images: bool) -> Value {
+    let role = message.get("role").and_then(Value::as_str).unwrap_or("user");
+    let blocks = message.get("content").and_then(Value::as_array).cloned().unwrap_or_default();
+    let mut parts = Vec::new();
+    let mut has_image = false;
+    for b in &blocks {
+        match b.get("type").and_then(Value::as_str) {
+            Some("text") => parts.push(json!({ "type": "text", "text": b["text"] })),
+            Some("image") if role == "user" && !images => {
+                parts.push(json!({ "type": "text", "text": "[The user attached an image here, but you can't see images. If the question depends on it, say so briefly.]" }))
+            }
+            Some("image") if role == "user" => {
+                has_image = true;
+                let src = &b["source"];
+                let url = format!(
+                    "data:{};base64,{}",
+                    src["media_type"].as_str().unwrap_or(""),
+                    src["data"].as_str().unwrap_or("")
+                );
+                parts.push(json!({ "type": "image_url", "image_url": { "url": url } }));
+            }
+            Some("document") => {
+                parts.push(json!({ "type": "text", "text": "[PDF attached, but this provider can not read PDFs]" }))
+            }
+            _ => {}
+        }
+    }
+    if has_image {
+        return json!({ "role": role, "content": parts });
+    }
+    let text = parts.iter().filter_map(|p| p["text"].as_str()).collect::<Vec<_>>().join("\n");
+    json!({ "role": role, "content": text })
 }
 
 /// PDF → document block, image → image block, text/code → inline text.
@@ -248,7 +429,25 @@ fn base64(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::base64;
+    use super::{base64, to_openai};
+    use serde_json::json;
+
+    #[test]
+    fn to_openai_flattens_text_and_maps_images() {
+        let text = json!({ "role": "assistant", "content": [
+            { "type": "text", "text": "a" }, { "type": "web_search_tool_result" }, { "type": "text", "text": "b" } ] });
+        assert_eq!(to_openai(&text, true), json!({ "role": "assistant", "content": "a\nb" }));
+
+        let img = json!({ "role": "user", "content": [
+            { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "QQ==" } },
+            { "type": "text", "text": "hi" } ] });
+        assert_eq!(to_openai(&img, true)["content"][0]["image_url"]["url"], "data:image/png;base64,QQ==");
+        assert_eq!(to_openai(&img, true)["content"][1]["text"], "hi");
+        // Text-only models get one plain string that mentions the image.
+        let blind = to_openai(&img, false);
+        assert!(blind["content"].is_string());
+        assert!(blind["content"].as_str().unwrap().contains("attached an image"));
+    }
 
     #[test]
     fn base64_matches_rfc4648_vectors() {

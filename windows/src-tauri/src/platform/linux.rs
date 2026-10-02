@@ -344,3 +344,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// WebKitGTK has no memory target to set.
+pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
+
+/// Click-through on or off (the overlay itself is set up by the layer shell).
+pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
+    let _ = win.set_ignore_cursor_events(ignore);
+}

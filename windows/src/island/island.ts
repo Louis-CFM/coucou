@@ -56,6 +56,8 @@ export class Island {
   private radius = new Tracked(ROUNDED_CORNER);
   private botCx = new Spring(46);
   private botCy = new Spring(16);
+  /** Where Mochi was pressed (screen px): a click slaps, a drag starts a roam. */
+  private botPress: { x: number; y: number } | null = null;
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
@@ -140,12 +142,24 @@ export class Island {
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
+        if (d === "allow") this.engine.celebrate();
+        this.closeRequest();
+      },
+      answerQuestions: (answers) => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("approve");
+        // One line of JSON; coucou-hook turns it into Claude Code's answer.
+        void Bridge.approvalDecision(req.requestId, JSON.stringify({ answers }));
+        this.engine.celebrate();
+        this.closeRequest();
+      },
+      questionToTerminal: () => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("blip");
+        void Bridge.approvalDecline(req.requestId);
+        this.closeRequest();
       },
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
@@ -265,6 +279,8 @@ export class Island {
       Sound.play("close");
       State.isPinned = false;
       void Bridge.focusWindow(false);
+      // A roam screenshot nobody asked about must not tag along into a later chat.
+      if (State.droppedFile?.ephemeral && State.chatHistory.length === 0) State.dropAttachment();
     }
     if (mode !== "expanded") {
       this.engine.resetMorph();
@@ -337,6 +353,40 @@ export class Island {
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
+  }
+
+  /** The request card is answered or handed back: unpin and go home. */
+  /** The pending card was answered in the terminal: close it, no reply sent. */
+  dismissRequest() {
+    if (!State.pendingApproval) return;
+    this.closeRequest();
+    State.notify();
+  }
+
+  private closeRequest() {
+    State.pendingApproval = null;
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    void Bridge.focusWindow(false);
+    State.updateTask("integration_claude", "working");
+    State.setPillBadge("integration_claude", null);
+    State.restoreFocus();
+    this.setView(State.defaultView());
+  }
+
+  // ── Roam ────────────────────────────────────────────────────────────────────
+
+  /** Mochi flew back from the screen, with a screenshot when it got one. */
+  onRoamEnd(path: string | null) {
+    State.roaming = false;
+    this.engine.squash();
+    Sound.play("open");
+    if (!path) return;
+    State.droppedFile = { name: "Screenshot", path, ephemeral: true };
+    State.promptContext = { kind: "file", name: "Screenshot", path };
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    this.alert("prompt");
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -540,8 +590,22 @@ export class Island {
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
-        this.engine.slap();
+        // A click slaps; a drag carries Mochi out onto the screen (roam).
+        this.botPress = { x: e.screenX, y: e.screenY };
       }
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!this.botPress) return;
+      if (Math.hypot(e.screenX - this.botPress.x, e.screenY - this.botPress.y) < 8) return;
+      this.botPress = null;
+      State.roaming = true;
+      void Bridge.roamStart({ state: this.engine.state, bodyColor: this.engine.bodyColor, outfit: this.engine.outfit });
+      // Mochi has left: the island goes straight back to its idle size.
+      this.collapse();
+    });
+    window.addEventListener("mouseup", () => {
+      if (this.botPress) this.engine.slap();
+      this.botPress = null;
     });
 
     window.addEventListener("keydown", (e) => {
@@ -770,6 +834,7 @@ export class Island {
   }
 
   private drawBot(dt: number) {
+    this.botCanvas.style.visibility = State.roaming ? "hidden" : "visible";
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
@@ -789,6 +854,7 @@ export class Island {
 
     const focus = State.focusTask;
     this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    this.engine.outfit = State.settings.wardrobe?.[focus?.id ?? "integration_claude"] ?? null;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -885,6 +951,10 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.keepVisible = State.settings.keepVisible;
+    // Turned on while hidden: come back now rather than at the next hover.
+    // (Paused stays hidden; that is what pausing is for.)
+    if (State.settings.keepVisible && !State.paused) this.fsm.reveal();
     State.notify();
   }
 

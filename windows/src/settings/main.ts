@@ -4,7 +4,9 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type ModelEntry, type Settings } from "../core/state";
+import { BotEngine, hexToRGB } from "../mochi/engine";
+import { SHAPES, hats, type Outfit } from "../mochi/wardrobe";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -230,28 +232,210 @@ function apiSection(hasKey: boolean): HTMLElement {
     }
   });
 
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
-  });
-
   clearBtn.style.display = hasKey ? "" : "none";
+
+  const mochiName = nameInput(settings.mochiName, "Mochi", (v) => { settings.mochiName = v; });
 
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
+    h("div", { class: "row" }, h("label", { text: "Mochi's name" }), mochiName),
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
   );
+}
+
+// ── Models ───────────────────────────────────────────────────────────────────
+
+const PROVIDERS: [string, string][] = [
+  ["https://api.groq.com/openai/v1", "Groq"],
+  ["https://openrouter.ai/api/v1", "OpenRouter"],
+  ["https://integrate.api.nvidia.com/v1", "NVIDIA NIM"],
+  ["https://api.openai.com/v1", "OpenAI"],
+  ["http://localhost:11434/v1", "Ollama (this PC)"],
+];
+
+/** Redraws the model list (set by modelsSection; vision is learnt in the background). */
+let redrawModels: () => void = () => {};
+
+function providerName(endpoint: string): string {
+  const known = PROVIDERS.find(([url]) => endpoint.replace(/\/+$/, "") === url);
+  if (known) return known[1];
+  return endpoint.replace(/^\w+:\/\//, "").split("/")[0] || "custom";
+}
+
+/**
+ * The chat's saved models, picked from the selector next to Send. Claude models
+ * use the Claude key above; any OpenAI-compatible provider has one key per host,
+ * shared by all its models (enter it once for Groq, every Groq model uses it).
+ */
+function modelsSection(): HTMLElement {
+  const list = h("div", { class: "model-list" });
+  const input = (placeholder: string, type = "text") =>
+    h("input", { type, placeholder, style: "flex:1 1 auto;min-width:0", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
+
+  async function draw() {
+    clear(list);
+    for (const m of settings.models) {
+      const active = m.id === settings.activeModel;
+      const use = h("button", { class: active ? "primary" : "", text: active ? "In use" : "Use" });
+      use.addEventListener("click", () => {
+        settings.activeModel = m.id;
+        void save();
+        void draw();
+      });
+      const label = h("input", { type: "text", value: m.label, placeholder: m.model, style: "flex:1 1 auto;min-width:0" }) as HTMLInputElement;
+      label.addEventListener("change", () => {
+        m.label = label.value.trim();
+        void save();
+      });
+      const vision = h("select", { title: "Can this model see images? Auto learns it the first time." }) as HTMLSelectElement;
+      vision.append(
+        h("option", { value: "auto", text: "Images: auto" }),
+        h("option", { value: "yes", text: "Sees images" }),
+        h("option", { value: "no", text: "Text only" }),
+      );
+      vision.value = m.vision === true ? "yes" : m.vision === false ? "no" : "auto";
+      vision.disabled = m.kind === "claude";
+      vision.addEventListener("change", () => {
+        m.vision = vision.value === "yes" ? true : vision.value === "no" ? false : null;
+        void save();
+      });
+      const remove = h("button", { class: "danger", text: "Remove" });
+      remove.style.display = settings.models.length > 1 ? "" : "none";
+      remove.addEventListener("click", () => {
+        settings.models = settings.models.filter((x) => x.id !== m.id);
+        if (settings.activeModel === m.id) settings.activeModel = settings.models[0]?.id ?? "";
+        void save();
+        void draw();
+      });
+      const keyDot = statusDot(false);
+      if (m.kind === "claude") {
+        keyDot.style.background = (await Bridge.secretPresent("anthropic-api-key")) ? "#22c55e" : "#f4505e";
+      } else {
+        const keyName = await Bridge.endpointKey(m.endpoint);
+        const has = (keyName && (await Bridge.secretPresent(keyName))) || (await Bridge.secretPresent("custom-api-key"));
+        keyDot.style.background = has ? "#22c55e" : "#f4505e";
+      }
+      keyDot.title = "API key for this provider";
+      list.append(
+        h("div", { class: "row" }, use, label, vision, keyDot, remove),
+        h("div", { class: "hint", style: "margin:-4px 0 6px 64px", text: `${m.kind === "claude" ? "Claude" : providerName(m.endpoint)} \u00b7 ${m.model}` }),
+      );
+    }
+  }
+  redrawModels = () => void draw();
+
+  // Add a model.
+  const kind = h("select", {}) as HTMLSelectElement;
+  kind.append(h("option", { value: "openai", text: "OpenAI-compatible" }), h("option", { value: "claude", text: "Claude" }));
+  const provider = h("select", {}) as HTMLSelectElement;
+  for (const [url, name] of PROVIDERS) provider.append(h("option", { value: url, text: name }));
+  provider.append(h("option", { value: "", text: "Other\u2026" }));
+  const endpoint = input("https://\u2026/v1");
+  endpoint.value = PROVIDERS[0][0];
+  const modelId = input("Model id, e.g. meta-llama/llama-4-scout-17b-16e-instruct");
+  const claudeModel = h("select", {}) as HTMLSelectElement;
+  for (const [id, name] of MODELS) claudeModel.append(h("option", { value: id, text: name }));
+  const label = input("Name in the picker (optional)");
+  const key = input("API key for this provider", "password");
+  const add = h("button", { class: "primary", text: "Add model" });
+  const feedback = h("div", {});
+
+  const providerRow = h("div", { class: "row" }, h("label", { text: "Provider" }), provider, endpoint);
+  const modelRow = h("div", { class: "row" }, h("label", { text: "Model" }), modelId, claudeModel);
+  const keyRow = h("div", { class: "row" }, h("label", { text: "API key" }), key);
+  const syncKind = async () => {
+    const openai = kind.value === "openai";
+    providerRow.style.display = openai ? "" : "none";
+    keyRow.style.display = openai ? "" : "none";
+    modelId.style.display = openai ? "" : "none";
+    claudeModel.style.display = openai ? "none" : "";
+    endpoint.style.display = openai && provider.value === "" ? "" : "none";
+    if (openai) {
+      const name = await Bridge.endpointKey(endpoint.value);
+      key.placeholder = name && (await Bridge.secretPresent(name)) ? "\u2022\u2022\u2022\u2022\u2022\u2022  (stored for this provider)" : "API key for this provider";
+    }
+  };
+  kind.addEventListener("change", () => void syncKind());
+  provider.addEventListener("change", () => {
+    if (provider.value) endpoint.value = provider.value;
+    else endpoint.value = "";
+    void syncKind();
+  });
+  endpoint.addEventListener("change", () => void syncKind());
+
+  add.addEventListener("click", async () => {
+    clear(feedback);
+    const openai = kind.value === "openai";
+    const id = openai ? modelId.value.trim() : claudeModel.value;
+    const url = endpoint.value.trim();
+    if (!id || (openai && !/^https?:\/\//i.test(url))) {
+      feedback.append(h("div", { class: "notice err", text: openai ? "Enter the provider's address and a model id." : "Pick a Claude model." }));
+      return;
+    }
+    if (openai && key.value.trim()) {
+      const name = await Bridge.endpointKey(url);
+      if (name) await Bridge.secretSet(name, key.value.trim());
+    }
+    const entry: ModelEntry = {
+      id: `m-${Date.now().toString(36)}`,
+      label: label.value.trim() || (openai ? id.split("/").pop() ?? id : claudeModel.selectedOptions[0]?.text ?? id),
+      kind: openai ? "openai" : "claude",
+      model: id,
+      endpoint: openai ? url : "",
+      vision: openai ? null : true,
+    };
+    settings.models = [...settings.models, entry];
+    settings.activeModel = entry.id;
+    await save();
+    modelId.value = "";
+    label.value = "";
+    key.value = "";
+    feedback.append(h("div", { class: "notice ok", text: `Added ${entry.label}, and it's now in use.` }));
+    void draw();
+    void syncKind();
+  });
+
+  void draw();
+  void syncKind();
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Models" })),
+    h("span", {
+      class: "hint",
+      text: "Pick between these from the menu next to Send. Web search is Claude-only. Text-only models are detected automatically; you'll be asked before an image is sent to one.",
+    }),
+    list,
+    h("h3", { text: "Add a model", style: "margin:14px 0 6px;font-size:12.5px" }),
+    h("div", { class: "row" }, h("label", { text: "Type" }), kind),
+    providerRow,
+    modelRow,
+    h("div", { class: "row" }, h("label", { text: "Name" }), label),
+    keyRow,
+    h("div", { class: "row" }, add),
+    feedback,
+  );
+}
+
+/** A Mochi name box: saves on change; empty falls back to `fallback`. */
+function nameInput(value: string, fallback: string, apply: (v: string) => void): HTMLInputElement {
+  const input = h("input", {
+    type: "text",
+    value,
+    placeholder: fallback,
+    maxlength: "32",
+    spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  input.addEventListener("change", () => {
+    apply(input.value.trim());
+    void save();
+  });
+  return input;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -312,6 +496,18 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    // This coloured Mochi's name first, on the same line as its service, then its keys.
+    rows.append(
+      h("div", { class: "row" },
+        h("label", { style: "min-width:104px", text: "Mochi's name" }),
+        nameInput(settings.mochiNames?.[def.id] ?? "", DEFAULT_MOCHI_NAMES[def.id] ?? def.name, (v) => {
+          const names = { ...(settings.mochiNames ?? {}) };
+          if (v) names[def.id] = v;
+          else delete names[def.id];
+          settings.mochiNames = names;
+        }),
+      ),
+    );
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -343,7 +539,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     list.append(
-      h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;gap:12px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)" },
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           h("i", { class: "dot", style: `background:${def.color}` }),
@@ -360,6 +556,159 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 // ── General section ───────────────────────────────────────────────────────────
 
+// ── Wardrobe ─────────────────────────────────────────────────────────────────
+
+/** Draws one still frame of a Mochi into a canvas (tiles don't animate). */
+function stillMochi(canvas: HTMLCanvasElement, size: number, color: string, outfit: Outfit) {
+  const engine = new BotEngine();
+  engine.bodyColor = hexToRGB(color);
+  engine.outfit = outfit;
+  engine.particleOverhang = size * 0.25;
+  const h = size + engine.particleOverhang;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(size * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${h}px`;
+  for (let i = 0; i < 4; i++) engine.update(0.016);
+  const ctx = canvas.getContext("2d")!;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, h);
+  engine.draw(ctx, size, h);
+}
+
+/**
+ * Dress each Mochi: pick one, then a shape and one item per slot. The live
+ * preview follows the mouse and celebrates on click; every tile shows the item
+ * on that Mochi, in its own colour.
+ */
+function wardrobeSection(): HTMLElement {
+  const mochis = [
+    { id: "integration_claude", color: "#F5F6F8", name: () => settings.mochiName?.trim() || "Mochi" },
+    ...INTEGRATIONS.map((d) => ({
+      id: d.id,
+      color: d.color,
+      name: () => settings.mochiNames?.[d.id]?.trim() || DEFAULT_MOCHI_NAMES[d.id] || d.name,
+    })),
+  ];
+  let current = mochis[0];
+  const outfit = (): Outfit => settings.wardrobe?.[current.id] ?? {};
+  const setOutfit = (o: Outfit) => {
+    settings.wardrobe = { ...(settings.wardrobe ?? {}), [current.id]: o };
+    void save();
+  };
+
+  // Live preview.
+  const preview = document.createElement("canvas");
+  const PREVIEW = 150;
+  const engine = new BotEngine();
+  engine.particleOverhang = 40;
+  const dpr = window.devicePixelRatio || 1;
+  preview.width = Math.round(PREVIEW * dpr);
+  preview.height = Math.round((PREVIEW + 40) * dpr);
+  preview.style.width = `${PREVIEW}px`;
+  preview.style.height = `${PREVIEW + 40}px`;
+  preview.className = "wardrobe-preview";
+  preview.title = "Click to celebrate";
+  preview.addEventListener("click", () => engine.celebrate());
+  window.addEventListener("mousemove", (e) => {
+    const r = preview.getBoundingClientRect();
+    engine.lookX = Math.tanh((e.clientX - (r.left + r.width / 2)) / 220);
+    engine.lookY = -Math.tanh((e.clientY - (r.top + r.height / 2)) / 180);
+  });
+  let last = performance.now();
+  const frame = (now: number) => {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!document.hidden && preview.isConnected) {
+      engine.bodyColor = hexToRGB(current.color);
+      engine.outfit = outfit();
+      engine.update(dt);
+      const ctx = preview.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, PREVIEW, PREVIEW + 40);
+      engine.draw(ctx, PREVIEW, PREVIEW + 40);
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+
+  const chips = h("div", { class: "wardrobe-chips" });
+  const rows = h("div", { class: "wardrobe-rows" });
+
+  function tile(label: string, on: boolean, draw: (c: HTMLCanvasElement) => void, pick: () => void) {
+    const c = document.createElement("canvas");
+    draw(c);
+    const t = h("button", { class: on ? "wardrobe-tile on" : "wardrobe-tile", title: label }, c, h("span", { text: label }));
+    t.addEventListener("click", () => {
+      pick();
+      engine.squash();
+      redraw();
+    });
+    return t;
+  }
+
+  function redraw() {
+    // Rebuilding the tiles briefly empties the section, which pulled the page
+    // back to the top on every pick: keep the scroll where it was.
+    const scroller = document.scrollingElement ?? document.documentElement;
+    const keep = scroller.scrollTop;
+    requestAnimationFrame(() => (scroller.scrollTop = keep));
+    clear(chips);
+    for (const m of mochis) {
+      const chip = h(
+        "button",
+        { class: m.id === current.id ? "wardrobe-chip on" : "wardrobe-chip" },
+        h("i", { class: "dot", style: `background:${m.color}` }),
+        h("span", { text: m.name() }),
+      );
+      chip.addEventListener("click", () => {
+        current = m;
+        redraw();
+      });
+      chips.append(chip);
+    }
+
+    clear(rows);
+    const o = outfit();
+    const shapeRow = h("div", { class: "wardrobe-row" });
+    for (const sh of SHAPES) {
+      const on = (o.shape || "mochi") === sh.id;
+      shapeRow.append(
+        tile(sh.name, on, (c) => stillMochi(c, 52, current.color, { ...o, shape: sh.id }), () =>
+          setOutfit({ ...outfit(), shape: sh.id === "mochi" ? "" : sh.id }),
+        ),
+      );
+    }
+    rows.append(h("div", { class: "wardrobe-label", text: "Shape" }), shapeRow);
+
+    const hatRow = h("div", { class: "wardrobe-row" });
+    hatRow.append(
+      tile("None", !o.head, (c) => stillMochi(c, 52, current.color, { ...o, head: "" }), () =>
+        setOutfit({ ...outfit(), head: "" }),
+      ),
+    );
+    for (const hat of hats()) {
+      hatRow.append(
+        tile(hat.name, o.head === hat.id, (c) => stillMochi(c, 52, current.color, { ...o, head: hat.id }), () =>
+          setOutfit({ ...outfit(), head: hat.id }),
+        ),
+      );
+    }
+    rows.append(h("div", { class: "wardrobe-label", text: "Hat" }), hatRow);
+  }
+  redraw();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Wardrobe" })),
+    h("span", { class: "hint", text: "Pick each Mochi's shape and hat. Changes show up straight away; click the preview for a little celebration." }),
+    chips,
+    h("div", { class: "wardrobe" }, preview, rows),
+  );
+}
+
 function generalSection(): HTMLElement {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
@@ -371,12 +720,12 @@ function generalSection(): HTMLElement {
   });
 
   const autoClose = h("input", {
-    type: "number", min: "5", max: "120", step: "1",
+    type: "number", min: "3", max: "120", step: "1",
     value: String(Math.round(settings.autoCloseInterval)),
     style: "width:72px",
   }) as HTMLInputElement;
   autoClose.addEventListener("change", () => {
-    settings.autoCloseInterval = Math.max(5, Math.min(120, Number(autoClose.value) || 15));
+    settings.autoCloseInterval = Math.max(3, Math.min(120, Number(autoClose.value) || 15));
     autoClose.value = String(settings.autoCloseInterval);
     void save();
   });
@@ -411,6 +760,16 @@ function generalSection(): HTMLElement {
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: "Keep island visible" }),
+      toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
+      h("span", { class: "hint", text: "stays compact at the top instead of hiding" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Quick screenshot" }),
+      toggle(settings.quickScan, (v) => { settings.quickScan = v; void save(); }),
+      h("span", { class: "hint", text: "skip Mochi's scan: capture 0.2 s after the drop" }),
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
@@ -443,7 +802,9 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    modelsSection(),
     integrationsSection(present),
+    wardrobeSection(),
     generalSection(),
     h("div", {
       class: "hint",
@@ -453,6 +814,7 @@ async function main() {
 
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
+    redrawModels();
   });
 }
 

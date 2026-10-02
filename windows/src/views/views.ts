@@ -5,7 +5,9 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, type AgentTask, type AskQuestion } from "../core/state";
+import { Bridge } from "../core/bridge";
+import { Sound } from "../core/sound";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -21,6 +23,10 @@ export interface ViewActions {
   openTarget(): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
+  /** Sends the answers to Claude's question set, keyed by question text. */
+  answerQuestions(answers: Record<string, string>): void;
+  /** Gives the question back to Claude Code, to be answered in the terminal. */
+  questionToTerminal(): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
@@ -227,7 +233,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = task.id === "integration_claude" ? mainMochiName() : task.name;
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
@@ -288,17 +294,22 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/** The main Mochi's name, the one Claude Code's cards speak for. */
+function mainMochiName(): string {
+  return State.settings.mochiName?.trim() || "Mochi";
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const el = h("div", { class: "view" }, card("amber", stack(116, 16, h("div", { class: "q-head" }, who, h("span", { class: "q-mode", text: "Yes or no" })), code, row)));
   let rowKey = "";
   return {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      who.append(agentWho(State.focusTask, `· ${mainMochiName()} needs permission`));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
@@ -319,20 +330,169 @@ function buildApproval(actions: ViewActions): ViewHost {
 
 // ── Question ──────────────────────────────────────────────────────────────────
 
-function buildQuestion(): ViewHost {
+/**
+ * Claude's multiple-choice questions (the AskUserQuestion tool), answered from
+ * the island: one question at a time, an option per button. A single-choice
+ * question is answered by its click; a multi-select one toggles options and
+ * moves on with Next. "Other" takes a typed answer, and "Answer in terminal"
+ * hands the question back to Claude Code untouched.
+ *
+ * Without a question set (an older-style question seen only as a notification)
+ * the card just says to answer in the terminal.
+ */
+/** Centred while it fits, top-aligned rather than clipped when a long question
+ *  and four described options outgrow the card. */
+function qStack(el: HTMLElement): HTMLElement {
+  el.classList.add("q-stack");
+  return el;
+}
+
+/** "Pick one", "Pick any" or "Yes or no" for a question. */
+function answerKind(q: AskQuestion): string {
+  if (q.multiSelect) return "Pick any";
+  const labels = q.options.map((o) => o.label.trim().toLowerCase()).sort().join("/");
+  return labels === "no/yes" ? "Yes or no" : "Pick one";
+}
+
+function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
+  const tag = h("span", { class: "q-tag" });
+  const mode = h("span", { class: "q-mode" });
+  const title = h("div", { class: "title q-title" });
+  const options = h("div", { class: "q-options" });
+  const other = h("input", {
+    type: "text",
+    class: "q-other",
+    placeholder: "Other…",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const footer = h("div", { class: "q-footer" });
+  const el = h(
+    "div",
+    { class: "view" },
+    card("cyan", qStack(stack(116, 16, who, h("div", { class: "q-head" }, tag, title, mode), options, footer))),
+  );
+
+  let builtKey = "";
+  let requestId = "";
+  let index = 0;
+  let answers: Record<string, string> = {};
+  let picked = new Set<string>();
+
+  const current = (): AskQuestion | null => State.pendingApproval?.questions?.[index] ?? null;
+
+  /** Records this question's answer, then shows the next one or sends them all. */
+  function commit(answer: string) {
+    const q = current();
+    if (!q || !answer) return;
+    answers[q.question] = answer;
+    index += 1;
+    picked = new Set();
+    other.value = "";
+    const total = State.pendingApproval?.questions?.length ?? 0;
+    if (index >= total) {
+      actions.answerQuestions(answers);
+    } else {
+      Sound.play("tick");
+      builtKey = "";
+      State.notify();
+    }
+  }
+
+  other.addEventListener("mousedown", () => void Bridge.focusWindow(true));
+  other.addEventListener("keydown", (e) => {
+    e.stopPropagation(); // Escape must not close the island mid-answer
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const typed = other.value.trim();
+    if (!typed) return;
+    // A typed answer joins whatever was ticked on a multi-select question.
+    commit(current()?.multiSelect ? [...picked, typed].join(", ") : typed);
+  });
+
+  function render(q: AskQuestion, total: number) {
+    tag.textContent = q.header ?? "";
+    tag.style.display = q.header ? "" : "none";
+    title.textContent = q.question;
+    // What kind of answer is wanted, said in words and shown by the markers:
+    // round = one, square = any number.
+    mode.textContent = answerKind(q);
+    options.classList.toggle("multi", !!q.multiSelect);
+
+    clear(options);
+    for (const opt of q.options) {
+      const b = h(
+        "button",
+        { class: "q-opt", title: opt.description ?? "" },
+        h("span", { class: "q-label", text: opt.label }),
+        opt.description ? h("span", { class: "q-desc", text: opt.description }) : null,
+      );
+      b.addEventListener("click", () => {
+        if (!q.multiSelect) {
+          commit(opt.label);
+          return;
+        }
+        if (picked.has(opt.label)) picked.delete(opt.label);
+        else picked.add(opt.label);
+        b.classList.toggle("on", picked.has(opt.label));
+        Sound.play("blip");
+      });
+      options.append(b);
+    }
+
+    clear(footer);
+    footer.append(other);
+    if (q.multiSelect) {
+      footer.append(
+        btn(index + 1 < total ? "Next" : "Submit", "primary", () => {
+          const typed = other.value.trim();
+          const all = typed ? [...picked, typed] : [...picked];
+          if (all.length) commit(all.join(", "));
+        }),
+      );
+    }
+    footer.append(
+      h("button", { class: "link-btn q-terminal", text: "Answer in terminal", onclick: () => actions.questionToTerminal() }),
+    );
+  }
+
   return {
     el,
     sync() {
+      const req = State.pendingApproval;
+      const questions = req?.questions;
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
-      const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
-      clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
+
+      if (!req || !questions?.length) {
+        who.append(agentWho(State.focusTask, `· ${mainMochiName()} has a question`));
+        tag.style.display = "none";
+        mode.textContent = "";
+        title.textContent = State.focusTask?.steps.at(-1) ?? "Claude needs an answer.";
+        clear(options);
+        clear(footer);
+        footer.append(h("div", { class: "sub", text: "Answer in your terminal." }));
+        builtKey = "";
+        return;
+      }
+
+      if (req.requestId !== requestId) {
+        requestId = req.requestId;
+        index = 0;
+        answers = {};
+        picked = new Set();
+        other.value = "";
+        builtKey = "";
+      }
+      const total = questions.length;
+      const asker = `· ${mainMochiName()} has a question`;
+      who.append(agentWho(State.focusTask, total > 1 ? `${asker} · ${index + 1} of ${total}` : asker));
+      // Built once per question: rebuilding between a mouse-down and a mouse-up
+      // would swallow the click.
+      const key = `${requestId}:${index}`;
+      if (key === builtKey) return;
+      builtKey = key;
+      const q = current();
+      if (q) render(q, total);
     },
   };
 }
@@ -491,7 +651,7 @@ export function buildViews(
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
-  map.set("question", buildQuestion());
+  map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());

@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { Outfit } from "../mochi/wardrobe";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -26,12 +27,24 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+  /** Set when the request is Claude's AskUserQuestion: the choices to show. */
+  questions?: AskQuestion[];
+}
+
+/** One question of Claude's AskUserQuestion tool input. */
+export interface AskQuestion {
+  question: string;
+  header?: string;
+  options: { label: string; description?: string }[];
+  multiSelect?: boolean;
 }
 
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. the image was left out). */
+  notice?: string | null;
 }
 
 export type PromptContext =
@@ -68,6 +81,18 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
 ];
 
+/** Default names of the coloured Mochis: a pun on what each one watches.
+ *  Settings can rename them; the main Mochi is just "Mochi". */
+export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
+  integration_calcom: "Calvin", // Cal.com
+  integration_stripe: "Penny", // money
+  integration_github: "Gitta", // git
+  integration_vercel: "Vera", // Vercel
+  integration_n8n: "Nate", // "n-eight-n"
+  integration_resend: "Mel", // mail
+  integration_notion: "Ida", // ideas
+};
+
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   "integration_notion", "integration_calcom", "integration_stripe",
@@ -92,6 +117,35 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** OpenAI-compatible base URL; empty = Claude API. */
+  chatEndpoint: string;
+  customModel: string;
+  /** Roam screenshot without the scan cutscene. */
+  quickScan: boolean;
+  /** The island stays compact on screen instead of hiding. */
+  keepVisible: boolean;
+  /** The main Mochi's name (the chat persona). Empty = "Mochi". */
+  mochiName: string;
+  /** Coloured integration Mochis' names, by integration id. */
+  mochiNames: Record<string, string>;
+  /** Each Mochi's shape and hat, by task id ("integration_claude" = the main Mochi). */
+  wardrobe: Record<string, Outfit>;
+  /** The chat's saved models (selector next to Send). */
+  models: ModelEntry[];
+  /** Id of the model the chat uses. */
+  activeModel: string;
+}
+
+/** A model the chat can use. */
+export interface ModelEntry {
+  id: string;
+  label: string;
+  /** "claude", or "openai" for any OpenAI-compatible endpoint. */
+  kind: "claude" | "openai";
+  model: string;
+  endpoint: string;
+  /** Reads images? Learnt the first time it is sent one; null = not known yet. */
+  vision: boolean | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +160,15 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatEndpoint: "",
+  customModel: "",
+  quickScan: false,
+  keepVisible: false,
+  mochiName: "",
+  mochiNames: {},
+  wardrobe: {},
+  models: [],
+  activeModel: "",
 };
 
 type Listener = () => void;
@@ -116,6 +179,8 @@ class AppState {
 
   tasks: AgentTask[] = [];
   focusId: string | null = null;
+  /** The Mochi that had the view before a Claude Code card took it over. */
+  returnFocusId: string | null = null;
 
   stateOverride: BotStateName | null = null;
 
@@ -130,9 +195,13 @@ class AppState {
   uploadProgress = 0;
   uploadDuration = 2.4;
   fileDragOver = false;
+  /** Mochi is out on the screen (roam overlay); the island hides its own. */
+  roaming = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  /** The file the next question is about. `ephemeral` = a roam screenshot,
+   *  thrown away if the island closes before it was asked about. */
+  droppedFile: { name: string; path: string; ephemeral?: boolean } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
@@ -149,6 +218,20 @@ class AppState {
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Removes the attached file, so the next question goes without it. */
+  dropAttachment() {
+    this.droppedFile = null;
+    this.promptContext = null;
+    this.notify();
+  }
+
+  /** Gives the view back to the Mochi a Claude Code card took it from. */
+  restoreFocus() {
+    const id = this.returnFocusId;
+    this.returnFocusId = null;
+    if (id && this.tasks.some((t) => t.id === id)) this.focusId = id;
   }
 
   /** Marks the UI dirty; the island re-renders on the next frame. */
@@ -199,7 +282,7 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — the main Mochi always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
@@ -207,6 +290,17 @@ class AppState {
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
+    }
+    for (const t of this.tasks) {
+      // The main Mochi shows its own name, or the project while a session runs.
+      if (t.id === "integration_claude") {
+        if (t.steps.length === 0) t.name = this.settings.mochiName?.trim() || "Mochi";
+        continue;
+      }
+      const proto = INTEGRATION_AGENTS.find((p) => p.id === t.id);
+      if (proto) {
+        t.name = this.settings.mochiNames?.[t.id]?.trim() || DEFAULT_MOCHI_NAMES[t.id] || proto.name;
+      }
     }
     // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
     // then other integrations in declaration order.

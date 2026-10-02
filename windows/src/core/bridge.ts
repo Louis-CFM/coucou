@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
+import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -28,6 +29,13 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+}
+
+/** What the island's Mochi looks like when it is dragged out. */
+export interface RoamLook {
+  state: string;
+  bodyColor: readonly [number, number, number] | null;
+  outfit?: Outfit | null;
 }
 
 export const Bridge = {
@@ -73,7 +81,7 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | string) =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
@@ -82,9 +90,14 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
+    callOrThrow<{ text: string; notice: string | null; sentImage: boolean }>("chat_send", { query, context, textOnly }),
+  /** Credential Manager name of an endpoint's key (one per provider host). */
+  endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),
+
+  /** Mochi was dragged out of the island: the roam overlay takes over. */
+  roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -143,7 +156,8 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
+  | { name: "screen-changed"; payload: null }
+  | { name: "roam-end"; payload: string | null };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

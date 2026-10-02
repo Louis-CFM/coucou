@@ -771,6 +771,26 @@ input[type="range"]::-webkit-slider-thumb {
   transition: border-color 0.3s ease-out 0.45s, transform 0.3s ease-out 0.45s;
 }
 
+.chip-x {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 -5px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip-x:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
 .chip.settled {
   border-color: rgba(255, 255, 255, 0);
   transform: scale(1);
@@ -1357,4 +1377,400 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Question card (AskUserQuestion) ────────────────────────────────────── */
+
+.q-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.q-tag {
+  flex: none;
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(34, 211, 238, 0.16);
+  color: #67e8f9;
+}
+
+.q-title {
+  font-size: 14px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.q-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.q-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1.5px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out, transform 0.08s ease-out;
+}
+
+.q-opt:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.q-opt:active {
+  transform: scale(0.97);
+}
+
+.q-opt.on {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.14);
+}
+
+.q-label {
+  font: 600 12.5px var(--font);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-desc {
+  font: 400 11px var(--font);
+  color: var(--dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.q-other {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font: 400 12px var(--font);
+  outline: none;
+  cursor: text;
+}
+
+.q-other::placeholder {
+  color: var(--dim-3);
+}
+
+.q-terminal {
+  flex: none;
+  height: auto;
+  color: var(--dim-2);
+}
+
+.q-terminal:hover {
+  color: var(--ink-2);
+}
+
+/* What kind of answer a card wants: Pick one / Pick any / Yes or no. */
+.q-mode {
+  flex: none;
+  margin-left: auto;
+  font: 600 10.5px var(--font);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.q-mode:empty {
+  display: none;
+}
+
+/* Option markers: a round dot for one answer, a square box for several. */
+.q-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.q-label::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.q-options.multi .q-label::before {
+  border-radius: 3px;
+}
+
+.q-opt.on .q-label::before {
+  border-color: #22d3ee;
+  background: #22d3ee
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2 4.1 7.3 8 3' fill='none' stroke='%230b0c0e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 100% no-repeat;
+}
+
+.q-desc {
+  padding-left: 16px;
+}
+
+.q-stack {
+  justify-content: safe center;
+}
+
+/* ── Chat replies: Markdown ─────────────────────────────────────────────── */
+
+.reply.md {
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.reply.md p {
+  margin: 0 0 6px;
+}
+
+.reply.md > :last-child {
+  margin-bottom: 0;
+}
+
+.reply.md strong {
+  color: #f1f3f6;
+  font-weight: 650;
+}
+
+.reply.md em {
+  color: #c9cdd4;
+}
+
+.reply.md code {
+  font: 400 11.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e3e6ea;
+}
+
+.reply.md pre {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.reply.md pre code {
+  padding: 0;
+  background: none;
+}
+
+.reply.md ul,
+.reply.md ol {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.reply.md li {
+  margin: 1px 0;
+}
+
+.reply.md .md-h {
+  font-weight: 650;
+  color: #f1f3f6;
+  margin: 6px 0 4px;
+}
+
+.reply.md .md-h1 {
+  font-size: 14px;
+}
+
+.reply.md .md-h2,
+.reply.md .md-h3 {
+  font-size: 13px;
+}
+
+.reply.md blockquote {
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+  color: #9da2ab;
+}
+
+.reply.md hr {
+  border: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
+.reply.md a {
+  color: #7cc4ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.reply-note {
+  font: 400 11px var(--font);
+  color: #f7b32b;
+  background: rgba(247, 179, 43, 0.1);
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 0 8px 6px 0;
+}
+
+/* ── Chat: model picker and the "can't see images" prompt ────────────────── */
+
+.model-picker {
+  position: relative;
+  flex: none;
+}
+
+.model-btn {
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-2);
+  font: 500 11px var(--font);
+  cursor: default;
+}
+
+.model-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.model-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 190px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 12px;
+  background: #1b1d22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: none;
+  z-index: 5;
+}
+
+.model-menu.open {
+  display: block;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 400 12px var(--font);
+  text-align: left;
+  cursor: default;
+}
+
+.model-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.model-item.on {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.model-item.manage {
+  color: var(--dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0 0 8px 8px;
+  margin-top: 2px;
+}
+
+.model-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-tag {
+  flex: none;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  display: grid;
+  place-items: center;
+}
+
+.model-tag.eye {
+  color: #7cc4ff;
+}
+
+.image-ask {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(247, 179, 43, 0.1);
+  color: #f7b32b;
+  font: 400 11.5px var(--font);
+}
+
+.image-ask.open {
+  display: flex;
+}
+
+.image-ask-btns {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+
+.btn.small {
+  font-size: 11px;
+  padding: 4px 9px;
 }
