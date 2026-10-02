@@ -3,6 +3,8 @@ import Foundation
 final class GithubPoller: @unchecked Sendable {
     static let shared = GithubPoller()
     private var timer: DispatchSourceTimer?
+    private var knownPush = ""
+    private var hasPushBaseline = false
     private init() {}
 
     func start() {
@@ -53,9 +55,27 @@ final class GithubPoller: @unchecked Sendable {
                   let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
             let totalStars = repos.reduce(0) { $0 + ((($1["stargazers_count"] as? Int) ?? 0)) }
+            let repoName = repos.first?["name"] as? String ?? ""
+            let pushedAt = repos.first?["pushed_at"] as? String ?? ""
 
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: totalStars)
+                let key = repoName + pushedAt
+                guard !repoName.isEmpty else { return }
+                if !self.hasPushBaseline {
+                    self.hasPushBaseline = true
+                    self.knownPush = key
+                    return
+                }
+                guard key != self.knownPush else { return }
+                self.knownPush = key
+                AppState.shared.presentNotice(
+                    pillId: "integration_github",
+                    status: CoucouL10n.string("New push"),
+                    headline: repoName,
+                    detail: "",
+                    isFailure: false
+                )
             }
         }.resume()
     }

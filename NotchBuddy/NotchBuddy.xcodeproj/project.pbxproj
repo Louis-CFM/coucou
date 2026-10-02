@@ -28,6 +28,18 @@
 		2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
 		2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
+		3B0B1073607E541451697790 /* LocalCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD817BE09ACCD6A3DBAE2CA1 /* LocalCLI.swift */; };
+		C1C0DE01BEEF4A11C1A0DE03 /* ClaudeWarmSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE01BEEF4A11C1A0DE01 /* ClaudeWarmSession.swift */; };
+		C0C0DE10BEEF4A11C0A0DE11 /* CoucouL10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0DE10BEEF4A11C0A0DE10 /* CoucouL10n.swift */; };
+		I1D1E0A1BEEF4A11I1A0DE11 /* IdleMicroAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1D1E0A1BEEF4A11I1A0DE01 /* IdleMicroAnimation.swift */; };
+		I1D1E0A1BEEF4A11I1A0DE12 /* IdleMicroAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1D1E0A1BEEF4A11I1A0DE01 /* IdleMicroAnimation.swift */; };
+		I1D1E0A1BEEF4A11I2A0DE21 /* IslandGazeGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1D1E0A1BEEF4A11I2A0DE02 /* IslandGazeGeometry.swift */; };
+		I1D1E0A1BEEF4A11I2A0DE22 /* IslandGazeGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1D1E0A1BEEF4A11I2A0DE02 /* IslandGazeGeometry.swift */; };
+		S1P0T1FYBEEF4A11S1A0DE02 /* SpotifyPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1P0T1FYBEEF4A11S1A0DE01 /* SpotifyPoller.swift */; };
+		S1P0T1FYBEEF4A11S1A0DE03 /* SpotifyPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1P0T1FYBEEF4A11S1A0DE01 /* SpotifyPoller.swift */; };
+		C0C0DE10BEEF4A11C0A0DE12 /* CoucouL10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0DE10BEEF4A11C0A0DE10 /* CoucouL10n.swift */; };
+		E3L10N01BEEF4A11E3A0DE03 /* CoucouStrings in Resources */ = {isa = PBXBuildFile; fileRef = E1L10N01BEEF4A11E1A0DE01 /* CoucouStrings */; };
+		E5L10N01BEEF4A11E5A0DE05 /* CoucouStrings in Resources */ = {isa = PBXBuildFile; fileRef = E1L10N01BEEF4A11E1A0DE01 /* CoucouStrings */; };
 		3F19756A396F125EC711247F /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3CE3617E9D336DDBA10F7A /* IslandTypes.swift */; };
 		4117E7C8AA231AAE36E7509D /* UploadCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */; };
 		4B6AC00F22EC75E90E0157D5 /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6D7015D6A77AA59323C0E7 /* AppLog.swift */; };
@@ -44,6 +56,8 @@
 		6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
 		78B3C6814431B2DD9D1F4949 /* SoundEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */; };
 		78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
+		7E4CF838F8297D96B48B4484 /* LocalCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD817BE09ACCD6A3DBAE2CA1 /* LocalCLI.swift */; };
+		B1C0DE01BEEF4A11C1A0DE02 /* ClaudeWarmSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE01BEEF4A11C1A0DE01 /* ClaudeWarmSession.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
@@ -98,6 +112,13 @@
 		A14A61070D293AB4BBA303F7 /* NotchBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCanvasView.swift; sourceTree = "<group>"; };
 		A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
+		AD817BE09ACCD6A3DBAE2CA1 /* LocalCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCLI.swift; sourceTree = "<group>"; };
+		A1C0DE01BEEF4A11C1A0DE01 /* ClaudeWarmSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeWarmSession.swift; sourceTree = "<group>"; };
+		C0C0DE10BEEF4A11C0A0DE10 /* CoucouL10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoucouL10n.swift; sourceTree = "<group>"; };
+		S1P0T1FYBEEF4A11S1A0DE01 /* SpotifyPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyPoller.swift; sourceTree = "<group>"; };
+		I1D1E0A1BEEF4A11I1A0DE01 /* IdleMicroAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdleMicroAnimation.swift; sourceTree = "<group>"; };
+		I1D1E0A1BEEF4A11I2A0DE02 /* IslandGazeGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandGazeGeometry.swift; sourceTree = "<group>"; };
+		E1L10N01BEEF4A11E1A0DE01 /* CoucouStrings */ = {isa = PBXFileReference; lastKnownFileType = folder; path = CoucouStrings; sourceTree = "<group>"; };
 		B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadCanvasView.swift; sourceTree = "<group>"; };
 		B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeWebURL.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
@@ -124,6 +145,11 @@
 				D4540F630F8BA04AFFFA3979 /* BotEngine.swift */,
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
 				A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */,
+				A1C0DE01BEEF4A11C1A0DE01 /* ClaudeWarmSession.swift */,
+				C0C0DE10BEEF4A11C0A0DE10 /* CoucouL10n.swift */,
+				S1P0T1FYBEEF4A11S1A0DE01 /* SpotifyPoller.swift */,
+				I1D1E0A1BEEF4A11I1A0DE01 /* IdleMicroAnimation.swift */,
+				I1D1E0A1BEEF4A11I2A0DE02 /* IslandGazeGeometry.swift */,
 				3232F258523DD8D09B670363 /* FileDropView.swift */,
 				8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */,
 				C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */,
@@ -134,6 +160,7 @@
 				8D3CE3617E9D336DDBA10F7A /* IslandTypes.swift */,
 				FA02B08886939FF6FE0475DD /* IslandViewContent.swift */,
 				D710BD7834228045869D0184 /* IslandWindowController.swift */,
+				AD817BE09ACCD6A3DBAE2CA1 /* LocalCLI.swift */,
 				4F142FB3952B5F0639383047 /* MusicController.swift */,
 				B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */,
 				F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */,
@@ -183,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				C066E2B991AA4F56B2724263 /* sounds */,
+				E1L10N01BEEF4A11E1A0DE01 /* CoucouStrings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -250,6 +278,7 @@
 			knownRegions = (
 				Base,
 				en,
+				es,
 			);
 			mainGroup = C8A9AE71DB5C532D78C7784B;
 			minimizedProjectReferenceProxies = 1;
@@ -271,6 +300,7 @@
 			files = (
 				FBBC4CDE82B5886A83A27D7A /* Assets.xcassets in Resources */,
 				B3EC9CF3C8BD629C3530E8F1 /* sounds in Resources */,
+				E5L10N01BEEF4A11E5A0DE05 /* CoucouStrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,6 +310,7 @@
 			files = (
 				DCAC390FF9EC65B945A15B24 /* Assets.xcassets in Resources */,
 				F06EE0A97CB77096A337AA8B /* sounds in Resources */,
+				E3L10N01BEEF4A11E3A0DE03 /* CoucouStrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,6 +328,11 @@
 				C24D863967D8D32D828ED4B1 /* BotEngine.swift in Sources */,
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
 				2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */,
+				C1C0DE01BEEF4A11C1A0DE03 /* ClaudeWarmSession.swift in Sources */,
+				C0C0DE10BEEF4A11C0A0DE11 /* CoucouL10n.swift in Sources */,
+				S1P0T1FYBEEF4A11S1A0DE02 /* SpotifyPoller.swift in Sources */,
+				I1D1E0A1BEEF4A11I1A0DE11 /* IdleMicroAnimation.swift in Sources */,
+				I1D1E0A1BEEF4A11I2A0DE21 /* IslandGazeGeometry.swift in Sources */,
 				E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */,
 				C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */,
 				8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */,
@@ -307,6 +343,7 @@
 				3F19756A396F125EC711247F /* IslandTypes.swift in Sources */,
 				065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */,
 				091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */,
+				3B0B1073607E541451697790 /* LocalCLI.swift in Sources */,
 				5C6D0BC8C546718CAA82BF90 /* MusicController.swift in Sources */,
 				0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */,
 				06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */,
@@ -335,6 +372,11 @@
 				0E9CE475EC53C67DAB00F8E5 /* BotEngine.swift in Sources */,
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
 				0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */,
+				B1C0DE01BEEF4A11C1A0DE02 /* ClaudeWarmSession.swift in Sources */,
+				C0C0DE10BEEF4A11C0A0DE12 /* CoucouL10n.swift in Sources */,
+				S1P0T1FYBEEF4A11S1A0DE03 /* SpotifyPoller.swift in Sources */,
+				I1D1E0A1BEEF4A11I1A0DE12 /* IdleMicroAnimation.swift in Sources */,
+				I1D1E0A1BEEF4A11I2A0DE22 /* IslandGazeGeometry.swift in Sources */,
 				2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */,
 				C18227D148D99FE6EE3CC51A /* GithubPoller.swift in Sources */,
 				C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */,
@@ -345,6 +387,7 @@
 				D82E93014C8087AE81511E40 /* IslandTypes.swift in Sources */,
 				68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */,
 				C61DDE2EC5FDDB39E4AA3B34 /* IslandWindowController.swift in Sources */,
+				7E4CF838F8297D96B48B4484 /* LocalCLI.swift in Sources */,
 				9C653B8291EFFA414565E8A8 /* MusicController.swift in Sources */,
 				160EDB9D06275E2607DA5151 /* N8nPoller.swift in Sources */,
 				DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */,

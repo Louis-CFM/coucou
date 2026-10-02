@@ -31,6 +31,7 @@ final class AppState: ObservableObject {
 
     // Mouse tracking
     var mousePosition: CGPoint = .zero
+    var islandPanelFrame: CGRect = .zero
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
     var isPresent: Bool = true
@@ -51,6 +52,10 @@ final class AppState: ObservableObject {
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
+    }
+
+    @Published var idleAnimationsEnabled: Bool = false {
+        didSet { UserDefaults.standard.set(idleAnimationsEnabled, forKey: "idleAnimationsEnabled") }
     }
 
     // Claude model used by the chat and the search — persisted
@@ -207,6 +212,10 @@ final class AppState: ObservableObject {
 
     // Vercel deployments (populated by VercelPoller)
     @Published var vercelDeployments: [VercelDeployment] = []
+    /// The pill event that just opened the notch: a song, a deploy, a payment.
+    @Published var islandNotice: IslandNotice?
+    private var noticeDismissGeneration = 0
+    var skipNextOpenSound = false
 
     // Resend emails (populated by ResendPoller)
     @Published var resendEmails: [ResendEmail] = []
@@ -233,8 +242,43 @@ final class AppState: ObservableObject {
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
 
+    @Published var spotifyNow: SpotifyNow?
+
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
+
+    /// Warm Claude process: off, preparing, ready, or failed.
+    @Published var claudeLink: String = "off"
+    @Published var claudeLinkNote: String = ""
+
+    func replaceAssistant(id: UUID, content: String) {
+        guard let index = chatHistory.firstIndex(where: { $0.id == id }) else { return }
+        var next = chatHistory
+        next[index] = ChatMessage(role: .assistant, content: content, id: id)
+        chatHistory = next
+    }
+
+    @Published var appLanguage: AppLanguage = .en {
+        willSet { CoucouL10n.apply(newValue) }
+        didSet { UserDefaults.standard.set(appLanguage.rawValue, forKey: "appLanguage") }
+    }
+
+    // Which AI answers the chat — persisted. nil until the user picks one or the
+    // first chat auto-picks the first installed CLI.
+    @Published var chatEngine: ChatEngine? = nil {
+        didSet { UserDefaults.standard.set(chatEngine?.rawValue, forKey: "chatEngine") }
+    }
+
+    // AI CLIs found on this Mac (filled by LocalCLI.detectAll, from Settings or the first chat)
+    @Published var detectedCLIs: [ChatEngine: CLIInfo] = [:]
+    @Published var cliDetectionDone: Bool = false
+
+    /// Re-scans for the AI CLIs in the background.
+    func detectCLIs() async {
+        let found = await Task.detached { LocalCLI.detectAll() }.value
+        detectedCLIs = found
+        cliDetectionDone = true
+    }
 
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
@@ -250,6 +294,7 @@ final class AppState: ObservableObject {
         let ud = UserDefaults.standard
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
+        if let v = ud.object(forKey: "idleAnimationsEnabled") as? Bool { idleAnimationsEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
@@ -265,6 +310,10 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
+        if let v = ud.string(forKey: "chatEngine") { chatEngine = ChatEngine(rawValue: v) }
+        if let v = ud.string(forKey: "appLanguage"), let language = AppLanguage(rawValue: v) {
+            appLanguage = language
+        }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
@@ -281,6 +330,7 @@ final class AppState: ObservableObject {
 
         // Always load integration pills
         loadIntegrationTasks()
+        CoucouL10n.apply(appLanguage)
     }
 
     // MARK: - Computed
@@ -335,6 +385,64 @@ final class AppState: ObservableObject {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         focusId = id
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
+    }
+
+    /// Quiet Spotify notification: the player itself, then the notch folds back.
+    func revealSpotifyPlayer() {
+        guard pendingApproval == nil else { return }
+        if mode == .expanded, view != .overview, view != .notice { return }
+        if let now = spotifyNow {
+            islandNotice = IslandNotice(
+                pillId: "integration_spotify",
+                status: CoucouL10n.string("Now playing"),
+                headline: now.title,
+                detail: now.artist,
+                isFailure: false
+            )
+        }
+        if mode != .expanded { skipNextOpenSound = true }
+        setFocus("integration_spotify")
+        NotificationCenter.default.post(name: .hookExpand, object: IslandView.notice)
+        noticeDismissGeneration += 1
+        let generation = noticeDismissGeneration
+        let delay = max(autoCloseInterval, 8)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.noticeDismissGeneration == generation else { return }
+            guard self.pendingApproval == nil, self.mode == .expanded, self.view == .notice else { return }
+            guard self.islandNotice?.pillId == "integration_spotify" else { return }
+            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        }
+    }
+    func presentNotice(pillId: String, status: String, headline: String, detail: String, isFailure: Bool) {
+        islandNotice = IslandNotice(
+            pillId: pillId, status: status, headline: headline, detail: detail, isFailure: isFailure
+        )
+        guard let index = tasks.firstIndex(where: { $0.id == pillId }) else { return }
+        tasks[index].state = isFailure ? .error : .finished
+        tasks[index].steps = [headline]
+        SoundEngine.shared.play(isFailure ? "error" : "finish")
+        NotificationCenter.default.post(
+            name: .triggerEmote,
+            object: isFailure ? BotEmote.surprised : BotEmote.proud
+        )
+        guard pendingApproval == nil else {
+            if focusId != pillId {
+                tasks[index].pillBadge = isFailure ? .error : .finished
+            }
+            return
+        }
+        let wasExpanded = mode == .expanded
+        setFocus(pillId)
+        NotificationCenter.default.post(name: .hookExpand, object: IslandView.notice)
+        guard !wasExpanded else { return }
+        noticeDismissGeneration += 1
+        let generation = noticeDismissGeneration
+        let delay = autoCloseInterval
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.noticeDismissGeneration == generation else { return }
+            guard self.pendingApproval == nil, self.mode == .expanded, self.view == .notice else { return }
+            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        }
     }
 
     func syncMode() {
@@ -452,6 +560,16 @@ struct ResultItem {
     var url: String?
 }
 
+// MARK: - Pill notice
+
+struct IslandNotice: Equatable {
+    var pillId: String
+    var status: String
+    var headline: String
+    var detail: String
+    var isFailure: Bool
+}
+
 // MARK: - Vercel
 
 struct VercelDeployment: Identifiable {
@@ -464,10 +582,20 @@ struct VercelDeployment: Identifiable {
     let branch: String?
 
     var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
+    var isInProgress: Bool { state == "BUILDING" || state == "QUEUED" || state == "INITIALIZING" }
+    var accentHex: String {
+        if isSuccess { return "#22C55E" }
+        if isInProgress { return "#F5A524" }
+        return "#F4505E"
+    }
+    var statusLabel: String {
+        if isSuccess { return CoucouL10n.string("Ready") }
+        if isInProgress { return CoucouL10n.string("Building") }
+        return CoucouL10n.string("Failed")
+    }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
+        if diff < 60    { return CoucouL10n.string("Just now") }
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
@@ -475,6 +603,34 @@ struct VercelDeployment: Identifiable {
 }
 
 // MARK: - Resend
+
+struct SpotifyNow: Equatable {
+    var title: String
+    var artist: String
+    var isPlaying: Bool
+    var artworkURL: URL?
+    var position: TimeInterval
+    var duration: TimeInterval
+    var isShuffling: Bool
+    var isRepeating: Bool
+    var fetchedAt: Date
+
+    func elapsed(at date: Date) -> TimeInterval {
+        let extra = isPlaying ? max(0, date.timeIntervalSince(fetchedAt)) : 0
+        let raw = position + extra
+        guard duration > 0 else { return max(0, raw) }
+        return min(duration, max(0, raw))
+    }
+
+    static func clock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded(.down)))
+        let minutes = (total % 3600) / 60
+        let secs = total % 60
+        let hours = total / 3600
+        if hours > 0 { return String(format: "%d:%02d:%02d", hours, minutes, secs) }
+        return String(format: "%d:%02d", minutes, secs)
+    }
+}
 
 struct ResendEmail: Identifiable {
     let id: String
@@ -570,7 +726,13 @@ struct NotionPage: Identifiable {
 enum ChatRole { case user, assistant }
 
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: UUID
     let role: ChatRole
     let content: String
+
+    init(role: ChatRole, content: String, id: UUID = UUID()) {
+        self.id = id
+        self.role = role
+        self.content = content
+    }
 }

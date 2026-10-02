@@ -9,6 +9,7 @@ final class N8nPoller: @unchecked Sendable {
     static let shared = N8nPoller()
     private var timer: DispatchSourceTimer?
     private var lastExecutionId: String = ""
+    private var didBaselineNotice = false
 
     private init() {}
 
@@ -227,16 +228,20 @@ final class N8nPoller: @unchecked Sendable {
         // Apply workflow filter (empty = all workflows)
         if !state.n8nWorkflowFilter.isEmpty && !state.n8nWorkflowFilter.contains(name) { return }
 
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_n8n" }) else { return }
-        let focused = state.focusId == "integration_n8n"
-
-        state.tasks[idx].state = success ? .finished : .error
-        state.tasks[idx].steps = detail != nil ? [name, detail!] : [name]
-
-        if !focused {
-            state.tasks[idx].pillBadge = success ? .finished : .error
+        guard state.tasks.contains(where: { $0.id == "integration_n8n" }) else { return }
+        if !didBaselineNotice {
+            didBaselineNotice = true
+            return
         }
-        SoundEngine.shared.play(success ? "finish" : "error")
+
+        let summary = detail?.split(separator: "\n").first.map(String.init) ?? ""
+        state.presentNotice(
+            pillId: "integration_n8n",
+            status: CoucouL10n.string(success ? "Finished" : "Failed"),
+            headline: name,
+            detail: summary,
+            isFailure: !success
+        )
 
         // Auto-clear after 60s (user needs time to read detail)
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) {

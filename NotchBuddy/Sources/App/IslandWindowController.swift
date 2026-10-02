@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var autoCloseSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -86,6 +87,7 @@ final class IslandWindowController: NSWindowController {
         AppState.shared.notchWidth  = notchW
         AppState.shared.notchHeight = notchH
         AppState.shared.hasNotch = hasNotch
+        AppState.shared.islandPanelFrame = panel.frame
 
         let contentSize = panel.contentRect(forFrameRect: panel.frame).size
 
@@ -156,6 +158,10 @@ final class IslandWindowController: NSWindowController {
     // MARK: - FSM wiring
 
     private func wireFSM() {
+        autoCloseSubscription = state.$autoCloseInterval.sink { [weak self] delay in
+            self?.fsm.homeToPetitDelay = delay
+        }
+
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
             switch to {
@@ -238,12 +244,13 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Mouse in screen coords (Y flipped, origin top-left) for Bot look-at
-        let screenH = panel.screen?.frame.height ?? NSScreen.main!.frame.height
-        let newPos = CGPoint(x: mouse.x - (panel.screen?.frame.minX ?? 0), y: screenH - mouse.y)
+        // Cursor and panel stay in global AppKit coordinates, so a second
+        // display does not flip the direction Mochi is looking.
+        AppState.shared.islandPanelFrame = pf
         let cur = AppState.shared.mousePosition
-        if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
-            AppState.shared.mousePosition = newPos
+        if abs(mouse.x - cur.x) > 1 || abs(mouse.y - cur.y) > 1 {
+            AppState.shared.mousePosition = mouse
+            AppState.shared.lastMouseMove = .now
         }
 
         // AppState can hide the island by itself (last task ended): keep the FSM in step.
@@ -338,7 +345,10 @@ final class IslandWindowController: NSWindowController {
             ? .timingCurve(0.45, 0, 0.2, 1, duration: 0.34)
             : .spring(response: 0.5, dampingFraction: 0.72)
         withAnimation(anim) { state.mode = mode }
-        if mode == .expanded { SoundEngine.shared.play("open") }
+        if mode == .expanded {
+            if state.skipNextOpenSound { state.skipNextOpenSound = false }
+            else { SoundEngine.shared.play("open") }
+        }
         if prev == .expanded {
             SoundEngine.shared.play("close")
             if fsm.isHeldOpen?() != true { state.isPinned = false }
@@ -453,6 +463,7 @@ final class IslandWindowController: NSWindowController {
                 self.state.stateOverride = nil
                 self.hideDragGhost()
                 #if !APPSTORE
+                if self.isOverIsland(mouse) { return }
                 if let ctx = self.windowContextAtPoint(mouse) {
                     self.state.promptContext = ctx
                     SoundEngine.shared.play("approve")
@@ -580,18 +591,12 @@ final class IslandWindowController: NSWindowController {
 
     private func updateWindowHighlight() {
         let mouse = NSEvent.mouseLocation
+        if isOverIsland(mouse) {
+            dismissWindowHighlight()
+            return
+        }
         guard let (appKitBounds, pid) = windowBoundsAtScreenPoint(mouse) else {
-            // Fade out + close if no window under cursor
-            if let old = highlightPanel {
-                let captured = old
-                highlightPanel = nil
-                highlightWindowPid = 0
-                NSAnimationContext.runAnimationGroup({ ctx in
-                    ctx.duration = 0.12
-                    ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                    captured.animator().alphaValue = 0
-                }, completionHandler: { captured.close() })
-            }
+            dismissWindowHighlight()
             return
         }
 
@@ -691,6 +696,25 @@ final class IslandWindowController: NSWindowController {
             return WindowContextCapture.captureActive(from: app)
         }
         return nil
+    }
+
+    /// Dropping Mochi back on the notch cancels the attach. The window behind the notch does not count.
+    private func isOverIsland(_ screenPoint: NSPoint) -> Bool {
+        guard let panel = window as? IslandPanel else { return false }
+        let local = CGPoint(x: screenPoint.x - panel.frame.minX, y: screenPoint.y - panel.frame.minY)
+        let home = panel.currentIslandFrame(nw: notchW, nh: notchH).insetBy(dx: -16, dy: -16)
+        return home.contains(local)
+    }
+
+    private func dismissWindowHighlight() {
+        guard let old = highlightPanel else { return }
+        highlightPanel = nil
+        highlightWindowPid = 0
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.12
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            old.animator().alphaValue = 0
+        }, completionHandler: { old.close() })
     }
 
     // MARK: - Coordinate conversion: window (AppKit, y-up) → island coords (y-down, 0,0 = island top-left)

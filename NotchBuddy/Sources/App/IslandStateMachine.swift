@@ -20,8 +20,14 @@ final class IslandStateMachine {
     /// When non-nil and returns true, timers and mouse-leave never auto-collapse or hide the island.
     var isHeldOpen: (() -> Bool)?
 
-    /// home → petit delay (seconds). Override for debug.
-    var homeToPetitDelay: TimeInterval = 15
+    /// home → petit delay (seconds), kept in sync with the auto-close preference.
+    var homeToPetitDelay: TimeInterval = 15 {
+        didSet {
+            guard homeToPetitDelay != oldValue,
+                  state == .home, homeCollapseWork != nil else { return }
+            scheduleHomeCollapse()
+        }
+    }
     /// petit → hidden delay (seconds). Override for debug.
     var petitToHiddenDelay: TimeInterval = 60
     /// coucou → petit delay after greeting animation ends (no hover). ~0.6s syncs with canvas collapse.

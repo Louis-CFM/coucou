@@ -3,6 +3,8 @@ import Foundation
 final class ResendPoller: @unchecked Sendable {
     static let shared = ResendPoller()
     private var timer: DispatchSourceTimer?
+    private var knownEmailId = ""
+    private var hasEmailBaseline = false
     private init() {}
 
     func start() {
@@ -32,8 +34,26 @@ final class ResendPoller: @unchecked Sendable {
             let emails = rawList.compactMap { self.parseEmail($0) }
 
             DispatchQueue.main.async {
-                AppState.shared.resendEmails = Array(emails.prefix(5))
-                AppState.shared.resendTotal  = total ?? (emails.isEmpty ? nil : emails.count)
+                Task { @MainActor in
+                    let state = AppState.shared
+                    state.resendEmails = Array(emails.prefix(5))
+                    state.resendTotal  = total ?? (emails.isEmpty ? nil : emails.count)
+                    guard let newest = emails.first else { return }
+                    if !self.hasEmailBaseline {
+                        self.hasEmailBaseline = true
+                        self.knownEmailId = newest.id
+                        return
+                    }
+                    guard newest.id != self.knownEmailId else { return }
+                    self.knownEmailId = newest.id
+                    state.presentNotice(
+                        pillId: "integration_resend",
+                        status: CoucouL10n.string("New email"),
+                        headline: newest.subject.isEmpty ? newest.recipientShort : newest.subject,
+                        detail: newest.recipientShort,
+                        isFailure: newest.lastEvent == "bounced" || newest.lastEvent == "complained"
+                    )
+                }
             }
         }.resume()
     }

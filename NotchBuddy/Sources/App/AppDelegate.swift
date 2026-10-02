@@ -34,6 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         statusItem?.menu = menu
+        applyMenuTitles()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(applyMenuTitles),
+            name: .coucouLanguageChanged, object: nil)
+    }
+
+    @objc private func applyMenuTitles() {
+        guard let items = statusItem?.menu?.items, items.count >= 5 else { return }
+        items[0].title = CoucouL10n.string("Open Coucou")
+        items[2].title = CoucouL10n.string("Settings…")
+        items[4].title = CoucouL10n.string("Quit")
     }
 
     // MARK: - Actions
@@ -89,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        warmClaudeIfNeeded()
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()
@@ -96,10 +108,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StripePoller.shared.start()
         CalcomPoller.shared.start()
         NotionPoller.shared.start()
+        SpotifyPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
                                                name: .openFullSettings, object: nil)
         #if !APPSTORE
         _ = MusicController.shared
+        #endif
+    }
+
+    private func warmClaudeIfNeeded() {
+        #if !APPSTORE
+        let state = AppState.shared
+        guard state.chatEngine == nil || state.chatEngine == .claude else { return }
+        let model = ClaudeModelCatalog.resolve(state.claudeModel)
+        if model != state.claudeModel { state.claudeModel = model }
+        ClaudeWarmSession.shared.prepare(model: model)
+        #endif
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        #if !APPSTORE
+        ClaudeWarmSession.shared.stop()
         #endif
     }
 }

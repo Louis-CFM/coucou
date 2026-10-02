@@ -128,18 +128,20 @@ final class StripePoller: @unchecked Sendable {
         guard let newest = payments.first, newest.id != lastChargeId else { return }
         lastChargeId = newest.id
 
-        guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_stripe" }) else { return }
-        let focused = state.focusId == "integration_stripe"
+        guard state.tasks.contains(where: { $0.id == "integration_stripe" }) else { return }
 
         // 1. Slide payments: new enters top, max 3 shown
         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
             state.stripePayments = Array(([newest] + state.stripePayments).prefix(3))
         }
 
-        state.tasks[idx].state = .finished
-        state.tasks[idx].steps = [newest.description ?? newest.amountFormatted]
-        if !focused { state.tasks[idx].pillBadge = .finished }
-        SoundEngine.shared.play("finish")
+        state.presentNotice(
+            pillId: "integration_stripe",
+            status: CoucouL10n.string("New payment"),
+            headline: newest.amountFormatted,
+            detail: newest.description ?? "",
+            isFailure: !newest.isSuccess
+        )
 
         // 2. After slide settles, count up balance
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

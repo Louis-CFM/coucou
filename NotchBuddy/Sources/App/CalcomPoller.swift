@@ -3,6 +3,8 @@ import Foundation
 final class CalcomPoller: @unchecked Sendable {
     static let shared = CalcomPoller()
     private var timer: DispatchSourceTimer?
+    private var seenBookingIds: Set<Int> = []
+    private var hasBookingBaseline = false
     private init() {}
 
     func start() {
@@ -46,10 +48,27 @@ final class CalcomPoller: @unchecked Sendable {
                   let rawList = json["data"] as? [[String: Any]] else { return }
 
             let parsed = rawList.compactMap { self.parseBooking($0) }
-            DispatchQueue.main.async {
-                AppState.shared.calcomError    = nil
-                AppState.shared.calcomBookings = parsed
-                AppState.shared.calcomLoaded   = true
+            Task { @MainActor in
+                let state = AppState.shared
+                state.calcomError    = nil
+                state.calcomBookings = parsed
+                state.calcomLoaded   = true
+                let ids = Set(parsed.map(\.id))
+                if !self.hasBookingBaseline {
+                    self.hasBookingBaseline = true
+                    self.seenBookingIds = ids
+                    return
+                }
+                let fresh = parsed.filter { !self.seenBookingIds.contains($0.id) }
+                self.seenBookingIds = ids
+                guard let booking = fresh.first else { return }
+                state.presentNotice(
+                    pillId: "integration_calcom",
+                    status: CoucouL10n.string(booking.status == "CANCELLED" ? "Failed" : "New booking"),
+                    headline: booking.title,
+                    detail: booking.attendeeName ?? booking.timeLabel,
+                    isFailure: booking.status == "CANCELLED"
+                )
             }
         }.resume()
     }

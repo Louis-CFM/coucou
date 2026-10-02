@@ -3,6 +3,8 @@ import Foundation
 final class NotionPoller: @unchecked Sendable {
     static let shared = NotionPoller()
     private var timer: DispatchSourceTimer?
+    private var knownPageKey = ""
+    private var hasPageBaseline = false
     private init() {}
 
     func start() {
@@ -46,10 +48,27 @@ final class NotionPoller: @unchecked Sendable {
                   let results = json["results"] as? [[String: Any]] else { return }
 
             let pages = results.compactMap { self.parsePage($0) }
-            DispatchQueue.main.async {
-                AppState.shared.notionError = nil
-                AppState.shared.notionPages = pages
-                AppState.shared.notionLoaded = true
+            Task { @MainActor in
+                let state = AppState.shared
+                state.notionError = nil
+                state.notionPages = pages
+                state.notionLoaded = true
+                guard let top = pages.first else { return }
+                let key = top.id + String(top.lastEditedAt.timeIntervalSince1970)
+                if !self.hasPageBaseline {
+                    self.hasPageBaseline = true
+                    self.knownPageKey = key
+                    return
+                }
+                guard key != self.knownPageKey else { return }
+                self.knownPageKey = key
+                state.presentNotice(
+                    pillId: "integration_notion",
+                    status: CoucouL10n.string("Page updated"),
+                    headline: top.title,
+                    detail: top.emoji ?? "",
+                    isFailure: false
+                )
             }
         }.resume()
     }
