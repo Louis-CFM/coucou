@@ -91,6 +91,10 @@ export const Bridge = {
   cursorModels: () => call<[string, string][]>("cursor_models"),
   /** Opens Cursor's browser sign-in. */
   cursorLogin: () => callOrThrow<void>("cursor_login"),
+  /** Whether the Kiro CLI is installed and signed in. */
+  kiroStatus: () => call<CursorStatus>("kiro_status"),
+  /** [id, label] pairs the user's Kiro plan can use. */
+  kiroModels: () => call<[string, string][]>("kiro_models"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */

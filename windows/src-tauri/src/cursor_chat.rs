@@ -53,15 +53,17 @@ struct CliResult {
     session_id: Option<String>,
 }
 
-/// The installer puts the CLI in ~/.local/bin, which a session started from the
-/// desktop launcher often does not have on its PATH.
 fn cli_path() -> Option<std::path::PathBuf> {
-    platform::find_on_path("agent")
-        .or_else(|| platform::find_on_path("cursor-agent"))
-        .or_else(|| {
-            let bin = platform::home_dir().join(".local").join("bin");
-            ["agent", "cursor-agent"].into_iter().map(|n| bin.join(n)).find(|p| p.is_file())
-        })
+    find_cli(&["agent", "cursor-agent"])
+}
+
+/// CLI installers put their binary in ~/.local/bin, which a session started
+/// from the desktop launcher often does not have on its PATH.
+pub(crate) fn find_cli(names: &[&str]) -> Option<std::path::PathBuf> {
+    names.iter().find_map(|n| platform::find_on_path(n)).or_else(|| {
+        let bin = platform::home_dir().join(".local").join("bin");
+        names.iter().map(|n| bin.join(n)).find(|p| p.is_file())
+    })
 }
 
 fn workdir() -> Result<std::path::PathBuf, String> {
@@ -100,28 +102,7 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let cli = cli_path().ok_or("Cursor CLI not found. Install it, then run `agent login`.")?;
     let session = chat.session.lock().unwrap().clone();
-
-    let mut prompt = String::new();
-    if session.is_none() {
-        prompt.push_str(SYSTEM_PROMPT);
-        prompt.push_str("\n\n");
-        match &context {
-            Some(ChatContext::File { name, path }) => {
-                let text = inline_text(path)
-                    .ok_or("Only text files can be sent to Cursor for now.")?;
-                prompt.push_str(&format!("File: {name}\nFile contents:\n{text}\n\n"));
-            }
-            Some(ChatContext::Window { app_name, title, url }) => {
-                prompt.push_str(&format!("Context — App: {app_name}, Window: {title}"));
-                if let Some(url) = url {
-                    prompt.push_str(&format!(", URL: {url}"));
-                }
-                prompt.push_str("\n\n");
-            }
-            None => {}
-        }
-    }
-    prompt.push_str(&query);
+    let prompt = build_prompt(session.is_none(), context, &query, "Cursor")?;
 
     let mut cmd = command(&cli);
     cmd.current_dir(workdir()?)
@@ -138,6 +119,38 @@ pub async fn send(
         *chat.session.lock().unwrap() = Some(id);
     }
     Ok(ChatReply { text: parsed.0 })
+}
+
+/// The message for a CLI that keeps the conversation itself: the system prompt
+/// and the context go in the first turn only.
+pub(crate) fn build_prompt(
+    first: bool,
+    context: Option<ChatContext>,
+    query: &str,
+    who: &str,
+) -> Result<String, String> {
+    let mut prompt = String::new();
+    if first {
+        prompt.push_str(SYSTEM_PROMPT);
+        prompt.push_str("\n\n");
+        match &context {
+            Some(ChatContext::File { name, path }) => {
+                let text = inline_text(path)
+                    .ok_or(format!("Only text files can be sent to {who} for now."))?;
+                prompt.push_str(&format!("File: {name}\nFile contents:\n{text}\n\n"));
+            }
+            Some(ChatContext::Window { app_name, title, url }) => {
+                prompt.push_str(&format!("Context — App: {app_name}, Window: {title}"));
+                if let Some(url) = url {
+                    prompt.push_str(&format!(", URL: {url}"));
+                }
+                prompt.push_str("\n\n");
+            }
+            None => {}
+        }
+    }
+    prompt.push_str(query);
+    Ok(prompt)
 }
 
 /// (answer, session id) from the CLI's JSON, or the CLI's own error message.
@@ -212,7 +225,7 @@ fn parse_models(text: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-fn strip_ansi(s: &str) -> String {
+pub(crate) fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars();
     while let Some(c) = chars.next() {

@@ -254,6 +254,38 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Chat section ──────────────────────────────────────────────────────────────
+
+type ChatProvider = Settings["chatProviders"][number];
+
+function chatSection(): HTMLElement {
+  const providers: [ChatProvider, string][] = [
+    ["cursor", "Cursor (your plan)"],
+    ["kiro", "Kiro (your plan)"],
+    ["anthropic", "Claude (API key)"],
+  ];
+  const rows = providers.map(([id, name]) =>
+    h("div", { class: "row" },
+      toggle(settings.chatProviders.includes(id), (on) => {
+        const next = settings.chatProviders.filter((p) => p !== id);
+        settings.chatProviders = on ? [...next, id] : next;
+        void save();
+      }),
+      h("span", { text: name }),
+    ),
+  );
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Chat" })),
+    h("span", {
+      class: "hint",
+      text: "Who answers in the island chat. Turned-on ones are tried top to bottom: when one fails, out of credits for instance, the next one answers.",
+    }),
+    ...rows,
+  );
+}
+
 // ── Cursor section ────────────────────────────────────────────────────────────
 
 const CURSOR_INSTALL = "curl https://cursor.com/install -fsS | bash";
@@ -261,17 +293,6 @@ const CURSOR_INSTALL = "curl https://cursor.com/install -fsS | bash";
 function cursorSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(false);
   const state = h("span", { class: "hint", text: "Checking the Cursor CLI…" });
-
-  const provider = h("select", {}) as HTMLSelectElement;
-  provider.append(
-    h("option", { value: "anthropic", text: "Claude (API key)" }),
-    h("option", { value: "cursor", text: "Cursor (your plan)" }),
-  );
-  provider.value = settings.chatProvider;
-  provider.addEventListener("change", () => {
-    settings.chatProvider = provider.value as Settings["chatProvider"];
-    void save();
-  });
 
   const model = h("select", {}) as HTMLSelectElement;
   const setModels = (list: [string, string][]) => {
@@ -305,7 +326,7 @@ function cursorSection(hasKey: boolean): HTMLElement {
     }
     dot.style.background = s.loggedIn ? "#22c55e" : "#f4505e";
     state.textContent = s.loggedIn
-      ? `${s.status.replace(/^✓\s*/, "")}. The chat uses your Cursor plan, read-only.`
+      ? `${s.status.replace(/^✓\s*/, "")}. Turn Cursor on under Chat to use it, read-only.`
       : "Not signed in. Sign in once in the browser, then check again.";
     login.style.display = s.loggedIn ? "none" : "";
     if (s.loggedIn) setModels((await Bridge.cursorModels()) ?? []);
@@ -348,10 +369,69 @@ function cursorSection(hasKey: boolean): HTMLElement {
     {},
     h("h2", {}, dot, h("span", { text: "Cursor" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "Chat answers with" }), provider),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     h("div", { class: "row" }, login, recheck),
     h("div", { class: "row" }, h("label", { text: "API key" }), key, saveKey),
+    feedback,
+  );
+}
+
+// ── Kiro section ──────────────────────────────────────────────────────────────
+
+const KIRO_INSTALL = "curl -fsSL https://cli.kiro.dev/install | bash";
+
+function kiroSection(): HTMLElement {
+  const dot = statusDot(false);
+  const state = h("span", { class: "hint", text: "Checking the Kiro CLI…" });
+
+  const model = h("select", {}) as HTMLSelectElement;
+  const setModels = (list: [string, string][]) => {
+    clear(model);
+    if (!list.some(([id]) => id === "auto")) list.unshift(["auto", "auto"]);
+    for (const [id, label] of list) {
+      model.append(h("option", { value: id, text: label === id ? id : `${label} (${id})` }));
+    }
+    if (!list.some(([id]) => id === settings.kiroModel)) {
+      model.append(h("option", { value: settings.kiroModel, text: settings.kiroModel }));
+    }
+    model.value = settings.kiroModel;
+  };
+  setModels([]);
+  model.addEventListener("change", () => {
+    settings.kiroModel = model.value;
+    void save();
+  });
+
+  const recheck = h("button", { text: "Check again" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const s = await Bridge.kiroStatus();
+    clear(feedback);
+    if (!s || !s.cli) {
+      dot.style.background = "#f4505e";
+      state.textContent = "Kiro CLI not found. Install it, then sign in:";
+      feedback.append(h("div", { class: "row" }, h("span", { class: "path", text: KIRO_INSTALL })));
+      return;
+    }
+    dot.style.background = s.loggedIn ? "#22c55e" : "#f4505e";
+    state.textContent = s.loggedIn
+      ? `${s.status}. Turn Kiro on under Chat to use it, read-only.`
+      : "Not signed in. Run this once in a terminal, then check again:";
+    if (s.loggedIn) setModels((await Bridge.kiroModels()) ?? []);
+    else feedback.append(h("div", { class: "row" }, h("span", { class: "path", text: "kiro-cli login" })));
+  }
+  recheck.addEventListener("click", () => void refresh());
+
+  void refresh();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Kiro" })),
+    state,
+    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, recheck),
     feedback,
   );
 }
@@ -545,7 +625,9 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    chatSection(),
     cursorSection((await Bridge.secretPresent("cursor-api-key")) ?? false),
+    kiroSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {
