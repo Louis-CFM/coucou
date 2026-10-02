@@ -60,6 +60,7 @@ pub fn local_dir() -> PathBuf {
 /// every launch, so each launch would rewrite the system's registry with
 /// plugin paths that vanish once Coucou quits. Give ours its own file.
 pub fn prepare_environment() {
+    prefer_x11_on_gnome();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
@@ -67,6 +68,24 @@ pub fn prepare_environment() {
     if std::fs::create_dir_all(&cache).is_ok() {
         std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
     }
+}
+
+/// GNOME on Wayland has no layer-shell and ignores where a regular window asks
+/// to go, so the island lands in the middle of the screen. Through XWayland it
+/// can be placed, and a Dock window survives "show desktop" (Super+D).
+/// An inherited GDK_BACKEND=wayland is overridden too: editors and terminals
+/// pass theirs down to every child. COUCOU_X11=0 keeps the Wayland window.
+fn prefer_x11_on_gnome() {
+    let env = |k: &str| std::env::var(k).unwrap_or_default();
+    if should_prefer_x11(&env("XDG_SESSION_TYPE"), &env("XDG_CURRENT_DESKTOP"), &env("COUCOU_X11")) {
+        std::env::set_var("GDK_BACKEND", "x11");
+    }
+}
+
+fn should_prefer_x11(session: &str, desktop: &str, opt: &str) -> bool {
+    session.eq_ignore_ascii_case("wayland")
+        && desktop.split(':').any(|d| d.eq_ignore_ascii_case("gnome"))
+        && opt != "0"
 }
 
 pub fn local_time() -> LocalTime {
@@ -223,6 +242,18 @@ pub fn make_non_activating(win: &WebviewWindow) {
         };
         crate::log::line(format!("island is a regular window ({why})"));
         gw.set_accept_focus(false);
+        if !gw.is_realized() {
+            // On X11 a Dock is kept above everything and is the only kind of
+            // window, besides the desktop, that "show desktop" leaves alone.
+            // COUCOU_DOCK=0 falls back to a utility window.
+            let dock = std::env::var("COUCOU_DOCK").map(|v| v != "0").unwrap_or(true);
+            gw.set_type_hint(if dock {
+                gtk::gdk::WindowTypeHint::Dock
+            } else {
+                gtk::gdk::WindowTypeHint::Utility
+            });
+        }
+        gw.set_keep_above(true);
         return;
     }
     // tao gives undecorated Wayland windows an empty titlebar to force
@@ -331,6 +362,14 @@ mod tests {
         assert!(!is_private_dir(&base.join("missing")));
 
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn x11_is_only_preferred_on_gnome_wayland_unless_opted_out() {
+        assert!(should_prefer_x11("wayland", "ubuntu:GNOME", ""));
+        assert!(!should_prefer_x11("x11", "ubuntu:GNOME", ""));
+        assert!(!should_prefer_x11("wayland", "KDE", ""));
+        assert!(!should_prefer_x11("wayland", "GNOME", "0"));
     }
 
     #[test]

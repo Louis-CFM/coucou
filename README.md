@@ -88,7 +88,7 @@ Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. Gemini CLI, An
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
-so there it opens as a regular window. See [`windows/README.md`](windows/README.md#linux).
+so there it runs through XWayland as a dock window at the top of the screen. See [`windows/README.md`](windows/README.md#linux).
 
 ### Build from source
 
