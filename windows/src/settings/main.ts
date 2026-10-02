@@ -254,6 +254,171 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── API Endpoint Tunnel section ───────────────────────────────────────────────
+
+function endpointSection(hasKey: boolean): HTMLElement {
+  const dot = statusDot(settings.customEndpointEnabled);
+  const state = h("span", {
+    class: "hint",
+    text: settings.customEndpointEnabled
+      ? "Chat routes through this custom tunnel instead of official Claude API."
+      : "Disabled — chat uses official Claude API.",
+  });
+
+  const urlInput = h("input", {
+    type: "text",
+    placeholder: "http://localhost:11434/v1 or https://proxy.example.com/v1",
+    value: settings.customEndpointUrl,
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  urlInput.addEventListener("input", () => {
+    settings.customEndpointUrl = urlInput.value.trim();
+    void save();
+  });
+
+  const keyField = h("input", {
+    type: "password",
+    placeholder: hasKey ? "••••••••••••  (stored)" : "Optional key or token (Bearer)",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  const saveKeyBtn = h("button", { class: "primary", text: "Save key" });
+  const clearKeyBtn = h("button", { class: "danger", text: "Remove" });
+  const keyFeedback = h("div", {});
+
+  async function refreshKey() {
+    const present = (await Bridge.secretPresent("custom-endpoint-key")) ?? false;
+    keyField.placeholder = present ? "••••••••••••  (stored)" : "Optional key or token (Bearer)";
+    clearKeyBtn.style.display = present ? "" : "none";
+  }
+
+  saveKeyBtn.addEventListener("click", async () => {
+    const value = keyField.value.trim();
+    if (!value) return;
+    clear(keyFeedback);
+    try {
+      await Bridge.secretSet("custom-endpoint-key", value);
+      keyField.value = "";
+      keyFeedback.append(h("div", { class: "notice ok", text: "Key saved in Windows Credential Manager." }));
+      await refreshKey();
+    } catch (err) {
+      keyFeedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+
+  clearKeyBtn.addEventListener("click", async () => {
+    clear(keyFeedback);
+    try {
+      await Bridge.secretClear("custom-endpoint-key");
+      keyFeedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      await refreshKey();
+    } catch (err) {
+      keyFeedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  clearKeyBtn.style.display = hasKey ? "" : "none";
+
+  const modelInput = h("input", {
+    type: "text",
+    placeholder: "Model ID (e.g. llama3, qwen2.5, mistral)",
+    value: settings.customEndpointModel,
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  modelInput.addEventListener("input", () => {
+    settings.customEndpointModel = modelInput.value.trim();
+    void save();
+  });
+
+  const modelSelect = h("select", { style: "display:none;flex:1 1 auto;min-width:0" }) as HTMLSelectElement;
+  modelSelect.addEventListener("change", () => {
+    settings.customEndpointModel = modelSelect.value;
+    modelInput.value = modelSelect.value;
+    void save();
+  });
+
+  const fetchBtn = h("button", { text: "Fetch models" });
+  const modelFeedback = h("div", {});
+
+  fetchBtn.addEventListener("click", async () => {
+    const url = settings.customEndpointUrl.trim();
+    if (!url) {
+      clear(modelFeedback);
+      modelFeedback.append(h("div", { class: "notice err", text: "Enter a Tunnel URL first." }));
+      return;
+    }
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = "Fetching...";
+    clear(modelFeedback);
+    try {
+      const models = await Bridge.fetchModels(url);
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = "Fetch models";
+      if (!models || models.length === 0) {
+        modelFeedback.append(h("div", { class: "notice err", text: "No models returned by endpoint." }));
+        return;
+      }
+      clear(modelSelect);
+      for (const m of models) {
+        modelSelect.append(h("option", { value: m, text: m }));
+      }
+      modelSelect.value = models.includes(settings.customEndpointModel)
+        ? settings.customEndpointModel
+        : models[0];
+      settings.customEndpointModel = modelSelect.value;
+      modelInput.value = modelSelect.value;
+      modelSelect.style.display = "";
+      modelInput.style.display = "none";
+      void save();
+      modelFeedback.append(h("div", { class: "notice ok", text: `Found ${models.length} model(s).` }));
+    } catch (err) {
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = "Fetch models";
+      modelFeedback.append(h("div", { class: "notice err", text: `Could not fetch models: ${String(err)}` }));
+    }
+  });
+
+  const body = h(
+    "div",
+    { style: `display:${settings.customEndpointEnabled ? "flex" : "none"};flex-direction:column;gap:12px;` },
+    h("div", { class: "row" }, h("label", { text: "Tunnel URL" }), urlInput),
+    h("div", { class: "row" }, h("label", { text: "Tunnel key" }), keyField, saveKeyBtn, clearKeyBtn),
+    keyFeedback,
+    h("div", { class: "row" }, h("label", { text: "Model" }), modelInput, modelSelect, fetchBtn),
+    modelFeedback,
+    h("span", {
+      class: "hint",
+      text: "Never shares your Anthropic API key. Requests use custom key or no auth.",
+    }),
+  );
+
+  const mainToggle = toggle(settings.customEndpointEnabled, (on) => {
+    settings.customEndpointEnabled = on;
+    dot.style.background = on ? "#22c55e" : "#f4505e";
+    state.textContent = on
+      ? "Chat routes through this custom tunnel instead of official Claude API."
+      : "Disabled — chat uses official Claude API.";
+    body.style.display = on ? "flex" : "none";
+    void save();
+  });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "API Endpoint Tunnel" }), mainToggle),
+    state,
+    body,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -430,6 +595,7 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const customKeyPresent = (await Bridge.secretPresent("custom-endpoint-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -443,6 +609,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    endpointSection(customKeyPresent),
     integrationsSection(present),
     generalSection(),
     h("div", {

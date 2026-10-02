@@ -241,8 +241,26 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (model, endpoint) = {
+        let s = shared.settings.lock().unwrap();
+        let (m, ep) = if s.custom_endpoint_enabled && !s.custom_endpoint_url.trim().is_empty() {
+            let m = if !s.custom_endpoint_model.trim().is_empty() {
+                s.custom_endpoint_model.clone()
+            } else {
+                s.model.clone()
+            };
+            (m, Some(s.custom_endpoint_url.trim().to_string()))
+        } else {
+            (s.model.clone(), None)
+        };
+        (m, ep)
+    };
+    claude::send(&chat, &model, endpoint.as_deref(), query, context).await
+}
+
+#[tauri::command]
+async fn fetch_models(url: String) -> Result<Vec<String>, String> {
+    claude::fetch_models(&url).await
 }
 
 #[tauri::command]
@@ -393,6 +411,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            fetch_models,
             ingest_file,
             secret_present,
             secret_set,

@@ -68,16 +68,128 @@ pub struct ChatReply {
     pub text: String,
 }
 
+/// Resolves custom endpoint tunnel URL. Returns (url, is_custom).
+pub fn resolve_endpoint(custom: Option<&str>) -> (String, bool) {
+    let Some(raw) = custom.map(str::trim).filter(|s| !s.is_empty()) else {
+        return (ENDPOINT.to_string(), false);
+    };
+    let trimmed = raw.trim_end_matches('/');
+    let resolved = if trimmed.ends_with("/messages") || trimmed.ends_with("/chat/completions") {
+        trimmed.to_string()
+    } else if trimmed.ends_with("/v1") {
+        format!("{trimmed}/messages")
+    } else {
+        format!("{trimmed}/v1/messages")
+    };
+    (resolved, true)
+}
+
+/// Fetches available models from a custom endpoint URL (GET /v1/models or GET /models).
+pub async fn fetch_models(url: &str) -> Result<Vec<String>, String> {
+    let trimmed = url.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Err("Tunnel URL is required.".to_string());
+    }
+    let target = if trimmed.ends_with("/models") {
+        trimmed.to_string()
+    } else if trimmed.ends_with("/v1") {
+        format!("{trimmed}/models")
+    } else {
+        format!("{trimmed}/v1/models")
+    };
+
+    let key = secrets::get("custom-endpoint-key").unwrap_or_default();
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut req = client.get(&target);
+    if !key.is_empty() {
+        req = req
+            .header("authorization", format!("Bearer {key}"))
+            .header("x-api-key", &key);
+    }
+
+    let response = req
+        .send()
+        .await
+        .map_err(|e| format!("Failed to reach endpoint: {e}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("Server returned HTTP {status}"));
+    }
+
+    let val = response
+        .json::<Value>()
+        .await
+        .map_err(|e| format!("Invalid JSON response: {e}"))?;
+
+    // Format 1: OpenAI / vLLM / LiteLLM -> { "data": [ { "id": "model-1" }, ... ] }
+    if let Some(list) = val.get("data").and_then(Value::as_array) {
+        let models: Vec<String> = list
+            .iter()
+            .filter_map(|m| m.get("id").and_then(Value::as_str).map(str::to_string))
+            .collect();
+        if !models.is_empty() {
+            return Ok(models);
+        }
+    }
+
+    // Format 2: Ollama -> { "models": [ { "name": "llama3:latest" }, ... ] }
+    if let Some(list) = val.get("models").and_then(Value::as_array) {
+        let models: Vec<String> = list
+            .iter()
+            .filter_map(|m| {
+                m.get("name")
+                    .or_else(|| m.get("id"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .collect();
+        if !models.is_empty() {
+            return Ok(models);
+        }
+    }
+
+    // Format 3: Plain array of strings or objects -> [ "model-1", "model-2" ]
+    if let Some(list) = val.as_array() {
+        let models: Vec<String> = list
+            .iter()
+            .filter_map(|m| {
+                m.as_str()
+                    .map(str::to_string)
+                    .or_else(|| m.get("id").and_then(Value::as_str).map(str::to_string))
+            })
+            .collect();
+        if !models.is_empty() {
+            return Ok(models);
+        }
+    }
+
+    Err("No models found in response.".to_string())
+}
+
 /// One chat turn. Returns the assistant's text, or a message the island shows
 /// in the note view.
 pub async fn send(
     chat: &Chat,
     model: &str,
+    endpoint: Option<&str>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let (url, is_custom) = resolve_endpoint(endpoint);
+
+    // Security: Only read custom-endpoint-key for custom endpoints. Never leak anthropic-api-key!
+    let key = if is_custom {
+        secrets::get("custom-endpoint-key").unwrap_or_default()
+    } else {
+        secrets::get("anthropic-api-key")
+            .ok_or_else(|| "API key missing. Open settings.".to_string())?
+    };
 
     let mut content: Vec<Value> = Vec::new();
 
@@ -105,16 +217,46 @@ pub async fn send(
 
     chat.push(json!({ "role": "user", "content": content }));
 
-    let body = json!({
-        "model": model,
-        "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
-        "fallbacks": "default",
-        "messages": chat.snapshot(),
-    });
+    let is_openai_chat = url.ends_with("/chat/completions");
+    let body = if is_openai_chat {
+        let msgs = chat
+            .snapshot()
+            .into_iter()
+            .map(|mut m| {
+                if let Some(arr) = m.get("content").and_then(Value::as_array) {
+                    let text = arr
+                        .iter()
+                        .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
+                        .filter_map(|b| b.get("text").and_then(Value::as_str))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    m["content"] = json!(text);
+                }
+                m
+            })
+            .collect::<Vec<_>>();
+        let mut full_msgs = vec![json!({ "role": "system", "content": SYSTEM_PROMPT })];
+        full_msgs.extend(msgs);
+        json!({
+            "model": model,
+            "max_tokens": MAX_TOKENS,
+            "messages": full_msgs,
+        })
+    } else {
+        let mut b = json!({
+            "model": model,
+            "max_tokens": MAX_TOKENS,
+            "system": SYSTEM_PROMPT,
+            "messages": chat.snapshot(),
+        });
+        if !is_custom {
+            b["tools"] = json!([{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }]);
+            b["fallbacks"] = json!("default");
+        }
+        b
+    };
 
-    let response = match call(&key, &body).await {
+    let response = match call(&key, &url, is_custom, &body).await {
         Ok(v) => v,
         Err(err) => {
             chat.pop(); // keep the history consistent with what the model saw
@@ -133,23 +275,27 @@ pub async fn send(
         return Err(why.to_string());
     }
 
-    let Some(blocks) = response.get("content").and_then(Value::as_array).cloned() else {
+    let (blocks, text) = if let Some(blocks) = response.get("content").and_then(Value::as_array).cloned() {
+        let t = blocks
+            .iter()
+            .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
+            .filter_map(|b| b.get("text").and_then(Value::as_str))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
+        (blocks, t)
+    } else if let Some(content) = response.pointer("/choices/0/message/content").and_then(Value::as_str) {
+        let t = content.trim().to_string();
+        (vec![json!({ "type": "text", "text": t })], t)
+    } else {
         chat.pop();
         return Err("Unexpected API response.".into());
     };
 
     // Store the whole content — tool_use / tool_result blocks included — so the
     // next turn has the right context.
-    chat.push(json!({ "role": "assistant", "content": blocks.clone() }));
-
-    let text = blocks
-        .iter()
-        .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
-        .filter_map(|b| b.get("text").and_then(Value::as_str))
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_string();
+    chat.push(json!({ "role": "assistant", "content": blocks }));
 
     if text.is_empty() {
         return Err("No response text.".into());
@@ -157,18 +303,30 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
+async fn call(key: &str, url: &str, is_custom: bool, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(90))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let response = client
-        .post(ENDPOINT)
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
-        .header("content-type", "application/json")
+    let mut req = client
+        .post(url)
+        .header("content-type", "application/json");
+
+    if !key.is_empty() {
+        req = req.header("x-api-key", key);
+        if is_custom {
+            req = req.header("authorization", format!("Bearer {key}"));
+        }
+    }
+
+    if !is_custom {
+        req = req
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .header("anthropic-beta", FALLBACK_BETA);
+    }
+
+    let response = req
         .json(body)
         .send()
         .await
@@ -187,7 +345,7 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
                     .map(str::to_string)
             })
             .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Claude API {status}: {detail}"));
+        return Err(format!("API {status}: {detail}"));
     }
     serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
 }
@@ -259,5 +417,26 @@ mod tests {
         assert_eq!(base64(b"foob"), "Zm9vYg==");
         assert_eq!(base64(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn resolve_endpoint_defaults_and_custom() {
+        use super::{resolve_endpoint, ENDPOINT};
+
+        assert_eq!(resolve_endpoint(None), (ENDPOINT.to_string(), false));
+        assert_eq!(resolve_endpoint(Some("")), (ENDPOINT.to_string(), false));
+        assert_eq!(resolve_endpoint(Some("   ")), (ENDPOINT.to_string(), false));
+        assert_eq!(
+            resolve_endpoint(Some("http://localhost:11434/v1")),
+            ("http://localhost:11434/v1/messages".to_string(), true)
+        );
+        assert_eq!(
+            resolve_endpoint(Some("http://localhost:11434/v1/chat/completions")),
+            ("http://localhost:11434/v1/chat/completions".to_string(), true)
+        );
+        assert_eq!(
+            resolve_endpoint(Some("https://tunnel.example.com")),
+            ("https://tunnel.example.com/v1/messages".to_string(), true)
+        );
     }
 }
