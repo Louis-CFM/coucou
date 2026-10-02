@@ -55,6 +55,9 @@ targets:
       - path: Resources/sounds
         buildPhase: resources
         type: folder
+      - path: Resources/CoucouStrings
+        buildPhase: resources
+        type: folder
     info:
       path: Resources/Info.plist
       properties:
@@ -87,6 +90,9 @@ targets:
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
+        buildPhase: resources
+        type: folder
+      - path: Resources/CoucouStrings
         buildPhase: resources
         type: folder
     info:

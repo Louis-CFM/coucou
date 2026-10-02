@@ -188,6 +188,24 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        #if !APPSTORE
+        LocalCLIChat.shared.reset()
+        #endif
+    }
+
+    /// The engine the chat will use. The App Store build is sandboxed and can't
+    /// launch other programs, so it always talks to the API. Otherwise, with no
+    /// choice saved yet, the first installed CLI wins, falling back to the API.
+    func resolveEngine(state: AppState) async -> ChatEngine {
+        #if APPSTORE
+        return .api
+        #else
+        if let chosen = state.chatEngine { return chosen }
+        if !state.cliDetectionDone { await state.detectCLIs() }
+        let picked = ChatEngine.cliEngines.first { state.detectedCLIs[$0] != nil } ?? .api
+        state.chatEngine = picked
+        return picked
+        #endif
     }
 
     private let systemPrompt = """
@@ -204,6 +222,30 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        let engine = await resolveEngine(state: state)
+        if engine == .claude {
+            await chatThroughWarmClaude(query: query, context: context, state: state)
+            return
+        }
+        if engine != .api {
+            let model = engine == .claude ? state.claudeModel : nil
+            let reply = await LocalCLIChat.shared.send(engine: engine, query: query, context: context, model: model)
+            if reply.isError {
+                state.chatHistory.append(ChatMessage(role: .assistant,
+                                                     content: reply.text.trimmingCharacters(in: .whitespacesAndNewlines)))
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
+            } else {
+                state.chatHistory.append(ChatMessage(role: .assistant,
+                                                     content: reply.text.trimmingCharacters(in: .whitespacesAndNewlines)))
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+            return
+        }
+
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
@@ -248,6 +290,55 @@ final class ClaudeService {
         } catch {
             conversationMessages.removeLast()
             await showError(error.localizedDescription, state: state)
+        }
+    }
+
+    private func chatThroughWarmClaude(query: String, context: PromptContext?, state: AppState) async {
+        var prompt = query
+        if !ClaudeWarmSession.shared.hasConversation, let context {
+            prompt = Self.contextLine(context) + "\n\n" + query
+        }
+        var bubble: UUID?
+        let reply = await ClaudeWarmSession.shared.send(prompt) { text in
+            bubble = Self.showPartial(text, bubble: bubble, state: state)
+        }
+        let text = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty {
+            state.stateOverride = nil
+            return
+        }
+        if let bubble {
+            state.replaceAssistant(id: bubble, content: text)
+        } else {
+            state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+        }
+        state.stateOverride = nil
+        state.view = .prompt
+        let emote: BotEmote = reply.isError ? .annoyed : .happy
+        NotificationCenter.default.post(name: .triggerEmote, object: emote)
+    }
+
+    private static func showPartial(_ text: String, bubble: UUID?, state: AppState) -> UUID {
+        if let bubble {
+            state.replaceAssistant(id: bubble, content: text)
+            return bubble
+        }
+        let message = ChatMessage(role: .assistant, content: text)
+        state.chatHistory.append(message)
+        state.stateOverride = nil
+        state.view = .prompt
+        return message.id
+    }
+
+    private static func contextLine(_ context: PromptContext) -> String {
+        switch context {
+        case .window(let app, let title, let url):
+            var text = "Context — App: \(app), Window: \(title)"
+            if let url { text += ", URL: \(url)" }
+            return text
+        case .file(let name, let url):
+            if let url { return "The user attached a file: \(url.path) — read it to answer." }
+            return "File: \(name)"
         }
     }
 

@@ -15,6 +15,7 @@ struct IslandRootView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .ignoresSafeArea()
+        .id(state.appLanguage)
     }
 }
 
@@ -298,14 +299,15 @@ struct BotPlacement: View {
                     let t = min(1.0, max(0, elapsed / state.uploadDuration))
                     // cx = 36 + 526*t: bot center at fill right edge (bar left=36, width=526)
                     let uploadCx = 36 + CGFloat(t * (2 - t)) * 526
-                    BotCanvasView(state: state, particleOverhang: 0)
+                    BotCanvasView(state: state, particleOverhang: 0, isVisible: opacity > 0 && !state.isDraggingBot)
                         .frame(width: canvasSize, height: canvasSize)
                         .opacity(state.isDraggingBot ? 0 : opacity)
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
-                BotCanvasView(state: state, particleOverhang: overhang)
+                BotCanvasView(state: state, particleOverhang: overhang,
+                              isVisible: opacity > 0 && !state.isDraggingBot)
                     .frame(width: canvasSize, height: canvasSize + overhang)
                     .opacity(state.isDraggingBot ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)

@@ -31,6 +31,7 @@ final class AppState: ObservableObject {
 
     // Mouse tracking
     var mousePosition: CGPoint = .zero
+    var islandPanelFrame: CGRect = .zero
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
     var isPresent: Bool = true
@@ -51,6 +52,10 @@ final class AppState: ObservableObject {
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
+    }
+
+    @Published var idleAnimationsEnabled: Bool = false {
+        didSet { UserDefaults.standard.set(idleAnimationsEnabled, forKey: "idleAnimationsEnabled") }
     }
 
     // Claude model used by the chat and the search — persisted
@@ -233,8 +238,45 @@ final class AppState: ObservableObject {
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
 
+    @Published var spotifyNow: SpotifyNow?
+
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
+
+    /// Warm Claude process: off, preparing, ready, or failed.
+    @Published var claudeLink: String = "off"
+    @Published var claudeLinkNote: String = ""
+
+    func replaceAssistant(id: UUID, content: String) {
+        guard let index = chatHistory.firstIndex(where: { $0.id == id }) else { return }
+        var next = chatHistory
+        next[index] = ChatMessage(role: .assistant, content: content, id: id)
+        chatHistory = next
+    }
+
+    @Published var appLanguage: AppLanguage = .en {
+        didSet {
+            UserDefaults.standard.set(appLanguage.rawValue, forKey: "appLanguage")
+            CoucouL10n.apply(appLanguage)
+        }
+    }
+
+    // Which AI answers the chat — persisted. nil until the user picks one or the
+    // first chat auto-picks the first installed CLI.
+    @Published var chatEngine: ChatEngine? = nil {
+        didSet { UserDefaults.standard.set(chatEngine?.rawValue, forKey: "chatEngine") }
+    }
+
+    // AI CLIs found on this Mac (filled by LocalCLI.detectAll, from Settings or the first chat)
+    @Published var detectedCLIs: [ChatEngine: CLIInfo] = [:]
+    @Published var cliDetectionDone: Bool = false
+
+    /// Re-scans for the AI CLIs in the background.
+    func detectCLIs() async {
+        let found = await Task.detached { LocalCLI.detectAll() }.value
+        detectedCLIs = found
+        cliDetectionDone = true
+    }
 
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
@@ -245,6 +287,7 @@ final class AppState: ObservableObject {
         let ud = UserDefaults.standard
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
+        if let v = ud.object(forKey: "idleAnimationsEnabled") as? Bool { idleAnimationsEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
@@ -260,6 +303,10 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
+        if let v = ud.string(forKey: "chatEngine") { chatEngine = ChatEngine(rawValue: v) }
+        if let v = ud.string(forKey: "appLanguage"), let language = AppLanguage(rawValue: v) {
+            appLanguage = language
+        }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
@@ -276,6 +323,7 @@ final class AppState: ObservableObject {
 
         // Always load integration pills
         loadIntegrationTasks()
+        CoucouL10n.apply(appLanguage)
     }
 
     // MARK: - Computed
@@ -471,6 +519,13 @@ struct VercelDeployment: Identifiable {
 
 // MARK: - Resend
 
+struct SpotifyNow: Equatable {
+    var title: String
+    var artist: String
+    var isPlaying: Bool
+    var artworkURL: URL?
+}
+
 struct ResendEmail: Identifiable {
     let id: String
     let to: [String]
@@ -565,7 +620,13 @@ struct NotionPage: Identifiable {
 enum ChatRole { case user, assistant }
 
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: UUID
     let role: ChatRole
     let content: String
+
+    init(role: ChatRole, content: String, id: UUID = UUID()) {
+        self.id = id
+        self.role = role
+        self.content = content
+    }
 }

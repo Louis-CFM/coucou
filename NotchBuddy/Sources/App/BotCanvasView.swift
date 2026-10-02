@@ -5,18 +5,32 @@ import SwiftUI
 struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
+    var isVisible: Bool = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var idleBurst: IdleMicroAnimation?
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden)) { timeline in
+        TimelineView(.animation(minimumInterval: state.mode == .hidden ? 1.0 / 20 : nil,
+                                paused: state.mode == .hidden && idleBurst == nil)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dtRaw = min(0.05, now - engine.lastTime)
                 let dt = dtRaw
-                engine.lookX = lookX(state: state, size: size)
-                engine.lookY = lookY(state: state, size: size)
+                if let burst = idleBurst, Date().timeIntervalSince(state.lastMouseMove) > 1 {
+                    let look = burst.look(at: now)
+                    engine.lookX = look.x
+                    engine.lookY = look.y
+                } else if state.mode == .hidden && state.idleAnimationsEnabled && state.effectiveState == .idle {
+                    engine.lookX = 0
+                    engine.lookY = 0
+                } else {
+                    let look = lookDirection(state: state)
+                    engine.lookX = look.x
+                    engine.lookY = look.y
+                }
                 engine.particleOverhang = particleOverhang
                 // Widen slot when file is hovering over the mailbox (morph > 0.5)
                 // Open mouth (hover=0.20R) when file dragged over box; close when not
@@ -88,33 +102,73 @@ struct BotCanvasView: View {
         .onAppear {
             engine.setState(state.effectiveState, force: true)
         }
+        .task(id: idleAnimationsEligible) {
+            await runIdleAnimations()
+        }
     }
 
-    private func lookX(state: AppState, size: CGSize) -> CGFloat {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
-        let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
-                                             progress: state.uploadProgress,
-                                             nw: state.notchWidth, nh: state.notchHeight)
-        let (botCx, _, _, _) = botPosition(mode: state.mode, view: state.view,
-                                            islandW: islandW, islandH: islandH,
-                                            uploadProgress: state.uploadProgress)
-        // Island is centered on screen; bot is at botCx within island coords
-        let botScreenX = screen.frame.midX - islandW / 2 + botCx
-        return tanh((state.mousePosition.x - botScreenX) / 260)
+    private var idleAnimationsEligible: Bool {
+        IdleMicroAnimation.isEligible(enabled: state.idleAnimationsEnabled,
+                                      visible: isVisible && !state.isDraggingBot,
+                                      resting: state.mode == .hidden || state.mode == .compact,
+                                      idle: state.effectiveState == .idle,
+                                      reduceMotion: reduceMotion)
     }
 
-    private func lookY(state: AppState, size: CGSize) -> CGFloat {
+    @MainActor
+    private func runIdleAnimations() async {
+        guard idleAnimationsEligible else { return }
+        defer {
+            if idleBurst != nil { settleRestingEyes() }
+            idleBurst = nil
+        }
+        do {
+            while !Task.isCancelled {
+                try await Task.sleep(for: .seconds(Double.random(in: IdleMicroAnimation.pauseRange)))
+                guard Date().timeIntervalSince(state.lastMouseMove) > 1 else { continue }
+                let burst = IdleMicroAnimation.random(startTime: Date().timeIntervalSinceReferenceDate)
+                engine.nextBlink = CACurrentMediaTime() + IdleMicroAnimation.duration + 3
+                idleBurst = burst
+                try await Task.sleep(for: .seconds(IdleMicroAnimation.blinkDelay))
+                if burst.blinks && Date().timeIntervalSince(state.lastMouseMove) > 1 {
+                    engine.blink()
+                }
+                try await Task.sleep(for: .seconds(IdleMicroAnimation.duration - IdleMicroAnimation.blinkDelay))
+                settleRestingEyes()
+                idleBurst = nil
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            return
+        }
+    }
+
+    private func settleRestingEyes() {
+        guard state.mode == .hidden && state.effectiveState == .idle else { return }
+        engine.yaw = 0
+        engine.pitch = 0
+        engine.tgYaw = 0
+        engine.tgPitch = 0
+        engine.open = 1
+        engine.tweens.removeValue(forKey: "open")
+        engine.locks.remove("open")
+    }
+
+    private func lookDirection(state: AppState) -> CGPoint {
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
         let actualH: CGFloat = (state.mode == .expanded && state.view == .prompt)
             ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
             : islandH
-        let (_, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
                                              islandW: islandW, islandH: actualH,
                                              uploadProgress: state.uploadProgress)
-        // Island top = screen top → bot screen Y = botCy from island top
-        return -tanh((state.mousePosition.y - botCy) / 200)
+        return IslandGazeGeometry.direction(mouse: state.mousePosition,
+                                            panelFrame: state.islandPanelFrame,
+                                            islandWidth: islandW,
+                                            botCenter: CGPoint(x: botCx, y: botCy))
     }
 }
 

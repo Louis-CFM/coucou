@@ -24,28 +24,98 @@ final class VercelPoller: @unchecked Sendable {
 
     private func poll() {
         guard let token = KeychainStore.shared.get("vercel-token") else { return }
+        Self.fetchJSON(token: token, url: URL(string: "https://api.vercel.com/v2/teams")) { json in
+            let teamIds = (json?["teams"] as? [[String: Any]])?.compactMap { $0["id"] as? String } ?? []
+            self.fetchDeployments(token: token, teamIds: teamIds)
+        }
+    }
 
-        // Fetch last 5 terminal deployments
-        guard let url = URL(string: "https://api.vercel.com/v6/deployments?limit=5") else { return }
+    /// Personal account plus every team. The personal list hides team projects.
+    private func fetchDeployments(token: String, teamIds: [String]) {
+        let scopes: [String?] = [nil] + teamIds.map { Optional($0) }
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var collected: [VercelDeployment] = []
+
+        for teamId in scopes {
+            group.enter()
+            guard let url = Self.deploymentsURL(teamId: teamId) else { group.leave(); continue }
+            Self.fetchJSON(token: token, url: url) { json in
+                let raw = json?["deployments"] as? [[String: Any]] ?? []
+                let parsed = raw.compactMap { self.parseDeployment($0) }.filter { Self.shownStates.contains($0.state) }
+                lock.lock()
+                collected.append(contentsOf: parsed)
+                lock.unlock()
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            let latest = Self.latestPerProject(collected)
+            guard !latest.isEmpty else { return }
+            Task { @MainActor in self?.handleDeployments(latest) }
+        }
+    }
+
+    /// Canceled builds are replaced by a newer one. They are not the project's result.
+    private static let shownStates = ["READY", "ERROR"]
+
+    private static func deploymentsURL(teamId: String?) -> URL? {
+        var parts = URLComponents(string: "https://api.vercel.com/v6/deployments")
+        var items = [URLQueryItem(name: "limit", value: "20")]
+        if let teamId { items.append(URLQueryItem(name: "teamId", value: teamId)) }
+        parts?.queryItems = items
+        return parts?.url
+    }
+
+    /// One row per project, newest first, so a busy project cannot hide the others.
+    private static func latestPerProject(_ items: [VercelDeployment]) -> [VercelDeployment] {
+        var newest: [String: VercelDeployment] = [:]
+        for item in items {
+            if let current = newest[item.projectName], current.createdAt >= item.createdAt { continue }
+            newest[item.projectName] = item
+        }
+        return newest.values.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    static func fetchProjectNames(token: String, completion: @escaping ([String]) -> Void) {
+        fetchJSON(token: token, url: URL(string: "https://api.vercel.com/v2/teams")) { json in
+            let teamIds = (json?["teams"] as? [[String: Any]])?.compactMap { $0["id"] as? String } ?? []
+            let scopes: [String?] = [nil] + teamIds.map { Optional($0) }
+            let group = DispatchGroup()
+            let lock = NSLock()
+            var names = Set<String>()
+            for teamId in scopes {
+                group.enter()
+                var parts = URLComponents(string: "https://api.vercel.com/v9/projects")
+                var items = [URLQueryItem(name: "limit", value: "100")]
+                if let teamId { items.append(URLQueryItem(name: "teamId", value: teamId)) }
+                parts?.queryItems = items
+                fetchJSON(token: token, url: parts?.url) { json in
+                    let found = (json?["projects"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+                    lock.lock()
+                    names.formUnion(found)
+                    lock.unlock()
+                    group.leave()
+                }
+            }
+            group.notify(queue: .main) { completion(names.sorted()) }
+        }
+    }
+
+    private static func fetchJSON(token: String, url: URL?, completion: @escaping ([String: Any]?) -> Void) {
+        guard let url else { completion(nil); return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
-            guard let self else { return }
+        URLSession.shared.dataTask(with: req) { data, response, _ in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard let data, code == 200 else { return }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let rawList = json["deployments"] as? [[String: Any]] else { return }
-
-            // Only terminal deployments (READY, ERROR, CANCELED)
-            let terminal = ["READY", "ERROR", "CANCELED"]
-            let parsed = rawList
-                .compactMap { self.parseDeployment($0) }
-                .filter { terminal.contains($0.state) }
-            guard !parsed.isEmpty else { return }
-
-            DispatchQueue.main.async { self.handleDeployments(parsed) }
+            guard let data, code == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                completion(nil)
+                return
+            }
+            completion(json)
         }.resume()
     }
 

@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var autoCloseSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -83,6 +84,7 @@ final class IslandWindowController: NSWindowController {
         AppState.shared.notchWidth  = notchW
         AppState.shared.notchHeight = notchH
         AppState.shared.hasNotch = hasNotch
+        AppState.shared.islandPanelFrame = panel.frame
 
         let contentSize = panel.contentRect(forFrameRect: panel.frame).size
 
@@ -153,6 +155,10 @@ final class IslandWindowController: NSWindowController {
     // MARK: - FSM wiring
 
     private func wireFSM() {
+        autoCloseSubscription = state.$autoCloseInterval.sink { [weak self] delay in
+            self?.fsm.homeToPetitDelay = delay
+        }
+
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
             switch to {
@@ -231,12 +237,13 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Mouse in screen coords (Y flipped, origin top-left) for Bot look-at
-        let screenH = panel.screen?.frame.height ?? NSScreen.main!.frame.height
-        let newPos = CGPoint(x: mouse.x - (panel.screen?.frame.minX ?? 0), y: screenH - mouse.y)
+        // Cursor and panel stay in global AppKit coordinates, so a second
+        // display does not flip the direction Mochi is looking.
+        AppState.shared.islandPanelFrame = pf
         let cur = AppState.shared.mousePosition
-        if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
-            AppState.shared.mousePosition = newPos
+        if abs(mouse.x - cur.x) > 1 || abs(mouse.y - cur.y) > 1 {
+            AppState.shared.mousePosition = mouse
+            AppState.shared.lastMouseMove = .now
         }
 
         // AppState can hide the island by itself (last task ended): keep the FSM in step.

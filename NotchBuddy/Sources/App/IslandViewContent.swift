@@ -61,8 +61,8 @@ struct OverviewView: View {
                                     .layoutPriority(1)
                                 Text({ () -> String in
                                     switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
+                                    case .claudeCode: return CoucouL10n.string("Claude Code")
+                                    case .agent:      return CoucouL10n.string("Agent")
                                     case .n8n:        return "n8n"
                                     }
                                 }())
@@ -206,9 +206,9 @@ struct EmptyStateView: View {
             CardBackground(wash: nil)
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Nothing running right now.")
+                    Text(CoucouL10n.string("Nothing running right now."))
                         .font(.system(size: 15, weight: .semibold))
-                    Text("Drop a file or window, or ask me anything.")
+                    Text(CoucouL10n.string("Drop a file or window, or ask me anything."))
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "#9398A1"))
                 }
@@ -269,7 +269,7 @@ struct QuestionView: View {
             CardBackground(wash: .cyan)
             VStack(alignment: .leading, spacing: 5) {
                 AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
-                Text("Which search engine to use?")
+                Text(CoucouL10n.string("Which search engine to use?"))
                     .font(.system(size: 15, weight: .semibold))
                 HStack(spacing: 8) {
                     ForEach(["Postgres full-text", "Meilisearch", "Algolia"], id: \.self) { opt in
@@ -295,9 +295,9 @@ struct ErrorView: View {
             CardBackground(wash: .red)
             VStack(alignment: .leading, spacing: 5) {
                 AgentWho(task: state.focusTask, label: "n8n")
-                Text("Workflow stopped.")
+                Text(CoucouL10n.string("Workflow stopped."))
                     .font(.system(size: 15, weight: .semibold))
-                Text("Gmail node timed out after 30s. Retry or open n8n.")
+                Text(CoucouL10n.string("Gmail node timed out after 30s. Retry or open n8n."))
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#FF8D97"))
                 HStack(spacing: 8) {
@@ -358,8 +358,8 @@ struct ConfusedView: View {
         ZStack {
             CardBackground(wash: .pink)
             VStack(alignment: .leading, spacing: 5) {
-                Text("Too many hits at once.").font(.system(size: 15, weight: .semibold))
-                Text("Give me a sec — back to work in three seconds.")
+                Text(CoucouL10n.string("Too many hits at once.")).font(.system(size: 15, weight: .semibold))
+                Text(CoucouL10n.string("Give me a sec — back to work in three seconds."))
                     .font(.system(size: 13)).foregroundColor(Color(hex: "#9398A1"))
             }
             .padding(.leading, 128)
@@ -400,7 +400,7 @@ struct UploadView: View {
                     center: .bottom, startRadius: 0, endRadius: 200
                 ))
             VStack(alignment: .leading, spacing: 8) {
-                Text("Drop your files here")
+                Text(CoucouL10n.string("Drop your files here"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(state.fileDragOver ? Color(hex: "#34D399") : Color(hex: "#D5D7DB"))
                 HStack(spacing: 6) {
@@ -549,7 +549,7 @@ struct ChooseView: View {
             VStack(alignment: .leading, spacing: 8) {
                 let fileName = state.droppedFile?.name ?? "file"
                 (Text(fileName).font(.system(size: 14, weight: .semibold)) + Text(" is ready.").font(.system(size: 14, weight: .semibold)))
-                Text("What do you want to do with it?").font(.system(size: 12.5)).foregroundColor(Color(hex: "#9398A1"))
+                Text(CoucouL10n.string("What do you want to do with it?")).font(.system(size: 12.5)).foregroundColor(Color(hex: "#9398A1"))
                 HStack(spacing: 8) {
                     PrimaryButton("Ask a question") { state.view = .prompt }
                     SecondaryButton("Send by email") { state.view = .mail }
@@ -576,7 +576,7 @@ struct MailView: View {
             CardBackground(wash: nil)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Text("New email").font(.system(size: 12, weight: .semibold))
+                    Text(CoucouL10n.string("New email")).font(.system(size: 12, weight: .semibold))
                     if let name = state.droppedFile?.name {
                         Text("with").font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
                         Text(name).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
@@ -769,8 +769,18 @@ struct PromptView: View {
                                     ChatBubble(message: msg).id(msg.id)
                                 }
                                 if state.stateOverride != nil {
-                                    HStack { TypingDotsView(); Spacer(minLength: 32) }
-                                        .id("typing")
+                                    HStack(spacing: 8) {
+                                        TypingDotsView()
+                                        if state.chatEngine == .claude {
+                                            Text(state.claudeLink == "preparing"
+                                                 ? CoucouL10n.format("Preparing %@…", ClaudeModelCatalog.name(for: state.claudeModel))
+                                                 : CoucouL10n.format("%@…", ClaudeModelCatalog.name(for: state.claudeModel)))
+                                                .font(.system(size: 11))
+                                                .foregroundColor(Color(hex: "#6B7079"))
+                                        }
+                                        Spacer(minLength: 32)
+                                    }
+                                    .id("typing")
                                 }
                             }
                             .padding(.vertical, 2)
@@ -803,9 +813,9 @@ struct PromptView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Circle()
-                                .fill(Color(hex: state.chatProvider.accentHex))
+                                .fill(Color(hex: state.chatEngine == .claude ? "#D97757" : state.chatProvider.accentHex))
                                 .frame(width: 6, height: 6)
-                            Text(state.activeChatModel)
+                            Text(modelChipTitle)
                                 .font(.system(size: 10.5, weight: .medium))
                                 .foregroundColor(Color(hex: "#7B8089"))
                             Image(systemName: "chevron.up.chevron.down")
@@ -819,8 +829,13 @@ struct PromptView: View {
                     }
                     .buttonStyle(.plain)
                     .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
-                        ModelPickerView(state: state, isPresented: $showModelPicker)
-                            .frame(width: 300)
+                        if state.chatEngine == .claude {
+                            SubscriptionModelPicker(state: state, isPresented: $showModelPicker)
+                                .frame(width: 280)
+                        } else {
+                            ModelPickerView(state: state, isPresented: $showModelPicker)
+                                .frame(width: 300)
+                        }
                     }
                 }
                 .padding(.horizontal, 10)
@@ -864,6 +879,19 @@ struct PromptView: View {
         }
     }
 
+    /// Chip under the chat. With Claude Code this is the subscription, not an API key.
+    private var modelChipTitle: String {
+        guard state.chatEngine == .claude else { return state.activeChatModel }
+        let name = ClaudeModelCatalog.name(for: state.claudeModel)
+        switch state.claudeLink {
+        case "preparing": return CoucouL10n.format("Preparing %@…", name)
+        case "failed":
+            let note = state.claudeLinkNote.isEmpty ? "Claude isn't ready." : state.claudeLinkNote
+            return CoucouL10n.string(note)
+        default: return CoucouL10n.format("Subscription · %@", name)
+        }
+    }
+
     private func sendMessage() {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
@@ -878,6 +906,73 @@ struct PromptView: View {
     }
 }
 
+
+// MARK: - Subscription model picker
+
+struct SubscriptionModelPicker: View {
+    @ObservedObject var state: AppState
+    @Binding var isPresented: Bool
+
+    private var choices: [ClaudeModelCatalog.Choice] { ClaudeModelCatalog.load() }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(CoucouL10n.string("This uses your Claude subscription, not an API. Changing model opens a new one."))
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8A8F98"))
+                .fixedSize(horizontal: false, vertical: true)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(choices) { choice in
+                        modelButton(choice)
+                    }
+                }
+            }
+            .frame(maxHeight: 280)
+        }
+        .padding(14)
+        .background(Color(hex: "#16171B"))
+    }
+
+    private func modelButton(_ choice: ClaudeModelCatalog.Choice) -> some View {
+        let selected = state.claudeModel == choice.id
+        return Button {
+            guard !selected else {
+                isPresented = false
+                return
+            }
+            state.claudeModel = choice.id
+            ClaudeWarmSession.shared.prepare(model: choice.id)
+            isPresented = false
+            SoundEngine.shared.play("blip")
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(choice.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F1F2F4"))
+                    if !choice.detail.isEmpty {
+                        Text(CoucouL10n.string(choice.detail))
+                            .font(.system(size: 10.5))
+                            .foregroundColor(Color(hex: "#8A8F98"))
+                    }
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#D97757"))
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(selected ? Color(hex: "#D97757").opacity(0.12) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+}
 
 // MARK: - Model / provider picker
 
@@ -940,7 +1035,7 @@ struct ModelPickerView: View {
         if state.loadingProviderModels.contains(state.chatProvider) {
             HStack(spacing: 8) {
                 ProgressView().scaleEffect(0.7)
-                Text("Loading models…")
+                Text(CoucouL10n.string("Loading models…"))
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#8A8F98"))
             }
@@ -1142,6 +1237,77 @@ struct NoteView: View {
     }
 }
 
+struct SpotifyCardView: View {
+    @ObservedObject private var state = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: "#1DB954")).frame(width: 7, height: 7)
+                Text("Spotify")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+            }
+            if let now = state.spotifyNow {
+                HStack(spacing: 8) {
+                    artwork(now.artworkURL)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(now.title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1)
+                        Text(now.artist)
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    controls(isPlaying: now.isPlaying)
+                }
+            } else {
+                Text(CoucouL10n.string("Open Spotify"))
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "#8E939C"))
+            }
+        }
+        .padding(.top, 8)
+        .padding(.leading, 108)
+        .padding(.trailing, 16)
+    }
+
+    private func artwork(_ url: URL?) -> some View {
+        AsyncImage(url: url) { image in
+            image.resizable().scaledToFill()
+        } placeholder: {
+            Color.white.opacity(0.08)
+        }
+        .frame(width: 36, height: 36)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func controls(isPlaying: Bool) -> some View {
+        HStack(spacing: 4) {
+            spotifyButton("backward.fill") { SpotifyPoller.shared.command(.previous) }
+            spotifyButton(isPlaying ? "pause.fill" : "play.fill") {
+                SpotifyPoller.shared.command(.playPause)
+            }
+            spotifyButton("forward.fill") { SpotifyPoller.shared.command(.next) }
+        }
+    }
+
+    private func spotifyButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(hex: "#F5F6F8"))
+                .frame(width: 28, height: 28)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Integration card (overview left card when an integration pill is focused)
 
 struct IntegrationCardView: View {
@@ -1190,6 +1356,8 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        case "integration_spotify":
+            return FileManager.default.fileExists(atPath: "/Applications/Spotify.app")
         default: return false
         }
     }
@@ -1206,6 +1374,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "integration_spotify": return URL(string: "spotify:")
         default: return nil
         }
     }
@@ -1263,7 +1432,11 @@ struct IntegrationCardView: View {
     }
 
     private var statusLabel: String {
-        if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
+        if task.id == "integration_spotify" {
+            if let now = appState.spotifyNow { return now.title }
+            return CoucouL10n.string("Open Spotify")
+        }
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return CoucouL10n.string("Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
@@ -1271,17 +1444,17 @@ struct IntegrationCardView: View {
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
         let isAI    = task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai"
         if isConfigured {
-            if isHooks { return "Hooks installed" }
+            if isHooks { return CoucouL10n.string("Hooks installed") }
             if isAI {
                 let model = task.id == "ai_anthropic" ? appState.claudeModel
                           : task.id == "ai_google"    ? appState.googleChatModel
                           :                             appState.openAIChatModel
-                return "Key configured · \(model)"
+                return CoucouL10n.format("Key configured · %@", model)
             }
-            return "Connected · loading…"
+            return CoucouL10n.string("Connected · loading…")
         } else {
-            if isHooks { return "Hooks not installed" }
-            return "Key not configured"
+            if isHooks { return CoucouL10n.string("Hooks not installed") }
+            return CoucouL10n.string("Key not configured")
         }
     }
 
@@ -1315,6 +1488,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
+                .transition(.opacity)
+        } else if task.id == "integration_spotify" {
+            SpotifyCardView()
                 .transition(.opacity)
         } else if agentSessionActive {
             // Active session view — reuse overview layout
@@ -1362,7 +1538,7 @@ struct IntegrationCardView: View {
                     Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
+                    Text(CoucouL10n.string(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration"))
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                     Spacer(minLength: 2)
@@ -1382,7 +1558,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude" {
-                        Button("Open Visual Studio Code") { openVSCode() }
+                        Button(CoucouL10n.string("Open Visual Studio Code")) { openVSCode() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -1390,7 +1566,7 @@ struct IntegrationCardView: View {
                         #if !APPSTORE
                         if let url = NSWorkspace.shared.urlForApplication(
                             withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
-                            Button("Open Cursor") {
+                            Button(CoucouL10n.string("Open Cursor")) {
                                 NSWorkspace.shared.openApplication(at: url, configuration: .init(),
                                                                    completionHandler: nil)
                             }
@@ -1403,7 +1579,7 @@ struct IntegrationCardView: View {
                         #if !APPSTORE
                         if let url = NSWorkspace.shared.urlForApplication(
                             withBundleIdentifier: "com.openai.codex") {
-                            Button("Open Codex") {
+                            Button(CoucouL10n.string("Open Codex")) {
                                 NSWorkspace.shared.openApplication(at: url, configuration: .init(),
                                                                    completionHandler: nil)
                             }
@@ -1453,13 +1629,13 @@ struct IntegrationCardView: View {
                             .buttonStyle(.plain)
                     }
                     if task.id == "integration_stripe" && isConfigured {
-                        Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
+                        Button(CoucouL10n.string("Refresh")) { Task { @MainActor in StripePoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     if task.id == "integration_calcom" && isConfigured {
-                        Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
+                        Button(CoucouL10n.string("Refresh")) { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
@@ -1468,7 +1644,7 @@ struct IntegrationCardView: View {
                     if !isConfigured
                        && task.id != "agent_cursor"
                        && task.id != "agent_codex" {
-                        Button("Settings…") {
+                        Button(CoucouL10n.string("Settings…")) {
                             NotificationCenter.default.post(name: .openFullSettings, object: nil)
                         }
                         .font(.system(size: 11))
@@ -1530,7 +1706,7 @@ struct VercelDeploymentListView: View {
                 Text("Vercel")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Deployments")
+                Text(CoucouL10n.string("Deployments"))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
             }
@@ -1699,7 +1875,7 @@ struct ResendCardView: View {
                 Text("Resend")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Emails")
+                Text(CoucouL10n.string("Emails"))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
                 if let total {
@@ -1782,7 +1958,7 @@ struct GitHubStatsCardView: View {
                 Text("GitHub")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Overview")
+                Text(CoucouL10n.string("Overview"))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
             }
@@ -1851,7 +2027,7 @@ struct StripeCardView: View {
                 Text("Stripe")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Payments")
+                Text(CoucouL10n.string("Payments"))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
             }
@@ -2036,7 +2212,7 @@ struct CalcomCalendarView: View {
             HStack(spacing: 6) {
                 Circle().fill(Color(hex: "#C9956A")).frame(width: 7, height: 7)
                 Text("Cal.com").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Schedule").font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+                Text(CoucouL10n.string("Schedule")).font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
             }
             .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
 
@@ -2132,7 +2308,7 @@ struct CalcomDayView: View {
             .padding(.top, 6).padding(.trailing, 12)
 
             if bookings.isEmpty {
-                Text("No calls scheduled").font(.system(size: 11)).foregroundColor(Color(hex: "#6B7079"))
+                Text(CoucouL10n.string("No calls scheduled")).font(.system(size: 11)).foregroundColor(Color(hex: "#6B7079"))
                     .padding(.leading, 116).padding(.top, 8)
             } else {
                 VStack(alignment: .leading, spacing: 3) {
@@ -2229,7 +2405,7 @@ struct NotionCardView: View {
             HStack(spacing: 6) {
                 Circle().fill(Color(hex: "#E8E8E8")).frame(width: 7, height: 7)
                 Text("Notion").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Recent").font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+                Text(CoucouL10n.string("Recent")).font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
             }
             .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
 
@@ -2982,6 +3158,16 @@ struct SettingsIslandView: View {
         KeychainStore.shared.get("anthropic-api-key") != nil
     }
 
+    /// Chat engine badge: the chosen CLI is found on this Mac, or the API has a key.
+    private var chatEngineLabel: String { state.chatEngine?.badge ?? "Chat" }
+    private var chatEngineReady: Bool {
+        switch state.chatEngine {
+        case .api: return apiConnected
+        case .some(let e): return state.detectedCLIs[e] != nil
+        case nil: return !state.detectedCLIs.isEmpty || apiConnected
+        }
+    }
+
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: nil)
@@ -2993,7 +3179,7 @@ struct SettingsIslandView: View {
                         .labelsHidden()
                         .scaleEffect(0.75)
                         .frame(width: 44)
-                    Text("Sound")
+                    Text(CoucouL10n.string("Sound"))
                         .font(.system(size: 12.5))
                         .foregroundColor(Color(hex: "#C5C8CD"))
                     Slider(value: $state.soundVolume, in: 0...0.2)
@@ -3029,9 +3215,9 @@ struct SettingsIslandView: View {
                 // Connection status
                 HStack(spacing: 14) {
                     StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    StatusBadge(label: chatEngineLabel, ok: chatEngineReady)
                     Spacer()
-                    Button("Settings…") {
+                    Button(CoucouL10n.string("Settings…")) {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
                     }
                     .font(.system(size: 11.5))
@@ -3043,6 +3229,9 @@ struct SettingsIslandView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 14)
         }
+        #if !APPSTORE
+        .task { if !state.cliDetectionDone { await state.detectCLIs() } }
+        #endif
     }
 }
 
