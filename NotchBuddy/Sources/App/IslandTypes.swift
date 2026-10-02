@@ -69,7 +69,7 @@ enum AgentSource: Equatable {
 
 // MARK: - Chat provider
 
-enum ChatProvider: String, CaseIterable, Codable {
+enum ChatProvider: String, CaseIterable, Codable, Sendable {
     case anthropic = "anthropic"
     case google    = "google"
     case openai    = "openai"
@@ -105,6 +105,11 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "openai-api-key"
         }
     }
+}
+
+enum ChatAuthMode: String, CaseIterable {
+    case apiKey
+    case cli
 }
 
 // MARK: - View dimensions (from VIEWS in prototype)

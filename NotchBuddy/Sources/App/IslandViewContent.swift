@@ -1180,9 +1180,9 @@ struct IntegrationCardView: View {
             #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
-        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
-        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
-        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_anthropic":  return AppState.shared.chatAvailable(for: .anthropic)
+        case "ai_google":     return AppState.shared.chatAvailable(for: .google)
+        case "ai_openai":     return AppState.shared.chatAvailable(for: .openai)
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil

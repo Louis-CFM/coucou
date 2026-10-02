@@ -204,6 +204,10 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        if state.authMode(for: state.chatProvider) == .cli {
+            await chatWithCLI(query: query, context: context, state: state)
+            return
+        }
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
@@ -247,6 +251,35 @@ final class ClaudeService {
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
+            await showError(error.localizedDescription, state: state)
+        }
+    }
+
+    private func chatWithCLI(query: String, context: PromptContext?, state: AppState) async {
+        var text = "You are Mochi, a personal chat assistant. Reply in the user's language using plain text. Do not use tools.\n\nConversation:\n"
+        for message in state.chatHistory.dropLast() {
+            text += "\(message.role == .user ? "User" : "Assistant"): \(message.content)\n\n"
+        }
+        if state.chatHistory.count <= 1, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                text += "Context: App \(app), window \(title), URL \(url ?? "none")\n"
+            case .file(let name, let fileURL):
+                text += "File: \(name)\n"
+                if let fileURL, let data = try? Data(contentsOf: fileURL), data.count <= 200_000,
+                   let contents = String(data: data, encoding: .utf8) {
+                    text += "File contents:\n\(contents)\n"
+                }
+            }
+        }
+        text += "User: \(query)\nAssistant:"
+        do {
+            let answer = try await CLIChatService.reply(provider: state.chatProvider, model: state.activeChatModel, prompt: text)
+            state.chatHistory.append(ChatMessage(role: .assistant, content: answer.trimmingCharacters(in: .whitespacesAndNewlines)))
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
             await showError(error.localizedDescription, state: state)
         }
     }

@@ -182,6 +182,26 @@ const MODELS: [string, string][] = [
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
   const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(h("option", { value: "anthropic", text: "Anthropic" }), h("option", { value: "openai", text: "OpenAI" }));
+  provider.value = settings.chatProvider;
+  const keyRow = h("div", { class: "row" }, h("label", { text: "API key" }));
+  const modelRow = h("div", { class: "row" }, h("label", { text: "Model" }));
+
+  function updateAuth() {
+    const needsKey = settings.chatProvider === "anthropic";
+    keyRow.style.display = needsKey ? "" : "none";
+    modelRow.style.display = settings.chatProvider === "anthropic" ? "" : "none";
+    dot.style.background = needsKey && !hasKey ? "#f4505e" : "#22c55e";
+    state.textContent = needsKey
+      ? (hasKey ? "Key saved in the OS credential store." : "Add an Anthropic API key to chat.")
+      : "Install Codex CLI and run codex login. Coucou uses that OpenAI account for text chat; file attachments are limited to text files.";
+  }
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value as Settings["chatProvider"];
+    updateAuth();
+    void save();
+  });
 
   const field = h("input", {
     type: "password",
@@ -197,10 +217,8 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
+    hasKey = present;
+    updateAuth();
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
@@ -242,14 +260,18 @@ function apiSection(hasKey: boolean): HTMLElement {
   });
 
   clearBtn.style.display = hasKey ? "" : "none";
+  keyRow.append(field, saveBtn, clearBtn);
+  modelRow.append(model);
+  updateAuth();
 
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Chat" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
+    keyRow,
+    modelRow,
     feedback,
   );
 }

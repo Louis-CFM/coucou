@@ -5,6 +5,8 @@
 // the Credential Manager, and file bytes never cross the IPC boundary.
 
 use std::sync::Mutex;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -21,6 +23,81 @@ const MAX_TOKENS: u32 = 4096;
 const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
+
+/// OpenAI account chat goes through the official Codex CLI. Coucou never reads
+/// its token. Each turn is an isolated text-only process.
+pub async fn send_codex(
+    chat: &Chat,
+    query: String,
+    context: Option<ChatContext>,
+) -> Result<ChatReply, String> {
+    let mut prompt = String::from("You are Mochi, a personal chat assistant. Reply in the user's language using plain text. Do not use tools.\n\nConversation:\n");
+    for message in chat.snapshot() {
+        let role = message.get("role").and_then(Value::as_str).unwrap_or("user");
+        let content = message.get("content").and_then(Value::as_str).or_else(|| {
+            message.get("content").and_then(Value::as_array)?.iter()
+                .find_map(|block| block.get("text").and_then(Value::as_str))
+        }).unwrap_or("");
+        prompt.push_str(&format!("{role}: {content}\n\n"));
+    }
+    if chat.is_empty() {
+        match context {
+            Some(ChatContext::Window { app_name, title, url }) => {
+                prompt.push_str(&format!("Context: App {app_name}, window {title}, URL {}\n", url.unwrap_or_default()));
+            }
+            Some(ChatContext::File { name, path }) => {
+                prompt.push_str(&format!("File: {name}\n"));
+                if let Ok(metadata) = std::fs::metadata(&path) {
+                    if metadata.len() <= MAX_INLINE_TEXT {
+                        if let Ok(contents) = std::fs::read_to_string(&path) {
+                            prompt.push_str(&format!("File contents:\n{contents}\n"));
+                        }
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+    prompt.push_str(&format!("user: {query}\nassistant:"));
+    let answer = tauri::async_runtime::spawn_blocking(move || run_codex(&prompt))
+        .await.map_err(|e| e.to_string())??;
+    chat.push(json!({ "role": "user", "content": query }));
+    chat.push(json!({ "role": "assistant", "content": answer }));
+    Ok(ChatReply { text: answer })
+}
+
+fn run_codex(prompt: &str) -> Result<String, String> {
+    let dir = std::env::temp_dir().join(format!(
+        "coucou-chat-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| e.to_string())?.as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let mut command = Command::new("codex");
+    command.current_dir(&dir).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    command.args(["exec", "--json", "--ephemeral", "--ignore-user-config",
+                  "--skip-git-repo-check", "--sandbox", "read-only", "--cd"])
+        .arg(&dir).arg("-");
+    let mut child = command.spawn().map_err(|e| format!("Install Codex CLI and sign in first: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(prompt.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_dir(&dir);
+    if !output.status.success() {
+        let detail = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("codex: {}", detail.chars().take(500).collect::<String>()));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|event| event.get("type").and_then(Value::as_str) == Some("item.completed"))
+        .filter_map(|event| event.get("item").cloned())
+        .filter(|item| item.get("type").and_then(Value::as_str) == Some("agent_message"))
+        .filter_map(|item| item.get("text").and_then(Value::as_str).map(str::to_string))
+        .last().filter(|text| !text.is_empty())
+        .ok_or_else(|| "Codex returned no answer. Check `codex login status`.".into())
+}
 
 const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \

@@ -60,14 +60,16 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 }
 
 #[tauri::command]
-fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed) = {
+fn save_settings(app: AppHandle, shared: State<Shared>, chat: State<Chat>, settings: Settings) {
+    let (screen_changed, autostart_changed, provider_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let provider_changed = current.chat_provider != settings.chat_provider;
         *current = settings.clone();
-        (screen_changed, autostart_changed)
+        (screen_changed, autostart_changed, provider_changed)
     };
+    if provider_changed { chat.reset(); }
     if let Err(err) = settings::save(&settings) {
         eprintln!("[coucou] could not save settings: {err}");
     }
@@ -241,8 +243,12 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    if settings.chat_provider == "openai" {
+        claude::send_codex(&chat, query, context).await
+    } else {
+        claude::send(&chat, &settings.model, query, context).await
+    }
 }
 
 #[tauri::command]

@@ -63,6 +63,36 @@ final class AppState: ObservableObject {
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
     }
+    @Published var anthropicAuthMode: ChatAuthMode = .apiKey {
+        didSet {
+            UserDefaults.standard.set(anthropicAuthMode.rawValue, forKey: "anthropicAuthMode")
+            fetchedProviderModels.removeValue(forKey: .anthropic)
+            providerModelFetchError.removeValue(forKey: .anthropic)
+        }
+    }
+    @Published var openAIAuthMode: ChatAuthMode = .apiKey {
+        didSet {
+            UserDefaults.standard.set(openAIAuthMode.rawValue, forKey: "openAIAuthMode")
+            fetchedProviderModels.removeValue(forKey: .openai)
+            providerModelFetchError.removeValue(forKey: .openai)
+        }
+    }
+
+    func authMode(for provider: ChatProvider) -> ChatAuthMode {
+        switch provider {
+        case .anthropic: anthropicAuthMode
+        case .openai: openAIAuthMode
+        case .google: .apiKey
+        }
+    }
+
+    func chatAvailable(for provider: ChatProvider) -> Bool {
+        #if APPSTORE
+        if authMode(for: provider) == .cli { return false }
+        #endif
+        if authMode(for: provider) == .cli { return CLIChatService.executable(for: provider) != nil }
+        return KeychainStore.shared.get(provider.keychainKey) != nil
+    }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
         didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
     }
@@ -85,6 +115,17 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        if authMode(for: provider) == .cli {
+            if CLIChatService.executable(for: provider) == nil {
+                providerModelFetchError[provider] = "Install \(provider == .anthropic ? "Claude Code" : "Codex CLI") and sign in first."
+            } else {
+                fetchedProviderModels[provider] = provider == .anthropic
+                    ? [(id: claudeModel, label: claudeModel)]
+                    : [(id: "Codex default", label: "Codex account default")]
+                providerModelFetchError.removeValue(forKey: provider)
+            }
+            return
+        }
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
             providerModelFetchError[provider] = "No API key — add it in Settings."
             return
@@ -99,6 +140,7 @@ final class AppState: ObservableObject {
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
             }
             loadingProviderModels.remove(provider)
+            guard authMode(for: provider) == .apiKey else { return }
             if models.isEmpty {
                 providerModelFetchError[provider] = "Failed to load models. Check your API key."
             } else {
@@ -128,7 +170,7 @@ final class AppState: ObservableObject {
         switch chatProvider {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
-        case .openai:    return openAIChatModel
+        case .openai:    return openAIAuthMode == .cli ? "Codex default" : openAIChatModel
         }
     }
 
@@ -249,6 +291,10 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        #if !APPSTORE
+        if let v = ud.string(forKey: "anthropicAuthMode"), let mode = ChatAuthMode(rawValue: v) { anthropicAuthMode = mode }
+        if let v = ud.string(forKey: "openAIAuthMode"), let mode = ChatAuthMode(rawValue: v) { openAIAuthMode = mode }
+        #endif
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         // Migrate old 60s default → 15s

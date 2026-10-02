@@ -89,8 +89,18 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 18) {
 
                 // MARK: API
-                GroupBox("Anthropic API") {
+                GroupBox("Anthropic chat") {
                     VStack(alignment: .leading, spacing: 8) {
+                        Picker("Sign in", selection: $state.anthropicAuthMode) {
+                            Text("API key").tag(ChatAuthMode.apiKey)
+                            #if !APPSTORE
+                            Text("Claude Code login").tag(ChatAuthMode.cli)
+                            #endif
+                        }
+                        if state.anthropicAuthMode == .cli {
+                            Text("Install Claude Code and run `claude auth login` in Terminal. Coucou uses its signed-in CLI for chat. Text files only in this mode.")
+                                .font(.system(size: 11)).foregroundColor(.secondary)
+                        } else {
                         SecureField("API key (sk-ant-…)", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
                         Button("Save") {
@@ -98,6 +108,7 @@ struct SettingsView: View {
                             statusMessage = "✓ Key saved."
                         }
                         .buttonStyle(.borderedProminent)
+                        }
 
                         Divider().padding(.vertical, 2)
 
@@ -121,7 +132,7 @@ struct SettingsView: View {
                                 .onChange(of: customModel) { _, value in applyCustomModel(value) }
                         }
 
-                        Text("Used by the chat. The list comes from your Anthropic account.")
+                        Text(state.anthropicAuthMode == .cli ? "Claude Code uses your chosen model." : "Used by the chat. The list comes from your Anthropic account.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -152,6 +163,16 @@ struct SettingsView: View {
                             Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
                             Text("OpenAI").font(.system(size: 12, weight: .semibold))
                         }
+                        Picker("Sign in", selection: $state.openAIAuthMode) {
+                            Text("API key").tag(ChatAuthMode.apiKey)
+                            #if !APPSTORE
+                            Text("Codex login").tag(ChatAuthMode.cli)
+                            #endif
+                        }
+                        if state.openAIAuthMode == .cli {
+                            Text("Install Codex CLI and run `codex login` in Terminal. Coucou uses its signed-in CLI and default model for chat. Text files only in this mode.")
+                                .font(.system(size: 11)).foregroundColor(.secondary)
+                        } else {
                         SecureField("API key (sk-…)", text: $openAIKey)
                             .textFieldStyle(.roundedBorder)
                         Button("Save") {
@@ -159,6 +180,7 @@ struct SettingsView: View {
                             statusMessage = "✓ OpenAI key saved."
                         }
                         .buttonStyle(.borderedProminent)
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -853,9 +875,9 @@ struct SettingsView: View {
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
             if def.category == .ai {
-                let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                           : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
-                if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
+                let provider: ChatProvider = def.id == "ai_anthropic" ? .anthropic
+                    : def.id == "ai_google" ? .google : .openai
+                if !state.chatAvailable(for: provider) { return state.authMode(for: provider) == .cli ? "CLI not installed" : "Key not configured" }
             }
             return nil
         }()
