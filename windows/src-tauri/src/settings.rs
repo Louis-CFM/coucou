@@ -20,6 +20,10 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Custom Anthropic base URL (proxy, LiteLLM, Ollama proxy, etc.).
+    /// Falls back to $ANTHROPIC_BASE_URL, then the official Anthropic API.
+    #[serde(default)]
+    pub anthropic_base_url: Option<String>,
 }
 
 fn default_model() -> String {
@@ -43,6 +47,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            anthropic_base_url: None,
         }
     }
 }

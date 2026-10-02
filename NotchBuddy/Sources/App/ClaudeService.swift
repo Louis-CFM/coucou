@@ -108,7 +108,19 @@ final class KeychainStore: @unchecked Sendable {
 final class ClaudeService {
     static let shared = ClaudeService()
 
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
+    private var endpoint: URL {
+        if let custom = ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"]?.trimmingCharacters(in: .whitespacesAndNewlines), !custom.isEmpty {
+            let trimmed = custom.hasSuffix("/") ? String(custom.dropLast()) : custom
+            if trimmed.hasSuffix("/v1/messages") {
+                return URL(string: trimmed) ?? URL(string: "https://api.anthropic.com/v1/messages")!
+            } else if trimmed.hasSuffix("/v1") {
+                return URL(string: "\(trimmed)/messages") ?? URL(string: "https://api.anthropic.com/v1/messages")!
+            } else {
+                return URL(string: "\(trimmed)/v1/messages") ?? URL(string: "https://api.anthropic.com/v1/messages")!
+            }
+        }
+        return URL(string: "https://api.anthropic.com/v1/messages")!
+    }
     private let anthropicVersion = "2023-06-01"
 
     // MARK: - Model list
@@ -116,8 +128,15 @@ final class ClaudeService {
     /// Fetches available models from the Anthropic API in the order the API returns them
     /// (newest first). Returns an empty array on any error — callers fall back to a static list.
     static func fetchModels(apiKey: String) async -> [(id: String, label: String)] {
-        guard let url = URL(string: "https://api.anthropic.com/v1/models?limit=100") else { return [] }
-        var req = URLRequest(url: url, timeoutInterval: 10)
+        let modelsUrl: URL
+        if let custom = ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"]?.trimmingCharacters(in: .whitespacesAndNewlines), !custom.isEmpty {
+            let trimmed = custom.hasSuffix("/") ? String(custom.dropLast()) : custom
+            let base = trimmed.hasSuffix("/v1") ? String(trimmed.dropLast(3)) : trimmed
+            modelsUrl = URL(string: "\(base)/v1/models?limit=100") ?? URL(string: "https://api.anthropic.com/v1/models?limit=100")!
+        } else {
+            modelsUrl = URL(string: "https://api.anthropic.com/v1/models?limit=100")!
+        }
+        var req = URLRequest(url: modelsUrl, timeoutInterval: 10)
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         guard let (data, response) = try? await URLSession.shared.data(for: req),

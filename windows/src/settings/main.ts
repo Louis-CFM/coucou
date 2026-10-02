@@ -243,12 +243,23 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  const baseUrl = h("input", {
+    type: "text",
+    placeholder: "https://api.anthropic.com (or $ANTHROPIC_BASE_URL)",
+    value: settings.anthropicBaseUrl ?? "",
+  }) as HTMLInputElement;
+  baseUrl.addEventListener("change", () => {
+    settings.anthropicBaseUrl = baseUrl.value.trim() || null;
+    void save();
+  });
+
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Base URL" }), baseUrl),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
   );
