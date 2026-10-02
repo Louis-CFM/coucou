@@ -69,17 +69,18 @@ pub struct ChatReply {
 }
 
 /// Resolves custom endpoint tunnel URL. Returns (url, is_custom).
+/// Custom endpoints default to OpenAI API shape (/v1/chat/completions).
 pub fn resolve_endpoint(custom: Option<&str>) -> (String, bool) {
     let Some(raw) = custom.map(str::trim).filter(|s| !s.is_empty()) else {
         return (ENDPOINT.to_string(), false);
     };
     let trimmed = raw.trim_end_matches('/');
-    let resolved = if trimmed.ends_with("/messages") || trimmed.ends_with("/chat/completions") {
+    let resolved = if trimmed.ends_with("/chat/completions") || trimmed.ends_with("/messages") {
         trimmed.to_string()
     } else if trimmed.ends_with("/v1") {
-        format!("{trimmed}/messages")
+        format!("{trimmed}/chat/completions")
     } else {
-        format!("{trimmed}/v1/messages")
+        format!("{trimmed}/v1/chat/completions")
     };
     (resolved, true)
 }
@@ -314,9 +315,10 @@ async fn call(key: &str, url: &str, is_custom: bool, body: &Value) -> Result<Val
         .header("content-type", "application/json");
 
     if !key.is_empty() {
-        req = req.header("x-api-key", key);
         if is_custom {
             req = req.header("authorization", format!("Bearer {key}"));
+        } else {
+            req = req.header("x-api-key", key);
         }
     }
 
@@ -428,7 +430,7 @@ mod tests {
         assert_eq!(resolve_endpoint(Some("   ")), (ENDPOINT.to_string(), false));
         assert_eq!(
             resolve_endpoint(Some("http://localhost:11434/v1")),
-            ("http://localhost:11434/v1/messages".to_string(), true)
+            ("http://localhost:11434/v1/chat/completions".to_string(), true)
         );
         assert_eq!(
             resolve_endpoint(Some("http://localhost:11434/v1/chat/completions")),
@@ -436,7 +438,11 @@ mod tests {
         );
         assert_eq!(
             resolve_endpoint(Some("https://tunnel.example.com")),
-            ("https://tunnel.example.com/v1/messages".to_string(), true)
+            ("https://tunnel.example.com/v1/chat/completions".to_string(), true)
+        );
+        assert_eq!(
+            resolve_endpoint(Some("https://anthropic-proxy.example.com/v1/messages")),
+            ("https://anthropic-proxy.example.com/v1/messages".to_string(), true)
         );
     }
 }

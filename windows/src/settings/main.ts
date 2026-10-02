@@ -267,7 +267,7 @@ function endpointSection(hasKey: boolean): HTMLElement {
 
   const urlInput = h("input", {
     type: "text",
-    placeholder: "http://localhost:11434/v1 or https://proxy.example.com/v1",
+    placeholder: "https://api.openai.com/v1 or http://localhost:11434/v1",
     value: settings.customEndpointUrl,
     style: "flex:1 1 auto;min-width:0",
     autocomplete: "off",
@@ -396,7 +396,7 @@ function endpointSection(hasKey: boolean): HTMLElement {
     modelFeedback,
     h("span", {
       class: "hint",
-      text: "Never shares your Anthropic API key. Requests use custom key or no auth.",
+      text: "Never shares your Anthropic API key. Uses OpenAI-compatible chat API (/v1/chat/completions).",
     }),
   );
 
