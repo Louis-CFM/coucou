@@ -172,6 +172,9 @@ What changes on Linux:
   `COUCOU_X11=0` keeps the native Wayland window, `COUCOU_DOCK=0` makes it a
   utility window instead of a dock. `COUCOU_LAYER_SHELL=0` forces the regular
   window anywhere.
+- **Moving the island**: drag the open island by its background. The spot is
+  remembered; tray → "Move island back to the top" puts it back. Not on
+  layer-shell compositors, which pin it to the top edge.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland

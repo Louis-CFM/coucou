@@ -160,8 +160,16 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let offset = saved_offset(app).filter(|_| platform::island_movable());
+    let (x, y) = match offset {
+        Some(off) => {
+            let (ox, oy) = clamp_offset(off, (ms.width as f64 / scale, ms.height as f64 / scale));
+            // The wake strip sits centred under where the panel's top edge is.
+            let ox = if collapsed { ox + (PANEL_W - STRIP_W) / 2.0 } else { ox };
+            (mp.x + (ox * scale).round() as i32, mp.y + (oy * scale).round() as i32)
+        }
+        None => (mp.x + (ms.width as i32 - pw as i32) / 2, mp.y),
+    };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -175,6 +183,41 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+}
+
+fn saved_offset(app: &AppHandle) -> Option<(f64, f64)> {
+    app.try_state::<crate::Shared>()?.settings.lock().unwrap().island_offset
+}
+
+/// Keeps the whole panel on a screen of `screen` logical size, so a saved
+/// position from a bigger display never leaves the island out of reach.
+pub fn clamp_offset((x, y): (f64, f64), (w, h): (f64, f64)) -> (f64, f64) {
+    (x.clamp(0.0, (w - PANEL_W).max(0.0)), y.clamp(0.0, (h - PANEL_H).max(0.0)))
+}
+
+/// Moves the island by a drag delta in logical pixels.
+pub fn move_by(app: &AppHandle, dx: f64, dy: f64) {
+    if !platform::island_movable() {
+        return;
+    }
+    let Some(win) = window(app) else { return };
+    let Ok(pos) = win.outer_position() else { return };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let x = pos.x + (dx * scale).round() as i32;
+    let y = pos.y + (dy * scale).round() as i32;
+    let _ = win.set_position(PhysicalPosition::new(x, y));
+}
+
+/// The panel's current top-left as an offset on its display, clamped.
+pub fn current_offset(app: &AppHandle, pref: &str) -> Option<(f64, f64)> {
+    let win = window(app)?;
+    let pos = win.outer_position().ok()?;
+    let m = target_monitor(app, pref)?;
+    let scale = m.scale_factor();
+    let mp = m.position();
+    let ms = m.size();
+    let off = ((pos.x - mp.x) as f64 / scale, (pos.y - mp.y) as f64 / scale);
+    Some(clamp_offset(off, (ms.width as f64 / scale, ms.height as f64 / scale)))
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here
@@ -321,5 +364,20 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_saved_position_always_keeps_the_panel_on_screen() {
+        let screen = (1920.0, 1080.0);
+        assert_eq!(clamp_offset((100.0, 200.0), screen), (100.0, 200.0));
+        assert_eq!(clamp_offset((-50.0, -10.0), screen), (0.0, 0.0));
+        assert_eq!(clamp_offset((5000.0, 5000.0), screen), (1920.0 - PANEL_W, 1080.0 - PANEL_H));
+        // A display smaller than the panel pins it to the corner.
+        assert_eq!(clamp_offset((300.0, 300.0), (600.0, 200.0)), (0.0, 0.0));
     }
 }
