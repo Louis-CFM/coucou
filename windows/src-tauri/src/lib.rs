@@ -8,6 +8,7 @@ mod integrations;
 mod island;
 mod log;
 mod openai;
+mod openrouter;
 mod pipe;
 mod secrets;
 mod settings;
@@ -263,21 +264,29 @@ async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     openai_chat: State<'_, openai::Chat>,
+    openrouter_chat: State<'_, openrouter::Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
-    if settings.provider == "openai" {
-        openai::send(&openai_chat, &settings.model, query, context).await
-    } else {
-        claude::send(&chat, &settings.model, query, context).await
+    match settings.provider.as_str() {
+        "openai" => openai::send(&openai_chat, &settings.model, query, context).await,
+        "openrouter" => {
+            openrouter::send(&openrouter_chat, &settings.model, query, context).await
+        }
+        _ => claude::send(&chat, &settings.model, query, context).await,
     }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>, openai_chat: State<openai::Chat>) {
+fn chat_reset(
+    chat: State<Chat>,
+    openai_chat: State<openai::Chat>,
+    openrouter_chat: State<openrouter::Chat>,
+) {
     chat.reset();
     openai_chat.reset();
+    openrouter_chat.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -404,6 +413,7 @@ pub fn run() {
         .manage(Pending::default())
         .manage(Chat::default())
         .manage(openai::Chat::default())
+        .manage(openrouter::Chat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,

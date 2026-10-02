@@ -93,7 +93,7 @@ export interface Settings {
   /** Claude model used by the chat. */
   model: string;
   /** Provider used for new chat turns. */
-  provider: "claude" | "openai";
+  provider: "claude" | "openai" | "openrouter";
 }
 
 export const DEFAULT_SETTINGS: Settings = {

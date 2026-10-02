@@ -94,15 +94,23 @@ be approved from Mochi, and no keyboard simulation is used as a fallback.
 
 ## 3. Chat API (Windows)
 
-The Windows chat has an explicit provider selector: **Claude API** or
-**OpenAI API**. Each provider has its own model list and its own key in
-Windows Credential Manager (`anthropic-api-key` and `openai-api-key`). Keys
+The Windows chat has an explicit provider selector: **Claude API**, **OpenAI
+API**, or **OpenRouter**. Each provider has its own model list and its own key
+in Windows Credential Manager (`anthropic-api-key`, `openai-api-key`, and
+`openrouter-api-key`). Keys
 are never written to settings JSON, logs, or sent to the frontend.
 
 OpenAI requests use `POST https://api.openai.com/v1/chat/completions` with an
 Authorization header carrying the API key and preserve a separate multi-turn history from
 Claude. A missing or invalid key is reported without falling back to another
 provider, so changing providers is always an explicit settings action.
+
+OpenRouter uses `POST https://openrouter.ai/api/v1/chat/completions` with
+authenticated requests and the stable `HTTP-Referer` and `X-Title` headers for
+Coucou. Its `:free` models are not anonymous or unlimited: an OpenRouter
+account and API key are required, and the account's quotas and rate limits
+apply. Errors and provider histories remain isolated, so a failed OpenRouter
+request does not fall back to Claude or OpenAI.
 
 An OpenAI API key is not the same credential as ChatGPT or Codex CLI OAuth.
 ChatGPT/Codex sign-in does not make the API key available to Coucou; Coucou

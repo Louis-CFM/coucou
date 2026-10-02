@@ -287,9 +287,18 @@ const OPENAI_MODELS: [string, string][] = [
   ["gpt-4o", "GPT-4o"],
   ["gpt-4.1", "GPT-4.1"],
 ];
+const OPENROUTER_MODELS: [string, string][] = [
+  ["openai/gpt-oss-20b:free", "GPT-OSS 20B (free)"],
+  ["meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (free)"],
+  ["google/gemma-3-27b-it:free", "Gemma 3 27B (free)"],
+];
 
-function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElement {
-  const dot = statusDot(hasAnthropicKey || hasOpenAiKey);
+function apiSection(
+  hasAnthropicKey: boolean,
+  hasOpenAiKey: boolean,
+  hasOpenRouterKey: boolean,
+): HTMLElement {
+  const dot = statusDot(hasAnthropicKey || hasOpenAiKey || hasOpenRouterKey);
   const state = h("span", { class: "hint" });
 
   const field = h("input", {
@@ -300,18 +309,26 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
     spellcheck: "false",
   }) as HTMLInputElement;
 
+  const keyName = () => settings.provider === "openai"
+    ? "openai-api-key"
+    : settings.provider === "openrouter" ? "openrouter-api-key" : "anthropic-api-key";
+
   const saveBtn = h("button", { class: "primary", text: "Save key" });
   const clearBtn = h("button", { class: "danger", text: "Remove" });
   const feedback = h("div", {});
 
   async function refresh() {
-    const keyName = settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key";
-    const present = (await Bridge.secretPresent(keyName)) ?? false;
+    const present = (await Bridge.secretPresent(keyName())) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
       ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the selected provider needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : settings.provider === "openai" ? "sk-..." : "sk-ant-...";
+      : settings.provider === "openrouter"
+        ? "No key yet — OpenRouter requires an account and key, including for free models."
+        : "No key yet — the selected provider needs one.";
+    field.placeholder = present
+      ? "••••••••••••  (stored)"
+      : settings.provider === "openai" ? "sk-..."
+        : settings.provider === "openrouter" ? "sk-or-v1-..." : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
 
@@ -320,7 +337,7 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
     if (!value) return;
     clear(feedback);
     try {
-      await Bridge.secretSet(settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key", value);
+      await Bridge.secretSet(keyName(), value);
       field.value = "";
       feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
       await refresh();
@@ -332,7 +349,7 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
   clearBtn.addEventListener("click", async () => {
     clear(feedback);
     try {
-      await Bridge.secretClear(settings.provider === "openai" ? "openai-api-key" : "anthropic-api-key");
+      await Bridge.secretClear(keyName());
       feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
       await refresh();
     } catch (err) {
@@ -341,12 +358,18 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
   });
 
   const provider = h("select", {}) as HTMLSelectElement;
-  provider.append(h("option", { value: "claude", text: "Claude API" }), h("option", { value: "openai", text: "OpenAI API" }));
+  provider.append(
+    h("option", { value: "claude", text: "Claude API" }),
+    h("option", { value: "openai", text: "OpenAI API" }),
+    h("option", { value: "openrouter", text: "OpenRouter" }),
+  );
   provider.value = settings.provider;
   const model = h("select", {}) as HTMLSelectElement;
   const refreshModels = () => {
     clear(model);
-    const models = settings.provider === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
+    const models = settings.provider === "openai"
+      ? OPENAI_MODELS
+      : settings.provider === "openrouter" ? OPENROUTER_MODELS : CLAUDE_MODELS;
     for (const [id, label] of models) model.append(h("option", { value: id, text: label }));
     if (!models.some(([id]) => id === settings.model)) settings.model = models[0][0];
     model.value = settings.model;
@@ -362,7 +385,10 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
     void save();
   });
 
-  clearBtn.style.display = (settings.provider === "openai" ? hasOpenAiKey : hasAnthropicKey) ? "" : "none";
+  clearBtn.style.display = (
+    settings.provider === "openai" ? hasOpenAiKey
+      : settings.provider === "openrouter" ? hasOpenRouterKey : hasAnthropicKey
+  ) ? "" : "none";
   refreshModels();
 
   return h(
@@ -373,6 +399,9 @@ function apiSection(hasAnthropicKey: boolean, hasOpenAiKey: boolean): HTMLElemen
     h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    settings.provider === "openrouter"
+      ? h("div", { class: "hint", text: "OpenRouter free models still require an OpenRouter account and API key. Quotas and rate limits apply; free access is not unlimited." })
+      : h("span"),
     feedback,
   );
 }
@@ -557,6 +586,7 @@ async function main() {
 
   const hasAnthropicKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
   const hasOpenAiKey = (await Bridge.secretPresent("openai-api-key")) ?? false;
+  const hasOpenRouterKey = (await Bridge.secretPresent("openrouter-api-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -570,7 +600,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     codexSection(codexStatus),
-    apiSection(hasAnthropicKey, hasOpenAiKey),
+    apiSection(hasAnthropicKey, hasOpenAiKey, hasOpenRouterKey),
     integrationsSection(present),
     generalSection(),
     h("div", {

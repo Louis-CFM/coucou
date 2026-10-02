@@ -158,11 +158,18 @@ removes only Coucou's entries and preserves unrelated hooks.
 
 ## Chat and keys
 
-**Settings… → Chat provider** has an explicit provider selector for Claude API
-and OpenAI API, plus a separate model selector. The selected API key is stored
+**Settings… → Chat provider** has an explicit provider selector for Claude API,
+OpenAI API, and OpenRouter, plus a separate model selector. The selected API key is stored
 in the **Windows Credential Manager**, never in settings files, logs, or the
 frontend — the island can only ask whether a key exists. Claude uses the
-Anthropic API key (`sk-ant-…`); OpenAI uses an OpenAI API key (`sk-…`).
+Anthropic API key (`sk-ant-…`); OpenAI uses an OpenAI API key (`sk-…`);
+OpenRouter uses a separate `openrouter-api-key` credential (`sk-or-v1-…`).
+
+OpenRouter uses its OpenAI-compatible chat endpoint and sends the stable
+application headers `HTTP-Referer: https://github.com/Louis-CFM/coucou` and
+`X-Title: Coucou`. The listed `:free` models still require an OpenRouter
+account and API key. OpenRouter quotas and rate limits apply, so Coucou makes
+no promise of unlimited free access.
 
 This API-key integration is separate from ChatGPT or Codex CLI OAuth
 authentication. Signing into ChatGPT/Codex does not provide Coucou with an
