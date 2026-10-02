@@ -243,8 +243,11 @@ struct ApprovalView: View {
                     PrimaryButton("Allow") {
                         HookServer.shared.sendApprovalDecision("allow")
                     }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+                    // Codex rejects updatedPermissions, so "Always" is not offered
+                    if approval?.pillId != "agent_codex" {
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
                     }
                 }
             }

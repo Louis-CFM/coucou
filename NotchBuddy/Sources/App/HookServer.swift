@@ -231,10 +231,22 @@ final class HookServer: @unchecked Sendable {
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
 
-        // Routing: coucou_agent → external pill; Cursor → agent_cursor; VS Code → integration_claude.
+        // Routing:
+        // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
+        // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
+        // • Cursor bundle ID → agent_cursor
+        // • VS Code → integration_claude
+        #if !APPSTORE
+        let isCodexEvent = rawAgent == "codex"
+        #else
+        let isCodexEvent = false
+        #endif
         let agentId: String
         let isExternalAgent: Bool
-        if let agent = validAgent {
+        if isCodexEvent {
+            agentId = "agent_codex"
+            isExternalAgent = false
+        } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
         } else if isCursorEditor {
@@ -253,7 +265,12 @@ final class HookServer: @unchecked Sendable {
         // While a permission request is pending, dismiss when the resolving event arrives,
         // then continue normal processing. Only skip normal processing when unresolved.
         if let pending = state.pendingApproval, agentId == pending.pillId {
-            let handledNote = pending.pillId == "agent_cursor" ? "Handled in Cursor." : "Handled in VS Code."
+            let handledNote: String
+            switch pending.pillId {
+            case "agent_cursor": handledNote = "Handled in Cursor."
+            case "agent_codex":  handledNote = "Handled in Codex."
+            default:             handledNote = "Handled in VS Code."
+            }
             var resolved = false
             switch name {
             case "PostToolUse", "PostToolUseFailure":
@@ -265,7 +282,7 @@ final class HookServer: @unchecked Sendable {
                     dismissApprovalCard(note: handledNote)
                     resolved = true
                 }
-            case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd":
+            case "Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt":
                 // Turn ended or session interrupted — the permission is moot.
                 if sessionId == pending.sessionId {
                     dismissApprovalCard(note: handledNote)
@@ -351,6 +368,12 @@ final class HookServer: @unchecked Sendable {
             } else {
                 setPillBadge(id: agentId, badge: .error)
             }
+
+        case "Interrupt":
+            // Codex: user stopped the turn
+            activeSessionId = nil
+            state.updateTask(id: agentId, state: .idle)
+            clearPillBadge(id: agentId)
 
         case "SessionEnd":
             activeSessionId = nil
@@ -441,12 +464,23 @@ final class HookServer: @unchecked Sendable {
         let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
-        // External agents (coucou_agent) do not yet get an approval card — answering
-        // would show a card that looks like a Claude Code request. Reply immediately
-        // with no decision so the relay writes nothing and the agent re-asks in its
-        // terminal. Approval support for other agents will come with Codex support.
         let rawAgent = payload["coucou_agent"] as? String ?? ""
-        if Self.validateAgent(rawAgent) != nil {
+        let termProgram = payload["term_program"] as? String ?? ""
+        let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+
+        // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
+        // Other external agents (any other coucou_agent) answer immediately with "ask"
+        // so the agent re-asks in its own terminal — they do not get a notch card.
+        #if !APPSTORE
+        let isCodexRequest = rawAgent == "codex"
+        #else
+        let isCodexRequest = false
+        #endif
+        if !isCodexRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -454,15 +488,16 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let termProgram = payload["term_program"] as? String ?? ""
-        let bundleId    = payload["bundle_id"]    as? String ?? ""
-        // Cursor identified solely by its stable Electron bundle ID.
-        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
-        let pillId = isCursorEditor ? "agent_cursor" : "integration_claude"
-        guard isCursorEditor || isVSCodeEditor else {
+        // Determine which workspace pill owns the request.
+        let pillId: String
+        if isCodexRequest {
+            pillId = "agent_codex"
+        } else if isCursorEditor {
+            pillId = "agent_cursor"
+        } else {
+            pillId = "integration_claude"
+        }
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -510,7 +545,12 @@ final class HookServer: @unchecked Sendable {
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         source.setEventHandler { [weak self] in
             guard let self, self.pendingApprovalFD == fd else { return }
-            let note = capturedPillId == "agent_cursor" ? "Handled in Cursor." : "Handled in VS Code."
+            let note: String
+            switch capturedPillId {
+            case "agent_cursor": note = "Handled in Cursor."
+            case "agent_codex":  note = "Handled in Codex."
+            default:             note = "Handled in VS Code."
+            }
             self.dismissApprovalCard(note: note)
         }
         source.setCancelHandler { close(fd) }
@@ -518,11 +558,16 @@ final class HookServer: @unchecked Sendable {
         approvalFDSource = source
 
         // 115s safety timeout — show a note and cancel without sending a decision.
-        // nb-hook reads EOF from the cancel handler's close and exits; Claude Code re-asks.
+        // nb-hook reads EOF from the cancel handler's close and exits; Claude Code / Codex re-asks.
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
             guard let self, self.pendingApprovalFD == captured else { return }
-            let note = capturedPillId == "agent_cursor" ? "Still waiting in Cursor." : "Still waiting in VS Code."
+            let note: String
+            switch capturedPillId {
+            case "agent_cursor": note = "Still waiting in Cursor."
+            case "agent_codex":  note = "Still waiting in Codex."
+            default:             note = "Still waiting in VS Code."
+            }
             self.dismissApprovalCard(note: note)
         }
     }
@@ -637,32 +682,83 @@ final class HookServer: @unchecked Sendable {
 
     private func frenchStep(tool: String, input: [String: Any]) -> String {
         let labels: [String: String] = [
-            "Bash":       "Exécute",
-            "Read":       "Lit",
-            "Write":      "Écrit",
-            "Edit":       "Modifie",
-            "Glob":       "Cherche",
-            "Grep":       "Recherche",
-            "WebSearch":  "Recherche web",
-            "WebFetch":   "Récupère",
-            "TodoWrite":  "Tâches",
-            "Task":       "Agent",
-            "LS":         "Liste",
-            "MultiEdit":  "Modifie",
+            "Bash":        "Exécute",
+            "Read":        "Lit",
+            "Write":       "Écrit",
+            "Edit":        "Modifie",
+            "Glob":        "Cherche",
+            "Grep":        "Recherche",
+            "WebSearch":   "Recherche web",
+            "WebFetch":    "Récupère",
+            "TodoWrite":   "Tâches",
+            "Task":        "Agent",
+            "LS":          "Liste",
+            "MultiEdit":   "Modifie",
             "NotebookEdit": "Notebook",
+            // Codex tools
+            "apply_patch": "Modifie",
+            "update_plan": "Tâches",
+            "spawn_agent": "Agent",
         ]
-        let label = labels[tool] ?? tool
+        var label = labels[tool] ?? tool
+
+        // Codex MCP tools arrive as mcp__server__tool — show "server · tool"
+        if tool.hasPrefix("mcp__") {
+            let rest = String(tool.dropFirst(5))
+            let parts = rest.components(separatedBy: "__")
+            label = parts.count >= 2 ? "\(parts[0]) · \(parts.dropFirst().joined(separator: "__"))" : rest
+        }
+
+        // Bash: infer a more precise verb from the command
+        if tool == "Bash", let cmd = input["command"] as? String {
+            return "\(bashVerb(cmd)) · \(oneLine(cmd))"
+        }
+
+        // apply_patch: extract the first file name from the patch
+        if tool == "apply_patch", let patch = input["command"] as? String {
+            for line in patch.split(separator: "\n") {
+                for prefix in ["*** Update File: ", "*** Add File: ", "*** Delete File: "] {
+                    if line.hasPrefix(prefix) {
+                        let path = String(line.dropFirst(prefix.count))
+                        return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
+                    }
+                }
+            }
+            return label
+        }
+
         if let cmd = input["command"] as? String {
-            let short = String(cmd.prefix(40))
-            return "\(label) · \(short)"
+            return "\(label) · \(oneLine(cmd))"
         } else if let path = input["path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
         } else if let file = input["file_path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: file).lastPathComponent)"
         } else if let query = input["query"] as? String {
-            return "\(label) · \(String(query.prefix(40)))"
+            return "\(label) · \(oneLine(query))"
         }
         return label
+    }
+
+    /// Infers a French verb from a shell command's first word.
+    private func bashVerb(_ command: String) -> String {
+        let first = command.split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? ""
+        switch first {
+        case "cat", "bat", "head", "tail", "less", "more", "nl": return "Lit"
+        case "rg", "grep", "find", "fd", "ls", "tree", "wc":    return "Cherche"
+        default: break
+        }
+        let testRunners = ["pytest", "vitest", "jest", "npm test", "npm run test",
+                           "cargo test", "go test", "swift test", "make test",
+                           "xcodebuild test", "unittest"]
+        if testRunners.contains(where: { command.contains($0) }) { return "Teste" }
+        return "Exécute"
+    }
+
+    /// Collapses whitespace so a multi-line command stays one ticker row.
+    private func oneLine(_ text: String, limit: Int = 60) -> String {
+        let collapsed = text.split(whereSeparator: { $0.isNewline || $0 == "\t" })
+                            .joined(separator: " ")
+        return collapsed.count > limit ? String(collapsed.prefix(limit)) + "…" : collapsed
     }
 
     // MARK: - Logging
@@ -1174,6 +1270,129 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    // MARK: - Codex hook installer  (#if !APPSTORE only)
+
+    static var codexHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
+    }
+
+    /// True when ~/.codex/hooks.json already routes Codex events to Coucou's nb-hook.
+    static func codexHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: codexHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let hooks = root["hooks"] as? [String: Any] else { return false }
+        for value in hooks.values {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                if let innerHooks = group["hooks"] as? [[String: Any]] {
+                    for hook in innerHooks {
+                        if let cmd = hook["command"] as? String,
+                           cmd.contains("nb-hook"), cmd.contains("--agent codex") { return true }
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private var _pendingCodexData: Data?
+    private var _pendingCodexFingerprint: String?
+
+    func previewCodexHooks(install: Bool) throws -> String {
+        let url = Self.codexHooksURL
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        if !install && !exists {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Codex hooks to remove."
+            ])
+        }
+        let current = exists ? try Data(contentsOf: url) : Data()
+        _pendingCodexFingerprint = sha256Hex(current)
+        let newData = install ? try buildCodexHooksData() : try withoutCodexHooks()
+        _pendingCodexData = newData
+        return String(data: newData, encoding: .utf8) ?? ""
+    }
+
+    func writeCodexHooks() throws {
+        guard let data = _pendingCodexData, let fp = _pendingCodexFingerprint else { return }
+        let url = Self.codexHooksURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        _pendingCodexData = nil
+        _pendingCodexFingerprint = nil
+    }
+
+    private func buildCodexHooksData() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        let base = hookBase()
+        // Events, timeouts in seconds (Codex format).
+        // PermissionRequest uses 120s + a statusMessage shown in the Codex UI while waiting.
+        let events: [(String, Int, String?)] = [
+            ("SessionStart",    10,  nil),
+            ("UserPromptSubmit", 10, nil),
+            ("PreToolUse",      10,  nil),
+            ("PermissionRequest", 120, "Waiting for your answer in the notch (Coucou)"),
+            ("PostToolUse",     10,  nil),
+            ("Stop",            10,  nil),
+            ("SubagentStart",   10,  nil),
+            ("SubagentStop",    10,  nil),
+            ("Interrupt",        3,  nil),
+            ("SessionEnd",       3,  nil),
+        ]
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for (event, timeout, statusMsg) in events {
+            if let raw = hooks[event], !(raw is [[String: Any]]) {
+                throw NSError(domain: "Coucou", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                ])
+            }
+            var groups = hooks[event] as? [[String: Any]] ?? []
+            // Remove existing Coucou entries
+            groups = removeNbHookEntries(from: groups)
+            var hookEntry: [String: Any] = [
+                "type": "command",
+                "command": "\(base) --agent codex",
+                "timeout": timeout,
+            ]
+            if let msg = statusMsg { hookEntry["statusMessage"] = msg }
+            groups.append(["hooks": [hookEntry]])
+            hooks[event] = groups
+        }
+        root["hooks"] = hooks
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    private func withoutCodexHooks() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        if var hooks = root["hooks"] as? [String: Any] {
+            for key in hooks.keys {
+                if let groups = hooks[key] as? [[String: Any]] {
+                    let cleaned = removeNbHookEntries(from: groups)
+                    if cleaned.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = cleaned }
+                }
+            }
+            if hooks.isEmpty { root.removeValue(forKey: "hooks") } else { root["hooks"] = hooks }
+        }
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
     // MARK: SHA-256 fingerprint
 
     private func sha256Hex(_ data: Data) -> String {
@@ -1334,10 +1553,16 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and agent != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'always':
+                    # Codex rejects updatedPermissions — answer a plain allow instead
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -1346,11 +1571,11 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code re-asks
+                # 'ask' or unknown: fall through → no output → agent re-asks
         except Exception:
             pass
         # App unreachable, timed out, or no explicit decision — print nothing
-        # Claude Code will handle the absence of output (re-ask or default behaviour)
+        # Claude Code / Codex will handle the absence of output (re-ask or default behaviour)
         sys.exit(0)
 
     # All other events: fire-and-forget (0.3s timeout, never blocks)
@@ -1361,7 +1586,7 @@ def main():
         s.sendall((json.dumps(payload) + '\\n').encode())
         s.close()
     except Exception:
-        pass  # Always exit cleanly — never block Claude Code
+        pass  # Always exit cleanly — never block the agent
 
     # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
     if agent in ('gemini', 'antigravity'):
@@ -1497,10 +1722,16 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                elif decision == 'always':
+                elif decision == 'always' and agent != 'codex':
                     # Let Claude Code persist the rule via updatedPermissions
                     suggestions = payload.get('permission_suggestions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'always':
+                    # Codex rejects updatedPermissions — answer a plain allow instead
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -1509,7 +1740,7 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code re-asks
+                # 'ask' or unknown: fall through → no output → agent re-asks
         except Exception:
             pass
         # App unreachable, timed out, or no explicit decision — print nothing
@@ -1522,7 +1753,7 @@ def main():
         s.sendall((json.dumps(payload) + '\\n').encode())
         s.close()
     except Exception:
-        pass  # Always exit cleanly — never block Claude Code
+        pass  # Always exit cleanly — never block the agent
 
     # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
     if agent in ('gemini', 'antigravity'):

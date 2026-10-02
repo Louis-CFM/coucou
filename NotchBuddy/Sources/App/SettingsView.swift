@@ -42,6 +42,11 @@ struct SettingsView: View {
     @State private var showAgyDiff: Bool = false
     @State private var pendingAgyJSON: String = ""
     @State private var agyPendingInstall: Bool = true
+
+    @State private var codexHooksInstalled: Bool = HookServer.codexHooksInstalled()
+    @State private var showCodexDiff: Bool = false
+    @State private var pendingCodexJSON: String = ""
+    @State private var codexPendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
@@ -281,6 +286,39 @@ struct SettingsView: View {
                                 Button("Confirm & write") { confirmAgyOp() }
                                     .buttonStyle(.borderedProminent)
                                 Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
+
+                GroupBox("Codex Hooks") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(codexHooksInstalled
+                             ? "Hooks installed — open Codex and run /hooks or open Hooks in the app's settings to trust them"
+                             : "~/.codex/hooks.json")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 10) {
+                            Button("Install hooks") { triggerCodexPreview(install: true) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Uninstall") { triggerCodexPreview(install: false) }
+                                .buttonStyle(.bordered)
+                        }
+                        if showCodexDiff {
+                            ScrollView {
+                                Text(pendingCodexJSON)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 140)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(6)
+                            HStack {
+                                Button("Confirm & write") { confirmCodexOp() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
                                     .buttonStyle(.bordered)
                             }
                         }
@@ -680,6 +718,33 @@ struct SettingsView: View {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
+
+    private func triggerCodexPreview(install: Bool) {
+        do {
+            codexPendingInstall = install
+            pendingCodexJSON = try HookServer.shared.previewCodexHooks(install: install)
+            showCodexDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmCodexOp() {
+        do {
+            try HookServer.shared.writeCodexHooks()
+            showCodexDiff = false
+            pendingCodexJSON = ""
+            codexHooksInstalled = codexPendingInstall
+            statusMessage = codexPendingInstall
+                ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
+                : "✓ Codex hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
     #endif
 
     private func saveIntegrations() {
@@ -783,8 +848,9 @@ struct SettingsView: View {
             if isMain { return nil }
             if def.comingSoon { return "Coming soon" }
             #if !APPSTORE
-            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled() { return "Hooks not installed" }
+            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
+            if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
             if def.category == .ai {
                 let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"

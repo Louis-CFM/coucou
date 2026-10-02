@@ -96,7 +96,7 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 
 | Catégorie | Titre | Pastilles | Subtitle (repos) | Subtitle (session) |
 |---|---|---|---|---|
-| `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(coming soon, GitHub only)* | Integration | Claude Code / Cursor / Agent |
+| `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI | Chat | — |
 | `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe | Integration | — |
@@ -110,7 +110,7 @@ Règles :
 - `removeTask` sur `mainPillId` ou une pastille déclarée + active → reset à `.idle` + `pillBadge = nil` + nom du catalogue (pas de suppression). Sinon → suppression normale.
 - `sortTasksByCatalog` : pastilles du catalogue dans l'ordre du catalogue ; pastilles hors catalogue juste après `integration_claude`.
 - Pastilles `githubOnly` : exclues des builds App Store (`#if APPSTORE`).
-- Hooks (Gemini CLI, Antigravity) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` sous `#if !APPSTORE`.
+- Hooks (Gemini CLI, Antigravity, Codex) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` / `codexHooksInstalled()` sous `#if !APPSTORE`. La section Codex Hooks dans Settings installe les hooks dans `~/.codex/hooks.json` avec le même flux backup + preview que Gemini CLI. Après l'installation, la carte affiche : « run /hooks in Codex or open Hooks in the app's settings to trust them ». Approbations Codex : carte avec Allow et Deny seulement (pas Always) ; updatedPermissions jamais envoyé ; notes « Handled in Codex. » / « Still waiting in Codex. ».
 - Pastilles IA : `isConfigured` = clé API dans le Keychain. Bouton « Chat with… » → change le fournisseur et ouvre la vue `.prompt`.
 
 ### Boutons
