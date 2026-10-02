@@ -163,6 +163,13 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y;
 
+    // GTK never sizes a non-resizable window below its natural size (200 px
+    // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
+    // re-applies the config's `resizable: false` after the first configure, so
+    // this is asked every time, just before the resize. Undecorated, the window
+    // still offers the user nothing to resize it by. (Found by @YossiYad, #44.)
+    #[cfg(target_os = "linux")]
+    let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Moving across displays can rescale the window: re-assert the physical size.
@@ -287,7 +294,10 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     }
     let Some(win) = window(app) else { return };
     let region = if gate.collapsed.load(Ordering::Relaxed) {
-        None
+        // The wake strip itself, never "the whole window": if the window ever
+        // fails to shrink to the strip, the rest of it must not swallow clicks
+        // meant for whatever sits under the top of the screen.
+        Some((0.0, 0.0, STRIP_W, STRIP_H))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {
