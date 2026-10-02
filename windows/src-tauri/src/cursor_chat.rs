@@ -53,8 +53,15 @@ struct CliResult {
     session_id: Option<String>,
 }
 
+/// The installer puts the CLI in ~/.local/bin, which a session started from the
+/// desktop launcher often does not have on its PATH.
 fn cli_path() -> Option<std::path::PathBuf> {
-    platform::find_on_path("agent").or_else(|| platform::find_on_path("cursor-agent"))
+    platform::find_on_path("agent")
+        .or_else(|| platform::find_on_path("cursor-agent"))
+        .or_else(|| {
+            let bin = platform::home_dir().join(".local").join("bin");
+            ["agent", "cursor-agent"].into_iter().map(|n| bin.join(n)).find(|p| p.is_file())
+        })
 }
 
 fn workdir() -> Result<std::path::PathBuf, String> {
