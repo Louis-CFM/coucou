@@ -13,3 +13,4 @@
 - Windows build artifacts are now downloadable from a manual CI run — thanks @MysJofR
 - Any agent can talk to Mochi: tag a hook payload with `coucou_agent` (e.g. `nb-hook --agent my-agent`) and it gets its own pill in the island (#7, #9) — thanks @lacatu5
 - Gemini CLI and Antigravity (agy) hook support on macOS: install from Settings and their sessions show up in the island — thanks @corefusiion
+- The island's settings card shows real status again: the hook dot reflects any harness (Claude Code, Cursor, Codex) instead of only Claude Code, and the API dot turns green when the active chat provider has a key or needs none, instead of always red (Windows)

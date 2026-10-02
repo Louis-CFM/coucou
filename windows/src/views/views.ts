@@ -458,13 +458,19 @@ function buildSettings(actions: ViewActions): ViewHost {
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
       autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
+      const hooked = State.harnesses.some((x) => x.installed) || s.hooksInstalled;
       clear(claudeBadge);
       claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
-        h("span", { text: "Claude Code" }),
+        dot(hooked ? "#22C55E" : "#F4505E", 6),
+        h("span", { text: "Hooks" }),
       );
+      const active = State.providers.find((r) => r.id === s.chatProvider);
+      // Same rule as the Settings gateway rows: green when a key is stored or the
+      // provider is keyless, red when a key is needed and missing.
+      const apiOk = active !== undefined && active.unavailable === null
+        && (active.keyPresent || active.keyless);
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      apiBadge.append(dot(apiOk ? "#22C55E" : "#F4505E", 6), h("span", { text: "API" }));
     },
   };
 }

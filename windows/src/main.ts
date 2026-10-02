@@ -63,6 +63,12 @@ async function main() {
     island.applySettings();
     State.loadIntegrationTasks();
     void refreshConfigured();
+    // Hook installs land here too (hooks_apply emits settings-changed), so the
+    // harness table has to be re-read or the settings card's dot stays stale.
+    void Bridge.hookHarnesses().then((rows) => {
+      if (rows) State.harnesses = rows.map((r) => ({ id: r.id, label: r.label, installed: r.status.installed }));
+      State.notify();
+    });
   });
 
   registerHookHandlers(island);
