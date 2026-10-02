@@ -84,461 +84,80 @@ struct SettingsView: View {
         )
     }
 
+    // Sidebar selection persisted across sessions
+    @AppStorage("settingsSection") private var selectedSection: String = "general"
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    }
+
+    // MARK: - Body
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-
-                // MARK: API
-                GroupBox("Anthropic API") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        SecureField("API key (sk-ant-…)", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                            statusMessage = "✓ Key saved."
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        Divider().padding(.vertical, 2)
-
-                        Picker("Model", selection: $modelChoice) {
-                            ForEach(displayModels, id: \.id) { preset in
-                                Text(preset.label).tag(preset.id)
-                            }
-                            Text("Custom…").tag(Self.customModelTag)
-                        }
-                        .onChange(of: modelChoice) { _, choice in
-                            if choice != Self.customModelTag {
-                                state.claudeModel = choice
-                            } else {
-                                applyCustomModel(customModel)
-                            }
-                        }
-
-                        if modelChoice == Self.customModelTag {
-                            TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
-                                .textFieldStyle(.roundedBorder)
-                                .onChange(of: customModel) { _, value in applyCustomModel(value) }
-                        }
-
-                        Text("Used by the chat. The list comes from your Anthropic account.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(6)
-                }
-
-                GroupBox("Chat — other providers") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-
-                        HStack(spacing: 8) {
-                            Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
-                            Text("Google AI").font(.system(size: 12, weight: .semibold))
-                        }
-                        SecureField("API key (AI Studio)", text: $googleKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            KeychainStore.shared.set("google-api-key", value: googleKey)
-                            statusMessage = "✓ Google key saved."
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        Divider()
-
-                        HStack(spacing: 8) {
-                            Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
-                            Text("OpenAI").font(.system(size: 12, weight: .semibold))
-                        }
-                        SecureField("API key (sk-…)", text: $openAIKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            KeychainStore.shared.set("openai-api-key", value: openAIKey)
-                            statusMessage = "✓ OpenAI key saved."
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Hooks
-                GroupBox("Claude Code Hooks") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if hookNeedsUpdate {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                Text("Hook timeout outdated — update to fix approvals")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.orange)
-                            }
-                            #if APPSTORE
-                            Button("Update hooks") { installHooksAppStore() }
-                            #else
-                            Button("Update hooks") { installHooks() }
-                            #endif
-                        }
-                        #if APPSTORE
-                        Text("~/.claude/coucou/nb-hook")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { installHooksAppStore() }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { uninstallHooksAppStore() }
-                                .buttonStyle(.bordered)
-                        }
-                        #else
-                        Text("nb-hook : \(HookServer.hookScriptPath)")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { installHooks() }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { uninstallHooks() }
-                                .buttonStyle(.bordered)
-                        }
-                        #endif
-
-                        #if !APPSTORE
-                        if showDiff {
-                            ScrollView {
-                                Text(pendingHookJSON)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(height: 140)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-
-                            HStack {
-                                Button("Confirm & write") { confirmInstall() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showDiff = false; pendingHookJSON = "" }
-                                    .buttonStyle(.bordered)
-                            }
-                        }
-                        #endif
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Gemini CLI Hooks / Antigravity Hooks
-                #if !APPSTORE
-                GroupBox("Gemini CLI Hooks") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(geminiHooksInstalled
-                             ? "Hooks installed — restart Gemini CLI to activate"
-                             : "~/.gemini/settings.json")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { triggerGeminiPreview(install: true) }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { triggerGeminiPreview(install: false) }
-                                .buttonStyle(.bordered)
-                        }
-                        if showGeminiDiff {
-                            ScrollView {
-                                Text(pendingGeminiJSON)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(height: 140)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-                            HStack {
-                                Button("Confirm & write") { confirmGeminiOp() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
-                                    .buttonStyle(.bordered)
-                            }
+        HStack(spacing: 0) {
+            // Sidebar — 200 pt, sidebar visual effect background
+            ZStack(alignment: .topLeading) {
+                SidebarBackground()
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header
+                    HStack(alignment: .center, spacing: 10) {
+                        Image(nsImage: NSApplication.shared.applicationIconImage)
+                            .resizable()
+                            .frame(width: 32, height: 32)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Coucou")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(appVersion)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                         }
                     }
-                    .padding(6)
-                }
-
-                GroupBox("Antigravity Hooks") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(agyHooksInstalled
-                             ? "Hooks installed — restart Antigravity to activate"
-                             : "~/.gemini/config/hooks.json")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { triggerAgyPreview(install: true) }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { triggerAgyPreview(install: false) }
-                                .buttonStyle(.bordered)
-                        }
-                        if showAgyDiff {
-                            ScrollView {
-                                Text(pendingAgyJSON)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(height: 140)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-                            HStack {
-                                Button("Confirm & write") { confirmAgyOp() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
-                                    .buttonStyle(.bordered)
-                            }
-                        }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 10)
+                    Divider()
+                    List(selection: Binding(
+                        get: { Optional(selectedSection) },
+                        set: { if let v = $0 { selectedSection = v; statusMessage = "" } }
+                    )) {
+                        SettingsSidebarRow(title: "General",      icon: "gearshape.fill",                    color: "#8E939C").tag("general")
+                        SettingsSidebarRow(title: "Active pills", icon: "square.grid.2x2.fill",              color: "#F5A524").tag("activepills")
+                        SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
+                        SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
+                        SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
                     }
-                    .padding(6)
+                    .listStyle(.sidebar)
+                    .scrollContentBackground(.hidden)
                 }
+            }
+            .frame(width: 200)
 
-                GroupBox("Codex Hooks") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(codexHooksInstalled
-                             ? "Hooks installed — open Codex and run /hooks or open Hooks in the app's settings to trust them"
-                             : "~/.codex/hooks.json")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { triggerCodexPreview(install: true) }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { triggerCodexPreview(install: false) }
-                                .buttonStyle(.bordered)
-                        }
-                        if showCodexDiff {
-                            ScrollView {
-                                Text(pendingCodexJSON)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(height: 140)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-                            HStack {
-                                Button("Confirm & write") { confirmCodexOp() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
-                                    .buttonStyle(.bordered)
-                            }
-                        }
+            Divider()
+
+            // Detail panel
+            VStack(alignment: .leading, spacing: 0) {
+                Text(sectionTitle)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 12)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        sectionContent
                     }
-                    .padding(6)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
                 }
-                #endif
-
-                // MARK: Integrations
-                GroupBox("Integrations") {
-                    VStack(alignment: .leading, spacing: 14) {
-
-                        // Resend
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#22C55E")).frame(width: 8, height: 8)
-                                Text("Resend").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("API key  (re_…)", text: $resendKey)
-                                .textFieldStyle(.roundedBorder)
-                            TextField("From address  (you@yourdomain.com)", text: $resendFrom)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        // n8n
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#F29B38")).frame(width: 8, height: 8)
-                                Text("n8n").font(.system(size: 12, weight: .semibold))
-                            }
-                            TextField("Instance URL  (https://…)", text: $n8nUrl)
-                                .textFieldStyle(.roundedBorder)
-                            SecureField("API key", text: $n8nKey)
-                                .textFieldStyle(.roundedBorder)
-                            IntegrationFilterRow(
-                                label: "Workflows",
-                                items: n8nWorkflows,
-                                filter: $state.n8nWorkflowFilter,
-                                loading: loadingN8n,
-                                onLoad: loadN8nWorkflows
-                            )
-                        }
-
-                        // Vercel
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#7C5CFF")).frame(width: 8, height: 8)
-                                Text("Vercel").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("Token", text: $vercelToken)
-                                .textFieldStyle(.roundedBorder)
-                            IntegrationFilterRow(
-                                label: "Projects",
-                                items: vercelProjects,
-                                filter: $state.vercelProjectFilter,
-                                loading: loadingVercel,
-                                onLoad: loadVercelProjects
-                            )
-                        }
-
-                        // GitHub
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#F4505E")).frame(width: 8, height: 8)
-                                Text("GitHub").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("Personal Access Token", text: $githubToken)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        // Stripe
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#0570DE")).frame(width: 8, height: 8)
-                                Text("Stripe").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("Secret key  (sk_live_… or sk_test_…)", text: $stripeKey)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        // Cal.com
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#C9956A")).frame(width: 8, height: 8)
-                                Text("Cal.com").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("API key  (cal_live_…)", text: $calcomKey)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        // Notion
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 6) {
-                                Circle().fill(Color(hex: "#E8E8E8")).frame(width: 8, height: 8)
-                                Text("Notion").font(.system(size: 12, weight: .semibold))
-                            }
-                            SecureField("Integration token  (secret_…)", text: $notionKey)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        Button("Save integrations") { saveIntegrations() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Son
-                GroupBox("Sound") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Toggle("Enable sounds", isOn: $state.soundEnabled)
-                        HStack(spacing: 8) {
-                            Text("Volume")
-                                .frame(width: 56, alignment: .leading)
-                            Slider(value: $state.soundVolume, in: 0...0.2)
-                                .disabled(!state.soundEnabled)
-                            Text("\(Int(state.soundVolume / 0.2 * 100)) %")
-                                .frame(width: 36, alignment: .trailing)
-                                .monospacedDigit()
-                        }
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Timings
-                GroupBox("Behavior") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 8) {
-                            Text("Close after")
-                            TextField("60", value: $state.autoCloseInterval, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 64)
-                            Text("s inactive")
-                        }
-                        HStack(spacing: 8) {
-                            Text("Hide after")
-                            TextField("3", value: absenceMinutes, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 48)
-                            Text("min without movement")
-                        }
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Active pills
-                GroupBox("Active pills") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Choose the tools you use. Coucou only shows what you declare here.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-
-                        Text("\(state.activeIntegrations.count)/4 slots used")
-                            .font(.system(size: 11))
-                            .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
-
-                        Picker("Main", selection: $state.mainPillId) {
-                            ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
-                                Text(def.name).tag(def.id)
-                            }
-                        }
-                        .onChange(of: state.mainPillId) { _, newId in
-                            state.activeIntegrations.remove(newId)  // main pill never in activeIntegrations
-                            state.loadIntegrationTasks()
-                            state.setFocus(newId)
-                        }
-
-                        // All categories — main pill shown with "Main" label instead of toggle
-                        ForEach(PillCategory.allCases, id: \.self) { cat in
-                            let catPills = PillCatalog.available.filter { $0.category == cat }
-                            if !catPills.isEmpty {
-                                Divider()
-                                Text(cat.title)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                ForEach(catPills, id: \.id) { def in
-                                    pillRow(def)
-                                }
-                            }
-                        }
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Hotkey
-                GroupBox("Hotkey") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
-                        if state.hotkeyEnabled {
-                            HStack(spacing: 8) {
-                                Text("Shortcut")
-                                    .frame(width: 70, alignment: .leading)
-                                ShortcutRecorderButton(flags: $hotkeyFlags, code: $hotkeyCode)
-                                    .onChange(of: hotkeyFlags) { _, v in state.hotkeyFlags = v }
-                                    .onChange(of: hotkeyCode)  { _, v in state.hotkeyCode  = v }
-                                Text("presses this → island opens")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding(6)
-                }
-
-                // MARK: Startup
-                GroupBox("Startup") {
-                    Toggle("Launch at Mac startup", isOn: $launchAtStartup)
-                        .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
-                        .padding(6)
-                }
-
                 if !statusMessage.isEmpty {
+                    Divider()
                     Text(statusMessage)
                         .font(.system(size: 12))
                         .foregroundColor(statusMessage.hasPrefix("❌") ? .red : .secondary)
-                        .padding(.horizontal, 2)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
                 }
-
-                Spacer(minLength: 0)
             }
-            .padding(20)
         }
         .onAppear {
             guard fetchedModels.isEmpty,
@@ -559,7 +178,480 @@ struct SettingsView: View {
                 }
             }
         }
-        .frame(minWidth: 420, maxWidth: .infinity, minHeight: 320, maxHeight: .infinity)
+    }
+
+    // MARK: - Section routing
+
+    private var sectionTitle: String {
+        switch selectedSection {
+        case "general":      return "General"
+        case "activepills":  return "Active pills"
+        case "agents":       return "Agents"
+        case "chat":         return "Chat"
+        case "integrations": return "Integrations"
+        default:             return "General"
+        }
+    }
+
+    @ViewBuilder private var sectionContent: some View {
+        switch selectedSection {
+        case "activepills":  activePillsSection
+        case "agents":       agentsSection
+        case "chat":         chatSection
+        case "integrations": integrationsSection
+        default:             generalSection
+        }
+    }
+
+    // MARK: - General section
+
+    @ViewBuilder private var generalSection: some View {
+        GroupBox("Sound") {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("Enable sounds", isOn: $state.soundEnabled)
+                HStack(spacing: 8) {
+                    Text("Volume")
+                        .frame(width: 56, alignment: .leading)
+                    Slider(value: $state.soundVolume, in: 0...0.2)
+                        .disabled(!state.soundEnabled)
+                    Text("\(Int(state.soundVolume / 0.2 * 100)) %")
+                        .frame(width: 36, alignment: .trailing)
+                        .monospacedDigit()
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Behavior") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Text("Close after")
+                    TextField("60", value: $state.autoCloseInterval, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 64)
+                    Text("s inactive")
+                }
+                HStack(spacing: 8) {
+                    Text("Hide after")
+                    TextField("3", value: absenceMinutes, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 48)
+                    Text("min without movement")
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Hotkey") {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
+                if state.hotkeyEnabled {
+                    HStack(spacing: 8) {
+                        Text("Shortcut")
+                            .frame(width: 70, alignment: .leading)
+                        ShortcutRecorderButton(flags: $hotkeyFlags, code: $hotkeyCode)
+                            .onChange(of: hotkeyFlags) { _, v in state.hotkeyFlags = v }
+                            .onChange(of: hotkeyCode)  { _, v in state.hotkeyCode  = v }
+                        Text("presses this → island opens")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Startup") {
+            Toggle("Launch at Mac startup", isOn: $launchAtStartup)
+                .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
+                .padding(6)
+        }
+    }
+
+    // MARK: - Active pills section
+
+    @ViewBuilder private var activePillsSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Choose the tools you use. Coucou only shows what you declare here.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
+                Text("\(state.activeIntegrations.count)/4 slots used")
+                    .font(.system(size: 11))
+                    .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
+
+                Picker("Main", selection: $state.mainPillId) {
+                    ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
+                        Text(def.name).tag(def.id)
+                    }
+                }
+                .onChange(of: state.mainPillId) { _, newId in
+                    state.activeIntegrations.remove(newId)
+                    state.loadIntegrationTasks()
+                    state.setFocus(newId)
+                }
+
+                ForEach(PillCategory.allCases, id: \.self) { cat in
+                    let catPills = PillCatalog.available.filter { $0.category == cat }
+                    if !catPills.isEmpty {
+                        Divider()
+                        Text(cat.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        ForEach(catPills, id: \.id) { def in
+                            pillRow(def)
+                        }
+                    }
+                }
+            }
+            .padding(6)
+        }
+    }
+
+    // MARK: - Agents section
+
+    @ViewBuilder private var agentsSection: some View {
+        GroupBox("Claude Code Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                if hookNeedsUpdate {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Hook timeout outdated — update to fix approvals")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+                    #if APPSTORE
+                    Button("Update hooks") { installHooksAppStore() }
+                    #else
+                    Button("Update hooks") { installHooks() }
+                    #endif
+                }
+                #if APPSTORE
+                Text("~/.claude/coucou/nb-hook")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { installHooksAppStore() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { uninstallHooksAppStore() }
+                        .buttonStyle(.bordered)
+                }
+                #else
+                Text("nb-hook : \(HookServer.hookScriptPath)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { installHooks() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { uninstallHooks() }
+                        .buttonStyle(.bordered)
+                }
+                #endif
+
+                #if !APPSTORE
+                if showDiff {
+                    ScrollView {
+                        Text(pendingHookJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+
+                    HStack {
+                        Button("Confirm & write") { confirmInstall() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showDiff = false; pendingHookJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                #endif
+            }
+            .padding(6)
+        }
+
+        #if !APPSTORE
+        GroupBox("Gemini CLI Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(geminiHooksInstalled
+                     ? "Hooks installed — restart Gemini CLI to activate"
+                     : "~/.gemini/settings.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { triggerGeminiPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { triggerGeminiPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showGeminiDiff {
+                    ScrollView {
+                        Text(pendingGeminiJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmGeminiOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Antigravity Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(agyHooksInstalled
+                     ? "Hooks installed — restart Antigravity to activate"
+                     : "~/.gemini/config/hooks.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { triggerAgyPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { triggerAgyPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showAgyDiff {
+                    ScrollView {
+                        Text(pendingAgyJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmAgyOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Codex Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(codexHooksInstalled
+                     ? "Hooks installed — open Codex and run /hooks or open Hooks in the app's settings to trust them"
+                     : "~/.codex/hooks.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { triggerCodexPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { triggerCodexPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showCodexDiff {
+                    ScrollView {
+                        Text(pendingCodexJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmCodexOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+        #endif
+    }
+
+    // MARK: - Chat section
+
+    @ViewBuilder private var chatSection: some View {
+        GroupBox("Anthropic API") {
+            VStack(alignment: .leading, spacing: 8) {
+                SecureField("API key (sk-ant-…)", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+                    statusMessage = "✓ Key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider().padding(.vertical, 2)
+
+                Picker("Model", selection: $modelChoice) {
+                    ForEach(displayModels, id: \.id) { preset in
+                        Text(preset.label).tag(preset.id)
+                    }
+                    Text("Custom…").tag(Self.customModelTag)
+                }
+                .onChange(of: modelChoice) { _, choice in
+                    if choice != Self.customModelTag {
+                        state.claudeModel = choice
+                    } else {
+                        applyCustomModel(customModel)
+                    }
+                }
+
+                if modelChoice == Self.customModelTag {
+                    TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: customModel) { _, value in applyCustomModel(value) }
+                }
+
+                Text("Used by the chat. The list comes from your Anthropic account.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+
+        GroupBox("Chat — other providers") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
+                    Text("Google AI").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key (AI Studio)", text: $googleKey)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    KeychainStore.shared.set("google-api-key", value: googleKey)
+                    statusMessage = "✓ Google key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
+                    Text("OpenAI").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key (sk-…)", text: $openAIKey)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    KeychainStore.shared.set("openai-api-key", value: openAIKey)
+                    statusMessage = "✓ OpenAI key saved."
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Integrations section
+
+    @ViewBuilder private var integrationsSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 14) {
+
+                // Resend
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#22C55E")).frame(width: 8, height: 8)
+                        Text("Resend").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("API key  (re_…)", text: $resendKey)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("From address  (you@yourdomain.com)", text: $resendFrom)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                // n8n
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#F29B38")).frame(width: 8, height: 8)
+                        Text("n8n").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField("Instance URL  (https://…)", text: $n8nUrl)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("API key", text: $n8nKey)
+                        .textFieldStyle(.roundedBorder)
+                    IntegrationFilterRow(
+                        label: "Workflows",
+                        items: n8nWorkflows,
+                        filter: $state.n8nWorkflowFilter,
+                        loading: loadingN8n,
+                        onLoad: loadN8nWorkflows
+                    )
+                }
+
+                // Vercel
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#7C5CFF")).frame(width: 8, height: 8)
+                        Text("Vercel").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Token", text: $vercelToken)
+                        .textFieldStyle(.roundedBorder)
+                    IntegrationFilterRow(
+                        label: "Projects",
+                        items: vercelProjects,
+                        filter: $state.vercelProjectFilter,
+                        loading: loadingVercel,
+                        onLoad: loadVercelProjects
+                    )
+                }
+
+                // GitHub
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#F4505E")).frame(width: 8, height: 8)
+                        Text("GitHub").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Personal Access Token", text: $githubToken)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                // Stripe
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#0570DE")).frame(width: 8, height: 8)
+                        Text("Stripe").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Secret key  (sk_live_… or sk_test_…)", text: $stripeKey)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                // Cal.com
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#C9956A")).frame(width: 8, height: 8)
+                        Text("Cal.com").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("API key  (cal_live_…)", text: $calcomKey)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                // Notion
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#E8E8E8")).frame(width: 8, height: 8)
+                        Text("Notion").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Integration token  (secret_…)", text: $notionKey)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                Button("Save integrations") { saveIntegrations() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding(6)
+        }
     }
 
     // MARK: - Actions
@@ -582,8 +674,6 @@ struct SettingsView: View {
     // MARK: - App Store: hooks via NSOpenPanel + security-scoped bookmark
 
     #if APPSTORE
-    /// Opens NSOpenPanel to select ~/.claude, then writes hooks directly.
-    /// NSOpenPanel grants sandbox access immediately — no security-scoped bookmark needed.
     private func pickClaudeFolder(prompt: String) -> URL? {
         let panel = NSOpenPanel()
         panel.message = "Select your .claude folder (press ⇧⌘. to show hidden files)"
@@ -592,7 +682,6 @@ struct SettingsView: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
-        // getpwuid bypasses CFFIXED_USER_HOME and always returns the real user home
         let realHomePath = getpwuid(getuid()).flatMap { String(cString: $0.pointee.pw_dir, encoding: .utf8) }
             ?? "/Users/\(NSUserName())"
         panel.directoryURL = URL(fileURLWithPath: realHomePath)
@@ -760,7 +849,6 @@ struct SettingsView: View {
         statusMessage = "✓ Integration keys saved."
     }
 
-    /// Saves non-empty value; removes only if key was previously set (explicit user clear).
     private func saveKey(_ key: String, value: String) {
         if value.isEmpty {
             KeychainStore.shared.remove(key)
@@ -843,7 +931,6 @@ struct SettingsView: View {
         let isMain = def.id == state.mainPillId
         let isOn   = state.activeIntegrations.contains(def.id)
         let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
-        // Status hint: shown in 11pt gray before the toggle (not shown for main pill)
         let hint: String? = {
             if isMain { return nil }
             if def.comingSoon { return "Coming soon" }
@@ -888,6 +975,39 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Sidebar background (NSVisualEffectView .sidebar)
+
+struct SidebarBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = .sidebar
+        v.blendingMode = .behindWindow
+        v.state = .active
+        return v
+    }
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+// MARK: - Sidebar row (System Settings style icon)
+
+struct SettingsSidebarRow: View {
+    let title: String
+    let icon: String
+    let color: String
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 20, height: 20)
+                .background(RoundedRectangle(cornerRadius: 5).fill(Color(hex: color)))
+        }
+    }
+}
+
 // MARK: - Integration filter row (reusable for Vercel / n8n)
 
 struct IntegrationFilterRow: View {
@@ -926,10 +1046,9 @@ struct IntegrationFilterRow: View {
                             set: { on in
                                 if on { filter.insert(item) }
                                 else  {
-                                    // First click on any item: switch from "all" to explicit set
                                     if filter.isEmpty { filter = Set(items).subtracting([item]) }
                                     else { filter.remove(item) }
-                                    if filter.count == items.count { filter = [] } // all = empty
+                                    if filter.count == items.count { filter = [] }
                                 }
                             }
                         ))

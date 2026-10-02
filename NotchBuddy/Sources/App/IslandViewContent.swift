@@ -1522,7 +1522,13 @@ struct IntegrationCardView: View {
                        && task.id != "agent_codex"
                        && task.id != "integration_music" {
                         Button("Settings…") {
-                            NotificationCenter.default.post(name: .openFullSettings, object: nil)
+                            let section: String
+                            switch PillCatalog.definition(for: task.id)?.category {
+                            case .workspace, .agent: section = "agents"
+                            case .ai:                section = "chat"
+                            default:                 section = "integrations"
+                            }
+                            NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
@@ -2688,73 +2694,99 @@ struct MusicPill: View {
     @State private var isHovered = false
 
     private var isPlaying: Bool { AppState.shared.musicPlaying }
+    private var showControls: Bool { isHovered && MusicController.shared.trackTitle != nil }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Button(action: { onTap() }) {
-                ZStack {
-                    Capsule()
-                        .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
-                              : Color(hex: "#0E0F11"))
-                    Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
-                    HStack(spacing: 0) {
-                        MiniBotCanvasView(task: task, isDancing: isPlaying)
-                            .frame(width: 22 / 0.6, height: 22 / 0.6)
-                            .frame(width: 22, height: 22, alignment: .center)
-                            .padding(.leading, 8)
-                        Spacer()
-                    }
-                    Text(task.name)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
-                                         : Color(hex: "#6B7079"))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .padding(.leading, 34)
-                        .padding(.trailing, 10)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-            .scaleEffect(isHovered ? 1.04 : 1.0)
-            .brightness(isHovered ? 0.06 : 0)
-            .onHover { newHover in
-                guard !swapping else { return }
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
-            }
+        ZStack {
+            // Selection target — full pill area, receives taps where controls don't
+            Capsule()
+                .fill(Color.clear)
+                .contentShape(Capsule())
+                .onTapGesture { onTap() }
 
-            // Playback controls — shown when Music is running and a track is loaded
-            if MusicController.shared.trackTitle != nil {
-                HStack(spacing: 2) {
-                    Button(action: { MusicController.shared.playPause() }) {
-                        ZStack {
-                            Circle().fill(Color(hex: "#0B0C0E")).frame(width: 16, height: 16)
-                            Circle().fill(Color(hex: task.color)).frame(width: 14, height: 14)
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.system(size: 7, weight: .bold))
-                                .foregroundColor(.black)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: { MusicController.shared.nextTrack() }) {
-                        ZStack {
-                            Circle().fill(Color(hex: "#0B0C0E")).frame(width: 16, height: 16)
-                            Circle().fill(Color(hex: task.color)).frame(width: 14, height: 14)
-                            Image(systemName: "forward.fill")
-                                .font(.system(size: 7, weight: .bold))
-                                .foregroundColor(.black)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                .offset(x: 3, y: -3)
+            // Visual fills
+            Capsule()
+                .fill(isHovered ? Color(hex: task.color).opacity(0.18) : Color(hex: "#0E0F11"))
+                .allowsHitTesting(false)
+            Capsule()
+                .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+
+            // Mini Mochi at leading edge
+            HStack(spacing: 0) {
+                MiniBotCanvasView(task: task, isDancing: isPlaying)
+                    .frame(width: 22 / 0.6, height: 22 / 0.6)
+                    .frame(width: 22, height: 22, alignment: .center)
+                    .padding(.leading, 8)
+                Spacer()
             }
+            .allowsHitTesting(false)
+
+            // Title — trailing padding grows on hover to make room for buttons
+            Text(task.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isHovered ? Color(hex: task.color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 34)
+                .padding(.trailing, showControls ? 52 : 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
+                .allowsHitTesting(false)
+
+            // Playback controls — appear on hover when a track is loaded
+            if showControls {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: 2) {
+                        MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
+                            MusicController.shared.playPause()
+                        }
+                        MusicControlButton(icon: "forward.fill", color: task.color) {
+                            MusicController.shared.nextTrack()
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .brightness(isHovered ? 0.06 : 0)
+        .onHover { newHover in
+            guard !swapping else { return }
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+
+struct MusicControlButton: View {
+    let icon: String
+    let color: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(isHovered ? Color(hex: color).opacity(0.18) : Color(hex: "#0E0F11"))
+                Circle()
+                    .stroke(Color(hex: color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(isHovered ? Color(hex: color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+            }
+            .frame(width: 20, height: 20)
+            .shadow(color: Color(hex: color).opacity(isHovered ? 0.35 : 0), radius: 6)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isHovered ? 1.1 : 1.0)
+        .onHover { newHover in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
         }
     }
 }
