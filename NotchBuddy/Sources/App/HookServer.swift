@@ -345,12 +345,13 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
+        let isClaudeDesktop = bundleId.lowercased().contains("claudefordesktop")
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
-        // • VS Code → integration_claude
+        // • Claude Code / terminals / Claude Desktop → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
         #else
@@ -367,12 +368,9 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
-        } else if isVSCodeEditor {
+        } else {
             agentId = "integration_claude"
             isExternalAgent = false
-        } else {
-            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
-            return
         }
 
         let focused = state.focusId == agentId
@@ -381,10 +379,16 @@ final class HookServer: @unchecked Sendable {
         // then continue normal processing. Only skip normal processing when unresolved.
         if let pending = state.pendingApproval, agentId == pending.pillId {
             let handledNote: String
-            switch pending.pillId {
-            case "agent_cursor": handledNote = "Handled in Cursor."
-            case "agent_codex":  handledNote = "Handled in Codex."
-            default:             handledNote = "Handled in VS Code."
+            if pending.pillId == "agent_cursor" {
+                handledNote = "Handled in Cursor."
+            } else if pending.pillId == "agent_codex" {
+                handledNote = "Handled in Codex."
+            } else if isVSCodeEditor {
+                handledNote = "Handled in VS Code."
+            } else if isClaudeDesktop {
+                handledNote = "Handled in Claude."
+            } else {
+                handledNote = "Handled in terminal."
             }
             var resolved = false
             switch name {
@@ -611,12 +615,8 @@ final class HookServer: @unchecked Sendable {
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         let rawAgent = payload["coucou_agent"] as? String ?? ""
-        let termProgram = payload["term_program"] as? String ?? ""
-        let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let bundleId = payload["bundle_id"]    as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
 
         // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
         // Other external agents (any other coucou_agent) answer immediately with "ask"
@@ -642,13 +642,6 @@ final class HookServer: @unchecked Sendable {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
-        }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
-            Task.detached { [weak self] in
-                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-                close(fd)
-            }
-            return
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
@@ -787,12 +780,8 @@ final class HookServer: @unchecked Sendable {
         let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
 
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
-        let termProgram = payload["term_program"]  as? String ?? ""
         let bundleId    = payload["bundle_id"]     as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
         #else
@@ -805,13 +794,6 @@ final class HookServer: @unchecked Sendable {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
-        }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
-            Task.detached { [weak self] in
-                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-                close(fd)
-            }
-            return
         }
 
         // Displace any previous question waiting for an answer.
