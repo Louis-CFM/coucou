@@ -130,7 +130,7 @@ $hook = "$env:LOCALAPPDATA\Coucou\bin\coucou-hook.exe"
 $payload = [ordered]@{ session_id='diagnostic'; cwd=(Get-Location).Path; hook_event_name='Stop'; model='diagnostic'; turn_id='diagnostic'; permission_mode='default'; stop_hook_active=$false; last_assistant_message='diagnostic' } | ConvertTo-Json -Compress
 $stdoutFile = Join-Path $env:TEMP 'coucou-stop.stdout'
 $stderrFile = Join-Path $env:TEMP 'coucou-stop.stderr'
-$payload | & $hook Stop 1> $stdoutFile 2> $stderrFile
+$payload | & cmd.exe /d /c "`"$hook`" Stop 1> `"$stdoutFile`" 2> `"$stderrFile`""
 Write-Host "exit=$LASTEXITCODE"
 Write-Host 'stdout bytes:'
 [BitConverter]::ToString([IO.File]::ReadAllBytes($stdoutFile))
@@ -139,8 +139,9 @@ Write-Host 'stderr bytes:'
 Get-Content -Raw $stdoutFile | ConvertFrom-Json | ConvertTo-Json -Compress
 ```
 
-The Coucou entry must show both `command` and `commandWindows` ending in
-`"coucou-hook.exe" Stop`. Expected stdout bytes are `7B-7D-0D-0A` (or
+The Coucou entry must show `command` ending in `"coucou-hook.exe" Stop` and
+the Windows override ending in `coucou-hook.exe Stop` (without quotes when
+the path has no spaces). Expected stdout bytes are `7B-7D-0D-0A` (or
 `7B-7D-0A`) and stderr must be empty. If another `Stop` entry is present,
 disable it temporarily or test its command separately: Codex validates every
 matching hook, not only Coucou's entry.
@@ -150,7 +151,7 @@ Quit the old Coucou instance, install and launch the new Windows installer,
 then open **Settings… → Codex CLI → Reinstall Codex hook…**, review the diff,
 and confirm it. This rewrites both `command` and `commandWindows` for every
 Coucou event. Restart Codex and use `/hooks` to trust the changed definition.
-Verify that the displayed `Stop` commands end with `coucou-hook.exe" Stop`
+Verify that the displayed Windows `Stop` command ends with `coucou-hook.exe Stop`
 before testing a session. If the old entry remains, click **Uninstall Codex
 hook…**, confirm, then click **Install Codex hook…** and confirm again; this
 removes only Coucou's entries and preserves unrelated hooks.

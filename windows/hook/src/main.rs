@@ -72,7 +72,10 @@ fn connect() -> Option<std::fs::File> {
 }
 
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event)) = read_event() else {
+        eprintln!("coucou-hook: expected one JSON object on stdin");
+        std::process::exit(2);
+    };
 
     let waits_for_answer = event == "PermissionRequest";
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };

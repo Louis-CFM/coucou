@@ -81,6 +81,15 @@ fn command(event: &str) -> String {
     )
 }
 
+fn command_windows(event: &str) -> String {
+    let path = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
+    if path.chars().any(char::is_whitespace) {
+        format!("\"{path}\" {event}")
+    } else {
+        format!("{path} {event}")
+    }
+}
+
 fn ours(entry: &Value) -> bool {
     entry.get("hooks").and_then(Value::as_array).map(|list| {
         list.iter().any(|hook| hook.get("command").and_then(Value::as_str)
@@ -100,7 +109,7 @@ fn merged(existing: &Value) -> Value {
             "hooks": [{
                 "type": "command",
                 "command": command(event),
-                "commandWindows": command(event),
+                "commandWindows": command_windows(event),
                 "timeout": if *event == "PermissionRequest" { 120 } else { 10 },
             }]
         }));
@@ -232,5 +241,9 @@ mod tests {
                 .last(),
             Some("Stop")
         );
+        assert!(!value["hooks"]["Stop"][0]["hooks"][0]["commandWindows"]
+            .as_str()
+            .unwrap()
+            .starts_with('"'));
     }
 }
