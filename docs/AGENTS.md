@@ -1,6 +1,6 @@
 # Coucou — third-party agent integration
 
-Any tool that can write to a Unix domain socket (macOS) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
+Any tool that can write to a Unix domain socket (macOS and Linux) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
 
 ## The `coucou_agent` field
 
@@ -38,6 +38,24 @@ Same pattern with the Windows relay:
 }
 ```
 
+## Hook command (Linux)
+
+Same pattern with the Linux relay:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "type": "command", "command": "/home/you/.local/share/coucou/bin/coucou-hook --agent my-tool" }
+    ]
+  }
+}
+```
+
+Coucou stages the relay at `~/.local/share/coucou/bin/coucou-hook` at launch. Both
+ends of the socket check that the peer runs as the same user.
+
+
 ## Payload format
 
 The relay adds `coucou_agent` to the JSON it forwards. You can also add it yourself if you talk to the socket directly:
@@ -54,6 +72,7 @@ The relay adds `coucou_agent` to the JSON it forwards. You can also add it yours
 Send newline-terminated JSON to the socket:
 - **macOS (GitHub build):** `~/Library/Application Support/NotchBuddy/nb.sock`
 - **macOS (App Store build):** `~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock`
+- **Linux:** `$XDG_RUNTIME_DIR/coucou.sock`, falling back to `/run/user/<uid>/coucou.sock`
 - **Windows:** `\\.\pipe\coucou-<user-SID>`
 
 ## Supported events
@@ -121,8 +140,9 @@ island's `tool_name` / `session_id`.
 
 ### Any other tool
 
-Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS)
-or `coucou-hook.exe --agent <your-name> <EventName>` (Windows) and let the relay
+Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS),
+`coucou-hook --agent <your-name> <EventName>` (Linux) or
+`coucou-hook.exe --agent <your-name> <EventName>` (Windows) and let the relay
 forward the event.
 
 ## Quick test (macOS)
@@ -132,6 +152,17 @@ With Coucou running:
 ```sh
 echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","coucou_agent":"demo"}' \
   | /bin/sh ~/Library/Application\ Support/NotchBuddy/nb-hook --agent demo
+```
+
+A "demo" pill should appear in the island.
+
+## Quick test (Linux)
+
+With Coucou running:
+
+```sh
+echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","coucou_agent":"demo"}' \
+  | ~/.local/share/coucou/bin/coucou-hook --agent demo
 ```
 
 A "demo" pill should appear in the island.
