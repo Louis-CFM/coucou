@@ -241,6 +241,36 @@ function apiSection(hasKey: boolean): HTMLElement {
     void save();
   });
 
+  const endpointInput = h("input", {
+    type: "text",
+    placeholder: "https://proxy.example.com/v1 or http://localhost:11434/v1",
+    value: settings.customEndpointUrl,
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  endpointInput.addEventListener("input", () => {
+    settings.customEndpointUrl = endpointInput.value.trim();
+    void save();
+  });
+
+  const endpointRow = h(
+    "div",
+    {
+      class: "row",
+      style: `display:${settings.customEndpointEnabled ? "flex" : "none"};gap:12px;`,
+    },
+    h("label", { text: "Tunnel URL" }),
+    endpointInput,
+  );
+
+  const endpointToggle = toggle(settings.customEndpointEnabled, (on) => {
+    settings.customEndpointEnabled = on;
+    endpointRow.style.display = on ? "flex" : "none";
+    void save();
+  });
+
   clearBtn.style.display = hasKey ? "" : "none";
 
   return h(
@@ -250,6 +280,8 @@ function apiSection(hasKey: boolean): HTMLElement {
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: "API Endpoint Tunnel" }), endpointToggle),
+    endpointRow,
     feedback,
   );
 }

@@ -92,6 +92,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  customEndpointEnabled: boolean;
+  customEndpointUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +108,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  customEndpointEnabled: false,
+  customEndpointUrl: "",
 };
 
 type Listener = () => void;
