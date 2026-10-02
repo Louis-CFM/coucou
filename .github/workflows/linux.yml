@@ -25,17 +25,28 @@ on:
 permissions:
   contents: read
 
-# Off until a first build has been checked by hand: run this workflow manually,
-# download the Coucou-Linux artifact, try it, then set this to 'true' and push a
-# linux-v* tag.
+# The 0.1.1 build was verified by hand; a linux-v* tag now publishes on its own.
 env:
-  PUBLISH: 'false'
+  PUBLISH: 'true'
 
 jobs:
   build:
-    # The oldest supported Ubuntu: an AppImage only runs on systems whose glibc
-    # is at least as new as the one it was built against.
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # .deb and .rpm use system libraries, so we build on the oldest Ubuntu we
+          # support to stay compatible with its glibc 2.35.
+          - name: packages
+            os: ubuntu-22.04
+            bundles: deb,rpm
+          # The AppImage bundles GTK, WebKitGTK, gtk-layer-shell and GStreamer; built
+          # on 24.04, they are recent enough for rolling distributions (#95).
+          # It requires glibc 2.39 or later.
+          - name: appimage
+            os: ubuntu-24.04
+            bundles: appimage
+    runs-on: ${{ matrix.os }}
     outputs:
       version: ${{ steps.pack.outputs.version }}
       publish: ${{ steps.gate.outputs.publish }}
@@ -73,8 +84,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             windows/target
-          key: linux-cargo-${{ hashFiles('windows/Cargo.lock') }}
-          restore-keys: linux-cargo-
+          key: linux-cargo-${{ matrix.os }}-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: linux-cargo-${{ matrix.os }}-
 
       - name: Install dependencies
         run: npm ci
@@ -84,8 +95,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/linux-v')
         run: |
           tag="${GITHUB_REF_NAME#linux-v}"
-          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          pkg=$(node -p "require('./package.json').version")
+          conf=$(jq -r '.version' src-tauri/tauri.conf.json)
+          pkg=$(jq -r '.version' package.json)
           cargo=$(sed -nE 's/^version\s*=\s*"(.+)"/\1/p' Cargo.toml | head -1)
           echo "tag=$tag tauri.conf=$conf package.json=$pkg Cargo.toml=$cargo"
           bad=""
@@ -96,10 +107,12 @@ jobs:
 
       # The app bundles target/release/coucou-hook as a resource, and its build
       # script refuses to run until that file exists.
+      - name: Build the hook
+        run: cargo build --release -p coucou-hook
+
       - name: Test
-        run: |
-          cargo build --release -p coucou-hook
-          cargo test --workspace
+        if: matrix.name == 'packages'
+        run: cargo test --workspace
 
       # linuxdeploy is itself an AppImage; runners have no FUSE, so it unpacks
       # itself instead of mounting.
@@ -107,13 +120,11 @@ jobs:
         id: pack
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
+          COUCOU_BUNDLES: ${{ matrix.bundles }}
         run: |
-          npm run pack
-          echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
-          cd release
-          sha256sum Coucou-Linux-* > SHA256SUMS
-          ls -la
-          cat SHA256SUMS
+          npx tauri build --bundles "$COUCOU_BUNDLES"
+          node scripts/pack.mjs
+          echo "version=$(jq -r '.version' src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to publish
         id: gate
@@ -125,10 +136,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
         with:
-          name: Coucou-Linux
-          path: |
-            windows/release/Coucou-Linux-*
-            windows/release/SHA256SUMS
+          name: Coucou-Linux-${{ matrix.name }}
+          path: windows/release/Coucou-Linux-*
           retention-days: 3
 
   publish:
@@ -136,7 +145,7 @@ jobs:
     # Checked again here, so a pull request can never get this far whatever
     # the build job reports.
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/linux-v') && needs.build.outputs.publish == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
@@ -146,8 +155,14 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: Coucou-Linux
+          pattern: Coucou-Linux-*
+          merge-multiple: true
           path: release
+
+      - name: Checksums
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: cd release && sha256sum "Coucou-Linux-$VERSION-"* > SHA256SUMS
 
       - name: Publish the release
         env:
@@ -155,16 +170,16 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           v="$VERSION"
-          notes="Coucou for Linux $v — Mochi at the top of your screen.
+          notes="Coucou for Linux $v (beta) — Mochi at the top of your screen.
 
-          - **AppImage** (any distribution): \`chmod +x Coucou-Linux-$v-x86_64.AppImage\` and run it.
-          - **Debian / Ubuntu**: \`sudo apt install ./Coucou-Linux-$v-amd64.deb\`
-          - **Fedora / openSUSE**: \`sudo dnf install ./Coucou-Linux-$v-x86_64.rpm\`
+          - **AppImage** (recent distributions: Ubuntu 24.04, Debian 13, Fedora 40, Arch and newer): \`chmod +x Coucou-Linux-$v-x86_64.AppImage\` and run it.
+          - **Debian / Ubuntu** (also Ubuntu 22.04 and Debian 12): \`sudo apt install ./Coucou-Linux-$v-amd64.deb\`
+          - **Fedora**: \`sudo dnf install ./Coucou-Linux-$v-x86_64.rpm\`
 
           Check a download with \`sha256sum -c SHA256SUMS --ignore-missing\`.
 
           The island sits on the top edge on compositors with layer-shell (COSMIC,
-          KDE Plasma, Hyprland, Sway…). On GNOME it opens as a regular window."
+          KDE Plasma, Hyprland, Sway…). On GNOME it opens as a regular window. x86_64 only for now."
           # --latest=false: the macOS \`v*\` releases own the Latest slot, which
           # the site's Download for Mac button points at.
           gh release create "$GITHUB_REF_NAME" \
@@ -172,8 +187,9 @@ jobs:
             "release/Coucou-Linux-$v-amd64.deb" \
             "release/Coucou-Linux-$v-x86_64.rpm" \
             "release/SHA256SUMS" \
-            --title "Coucou for Linux $v" \
+            --title "Coucou for Linux $v (beta)" \
             --notes "$notes" \
+            --prerelease \
             --latest=false
 
       - name: Update the rolling linux-latest release

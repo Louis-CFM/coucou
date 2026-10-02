@@ -77,11 +77,11 @@ rest of the differences.
 
 ### Linux
 
-The first Linux build is out as a beta: download it from [Coucou for Linux 0.1.1 (beta)](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1), x86_64 only for now. Later versions will be in [Releases](https://github.com/Louis-CFM/coucou/releases) under `linux-v*` tags.
+The Linux version is out as a beta: download it from [Coucou for Linux 0.1.2 (beta)](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.2), x86_64 only for now. Later versions will be in [Releases](https://github.com/Louis-CFM/coucou/releases) under `linux-v*` tags.
 
-- **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
+- **AppImage** (recent distributions: Ubuntu 24.04, Debian 13, Fedora 40, Arch and newer; on Ubuntu 22.04 or Debian 12, take the .deb): `chmod +x Coucou-Linux-*.AppImage`, then run it.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
-- **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
+- **Fedora**: `sudo dnf install ./Coucou-Linux-*.rpm`
 
 Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now.
 

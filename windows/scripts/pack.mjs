@@ -42,6 +42,13 @@ if (!packages) {
   process.exit(1);
 }
 
+// If COUCOU_BUNDLES is set (comma-separated dirs, e.g. "appimage" or "deb,rpm"),
+// only the listed package types are copied; without it, all types are included.
+const allowedBundles = process.env.COUCOU_BUNDLES
+  ? new Set(process.env.COUCOU_BUNDLES.split(",").map((s) => s.trim()))
+  : null;
+const activePackages = allowedBundles ? packages.filter(({ dir }) => allowedBundles.has(dir)) : packages;
+
 /** The newest file in `dir` ending with `suffix`, in case an older build is still lying around. */
 function newest(dir, suffix) {
   let files = [];
@@ -58,7 +65,7 @@ function newest(dir, suffix) {
 
 mkdirSync(outDir, { recursive: true });
 const written = [];
-for (const { dir, suffix, names } of packages) {
+for (const { dir, suffix, names } of activePackages) {
   const built = newest(join(bundleRoot, dir), suffix);
   if (!built) {
     console.error(`No *${suffix} in ${join(bundleRoot, dir)} — run \`npm run tauri build\` first.`);

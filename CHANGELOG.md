@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Linux: the hidden island no longer leaves an invisible block at the top of the screen that swallows clicks (#111) — thanks @arreina
+- Windows and Linux: almost no CPU at rest, the animations of hidden views pause and Linux stops polling for a cursor it doesn't have (#110) — thanks @arreina
+- Linux (X11): the island no longer takes the keyboard focus, and shows on every workspace (#104) — thanks @arreina
+- Linux: the AppImage is built on Ubuntu 24.04, with recent GTK, WebKitGTK and gtk-layer-shell, so it runs properly on rolling distributions like Arch (#95) — thanks @Vega8991 for the report
+- Linux: SHA256SUMS only lists the files of the release
+
 ## 0.1.1 — October 2, 2026
 
 - Declare the tools you use in Settings: Gemini CLI, Antigravity, Anthropic, Google AI and OpenAI pills join the existing ones (Cursor and Codex pills are coming soon), and you pick the main pill.
