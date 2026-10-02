@@ -191,19 +191,23 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        // Without a cursor to read (Linux) the loop only watches the display
+        // layout, and twice a second is plenty for that: waking at 60 Hz just to
+        // find no cursor costs CPU for nothing.
+        let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+                std::thread::sleep(Duration::from_millis(period));
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % 30 == 0 {
+                if ticks % screen_every == 0 {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
