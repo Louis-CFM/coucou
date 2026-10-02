@@ -80,11 +80,14 @@ export const Bridge = {
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
-  // ── Chat, files, secrets ──────────────────────────────────────────────────
+  // ── Chat, files, secrets, ChatGPT OAuth ───────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  chatgptStatus: () => call<ChatGPTStatus>("chatgpt_status"),
+  chatgptOAuthStart: () => callOrThrow<string>("chatgpt_oauth_start"),
+  chatgptSignOut: () => callOrThrow<void>("chatgpt_sign_out"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -100,6 +103,12 @@ export const Bridge = {
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface ChatGPTStatus {
+  signedIn: boolean;
+  email: string | null;
+  hasApiKey: boolean;
+}
 
 export interface IntegrationUpdate {
   id: string;
