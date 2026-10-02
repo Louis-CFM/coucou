@@ -94,6 +94,12 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** Whether the Cursor CLI is installed and signed in. */
+  cursorStatus: () => call<CursorStatus>("cursor_status"),
+  /** [id, label] pairs the user's Cursor plan can use. */
+  cursorModels: () => call<[string, string][]>("cursor_models"),
+  /** Opens Cursor's browser sign-in. */
+  cursorLogin: () => callOrThrow<void>("cursor_login"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -125,6 +131,13 @@ export interface DroppedFile {
   name: string;
   path: string;
   size: number;
+}
+
+export interface CursorStatus {
+  /** Path of the CLI, or null when it is not installed. */
+  cli: string | null;
+  status: string;
+  loggedIn: boolean;
 }
 
 export interface HookStatus {

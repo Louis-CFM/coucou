@@ -20,6 +20,11 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "anthropic" (API key) or "cursor" (the Cursor CLI and the user's plan).
+    #[serde(default = "default_chat_provider")]
+    pub chat_provider: String,
+    #[serde(default = "default_cursor_model")]
+    pub cursor_model: String,
     /// Where the user dragged the island: top-left of the panel, in logical
     /// pixels from the top-left of its display. None = top centre. Owned by
     /// Rust: save_settings never takes it from a page.
@@ -29,6 +34,14 @@ pub struct Settings {
 
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
+}
+
+fn default_chat_provider() -> String {
+    "anthropic".into()
+}
+
+fn default_cursor_model() -> String {
+    crate::cursor_chat::DEFAULT_MODEL.to_string()
 }
 
 impl Default for Settings {
@@ -48,6 +61,8 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: default_chat_provider(),
+            cursor_model: default_cursor_model(),
             island_offset: None,
         }
     }

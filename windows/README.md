@@ -175,6 +175,9 @@ What changes on Linux:
 - **Moving the island**: drag the open island by its background. The spot is
   remembered; tray → "Move island back to the top" puts it back. Not on
   layer-shell compositors, which pin it to the top edge.
+- **Chat with your Cursor plan**: install the Cursor CLI, then Settings →
+  Cursor → "Sign in with Cursor" and pick "Cursor (your plan)". It runs
+  `agent -p --mode ask` (read-only) in an empty private folder.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
