@@ -66,6 +66,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const picker = h("div", { class: "chat-picker" });
   let menuRows: HTMLElement[] = [];
   let pickerRows: HTMLElement[] = [];
+  /** Which picker row is highlighted. Separate from `menuActive` so the two lists
+   *  cannot move each other. */
+  let pickerActive = -1;
+  // Whether the session picker has already asked for a second look. Reset once a
+  // real list arrives, so a later empty answer gets its one retry too.
+  let retriedForSessions = false;
+  // When the last fetch started, so an empty answer cannot trigger another one on
+  // every keystroke.
+  let lastFetchAt = 0;
   let menuActive = -1;
 
   function closePopups() {
@@ -80,7 +89,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     clear(picker);
     menuRows = [];
     pickerRows = [];
-    menuActive = -1;
+menuActive = -1;
+    pickerActive = -1;
   }
 
   /** Resolves only once `commands`/`sessions` are populated, so callers can
@@ -103,8 +113,27 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     // An empty result is nearly always a server that was still starting rather
     // than a real answer, so forget it: the next attempt asks again instead of
     // leaving the `/` menu empty for the rest of this island session.
-    if (commands.length === 0) fetching = null;
+    //
+    // Both lists have to be part of that test. The commands and the sessions come
+    // from the same server, but they are populated at different moments, so a
+    // server that answered the command list early still reports no sessions.
+    // Caching on `commands` alone left `/sessions` permanently empty after that.
+    //
+    // But forgetting it on *every* call turns this into a refetch per keystroke
+    // whenever the user simply has no sessions, which is its own kind of broken.
+    // The cooldown is the backstop: one retry, then the answer stands.
+    const now = performance.now();
+    if (
+      (commands.length === 0 || sessions.length === 0)
+      && now - lastFetchAt > FETCH_RETRY_MS
+    ) {
+      lastFetchAt = now;
+      fetching = null;
+    }
   }
+
+  /** How long before an empty answer is worth asking again. */
+  const FETCH_RETRY_MS = 1500;
 
   /** Swaps the chat window onto a different conversation.
    *
@@ -183,6 +212,42 @@ async function removeSession(s: OpencodeSession, row: HTMLElement) {
     State.notify();
   }
 
+  async function openModelPicker() {
+    closePopups();
+    const found = (await Bridge.opencodeModels()) ?? [];
+    if (!found.length) {
+      State.noteMessage = "No models reported by the server.";
+      State.view = "note";
+      return;
+    }
+    for (const [i, model] of found.entries()) {
+      // Split so the provider reads as secondary, which is what it is.
+      const slash = model.indexOf("/");
+      const row = h(
+        "div",
+        // Not `first` on every row: that class is what paints the selection, so a
+        // hardcoded one lit the whole list up.
+        { class: i === 0 ? "chat-menu-row pick-row first" : "chat-menu-row pick-row" },
+        h("span", { class: "chat-menu-name", text: slash >= 0 ? model.slice(slash + 1) : model }),
+        h("span", { class: "chat-menu-desc", text: slash >= 0 ? model.slice(0, slash) : "" }),
+      );
+      row.addEventListener("click", () => {
+        closePopups();
+        State.modelOverride = model;
+        State.noteMessage = `Model set to ${model}.`;
+        State.view = "note";
+        State.notify();
+      });
+      pickerRows.push(row);
+      picker.append(row);
+    }
+    // First row pre-highlighted so it reads as selectable, but `pickerActive` stays
+    // -1 until an arrow key is pressed: Enter should not silently pick the first
+    // session or model over the one you were aiming at.
+    pickerRows[0]?.classList.add("first");
+    el.querySelector(".chat-body")?.append(picker);
+  }
+
   async function openPicker() {
     await fetchOnce();
     if (pickerRows.length) {
@@ -190,14 +255,47 @@ async function removeSession(s: OpencodeSession, row: HTMLElement) {
       return;
     }
     closePopups();
-    if (sessions.length === 0) return;
-    for (const s of sessions) {
+    if (sessions.length === 0) {
+      // A server that is still starting reports no sessions, and returning here
+      // without drawing anything is what made the command look dead on first use.
+      // So draw the popup with a line saying so — and ask again exactly once. An
+      // unbounded retry loops as fast as the server can answer, which backs every
+      // later request up behind it; that is what stopped the command list loading
+      // at all while this was in.
+      const retried = retriedForSessions;
+      const waiting = h(
+        "div",
+        { class: "chat-menu-row pick-row" },
+        h(
+          "span",
+          { class: "chat-menu-name", text: retried ? "No sessions found." : "Loading sessions…" },
+        ),
+      );
+      picker.append(waiting);
+      pickerRows.push(waiting);
+      el.querySelector(".chat-body")?.append(picker);
+      if (!retried) {
+        retriedForSessions = true;
+        void fetchOnce().then(() => {
+          closePopups();
+          void openPicker();
+        });
+      }
+      return;
+    }
+    retriedForSessions = false;
+    for (const [i, s] of sessions.entries()) {
       const label = h("span", { class: "chat-menu-name", text: s.title || "Untitled session" });
       const dir = h("span", {
         class: "chat-menu-desc",
         text: s.directory.split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? "",
       });
-      const row = h("div", { class: "chat-menu-row pick-row" }, label, dir);
+      const row = h(
+        "div",
+        { class: i === 0 ? "chat-menu-row pick-row first" : "chat-menu-row pick-row" },
+        label,
+        dir,
+      );
 
       // Deleting is destructive and easy to mis-tap on a small row, so the
       // button turns into an explicit "sure?" and only then does anything.
@@ -232,6 +330,7 @@ async function removeSession(s: OpencodeSession, row: HTMLElement) {
       pickerRows.push(row);
       picker.append(row);
     }
+    pickerRows[0]?.classList.add("first");
     el.querySelector(".chat-body")?.append(picker);
   }
 
@@ -264,8 +363,12 @@ function typedCommand(): string {
     // Every match is listed — the popup scrolls rather than hiding commands the
     // user has installed. The list is small (one entry per installed command).
     for (const [i, c] of matches.entries()) {
+      // A div, not a button. A button takes focus when it is clicked, and the input
+      // then stops receiving arrow keys -- so the first click on a command left the
+      // dropdown open with the keyboard dead. A plain row cannot steal focus, and
+      // the click still works.
       const row = h(
-        "button",
+        "div",
         {
           class: i === 0 ? "chat-menu-row first" : "chat-menu-row",
           onclick: () => complete(c.name),
@@ -292,6 +395,16 @@ function typedCommand(): string {
     menuRows[menuActive]?.scrollIntoView({ block: "nearest" });
   }
 
+  /** Same movement for the session and model pickers, which are a separate list.
+   *  They had no keyboard handling at all, so the command menu was navigable and
+   *  the two drop-downs a command opens were not. */
+  function movePicker(delta: number) {
+    if (pickerRows.length === 0) return;
+    pickerActive = (pickerActive + delta + pickerRows.length) % pickerRows.length;
+    pickerRows.forEach((r, i) => r.classList.toggle("first", i === pickerActive));
+    pickerRows[pickerActive]?.scrollIntoView({ block: "nearest" });
+  }
+
   const el = h(
     "div",
     { class: "view" },
@@ -314,10 +427,30 @@ function typedCommand(): string {
       void fetchOnce().then(() => renderMenu());
     } else if (menuRows.length) closePopups();
   };
-  input.addEventListener("input", onTyped);
-  input.addEventListener("keyup", onTyped);
+const NAV_KEYS = new Set(["ArrowDown", "ArrowUp", "Tab", "Enter", "Escape"]);
+    input.addEventListener("input", onTyped);
+    // Arrow keys move the selection on `keydown`, so letting the matching `keyup`
+    // through here re-rendered the menu and reset the highlight to the first row —
+    // the list visibly bounced back on every press. Only keys that can change the
+    // text are allowed to re-render.
+    input.addEventListener("keyup", (e) => {
+      if (!NAV_KEYS.has((e as KeyboardEvent).key)) onTyped();
+    });
 
   let sending = false;
+  // When Escape will cancel, rather than already having cancelled. Cleared once it
+  // lapses so a stray second press much later does not cancel out of nowhere.
+  let armedUntil = 0;
+  // Which view this pane lives in, captured while it is mounted. The Escape prompt
+  // swaps to the note view, so returning needs to know where it came from.
+  // Which view the chat belongs to. Recorded while the pane is on screen rather
+  // than when it is built: building happens once at startup, long before the user
+  // is anywhere near the chat, so the value captured then was some other view
+  // entirely and returning to it landed on a broken screen.
+  let chatView = State.view;
+  // Whether this pane is the one on screen. Set by `sync`, and deliberately left
+  // true across the prompt's unmount so the cancel survives it.
+  let chatMounted = false;
   let renderedCount = -1;
   // Messages typed while a turn is still running wait here and go out as soon
   // as it finishes, so the input never locks up mid-answer.
@@ -333,6 +466,12 @@ async function submit() {
       // picker in the mascot is the whole point of the command.
       if (/^\/sessions(\s|$)/i.test(query)) {
         void openPicker();
+        return;
+      }
+      // `/models` opens a picker for the same reason: the reply is a wall of text
+      // that cannot be chosen from, which is a dead end in a 640pt island.
+      if (/^\/models(\s|$)/i.test(query)) {
+        void openModelPicker();
         return;
       }
       if (sending) {
@@ -359,15 +498,43 @@ async function submit() {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context, targetSession?.id ?? null);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      const reply = await Bridge.chatSend(
+      query,
+      context,
+      targetSession?.id ?? null,
+      State.modelOverride,
+    );
+      // A cancelled turn still resolves with whatever had arrived, which would
+      // leave a half-reply on screen as if it had been answered.
+      if (armedUntil) {
+        State.chatHistory.push({
+          id: nextId++,
+          role: "assistant",
+          content: "Cancelled.",
+        });
+      } else {
+        State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+        Sound.play("finish");
+      }
+      armedUntil = 0;
+      State.chatHint = null;
       State.stateOverride = null;
-      Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      // A cancelled turn surfaces as an error from the server call. That is the
+      // user pressing Escape, not a failure, so it belongs in the log as a
+      // cancelled reply rather than on the error view.
+      if (armedUntil || /cancelled/i.test(String(err))) {
+        State.chatHistory.push({ id: nextId++, role: "assistant", content: "Cancelled." });
+        armedUntil = 0;
+        State.escapeArmed = false;
+        State.view = chatView;
+        State.notify();
+      } else {
+        State.noteMessage = String(err).replace(/^Error:\s*/, "");
+        State.view = "note";
+        Sound.play("error");
+      }
     } finally {
       sending = false;
       State.notify();
@@ -393,10 +560,21 @@ async function submit() {
         moveMenu(-1);
         return;
       }
-      if (key === "Tab" || (key === "Enter" && menuActive >= 0)) {
+      const highlighted = menuRows[menuActive]?.querySelector(".chat-menu-name")?.textContent ?? "";
+      const chosen = highlighted.replace(/^\//, "");
+if (key === "Tab") {
         e.preventDefault();
-        const name = menuRows[menuActive]?.querySelector(".chat-menu-name")?.textContent ?? "";
-        complete(name.replace(/^\//, ""));
+        complete(chosen);
+        return;
+      }
+      if (key === "Enter") {
+        e.preventDefault();
+        // Enter runs what was typed when it already spells the command out, and
+        // only fills it in when it does not. The menu opens on the first
+        // character, so it was always open here, and Enter always completed rather
+        // than submitted — which is why every command took two presses.
+        if (typedCommand() === chosen.toLowerCase()) void submit();
+        else complete(chosen);
         return;
       }
       if (key === "Escape") {
@@ -405,16 +583,113 @@ async function submit() {
         return;
       }
     }
+    // The session and model pickers, which are a separate list. This has to sit
+    // beside the command menu rather than inside it: nested there, the arrows only
+    // worked while the command menu happened to be open, and a picker opened by a
+    // command is never open at the same time.
+    if (pickerRows.length > 0) {
+      if (key === "ArrowDown") {
+        e.preventDefault();
+        movePicker(1);
+        return;
+      }
+      if (key === "ArrowUp") {
+        e.preventDefault();
+        movePicker(-1);
+        return;
+      }
+      if (key === "Enter" && pickerActive >= 0) {
+        // Enter takes the highlighted row, so a session or model can be chosen
+        // without reaching for the mouse.
+        e.preventDefault();
+        pickerRows[pickerActive].click();
+        return;
+      }
+    }
     if (key === "Enter") {
       e.preventDefault();
       void submit();
     }
-    e.stopPropagation(); // Escape closes the island, not the chat
+    if (key === "Escape" && sending) {
+      // The island's own Escape handler is on `window` and was registered first, so
+      // it runs before any handler here and collapses the panel. Stopping the event
+      // at the input is the only way to keep it from reaching the window at all —
+      // `stopPropagation` in a sibling window listener would be too late.
+      e.stopPropagation();
+      e.preventDefault();
+      State.escapeArmed = true;
+      onEscape();
+      return;
+    }
+  });
+
+  // Arms or fires the cancel. Shared by the input handler and the window handler:
+// the input catches the press while the chat is on screen, and the window catches
+// the second one after the prompt has swapped the view and unmounted the input.
+function onEscape() {
+  if (!armedUntil) {
+    armedUntil = performance.now() + 3000;
+    State.noteMessage = "Press Escape again to cancel this reply.";
+    State.view = "note";
+    Sound.play("rate");
+    // Lapses on its own, so a prompt outliving its turn cannot sit there.
+    window.setTimeout(() => {
+      if (armedUntil && performance.now() >= armedUntil) {
+        armedUntil = 0;
+        State.escapeArmed = false;
+        State.view = chatView;
+        State.notify();
+      }
+    }, 3100);
+  } else {
+    armedUntil = 0;
+    State.escapeArmed = false;
+    State.view = chatView;
+    void Bridge.chatCancel(targetSession?.id ?? null);
+  }
+  State.notify();
+}
+
+  // The second press arrives here, on the window, because the prompt unmounted the
+  // input. The island's Escape handler shares this target and runs first, so
+  // `escapeArmed` is what tells it to stand down.
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    // A dropdown owns Escape first — closing it is more immediate than arming a
+    // cancel, and leaving it open while the panel collapses looked broken.
+    if (menuRows.length || pickerRows.length) {
+      e.preventDefault();
+      e.stopPropagation();
+      closePopups();
+      return;
+    }
+    // Only in the chat pane: let the island collapse as it always did otherwise.
+    // Deliberately not `el.isConnected` — the prompt swaps to the note view, which
+    // unmounts this pane, so that test made the second Escape fall through to the
+    // island and collapse the whole panel. `sync` running is the better signal:
+    // it stays true after the unmount, which is exactly what the cancel needs.
+    if (!chatMounted || !sending) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onEscape();
+  });
+
+  // A click anywhere in the chat that is not on a dropdown row dismisses it. The
+  // popups are children of the chat body, so without this they survived the click
+  // that was meant to dismiss them.
+  el.addEventListener("pointerdown", (e) => {
+    if (!menuRows.length && !pickerRows.length) return;
+    const target = e.target as Node;
+    if (menu.contains(target) || picker.contains(target)) return;
+    closePopups();
   });
 
   return {
     el,
     sync() {
+      chatMounted = true;
+      // Remembered here so the cancel prompt has somewhere correct to return to.
+      chatView = State.view;
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";
       if (chipRow.dataset.label !== wantChip) {
@@ -439,6 +714,7 @@ async function submit() {
         : State.chatHistory.length === 0
           ? "Ask me anything… / for commands"
           : "Continue…";
+      State.chatHint = null;
       // The input stays usable during a turn; `submit` queues what is typed.
     },
     focus() {

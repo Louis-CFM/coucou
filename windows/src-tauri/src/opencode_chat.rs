@@ -10,7 +10,8 @@
 // passing `--session` on later ones, in the same working directory.
 
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -30,6 +31,11 @@ Use plain text with line breaks, no markdown formatting.";
 #[derive(Default)]
 pub struct OpencodeChat {
     session: Mutex<Option<ChatSession>>,
+    /// Flipped by `cancel`. The blocking HTTP call cannot be interrupted, but the
+    /// turn awaiting it can: `send` races the request against this and gives up as
+    /// soon as it is set, so Escape stops waiting rather than posting a request to
+    /// the server and hoping it does something.
+    cancelled: Arc<AtomicBool>,
 }
 
 struct ChatSession {
@@ -216,14 +222,22 @@ pub async fn send(
     // upload. Everything else is a plain turn and goes over HTTP.
     let via_server = crate::settings::load().chat_via_server;
     if via_server && command.is_none() && files.is_empty() {
-        let attempt = tokio::task::spawn_blocking({
+        // A fresh turn is not a cancelled one.
+        chat.cancelled.store(false, Ordering::Relaxed);
+        let task = tokio::task::spawn_blocking({
             let sid = session_id.clone();
             let model = model_override.to_string();
             let msg = message.clone();
             move || send_via_server(sid.as_deref(), &model, &msg)
-        })
-        .await
-        .map_err(|e| format!("opencode task failed: {e}"))?;
+        });
+        let attempt = tokio::select! {
+            res = task => res.map_err(|e| format!("opencode task failed: {e}"))?,
+            _ = wait_for_cancel(chat.cancelled.clone()) => {
+                // The request itself is still in flight and cannot be pulled back,
+                // but nothing is waiting on it any more. The front end shows this.
+                return Err("Cancelled.".to_string());
+            }
+        };
         match attempt {
             Ok((id, text)) => {
                 if picked.is_none() {
@@ -315,6 +329,29 @@ pub async fn send(
 /// One chat turn over the opencode server that is already running.
 ///
 /// The alternative to this is `opencode run`, which boots a whole throwaway
+/// Resolves as soon as `flag` is set, so a turn can be raced against a cancel.
+///
+/// Polls rather than waiting on a notify: the flag is a plain atomic shared with
+/// the command that sets it, and the interval is far below the time it takes a
+/// person to notice.
+async fn wait_for_cancel(flag: Arc<AtomicBool>) {
+    while !flag.load(Ordering::Relaxed) {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+}
+
+/// Asks the running turn to stop being waited on.
+///
+/// This sets a flag rather than posting to the server: the request is a blocking
+/// HTTP call that cannot be recalled, and asking the server to abort it depends on
+/// an endpoint that is not part of anything in this repository. Racing the call
+/// locally is the part that is certain to work, and the reply is discarded either
+/// way.
+pub async fn cancel(chat: &OpencodeChat, _session_id: Option<String>) -> Result<(), String> {
+    chat.cancelled.store(true, Ordering::Relaxed);
+    Ok(())
+}
+
 /// server per message and tears it down again. Here the same turn is two HTTP
 /// calls against the long-lived one, which is why replies start sooner.
 ///

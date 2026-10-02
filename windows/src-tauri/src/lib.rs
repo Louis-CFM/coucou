@@ -323,6 +323,19 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// own opencode is right there, so the turn goes there instead of stopping on
 /// "API key missing". With neither available the original message stands, since
 /// it names the fix.
+/// Cancels the turn in flight, as Escape does in the chat window.
+///
+/// The island keeps its own session id, so this asks the server to abort that one.
+/// A failure here is not worth surfacing: the turn ends either way, and the front
+/// end already swaps the reply for "Cancelled." on its own.
+#[tauri::command]
+async fn chat_cancel(
+    ochat: State<'_, opencode_chat::OpencodeChat>,
+    session: Option<String>,
+) -> Result<(), String> {
+    opencode_chat::cancel(&ochat, session).await
+}
+
 #[tauri::command]
 async fn chat_send(
     shared: State<'_, Shared>,
@@ -331,7 +344,9 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
     session: Option<String>,
+    model: Option<String>,
 ) -> Result<ChatReply, String> {
+    let picked = model;
     let (provider, model, bin, omodel) = {
         let s = shared.settings.lock().unwrap();
         (
@@ -345,7 +360,14 @@ async fn chat_send(
         || (!secrets::present("anthropic-api-key")
             && opencode_chat::resolve_bin(&bin).is_some());
     if use_opencode {
-        opencode_chat::send(&ochat, &bin, &omodel, query, context, session).await
+        // A model picked from the `/models` popup wins over the one in settings. It goes
+        // in as the same `provider/model` string the setting holds, so nothing
+        // downstream has to know where it came from.
+        let chosen: &str = match picked.as_deref() {
+            Some(m) if !m.trim().is_empty() => m,
+            _ => &omodel,
+        };
+        opencode_chat::send(&ochat, &bin, chosen, query, context, session).await
     } else {
         claude::send(&chat, &model, query, context).await
     }
@@ -362,6 +384,12 @@ fn opencode_commands() -> Vec<opencode_server::CommandInfo> {
 #[tauri::command]
 fn opencode_sessions() -> Vec<opencode_server::SessionInfo> {
     opencode_server::sessions()
+}
+
+/// Models the running opencode reports, for the model picker.
+#[tauri::command]
+fn opencode_models() -> Vec<String> {
+    opencode_server::models()
 }
 
 /// Deletes a session. The island confirms with the user before calling this.
@@ -567,10 +595,12 @@ pub fn run() {
             approval_decline,
             log_line,
 chat_send,
+            chat_cancel,
             chat_reset,
         chat_status,
         opencode_commands,
         opencode_sessions,
+    opencode_models,
     opencode_delete_session,
     opencode_session_messages,
         opencode_server_url,

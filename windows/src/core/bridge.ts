@@ -100,8 +100,20 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust.
    *  `session` targets a specific existing opencode session; omit for a new one. */
-  chatSend: (query: string, context: ChatContext | null, session?: string | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context, session: session ?? null }),
+  chatSend: (
+    query: string,
+    context: ChatContext | null,
+    session?: string | null,
+    model?: string | null,
+  ) =>
+    callOrThrow<{ text: string }>("chat_send", {
+      query,
+      context,
+      session: session ?? null,
+      model: model ?? null,
+    }),
+  /** Abandons the turn in flight, as Escape does. */
+  chatCancel: (session?: string | null) => call<void>("chat_cancel", { session: session ?? null }),
   chatReset: () => call<void>("chat_reset"),
   /** Resolved opencode binary + key presence for the Settings → Chat section. */
   chatStatus: () => call<ChatStatus>("chat_status"),
@@ -109,6 +121,8 @@ export const Bridge = {
   opencodeCommands: () => call<OpencodeCommand[]>("opencode_commands"),
   /** Live sessions of the running opencode, newest first. */
   opencodeSessions: () => call<OpencodeSession[]>("opencode_sessions"),
+  /** Models the running server reports, as `provider/model`, for the model picker. */
+  opencodeModels: () => call<string[]>("opencode_models"),
     /** Deletes a session. The island asks the user to confirm first. */
     opencodeDeleteSession: (id: string) => callOrThrow<void>("opencode_delete_session", { id }),
     /** A picked session's messages, oldest first, for the chat window. */

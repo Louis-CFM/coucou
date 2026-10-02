@@ -168,6 +168,14 @@ class AppState {
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
+  /** `provider/model` the chat is pinned to, set from the `/models` picker. Empty
+   *  means the default from settings. */
+  modelOverride: string | null = null;
+  /** Transient line under the chat input, e.g. the Escape-cancel prompt. */
+  chatHint: string | null = null;
+  /** Escape is owned by the chat cancel while set, so the island must not collapse
+   *  the panel on the second press that arrives after the prompt unmounted the input. */
+  escapeArmed = false;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;

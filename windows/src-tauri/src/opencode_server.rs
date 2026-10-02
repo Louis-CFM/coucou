@@ -685,6 +685,65 @@ pub fn act(name: &str, session: &str) -> Result<String, String> {
     Ok(done.to_string())
 }
 
+/// The models the running server reports, as `provider/model`, sorted.
+///
+/// A separate call rather than only being reachable through `/models`, so the chat
+/// window can open a picker on it the way it does for sessions. Picking one fills
+/// the input with the model to send; whether a turn actually uses it depends on the
+/// backend honouring the override.
+pub fn models() -> Vec<String> {
+    let Some(base) = discover(false) else {
+        return Vec::new();
+    };
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+    else {
+        return Vec::new();
+    };
+    let Ok(resp) = client.get(format!("{base}/config/providers")).send() else {
+        return Vec::new();
+    };
+    let Ok(json) = resp.json::<Value>() else {
+        return Vec::new();
+    };
+    let Some(providers) = json.get("providers").and_then(|v| v.as_array()) else {
+        return Vec::new();
+    };
+    // `providers` is an array of `{ id, models: { <model-id>: {...} } }` -- the
+    // outer level is a list, the inner one a map keyed by model id. Reading the
+    // outer level as a map returned nothing at all, which is why the picker came up
+    // empty against a server that plainly had models to offer.
+    let mut out: Vec<String> = Vec::new();
+    for entry in providers {
+        let Some(provider) = entry.get("id").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(available) = entry.get("models").and_then(|m| m.as_object()) else {
+            continue;
+        };
+        // The provider's configured default goes first: that is the model the user
+        // actually has working, and a flat alphabetical sort buried it under every
+        // other model on the same provider.
+        let fallback = entry
+            .get("models")
+            .and_then(|m| m.as_object())
+            .and_then(|m| m.get("default"))
+            .and_then(|d| d.as_str())
+            .map(str::to_string);
+        let mut ids: Vec<String> = available.keys().cloned().collect();
+        ids.sort();
+        if let Some(first) = fallback {
+            ids.retain(|id| id != &first);
+            ids.insert(0, first);
+        }
+        for id in ids {
+            out.push(format!("{provider}/{id}"));
+        }
+    }
+    out
+}
+
 /// Deletes a session on the live server.
 ///
 /// Only ever called after an explicit confirmation in the island, and never for

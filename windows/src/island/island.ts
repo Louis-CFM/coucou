@@ -810,7 +810,11 @@ if (now - this.lastDismiss < 50) return;
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !this.staysOpen) this.collapse();
+      // Escape belongs to the chat while a cancel is armed. The prompt that asks for the
+      // second press lives in the note view, which unmounts the chat input, so that
+      // second press reaches the window with no input handler in the way — and
+      // without this the panel collapsed instead of cancelling.
+      if (e.key === "Escape" && !State.escapeArmed && State.mode === "expanded" && !this.staysOpen) this.collapse();
       State.lastActivity = performance.now();
     });
 

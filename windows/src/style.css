@@ -876,6 +876,12 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--dim-3);
 }
 
+/* Armed Escape: the placeholder is the cancel prompt, so it is tinted to read as
+   an instruction rather than as idle hint text. */
+.chat-input.cancelling::placeholder {
+  color: var(--warn, #f59e0b);
+}
+
 .send-btn {
   width: 28px;
   height: 28px;
@@ -1413,7 +1419,12 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 236px;
+  /* Without this the picker is a flex child of a column and gets shrunk to fit the
+     space left over, so `max-height` below never applied and roughly one row was
+     visible. Roughly five rows is the useful amount: enough to scan, few enough
+     that the list is not a wall. */
+  flex: 0 0 auto;
+  max-height: 168px;
   overflow-y: auto;
   padding: 4px;
   border-radius: 8px;
