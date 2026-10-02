@@ -6,7 +6,7 @@ Any tool that can write to a Unix domain socket (macOS) or a named pipe (Windows
 
 Add the optional field `coucou_agent` to any hook JSON payload. Coucou will create a pill labelled with the agent name and route all events to it.
 
-**Validation:** the name must match `^[a-z0-9-]{1,24}$` (lowercase letters, digits and hyphens, 1–24 characters). An absent or invalid name routes the event to the Claude Code pill instead.
+**Validation:** the name must match `^[a-z0-9-]{1,24}$` (lowercase letters, digits and hyphens, 1–24 characters). `claude` is reserved: it is rejected like an invalid name, so a tool can never impersonate the Claude Code pill. An absent or invalid name routes the event to the Claude Code pill instead.
 
 ## Hook command (macOS)
 
