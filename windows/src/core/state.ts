@@ -19,6 +19,9 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** From coucou-hook: the session's ancestor pids and conhost window, if any. */
+  sessionPids?: number[];
+  sessionHwnd?: number | null;
 }
 
 export interface ApprovalInfo {

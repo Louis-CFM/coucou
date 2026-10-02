@@ -134,6 +134,11 @@ pub fn reveal_folder(path: &str) {
     let _ = Command::new("xdg-open").arg(path).spawn();
 }
 
+/// No portable way to raise another app's window on Linux; the caller falls back.
+pub fn focus_terminal(_hwnd: Option<isize>, _pids: &[u32], _hint: &str) -> bool {
+    false
+}
+
 /// Our own `which`: the first executable file named `stem` on $PATH.
 pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     let dirs = std::env::var_os("PATH")?;

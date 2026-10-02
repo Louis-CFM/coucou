@@ -55,6 +55,10 @@ export const Bridge = {
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
+  /** Brings the session's terminal window forward; falls back to openInVSCode. */
+  openSession: (path: string | null, pids: number[], hwnd: number | null) =>
+    call<boolean>("open_session", { path, pids, hwnd }),
+
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),

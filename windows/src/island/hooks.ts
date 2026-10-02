@@ -25,6 +25,9 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Windows only, added by coucou-hook: where the session's window lives. */
+  terminal_pids?: number[];
+  console_hwnd?: number;
 }
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
@@ -120,11 +123,15 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string) {
+function upsert(projectName: string, cwd: string, payload: HookPayload) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
+  if (Array.isArray(payload.terminal_pids)) {
+    t.sessionPids = payload.terminal_pids.filter((p) => Number.isInteger(p));
+    t.sessionHwnd = Number.isInteger(payload.console_hwnd) ? payload.console_hwnd! : null;
+  }
 }
 
 function clearSession() {
@@ -178,7 +185,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, payload);
     }
   };
 
@@ -287,7 +294,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, payload);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
