@@ -71,6 +71,8 @@ enum PillCatalog {
         .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
+        .init(id: "integration_claude_plan", name: "Claude plan", color: "#6B7079",
+              category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_n8n",     name: "n8n",         color: "#F29B38",

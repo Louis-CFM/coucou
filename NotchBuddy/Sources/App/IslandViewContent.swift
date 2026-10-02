@@ -1222,6 +1222,12 @@ struct IntegrationCardView: View {
                 return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
             #endif
+        case "integration_claude_plan":
+            #if APPSTORE
+            return false  // App Store installer not yet implemented
+            #else
+            return HookServer.statusLineInstalled()
+            #endif
         case "agent_gemini":
             #if !APPSTORE
             return HookServer.geminiHooksInstalled()
@@ -1317,6 +1323,11 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    // Claude plan: show card when installed (even with no data yet)
+    private var claudePlanIsActive: Bool {
+        task.id == "integration_claude_plan" && isConfigured
+    }
+
     // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
         #if !APPSTORE
@@ -1335,6 +1346,11 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
+        if task.id == "integration_claude_plan" {
+            guard isConfigured else { return Color(hex: "#F4505E") }
+            let pct = appState.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) }
+            return Color(hex: ClaudePlanGauge.color(for: pct))
+        }
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1351,6 +1367,13 @@ struct IntegrationCardView: View {
             return "Not playing"
         }
         #endif
+        if task.id == "integration_claude_plan" {
+            guard isConfigured else { return "Status line not installed" }
+            if let usage = appState.claudePlanUsage {
+                return ClaudePlanGauge.pillLabel(usage)
+            }
+            return "Waiting for a Claude Code reply"
+        }
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1416,6 +1439,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
+                .transition(.opacity)
+        } else if claudePlanIsActive {
+            ClaudePlanCardView(usage: appState.claudePlanUsage)
                 .transition(.opacity)
         } else if musicIsActive {
             #if !APPSTORE
@@ -1588,10 +1614,14 @@ struct IntegrationCardView: View {
                        && task.id != "integration_music" {
                         Button("Settings…") {
                             let section: String
-                            switch PillCatalog.definition(for: task.id)?.category {
-                            case .workspace, .agent: section = "agents"
-                            case .ai:                section = "chat"
-                            default:                 section = "integrations"
+                            if task.id == "integration_claude_plan" {
+                                section = "agents"
+                            } else {
+                                switch PillCatalog.definition(for: task.id)?.category {
+                                case .workspace, .agent: section = "agents"
+                                case .ai:                section = "chat"
+                                default:                 section = "integrations"
+                                }
                             }
                             NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }

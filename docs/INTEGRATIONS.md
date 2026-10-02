@@ -68,6 +68,45 @@ Demande l'autorisation Automatisation la première fois (normal).
 
 ---
 
+## 1bis. Jauge de forfait Claude (statusLine)
+
+**ID de pastille** : `integration_claude_plan` (couleur dynamique : vert `#22C55E` < 50 %, orange `#F59E0B` 50–80 %, rouge `#F4505E` ≥ 80 %, gris `#6B7079` sans données)  
+**Catégorie** : Services  
+**Plateforme** : macOS uniquement  
+**Plans** : Pro et Max uniquement (le champ `rate_limits` n'est présent que pour ces plans)
+
+Affiche la consommation du forfait Claude dans le notch : fenêtre de 5 heures et fenêtre hebdomadaire.
+
+### Données
+
+Claude Code envoie, à chaque réponse et avec un debounce de 300 ms, un JSON à la commande `statusLine` configurée dans `~/.claude/settings.json`. Ce JSON contient :
+
+```json
+{
+  "session_id": "…",
+  "rate_limits": {
+    "five_hour": { "used_percentage": 23.5, "resets_at": 1738425600 },
+    "seven_day":  { "used_percentage": 67.0, "resets_at": 1738598400 }
+  }
+}
+```
+
+`used_percentage` va de 0 à 100. `resets_at` est un epoch UNIX en secondes. Le champ `rate_limits` peut être absent (plan Free, ou première réponse de la session). Chaque fenêtre peut être absente indépendamment. Les valeurs absurdes (< 0 ou > 100) sont ignorées. Une fenêtre dont `resets_at` est passé s'affiche à 0 % jusqu'à la prochaine mise à jour.
+
+### Relais
+
+nb-hook.py, en mode `--statusline`, lit le JSON de stdin, en extrait `rate_limits` et `session_id`, et envoie `{"coucou_kind": "statusline", …}` au socket en fire-and-forget (timeout 0,3 s). Si une `statusLine` précédente existait (sauvegardée dans `statusline-previous.json` à côté de nb-hook), elle est appelée via `/bin/sh -c` avec le même stdin et sa sortie est réécrite telle quelle (timeout 10 s, couleurs ANSI comprises).
+
+### Installation
+
+Réglages → Agents → Plan usage → **Install**. Coucou montre le diff de `~/.claude/settings.json` avant d'écrire quoi que ce soit. Si une `statusLine` existait, seul le champ `command` est remplacé ; les autres champs (`padding`, `refreshInterval`, etc.) sont conservés.
+
+### Désinstallation
+
+Réglages → Agents → Plan usage → **Uninstall**. Remet l'objet `statusLine` d'origine à l'identique, ou retire la clé si elle n'existait pas. Si la `statusLine` actuelle n'est plus celle de Coucou (l'utilisateur l'a changée), elle n'est pas touchée.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

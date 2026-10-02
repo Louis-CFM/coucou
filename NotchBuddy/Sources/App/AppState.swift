@@ -293,6 +293,23 @@ final class AppState: ObservableObject {
     @Published var musicAutomationDenied: Bool = false
     #endif
 
+    // Claude plan gauge (from statusline hook)
+    @Published var claudePlanUsage: PlanUsage? = nil {
+        didSet {
+            if let u = claudePlanUsage,
+               let data = try? JSONEncoder().encode(u) {
+                UserDefaults.standard.set(data, forKey: "claudePlanUsage")
+            }
+            // Update pill label and color
+            let label = ClaudePlanGauge.pillLabel(claudePlanUsage)
+            let colorHex = ClaudePlanGauge.color(for: claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+            if let idx = tasks.firstIndex(where: { $0.id == "integration_claude_plan" }) {
+                tasks[idx].name = label
+                tasks[idx].color = colorHex
+            }
+        }
+    }
+
     // MARK: - Init (loads persisted settings)
 
     private init() {
@@ -328,6 +345,8 @@ final class AppState: ObservableObject {
            PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v
         }
+        if let d = ud.data(forKey: "claudePlanUsage"),
+           let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)

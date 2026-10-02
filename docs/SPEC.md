@@ -99,7 +99,7 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 | `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio | Chat | — |
-| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)* | Integration | — |
+| `service` | Services | Claude plan, Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)* | Integration | — |
 
 Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
 
@@ -212,6 +212,7 @@ Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
 - **Chat — other providers** : clé Google AI (Trousseau) ; clé OpenAI (Trousseau). Les modèles se choisissent dans le chat (voir INTEGRATIONS §5bis).
 - **Local models** : URL du serveur Ollama (défaut `http://127.0.0.1:11434`) et/ou LM Studio (défaut `http://127.0.0.1:1234`). Bouton **Connect** : vérifie la joignabilité et sauvegarde l'URL. Bouton **Disconnect** : efface l'URL et le cache. Aucune clé requise (voir INTEGRATIONS §5ter).
 - **Claude Code Hooks** : état des hooks, bouton Installer / Désinstaller.
+- **Plan usage** : status line dans `~/.claude/settings.json`. Bouton **Install** : aperçu du diff, sauvegarde datée, écriture après confirmation (même flux que les hooks). Bouton **Uninstall** : remet l'objet précédent ou retire la clé. Voir INTEGRATIONS §1bis.
 - **Gemini CLI Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
 - **Antigravity Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
 - **Integrations** : clé ou token (Trousseau) pour chaque service (n8n, Stripe, GitHub, Vercel, Resend, Notion, Cal.com).

@@ -33,6 +33,10 @@ struct SettingsView: View {
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
 
     #if !APPSTORE
+    @State private var showStatusLineDiff: Bool = false
+    @State private var pendingStatusLineJSON: String = ""
+    @State private var statusLinePendingInstall: Bool = true
+
     @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
     @State private var showGeminiDiff: Bool = false
     @State private var pendingGeminiJSON: String = ""
@@ -470,6 +474,38 @@ struct SettingsView: View {
                         Button("Confirm & write") { confirmCodexOp() }
                             .buttonStyle(.borderedProminent)
                         Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Plan usage") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Shows your Claude plan usage (5-hour and weekly limits) in the notch. Coucou adds a small status line relay to ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    Button("Install") { installStatusLine() }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { uninstallStatusLine() }
+                        .buttonStyle(.bordered)
+                }
+                if showStatusLineDiff {
+                    ScrollView {
+                        Text(pendingStatusLineJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 100)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmStatusLine() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showStatusLineDiff = false; pendingStatusLineJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -947,6 +983,41 @@ struct SettingsView: View {
             statusMessage = codexPendingInstall
                 ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
                 : "✓ Codex hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func installStatusLine() {
+        do {
+            pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: true)
+            showStatusLineDiff = true
+            statusLinePendingInstall = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func uninstallStatusLine() {
+        do {
+            pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: false)
+            showStatusLineDiff = true
+            statusLinePendingInstall = false
+            statusMessage = "Review the JSON below before confirming."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmStatusLine() {
+        do {
+            try HookServer.shared.writeStatusLine()
+            showStatusLineDiff = false
+            pendingStatusLineJSON = ""
+            statusMessage = statusLinePendingInstall
+                ? "✓ Status line installed."
+                : "✓ Status line removed."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
