@@ -147,6 +147,7 @@ export const STATE_SOUND: Partial<Record<BotStateName, string>> = {
 const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
   love: "heart", surprised: "dot", proud: "star", wink: "wink",
   yawn: "tired", happy: "happy", annoyed: "line",
+  sad: "tired", shy: "happy", scared: "wide",
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -487,6 +488,27 @@ export class BotEngine {
         this.eyeOverride = "line";
         this.eyeOverrideUntil = t + 0.8;
         setTimeout(() => Sound.play("annoyed"), 60);
+        break;
+      case "sad":
+        // Droops and slumps a little, then picks itself back up.
+        this.anim("sy", [[0.9, 400, Ease.inOut], [0.9, (duration - 0.8) * 1000, Ease.lin], [1, 400, Ease.inOut]]);
+        this.anim("sx", [[1.05, 400, Ease.inOut], [1.05, (duration - 0.8) * 1000, Ease.lin], [1, 400, Ease.inOut]]);
+        this.anim("tilt", [[0.08, 400, Ease.inOut], [0.08, (duration - 0.8) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        break;
+      case "shy":
+        // Blushes and turns its face away.
+        this.anim("blush", [[1, 250, Ease.out], [1, (duration - 0.6) * 1000, Ease.lin], [0, 350, Ease.inOut]]);
+        this.anim("yaw", [[-0.5, 300, Ease.out], [-0.5, (duration - 0.7) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        this.anim("tilt", [[-0.1, 300, Ease.out], [-0.1, (duration - 0.7) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        break;
+      case "scared":
+        // A jump, a shiver, a bead of sweat.
+        this.anim("oy", [[-0.22, 110, Ease.out], [0, 300, Ease.back]]);
+        this.anim("ox", [
+          [0.05, 50, Ease.inOut], [-0.05, 60, Ease.inOut], [0.04, 60, Ease.inOut],
+          [-0.04, 60, Ease.inOut], [0.02, 60, Ease.inOut], [0, 80, Ease.out],
+        ]);
+        this.emit("sweat", 1);
         break;
     }
   }

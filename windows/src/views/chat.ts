@@ -5,7 +5,7 @@ import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { renderMarkdown } from "./markdown";
+import { codeBlock, renderMarkdown } from "./markdown";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
 
@@ -13,10 +13,15 @@ let nextId = 1;
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
+    const a = message.attachment;
     return h(
       "div",
       { class: "chat-row user" },
-      h("div", { class: "bubble", text: message.content }),
+      h("div", { class: "user-turn" },
+        // The dropped code file, as the model got it: Markdown code.
+        a ? codeBlock(a.text, a.lang, `${a.name} · ${a.text.split("\n").length} lines`) : null,
+        h("div", { class: "bubble", text: message.content }),
+      ),
     );
   }
   const reply = h("div", { class: "reply md" });
@@ -149,10 +154,22 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   const bar = h("div", { class: "chat-bar" }, input, picker, send);
 
+  // Under Mochi: start the conversation over (the dropped file stays attached).
+  const clearChat = h("button", { class: "chat-clear", title: "Clear chat" }, svg(ICONS.trash, 11), h("span", { text: "Clear" }));
+  clearChat.addEventListener("click", () => {
+    if (sending) return;
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    renderedCount = -1;
+    State.notify();
+    onHeightChange();
+    input.focus();
+  });
+
   const el = h(
     "div",
     { class: "view" },
-    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, ask, bar)),
+    h("div", { class: "card wash chat-card" }, clearChat, h("div", { class: "chat-body" }, chipRow, log, ask, bar)),
   );
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
@@ -179,7 +196,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     askImage = false;
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    // A dropped text or code file goes along on the first turn: show it too.
+    const attachment =
+      firstTurn && file?.path && !IMAGE_FILE.test(file.path) ? await Bridge.readAttachment(file.path) : null;
+    State.chatHistory.push({
+      id: nextId++,
+      role: "user",
+      content: query,
+      attachment: attachment ? { name: file!.name, ...attachment } : null,
+    });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
@@ -190,6 +215,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       const reply = await Bridge.chatSend(query, context, textOnly);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice });
+      // The model ends with how it feels about its answer; the island acts it out.
+      if (reply.mood) window.dispatchEvent(new CustomEvent("mochi-mood", { detail: reply.mood }));
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
@@ -241,6 +268,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         }
       }
 
+      clearChat.style.display = State.chatHistory.length ? "" : "none";
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);
       if (count !== renderedCount) {

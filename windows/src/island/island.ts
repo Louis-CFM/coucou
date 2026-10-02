@@ -15,7 +15,7 @@ import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
-import { USC, UploadSeq } from "../upload/sequence";
+import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
@@ -478,6 +478,9 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+    // The bar and the percentage follow the same eased curve as Mochi.
+    State.uploadProgress = uploadProgressCurve(p);
+    if (State.view === "uploading") this.views.get("uploading")?.sync();
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
@@ -630,6 +633,21 @@ export class Island {
     });
 
     this.wireFileDrop();
+
+    // The chat's reply ends with how the model feels about it: act it out.
+    const moods: Record<string, () => void> = {
+      happy: () => this.engine.triggerEmote("happy"),
+      sad: () => this.engine.triggerEmote("sad", 2.4),
+      shy: () => this.engine.triggerEmote("shy", 2.2),
+      angry: () => this.engine.triggerEmote("annoyed"),
+      thankful: () => this.engine.triggerEmote("love"),
+      welcome: () => this.engine.triggerEmote("wink"),
+      scared: () => this.engine.triggerEmote("scared", 1.4),
+      surprised: () => this.engine.triggerEmote("surprised"),
+      proud: () => this.engine.triggerEmote("proud"),
+      celebration: () => this.engine.celebrate(),
+    };
+    window.addEventListener("mochi-mood", (e) => moods[String((e as CustomEvent).detail)]?.());
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.

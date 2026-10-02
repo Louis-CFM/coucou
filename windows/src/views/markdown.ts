@@ -5,6 +5,57 @@
 // markup; links open in the browser through Rust, and only http(s) ones.
 
 import { Bridge } from "../core/bridge";
+import { svg } from "./dom";
+import { ICONS } from "./icons";
+
+/** Puts text on the clipboard; the old execCommand path if the API is refused. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.cssText = "position:fixed;opacity:0";
+    document.body.append(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    return ok;
+  }
+}
+
+/**
+ * A code block with its language and a copy button, as on claude.ai. Used for
+ * fenced code in replies and for a dropped code file in the chat.
+ */
+export function codeBlock(code: string, lang: string, title?: string): HTMLElement {
+  const block = document.createElement("div");
+  block.className = "code-block";
+  const head = document.createElement("div");
+  head.className = "code-head";
+  const label = document.createElement("span");
+  label.className = "code-lang";
+  label.textContent = title ?? (lang || "code");
+  const copy = document.createElement("button");
+  copy.className = "code-copy";
+  copy.title = "Copy code";
+  const reset = () => copy.replaceChildren(svg(ICONS.copy, 11), document.createTextNode("Copy"));
+  reset();
+  copy.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (!(await copyText(code))) return;
+    copy.replaceChildren(svg(ICONS.check, 11, { stroke: 2.4 }), document.createTextNode("Copied"));
+    window.setTimeout(reset, 1400);
+  });
+  head.append(label, copy);
+  const pre = document.createElement("pre");
+  const el = document.createElement("code");
+  el.textContent = code;
+  pre.append(el);
+  block.append(head, pre);
+  return block;
+}
 
 export function renderMarkdown(src: string): DocumentFragment {
   const out = document.createDocumentFragment();
@@ -27,18 +78,14 @@ export function renderMarkdown(src: string): DocumentFragment {
     const line = lines[i];
 
     // ``` fenced code ```
-    const fence = /^\s*```/.exec(line);
+    const fence = /^\s*```\s*([\w+#.-]*)/.exec(line);
     if (fence) {
       flush();
       const code: string[] = [];
       i++;
       while (i < lines.length && !/^\s*```/.test(lines[i])) code.push(lines[i++]);
       i++; // closing fence
-      const pre = document.createElement("pre");
-      const el = document.createElement("code");
-      el.textContent = code.join("\n");
-      pre.append(el);
-      out.append(pre);
+      out.append(codeBlock(code.join("\n"), fence[1]));
       continue;
     }
 

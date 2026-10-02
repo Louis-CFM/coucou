@@ -211,11 +211,51 @@ function statRow(icon: string, color: string, label: string, value: string): HTM
   );
 }
 
+/**
+ * GitHub: what is happening now. A running Actions workflow first, with a bar
+ * of its finished steps, then the latest finished runs and your pushes. Stars
+ * and repos ride in the header. With no activity yet, the overview as before.
+ */
 function githubCard(): HTMLElement {
   const d = get("integration_github");
   const stars = Number(d.totalStars ?? 0);
   const repos = Number(d.totalRepos ?? 0);
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  const runs = arr("integration_github", "runs");
+  const pushes = arr("integration_github", "pushes");
+  if (runs.length || pushes.length) {
+    const rows = h("div", { class: "int-rows" });
+    let n = 0;
+    for (const r of runs) {
+      if (n >= 3) break;
+      const running = r.status !== "completed";
+      const accent = running ? "#F5A524" : r.conclusion === "success" ? "#22C55E" : "#F4505E";
+      const name = h("span", { class: "int-name", text: `${r.repo} · ${r.workflow}` });
+      const tail = running
+        ? h("span", { class: "int-progress", title: `${Math.round(Number(r.progress ?? 0) * 100)} % of steps done` },
+            h("i", { style: `width:${Math.max(4, Number(r.progress ?? 0) * 100)}%` }))
+        : h("span", { class: "int-ago", text: timeAgo(r.updatedAt) });
+      const row = listRow(accent, n === 0, name, tail);
+      if (running) row.classList.add("running");
+      if (r.url) row.addEventListener("click", () => void Bridge.openUrl(String(r.url)));
+      rows.append(row);
+      n++;
+    }
+    for (const p of pushes) {
+      if (n >= 3) break;
+      const commits = Number(p.commits ?? 0);
+      rows.append(
+        listRow("#38BDF8", n === 0,
+          h("span", { class: "int-name", text: `${p.repo} → ${p.branch}` }),
+          h("span", { class: "int-sub", text: p.message ? String(p.message) : `${commits} commit${commits === 1 ? "" : "s"}` }),
+          h("span", { class: "int-ago", text: timeAgo(p.createdAt) }),
+        ),
+      );
+      n++;
+    }
+    const summary = h("span", { class: "int-ago", style: "margin-left:auto", text: `★ ${fmt(stars)} · ${repos} repos` });
+    return h("div", { class: "int-card" }, header("#F4505E", "GitHub", "Activity", summary), rows);
+  }
   return h(
     "div",
     { class: "int-card" },

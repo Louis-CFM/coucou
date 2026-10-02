@@ -10,7 +10,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -66,7 +66,9 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
-    spawn(app.clone(), "integration_github", 7, 300, poll_github);
+    // Ticks every 20 s, but only does the work every 5 minutes unless a
+    // workflow run is going (see poll_github_tick).
+    spawn(app.clone(), "integration_github", 7, 20, poll_github_tick);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
@@ -264,8 +266,81 @@ async fn poll_stripe(app: AppHandle) {
 
 // ── GitHub ────────────────────────────────────────────────────────────────────
 
+/// Set while a GitHub Actions run is going, so its progress bar keeps moving.
+static GITHUB_BUSY: AtomicBool = AtomicBool::new(false);
+static GITHUB_LAST: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Every 5 minutes when nothing is running, every tick (20 s) while a run is.
+async fn poll_github_tick(app: AppHandle) {
+    let due = GITHUB_LAST
+        .lock()
+        .unwrap()
+        .is_none_or(|last| last.elapsed() >= Duration::from_secs(300));
+    if due || GITHUB_BUSY.load(Ordering::Relaxed) {
+        poll_github(app).await;
+    }
+}
+
+async fn gh_get(http: &reqwest::Client, token: &str, url: &str) -> Option<Value> {
+    let r = http
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Coucou")
+        .send()
+        .await
+        .ok()?;
+    if !r.status().is_success() {
+        return None;
+    }
+    r.json().await.ok()
+}
+
+fn first_line(s: &str) -> String {
+    s.lines().next().unwrap_or("").chars().take(90).collect()
+}
+
+/// The latest Actions run of a repo, with how many of its steps are done.
+async fn latest_run(http: &reqwest::Client, token: &str, repo: &str) -> Option<Value> {
+    let runs = gh_get(http, token, &format!("https://api.github.com/repos/{repo}/actions/runs?per_page=1")).await?;
+    let run = runs.get("workflow_runs")?.as_array()?.first()?.clone();
+    let status = run.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+    let mut progress = if status == "completed" { 1.0 } else { 0.0 };
+    if status != "completed" {
+        let id = run.get("id").and_then(Value::as_i64)?;
+        if let Some(jobs) =
+            gh_get(http, token, &format!("https://api.github.com/repos/{repo}/actions/runs/{id}/jobs?per_page=30")).await
+        {
+            let steps: Vec<&Value> = jobs
+                .get("jobs")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|j| j.get("steps").and_then(Value::as_array).into_iter().flatten())
+                .collect();
+            if !steps.is_empty() {
+                let done = steps.iter().filter(|s| s.get("status").and_then(Value::as_str) == Some("completed")).count();
+                progress = done as f64 / steps.len() as f64;
+            }
+        }
+    }
+    Some(json!({
+        "id": run.get("id").and_then(Value::as_i64).unwrap_or(0),
+        "repo": repo.split('/').next_back().unwrap_or(repo),
+        "workflow": run.get("name").and_then(Value::as_str).unwrap_or("Workflow"),
+        "title": first_line(run.get("display_title").and_then(Value::as_str).unwrap_or("")),
+        "branch": run.get("head_branch").and_then(Value::as_str).unwrap_or(""),
+        "status": status,
+        "conclusion": run.get("conclusion").and_then(Value::as_str),
+        "progress": progress,
+        "updatedAt": run.get("updated_at").and_then(Value::as_str).unwrap_or(""),
+        "url": run.get("html_url").and_then(Value::as_str).unwrap_or(""),
+    }))
+}
+
 async fn poll_github(app: AppHandle) {
     let Some(token) = secrets::get("github-token") else { return };
+    *GITHUB_LAST.lock().unwrap() = Some(Instant::now());
     let http = client();
 
     let user = http
@@ -286,6 +361,7 @@ async fn poll_github(app: AppHandle) {
         return;
     }
     let json: Value = response.json().await.unwrap_or(json!({}));
+    let login = json.get("login").and_then(Value::as_str).unwrap_or("").to_string();
     let public = json.get("public_repos").and_then(Value::as_i64).unwrap_or(0);
     let private = json
         .get("owned_private_repos")
@@ -293,34 +369,92 @@ async fn poll_github(app: AppHandle) {
         .and_then(Value::as_i64)
         .unwrap_or(0);
 
-    let repos = http
-        .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let stars: i64 = match repos {
-        Ok(r) if r.status().is_success() => r
-            .json::<Value>()
-            .await
-            .ok()
-            .and_then(|v| v.as_array().cloned())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
-                    .sum()
-            })
-            .unwrap_or(0),
-        _ => 0,
+    let repos: Vec<Value> = gh_get(&http, &token, "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
+        .await
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+    let stars: i64 = repos.iter().filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64)).sum();
+
+    // Actions on the three most recently pushed repos: the one running first,
+    // then anything from the last day.
+    let mut runs = Vec::new();
+    for repo in repos.iter().take(3).filter_map(|r| r.get("full_name").and_then(Value::as_str)) {
+        if let Some(run) = latest_run(&http, &token, repo).await {
+            runs.push(run);
+        }
+    }
+    let active = |r: &Value| r.get("status").and_then(Value::as_str) != Some("completed");
+    let recent = |r: &Value| {
+        r.get("updatedAt")
+            .and_then(Value::as_str)
+            .and_then(|t| chrono_age_hours(t))
+            .is_some_and(|h| h < 24.0)
     };
+    runs.retain(|r| active(r) || recent(r));
+    runs.sort_by_key(|r| !active(r));
+    GITHUB_BUSY.store(runs.iter().any(active), Ordering::Relaxed);
+
+    // Your latest pushes, from your public activity feed (private repos too
+    // when the token can see them).
+    let pushes: Vec<Value> = gh_get(&http, &token, &format!("https://api.github.com/users/{login}/events?per_page=30"))
+        .await
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e.get("type").and_then(Value::as_str) == Some("PushEvent"))
+        .take(3)
+        .map(|e| {
+            let payload = e.get("payload");
+            let commits = payload.and_then(|p| p.get("commits")).and_then(Value::as_array);
+            json!({
+                "repo": e.pointer("/repo/name").and_then(Value::as_str).and_then(|n| n.split('/').next_back()).unwrap_or(""),
+                "branch": payload.and_then(|p| p.get("ref")).and_then(Value::as_str).map(|r| r.trim_start_matches("refs/heads/")).unwrap_or(""),
+                "commits": payload.and_then(|p| p.get("size")).and_then(Value::as_i64).unwrap_or(commits.map_or(0, |c| c.len() as i64)),
+                "message": commits.and_then(|c| c.last()).and_then(|c| c.get("message")).and_then(Value::as_str).map(first_line).unwrap_or_default(),
+                "createdAt": e.get("created_at").and_then(Value::as_str).unwrap_or(""),
+            })
+        })
+        .collect();
+
+    // A run that just finished is the news (a pill badge and a sound).
+    let event = runs.iter().find(|r| !active(r)).and_then(|r| {
+        let id = r.get("id")?.as_i64()?.to_string();
+        if !is_new("github_run", &id) {
+            return None;
+        }
+        Some(IntegrationEvent {
+            success: r.get("conclusion").and_then(Value::as_str) == Some("success"),
+            label: format!("{} · {}", r.get("repo")?.as_str()?, r.get("workflow")?.as_str()?),
+            detail: None,
+        })
+    });
 
     emit(&app, IntegrationUpdate {
         id: "integration_github",
-        data: json!({ "totalRepos": public + private, "totalStars": stars }),
+        data: json!({ "totalRepos": public + private, "totalStars": stars, "runs": runs, "pushes": pushes }),
         error: None,
-        event: None,
+        event,
     });
+}
+
+/// Hours since an ISO-8601 UTC time ("2026-10-02T16:41:04Z"), without a date crate.
+fn chrono_age_hours(iso: &str) -> Option<f64> {
+    let b = iso.as_bytes();
+    if b.len() < 19 {
+        return None;
+    }
+    let n = |a: usize, z: usize| iso.get(a..z)?.parse::<i64>().ok();
+    let (y, mo, d, h, mi, s) = (n(0, 4)?, n(5, 7)?, n(8, 10)?, n(11, 13)?, n(14, 16)?, n(17, 19)?);
+    // Days from civil (Howard Hinnant's algorithm).
+    let y2 = if mo <= 2 { y - 1 } else { y };
+    let era = if y2 >= 0 { y2 } else { y2 - 399 } / 400;
+    let yoe = y2 - era * 400;
+    let doy = (153 * (if mo > 2 { mo - 3 } else { mo + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146097 + doe - 719468;
+    let then = days * 86400 + h * 3600 + mi * 60 + s;
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_secs() as i64;
+    Some((now - then) as f64 / 3600.0)
 }
 
 // ── Vercel ────────────────────────────────────────────────────────────────────
@@ -761,5 +895,21 @@ fn fmt_value(v: &Value) -> String {
         Value::Array(a) => format!("[{}]", a.len()),
         Value::Object(_) => "{…}".into(),
         other => other.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod github_time_tests {
+    /// The day-count maths against the clock: a day after the epoch is
+    /// "now minus 24 h" old, and a leap-year date lands right too.
+    #[test]
+    fn iso_ages_match_the_clock() {
+        let now_h = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64() / 3600.0;
+        let a = super::chrono_age_hours("1970-01-02T00:00:00Z").unwrap();
+        assert!((now_h - 24.0 - a).abs() < 0.01);
+        // 2024-03-01 is day 19783 since the epoch.
+        let b = super::chrono_age_hours("2024-03-01T12:00:00Z").unwrap();
+        assert!((now_h - (19783.0 * 24.0 + 12.0) - b).abs() < 0.01);
+        assert!(super::chrono_age_hours("garbage").is_none());
     }
 }

@@ -27,7 +27,32 @@ const SYSTEM_PROMPT: &str = "a personal AI assistant living at the top of the us
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
 Format with Markdown: short paragraphs, lists where they help, code in backticks or fenced blocks. \
-Put the key words and phrases the user should notice in **bold** (a few per answer, never whole sentences).";
+Put the key words and phrases the user should notice in **bold** (a few per answer, never whole sentences). \
+End every reply with one last line holding only a JSON object with how you feel about it, for your avatar to act out, \
+exactly like {\"mood\":\"happy\"}. Pick one of: happy, sad, shy, angry, thankful, welcome, scared, celebration, surprised, proud. \
+Write nothing after that line and never mention it.";
+
+/// The moods the avatar can act out (see the end of SYSTEM_PROMPT).
+const MOODS: [&str; 10] =
+    ["happy", "sad", "shy", "angry", "thankful", "welcome", "scared", "celebration", "surprised", "proud"];
+
+/// Splits the trailing `{"mood": "…"}` off a reply. Tolerates a code fence
+/// around it and stray whitespace; an unknown or missing mood leaves the text
+/// as it is.
+pub fn take_mood(text: &str) -> (String, Option<String>) {
+    let Some(start) = text.rfind('{') else { return (text.to_string(), None) };
+    let tail = text[start..].trim().trim_end_matches('`').trim();
+    let Ok(value) = serde_json::from_str::<Value>(tail) else { return (text.to_string(), None) };
+    let Some(mood) = value.get("mood").and_then(Value::as_str).map(str::to_lowercase) else {
+        return (text.to_string(), None);
+    };
+    if !MOODS.contains(&mood.as_str()) {
+        return (text.to_string(), None);
+    }
+    let body = text[..start].trim_end();
+    let body = body.strip_suffix("```json").or_else(|| body.strip_suffix("```")).unwrap_or(body).trim_end();
+    (body.to_string(), Some(mood))
+}
 
 /// The system prompt, with the name the user gave Mochi in Settings.
 fn system_prompt(name: &str) -> String {
@@ -80,6 +105,8 @@ pub struct ChatReply {
     pub notice: Option<String>,
     /// An image went to the model (and it answered): it can see images.
     pub sent_image: bool,
+    /// How the model felt about its answer, for Mochi to act out.
+    pub mood: Option<String>,
 }
 
 /// The error a text-only model's image refusal is reported as, so the island
@@ -154,7 +181,8 @@ pub async fn send(
                 Ok(text) => {
                     // Stored in the Claude shape so switching provider mid-chat still works.
                     chat.push(json!({ "role": "assistant", "content": [{ "type": "text", "text": text }] }));
-                    Ok(ChatReply { text, notice, sent_image })
+                    let (text, mood) = take_mood(&text);
+                    Ok(ChatReply { text, notice, sent_image, mood })
                 }
                 Err(err) => {
                     chat.pop();
@@ -213,7 +241,8 @@ pub async fn send(
     if text.is_empty() {
         return Err("No response text.".into());
     }
-    Ok(ChatReply { text, notice, sent_image })
+    let (text, mood) = take_mood(&text);
+    Ok(ChatReply { text, notice, sent_image, mood })
 }
 
 async fn call(key: &str, body: &Value) -> Result<Value, String> {
@@ -399,12 +428,47 @@ fn file_block(path: &str) -> Option<Value> {
         }));
     }
 
-    let len = std::fs::metadata(path).ok()?.len();
-    if len > MAX_INLINE_TEXT {
+    let (text, lang) = read_text(path)?;
+    // As Markdown, so the model reads it as code in the right language.
+    Some(json!({ "type": "text", "text": format!("```{lang}\n{}\n```", text.trim_end()) }))
+}
+
+/// A text or code file's contents and its Markdown language name, if it is
+/// small enough to inline and really text.
+pub fn read_text(path: &str) -> Option<(String, String)> {
+    if std::fs::metadata(path).ok()?.len() > MAX_INLINE_TEXT {
         return None;
     }
     let text = std::fs::read_to_string(path).ok()?;
-    Some(json!({ "type": "text", "text": format!("File contents:\n{text}") }))
+    if text.contains('\0') {
+        return None;
+    }
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let lang = match ext.as_str() {
+        "rs" => "rust",
+        "py" => "python",
+        "js" | "mjs" | "cjs" => "javascript",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" => "tsx",
+        "jsx" => "jsx",
+        "ps1" | "psm1" => "powershell",
+        "bat" | "cmd" => "batch",
+        "sh" | "bash" | "zsh" => "bash",
+        "cs" => "csharp",
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" => "cpp",
+        "h" => "c",
+        "kt" | "kts" => "kotlin",
+        "rb" => "ruby",
+        "yml" => "yaml",
+        "md" => "markdown",
+        "txt" | "log" => "",
+        other => other,
+    };
+    Some((text, lang.to_string()))
 }
 
 /// Small standalone base64 encoder — not worth another dependency.
@@ -458,5 +522,23 @@ mod tests {
         assert_eq!(base64(b"foob"), "Zm9vYg==");
         assert_eq!(base64(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+}
+
+#[cfg(test)]
+mod mood_tests {
+    use super::take_mood;
+
+    #[test]
+    fn trailing_mood_is_split_off() {
+        assert_eq!(take_mood("Done!\n{\"mood\":\"happy\"}"), ("Done!".into(), Some("happy".into())));
+        assert_eq!(
+            take_mood("Hi\n\n```json\n{ \"mood\": \"Thankful\" }\n```\n"),
+            ("Hi".into(), Some("thankful".into()))
+        );
+        // Unknown mood, or JSON that is the answer itself: left alone.
+        assert_eq!(take_mood("x {\"mood\":\"bored\"}").1, None);
+        assert_eq!(take_mood("Use {\"a\": 1} here.").1, None);
+        assert_eq!(take_mood("No mood at all").0, "No mood at all");
     }
 }

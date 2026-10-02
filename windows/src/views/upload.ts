@@ -69,9 +69,11 @@ export function buildUploading(): ViewHost {
     sync() {
       const done = State.uploadProgress >= 0.999;
       const pct = Math.round(State.uploadProgress * 100);
+      // Nothing leaves the computer here: the file is copied into Coucou's
+      // inbox, ready for the chat.
       label.textContent = done
-        ? `✓  ${State.droppedFile?.name ?? "File"}`
-        : `Uploading ${State.droppedFile?.name ?? "file"}`;
+        ? `✓  ${State.droppedFile?.name ?? "File"} is ready to ask about`
+        : `Mochi is reading ${State.droppedFile?.name ?? "the file"}`;
       label.classList.toggle("done", done);
       percent.textContent = done ? "" : `${pct} %`;
       const w = State.uploadProgress * 526;

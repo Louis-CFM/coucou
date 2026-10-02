@@ -90,7 +90,11 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
-    callOrThrow<{ text: string; notice: string | null; sentImage: boolean }>("chat_send", { query, context, textOnly }),
+    callOrThrow<{ text: string; notice: string | null; sentImage: boolean; mood: string | null }>(
+      "chat_send", { query, context, textOnly },
+    ),
+  /** A dropped text or code file's contents, for the chat's code card. */
+  readAttachment: (path: string) => call<{ text: string; lang: string }>("read_attachment", { path }),
   /** Credential Manager name of an endpoint's key (one per provider host). */
   endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),

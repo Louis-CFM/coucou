@@ -1774,3 +1774,134 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 11px;
   padding: 4px 9px;
 }
+
+/* GitHub: a running workflow's finished steps. */
+.int-progress {
+  margin-left: auto;
+  flex: 0 0 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.int-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #f5a524;
+  transition: width 0.6s ease;
+}
+
+.int-row.running > :first-child {
+  animation: int-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes int-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Code in the chat: a language label and a copy button over the code, as on
+   claude.ai. Also the card for a dropped code file. */
+.code-block {
+  margin: 6px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px 3px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+}
+
+.code-lang {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 5px;
+  padding: 3px 6px;
+  background: transparent;
+  color: var(--dim-3);
+  font: 500 10px var(--font);
+  cursor: pointer;
+}
+
+.code-copy:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  background: transparent;
+  border-radius: 0;
+}
+
+.code-block pre code {
+  font: 400 11px/1.45 var(--mono);
+  white-space: pre;
+}
+
+.chat-row.user .user-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chat-row.user .code-block {
+  align-self: stretch;
+  margin: 0;
+}
+
+/* Clear chat: at the foot of Mochi's column, left of the conversation. */
+.chat-card {
+  position: relative;
+}
+
+.chat-clear {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  bottom: 16px;
+  width: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--dim-3);
+  font: 500 10px var(--font);
+  cursor: pointer;
+}
+
+.chat-clear:hover {
+  background: rgba(244, 80, 94, 0.18);
+  color: #ff8d97;
+}

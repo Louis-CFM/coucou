@@ -304,6 +304,14 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// A dropped text or code file's contents and language, for the chat to show
+/// as a code card (none for images, PDFs, binaries or big files).
+#[tauri::command]
+fn read_attachment(path: String) -> Option<serde_json::Value> {
+    let (text, lang) = claude::read_text(&path)?;
+    Some(serde_json::json!({ "text": text, "lang": lang }))
+}
+
 /// A file dropped on the island, as its bytes, with its name in the
 /// `x-file-name` header (see wireFileDrop in island.ts).
 #[tauri::command]
@@ -466,6 +474,7 @@ pub fn run() {
             endpoint_key,
             ingest_file,
             ingest_bytes,
+            read_attachment,
             secret_present,
             secret_set,
             secret_clear,

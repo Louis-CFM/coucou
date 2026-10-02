@@ -45,6 +45,8 @@ export interface ChatMessage {
   content: string;
   /** How the answer was made, shown above it (e.g. the image was left out). */
   notice?: string | null;
+  /** A dropped text or code file sent with this message, shown as a code card. */
+  attachment?: { name: string; lang: string; text: string } | null;
 }
 
 export type PromptContext =
