@@ -45,7 +45,7 @@ const MARKER: &str = "coucou-hook";
 pub const GEMINI_HOOK_EVENTS: &[(&str, &str, u64)] = &[
     ("SessionStart", "SessionStart", 10000),
     ("SessionEnd", "SessionEnd", 10000),
-    ("BeforeTool", "PreToolUse", 5000),
+    ("BeforeTool", "PreToolUse", 110000),
     ("AfterTool", "PostToolUse", 5000),
     ("AfterModel", "PostToolUse", 5000),
     ("BeforeAgent", "SubagentStart", 5000),
@@ -55,9 +55,11 @@ pub const GEMINI_HOOK_EVENTS: &[(&str, &str, u64)] = &[
 /// Antigravity CLI events → (argv event, timeout in SECONDS).
 /// `agy` already uses Claude-like names (PreToolUse/PostToolUse/Stop); the
 /// relay maps PreInvocation→UserPromptSubmit and PostInvocation→PostToolUse.
-/// No SessionStart/SessionEnd exists — first PreInvocation opens the pill.
+/// PreToolUse gets the full decision window: agy gates the tool on the hook,
+/// so a human answering from the island is the whole point. No answer (app
+/// closed, 800ms ack miss) prints nothing and agy asks in the terminal.
 pub const AGY_HOOK_EVENTS: &[(&str, u64)] = &[
-    ("PreToolUse", 10),
+    ("PreToolUse", 110),
     ("PostToolUse", 10),
     ("PreInvocation", 10),
     ("PostInvocation", 10),

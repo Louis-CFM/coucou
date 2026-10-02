@@ -166,6 +166,15 @@ export class Island {
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
+        if (d === "always") {
+          // Remembered rule: this source+tool never asks again. Stored as
+          // "source:tool" (lowercased tool) and synced to disk like the rest.
+          const rule = `${req.source}:${req.tool.toLowerCase()}`;
+          if (!State.settings.approvedTools.includes(rule)) {
+            State.settings.approvedTools = [...State.settings.approvedTools, rule];
+            void Bridge.saveSettings(State.settings);
+          }
+        }
         void Bridge.approvalDecision(req.requestId, d);
         State.pendingApproval = null;
         State.isPinned = false;

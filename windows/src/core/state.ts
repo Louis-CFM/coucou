@@ -30,6 +30,7 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+  source: AgentSource;
 }
 
 export interface ChatMessage {
@@ -109,6 +110,8 @@ export interface Settings {
   language: Lang;
   /** Island theme: "onyx" | "ice" | "frost". */
   theme: IslandTheme;
+  /** Remembered "always allow" rules for non-Claude approvals ("source:tool"). */
+  approvedTools: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -127,6 +130,7 @@ export const DEFAULT_SETTINGS: Settings = {
   geminiModel: "gemini-3.5-flash",
   language: "en",
   theme: "onyx",
+  approvedTools: [],
 };
 
 type Listener = () => void;

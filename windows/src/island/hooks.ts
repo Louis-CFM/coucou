@@ -299,8 +299,23 @@ function upsertAgentTask(name: string): string {
     }
 
     case "PreToolUse": {
-      State.updateTask(taskId, "working");
+      // Blocking approval for the CLIs whose hooks gate tools: the relay only
+      // waits (and pipe only assigns request_id) for agy / old-Gemini here.
+      // Remembered tools and read-only tools auto-allow; the rest get a card.
+      const requestId = payload.request_id ?? "";
       const tool = payload.tool_name ?? "Tool";
+      if (requestId && (source === "antigravity" || source === "geminiCli")) {
+        if (isApproved(source, tool) || isReadOnlyTool(tool)) {
+          State.updateTask(taskId, "working");
+          State.appendStep(taskId, stepLabel(tool, payload.tool_input ?? {}));
+          void Bridge.approvalDecision(requestId, "allow");
+          surface("overview", false);
+        } else {
+          showApprovalCard(island, { taskId, source, focused, projectName, cwd, requestId, payload });
+        }
+        break;
+      }
+      State.updateTask(taskId, "working");
       State.appendStep(taskId, stepLabel(tool, payload.tool_input ?? {}));
       surface("overview", false);
       break;
@@ -388,33 +403,91 @@ function upsertAgentTask(name: string): string {
         surface("overview", false);
         break;
       }
-      const requestId = payload.request_id ?? "";
-      // One card, one request. A second one must never quietly replace the first
-      // — that would leave a human staring at request B while request A waits for
-      // a decision nobody can give. Hand it straight back to the terminal.
-      if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
-        if (requestId) void Bridge.approvalDecline(requestId);
-        break;
-      }
-      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
-      const tool = payload.tool_name ?? "Tool";
-      const input = payload.tool_input ?? {};
-      State.pendingApproval = {
-        requestId,
-        sessionId: payload.session_id ?? "",
-        tool,
-        command: approvalTarget(tool, input),
-      };
-      // The relay's short ack window closes in 800 ms; everything below this
-      // line is synchronous, so the card really is up by the time it lands.
-      if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(taskId, "approval");
-      State.isPinned = true;
-      Sound.play("approval");
-      if (focused) {
-        island.alert("approval");
-      } else {
-        // Another agent holds the view, so the card would yank it away. The badge
+      showApprovalCard(island, {
+        taskId, source, focused, projectName, cwd,
+        requestId: payload.request_id ?? "", payload,
+      });
+      break;
+    }
+    default:
+      break;
+  }
+  State.notify();
+}
+
+/** "source:tool" allowlist key (tool lowercased). */
+function approvalRule(source: AgentSource, tool: string): string {
+  return `${source}:${tool.toLowerCase()}`;
+}
+
+function isApproved(source: AgentSource, tool: string): boolean {
+  return State.settings.approvedTools.includes(approvalRule(source, tool));
+}
+
+/**
+ * Reads, listings and searches auto-allow — the same line Claude draws:
+ * observing never needs a click, writing and executing always do.
+ */
+const READONLY_TOOLS = new Set([
+  "read", "read_file", "view_file", "glob", "grep", "search_files",
+  "ls", "list_directory", "list_files", "websearch", "webfetch",
+  "web_search", "web_fetch", "todowrite",
+]);
+
+function isReadOnlyTool(tool: string): boolean {
+  return READONLY_TOOLS.has(tool.toLowerCase());
+}
+
+interface ApprovalCtx {
+  taskId: string;
+  source: AgentSource;
+  focused: boolean;
+  projectName: string;
+  cwd: string;
+  requestId: string;
+  payload: HookPayload;
+}
+
+/** The blocking approval card, shared by Claude PermissionRequest and the
+ *  agy / old-Gemini PreToolUse gates. Synchronous below the ack line so the
+ *  relay's 800ms window always sees the card up. */
+function showApprovalCard(island: Island, ctx: ApprovalCtx) {
+  const { taskId, source, focused, projectName, cwd, requestId, payload } = ctx;
+  // One card, one request. A second one must never quietly replace the first
+  // — that would leave a human staring at request B while request A waits for
+  // a decision nobody can give. Hand it straight back to the terminal.
+  if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
+    if (requestId) void Bridge.approvalDecline(requestId);
+    return;
+  }
+  if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+  const tool = payload.tool_name ?? "Tool";
+  const input = payload.tool_input ?? {};
+  // Refresh the pill name/cwd for ephemeral CLI tasks (Claude's is stable).
+  if (taskId !== CLAUDE_ID && !taskId.startsWith("agent_")) {
+    const t = State.tasks.find((x) => x.id === taskId);
+    if (t) {
+      t.name = projectName;
+      if (cwd) t.sessionCwd = cwd;
+    }
+  }
+  State.pendingApproval = {
+    requestId,
+    sessionId: payload.session_id ?? "",
+    tool,
+    command: approvalTarget(tool, input),
+    source,
+  };
+  // The relay's short ack window closes in 800 ms; everything below this
+  // line is synchronous, so the card really is up by the time it lands.
+  if (requestId) void Bridge.approvalAck(requestId);
+  State.updateTask(taskId, "approval");
+  State.isPinned = true;
+  Sound.play("approval");
+  if (focused) {
+    island.alert("approval");
+  } else {
+    // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
         // anything, hence the reveal. We just told the relay a human can act.
         State.setPillBadge(taskId, "approval");
@@ -433,11 +506,4 @@ function upsertAgentTask(name: string): string {
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);
-      break;
-    }
-
-    default:
-      break;
-  }
-  State.notify();
 }

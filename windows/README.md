@@ -68,6 +68,16 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Approvals from the island (Claude, agy, old Gemini)
+
+Claude Code permission requests open the island with **Deny / Always /
+Allow** — same as macOS. `agy` (Antigravity) tool calls do too: reads,
+listings and searches auto-allow (like Claude's line between observing and
+doing); writes and executions pop the card, and **Always** remembers that
+tool so it never asks again (visible under Settings → General → Allowed
+tools). Old Gemini CLI vetoes via its documented exit-code block. If nobody
+answers in time, each CLI falls back to asking in its own terminal.
+
 ## Other CLIs: Gemini + opencode
 
 Claude is the default, but the island watches the other two side by side:

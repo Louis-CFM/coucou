@@ -83,7 +83,7 @@ export const Bridge = {
   agyHooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("agy_hooks_apply", { install, fingerprint }),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),

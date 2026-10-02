@@ -32,6 +32,9 @@ pub struct Settings {
     /// Island theme: "onyx" | "ice" | "frost".
     #[serde(default = "default_theme")]
     pub theme: String,
+    /// Remembered "always allow" rules for non-Claude approvals ("source:tool").
+    #[serde(default)]
+    pub approved_tools: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -75,6 +78,7 @@ impl Default for Settings {
             gemini_model: default_gemini_model(),
             language: default_language(),
             theme: default_theme(),
+            approved_tools: Vec::new(),
         }
     }
 }

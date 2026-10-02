@@ -1,19 +1,21 @@
-//! coucou-hook — the relay Claude Code runs on every hook event.
+//! coucou-hook — the relay CLIs run on every hook event.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
 //! Coucou over the named pipe `\\.\pipe\coucou-<sid>`.
 //!
-//! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
+//! Hard rule (docs/CLAUDE.md): **never block the session.**
 //! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
 //!   nothing on stdout, and the session carries on untouched.
 //! * Every step runs under a deadline enforced by the main thread, so a pipe that
 //!   accepts the connection and then stops reading cannot wedge the session
 //!   either: we abandon the worker and exit.
-//! * Only `PermissionRequest` waits for an answer, because approving from the
-//!   island is the whole point. No answer means empty stdout, and Claude Code
-//!   asks in the terminal exactly as if Coucou were not installed.
+//! * Blocking approvals wait for an answer: Claude Code `PermissionRequest`,
+//!   and agy / old-Gemini `PreToolUse` (their CLIs gate tools on the hook).
+//!   No answer means empty stdout, and the CLI asks in the terminal exactly as
+//!   if Coucou were not installed.
 //!
-//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON).
+//! Usage: `coucou-hook <EventName> [source] [--agent <name>]` (the event name
+//! is also read from the JSON).
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -72,9 +74,13 @@ fn connect() -> Option<std::fs::File> {
 }
 
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event, source)) = read_event() else { std::process::exit(0) };
 
-    let waits_for_answer = event == "PermissionRequest";
+    // Blocking approvals: Claude's PermissionRequest, plus PreToolUse for the
+    // CLIs whose hooks gate tools (agy answers decision JSON, old Gemini
+    // takes exit-code 2 as a veto). Everything else is fire-and-forget.
+    let waits_for_answer = event == "PermissionRequest"
+        || ((source == "antigravity" || source == "geminiCli") && event == "PreToolUse");
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -87,14 +93,53 @@ fn main() {
     });
 
     if let Ok(Some(decision)) = rx.recv_timeout(budget) {
-        if let Some(json) = decision_json(&decision) {
+        std::process::exit(answer(&source, &Some(decision)));
+    }
+    // Nothing printed: the CLI asks in the terminal, as if we were not here.
+    std::process::exit(answer(&source, &None));
+}
+
+/// Emits the island's decision in the calling CLI's dialect and returns the
+/// process exit code. `None` (nobody answered in time) is always silent + 0.
+/// Only old-Gemini denies need a non-zero exit (2 = veto the tool).
+fn answer(source: &str, decision: &Option<String>) -> i32 {
+    let word = decision.as_deref().unwrap_or("").trim();
+    match source {
+        // Antigravity gates the tool on hook stdout: allow / deny (+ reason).
+        // "always" is an island allowlist entry; agy just gets an allow.
+        "antigravity" | "agy" => {
+            let json = match word {
+                "allow" | "always" => r#"{"decision":"allow"}"#.to_string(),
+                "deny" => r#"{"decision":"deny","reason":"Denied from Coucou"}"#.to_string(),
+                _ => return 0,
+            };
             let mut out = std::io::stdout();
             let _ = writeln!(out, "{json}");
             let _ = out.flush();
+            0
+        }
+        // Old Gemini CLI: silence + exit 0 proceeds; exit code 2 with stderr
+        // as the reason vetoes the tool (documented System Block).
+        "geminiCli" | "gemini" => match word {
+            "deny" => {
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "Denied from Coucou — approve in the terminal instead"
+                );
+                2
+            }
+            _ => 0,
+        },
+        // Claude Code: hookSpecificOutput JSON.
+        _ => {
+            if let Some(json) = decision_json(word) {
+                let mut out = std::io::stdout();
+                let _ = writeln!(out, "{json}");
+                let _ = out.flush();
+            }
+            0
         }
     }
-    // Nothing printed: Claude Code asks in the terminal, as if we were not here.
-    std::process::exit(0);
 }
 
 /// The documented PermissionRequest output. Anything we do not recognise prints
@@ -205,7 +250,7 @@ fn normalize_tool_fields(map: &mut serde_json::Map<String, serde_json::Value>) {
 }
 
 /// Reads stdin and returns the payload to forward plus the event name.
-fn read_event() -> Option<(String, String)> {
+fn read_event() -> Option<(String, String, String)> {
     let mut raw = Vec::new();
     if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() {
         return None;
@@ -268,6 +313,11 @@ fn read_event() -> Option<(String, String)> {
         let source = normalize_source(&source);
         map.insert("source".into(), serde_json::Value::String(source));
     }
+    let source = map
+        .get("source")
+        .and_then(|v| v.as_str())
+        .unwrap_or("claudeCode")
+        .to_string();
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -310,7 +360,7 @@ fn read_event() -> Option<(String, String)> {
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some((line, event))
+    Some((line, event, source))
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.

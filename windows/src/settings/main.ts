@@ -906,6 +906,24 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Allowed tools") }),
+      h("span", {
+        class: "hint",
+        text: settings.approvedTools.length === 0
+          ? t("None remembered yet — answer Always on a card.")
+          : settings.approvedTools.join(", "),
+      }),
+      h("button", {
+        text: t("Clear"),
+        onclick: () => {
+          settings.approvedTools = [];
+          void save();
+          clear(root);
+          void main();
+        },
+      }),
+    ),
   );
 }
 

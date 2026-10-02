@@ -21,6 +21,7 @@ const PT: Record<string, string> = {
   // Approval
   "Allow": "Permitir",
   "Deny": "Negar",
+  "Always": "Sempre",
   "Always allow": "Sempre permitir",
   "Refuse": "Recusar",
   "wants to run": "quer executar",
@@ -130,6 +131,9 @@ const PT: Record<string, string> = {
   "Main display": "Tela principal",
   "Display under the cursor": "Tela sob o cursor",
   "Launch at startup": "Iniciar com o sistema",
+  "Allowed tools": "Ferramentas liberadas",
+  "None remembered yet — answer Always on a card.": "Nada memorizado — responda Sempre num card.",
+  "Clear": "Limpar",
   "Language": "Idioma",
   "Theme": "Tema",
   "Onyx (black)": "Ônix (preto)",

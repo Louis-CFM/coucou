@@ -23,7 +23,7 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: "allow" | "deny" | "always"): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
@@ -316,14 +316,14 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
+      // Three buttons, built once. Rebuilding them between a mouse-down and a
+      // mouse-up would swallow the click; "Always" persists a remembered rule.
       if (rowKey === "built") return;
       rowKey = "built";
       clear(row);
       row.append(
         btn(t("Deny"), "secondary", () => actions.decide("deny"), "N"),
+        btn(t("Always"), "secondary", () => actions.decide("always"), "A"),
         btn(t("Allow"), "primary", () => actions.decide("allow"), "Y"),
       );
     },

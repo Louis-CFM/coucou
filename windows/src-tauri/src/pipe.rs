@@ -124,8 +124,20 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string();
+    let source = payload
+        .get("source")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
 
-    if event != "PermissionRequest" {
+    // Blocking approvals: Claude's PermissionRequest, plus PreToolUse from the
+    // CLIs whose hooks gate tools (agy answers decision JSON, old Gemini takes
+    // exit-code 2 as a veto). opencode's plugin is fire-and-forget by design
+    // (it never reads a reply), so it must never wait here.
+    let waits = event == "PermissionRequest"
+        || ((source == "antigravity" || source == "geminiCli") && event == "PreToolUse");
+
+    if !waits {
         log::line(format!("hook {event}"));
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         let _ = pipe.disconnect();
@@ -139,7 +151,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         pending.0.lock().unwrap().insert(id.clone(), tx);
     }
     payload["request_id"] = json!(id);
-    log::line(format!("hook PermissionRequest id={id}"));
+    log::line(format!("hook {event} id={id} source={source}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
     let decision = wait_for_decision(&id, &mut rx).await;
