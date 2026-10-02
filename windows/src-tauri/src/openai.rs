@@ -76,7 +76,7 @@ pub async fn start_oauth(app: AppHandle) -> Result<String, String> {
     result
 }
 
-async fn run_oauth_flow(app: AppHandle) -> Result<String, String> {
+async fn run_oauth_flow(_app: AppHandle) -> Result<String, String> {
     let verifier = generate_random_string(48);
     let challenge = base64url(&sha256(verifier.as_bytes()));
     let state = generate_random_string(24);
@@ -260,7 +260,7 @@ pub async fn send_chat(
         .ok_or_else(|| "OpenAI / ChatGPT is not signed in. Open settings to sign in or add an API key.".to_string())?;
 
     let mut user_text = String::new();
-    if chat_is_empty(chat) {
+    if chat.is_empty() {
         if let Some(ctx) = context {
             match ctx {
                 ChatContext::File { name, path } => {
@@ -367,10 +367,6 @@ async fn call_openai(token: &str, body: &Value) -> Result<String, String> {
         .ok_or_else(|| "No reply message in OpenAI response.".to_string())?;
 
     Ok(content.trim().to_string())
-}
-
-fn chat_is_empty(chat: &Chat) -> bool {
-    chat.snapshot().is_empty()
 }
 
 // ── Helpers & Pure Rust Cryptography ──────────────────────────────────────────
