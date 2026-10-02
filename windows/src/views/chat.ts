@@ -46,8 +46,11 @@ async function providerPicker(
   onPick: (id: string) => void,
   close: () => void,
 ): Promise<HTMLElement> {
-  const rows = (await Bridge.chatProviders()) ?? [];
+  const rows = State.providers;
   const list = h("div", { class: "provider-list" });
+  if (rows.length === 0) {
+    return h("div", { class: "provider-list" }, h("span", { class: "hint", text: "loading…" }));
+  }
 
   for (const p of rows) {
     if (p.unavailable !== null) continue;
@@ -149,17 +152,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   let sending = false;
   let renderedCount = -1;
   let renderedProvider = State.settings.chatProvider;
-  let providerLabel = "";
 
-  /** Reads the active provider's row so the chip shows its real label and model. */
-  async function labelProvider() {
-    const rows = (await Bridge.chatProviders()) ?? [];
-    const id = State.settings.chatProvider;
-    const p = rows.find((r) => r.id === id);
-    const model = p ? (State.settings.providerModels[p.id] ?? p.defaultModel) : "";
-    providerLabel = p ? `${p.label} · ${model}` : id;
-  }
-  void labelProvider();
 
   async function submit() {
     const query = input.value.trim();
@@ -221,9 +214,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (renderedProvider !== State.settings.chatProvider) {
         renderedProvider = State.settings.chatProvider;
         renderedCount = -1;
-        void labelProvider();
       }
-      providerChip.textContent = providerLabel || State.settings.chatProvider;
+      providerChip.textContent = State.chatProviderLine;
 
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);

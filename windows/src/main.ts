@@ -20,6 +20,9 @@ async function main() {
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
     State.harnesses = boot.harnesses ?? [];
+    // Once, before the island opens: the chat chip and the provider picker both read
+    // from State.providers, and re-fetching mid-frame left the chip a frame behind.
+    await State.loadProviders();
   }
   island.applySettings();
   State.loadIntegrationTasks();

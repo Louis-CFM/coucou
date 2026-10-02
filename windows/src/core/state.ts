@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import { Bridge, type ChatProvider } from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -148,6 +149,29 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   pendingApproval: ApprovalInfo | null = null;
+
+  /**
+   * The provider table, fetched once at startup.
+   *
+   * The chat chip used to fetch it from inside its own render loop and write the
+   * result on the next frame. That left the chip showing the previous provider
+   * until something unrelated happened to mark the view dirty, so changing the
+   * default in Settings appeared to do nothing until the island was reopened.
+   * Caching it here makes the label derivable synchronously instead.
+   */
+  providers: ChatProvider[] = [];
+
+  async loadProviders(): Promise<void> {
+    this.providers = (await Bridge.chatProviders()) ?? [];
+    this.notify();
+  }
+
+  /** What the chat chip reads: the active provider's label and the model it will call. */
+  get chatProviderLine(): string {
+    const p = this.providers.find((r) => r.id === this.settings.chatProvider);
+    if (!p) return this.settings.chatProvider;
+    return `${p.label} · ${this.settings.providerModels[p.id] ?? p.defaultModel}`;
+  }
 
   /**
    * One conversation per provider, mirroring the Rust side. Anthropic and OpenAI
