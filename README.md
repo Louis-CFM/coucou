@@ -77,13 +77,13 @@ rest of the differences.
 
 ### Linux
 
-Linux packages are published in [Releases](https://github.com/Louis-CFM/coucou/releases)
-under `linux-v*` tags; the first one is on its way. Until it lands, [build from source](#build-from-source).
-Once it's there:
+The first Linux build is out as a beta: download it from [Coucou for Linux 0.1.1 (beta)](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1), x86_64 only for now. Later versions will be in [Releases](https://github.com/Louis-CFM/coucou/releases) under `linux-v*` tags.
 
 - **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
 - **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
+
+Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now.
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
@@ -114,8 +114,10 @@ npm run pack                # installer lands in windows/release/
 gtk-layer-shell and appindicator development packages (Debian/Ubuntu names below).
 
 ```bash
-sudo apt install libwebkit2gtk-4.1-dev libgtk-layer-shell-dev \
-  libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+sudo apt install build-essential pkg-config \
+  libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
+  librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 git clone https://github.com/Louis-CFM/coucou.git
 cd coucou/windows
 npm install
@@ -143,7 +145,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 
 | Do this | Mochi does that |
 |---|---|
-| Hover the notch (top edge on Windows) | peeks out and says hi 👋 |
+| Hover the notch (top edge on Windows and Linux) | peeks out and says hi 👋 |
 | Click it | opens |
 | Hover Mochi | blinks, eyes grow |
 | Click Mochi | squish + annoyed |

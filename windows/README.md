@@ -153,8 +153,10 @@ The same app builds for Linux: everything that differs lives in
 `src-tauri/src/platform/`, and the relay's transport in `hook/src/unix.rs`.
 
 ```bash
-sudo apt install libwebkit2gtk-4.1-dev libgtk-layer-shell-dev \
-  libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+sudo apt install build-essential pkg-config \
+  libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
+  librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 npm install
 npm run tauri dev      # live-reloading development build
 npm run pack           # AppImage, .deb and .rpm in windows/release/

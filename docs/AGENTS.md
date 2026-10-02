@@ -1,6 +1,6 @@
 # Coucou — third-party agent integration
 
-Any tool that can write to a Unix domain socket (macOS) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
+Any tool that can write to a Unix domain socket (macOS, Linux) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
 
 ## The `coucou_agent` field
 
@@ -38,6 +38,20 @@ Same pattern with the Windows relay:
 }
 ```
 
+## Hook command (Linux)
+
+Same pattern with the Linux relay. Coucou copies the relay to `~/.local/share/coucou/bin/coucou-hook` at startup.
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "type": "command", "command": "/path/to/coucou-hook --agent my-tool" }
+    ]
+  }
+}
+```
+
 ## Payload format
 
 The relay adds `coucou_agent` to the JSON it forwards. You can also add it yourself if you talk to the socket directly:
@@ -55,6 +69,7 @@ Send newline-terminated JSON to the socket:
 - **macOS (GitHub build):** `~/Library/Application Support/NotchBuddy/nb.sock`
 - **macOS (App Store build):** `~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock`
 - **Windows:** `\\.\pipe\coucou-<user-SID>`
+- **Linux:** `$XDG_RUNTIME_DIR/coucou.sock` (usually `/run/user/<uid>/coucou.sock`). Only your own user account can connect.
 
 ## Supported events
 
@@ -121,9 +136,21 @@ island's `tool_name` / `session_id`.
 
 ### Any other tool
 
-Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS)
-or `coucou-hook.exe --agent <your-name> <EventName>` (Windows) and let the relay
-forward the event.
+Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS),
+`coucou-hook.exe --agent <your-name> <EventName>` (Windows)
+or `~/.local/share/coucou/bin/coucou-hook --agent <your-name> <EventName>` (Linux)
+and let the relay forward the event.
+
+## Quick test (Linux)
+
+With Coucou running:
+
+```sh
+echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","coucou_agent":"demo"}' \
+  | ~/.local/share/coucou/bin/coucou-hook --agent demo
+```
+
+A "demo" pill should appear in the island.
 
 ## Quick test (macOS)
 
