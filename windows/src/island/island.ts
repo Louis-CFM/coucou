@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop, type DragDropPayload, type DroppedFile } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent, type DragDropPayload, type DroppedFile } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -379,6 +379,18 @@ export class Island {
   }
 
   /**
+   * The mouse button went up. If a file drag had already left the island
+   * without being dropped, it ended somewhere else: close the drop view rather
+   * than wait for a file that is never coming.
+   */
+  private onPointerReleased() {
+    if (State.fileDragOver || State.view !== "upload" || UploadSeq.dropped) return;
+    void Bridge.log("drag ended outside the island");
+    this.engine.animateMorph(0);
+    this.setView(State.defaultView());
+  }
+
+  /**
    * Mochi eats the file. Nothing here waits on the file system: the copy into
    * the inbox runs in the background and swaps the path in when it lands, so a
    * slow disk can never stall the animation — same as FileDropHandler on macOS.
@@ -549,6 +561,7 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    void onEvent<null>("pointer-released", () => this.onPointerReleased());
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.

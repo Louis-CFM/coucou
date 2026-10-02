@@ -280,6 +280,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
+            let mut was_down = false;
             let mut ticks: u32 = 0;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(16));
@@ -311,6 +312,16 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+                // A file drag the page saw leave can end anywhere, and HTML5 has
+                // no event for "dropped somewhere else". Tell the page when the
+                // button goes up — before the "cursor didn't move" shortcut, since
+                // a release needs no movement.
+                let down = left_button_down();
+                if was_down && !down {
+                    let _ = app.emit_to(WINDOW_LABEL, "pointer-released", ());
+                }
+                was_down = down;
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -333,7 +344,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                let down = left_button_down();
 
                 let dragging = down
                     && x >= 0.0
