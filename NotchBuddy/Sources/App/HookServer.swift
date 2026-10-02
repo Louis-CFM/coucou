@@ -230,8 +230,9 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
+        let isClaudeDesktop = bundleId.lowercased().contains("claudefordesktop")
 
-        // Routing: coucou_agent → external pill; Cursor → agent_cursor; VS Code → integration_claude.
+        // Routing: coucou_agent → external pill; Cursor → agent_cursor; Claude Code → integration_claude.
         let agentId: String
         let isExternalAgent: Bool
         if let agent = validAgent {
@@ -240,12 +241,9 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
-        } else if isVSCodeEditor {
+        } else {
             agentId = "integration_claude"
             isExternalAgent = false
-        } else {
-            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
-            return
         }
 
         let focused = state.focusId == agentId
@@ -253,7 +251,16 @@ final class HookServer: @unchecked Sendable {
         // While a permission request is pending, dismiss when the resolving event arrives,
         // then continue normal processing. Only skip normal processing when unresolved.
         if let pending = state.pendingApproval, agentId == pending.pillId {
-            let handledNote = pending.pillId == "agent_cursor" ? "Handled in Cursor." : "Handled in VS Code."
+            let handledNote: String
+            if pending.pillId == "agent_cursor" {
+                handledNote = "Handled in Cursor."
+            } else if isVSCodeEditor {
+                handledNote = "Handled in VS Code."
+            } else if isClaudeDesktop {
+                handledNote = "Handled in Claude."
+            } else {
+                handledNote = "Handled in terminal."
+            }
             var resolved = false
             switch name {
             case "PostToolUse", "PostToolUseFailure":
@@ -454,21 +461,10 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let termProgram = payload["term_program"] as? String ?? ""
-        let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let bundleId = payload["bundle_id"] as? String ?? ""
         // Cursor identified solely by its stable Electron bundle ID.
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
         let pillId = isCursorEditor ? "agent_cursor" : "integration_claude"
-        guard isCursorEditor || isVSCodeEditor else {
-            Task.detached { [weak self] in
-                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-                close(fd)
-            }
-            return
-        }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
