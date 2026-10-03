@@ -61,14 +61,16 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "2"
-        CFBundleShortVersionString: "0.1.1"
+        CFBundleVersion: "4"
+        CFBundleShortVersionString: "0.1.3"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
-        NSAppleEventsUsageDescription: "Pour sauter au terminal et envoyer des mails."
+        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
@@ -103,6 +105,8 @@ targets:
         NSSupportsAutomaticGraphicsSwitching: YES
         LSApplicationCategoryType: public.app-category.developer-tools
         ITSAppUsesNonExemptEncryption: NO
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou

@@ -249,6 +249,10 @@ final class BotEngine: ObservableObject {
     // Slap tracking (for dizzy on 3 slaps)
     var slapTimes: [Double] = []
 
+    // Dancing (Apple Music)
+    var isDancing: Bool = false
+    var dancingLevel: CGFloat = 0   // 0→1 over 0.3s, 1→0 over 0.5s
+
     // Mini wandering look (random, ignores mouse)
     var miniLookTarget: CGPoint = .zero
     var miniLookNextTime: Double = 0
@@ -377,6 +381,13 @@ final class BotEngine: ObservableObject {
                 SoundEngine.shared.play("annoyed")
             }
         }
+    }
+
+    // MARK: - Dancing
+
+    func setDancing(_ dancing: Bool) {
+        guard isDancing != dancing else { return }
+        isDancing = dancing
     }
 
     // MARK: - Mini periodic behavior loop
@@ -777,7 +788,32 @@ final class BotEngine: ObservableObject {
         slotHVel += slotAcc * dtCG
         slotH = max(0, slotH + slotHVel * dtCG)
 
+        // Dance level: fade in 0.3s, out 0.5s
+        let dancingTarget: CGFloat = isDancing ? 1 : 0
+        if dancingLevel < dancingTarget {
+            dancingLevel = min(dancingTarget, dancingLevel + CGFloat(dt) / 0.3)
+        } else if dancingLevel > dancingTarget {
+            dancingLevel = max(dancingTarget, dancingLevel - CGFloat(dt) / 0.5)
+        }
+
         lastTime = now
+    }
+
+    // MARK: - Dance transform
+
+    /// Applies a 112-BPM dance bounce/sway around the bottom of the body.
+    /// Call this on a copy of the GraphicsContext before the three draw passes.
+    func applyDance(_ ctx: inout GraphicsContext, size: CGSize) {
+        guard dancingLevel > 0.001 else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let px = W / 2 + ox * R
+        let py = H / 2 + particleOverhang / 2 + oy * R + R * 0.06 + R * 0.88
+        let beat = CGFloat(CACurrentMediaTime()) * 112 / 60
+        let hop = abs(sin(.pi * beat)), land = pow(1 - hop, 6), l = dancingLevel
+        ctx.translateBy(x: px + 0.08 * R * sin(.pi * beat) * l, y: py - 0.20 * R * hop * l)
+        ctx.rotate(by: .radians(0.10 * sin(.pi * beat) * l))
+        ctx.scaleBy(x: 1 + 0.045 * land * l, y: 1 - 0.06 * land * l)
+        ctx.translateBy(x: -px, y: -py)
     }
 
     // MARK: - Draw
@@ -1112,6 +1148,10 @@ final class BotEngine: ObservableObject {
 
     private func drawEyes(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat) {
         var shape = eyeOverride ?? cfg.eye
+        // Dance: happy eyes in calm states
+        if isDancing && dancingLevel > 0.15 && !isMini && (state == .idle || state == .finished) {
+            shape = .happy
+        }
         // In box mode: cup eyes when file over box (slotHTarget set), happy arcs while chewing
         if morph > 0.5 {
             if isChewing { shape = .happy }

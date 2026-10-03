@@ -69,6 +69,18 @@ final class AppState: ObservableObject {
     @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
     }
+    @Published var ollamaChatModel: String = ChatProvider.ollama.defaultModel {
+        didSet { UserDefaults.standard.set(ollamaChatModel, forKey: "ollamaChatModel") }
+    }
+    @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
+        didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
+    }
+    @Published var ollamaServerURL: String = "" {
+        didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
+    }
+    @Published var lmstudioServerURL: String = "" {
+        didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
+    }
 
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
@@ -85,6 +97,41 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        // Local providers: fetch from server URL (no API key needed)
+        if provider.isLocal {
+            let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
+            let normalised = LocalChat.normaliseURL(baseURL)
+            guard !normalised.isEmpty else {
+                providerModelFetchError[provider] = provider == .ollama
+                    ? "Connect Ollama in Settings → Chat first."
+                    : "Connect LM Studio in Settings → Chat first."
+                return
+            }
+            loadingProviderModels.insert(provider)
+            providerModelFetchError.removeValue(forKey: provider)
+            Task {
+                let result = await LocalChat.fetchModelsResult(baseURL: normalised)
+                loadingProviderModels.remove(provider)
+                switch result {
+                case .success(let models) where models.isEmpty:
+                    providerModelFetchError[provider] = provider == .ollama
+                        ? "No models yet. Download one in Ollama first."
+                        : "No models yet. Download one in LM Studio first."
+                case .success(let models):
+                    fetchedProviderModels[provider] = models
+                    let current = provider == .ollama ? ollamaChatModel : lmstudioChatModel
+                    if !models.contains(where: { $0.id == current }) {
+                        let first = models.first!.id
+                        if provider == .ollama { ollamaChatModel = first }
+                        else                   { lmstudioChatModel = first }
+                    }
+                case .failure:
+                    providerModelFetchError[provider] = "Cannot reach \(normalised). Is the server running?"
+                }
+            }
+            return
+        }
+        // Remote providers: require API key
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
             providerModelFetchError[provider] = "No API key — add it in Settings."
             return
@@ -97,14 +144,13 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
                 providerModelFetchError[provider] = "Failed to load models. Check your API key."
             } else {
                 fetchedProviderModels[provider] = models
-                // If the saved model isn't in the fetched list, pick a sensible default:
-                // prefer "sonnet" (Anthropic), "flash" (Google), "mini" (OpenAI); else first.
                 switch provider {
                 case .anthropic:
                     if !models.contains(where: { $0.id == claudeModel }) {
@@ -118,6 +164,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
+                case .ollama, .lmstudio: break
                 }
             }
         }
@@ -129,6 +176,8 @@ final class AppState: ObservableObject {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
+        case .ollama:    return ollamaChatModel
+        case .lmstudio:  return lmstudioChatModel
         }
     }
 
@@ -199,6 +248,10 @@ final class AppState: ObservableObject {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
                 UserDefaults.standard.set(data, forKey: "activeIntegrations")
             }
+            // Clear stale GitHub data when the integration is disabled
+            if !activeIntegrations.contains("integration_github") && oldValue.contains("integration_github") {
+                githubPulse = nil
+            }
         }
     }
 
@@ -212,8 +265,9 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats (populated by GithubPoller)
+    // GitHub stats + pulse (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
+    @Published var githubPulse: GitHubPulse? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -239,6 +293,77 @@ final class AppState: ObservableObject {
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
+    // Pending AskUserQuestion from Claude Code hook
+    @Published var pendingQuestion: AskQuestion? = nil
+
+    // Per-pill flat list of FileDiffs, in order of reception.
+    // Not @Published — steps[] changes already trigger redraws.
+    var sessionDiffs: [String: [FileDiff]] = [:]
+    private var sessionDiffTimers: [String: DispatchWorkItem] = [:]
+    // Monotonically increasing — never reset, not even in clearSessionDiffs.
+    private var nextDiffId: Int = 0
+
+    @discardableResult
+    func appendSessionDiff(_ diff: FileDiff, for pillId: String) -> Int {
+        var d = diff
+        d.id = nextDiffId
+        nextDiffId += 1
+        if sessionDiffs[pillId] == nil { sessionDiffs[pillId] = [] }
+        sessionDiffs[pillId]!.append(d)
+        // Keep at most 50 diffs per pill; drop oldest first
+        while sessionDiffs[pillId]!.count > 50 {
+            sessionDiffs[pillId]!.removeFirst()
+        }
+        resetSessionDiffTimer(for: pillId)
+        return d.id
+    }
+
+    func clearSessionDiffs(for pillId: String) {
+        sessionDiffTimers[pillId]?.cancel()
+        sessionDiffTimers.removeValue(forKey: pillId)
+        sessionDiffs.removeValue(forKey: pillId)
+        // nextDiffId intentionally NOT reset — ids remain unique across sessions
+    }
+
+    private func resetSessionDiffTimer(for pillId: String) {
+        sessionDiffTimers[pillId]?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            DispatchQueue.main.async { self?.clearSessionDiffs(for: pillId) }
+        }
+        sessionDiffTimers[pillId] = work
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3600, execute: work)
+    }
+
+    #if !APPSTORE
+    @Published var musicPlaying: Bool = false
+    @Published var musicAutomationDenied: Bool = false
+    #endif
+
+    // Claude plan gauge (from statusline hook)
+    @Published var claudePlanUsage: PlanUsage? = nil {
+        didSet {
+            if let u = claudePlanUsage,
+               let data = try? JSONEncoder().encode(u) {
+                UserDefaults.standard.set(data, forKey: "claudePlanUsage")
+            }
+        }
+    }
+
+    // Plan gauge: show pill in notch header — persisted
+    #if !APPSTORE
+    @Published var showPlanInNotch: Bool = false {
+        didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
+    }
+    // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
+    @Published var planRelayInstalled: Bool = false
+    // Transient — reset when island closes or view changes
+    @Published var showingPlanDetail: Bool = false
+
+    func refreshPlanRelayState() {
+        planRelayInstalled = HookServer.statusLineInstalled()
+    }
+    #endif
+
     // MARK: - Init (loads persisted settings)
 
     private init() {
@@ -251,6 +376,10 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
+        if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
+        if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
+        if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
@@ -270,6 +399,12 @@ final class AppState: ObservableObject {
            PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v
         }
+        if let d = ud.data(forKey: "claudePlanUsage"),
+           let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
+        #if !APPSTORE
+        if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
+        planRelayInstalled = HookServer.statusLineInstalled()
+        #endif
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
@@ -330,6 +465,33 @@ final class AppState: ObservableObject {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         focusId = id
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
+    }
+
+    func setPillBadge(_ badge: PillBadge, for id: String) {
+        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[idx].pillBadge = badge
+    }
+
+    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent]) {
+        guard !events.isEmpty else { return }
+        // Priority: error > question (reviewRequested) > finish (ciPassed)
+        var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
+        var badge: PillBadge?
+        var sound: String?
+        for event in events {
+            switch event {
+            case .ciFailed, .mainFailed:
+                if level < 3 { level = 3; badge = .error;    sound = "error"    }
+            case .reviewRequested:
+                if level < 2 { level = 2; badge = .finished; sound = "question" }
+            case .ciPassed:
+                if level < 1 { level = 1; badge = .finished; sound = "finish"   }
+            }
+        }
+        // Only set badge when the GitHub pill is not currently in focus
+        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
+        if let s = sound { SoundEngine.shared.play(s) }
     }
 
     func syncMode() {
@@ -564,8 +726,8 @@ struct NotionPage: Identifiable {
 
 enum ChatRole { case user, assistant }
 
-struct ChatMessage: Identifiable {
+struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: ChatRole
-    let content: String
+    var content: String   // var for streaming updates
 }
