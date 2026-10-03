@@ -50,6 +50,15 @@ export interface SearchResult {
   note?: string;
 }
 
+/** What SMTC says is playing. `title` and `artist` empty = nothing to show. */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  album: string;
+  app: string;
+  playing: boolean;
+}
+
 const task = (
   id: string, name: string, color: string, source: AgentSource,
 ): AgentTask => ({
@@ -92,6 +101,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Show what is playing and let Mochi dance along. */
+  musicEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  musicEnabled: true,
 };
 
 type Listener = () => void;
@@ -137,6 +149,7 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  nowPlaying: NowPlaying | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 

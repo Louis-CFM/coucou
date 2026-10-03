@@ -25,6 +25,12 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
+  # GlobalSystemMediaTransportControlsSession — what is playing, right now.
+  "Foundation",
+  "Foundation_Collections",
+  "Media",
+  "Media_Control",
+  "Media_Playback",
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
