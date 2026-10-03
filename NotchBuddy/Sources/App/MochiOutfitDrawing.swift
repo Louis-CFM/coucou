@@ -324,16 +324,12 @@ func drawOutfitFrontStatic(
     }
     if isHatType && abs(H.roll) > 0.01 {
         let u = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
-        let flyHeight = H.ry * 0.9 * sin(u * .pi)
-        let flyDrift  = H.physDx * H.rx * 0.3 * sin(u * .pi)
-        let spinAngle = 2 * CGFloat.pi * u
-        // Pivot: approximate hat centre in body-space (between crown and hat body)
-        let pivot: CGFloat = -H.ry * 1.4
+        let flyHeight = H.ry * 0.45 * sin(u * .pi)
+        let flyDrift  = H.physDx * H.rx * 0.2 * sin(u * .pi)
+        let swingAngle = sin(2 * .pi * u) * 0.35   // gentle flat swing, hat stays upright
         var c = baseCtx; c.opacity = layerOpacity
-        c.translateBy(x: flyDrift, y: -flyHeight)   // lift + drift
-        c.translateBy(x: 0, y: pivot)               // to hat centre
-        c.rotate(by: .radians(spinAngle))            // self-spin
-        c.translateBy(x: 0, y: -pivot)              // back from hat centre
+        c.translateBy(x: flyDrift, y: -flyHeight)
+        c.rotate(by: .radians(swingAngle))
         c.drawLayer { lCtx in
             var l = lCtx
             switch outfit {
@@ -469,8 +465,6 @@ func drawOutfitBehindStatic(
     // Behind accessories: bunnyEars (always), crown back, witchHat back
     let posP = Ease.back(presence)
     let hatScale = 0.85 + 0.15 * posP
-    let pivot: CGFloat = -H.ry * 1.4
-
     switch outfit {
     case .bunnyEars:
         // Always behind body; no 3D roll — ears flatten/tilt during roll.
@@ -490,8 +484,8 @@ func drawOutfitBehindStatic(
         var c = ctx; c.opacity = layerOpacity
         if abs(H.roll) > 0.01 {
             let u = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
-            c.translateBy(x: H.physDx * H.rx * 0.3 * sin(u * .pi), y: -H.ry * 0.9 * sin(u * .pi))
-            c.translateBy(x: 0, y: pivot); c.rotate(by: .radians(2 * .pi * u)); c.translateBy(x: 0, y: -pivot)
+            c.translateBy(x: H.physDx * H.rx * 0.2 * sin(u * .pi), y: -H.ry * 0.45 * sin(u * .pi))
+            c.rotate(by: .radians(sin(2 * .pi * u) * 0.35))
         } else {
             c.translateBy(x: 0, y: -(1 - posP) * H.ry * 1.0); c.scaleBy(x: hatScale, y: hatScale)
         }
@@ -501,8 +495,8 @@ func drawOutfitBehindStatic(
         var c = ctx; c.opacity = layerOpacity
         if abs(H.roll) > 0.01 {
             let u = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
-            c.translateBy(x: H.physDx * H.rx * 0.3 * sin(u * .pi), y: -H.ry * 0.9 * sin(u * .pi))
-            c.translateBy(x: 0, y: pivot); c.rotate(by: .radians(2 * .pi * u)); c.translateBy(x: 0, y: -pivot)
+            c.translateBy(x: H.physDx * H.rx * 0.2 * sin(u * .pi), y: -H.ry * 0.45 * sin(u * .pi))
+            c.rotate(by: .radians(sin(2 * .pi * u) * 0.35))
         } else {
             c.translateBy(x: 0, y: -(1 - posP) * H.ry * 1.0); c.scaleBy(x: hatScale, y: hatScale)
         }
