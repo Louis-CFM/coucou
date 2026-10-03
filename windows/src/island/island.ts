@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -10,15 +10,16 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, musicDancing } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
-import { USC, UploadSeq } from "../upload/sequence";
+import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { Pods } from "./pods";
 
 const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
@@ -45,6 +46,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  /** The closed island's middle: what the focused Mochi is doing, else the time. */
+  private compactStatus!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -56,9 +59,12 @@ export class Island {
   private radius = new Tracked(ROUNDED_CORNER);
   private botCx = new Spring(46);
   private botCy = new Spring(16);
+  /** Where Mochi was pressed (screen px): a click slaps, a drag starts a roam. */
+  private botPress: { x: number; y: number } | null = null;
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
+  private pods = new Pods(() => this.ensureRunning());
   private greeting = new Greeting();
 
   private running = false;
@@ -140,12 +146,24 @@ export class Island {
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
+        if (d === "allow") this.engine.celebrate();
+        this.closeRequest();
+      },
+      answerQuestions: (answers) => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("approve");
+        // One line of JSON; coucou-hook turns it into Claude Code's answer.
+        void Bridge.approvalDecision(req.requestId, JSON.stringify({ answers }));
+        this.engine.celebrate();
+        this.closeRequest();
+      },
+      questionToTerminal: () => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("blip");
+        void Bridge.approvalDecline(req.requestId);
+        this.closeRequest();
       },
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
@@ -175,6 +193,11 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactStatus = h("div", { id: "compact-status" });
+    // The clock moves on its own; a timer this slow costs nothing.
+    window.setInterval(() => {
+      if (State.mode === "compact") this.syncCompactStatus();
+    }, 15_000);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -208,6 +231,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactStatus,
       this.countdown,
     );
 
@@ -217,7 +241,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.pods.el);
     this.applyGeometry();
   }
 
@@ -265,6 +289,8 @@ export class Island {
       Sound.play("close");
       State.isPinned = false;
       void Bridge.focusWindow(false);
+      // A roam screenshot nobody asked about must not tag along into a later chat.
+      if (State.droppedFile?.ephemeral && State.chatHistory.length === 0) State.dropAttachment();
     }
     if (mode !== "expanded") {
       this.engine.resetMorph();
@@ -339,14 +365,54 @@ export class Island {
     this.fsm.pinned = false;
   }
 
+  /** Hold the island open while something runs (a push), without the
+   *  approval pin; `false` lets it auto-close again as usual. */
+  hold(on: boolean) {
+    this.fsm.pinned = on || State.isPinned;
+    if (!on && !this.wasInIsland) this.fsm.mouseLeft();
+  }
+
+  /** The request card is answered or handed back: unpin and go home. */
+  /** The pending card was answered in the terminal: close it, no reply sent. */
+  dismissRequest() {
+    if (!State.pendingApproval) return;
+    this.closeRequest();
+    State.notify();
+  }
+
+  private closeRequest() {
+    State.pendingApproval = null;
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    void Bridge.focusWindow(false);
+    State.updateTask("integration_claude", "working");
+    State.setPillBadge("integration_claude", null);
+    State.restoreFocus();
+    this.setView(State.defaultView());
+  }
+
+  // ── Roam ────────────────────────────────────────────────────────────────────
+
+  /** Mochi flew back from the screen, with a screenshot when it got one. */
+  onRoamEnd(path: string | null) {
+    State.roaming = false;
+    this.engine.squash();
+    Sound.play("open");
+    if (!path) return;
+    State.droppedFile = { name: "Screenshot", path, ephemeral: true };
+    State.promptContext = { kind: "file", name: "Screenshot", path };
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    this.alert("prompt");
+  }
+
   // ── File drop ───────────────────────────────────────────────────────────────
 
-  private onDragDrop(e: { type: string; paths?: string[] }) {
-    if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
+  private onDragDrop(e: { type: "enter" | "leave" | "drop"; file?: File }) {
+    void Bridge.log(`drag ${e.type}${e.file ? ` ${e.file.name}` : ""}`);
     if (State.paused) return;
     switch (e.type) {
-      case "enter":
-      case "over": {
+      case "enter": {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
         this.engine.animateMorph(1);
@@ -367,13 +433,12 @@ export class Island {
       }
       case "drop": {
         State.fileDragOver = false;
-        const path = e.paths?.[0];
-        if (!path) {
+        if (!e.file) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
           return;
         }
-        this.swallow(path);
+        this.swallow(e.file);
         break;
       }
     }
@@ -384,10 +449,11 @@ export class Island {
    * the inbox runs in the background and swaps the path in when it lands, so a
    * slow disk can never stall the animation — same as FileDropHandler on macOS.
    */
-  private swallow(path: string) {
-    const name = path.split(/[\\/]/).pop() || "file";
-    State.droppedFile = { name, path };
-    State.promptContext = { kind: "file", name, path };
+  private swallow(file: File) {
+    const name = file.name || "file";
+    // The inbox path arrives with the copy; until then the file is known by name.
+    State.droppedFile = { name, path: "" };
+    State.promptContext = { kind: "file", name, path: "" };
     State.chatHistory = [];
     void Bridge.chatReset();
 
@@ -404,7 +470,7 @@ export class Island {
     this.setView("uploading");
     this.ensureRunning();
 
-    void Bridge.ingestFile(path)
+    void Bridge.ingestBytes(file)
       .then((file) => {
         State.droppedFile = { name: file.name, path: file.path };
         State.promptContext = { kind: "file", name: file.name, path: file.path };
@@ -429,6 +495,9 @@ export class Island {
     if (since == null) return;
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
+    // The bar and the percentage follow the same eased curve as Mochi.
+    State.uploadProgress = uploadProgressCurve(p);
+    if (State.view === "uploading") this.views.get("uploading")?.sync();
 
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
@@ -531,6 +600,12 @@ export class Island {
       if (State.mode === "hidden") this.fsm.mouseEntered();
     });
 
+    window.addEventListener("mousedown", (e) => {
+      if (carrying && e.button === 2) {
+        carrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "cancel");
+      }
+    });
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
@@ -540,8 +615,33 @@ export class Island {
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
-        this.engine.slap();
+        // A click slaps; a drag carries Mochi out onto the screen (roam).
+        this.botPress = { x: e.screenX, y: e.screenY };
       }
+    });
+    // Linux (Wayland): a held drag keeps going to the window it started in, so
+    // while Mochi is carried the island feeds the pointer to the roam overlay.
+    // Windows polls the cursor itself.
+    const forwardPointer = navigator.userAgent.includes("Linux");
+    let carrying = false;
+    window.addEventListener("mousemove", (e) => {
+      if (carrying) void Bridge.roamPointer(e.clientX, e.clientY, "move");
+      if (!this.botPress) return;
+      if (Math.hypot(e.screenX - this.botPress.x, e.screenY - this.botPress.y) < 8) return;
+      this.botPress = null;
+      State.roaming = true;
+      carrying = forwardPointer;
+      void Bridge.roamStart({ state: this.engine.state, bodyColor: this.engine.bodyColor, outfit: this.engine.outfit });
+      // Mochi has left: the island goes straight back to its idle size.
+      this.collapse();
+    });
+    window.addEventListener("mouseup", (e) => {
+      if (carrying && e.button === 0) {
+        carrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "drop");
+      }
+      if (this.botPress) this.engine.slap();
+      this.botPress = null;
     });
 
     window.addEventListener("keydown", (e) => {
@@ -549,11 +649,64 @@ export class Island {
       State.lastActivity = performance.now();
     });
 
-    void onDragDrop((e) => this.onDragDrop(e));
+    this.wireFileDrop();
+
+    // The chat's reply ends with how the model feels about it: act it out.
+    const moods: Record<string, () => void> = {
+      happy: () => this.engine.triggerEmote("happy"),
+      sad: () => this.engine.triggerEmote("sad", 2.4),
+      shy: () => this.engine.triggerEmote("shy", 2.2),
+      angry: () => this.engine.triggerEmote("annoyed"),
+      thankful: () => this.engine.triggerEmote("love"),
+      welcome: () => this.engine.triggerEmote("wink"),
+      scared: () => this.engine.triggerEmote("scared", 1.4),
+      surprised: () => this.engine.triggerEmote("surprised"),
+      proud: () => this.engine.triggerEmote("proud"),
+      celebration: () => this.engine.celebrate(),
+    };
+    window.addEventListener("mochi-mood", (e) => moods[String((e as CustomEvent).detail)]?.());
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * Files dropped on the island, as a plain HTML5 drop. On Windows the window
+   * Windows asks during a drag is WebView2's own (it belongs to WebView2's
+   * browser process, so nothing can unregister it), which is why Tauri's
+   * native drop events never arrived; with those off (dragDropEnabled: false)
+   * the page takes the drop itself. The same code serves WebKitGTK on Linux.
+   * The page reports the cursor during the drag too: there is no mousemove.
+   */
+  private wireFileDrop() {
+    const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+    // dragenter / dragleave fire for every element crossed; count to know
+    // when the drag really leaves the window.
+    let depth = 0;
+    window.addEventListener("dragenter", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      this.onCursor(e.clientX, e.clientY);
+      if (depth++ === 0) this.onDragDrop({ type: "enter" });
+    });
+    window.addEventListener("dragover", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      this.onCursor(e.clientX, e.clientY);
+    });
+    window.addEventListener("dragleave", (e) => {
+      if (!hasFiles(e) || --depth > 0) return;
+      depth = 0;
+      this.onDragDrop({ type: "leave" });
+    });
+    window.addEventListener("drop", (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      this.onDragDrop({ type: "drop", file: e.dataTransfer?.files[0] });
+    });
   }
 
   /**
@@ -710,9 +863,22 @@ export class Island {
       // is already in the right place the moment the canvas fades out.
       this.drawBot(dt);
     }
+    this.pods.step(dt, {
+      music: musicDancing(),
+      dancing: this.engine.isDancing && !greetingActive,
+      visible: State.mode !== "hidden" && !State.roaming,
+      islandW: this.width.value,
+      botX: this.botCx.value,
+      botY: this.botCy.value,
+      botSize: this.botSize.value,
+    }, this.engine);
 
     const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    if (uploadActive) {
+      this.uploadCanvas.tint = this.engine.bodyColor;
+      this.uploadCanvas.outfit = this.engine.outfit;
+      this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    }
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
@@ -733,7 +899,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || this.pods.busy || UploadSeq.isActive;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -770,6 +936,7 @@ export class Island {
   }
 
   private drawBot(dt: number) {
+    this.botCanvas.style.visibility = State.roaming ? "hidden" : "visible";
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
@@ -789,6 +956,12 @@ export class Island {
 
     const focus = State.focusTask;
     this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    this.engine.outfit = State.settings.wardrobe?.[focus?.id ?? "integration_claude"] ?? null;
+    // Dances to music: always in the closed island, open only on the Music card.
+    const calm = ["idle", "working", "thinking", "searching", "finished"].includes(State.effectiveState);
+    const where = State.mode === "compact" ||
+      (State.mode === "expanded" && State.view === "overview" && State.focusId === "integration_music");
+    this.engine.setDancing(musicDancing() && calm && where);
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -876,8 +1049,27 @@ export class Island {
       }
     }
 
+    this.compactStatus.style.opacity = showGrid ? "1" : "0";
+    if (showGrid) this.syncCompactStatus();
+    // An off-screen shimmer would keep the compositor busy while hidden.
+    else this.compactStatus.classList.remove("shimmer");
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  private syncCompactStatus() {
+    const t = State.focusTask;
+    const step = t && t.state !== "idle" && t.steps.length > 0
+      ? t.steps[Math.min(t.stepIndex, t.steps.length - 1)]
+      : null;
+    const text = step ?? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (this.compactStatus.textContent !== text) this.compactStatus.textContent = text;
+    const live = !!step && t!.state !== "finished" && t!.state !== "error";
+    this.compactStatus.classList.toggle("shimmer", live);
+    this.compactStatus.classList.toggle("clock", !step);
+    this.compactStatus.classList.toggle("ok", !!step && t!.state === "finished");
+    this.compactStatus.classList.toggle("bad", !!step && t!.state === "error");
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -885,6 +1077,10 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.keepVisible = State.settings.keepVisible;
+    // Turned on while hidden: come back now rather than at the next hover.
+    // (Paused stays hidden; that is what pausing is for.)
+    if (State.settings.keepVisible && !State.paused) this.fsm.reveal();
     State.notify();
   }
 

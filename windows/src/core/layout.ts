@@ -36,7 +36,9 @@ export type BotStateName =
   | "sleeping"
   | "dizzy";
 
-export type BotEmoteName = "love" | "surprised" | "proud" | "wink" | "yawn" | "happy" | "annoyed";
+export type BotEmoteName =
+  | "love" | "surprised" | "proud" | "wink" | "yawn" | "happy" | "annoyed"
+  | "sad" | "shy" | "scared";
 
 export type AgentLayoutMode = "none" | "grid" | "pills" | "column";
 
@@ -70,7 +72,10 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
   approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
-  question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
+  // A two-line question, four options with descriptions and the footer need
+  // ~210 px of card; the card gets the height minus the 42 px header and 10 px
+  // padding, and centres its content, so anything less clips top and bottom.
+  question: { height: 272, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },

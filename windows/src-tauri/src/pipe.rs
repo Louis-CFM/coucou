@@ -212,7 +212,17 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // Answered in the terminal instead: Claude Code ends coucou-hook, its end of
+    // the pipe closes, and the island must drop the card at once rather than
+    // keep offering a question that is already settled.
+    let decision = tokio::select! {
+        d = wait_for_decision(&id, &mut rx) => d,
+        () = client_gone(&mut pipe) => {
+            log::line(format!("hook id={id} answered elsewhere"));
+            let _ = app.emit_to(WINDOW_LABEL, "hook-resolved", id.clone());
+            None
+        }
+    };
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -222,6 +232,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// Resolves once coucou-hook has gone (end of stream or a broken pipe). It
+/// sends nothing after its one line, so any read result means it is done.
+async fn client_gone(pipe: &mut impl Relay) {
+    let mut probe = [0u8; 64];
+    loop {
+        match pipe.read(&mut probe).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
+        }
+    }
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
@@ -285,13 +307,20 @@ pub fn decline(app: &AppHandle, request_id: &str) {
     send(app, request_id, Reply::Decline, false);
 }
 
-/// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
-/// it into Claude Code's JSON is coucou-hook's job.
+/// Called by the island's Allow / Deny buttons, or by its question card with
+/// `{"answers":{...}}`. Either a bare word or that one-line JSON object goes
+/// down the pipe: turning it into Claude Code's JSON is coucou-hook's job.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
-    let word = match decision {
-        "allow" | "always" => "allow",
-        _ => "deny",
+    let reply = match decision {
+        "allow" | "always" => "allow".to_string(),
+        // Re-serialised so it is guaranteed to be a single line: the relay reads
+        // up to the first newline.
+        _ => match serde_json::from_str::<Value>(decision) {
+            Ok(v) if v.get("answers").is_some_and(Value::is_object) => v.to_string(),
+            _ => "deny".to_string(),
+        },
     };
-    log::line(format!("decision id={request_id} {word}"));
-    send(app, request_id, Reply::Decision(word.to_string()), false);
+    let shown = if reply.starts_with('{') { "answers" } else { reply.as_str() };
+    log::line(format!("decision id={request_id} {shown}"));
+    send(app, request_id, Reply::Decision(reply), false);
 }

@@ -23,26 +23,16 @@ pub fn inbox_dir() -> PathBuf {
     settings::local_dir().join("inbox")
 }
 
-pub fn ingest(source: &str) -> Result<DroppedFile, String> {
-    let src = Path::new(source);
-    let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
-    if meta.is_dir() {
-        return Err("Folders can't be dropped yet.".into());
-    }
-
+/// A free spot in the inbox for `name`: "name (2).ext" and so on if taken.
+fn inbox_dest(name: &str) -> Result<PathBuf, String> {
     let dir = inbox_dir();
     crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    let name = src
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "file".into());
-
-    let mut dest = dir.join(&name);
+    let mut dest = dir.join(name);
     if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+        let n = Path::new(name);
+        let stem = n.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let ext = n.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
         for i in 2..1000 {
             let candidate = dir.join(format!("{stem} ({i}){ext}"));
             if !candidate.exists() {
@@ -51,6 +41,26 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
             }
         }
     }
+    Ok(dest)
+}
+
+/// Only a bare file name: anything path-like a drop could carry is cut off.
+fn safe_name(name: &str) -> String {
+    Path::new(name)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty() && n != "." && n != "..")
+        .unwrap_or_else(|| "file".into())
+}
+
+pub fn ingest(source: &str) -> Result<DroppedFile, String> {
+    let src = Path::new(source);
+    let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
+    if meta.is_dir() {
+        return Err("Folders can't be dropped yet.".into());
+    }
+    let name = safe_name(&src.to_string_lossy());
+    let dest = inbox_dest(&name)?;
 
     std::fs::copy(src, &dest).map_err(|e| format!("cannot copy: {e}"))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
@@ -59,13 +69,47 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     if let Ok(file) = std::fs::File::options().write(true).open(&dest) {
         let _ = file.set_modified(SystemTime::now());
     }
-    sweep(&dir);
+    sweep(&inbox_dir());
 
     Ok(DroppedFile {
         name,
         path: dest.to_string_lossy().to_string(),
         size: meta.len(),
     })
+}
+
+/// A dropped file that arrives as bytes: an HTML5 drop in the island page
+/// carries the file's contents, never its path.
+pub fn ingest_bytes(name: &str, bytes: &[u8]) -> Result<DroppedFile, String> {
+    let name = safe_name(name);
+    let dest = inbox_dest(&name)?;
+    std::fs::write(&dest, bytes).map_err(|e| format!("cannot save {name}: {e}"))?;
+    sweep(&inbox_dir());
+    Ok(DroppedFile {
+        name,
+        path: dest.to_string_lossy().to_string(),
+        size: bytes.len() as u64,
+    })
+}
+
+/// Undoes the page's encodeURIComponent (header values must be ASCII).
+pub fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        let hex = |c: u8| (c as char).to_digit(16);
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let (Some(h), Some(l)) = (hex(b[i + 1]), hex(b[i + 2])) {
+                out.push((h * 16 + l) as u8);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Drops anything copied here more than a week ago. `ingest` stamps every copy

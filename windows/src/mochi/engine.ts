@@ -6,7 +6,12 @@
 
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
+import { drawAirPod } from "./airpod";
 import type { BotEmoteName, BotStateName } from "../core/layout";
+import {
+  HEAD_TOP, drawPieces, halfWidthAt, hatFor, shapeOf, shapePoint, taperAt,
+  type Outfit, type ShapeDef,
+} from "./wardrobe";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,7 +41,7 @@ interface Tween {
 
 type PropKey =
   | "yaw" | "pitch" | "roll" | "tilt" | "open" | "sx" | "sy"
-  | "oy" | "ox" | "tint" | "morph" | "hands" | "blush" | "es" | "badgeS";
+  | "oy" | "ox" | "tint" | "morph" | "hands" | "blush" | "es" | "badgeS" | "hop" | "hatTilt";
 
 interface BotStateCfg {
   color: RGB;
@@ -50,6 +55,37 @@ interface BotStateCfg {
   sweat: boolean;
   look: readonly [number, number] | null;
   tilt: number;
+}
+
+/** A soft shadow cast onto the body (clipped to it), for worn items. */
+function contactShadow(
+  x: CanvasRenderingContext2D, body: Path2D, cx: number, cy: number, hw: number, hh: number, alpha: number,
+) {
+  if (alpha <= 0.01 || hw <= 0) return;
+  x.save();
+  x.clip(body);
+  x.translate(cx, cy);
+  x.scale(1, hh / hw);
+  const g = x.createRadialGradient(0, 0, 0, 0, 0, hw);
+  g.addColorStop(0, `rgba(0,0,0,${alpha})`);
+  g.addColorStop(0.7, `rgba(0,0,0,${alpha * 0.55})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g;
+  x.beginPath();
+  x.arc(0, 0, hw, 0, Math.PI * 2);
+  x.fill();
+  x.restore();
+}
+
+/** One visible eye: side (-1 left, 1 right), centre and foreshortening. */
+interface EyeSpot {
+  sd: number;
+  ex: number;
+  ey: number;
+  fx: number;
+  fy: number;
+  /** How much the eye faces the viewer (≤ 0: rolled out of sight). */
+  vis: number;
 }
 
 interface Particle {
@@ -112,11 +148,17 @@ export const STATE_SOUND: Partial<Record<BotStateName, string>> = {
 const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
   love: "heart", surprised: "dot", proud: "star", wink: "wink",
   yawn: "tired", happy: "happy", annoyed: "line",
+  sad: "tired", shy: "happy", scared: "wide",
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
 const now = () => performance.now() / 1000;
+
+/** The dance's tempo; the pods and music notes bob to it too. */
+export const DANCE_BPM = 112;
+/** Where the head opens like an AirPods case, as a fraction of ry above centre. */
+export const LID_SEAM = 0.5;
 
 export function hexToRGB(hex: string): RGB {
   const h = hex.replace("#", "");
@@ -168,11 +210,29 @@ export class BotEngine {
   isMini = false;
   /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
   bodyColor: RGB | null = null;
+  /** Body shape and hat (see wardrobe.ts); null = plain Mochi. */
+  outfit: Outfit | null = null;
+  /** Velocity the whole canvas is being moved at (px/s), e.g. dragged on roam:
+   *  the body itself doesn't move then, but what dangles from it should swing. */
+  dragVel = { x: 0, y: 0 };
+  /** Hat motion: only dangling parts (a tassel) are simulated; the rest is rigid. */
+  private wear = {
+    swing: new Map<string, { a: number; v: number }>(),
+    /** Low-passed sideways body velocity (R/s). */
+    vx: 0, lastX: 0, lastR: 40,
+    /** 0…1, eases in and out with the dizzy state. */
+    dizzy: 0,
+    /** The hat worn last frame (null before the first frame), and when it went on. */
+    worn: null as string | null,
+    equipAt: -1,
+  };
 
   // Animated state (BotEngine `s`)
   yaw = 0; pitch = 0; roll = 0; tilt = 0; open = 1;
   sx = 1; sy = 1; oy = 0; ox = 0;
   tint = 0; morph = 0; hands = 0; blush = 0; es = 1; badgeS = 0;
+  /** Hat hop (0 = seated, 1 = up) and its wiggle: tweens, never simulated. */
+  hop = 0; hatTilt = 0;
 
   // Targets
   tgYaw = 0; tgPitch = 0; tgTilt = 0; tgSy = 1; tgSx = 1; tgEs = 1;
@@ -258,6 +318,20 @@ export class BotEngine {
       default:
         if (prev !== "idle" || next !== "idle") this.blink();
     }
+  }
+
+  /**
+   * A little party for an answered question. The hat's hop is a tween (it lands
+   * back exactly on its seat every time); dangling parts get a bounded kick.
+   */
+  celebrate() {
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    this.anim("hop", [[1, 150, Ease.out], [0, 380, Ease.back]]);
+    this.anim("hatTilt", [[0.16 * dir, 150, Ease.out], [-0.07 * dir, 180, Ease.inOut], [0, 260, Ease.out]]);
+    for (const s of this.wear.swing.values()) s.v += dir * 4;
+    this.squash();
+    this.triggerEmote("happy", 1.2);
+    this.emit("spark", 6);
   }
 
   setBadge(b: Badge | null) {
@@ -421,12 +495,49 @@ export class BotEngine {
         this.eyeOverrideUntil = t + 0.8;
         setTimeout(() => Sound.play("annoyed"), 60);
         break;
+      case "sad":
+        // Droops and slumps a little, then picks itself back up.
+        this.anim("sy", [[0.9, 400, Ease.inOut], [0.9, (duration - 0.8) * 1000, Ease.lin], [1, 400, Ease.inOut]]);
+        this.anim("sx", [[1.05, 400, Ease.inOut], [1.05, (duration - 0.8) * 1000, Ease.lin], [1, 400, Ease.inOut]]);
+        this.anim("tilt", [[0.08, 400, Ease.inOut], [0.08, (duration - 0.8) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        break;
+      case "shy":
+        // Blushes and turns its face away.
+        this.anim("blush", [[1, 250, Ease.out], [1, (duration - 0.6) * 1000, Ease.lin], [0, 350, Ease.inOut]]);
+        this.anim("yaw", [[-0.5, 300, Ease.out], [-0.5, (duration - 0.7) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        this.anim("tilt", [[-0.1, 300, Ease.out], [-0.1, (duration - 0.7) * 1000, Ease.lin], [0, 400, Ease.inOut]]);
+        break;
+      case "scared":
+        // A jump, a shiver, a bead of sweat.
+        this.anim("oy", [[-0.22, 110, Ease.out], [0, 300, Ease.back]]);
+        this.anim("ox", [
+          [0.05, 50, Ease.inOut], [-0.05, 60, Ease.inOut], [0.04, 60, Ease.inOut],
+          [-0.04, 60, Ease.inOut], [0.02, 60, Ease.inOut], [0, 80, Ease.out],
+        ]);
+        this.emit("sweat", 1);
+        break;
     }
   }
 
   emit(type: Particle["type"], count: number) {
     for (let i = 0; i < count; i++) {
       const isZ = type === "z";
+      if (type === "sweat") {
+        // A bead forms at a temple and runs down, not up like the others.
+        const side = Math.random() < 0.5 ? -1 : 1;
+        this.particles.push({
+          type,
+          x: side * (0.55 + Math.random() * 0.1),
+          y: -0.45 - Math.random() * 0.1,
+          vx: side * 0.08,
+          vy: 0.05,
+          age: -i * 0.14,
+          life: 1.1 + Math.random() * 0.3,
+          rot: 0,
+          size: 0.13 + Math.random() * 0.05,
+        });
+        continue;
+      }
       this.particles.push({
         type,
         x: (Math.random() - 0.5) * 0.9 + (isZ ? 0.55 : 0),
@@ -455,6 +566,7 @@ export class BotEngine {
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
     return (
+      this.isDancing || this.dancingLevel > 0.001 ||
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
@@ -531,6 +643,14 @@ export class BotEngine {
       tp = this.miniLookTarget.y * 0.5;
     }
 
+    // Dancing: the eyes groove to the beat instead of following the cursor.
+    if (this.dancingLevel > 0.001) {
+      const beat = now() * DANCE_BPM / 60;
+      const l = this.dancingLevel;
+      ty += (0.6 * Math.sin(Math.PI * beat / 2) - ty) * l;
+      tp += (0.12 - 0.22 * Math.abs(Math.cos(Math.PI * beat)) - tp) * l;
+    }
+
     this.tgYaw = ty;
     this.tgPitch = tp;
     this.tgTilt = this.cfg.tilt;
@@ -597,7 +717,97 @@ export class BotEngine {
     this.slotHVel += acc * dt;
     this.slotH = Math.max(0, this.slotH + this.slotHVel * dt);
 
+    this.stepWear(dt);
+    // Dance: in over 0.3 s, out over 0.5 s.
+    const target = this.isDancing ? 1 : 0;
+    if (this.dancingLevel < target) this.dancingLevel = Math.min(target, this.dancingLevel + dt / 0.3);
+    else if (this.dancingLevel > target) this.dancingLevel = Math.max(target, this.dancingLevel - dt / 0.5);
     this.lastTime = n;
+  }
+
+  /** Music is playing (see musicDancing). */
+  isDancing = false;
+  /** The head's lid: 0 shut, 1 flipped open (the island's pods drive it). */
+  lid = 0;
+  /** The buds stand in the open case; `podsRise` 0 sits them deep, 1 lifts them out. */
+  podsShown = false;
+  podsRise = 0;
+  private dancingLevel = 0;
+
+  setDancing(on: boolean) {
+    this.isDancing = on;
+  }
+
+  /** The dance's hop, sway and squash around the bottom of the body. */
+  private applyDance(x: CanvasRenderingContext2D, W: number, H: number) {
+    const R = W * 0.3;
+    const px = W / 2 + this.ox * R;
+    const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
+    const beat = now() * DANCE_BPM / 60;
+    const hop = Math.abs(Math.sin(Math.PI * beat));
+    const land = Math.pow(1 - hop, 6);
+    const l = this.dancingLevel;
+    x.translate(px + 0.08 * R * Math.sin(Math.PI * beat) * l, py - 0.2 * R * hop * l);
+    x.rotate(0.1 * Math.sin(Math.PI * beat) * l);
+    x.scale(1 + 0.045 * land * l, 1 - 0.06 * land * l);
+    x.translate(-px, -py);
+  }
+
+  /**
+   * Dangling parts (a tie, a bell, a tassel) hang world-down against the body's
+   * tilt and trail behind its sideways motion on a damped spring. Velocity is
+   * low-passed first: eased tweens and pointer drags are too jerky to react to
+   * raw, and the lean goes through tanh so nothing can swing round. No clamps:
+   * a clamp is a visible snap.
+   */
+  private stepWear(dt: number) {
+    if (!this.outfit || dt <= 0) return;
+    const w = this.wear;
+    const raw = (this.ox - w.lastX) / dt + this.dragVel.x / w.lastR;
+    w.lastX = this.ox;
+    w.vx += (raw - w.vx) * (1 - Math.exp(-dt / 0.08));
+    w.dizzy += ((this.state === "dizzy" ? 1 : 0) - w.dizzy) * (1 - Math.exp(-dt / 0.25));
+
+    const rest = -this.tilt + 0.55 * Math.tanh(w.vx * 0.15);
+    const steps = Math.max(1, Math.ceil(dt * 240));
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      for (const s of w.swing.values()) {
+        // ω = 9 rad/s, ζ = 0.45: one soft overshoot, then still.
+        s.v += (-81 * (s.a - rest) - 8.1 * s.v) * h;
+        s.a += s.v * h;
+      }
+    }
+  }
+
+  /** A new hat pops on: scale overshoots, alpha fades in. */
+  private equipPop(): { s: number; a: number } {
+    const t0 = this.wear.equipAt;
+    if (t0 < 0) return { s: 1, a: 1 };
+    const t = (now() - t0) / 0.42;
+    if (t >= 1) {
+      this.wear.equipAt = -1;
+      return { s: 1, a: 1 };
+    }
+    return { s: 0.5 + 0.5 * Ease.back(t), a: Math.min(1, t * 3.5) };
+  }
+
+  private noteOutfit() {
+    const id = this.outfit?.head ?? "";
+    const w = this.wear;
+    if (w.worn !== null && id && id !== w.worn) w.equipAt = now();
+    w.worn = id;
+  }
+
+  /** The spring angle of an item's swinging group (created on first use). */
+  private swingAngle(slot: string, key: number): number {
+    const id = `${slot}:${key}`;
+    let s = this.wear.swing.get(id);
+    if (!s) {
+      s = { a: 0, v: 0 };
+      this.wear.swing.set(id, s);
+    }
+    return s.a;
   }
 
   private doMiniBehaviorLoop() {
@@ -641,9 +851,21 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
+    if (this.dancingLevel <= 0.001) return this.drawFrame(x, W, H);
+    x.save();
+    this.applyDance(x, W, H);
+    try {
+      this.drawFrame(x, W, H);
+    } finally {
+      x.restore();
+    }
+  }
+
+  private drawFrame(x: CanvasRenderingContext2D, W: number, H: number) {
     const R = W * 0.3;
-    const rx = R * 1.14;
-    const ry = R * 0.88;
+    const shape = shapeOf(this.outfit?.shape);
+    const rx = R * shape.rx;
+    const ry = R * shape.ry;
     const cx = W / 2 + this.ox * R;
     const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
 
@@ -654,25 +876,13 @@ export class BotEngine {
     if (this.tilt !== 0) x.rotate(this.tilt);
     x.scale(this.sx, this.sy);
 
-    const body = this.bodyPath(rx, ry, R);
-    this.drawBody(x, body, R, rx, ry);
-
-    const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
-    if (blushVal > 0.01) {
-      x.save();
-      x.clip(body);
-      const yOffset = Math.sin(this.yaw) * rx * 0.8;
-      x.fillStyle = `rgba(255,120,150,${0.5 * blushVal})`;
-      for (const sd of [-1, 1]) {
-        x.beginPath();
-        x.ellipse(sd * rx * 0.55 + yOffset, ry * 0.2, R * 0.17, R * 0.1, 0, 0, Math.PI * 2);
-        x.fill();
-      }
-      x.restore();
-    }
-
-    this.drawEyes(x, body, R, rx, ry);
-    if (this.morph > 0.05) this.drawMouth(x, body, R);
+    const body = this.bodyPath(R, shape);
+    const eyes = this.eyePoses(rx, ry, shape).filter((e) => e.vis > 0.04);
+    this.wear.lastR = R;
+    this.noteOutfit();
+    const lid = this.isMini ? 0 : Math.min(1.1, Math.max(0, this.lid));
+    if (lid < 0.001) this.paintBody(x, body, eyes, R, rx, ry, shape);
+    else this.paintCase(x, body, eyes, R, rx, ry, shape, lid);
 
     x.restore();
 
@@ -682,9 +892,166 @@ export class BotEngine {
     this.drawParticles(x, R, cx, cy);
   }
 
-  private bodyPath(rx: number, ry: number, R: number): Path2D {
+  /**
+   * Mochi as an AirPods case. The top of the head is the lid, hinged at the
+   * back: it tips up and over, seen a little from above, showing its white
+   * underside and the two buds standing in their wells. The front light glows
+   * while it's open.
+   */
+  private paintCase(
+    x: CanvasRenderingContext2D, body: Path2D, eyes: EyeSpot[],
+    R: number, rx: number, ry: number, shape: ShapeDef, lid: number,
+  ) {
+    const seam = -ry * LID_SEAM;
+    const w = rx * 0.86; // half the opening's width
+    const D = w * 0.6; // half its depth, front to back
+    const e = 0.3; // how far from above we look: depth shows as e × height
+    const big = R * 4;
+    const th = 1.8 * lid;
+    const c = Math.cos(th);
+    const s = Math.sin(th);
+
+    // The base, below the seam.
+    x.save();
+    x.beginPath();
+    x.rect(-big, seam, big * 2, big);
+    x.clip();
+    this.paintBody(x, body, eyes, R, rx, ry, shape);
+    x.restore();
+
+    // The opening: white inside, two wells, the buds standing in them.
+    const drawInside = () => {
+      const inside = x.createLinearGradient(0, seam - e * D, 0, seam + e * D);
+      inside.addColorStop(0, "#9EA2AA");
+      inside.addColorStop(1, "#E9EAEE");
+      x.fillStyle = inside;
+      x.beginPath();
+      x.ellipse(0, seam, w, e * D, 0, 0, Math.PI * 2);
+      x.fill();
+      x.strokeStyle = "rgba(255,255,255,0.8)";
+      x.lineWidth = Math.max(0.6, R * 0.02);
+      x.stroke();
+      for (const sd of [-1, 1]) {
+        x.fillStyle = "#2B2D33";
+        x.beginPath();
+        x.ellipse(sd * w * 0.42, seam + e * D * 0.1, w * 0.2, e * D * 0.5, 0, 0, Math.PI * 2);
+        x.fill();
+      }
+      if (!this.podsShown) return;
+      const size = R * 0.95;
+      // Sitting deep, only the bulbs show; risen, they stand clear of the case.
+      x.save();
+      x.beginPath();
+      x.rect(-big, seam - big, big * 2, big + e * D * 0.1);
+      x.clip();
+      for (const sd of [-1, 1]) {
+        drawAirPod(x, sd * w * 0.42, seam + size * (0.12 - 0.55 * this.podsRise), size, sd, sd * 0.12);
+      }
+      x.restore();
+    };
+
+    // The lid tips up and back over its hinge at the back of the seam. Seen a
+    // little from above, a point `z` towards us shows `e·z` lower. The dome
+    // squashes as it turns away; its underside, the opening's mirror, faces us
+    // once the lid passes the line of sight, standing behind the opening.
+    const domeScale = c + e * s;
+    const domeLift = -D * s + e * D * (c - 1);
+    const under = s > e * c;
+    const drawDome = () => {
+      // Edge-on behind the open lid it's only a sliver: leave it out.
+      if (Math.abs(domeScale) < 0.01 || (under && domeScale < 0.15)) return;
+      x.save();
+      x.translate(0, seam + domeLift);
+      x.scale(1, domeScale);
+      x.translate(0, -seam);
+      x.beginPath();
+      x.rect(-big, seam - big, big * 2, big);
+      x.clip();
+      this.paintBody(x, body, eyes, R, rx, ry, shape);
+      // Tipping away, it catches less light.
+      x.fillStyle = `rgba(40,44,54,${0.3 * (1 - Math.max(0, c))})`;
+      x.fill(body);
+      x.restore();
+    };
+    const drawUnder = () => {
+      const k = e * c - s;
+      const cy = seam - e * D + D * k;
+      const ryU = D * Math.abs(k);
+      const g = x.createLinearGradient(0, cy - ryU, 0, cy + ryU);
+      g.addColorStop(0, "#F6F7F9");
+      g.addColorStop(1, "#C8CBD2");
+      x.fillStyle = g;
+      x.beginPath();
+      x.ellipse(0, cy, w, ryU, 0, 0, Math.PI * 2);
+      x.fill();
+      x.strokeStyle = "rgba(120,125,135,0.55)";
+      x.lineWidth = Math.max(0.6, R * 0.02);
+      x.stroke();
+      // The magnets' little dimples, where the buds touch when it's shut.
+      x.fillStyle = "rgba(150,155,165,0.6)";
+      for (const sd of [-1, 1]) {
+        x.beginPath();
+        x.ellipse(sd * w * 0.42, cy, w * 0.13, ryU * 0.3, 0, 0, Math.PI * 2);
+        x.fill();
+      }
+    };
+    if (under) {
+      drawDome();
+      drawUnder();
+      drawInside();
+    } else {
+      drawInside();
+      drawDome();
+    }
+
+    // The status light on the front.
+    const glow = Math.min(1, lid * 2);
+    const ly = ry * 0.66;
+    const halo = x.createRadialGradient(0, ly, 0, 0, ly, R * 0.14);
+    halo.addColorStop(0, `rgba(80,255,140,${0.9 * glow})`);
+    halo.addColorStop(1, "rgba(80,255,140,0)");
+    x.fillStyle = halo;
+    x.beginPath();
+    x.arc(0, ly, R * 0.14, 0, Math.PI * 2);
+    x.fill();
+  }
+
+  /** The case shutting: a quick squash, like the lid's magnet snapping. */
+  clack() {
+    this.anim("sy", [[0.9, 70, Ease.out], [1, 220, Ease.back]]);
+    this.anim("sx", [[1.07, 70, Ease.out], [1, 220, Ease.back]]);
+  }
+
+  /** Hat, body, blush, eyes and mouth, in the body's own frame. */
+  private paintBody(
+    x: CanvasRenderingContext2D, body: Path2D, eyes: EyeSpot[],
+    R: number, rx: number, ry: number, shape: ShapeDef,
+  ) {
+    if (this.outfit) this.drawHat(x, "back", R, rx, ry, shape, body);
+    this.drawBody(x, body, R, rx, ry);
+
+    const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
+    if (blushVal > 0.01) {
+      x.save();
+      x.clip(body);
+      const yOffset = Math.sin(this.yaw) * rx * 0.8;
+      x.fillStyle = `rgba(255,120,150,${0.5 * blushVal})`;
+      const cheekX = rx * 0.55 * taperAt(shape, 0.23);
+      for (const sd of [-1, 1]) {
+        x.beginPath();
+        x.ellipse(sd * cheekX + yOffset, ry * 0.2, R * 0.17, R * 0.1, 0, 0, Math.PI * 2);
+        x.fill();
+      }
+      x.restore();
+    }
+
+    this.drawEyes(x, body, R, eyes);
+    if (this.morph > 0.05) this.drawMouth(x, body, R);
+    if (this.outfit) this.drawHat(x, "front", R, rx, ry, shape, body);
+  }
+
+  private bodyPath(R: number, shape: ShapeDef): Path2D {
     const n = 72;
-    const expN = 2.0 / 2.7;
     const tw = R * 1.0;
     const th = R * 0.94;
     const tr = R * 0.42;
@@ -694,8 +1061,9 @@ export class BotEngine {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
-      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
+      const sp = shapePoint(shape, ca, sa);
+      const px0 = sp.x * R;
+      const py0 = sp.y * R;
       let px = px0;
       let py = py0;
       if (m >= 0.005) {
@@ -746,8 +1114,33 @@ export class BotEngine {
     x.fill(body);
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  /**
+   * Where both eyes sit on the body (sphere projection), local coords, with how
+   * much each faces the viewer.
+   */
+  private eyePoses(rx: number, ry: number, shape: ShapeDef): EyeSpot[] {
+    const spots: EyeSpot[] = [];
+    for (const sd of [-1, 1]) {
+      const eyeYaw = sd * EYE_SP + this.yaw;
+      let eyePitch = EYE_P + this.pitch + this.roll;
+      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+      const cp = Math.cos(eyePitch);
+      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
+      // The onigiri's narrow top pulls eyes inward as they rise.
+      const ex = Math.sin(eyeYaw) * cp * rx * taperAt(shape, ey / ry);
+      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
+      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
+      spots.push({ sd, ex, ey, fx, fy, vis: Math.cos(eyeYaw) * cp });
+    }
+    return spots;
+  }
+
+  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, spots: EyeSpot[]) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
+    // Dancing: happy eyes in calm states.
+    if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
+      shape = "happy";
+    }
     if (this.morph > 0.5) {
       if (this.isChewing) shape = "happy";
       else if (this.slotHTarget > 0.05 || this.slotH > 0.1) shape = "cup";
@@ -759,27 +1152,48 @@ export class BotEngine {
     x.fillStyle = ink;
     x.strokeStyle = ink;
 
-    for (const sd of [-1, 1]) {
-      const eyeYaw = sd * EYE_SP + this.yaw;
-      let eyePitch = EYE_P + this.pitch + this.roll;
-      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-      const cp = Math.cos(eyePitch);
-      if (Math.cos(eyeYaw) * cp <= 0.04) continue;
-
-      const ex = Math.sin(eyeYaw) * cp * rx;
-      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
-      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
-      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
-      const eyeMult = this.isMini ? 1.9 : 1.0;
-      const ew = R * EYE_W * this.es * eyeMult;
-      const eh = R * EYE_H * this.es * eyeMult;
-
+    const eyeMult = this.isMini ? 1.9 : 1.0;
+    const ew = R * EYE_W * this.es * eyeMult;
+    const eh = R * EYE_H * this.es * eyeMult;
+    for (const { sd, ex, ey, fx, fy } of spots) {
       x.save();
       x.translate(ex, ey);
       x.scale(fx, fy);
       this.drawEyeShape(x, shape, ew, eh, sd, ink);
       x.restore();
     }
+    x.restore();
+  }
+
+  /**
+   * The hat, in the body's own frame so it squashes, tilts and hops exactly
+   * with it (never positioned on its own). It rides the head's seat, at the
+   * head's real width there: constant per shape. Back layers go behind the
+   * body, front layers over the face.
+   */
+  private drawHat(
+    x: CanvasRenderingContext2D, layer: "back" | "front", R: number, rx: number, ry: number,
+    shape: ShapeDef, body: Path2D,
+  ) {
+    const hat = hatFor(this.outfit!.head);
+    if (!hat) return;
+    const seat = hat.seat ?? { x: HEAD_TOP.x, y: HEAD_TOP.y, half: 28, yn: -1, fit: 1 };
+    const sc = (halfWidthAt(shape, seat.yn) * R / seat.half) * seat.fit;
+    const seatY = lerp(seat.yn * ry, -R * 0.94, this.morph);
+    const lift = -this.hop * R * 0.2;
+    const hx = Math.sin(this.yaw) * rx * 0.12;
+    const pop = this.equipPop();
+    if (layer === "front" && hat.shadow > 0) {
+      // Worn, not pasted on: the hat shades the head just under its seat,
+      // lighter while it's up in the air.
+      const hw = Math.min(halfWidthAt(shape, seat.yn) * R * seat.fit * 1.05, rx);
+      contactShadow(x, body, hx, seatY + R * 0.04, hw, R * 0.11, 0.2 * hat.shadow * pop.a * (1 - this.hop * 0.6));
+    }
+    x.save();
+    x.translate(hx, seatY + lift);
+    const rot = this.hatTilt + Math.sin(now() * 9) * 0.14 * this.wear.dizzy;
+    if (rot) x.rotate(rot);
+    drawPieces(x, layer === "back" ? hat.back : hat.front, { x: seat.x, y: seat.y }, 0, 0, sc * pop.s, sc * pop.s, pop.a, (key) => this.swingAngle("head", key));
     x.restore();
   }
 
@@ -1074,7 +1488,9 @@ export class BotEngine {
       const k = p.age / p.life;
       const a = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8;
       const px = cx + (p.x + p.vx * p.age) * R * 1.3;
-      const py = cy + (p.y + p.vy * p.age) * R * 1.3;
+      // Sweat falls: it speeds up as it runs down.
+      const fall = p.type === "sweat" ? 0.6 * p.age * p.age : 0;
+      const py = cy + (p.y + p.vy * p.age + fall) * R * 1.3;
       const sz = R * p.size * (1 + k * 0.4);
 
       x.save();

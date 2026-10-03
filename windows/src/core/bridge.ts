@@ -4,8 +4,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { MediaFile, Settings, NowPlaying } from "./state";
+import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -28,6 +28,13 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+}
+
+/** What the island's Mochi looks like when it is dragged out. */
+export interface RoamLook {
+  state: string;
+  bodyColor: readonly [number, number, number] | null;
+  outfit?: Outfit | null;
 }
 
 export const Bridge = {
@@ -73,7 +80,7 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | string) =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
@@ -82,11 +89,54 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
+    callOrThrow<{ text: string; notice: string | null; sentImage: boolean; mood: string | null; media: MediaFile[] }>(
+      "chat_send", { query, context, textOnly },
+    ),
+  /** A generated file as a blob: URL (revoke it when done), or null. Only
+   *  files in the app's media folder can be read, by bare name. */
+  mediaUrl: async (name: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("media_bytes", { name });
+    if (!bytes) return null;
+    const ext = name.split(".").pop() ?? "";
+    return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
+  },
+  /** A generated file's raw bytes (3D models are parsed, not shown by URL). */
+  mediaBytes: (name: string) => call<ArrayBuffer>("media_bytes", { name }),
+  /** Copies a generated file into Downloads; returns where it went. */
+  mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** Full-screen preview, on the overlay window. */
+  mediaPreview: (file: MediaFile) => call<void>("media_preview", { name: file.name, kind: file.kind }),
+  mediaPreviewClose: () => call<void>("media_preview_close"),
+  /** "image", "video", "audio" or "text", guessed from a model id. */
+  guessOutput: (model: string) => call<string>("guess_model_output", { model }),
+  /** A dropped text or code file's contents, for the chat's code card. */
+  readAttachment: (path: string) => call<{ text: string; lang: string }>("read_attachment", { path }),
+  /** Credential Manager name of an endpoint's key (one per provider host). */
+  endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),
+
+  /** Mochi was dragged out of the island: the roam overlay takes over. */
+  roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
+  /** Linux: the carried pointer, in island coordinates ("move", "drop", "cancel"). */
+  roamPointer: (x: number, y: number, phase: "move" | "drop" | "cancel") =>
+    call<void>("roam_pointer", { x, y, phase }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** Copies a dropped file's contents into the inbox: an HTML5 drop has no path. */
+  ingestBytes: async (file: File): Promise<DroppedFile> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<DroppedFile>("ingest_bytes", new Uint8Array(await file.arrayBuffer()), {
+      headers: { "x-file-name": encodeURIComponent(file.name) },
+    });
+  },
+  /** The mic's recording to text, through the saved speech-to-text model. */
+  transcribe: async (audio: Blob): Promise<string> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<string>("transcribe_audio", new Uint8Array(await audio.arrayBuffer()), {
+      headers: { "x-mime": audio.type || "audio/webm" },
+    });
+  },
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -94,11 +144,26 @@ export const Bridge = {
 
   // ── Integrations ──────────────────────────────────────────────────────────
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
+  /** What's playing now (then the "now-playing" event keeps it current). */
+  musicNow: () => call<NowPlaying | null>("music_now"),
+  /** Play/pause, next or previous on the player that's on show. */
+  musicControl: (action: "toggle" | "next" | "previous") => call<void>("music_control", { action }),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay, from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+};
+
+/** Extensions media.rs saves with (it sniffs the bytes), and their types. */
+const MEDIA_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm",
+  wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4",
+  glb: "model/gltf-binary", ply: "application/octet-stream",
 };
 
 export interface IntegrationUpdate {
@@ -143,20 +208,8 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
-
-export interface DragDropPayload {
-  type: "enter" | "over" | "drop" | "leave";
-  paths?: string[];
-}
-
-/** Files dragged onto the island. Only reaches us when the window takes the mouse. */
-export async function onDragDrop(handler: (e: DragDropPayload) => void) {
-  if (!IS_TAURI) return () => {};
-  return getCurrentWebview().onDragDropEvent((event) => {
-    handler(event.payload as DragDropPayload);
-  });
-}
+  | { name: "screen-changed"; payload: null }
+  | { name: "roam-end"; payload: string | null };
 
 export async function onEvent<T>(name: string, handler: (payload: T) => void) {
   if (!IS_TAURI) return () => {};

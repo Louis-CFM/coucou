@@ -1,6 +1,7 @@
 // Overview task ticker — port of TickerView (V2) from IslandViewContent.swift.
 //
-// Three rows: completed (A), current → completed (B), incoming (C). Every row
+// Three rows: completed (A, kept hidden — one visible line only), current →
+// completed (B), incoming (C). Every row
 // position is recomputed from a single clock in `tick()`, driven by the island's
 // frame loop — no CSS transitions and no timers. Chaining CSS transitions with a
 // reset timer let two rows land on the same line when steps arrived in bursts,
@@ -77,18 +78,21 @@ export class Ticker {
   private c = makeRow(); // incoming
   private queue: string[] = [];
   private startMs: number | null = null;
-  private displayIndex = -1;
+  /** The task's step count last time it was seen; -1 before the first. */
+  private shown = -1;
 
   constructor() {
     this.el = h("div", { class: "ticker" }, this.a.el, this.b.el, this.c.el);
     this.rest();
   }
 
-  /** The state between transitions: completed on top, current below. */
+  /** The state between transitions: only the current step, centred. A completed
+   *  line stacked above it read as two overlapping commands (they often share a
+   *  long `cd "/c/Users/…` prefix and truncate identically), so it is not shown. */
   private rest() {
-    place(this.a, 0, 1, 1);
-    place(this.b, ROW_H, 0, 1);
-    place(this.c, ROW_H * 2, 0, 0);
+    place(this.a, -ROW_H / 2, 1, 0);
+    place(this.b, ROW_H / 2, 0, 1);
+    place(this.c, ROW_H * 1.5, 0, 0);
   }
 
   get animating(): boolean {
@@ -96,31 +100,32 @@ export class Ticker {
   }
 
   sync(task: AgentTask | null) {
-    const steps = task && task.steps.length > 0 ? task.steps : ["…"];
-    const idx = task ? Math.min(task.stepIndex, steps.length - 1) : -1;
+    const steps = task?.steps ?? [];
+    // Counted, not indexed: the list keeps its last 20 steps, so once full its
+    // length and index stay put while new steps keep coming, and the ticker
+    // used to freeze on the 20th step of a session.
+    const total = task?.stepCount ?? steps.length;
 
-    // First render: drop straight into place, no animation.
-    if (this.displayIndex < 0) {
-      this.displayIndex = idx;
-      setText(this.a, idx > 0 ? steps[idx - 1] : "…");
-      setText(this.b, steps[Math.max(idx, 0)]);
-      this.rest();
-      return;
-    }
-
-    // The session restarted (steps were cleared): re-seed rather than scroll.
-    if (idx < this.displayIndex) {
+    // First render, or the session restarted (steps were cleared): drop
+    // straight into place, no animation.
+    if (this.shown < 0 || total < this.shown) {
       this.queue = [];
       this.startMs = null;
-      this.displayIndex = idx;
+      this.shown = total;
+      const idx = steps.length - 1;
       setText(this.a, idx > 0 ? steps[idx - 1] : "…");
-      setText(this.b, steps[Math.max(idx, 0)]);
+      setText(this.b, idx >= 0 ? steps[idx] : "…");
       this.rest();
       return;
     }
 
-    for (let i = this.displayIndex + 1; i <= idx; i++) this.queue.push(steps[i]);
-    this.displayIndex = idx;
+    for (const step of steps.slice(Math.max(0, steps.length - (total - this.shown)))) {
+      // A repeat of the step already on screen (or already queued) would scroll
+      // an identical line into place: nothing to show.
+      const last = this.queue.length > 0 ? this.queue[this.queue.length - 1] : this.b.text;
+      if (step !== last) this.queue.push(step);
+    }
+    this.shown = total;
     if (this.queue.length > MAX_QUEUE) {
       this.queue = this.queue.slice(-MAX_QUEUE);
     }
@@ -138,10 +143,10 @@ export class Ticker {
     const p = clamp((nowMs - this.startMs) / DURATION, 0, 1);
     const e = EASE(p);
 
-    // A leaves upwards and fades a little faster than it moves, as on macOS.
-    place(this.a, lerp(0, -ROW_H, e), 1, clamp(1 - p * 1.35, 0, 1));
-    place(this.b, lerp(ROW_H, 0, e), e, 1);
-    place(this.c, lerp(ROW_H * 2, ROW_H, e), 0, e);
+    // The current step turns into a tick and slides up out of view, fading out
+    // before it gets there; the next step slides up into its place.
+    place(this.b, lerp(ROW_H / 2, -ROW_H / 2, e), e, clamp(1 - p * 1.6, 0, 1));
+    place(this.c, lerp(ROW_H * 1.5, ROW_H / 2, e), 0, e);
 
     if (p < 1) return;
 

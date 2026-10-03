@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { Outfit } from "../mochi/wardrobe";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -13,6 +14,9 @@ export interface AgentTask {
   state: BotStateName;
   stepIndex: number;
   steps: string[];
+  /** Steps appended so far. `steps` keeps the last 20 only, so past that its
+   *  length and `stepIndex` stop moving; the ticker counts on this instead. */
+  stepCount?: number;
   source: AgentSource;
   isIntegration: boolean;
   emote?: BotEmoteName | null;
@@ -26,13 +30,39 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+  /** Set when the request is Claude's AskUserQuestion: the choices to show. */
+  questions?: AskQuestion[];
+}
+
+/** One question of Claude's AskUserQuestion tool input. */
+export interface AskQuestion {
+  question: string;
+  header?: string;
+  options: { label: string; description?: string }[];
+  multiSelect?: boolean;
 }
 
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. the image was left out). */
+  notice?: string | null;
+  /** A dropped text or code file sent with this message, shown as a code card. */
+  attachment?: { name: string; lang: string; text: string } | null;
+  /** Images, video or speech the model made. */
+  media?: MediaFile[];
 }
+
+/** A generated file in the app's media folder, by bare name. */
+export interface MediaFile {
+  name: string;
+  kind: "image" | "video" | "audio" | "3d";
+}
+
+/** What a model makes. "" = saved before this existed: text. */
+/** "stt" models turn speech into text for the mic button; they never chat. */
+export type ModelOutput = "text" | "image" | "video" | "audio" | "3d" | "stt" | "";
 
 export type PromptContext =
   | { kind: "window"; appName: string; title: string; url?: string }
@@ -56,6 +86,9 @@ const task = (
   id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
 });
 
+/** Melody's colour when the track has no cover to take one from. */
+const MUSIC_RED = "#FA2D48";
+
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
@@ -66,11 +99,25 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_notion", "Notion", "#8C8C8C", "n8n"),
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
+  task("integration_music", "Music", MUSIC_RED, "n8n"),
 ];
+
+/** Default names of the coloured Mochis: a pun on what each one watches.
+ *  Settings can rename them; the main Mochi is just "Mochi". */
+export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
+  integration_calcom: "Calvin", // Cal.com
+  integration_stripe: "Penny", // money
+  integration_github: "Gitta", // git
+  integration_vercel: "Vera", // Vercel
+  integration_n8n: "Nate", // "n-eight-n"
+  integration_resend: "Mel", // mail
+  integration_notion: "Ida", // ideas
+  integration_music: "Melody", // music
+};
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
+  "integration_notion", "integration_calcom", "integration_stripe", "integration_music",
 ];
 
 /** What an integration poller last reported. */
@@ -92,6 +139,42 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** OpenAI-compatible base URL; empty = Claude API. */
+  chatEndpoint: string;
+  customModel: string;
+  /** Roam screenshot without the scan cutscene. */
+  quickScan: boolean;
+  /** The island stays compact on screen instead of hiding. */
+  keepVisible: boolean;
+  /** The main Mochi's name (the chat persona). Empty = "Mochi". */
+  mochiName: string;
+  /** After a spoken question, the mic listens again once the reply is in. */
+  keepMicOn: boolean;
+  /** Coloured integration Mochis' names, by integration id. */
+  mochiNames: Record<string, string>;
+  /** Each Mochi's shape and hat, by task id ("integration_claude" = the main Mochi). */
+  wardrobe: Record<string, Outfit>;
+  /** The chat's saved models (selector next to Send). */
+  models: ModelEntry[];
+  /** Id of the model the chat uses. */
+  activeModel: string;
+}
+
+/** A model the chat can use. */
+export interface ModelEntry {
+  id: string;
+  label: string;
+  /** "claude", or "openai" for any OpenAI-compatible endpoint. */
+  kind: "claude" | "openai";
+  model: string;
+  endpoint: string;
+  /** Reads images? Learnt the first time it is sent one; null = not known yet. */
+  vision: boolean | null;
+  output?: ModelOutput;
+  /** Text-to-speech voice for "audio" models; empty = the model's default. */
+  voice?: string;
+  /** Output detail for "3d" models that offer it (TRELLIS 2: low/medium/high). */
+  detail?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +189,16 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatEndpoint: "",
+  customModel: "",
+  quickScan: false,
+  keepVisible: false,
+  mochiName: "",
+  keepMicOn: false,
+  mochiNames: {},
+  wardrobe: {},
+  models: [],
+  activeModel: "",
 };
 
 type Listener = () => void;
@@ -116,6 +209,12 @@ class AppState {
 
   tasks: AgentTask[] = [];
   focusId: string | null = null;
+  /** The Mochi that had the view before a Claude Code card took it over. */
+  returnFocusId: string | null = null;
+  /** A `git push` Claude Code is running right now, for the GitHub card. */
+  githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
+  /** What the system's media controls say is playing (music.rs); null = nothing. */
+  nowPlaying: NowPlaying | null = null;
 
   stateOverride: BotStateName | null = null;
 
@@ -130,9 +229,13 @@ class AppState {
   uploadProgress = 0;
   uploadDuration = 2.4;
   fileDragOver = false;
+  /** Mochi is out on the screen (roam overlay); the island hides its own. */
+  roaming = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  /** The file the next question is about. `ephemeral` = a roam screenshot,
+   *  thrown away if the island closes before it was asked about. */
+  droppedFile: { name: string; path: string; ephemeral?: boolean } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
@@ -151,6 +254,20 @@ class AppState {
     return () => this.listeners.delete(fn);
   }
 
+  /** Removes the attached file, so the next question goes without it. */
+  dropAttachment() {
+    this.droppedFile = null;
+    this.promptContext = null;
+    this.notify();
+  }
+
+  /** Gives the view back to the Mochi a Claude Code card took it from. */
+  restoreFocus() {
+    const id = this.returnFocusId;
+    this.returnFocusId = null;
+    if (id && this.tasks.some((t) => t.id === id)) this.focusId = id;
+  }
+
   /** Marks the UI dirty; the island re-renders on the next frame. */
   notify() {
     for (const fn of this.listeners) fn();
@@ -162,6 +279,11 @@ class AppState {
 
   get effectiveState(): BotStateName {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
+  }
+
+  /** Melody wears the current cover's colour (music.rs), its red without one. */
+  get musicColor(): string {
+    return this.nowPlaying?.color ?? MUSIC_RED;
   }
 
   get otherTasks(): AgentTask[] {
@@ -189,6 +311,7 @@ class AppState {
     t.steps.push(step);
     if (t.steps.length > 20) t.steps.shift();
     t.stepIndex = t.steps.length - 1;
+    t.stepCount = (t.stepCount ?? 0) + 1;
     this.notify();
   }
 
@@ -199,7 +322,7 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — the main Mochi always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
@@ -207,6 +330,18 @@ class AppState {
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
+    }
+    for (const t of this.tasks) {
+      // The main Mochi shows its own name, or the project while a session runs.
+      if (t.id === "integration_claude") {
+        if (t.steps.length === 0) t.name = this.settings.mochiName?.trim() || "Mochi";
+        continue;
+      }
+      const proto = INTEGRATION_AGENTS.find((p) => p.id === t.id);
+      if (proto) {
+        t.name = this.settings.mochiNames?.[t.id]?.trim() || DEFAULT_MOCHI_NAMES[t.id] || proto.name;
+      }
+      if (t.id === "integration_music") t.color = this.musicColor;
     }
     // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
     // then other integrations in declaration order.
@@ -269,3 +404,21 @@ class AppState {
 }
 
 export const State = new AppState();
+
+/** A player's track, from Windows' media controls (Spotify, Apple Music…). */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  app: string;
+  playing: boolean;
+  /** Music, not a video or a browser tab: what Mochi dances to. */
+  music: boolean;
+  /** The cover's colour, "#RRGGBB"; null without a cover. */
+  color: string | null;
+}
+
+/** Mochi dances while music plays (not a YouTube video), as on macOS. */
+export function musicDancing(): boolean {
+  const np = State.nowPlaying;
+  return !!np?.playing && np.music && State.settings.activeIntegrations.includes("integration_music");
+}

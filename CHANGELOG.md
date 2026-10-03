@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Windows chat: one button is the mic while the field is empty and Send once it holds text; your words appear as you speak, it sends when you stop talking, and it never sends silence. "Keep the mic on" in Settings listens again after each reply. Replies render GitHub-style Markdown (Windows and Linux): tables that fit the chat, task lists, footnotes, alerts, math (KaTeX), strikethrough and GitHub's safe HTML.
+- Windows music: turn on the Music pill to see what Spotify, Apple Music, YouTube Music or any player in the Windows media controls is playing, with play, pause and skip. Mochi dances to music (not to browser videos): eyes grooving to the beat, notes flying off, and the head opening like an AirPods case: the two buds shoot off to the edges of the screen, then swoop back into the case 15 seconds after the music stops
+
 ## 0.1.3 — October 3, 2026
 
 - Answer Claude's questions from the notch: when Claude Code asks a multiple-choice question, pick an option or type your own answer right in the island, and Reply in terminal hands it back. Update your hooks in Settings to turn it on (#165) — thanks @Vega8991 for the idea (#94)

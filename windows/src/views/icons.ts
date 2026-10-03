@@ -2,6 +2,13 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // Player controls, for the Music pill.
+  play: "M8 5.5v13l10.5-6.5L8 5.5z",
+  pause: "M7 5h3.5v14H7V5zm6.5 0H17v14h-3.5V5z",
+  next: "M5.5 6v12l8.5-6-8.5-6zM15.5 6H18v12h-2.5V6z",
+  previous: "M18.5 6v12L10 12l8.5-6zM6 6h2.5v12H6V6z",
+  // Microphone: the chat's speak-instead-of-typing button.
+  mic: "M12 2.8a3.2 3.2 0 0 0-3.2 3.2v6a3.2 3.2 0 0 0 6.4 0V6A3.2 3.2 0 0 0 12 2.8zM5.6 11h1.8a4.6 4.6 0 0 0 9.2 0h1.8a6.4 6.4 0 0 1-5.5 6.33V20h3v1.8H8.1V20h3v-2.67A6.4 6.4 0 0 1 5.6 11z",
   // house.fill
   house: "M12 3.2 2.8 10.6V21h6.6v-5.4h5.2V21h6.6V10.6L12 3.2z",
   // bubble.left.fill
@@ -27,6 +34,7 @@ export const ICONS = {
   // exclamationmark
   bang: "M11 4h2v10h-2V4zm0 12.2h2v2.2h-2v-2.2z",
   // xmark
+  eye: "M12 5C6.6 5 2.6 9.4 1.5 12c1.1 2.6 5.1 7 10.5 7s9.4-4.4 10.5-7C21.4 9.4 17.4 5 12 5zm0 11.2A4.2 4.2 0 1 1 12 7.8a4.2 4.2 0 0 1 0 8.4zm0-6.4a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z",
   xmark: "M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z",
   // timer
   timer: "M12 4.2a7.8 7.8 0 1 0 0 15.6 7.8 7.8 0 0 0 0-15.6zm0 1.9a5.9 5.9 0 1 1 0 11.8 5.9 5.9 0 0 1 0-11.8zm-.95 2.3v4.2l3.3 2 .95-1.55-2.4-1.45V8.4h-1.85zM9.2 2h5.6v1.7H9.2V2z",
@@ -38,4 +46,12 @@ export const ICONS = {
   stack: "M5 8h14v11.5H5V8zm1.8-3h10.4v1.6H6.8V5zm1.6-2.6h7.2V4H8.4V2.4z",
   // doc.text
   doc: "M6.5 2.6h7l4 4v14.8h-11V2.6zm6.6 1.6v3.3h3.3l-3.3-3.3zM8.6 11h6.8v1.5H8.6V11zm0 3.4h6.8v1.5H8.6v-1.5z",
+  // doc.on.doc
+  copy: "M8.5 2.5h9.8a2 2 0 0 1 2 2v11.3h-1.9V4.4H8.5V2.5zM5.7 6.3h9.8a2 2 0 0 1 2 2v11.2a2 2 0 0 1-2 2H5.7a2 2 0 0 1-2-2V8.3a2 2 0 0 1 2-2zm.1 1.9v11.2h9.6V8.2H5.8z",
+  // arrow.up.left.and.arrow.down.right
+  expand: "M4 4h6v2H7.4l3.8 3.8-1.4 1.4L6 7.4V10H4V4zm16 16h-6v-2h2.6l-3.8-3.8 1.4-1.4 3.8 3.8V14h2v6z",
+  // arrow.down.to.line
+  download: "M11 3h2v10.2l3.8-3.8 1.4 1.4-6.2 6.2-6.2-6.2 1.4-1.4 3.8 3.8V3zM4 19h16v2H4v-2z",
+  // trash
+  trash: "M9 2.8h6l.7 1.7H20v1.8H4V4.5h4.3L9 2.8zM5.6 7.6h12.8l-1 12.1a1.9 1.9 0 0 1-1.9 1.7H8.5a1.9 1.9 0 0 1-1.9-1.7L5.6 7.6zm2 1.8.8 10.2h7.2l.8-10.2H7.6z",
 } as const;

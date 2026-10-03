@@ -265,3 +265,99 @@ select option {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
 }
+
+/* ── Wardrobe ─────────────────────────────────────────────────────────────── */
+
+.wardrobe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.wardrobe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--ink-2, #c9cdd4);
+  font: 500 12px var(--font);
+}
+
+.wardrobe-chip.on {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(129, 140, 248, 0.7);
+  color: #fff;
+}
+
+.wardrobe-chip .dot {
+  width: 8px;
+  height: 8px;
+}
+
+.wardrobe {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.wardrobe-preview {
+  flex: none;
+  position: sticky;
+  top: 8px;
+  border-radius: 16px;
+  background: #000;
+  cursor: pointer;
+}
+
+.wardrobe-rows {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wardrobe-label {
+  font: 600 11px var(--font);
+  color: var(--dim-2, #8b9099);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 8px 0 4px;
+}
+
+.wardrobe-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wardrobe-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 70px;
+  padding: 4px 2px 5px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: #000;
+  color: var(--dim-2, #8b9099);
+  font: 400 10px var(--font);
+}
+
+.wardrobe-tile span {
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wardrobe-tile:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.wardrobe-tile.on {
+  border-color: #818cf8;
+  color: #fff;
+}

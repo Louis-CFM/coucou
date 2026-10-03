@@ -54,6 +54,16 @@ const OPEN_URLS: Record<string, string> = {
 };
 
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
+  if (task.id === "integration_music") {
+    // No key: it shows whatever a player reports to Windows.
+    return h(
+      "div",
+      { class: "int-card" },
+      header(task.color, task.name, "Integration"),
+      h("div", { class: "int-status" }, dot("#6B7079", 5), h("span", { text: "Nothing playing" })),
+      h("div", { class: "int-hint", text: "Play something in Spotify, Apple Music or another player." }),
+    );
+  }
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
@@ -110,7 +120,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? State.settings.mochiName?.trim() || "Mochi" : task.name, "Integration"),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );
@@ -211,11 +221,68 @@ function statRow(icon: string, color: string, label: string, value: string): HTM
   );
 }
 
+/**
+ * GitHub: what is happening now. A running Actions workflow first, with a bar
+ * of its finished steps, then the latest finished runs and your pushes. Stars
+ * and repos ride in the header. With no activity yet, the overview as before.
+ */
 function githubCard(): HTMLElement {
   const d = get("integration_github");
   const stars = Number(d.totalStars ?? 0);
   const repos = Number(d.totalRepos ?? 0);
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  const runs = arr("integration_github", "runs");
+  const pushes = arr("integration_github", "pushes");
+  const live = State.githubPush;
+  if (live || runs.length || pushes.length) {
+    const rows = h("div", { class: "int-rows" });
+    let n = 0;
+    // A push Claude Code is running right now: its own row, on top.
+    if (live) {
+      const pushing = live.state === "pushing";
+      const accent = pushing ? "#F5A524" : live.state === "done" ? "#22C55E" : "#F4505E";
+      const name = h("span", {
+        class: "int-name",
+        text: pushing ? `Pushing ${live.repo}` : live.state === "done" ? `Pushed ${live.repo}` : `Push failed: ${live.repo}`,
+      });
+      const tail = pushing
+        ? h("span", { class: "int-progress busy" }, h("i"))
+        : h("span", { class: "int-ago", text: "just now" });
+      const row = listRow(accent, true, name, tail);
+      if (pushing) row.classList.add("running");
+      rows.append(row);
+      n++;
+    }
+    for (const r of runs) {
+      if (n >= 3) break;
+      const running = r.status !== "completed";
+      const accent = running ? "#F5A524" : r.conclusion === "success" ? "#22C55E" : "#F4505E";
+      const name = h("span", { class: "int-name", text: `${r.repo} · ${r.workflow}` });
+      const tail = running
+        ? h("span", { class: "int-progress", title: `${Math.round(Number(r.progress ?? 0) * 100)} % of steps done` },
+            h("i", { style: `width:${Math.max(4, Number(r.progress ?? 0) * 100)}%` }))
+        : h("span", { class: "int-ago", text: timeAgo(r.updatedAt) });
+      const row = listRow(accent, n === 0, name, tail);
+      if (running) row.classList.add("running");
+      if (r.url) row.addEventListener("click", () => void Bridge.openUrl(String(r.url)));
+      rows.append(row);
+      n++;
+    }
+    for (const p of pushes) {
+      if (n >= 3) break;
+      const commits = Number(p.commits ?? 0);
+      rows.append(
+        listRow("#38BDF8", n === 0,
+          h("span", { class: "int-name", text: `${p.repo} → ${p.branch}` }),
+          h("span", { class: "int-sub", text: p.message ? String(p.message) : `${commits} commit${commits === 1 ? "" : "s"}` }),
+          h("span", { class: "int-ago", text: timeAgo(p.createdAt) }),
+        ),
+      );
+      n++;
+    }
+    const summary = h("span", { class: "int-ago", style: "margin-left:auto", text: `★ ${fmt(stars)} · ${repos} repos` });
+    return h("div", { class: "int-card" }, header("#F4505E", "GitHub", "Activity", summary), rows);
+  }
   return h(
     "div",
     { class: "int-card" },
@@ -383,6 +450,7 @@ export interface IntegrationCardHooks {
 
 /** True when this integration has data worth showing instead of the idle card. */
 export function hasIntegrationData(id: string): boolean {
+  if (id === "integration_music") return State.nowPlaying != null;
   const info = State.integrations[id];
   if (!info || info.error) return false;
   switch (id) {
@@ -426,9 +494,58 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_music":
+      return musicCard(task);
     default:
       return idleCard(task, hooks.openSettings);
   }
 }
 
 export { clear };
+
+// ── Music ─────────────────────────────────────────────────────────────────────
+
+/** A player control button; the action goes to whichever player is on show. */
+function musicButton(icon: string, title: string, action: "toggle" | "next" | "previous", main = false): HTMLElement {
+  const b = h("button", { class: main ? "music-btn main" : "music-btn", title }, svg(icon, main ? 12 : 10, { fill: "currentColor" }));
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.musicControl(action);
+  });
+  return b;
+}
+
+function musicCard(task: AgentTask): HTMLElement {
+  const np = State.nowPlaying!;
+  return h(
+    "div",
+    { class: "int-card music-card" },
+    header(task.color, task.name, np.app),
+    h("div", { class: "music-title", text: np.title }),
+    np.artist ? h("div", { class: "music-artist", text: np.artist }) : null,
+    h(
+      "div",
+      { class: "music-controls" },
+      musicButton(ICONS.previous, "Previous", "previous"),
+      musicButton(np.playing ? ICONS.pause : ICONS.play, np.playing ? "Pause" : "Play", "toggle", true),
+      musicButton(ICONS.next, "Next", "next"),
+    ),
+  );
+}
+
+/** Play/pause and skip on the Music pill, shown on hover while a track is loaded. */
+export function musicPillControls(): HTMLElement {
+  const toggle = musicButton(ICONS.play, "Play/pause", "toggle", true);
+  const box = h("span", { class: "pill-music" }, toggle, musicButton(ICONS.next, "Next", "next"));
+  const sync = () => {
+    const np = State.nowPlaying;
+    box.classList.toggle("has-track", !!np);
+    toggle.replaceChildren(svg(np?.playing ? ICONS.pause : ICONS.play, 12, { fill: "currentColor" }));
+  };
+  sync();
+  // Pills are rebuilt wholesale (every new cover recolours them): one no longer
+  // on screen stops listening.
+  const listen = () => (box.isConnected ? sync() : window.removeEventListener("now-playing", listen));
+  window.addEventListener("now-playing", listen);
+  return box;
+}

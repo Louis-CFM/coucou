@@ -48,7 +48,7 @@
         "maximizable": false,
         "minimizable": false,
         "closable": false,
-        "dragDropEnabled": true,
+        "dragDropEnabled": false,
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
       }
     ]

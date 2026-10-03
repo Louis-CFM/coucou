@@ -88,6 +88,16 @@ body {
   pointer-events: none;
 }
 
+/* AirPods and music notes: over the whole panel, so they can leave the island. */
+#pods-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 720px;
+  height: 320px;
+  pointer-events: none;
+}
+
 /* The drop sequence. Sits under the header and takes over the island body; it
    cross-fades in and out, so the last frame stays up while the views return. */
 #upload-layer {
@@ -150,6 +160,38 @@ body {
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.35);
   width: 0;
+}
+
+/* Compact middle, between Mochi and the mini grid: the current step, or the
+   time when nothing is going on. */
+#compact-status {
+  position: absolute;
+  top: 0;
+  left: 60px;
+  right: 64px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  font: 500 11.5px var(--font);
+  color: #e6e7ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
+#compact-status.clock {
+  color: #8b9099;
+  font-variant-numeric: tabular-nums;
+}
+
+#compact-status.ok {
+  color: var(--green-2);
+}
+
+#compact-status.bad {
+  color: #f4505e;
 }
 
 /* Compact 2×2 mini grid, to the right of the notch. */
@@ -778,6 +820,26 @@ input[type="range"]::-webkit-slider-thumb {
   transition: border-color 0.3s ease-out 0.45s, transform 0.3s ease-out 0.45s;
 }
 
+.chip-x {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 -5px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip-x:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
 .chip.settled {
   border-color: rgba(255, 255, 255, 0);
   transform: scale(1);
@@ -919,12 +981,12 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .drop-card.over {
-  background: radial-gradient(200px 200px at 50% 100%, rgba(34, 197, 94, 0.13), transparent 70%),
+  background: radial-gradient(200px 200px at 50% 100%, color-mix(in srgb, var(--tint, #22c55e) 13%, transparent), transparent 70%),
     var(--card-flat);
 }
 
 .drop-card.over .drop-frame rect {
-  stroke: rgba(34, 197, 94, 0.65);
+  stroke: color-mix(in srgb, var(--tint, #22c55e) 65%, transparent);
   animation: dash-march 1.1s linear infinite;
 }
 
@@ -955,7 +1017,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .drop-card.over .drop-title {
-  color: var(--green-2);
+  color: var(--tint, var(--green-2));
 }
 
 .drop-tags {
@@ -974,12 +1036,12 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Uploading ──────────────────────────────────────────────────────────── */
 
 .up-card {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.14), transparent 70%),
+  background: radial-gradient(260px 260px at 50% 140%, color-mix(in srgb, var(--tint, #34d399) 14%, transparent), transparent 70%),
     var(--card);
 }
 
 .up-card.done {
-  background: radial-gradient(260px 260px at 50% 140%, rgba(52, 211, 153, 0.28), transparent 70%),
+  background: radial-gradient(260px 260px at 50% 140%, color-mix(in srgb, var(--tint, #34d399) 28%, transparent), transparent 70%),
     var(--card);
 }
 
@@ -1002,7 +1064,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .up-name.done {
-  color: var(--green-2);
+  color: var(--tint, var(--green-2));
   font-weight: 600;
 }
 
@@ -1025,7 +1087,7 @@ input[type="range"]::-webkit-slider-thumb {
 .up-fill {
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #1fa87a, #34d399);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tint, #34d399), black 25%), var(--tint, #34d399));
 }
 
 .up-glow {
@@ -1035,7 +1097,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 28px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(110, 231, 183, 0.45);
+  background: color-mix(in srgb, var(--tint, #34d399), white 30%);
   filter: blur(5px);
   pointer-events: none;
 }
@@ -1364,4 +1426,1048 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Question card (AskUserQuestion) ────────────────────────────────────── */
+
+.q-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.q-tag {
+  flex: none;
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(34, 211, 238, 0.16);
+  color: #67e8f9;
+}
+
+.q-title {
+  font-size: 14px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.q-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.q-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1.5px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out, transform 0.08s ease-out;
+}
+
+.q-opt:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.q-opt:active {
+  transform: scale(0.97);
+}
+
+.q-opt.on {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.14);
+}
+
+.q-label {
+  font: 600 12.5px var(--font);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-desc {
+  font: 400 11px var(--font);
+  color: var(--dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.q-other {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font: 400 12px var(--font);
+  outline: none;
+  cursor: text;
+}
+
+.q-other::placeholder {
+  color: var(--dim-3);
+}
+
+.q-terminal {
+  flex: none;
+  height: auto;
+  color: var(--dim-2);
+}
+
+.q-terminal:hover {
+  color: var(--ink-2);
+}
+
+/* What kind of answer a card wants: Pick one / Pick any / Yes or no. */
+.q-mode {
+  flex: none;
+  margin-left: auto;
+  font: 600 10.5px var(--font);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.q-mode:empty {
+  display: none;
+}
+
+/* Option markers: a round dot for one answer, a square box for several. */
+.q-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.q-label::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.q-options.multi .q-label::before {
+  border-radius: 3px;
+}
+
+.q-opt.on .q-label::before {
+  border-color: #22d3ee;
+  background: #22d3ee
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2 4.1 7.3 8 3' fill='none' stroke='%230b0c0e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 100% no-repeat;
+}
+
+.q-desc {
+  padding-left: 16px;
+}
+
+.q-stack {
+  justify-content: safe center;
+}
+
+/* ── Chat replies: Markdown ─────────────────────────────────────────────── */
+
+.reply.md {
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.reply.md p {
+  margin: 0 0 6px;
+}
+
+.reply.md > :last-child {
+  margin-bottom: 0;
+}
+
+.reply.md strong {
+  color: #f1f3f6;
+  font-weight: 650;
+}
+
+.reply.md em {
+  color: #c9cdd4;
+}
+
+.reply.md code {
+  font: 400 11.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e3e6ea;
+}
+
+.reply.md pre {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.reply.md pre code {
+  padding: 0;
+  background: none;
+}
+
+.reply.md ul,
+.reply.md ol {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.reply.md li {
+  margin: 1px 0;
+}
+
+.reply.md .md-h {
+  font-weight: 650;
+  color: #f1f3f6;
+  margin: 6px 0 4px;
+}
+
+.reply.md .md-h1 {
+  font-size: 14px;
+}
+
+.reply.md .md-h2,
+.reply.md .md-h3 {
+  font-size: 13px;
+}
+
+.reply.md blockquote {
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+  color: #9da2ab;
+}
+
+.reply.md hr {
+  border: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
+.reply.md a {
+  color: #7cc4ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* GitHub-flavoured extras: tables, task lists, footnotes, math, raw HTML. */
+
+.reply.md blockquote > :last-child,
+.reply.md li > :last-child,
+.reply.md details > :last-child {
+  margin-bottom: 0;
+}
+
+.reply.md li > ul,
+.reply.md li > ol {
+  margin: 1px 0 0;
+}
+
+.reply.md li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -16px;
+}
+
+.reply.md input[type="checkbox"] {
+  margin: 0 5px 0 0;
+  vertical-align: -1px;
+  accent-color: #7cc4ff;
+}
+
+.reply.md del,
+.reply.md s,
+.reply.md strike {
+  color: #7d828b;
+}
+
+.reply.md mark {
+  background: rgba(247, 179, 43, 0.25);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.reply.md kbd {
+  font: 400 10.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e3e6ea;
+}
+
+.reply.md sub,
+.reply.md sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.md-table {
+  max-width: 100%;
+  margin: 2px 0 8px;
+}
+
+.reply.md table {
+  border-collapse: collapse;
+  font-size: 11px;
+  /* Fits the chat: columns share the width and text wraps inside them. */
+  max-width: 100%;
+}
+
+.reply.md th,
+.reply.md td {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  vertical-align: top;
+  line-height: 1.35;
+  /* Words wrap; only something unbreakable (a URL) is split to fit. */
+  overflow-wrap: anywhere;
+}
+
+.reply.md th {
+  /* Headers keep whole words; the cells under them do the wrapping. */
+  overflow-wrap: normal;
+  color: #f1f3f6;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.reply.md tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.reply.md details {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.reply.md summary {
+  cursor: pointer;
+  color: #d5d9df;
+}
+
+.reply.md details[open] > summary {
+  margin-bottom: 4px;
+}
+
+.reply.md .md-footnotes {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #8f949c;
+}
+
+.reply.md .md-footnotes p {
+  margin: 0;
+}
+
+.reply.md sup a,
+.reply.md .md-footnotes a {
+  text-decoration: none;
+}
+
+/* TeX shows as source until KaTeX (loaded on first use) takes over. */
+.reply.md .md-math:not(:has(.katex)) {
+  font: 400 11.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: #9da2ab;
+}
+
+.reply.md .katex {
+  font-size: 1.08em;
+}
+
+.reply.md div.md-math {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.reply.md .katex-display {
+  margin: 4px 0 8px;
+}
+
+.reply-note {
+  font: 400 11px var(--font);
+  color: #f7b32b;
+  background: rgba(247, 179, 43, 0.1);
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 0 8px 6px 0;
+}
+
+/* ── Chat: model picker and the "can't see images" prompt ────────────────── */
+
+.model-picker {
+  position: relative;
+  flex: none;
+}
+
+.model-btn {
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-2);
+  font: 500 11px var(--font);
+  cursor: default;
+}
+
+.model-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.model-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 190px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 12px;
+  background: #1b1d22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: none;
+  z-index: 5;
+}
+
+.model-menu.open {
+  display: block;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 400 12px var(--font);
+  text-align: left;
+  cursor: default;
+}
+
+.model-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.model-item.on {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.model-item.manage {
+  color: var(--dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0 0 8px 8px;
+  margin-top: 2px;
+}
+
+.model-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-tag {
+  flex: none;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  display: grid;
+  place-items: center;
+}
+
+.model-tag.eye {
+  color: #7cc4ff;
+}
+
+.image-ask {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(247, 179, 43, 0.1);
+  color: #f7b32b;
+  font: 400 11.5px var(--font);
+}
+
+.image-ask.open {
+  display: flex;
+}
+
+.image-ask-btns {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+
+.btn.small {
+  font-size: 11px;
+  padding: 4px 9px;
+}
+
+/* GitHub: a running workflow's finished steps. */
+.int-progress {
+  margin-left: auto;
+  flex: 0 0 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.int-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #f5a524;
+  transition: width 0.6s ease;
+}
+
+.int-row.running > :first-child {
+  animation: int-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes int-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Code in the chat: a language label and a copy button over the code, as on
+   claude.ai. Also the card for a dropped code file. */
+.code-block {
+  margin: 6px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px 3px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+}
+
+.code-lang {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 5px;
+  padding: 3px 6px;
+  background: transparent;
+  color: var(--dim-3);
+  font: 500 10px var(--font);
+  cursor: pointer;
+}
+
+.code-copy:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  background: transparent;
+  border-radius: 0;
+}
+
+.code-block pre code {
+  font: 400 11px/1.45 var(--mono);
+  white-space: pre;
+}
+
+.chat-row.user .user-turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chat-row.user .code-block {
+  align-self: stretch;
+  margin: 0;
+}
+
+/* Clear chat: at the foot of Mochi's column, left of the conversation. */
+.chat-card {
+  position: relative;
+}
+
+.chat-clear {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  bottom: 16px;
+  width: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--dim-3);
+  font: 500 10px var(--font);
+  cursor: pointer;
+}
+
+.chat-clear:hover {
+  background: rgba(244, 80, 94, 0.18);
+  color: #ff8d97;
+}
+
+/* A push in flight: its size isn't known, so the bar sweeps. */
+.int-progress.busy i {
+  width: 40%;
+  animation: int-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes int-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* ── Chat: generated media ──────────────────────────────────────────────── */
+
+/* While a model makes something: the "aurora" (the coming picture's shape,
+   colour drifting under a band of pixels developing, a sparkle), the elapsed
+   time, and for video the job's progress. Transforms and opacity only. */
+.gen-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gen-aurora {
+  position: relative;
+  flex: none;
+  width: 84px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #101116;
+  isolation: isolate;
+}
+
+.gen-aurora.video {
+  width: 104px;
+  height: 58px;
+}
+
+/* Three soft colour fields drifting past each other. */
+.gen-aurora i {
+  position: absolute;
+  width: 75%;
+  height: 95%;
+  border-radius: 50%;
+  filter: blur(13px);
+  opacity: 0.85;
+  mix-blend-mode: screen;
+}
+
+.gen-aurora i:nth-child(1) {
+  left: -20%;
+  top: -30%;
+  background: #38bdf8;
+  animation: gen-drift-a 4.2s ease-in-out infinite alternate;
+}
+
+.gen-aurora i:nth-child(2) {
+  right: -25%;
+  top: 5%;
+  background: #a78bfa;
+  animation: gen-drift-b 5.1s ease-in-out infinite alternate;
+}
+
+.gen-aurora i:nth-child(3) {
+  left: 10%;
+  bottom: -45%;
+  background: #ff6b5b;
+  animation: gen-drift-c 3.7s ease-in-out infinite alternate;
+}
+
+/* A fine pixel grid, shown only inside a band that sweeps across: the
+   picture "developing". */
+.gen-pixels {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.55) 0.7px, transparent 0.9px);
+  background-size: 4px 4px;
+  -webkit-mask-image: linear-gradient(100deg, transparent 35%, #000 50%, transparent 65%);
+  mask-image: linear-gradient(100deg, transparent 35%, #000 50%, transparent 65%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  animation: gen-develop 2.4s ease-in-out infinite;
+}
+
+.gen-aurora svg {
+  position: relative;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+  animation: gen-twinkle 2.4s ease-in-out infinite;
+}
+
+.gen-note {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.gen-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gen-label {
+  font: 500 12.5px var(--font);
+}
+
+.gen-meta {
+  display: flex;
+  gap: 8px;
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-bar {
+  width: 160px;
+  height: 4px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.gen-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #38bdf8, #a78bfa, #ff6b5b);
+  transition: width 0.6s ease;
+}
+
+/* Queued, or no percentage from the provider: the bar sweeps. */
+.gen-bar.busy i {
+  width: 40%;
+  animation: int-sweep 1.1s ease-in-out infinite;
+}
+
+/* A quarter turn: the four-point sparkle loops seamlessly. */
+@keyframes gen-twinkle {
+  0% {
+    transform: scale(0.82) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.06) rotate(45deg);
+  }
+  100% {
+    transform: scale(0.82) rotate(90deg);
+  }
+}
+
+@keyframes gen-drift-a {
+  to {
+    transform: translate(45%, 35%) scale(1.15);
+  }
+}
+
+@keyframes gen-drift-b {
+  to {
+    transform: translate(-50%, -20%) scale(0.9);
+  }
+}
+
+@keyframes gen-drift-c {
+  to {
+    transform: translate(30%, -55%) scale(1.2);
+  }
+}
+
+@keyframes gen-develop {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gen-card *,
+  .gen-card *::after {
+    animation-duration: 6s !important;
+  }
+}
+
+/* The result: a fixed-height thumbnail (so the log doesn't jump as it loads),
+   then Full screen and Download in the code block's button style. */
+.media-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  margin: 2px 0 4px;
+}
+
+.media-view {
+  display: block;
+  height: 140px;
+  width: auto;
+  max-width: 100%;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  object-fit: contain;
+}
+
+img.media-view {
+  cursor: zoom-in;
+}
+
+.media-audio {
+  display: block;
+  width: 280px;
+  max-width: 100%;
+  height: 34px;
+}
+
+.media-actions {
+  display: flex;
+  gap: 2px;
+}
+
+/* A generated 3D model's still, on a soft stage. */
+.media-view.model3d {
+  width: 233px;
+  height: 140px;
+  object-fit: contain;
+  background: radial-gradient(ellipse at 50% 38%, rgba(120, 128, 255, 0.18), rgba(0, 0, 0, 0.35) 72%);
+}
+
+/* Send turns into the mic while the field is empty. Red while it listens,
+   its halo following your voice; a turning ring while it writes it down. */
+.send-btn.mic {
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+  transition: transform 0.08s ease-out, background 0.15s, box-shadow 0.08s linear;
+}
+
+.send-btn.mic:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.send-btn.mic.rec {
+  background: #f4505e;
+  color: #fff;
+  box-shadow: 0 0 0 calc(1px + var(--level, 0) * 7px) rgba(244, 80, 94, 0.32);
+}
+
+.send-btn.mic.busy {
+  background: rgba(244, 80, 94, 0.35);
+  color: #fff;
+}
+
+.send-btn.mic.busy::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #f4505e;
+  animation: mic-spin 0.8s linear infinite;
+}
+
+@keyframes mic-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* GitHub's alerts: > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]. */
+.reply.md .md-alert {
+  border-left-width: 3px;
+  color: inherit;
+}
+
+.reply.md .md-alert-title {
+  font-weight: 650;
+  margin-bottom: 2px;
+}
+
+.reply.md .md-alert-note { border-left-color: #58a6ff; }
+.reply.md .md-alert-note .md-alert-title { color: #58a6ff; }
+.reply.md .md-alert-tip { border-left-color: #56d364; }
+.reply.md .md-alert-tip .md-alert-title { color: #56d364; }
+.reply.md .md-alert-important { border-left-color: #b392f0; }
+.reply.md .md-alert-important .md-alert-title { color: #b392f0; }
+.reply.md .md-alert-warning { border-left-color: #f7b32b; }
+.reply.md .md-alert-warning .md-alert-title { color: #f7b32b; }
+.reply.md .md-alert-caution { border-left-color: #f4505e; }
+.reply.md .md-alert-caution .md-alert-title { color: #f4505e; }
+
+/* ── Music ─────────────────────────────────────────────────────────────────── */
+
+.music-title {
+  font: 600 12.5px var(--font);
+  color: #f5f6f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.music-artist {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.music-btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #8e939c;
+  cursor: default;
+}
+
+.music-btn:hover {
+  color: #f5f6f8;
+}
+
+.music-btn.main {
+  background: var(--melody, #fa2d48);
+  color: #0b0c0e;
+}
+
+/* On the pill: shown on hover while a track is loaded. */
+.pill-music {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.pill:hover .pill-music.has-track {
+  display: flex;
+}
+
+.pill-music .music-btn {
+  width: 16px;
+  height: 16px;
+  background: var(--melody, #fa2d48);
+  color: #0b0c0e;
+}
+
+.int-hint {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  margin-top: 4px;
 }

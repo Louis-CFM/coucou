@@ -14,18 +14,30 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+png = "0.17"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Both already in the tree through Tauri: generated images arrive as base64,
+# and Download needs the real Downloads folder (it can be moved on Windows).
+base64 = "0.22"
+dirs = "7"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
+# The versions wry already uses: lets hidden windows ask WebView2 to trim memory.
+webview2-com = "0.39"
+windows-core = "0.62"
 windows = { version = "0.61", features = [
   "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Imaging",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Ole",
@@ -33,6 +45,14 @@ windows = { version = "0.61", features = [
   "Win32_System_Threading",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
+  # What's playing, for the Music pill (system media transport controls).
+  "Foundation",
+  "Foundation_Collections",
+  "Media",
+  "Media_Control",
+  # The cover's colour, for Melody: read the thumbnail and let Windows decode it.
+  "Graphics_Imaging",
+  "Storage_Streams",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
