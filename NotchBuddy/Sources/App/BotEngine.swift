@@ -186,6 +186,7 @@ final class BotEngine: ObservableObject {
     var morph:  CGFloat = 0          // morph to rect (for upload bucket)
     var hands:  CGFloat = 0
     var blush:  CGFloat = 0
+    var outfit: Outfit = .none
     var es:     CGFloat = 1          // eye scale
     var badgeS: CGFloat = 0          // badge scale
 
@@ -841,6 +842,15 @@ final class BotEngine: ObservableObject {
         // Body fill
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
 
+        // Pumpkin: orange body tint overlay (only when no integration bodyColor override)
+        if outfit == .pumpkin && bodyColor == nil {
+            ctx.fill(bodyPath, with: .linearGradient(
+                Gradient(colors: [Color(hex: "#F97316").opacity(0.82), Color(hex: "#EA580C").opacity(0.90)]),
+                startPoint: CGPoint(x: rx * 0.5, y: -ry * 0.8),
+                endPoint: CGPoint(x: -rx * 0.5, y: ry * 0.8)
+            ))
+        }
+
         // Blush — always shows a floor proportional to tint (prototype behaviour)
         let blushVal = max(blush, tint * 0.5) * (1 - morph)
         if blushVal > 0.01 {
@@ -1012,6 +1022,30 @@ final class BotEngine: ObservableObject {
 
         // Particles
         drawParticles(context: context, size: size, R: R, cx: cx, cy: cy)
+    }
+
+    func drawOutfitBehind(context: GraphicsContext, size: CGSize) {
+        guard outfit != .none, !isMini else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let rx = R * 1.14, ry = R * 0.88
+        let cx = W / 2 + ox * R
+        let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        drawOutfitBehindStatic(context: context, outfit: outfit,
+                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
+                               yaw: yaw, roll: roll, morph: morph,
+                               R: R, rx: rx, ry: ry, isMini: isMini)
+    }
+
+    func drawOutfitFront(context: GraphicsContext, size: CGSize) {
+        guard outfit != .none, !isMini else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let rx = R * 1.14, ry = R * 0.88
+        let cx = W / 2 + ox * R
+        let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        drawOutfitFrontStatic(context: context, outfit: outfit,
+                              cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
+                              yaw: yaw, pitch: pitch, roll: roll, morph: morph,
+                              R: R, rx: rx, ry: ry, isMini: isMini, bodyColor: bodyColor)
     }
 
     // MARK: - Private draw helpers

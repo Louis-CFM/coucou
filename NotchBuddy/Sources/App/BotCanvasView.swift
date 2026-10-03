@@ -57,12 +57,15 @@ struct BotCanvasView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
+                engine.outfit = state.resolvedOutfit
 
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 engine.drawHandsBehind(context: ctx, size: size)
+                engine.drawOutfitBehind(context: ctx, size: size)
                 engine.draw(context: ctx, size: size)
+                engine.drawOutfitFront(context: ctx, size: size)
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
@@ -113,6 +116,11 @@ struct BotCanvasView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             engine.greet()
+        }
+        .onChange(of: state.resolvedOutfit) { _, _ in
+            engine.squash()
+            engine.emit(.star, count: 3)
+            SoundEngine.shared.play("pop")
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)

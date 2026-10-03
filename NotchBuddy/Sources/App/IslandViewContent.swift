@@ -25,6 +25,7 @@ struct IslandViewContent: View {
         case .note:      NoteView(state: state)
         case .settings:  SettingsIslandView(state: state)
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
+        case .wardrobe:  WardrobeView(state: state)
         }
     }
 }
@@ -3956,6 +3957,452 @@ struct ColumnAgentsView: View {
             }
         }
     }
+}
+
+// MARK: - Wardrobe
+
+struct WardrobeView: View {
+    @ObservedObject var state: AppState
+    @State private var hoveredOutfit: Outfit? = nil
+
+    private let columns = Array(repeating: GridItem(.fixed(30), spacing: 5), count: 14)
+
+    private var headerRight: String {
+        let sel = state.mochiOutfitSelection
+        if sel == .auto {
+            let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
+            let name = seasonal == .none ? "None" : seasonal.displayName
+            return "Auto · \(name)"
+        }
+        return sel.displayName
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Text("Wardrobe")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                Spacer(minLength: 4)
+                Text(headerRight)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .lineLimit(1)
+            }
+            .padding(.top, 6)
+            .padding(.horizontal, 10)
+
+            // Grid
+            let allOutfits = Outfit.allCases.filter { $0 != .auto }
+            let withAuto = [Outfit.auto] + allOutfits
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 5) {
+                    ForEach(withAuto, id: \.rawValue) { outfit in
+                        OutfitPillView(
+                            outfit: outfit,
+                            isSelected: state.mochiOutfitSelection == outfit,
+                            isHovered: hoveredOutfit == outfit,
+                            onHover: { h in
+                                hoveredOutfit = h ? outfit : nil
+                                if h {
+                                    // Preview on main Mochi
+                                    let preview: Outfit = outfit == .auto
+                                        ? Outfit.seasonal(for: Date(), calendar: .current)
+                                        : outfit
+                                    state.wardrobePreviewOutfit = preview
+                                } else if hoveredOutfit == nil {
+                                    state.wardrobePreviewOutfit = nil
+                                }
+                            },
+                            onTap: {
+                                guard state.mochiOutfitSelection != outfit else { return }
+                                state.mochiOutfitSelection = outfit
+                                SoundEngine.shared.play("pop")
+                                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
+                            }
+                        )
+                    }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+            }
+            .frame(maxHeight: .infinity)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white, location: 0.85),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+        }
+        .padding(.leading, 108)
+        .padding(.trailing, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onDisappear {
+            state.wardrobePreviewOutfit = nil
+            hoveredOutfit = nil
+        }
+        .onExitCommand {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                state.view = .overview
+            }
+        }
+    }
+}
+
+struct OutfitPillView: View {
+    let outfit: Outfit
+    let isSelected: Bool
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
+    let onTap: () -> Void
+
+    var body: some View {
+        Canvas { context, size in
+            drawOutfitIcon(context: context, size: size, outfit: outfit)
+        }
+        .frame(width: 30, height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(isHovered ? Color.white.opacity(0.10) : Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(isSelected ? Color.white.opacity(0.40) : Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .onHover { onHover($0) }
+        .onTapGesture { onTap() }
+    }
+}
+
+private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outfit) {
+    let W = size.width, H = size.height
+    let cx = W / 2, cy = H / 2
+    let R: CGFloat = 6.5   // small scale for icon
+    let rx = R * 1.14, ry = R * 0.88
+
+    switch outfit {
+    case .auto:
+        // Asterisk / sparkle
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        for i in 0..<6 {
+            let a = CGFloat(i) * .pi / 3
+            var p = Path()
+            p.move(to: CGPoint(x: cos(a) * R * 0.3, y: sin(a) * R * 0.3))
+            p.addLine(to: CGPoint(x: cos(a) * R * 1.2, y: sin(a) * R * 1.2))
+            ctx.stroke(p, with: .color(Color(hex: "#F7B32B")), lineWidth: 1.5)
+        }
+        var dot = Path()
+        dot.addEllipse(in: CGRect(x: -R * 0.28, y: -R * 0.28, width: R * 0.56, height: R * 0.56))
+        ctx.fill(dot, with: .color(Color(hex: "#F7B32B")))
+
+    case .none:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        var dash = Path()
+        dash.move(to: CGPoint(x: -R * 0.8, y: 0))
+        dash.addLine(to: CGPoint(x: R * 0.8, y: 0))
+        ctx.stroke(dash, with: .color(Color(hex: "#454850")), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+
+    case .partyHat:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawPartyHatIcon(ctx: &ctx, R: R)
+
+    case .beanie:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawBeanieIcon(ctx: &ctx, R: R)
+
+    case .crown:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawCrownIcon(ctx: &ctx, R: R)
+
+    case .topHat:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawTopHatIcon(ctx: &ctx, R: R)
+
+    case .cap:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawCapIcon(ctx: &ctx, R: R)
+
+    case .sunglasses:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawSunglassesIcon(ctx: &ctx, R: R)
+
+    case .roundGlasses:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawRoundGlassesIcon(ctx: &ctx, R: R)
+
+    case .bow:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawBowIcon(ctx: &ctx, R: R)
+
+    case .scarf:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawScarfIcon(ctx: &ctx, R: R)
+
+    case .witchHat:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawWitchHatIcon(ctx: &ctx, R: R)
+
+    case .pumpkin:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawPumpkinIcon(ctx: &ctx, R: R)
+
+    case .santaHat:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawSantaHatIcon(ctx: &ctx, R: R)
+
+    case .bunnyEars:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawBunnyEarsIcon(ctx: &ctx, R: R)
+
+    case .heartsHeadband:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawHeartsHeadbandIcon(ctx: &ctx, R: R)
+
+    case .strawHat:
+        var ctx = context
+        ctx.translateBy(x: cx, y: cy)
+        drawStrawHatIcon(ctx: &ctx, R: R)
+    }
+}
+
+// Icon drawers (simplified for 30pt pill)
+private func drawPartyHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var cone = Path()
+    cone.move(to: CGPoint(x: 0, y: -R * 1.4))
+    cone.addLine(to: CGPoint(x: -R, y: R * 0.5))
+    cone.addLine(to: CGPoint(x: R, y: R * 0.5))
+    cone.closeSubpath()
+    ctx.fill(cone, with: .color(Color(hex: "#EC4899")))
+    var star = Path()
+    star = outfitIconStar(outer: R * 0.32, inner: R * 0.14)
+    var sc = ctx; sc.translateBy(x: 0, y: -R * 1.4)
+    sc.fill(star, with: .color(Color(hex: "#FDE047")))
+    var brim = Path()
+    brim.addEllipse(in: CGRect(x: -R, y: R * 0.38, width: R * 2, height: R * 0.32))
+    ctx.fill(brim, with: .color(Color(hex: "#EC4899")))
+}
+private func drawBeanieIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var cap = Path()
+    cap.addRoundedRect(in: CGRect(x: -R, y: -R * 0.8, width: R * 2, height: R * 1.3),
+                       cornerSize: CGSize(width: R * 0.8, height: R * 0.8))
+    ctx.fill(cap, with: .color(Color(hex: "#60A5FA")))
+    var pom = Path()
+    pom.addEllipse(in: CGRect(x: -R * 0.28, y: -R * 1.25, width: R * 0.56, height: R * 0.56))
+    ctx.fill(pom, with: .color(.white))
+}
+private func drawCrownIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var base = Path()
+    base.addRect(CGRect(x: -R, y: R * 0.1, width: R * 2, height: R * 0.4))
+    ctx.fill(base, with: .color(Color(hex: "#EAB308")))
+    for t: CGFloat in [-0.6, 0, 0.6] {
+        var pt = Path()
+        pt.move(to: CGPoint(x: t * R - R * 0.3, y: R * 0.1))
+        pt.addLine(to: CGPoint(x: t * R, y: -R * 0.85))
+        pt.addLine(to: CGPoint(x: t * R + R * 0.3, y: R * 0.1))
+        pt.closeSubpath()
+        ctx.fill(pt, with: .color(Color(hex: "#EAB308")))
+    }
+}
+private func drawTopHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var body = Path()
+    body.addRect(CGRect(x: -R * 0.72, y: -R, width: R * 1.44, height: R * 1.1))
+    ctx.fill(body, with: .color(Color(hex: "#1C1917")))
+    var brim = Path()
+    brim.addRoundedRect(in: CGRect(x: -R, y: R * 0.1, width: R * 2, height: R * 0.3),
+                        cornerSize: CGSize(width: R * 0.08, height: R * 0.08))
+    ctx.fill(brim, with: .color(Color(hex: "#1C1917")))
+    var band = Path()
+    band.addRect(CGRect(x: -R * 0.72, y: R * 0, width: R * 1.44, height: R * 0.18))
+    ctx.fill(band, with: .color(Color(hex: "#991B1B")))
+}
+private func drawCapIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var dome = Path()
+    dome.addArc(center: CGPoint(x: 0, y: R * 0.1), radius: R,
+                startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+    dome.addLine(to: CGPoint(x: R, y: R * 0.5))
+    dome.addLine(to: CGPoint(x: -R, y: R * 0.5))
+    dome.closeSubpath()
+    ctx.fill(dome, with: .color(Color(hex: "#E11D48")))
+    var brim = Path()
+    brim.addRoundedRect(in: CGRect(x: R * 0.1, y: R * 0.35, width: R * 1.2, height: R * 0.3),
+                        cornerSize: CGSize(width: R * 0.08, height: R * 0.08))
+    ctx.fill(brim, with: .color(Color(hex: "#9F1239")))
+}
+private func drawSunglassesIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    for sd: CGFloat in [-1, 1] {
+        var lens = Path()
+        lens.addRoundedRect(in: CGRect(x: sd * R * 0.14 - R * 0.55, y: -R * 0.38,
+                                       width: R * 1.1, height: R * 0.76),
+                            cornerSize: CGSize(width: R * 0.22, height: R * 0.22))
+        ctx.fill(lens, with: .color(Color(hex: "#1C1917").opacity(0.7)))
+        ctx.stroke(lens, with: .color(Color(hex: "#292524")), lineWidth: 1)
+    }
+    var bridge = Path()
+    bridge.move(to: CGPoint(x: -R * 0.42, y: 0))
+    bridge.addLine(to: CGPoint(x: R * 0.42, y: 0))
+    ctx.stroke(bridge, with: .color(Color(hex: "#292524")), lineWidth: 1)
+}
+private func drawRoundGlassesIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    for sd: CGFloat in [-1, 1] {
+        var ring = Path()
+        ring.addEllipse(in: CGRect(x: sd * R * 0.1 + sd * R * 0.38 - R * 0.42, y: -R * 0.42,
+                                   width: R * 0.84, height: R * 0.84))
+        ctx.stroke(ring, with: .color(Color(hex: "#92400E")), lineWidth: 1.5)
+    }
+    var bridge = Path()
+    bridge.move(to: CGPoint(x: -R * 0.38, y: 0))
+    bridge.addLine(to: CGPoint(x: R * 0.38, y: 0))
+    ctx.stroke(bridge, with: .color(Color(hex: "#92400E")), lineWidth: 1.5)
+}
+private func drawBowIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    for sd: CGFloat in [-1, 1] {
+        var wing = Path()
+        wing.move(to: CGPoint(x: 0, y: 0))
+        wing.addQuadCurve(to: CGPoint(x: sd * R * 1.0, y: -R * 0.5), control: CGPoint(x: sd * R * 1.0, y: -R * 1.0))
+        wing.addQuadCurve(to: CGPoint(x: 0, y: 0), control: CGPoint(x: sd * R * 1.0, y: R * 0.5))
+        wing.closeSubpath()
+        ctx.fill(wing, with: .color(Color(hex: "#F472B6")))
+    }
+    var knot = Path()
+    knot.addEllipse(in: CGRect(x: -R * 0.2, y: -R * 0.2, width: R * 0.4, height: R * 0.4))
+    ctx.fill(knot, with: .color(Color(hex: "#EC4899")))
+}
+private func drawScarfIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var wrap = Path()
+    wrap.addRoundedRect(in: CGRect(x: -R, y: -R * 0.3, width: R * 2, height: R * 0.6),
+                        cornerSize: CGSize(width: R * 0.3, height: R * 0.3))
+    ctx.fill(wrap, with: .color(Color(hex: "#EF4444")))
+    var fringe = Path()
+    fringe.addRoundedRect(in: CGRect(x: R * 0.5, y: -R * 0.3, width: R * 0.4, height: R * 1.0),
+                          cornerSize: CGSize(width: R * 0.1, height: R * 0.1))
+    ctx.fill(fringe, with: .color(Color(hex: "#EF4444")))
+    var stripe = Path()
+    stripe.addRect(CGRect(x: -R, y: -R * 0.08, width: R * 2, height: R * 0.16))
+    ctx.fill(stripe, with: .color(Color.white.opacity(0.4)))
+}
+private func drawWitchHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var brim = Path()
+    brim.addEllipse(in: CGRect(x: -R, y: R * 0.28, width: R * 2, height: R * 0.32))
+    ctx.fill(brim, with: .color(Color(hex: "#1C1917")))
+    var cone = Path()
+    cone.move(to: CGPoint(x: 0, y: -R * 1.4))
+    cone.addLine(to: CGPoint(x: -R * 0.7, y: R * 0.4))
+    cone.addLine(to: CGPoint(x: R * 0.7, y: R * 0.4))
+    cone.closeSubpath()
+    ctx.fill(cone, with: .color(Color(hex: "#1C1917")))
+    var buckle = Path()
+    buckle.addRoundedRect(in: CGRect(x: -R * 0.32, y: -R * 0.08, width: R * 0.64, height: R * 0.32),
+                          cornerSize: CGSize(width: R * 0.08, height: R * 0.08))
+    ctx.fill(buckle, with: .color(Color(hex: "#EAB308")))
+}
+private func drawPumpkinIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var body = Path()
+    body.addEllipse(in: CGRect(x: -R * 0.95, y: -R * 0.75, width: R * 1.9, height: R * 1.5))
+    ctx.fill(body, with: .color(Color(hex: "#F97316")))
+    for x in [-R * 0.35, 0.0, R * 0.35] {
+        var rib = Path()
+        rib.move(to: CGPoint(x: x, y: -R * 0.7)); rib.addLine(to: CGPoint(x: x, y: R * 0.7))
+        ctx.stroke(rib, with: .color(Color(hex: "#EA580C").opacity(0.5)), lineWidth: R * 0.12)
+    }
+    var stem = Path()
+    stem.addRoundedRect(in: CGRect(x: -R * 0.1, y: -R * 1.1, width: R * 0.2, height: R * 0.4),
+                        cornerSize: CGSize(width: R * 0.06, height: R * 0.06))
+    ctx.fill(stem, with: .color(Color(hex: "#15803D")))
+}
+private func drawSantaHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var cone = Path()
+    cone.move(to: CGPoint(x: R * 0.15, y: -R * 1.3))
+    cone.addLine(to: CGPoint(x: -R, y: R * 0.5))
+    cone.addLine(to: CGPoint(x: R, y: R * 0.5))
+    cone.closeSubpath()
+    ctx.fill(cone, with: .color(Color(hex: "#EF4444")))
+    var band = Path()
+    band.addEllipse(in: CGRect(x: -R, y: R * 0.22, width: R * 2, height: R * 0.38))
+    ctx.fill(band, with: .color(.white))
+    var pom = Path()
+    pom.addEllipse(in: CGRect(x: R * 0.05 - R * 0.24, y: -R * 1.5, width: R * 0.48, height: R * 0.48))
+    ctx.fill(pom, with: .color(.white))
+}
+private func drawBunnyEarsIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    for sd: CGFloat in [-1, 1] {
+        var outer = Path()
+        outer.addEllipse(in: CGRect(x: sd * R * 0.35 - R * 0.26, y: -R * 1.4, width: R * 0.52, height: R * 1.1))
+        ctx.fill(outer, with: .color(Color(hex: "#F9F0F0")))
+        ctx.stroke(outer, with: .color(Color.black.opacity(0.06)), lineWidth: 0.8)
+        var inner = Path()
+        inner.addEllipse(in: CGRect(x: sd * R * 0.35 - R * 0.13, y: -R * 1.28, width: R * 0.26, height: R * 0.72))
+        ctx.fill(inner, with: .color(Color(hex: "#FCA5A5").opacity(0.7)))
+    }
+}
+private func drawHeartsHeadbandIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var band = Path()
+    band.addRoundedRect(in: CGRect(x: -R, y: R * 0.1, width: R * 2, height: R * 0.38),
+                        cornerSize: CGSize(width: R * 0.1, height: R * 0.1))
+    ctx.fill(band, with: .color(Color(hex: "#F472B6")))
+    for dx: CGFloat in [-R * 0.5, R * 0.5] {
+        var hCtx = ctx; hCtx.translateBy(x: dx, y: -R * 0.32)
+        hCtx.fill(outfitIconHeart(size: R * 0.6), with: .color(Color(hex: "#F43F5E")))
+    }
+}
+private func drawStrawHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
+    var brim = Path()
+    brim.addEllipse(in: CGRect(x: -R, y: R * 0.2, width: R * 2, height: R * 0.38))
+    ctx.fill(brim, with: .color(Color(hex: "#D97706")))
+    var crown = Path()
+    crown.addRoundedRect(in: CGRect(x: -R * 0.76, y: -R * 0.7, width: R * 1.52, height: R * 0.9),
+                         cornerSize: CGSize(width: R * 0.5, height: R * 0.5))
+    ctx.fill(crown, with: .color(Color(hex: "#F59E0B")))
+    for i in 0..<6 {
+        if i % 2 == 0 {
+            var sq = Path()
+            sq.addRect(CGRect(x: -R * 0.76 + CGFloat(i) * R * 0.26, y: -R * 0.12, width: R * 0.26, height: R * 0.22))
+            ctx.fill(sq, with: .color(Color(hex: "#78350F")))
+        }
+    }
+}
+private func outfitIconStar(outer ro: CGFloat, inner ri: CGFloat) -> Path {
+    var p = Path()
+    for i in 0..<10 {
+        let r = i.isMultiple(of: 2) ? ro : ri
+        let a = -.pi/2 + CGFloat(i) * .pi/5
+        let pt = CGPoint(x: cos(a) * r, y: sin(a) * r)
+        if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+    }
+    p.closeSubpath()
+    return p
+}
+private func outfitIconHeart(size s: CGFloat) -> Path {
+    var p = Path()
+    p.move(to: CGPoint(x: 0, y: s * 0.38))
+    p.addCurve(to: CGPoint(x: 0, y: -s * 0.38),
+               control1: CGPoint(x: -s * 1.05, y: -s * 0.15),
+               control2: CGPoint(x: -s * 0.5,  y: -s * 0.95))
+    p.addCurve(to: CGPoint(x: 0, y: s * 0.38),
+               control1: CGPoint(x: s * 0.5,   y: -s * 0.95),
+               control2: CGPoint(x: s * 1.05,  y: -s * 0.15))
+    p.closeSubpath()
+    return p
 }
 
 // MARK: - Card background

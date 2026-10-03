@@ -238,6 +238,27 @@ Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
 - **Hotkey** : raccourci global pour ouvrir le notch.
 - **Startup** : lancer au démarrage (`SMAppService.mainApp`).
 
+### Garde-robe (`WardrobeView`)
+
+Accessible par clic droit sur la tête de Mochi (étendu ou compact). L'île s'étend sur `.wardrobe`.
+
+**Mise en page** : Mochi à gauche (même position qu'overview, avec la tenue survolée en aperçu direct). À droite : en-tête « Wardrobe » 12 pt semibold + la tenue sélectionnée en 11 pt #8E939C. Si Auto : « Auto · Witch hat » (tenue de saison).
+
+Grille de pastilles 30 pt, coins 7 pt, fond blanc 6 %, bord blanc 8 % (sélectionnée : 40 %). Chaque pastille affiche l'accessoire dessiné en Canvas statique. Survol : fond 10 % + aperçu sur Mochi. Clic → sélectionne, sauvegarde, son « pop », émote proud.
+
+**Fermeture** : Échap, clic maison, ou clic droit sur Mochi à nouveau.
+
+**Calendrier des saisons** (mode Auto) :
+- 1 oct – 1 nov : Witch hat
+- 1 déc – 26 déc : Santa hat
+- 31 déc – 2 jan : Party hat
+- 13 – 15 fév : Hearts
+- Pâques −2 / +1 : Bunny ears
+- 21 juin – 31 août : Sunglasses
+
+**Identifiants stables** (UserDefaults key `mochiOutfit`) :
+`auto`, `none`, `partyHat`, `beanie`, `crown`, `topHat`, `cap`, `sunglasses`, `roundGlasses`, `bow`, `scarf`, `witchHat`, `pumpkin`, `santaHat`, `bunnyEars`, `heartsHeadband`, `strawHat`
+
 ## 11. Jalons
 
 Chaque jalon se termine par build + capture + comparaison aux références + commit (voir CLAUDE.md).

@@ -53,6 +53,16 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
+    // Mochi outfit selection — persisted
+    @Published var mochiOutfitSelection: Outfit = .auto {
+        didSet { Outfit.stored = mochiOutfitSelection }
+    }
+    // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
+    var wardrobePreviewOutfit: Outfit? = nil
+    var resolvedOutfit: Outfit {
+        wardrobePreviewOutfit ?? Outfit.resolved(selection: mochiOutfitSelection, date: Date(), calendar: .current)
+    }
+
     // Claude model used by the chat and the search — persisted
     static let defaultClaudeModel = "claude-sonnet-4-6"
     @Published var claudeModel: String = AppState.defaultClaudeModel {
@@ -373,6 +383,7 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
+        mochiOutfitSelection = Outfit.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
