@@ -18,3 +18,8 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+
+# Local secrets / config (never commit)
+.env
+.env.*
+!.env.example

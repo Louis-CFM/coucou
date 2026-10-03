@@ -254,6 +254,110 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Custom provider section (OpenAI-compatible, e.g. AvalAI) ─────────────────
+
+function customProviderSection(hasKey: boolean): HTMLElement {
+  const dot = statusDot(hasKey);
+  const hint = h("span", {
+    class: "hint",
+    text: "Any OpenAI-compatible server (AvalAI, OpenRouter…). Chat only — no web search, and PDFs are not read.",
+  });
+
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "anthropic", text: "Claude (Anthropic)" }),
+    h("option", { value: "custom", text: "Custom provider" }),
+  );
+  provider.value = settings.chatProvider;
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value as Settings["chatProvider"];
+    void save();
+  });
+
+  const baseUrl = h("input", {
+    type: "text",
+    placeholder: "https://api.avalai.ir/v1",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  baseUrl.value = settings.customBaseUrl;
+  baseUrl.addEventListener("change", () => {
+    settings.customBaseUrl = baseUrl.value.trim();
+    void save();
+  });
+
+  const model = h("input", {
+    type: "text",
+    placeholder: "model id from your provider",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  model.value = settings.customModel;
+  model.addEventListener("change", () => {
+    settings.customModel = model.value.trim();
+    void save();
+  });
+
+  const field = h("input", {
+    type: "password",
+    placeholder: hasKey ? "••••••••••••  (stored)" : "API key",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const saveBtn = h("button", { class: "primary", text: "Save key" });
+  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const present = (await Bridge.secretPresent("custom-api-key")) ?? false;
+    dot.style.background = present ? "#22c55e" : "#f4505e";
+    field.placeholder = present ? "••••••••••••  (stored)" : "API key";
+    clearBtn.style.display = present ? "" : "none";
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    const value = field.value.trim();
+    if (!value) return;
+    clear(feedback);
+    try {
+      await Bridge.secretSet("custom-api-key", value);
+      field.value = "";
+      feedback.append(h("div", { class: "notice ok", text: "Saved in the Windows Credential Manager." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.secretClear("custom-api-key");
+      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  clearBtn.style.display = hasKey ? "" : "none";
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Chat provider" })),
+    hint,
+    h("div", { class: "row" }, h("label", { text: "Chat uses" }), provider),
+    h("div", { class: "row" }, h("label", { text: "Base URL" }), baseUrl),
+    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    feedback,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -430,6 +534,7 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasCustomKey = (await Bridge.secretPresent("custom-api-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -443,6 +548,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    customProviderSection(hasCustomKey),
     integrationsSection(present),
     generalSection(),
     h("div", {
