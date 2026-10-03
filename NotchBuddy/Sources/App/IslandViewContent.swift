@@ -531,6 +531,96 @@ struct ErrorView: View {
     }
 }
 
+// MARK: - Agent sessions list
+
+/// One row per session of an external agent pill: status dot · project · last line · age.
+/// For the Claude Desktop pill a row opens that conversation in the Claude app.
+struct AgentSessionsListView: View {
+    let task: AgentTask
+    let rows: [AgentSessionRow]
+    private let visible = 3
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: task.color)).frame(width: 7, height: 7)
+                Text(task.name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                    .lineLimit(1)
+                Text(rows.count == 1 ? "1 session" : "\(rows.count) sessions")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                Spacer(minLength: 2)
+            }
+            ForEach(Array(rows.prefix(visible))) { row in
+                HStack(spacing: 6) {
+                    Circle().fill(Self.color(row.status)).frame(width: 6, height: 6)
+                    Text(row.title.isEmpty ? row.project : "\(row.project) · \(row.title)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(hex: "#E6E8EC"))
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                    Text(row.line.isEmpty ? Self.label(row.status) : row.line)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 2)
+                    // Ticks once a minute, and only while the card is on screen.
+                    TimelineView(.periodic(from: .now, by: 60)) { ctx in
+                        Text(AgentSessions.ago(row.updated, now: ctx.date))
+                            .font(.system(size: 10.5).monospacedDigit())
+                            .foregroundColor(Color(hex: "#6B7079"))
+                            .fixedSize()
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { open(row) }
+            }
+            if rows.count > visible {
+                Text("+\(rows.count - visible) more")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            }
+        }
+        .padding(.top, 6)
+        .padding(.leading, 108)
+        .padding(.trailing, 16)
+    }
+
+    /// Best effort: `claude://claude.ai/epitaxy/local_<id>` is the link the Claude app itself uses for a
+    /// local Code session; it is not a documented API, so fall back to just opening the app.
+    private func open(_ row: AgentSessionRow) {
+        guard task.id == "agent_claude-desktop" else { return }
+        if row.id.range(of: #"^[0-9a-fA-F-]{36}$"#, options: .regularExpression) != nil,
+           let url = URL(string: "claude://claude.ai/epitaxy/local_\(row.id)"),
+           NSWorkspace.shared.open(url) {
+            return
+        }
+        openClaudeDesktopApp()
+    }
+
+    static func color(_ s: AgentSessionRow.Status) -> Color {
+        switch s {
+        case .working, .thinking, .started: return Color(hex: "#22C55E")
+        case .waiting:                      return Color(hex: "#F5A524")
+        case .error:                        return Color(hex: "#F4505E")
+        case .finished:                     return Color(hex: "#6B7079")
+        }
+    }
+
+    static func label(_ s: AgentSessionRow.Status) -> String {
+        switch s {
+        case .started:  return "Started"
+        case .thinking: return "Thinking…"
+        case .working:  return "Working…"
+        case .waiting:  return "Waiting for you"
+        case .finished: return "Finished"
+        case .error:    return "Error"
+        }
+    }
+}
+
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
 
@@ -1648,6 +1738,18 @@ struct IntegrationCardView: View {
     }
 
     // Workspace/agent pill with active session: show ticker layout
+    /// Sessions tracked for this external agent pill (see AgentSessions.swift).
+    private var sessionRows: [AgentSessionRow] { AgentSessions.visible(appState.agentSessions[task.id] ?? [], now: Date()) }
+
+    /// List view when several sessions share the pill, or when it rests with recent sessions;
+    /// a single running session keeps the live ticker.
+    private var showsSessionList: Bool {
+        // Claude Desktop only for now: other agent pills keep their existing card.
+        guard task.id == "agent_claude-desktop" else { return false }
+        let rows = sessionRows
+        return rows.count >= 2 || (!rows.isEmpty && !agentSessionActive)
+    }
+
     private var agentSessionActive: Bool {
         guard let def = PillCatalog.definition(for: task.id) else { return false }
         guard def.category == .workspace || def.category == .agent else { return false }
@@ -1824,6 +1926,9 @@ struct IntegrationCardView: View {
             MusicCardView()
                 .transition(.opacity)
             #endif
+        } else if showsSessionList {
+            AgentSessionsListView(task: task, rows: sessionRows)
+                .transition(.opacity)
         } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {

@@ -409,6 +409,22 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        // External agent pills keep a per-session list for their card (one row per session).
+        if isExternalAgent {
+            let sessionLine: String? = {
+                switch name {
+                case "UserPromptSubmit": return (payload["prompt"] as? String).map { DiffEngine.toOneLine($0) }
+                case "PreToolUse":       return frenchStep(tool: payload["tool_name"] as? String ?? "Tool",
+                                                           input: payload["tool_input"] as? [String: Any] ?? [:])
+                case "Stop":             return DiffEngine.toOneLine((payload["last_assistant_message"] as? String) ?? (payload["message"] as? String) ?? "")
+                case "Notification":     return payload["message"] as? String
+                default:                 return nil
+                }
+            }()
+            state.noteAgentSession(pill: agentId, event: name, sessionId: sessionId, project: projectName,
+                                   title: payload["session_title"] as? String, line: sessionLine,
+                                   notificationType: payload["notification_type"] as? String)
+        }
         switch name {
 
         case "SessionStart":

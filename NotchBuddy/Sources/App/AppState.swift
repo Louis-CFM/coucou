@@ -13,6 +13,8 @@ final class AppState: ObservableObject {
 
     // Tasks
     @Published var tasks: [AgentTask] = []
+    /// Sessions seen on each external agent pill (pill id → rows, newest first). See AgentSessions.swift.
+    @Published var agentSessions: [String: [AgentSessionRow]] = [:]
     @Published var focusId: String? = nil
 
     // Bot state override
@@ -456,6 +458,13 @@ final class AppState: ObservableObject {
         if focusId == id { focusId = mainPillId }
         syncMode()
         syncView()
+    }
+
+    func noteAgentSession(pill: String, event: String, sessionId: String, project: String, title: String?,
+                          line: String?, notificationType: String?) {
+        agentSessions[pill] = AgentSessions.apply(agentSessions[pill] ?? [], event: event, sessionId: sessionId,
+                                                  project: project, title: title, line: line,
+                                                  notificationType: notificationType, now: Date())
     }
 
     func updateTask(id: String, state: BotState) {
