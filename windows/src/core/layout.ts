@@ -11,6 +11,7 @@ export type IslandViewName =
   | "question"
   | "error"
   | "finished"
+  | "gitlab"
   | "confused"
   | "upload"
   | "uploading"
@@ -73,6 +74,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
+  // GitLab's news, laid out like Claude Code's "finished" card.
+  gitlab: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
   upload: { height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
   // botY 103 = bar top (42 + 58) + 3, so the dot really rides the bar. The Swift
@@ -97,10 +100,17 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/**
+ * The overview when its card lists five rows instead of three (GitLab's):
+ * 160 + two 21 px rows and their 3 px gaps, and room to breathe under them.
+ */
+export const OVERVIEW_TALL_H = 210;
+
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  tallOverview = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -110,7 +120,9 @@ export function islandSize(
     case "compact":
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
-      const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
+      const h = view === "prompt"
+        ? chatPromptHeight(chatCount)
+        : view === "overview" && tallOverview ? OVERVIEW_TALL_H : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }

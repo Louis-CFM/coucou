@@ -11,6 +11,7 @@ import type { Island } from "./island";
 const KEY_FOR: Record<string, string> = {
   integration_stripe: "stripe-api-key",
   integration_github: "github-token",
+  integration_gitlab: "gitlab-token",
   integration_vercel: "vercel-token",
   integration_n8n: "n8n-api-key",
   integration_resend: "resend-api-key",
@@ -62,9 +63,12 @@ function handle(island: Island, update: IntegrationUpdate) {
         task.pillBadge = event.success ? "finished" : "error";
       }
       Sound.play(event.success ? "finish" : "error");
-      // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+      // GitLab's news opens its own card, like Claude Code's "finished" — unless
+      // an alert is waiting for an answer: an approval must not be pushed away.
+      // The others, as the Swift pollers do, only show the compact island so the
+      // badge is seen, never stealing the screen for a successful deploy.
+      if (update.id === "integration_gitlab" && !State.isPinned) island.alert("gitlab");
+      else island.reveal();
 
       const existing = clearTimers.get(update.id);
       if (existing != null) window.clearTimeout(existing);

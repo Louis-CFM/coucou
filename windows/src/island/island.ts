@@ -7,10 +7,10 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  type IslandMode, type IslandViewName,
+  type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type AgentTask } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -18,6 +18,7 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { wantsTallOverview } from "../views/integrations";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -64,6 +65,7 @@ export class Island {
   private running = false;
   private lastFrame = 0;
   private dirty = true;
+  private wasTall = false;
   private canvasPx = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
@@ -130,6 +132,7 @@ export class Island {
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        else if (task.id === "integration_gitlab") void Bridge.openGitlab();
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
@@ -449,8 +452,13 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  /** The overview grows while its card lists more than three rows. */
+  private get tallOverview(): boolean {
+    return State.view === "overview" && wantsTallOverview(State.focusTask);
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.tallOverview);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -689,6 +697,13 @@ export class Island {
 
     if (this.dirty) {
       this.dirty = false;
+      // Focusing another pill, or the integration's first answer, changes the
+      // height without changing the view.
+      const tall = this.tallOverview;
+      if (tall !== this.wasTall) {
+        this.wasTall = tall;
+        if (State.mode === "expanded") this.animateGeometry(!tall);
+      }
       this.syncDom();
     }
 
@@ -756,14 +771,14 @@ export class Island {
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
       const d = p.diameter;
-      const color = botGlowColor(State.effectiveState);
+      const color = botGlowColor(this.shownState);
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
       this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
       this.botGlow.style.top = `${this.botCy.value - d * 1.1}px`;
       this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
-      this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
+      this.botGlow.style.opacity = String(botGlowOpacity(this.shownState));
     } else {
       this.botGlow.style.display = "none";
     }
@@ -787,7 +802,7 @@ export class Island {
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
-    const focus = State.focusTask;
+    const focus = this.shownTask;
     this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
@@ -877,7 +892,34 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    this.engine.setState(this.shownState);
+  }
+
+  /**
+   * Who Mochi stands for right now: the focused pill, except on a GitLab news
+   * card, where he takes GitLab's colour and mood — like its mini Mochi on the
+   * pill — so the card reads at a glance as GitLab's.
+   */
+  private get onGitlabCard(): boolean {
+    // The view outlives the card: once the island folds back into its bar it
+    // still says "gitlab" until the next opening resets it. Only an open card
+    // counts, or Mochi stays orange on the bar.
+    return State.mode === "expanded" && State.view === "gitlab";
+  }
+
+  private get shownTask(): AgentTask | null {
+    if (this.onGitlabCard) {
+      return State.tasks.find((t) => t.id === "integration_gitlab") ?? State.focusTask;
+    }
+    return State.focusTask;
+  }
+
+  private get shownState(): BotStateName {
+    if (this.onGitlabCard) {
+      const t = State.tasks.find((x) => x.id === "integration_gitlab");
+      if (t && State.stateOverride == null) return t.state;
+    }
+    return State.effectiveState;
   }
 
   /** Applies settings coming from Rust at boot. */

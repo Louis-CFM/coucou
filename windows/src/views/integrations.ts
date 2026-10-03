@@ -82,6 +82,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openN8n(),
       }),
     );
+  } else if (task.id === "integration_gitlab") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open GitLab",
+        onclick: () => void Bridge.openGitlab(),
+      }),
+    );
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -227,6 +236,108 @@ function githubCard(): HTMLElement {
       statRow(ICONS.stack, "#6B7079", "Repositories", String(repos)),
     ),
   );
+}
+
+// ── Scrolling cards ───────────────────────────────────────────────────────────
+
+/** Where each scrolling card was left, so a refresh doesn't throw the reader back up. */
+const scrollTops = new Map<string, number>();
+/** The news each card was last built on: fresh news brings it back to the top. */
+const freshKeys = new Map<string, string>();
+
+/**
+ * The card is rebuilt whenever its data changes: `rows` gets back the reader's
+ * place, unless there is news to see, which sits at the top.
+ */
+function keepScroll(rows: HTMLElement, id: string) {
+  const freshKey = JSON.stringify(get(id).fresh ?? []);
+  if (freshKey !== freshKeys.get(id)) {
+    freshKeys.set(id, freshKey);
+    if (arr(id, "fresh").length > 0) scrollTops.set(id, 0);
+  }
+  rows.addEventListener("scroll", () => scrollTops.set(id, rows.scrollTop));
+  requestAnimationFrame(() => {
+    rows.scrollTop = scrollTops.get(id) ?? 0;
+  });
+}
+
+/** One clickable row of a list card. */
+function linkRow(accent: string, highlight: boolean, url: unknown, tip: string, ...cells: Node[]): HTMLElement {
+  const row = listRow(accent, highlight, ...cells);
+  row.title = tip;
+  if (typeof url === "string" && url) {
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => void Bridge.openUrl(url));
+  }
+  return row;
+}
+
+// ── GitLab ────────────────────────────────────────────────────────────────────
+
+/**
+ * Five rows on screen and the rest a scroll away, most important first: the
+ * news of the last half hour (highlighted), then the pending to-dos not already
+ * told, then the open MRs the user is involved in.
+ */
+function gitlabCard(): HTMLElement {
+  const d = get("integration_gitlab");
+  const count = Number(d.todoCount ?? 0);
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: "Your GitLab To-Do list",
+      onclick: () => void Bridge.openGitlab("/dashboard/todos"),
+    },
+    h("span", {
+      style: count > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
+      text: `${count}${d.todosCapped ? "+" : ""} to do`,
+    }),
+  );
+
+  const rows = h("div", { class: "int-rows scroll" });
+  let shown = 0;
+  const toldTodos = new Set<number>();
+  const toldMrs = new Set<number>();
+
+  for (const n of arr("integration_gitlab", "news")) {
+    if (typeof n.todoId === "number") toldTodos.add(n.todoId);
+    if (typeof n.mrId === "number") toldMrs.add(n.mrId);
+    rows.append(linkRow(n.success === false ? "#F4505E" : "#22C55E", true, n.url, String(n.label ?? ""),
+      h("span", { class: "int-name", text: String(n.label ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(n.at) }),
+    ));
+    shown++;
+  }
+  for (const t of arr("integration_gitlab", "todos")) {
+    if (toldTodos.has(Number(t.id))) continue;
+    // Its MR is not listed again below: the to-do says more.
+    if (typeof t.mrId === "number") toldMrs.add(t.mrId);
+    const tip = [t.kind, t.project, t.author].filter(Boolean).join(" · ");
+    rows.append(linkRow(t.bad ? "#F4505E" : "#FC6D26", false, t.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(t.title ?? "") }),
+      h("span", { class: "int-sub", style: "flex:0 3 auto", text: String(t.kind ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(t.createdAt) }),
+    ));
+    shown++;
+  }
+  for (const mr of arr("integration_gitlab", "mergeRequests")) {
+    if (toldMrs.has(Number(mr.id))) continue;
+    const roles = Array.isArray(mr.roles) ? mr.roles.map(String) : [];
+    const tip = [mr.project, mr.author ? `by ${String(mr.author)}` : "", roles.join(", "), mr.draft ? "Draft" : ""]
+      .filter(Boolean).join(" · ");
+    rows.append(linkRow(mr.draft ? "#6B7079" : "#FC6D26", false, mr.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(mr.title ?? "") }),
+      // What the user is on it as — the first role only, the tooltip has them
+      // all: the title is what you scan for.
+      h("span", { class: "int-sub", style: "flex:0 0 auto", text: roles[0] ?? "" }),
+      h("span", { class: "int-ago", text: timeAgo(mr.updatedAt) }),
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing new on GitLab" }));
+  keepScroll(rows, "integration_gitlab");
+  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", "Inbox", extra), rows);
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
@@ -381,6 +492,14 @@ export interface IntegrationCardHooks {
   openSettings(): void;
 }
 
+/** The pills whose card lists five rows, for which the overview grows. */
+const TALL_CARDS = new Set(["integration_gitlab"]);
+
+/** True when this pill's card lists five rows, for which the overview grows. */
+export function wantsTallOverview(task: AgentTask | null): boolean {
+  return task != null && TALL_CARDS.has(task.id) && hasIntegrationData(task.id);
+}
+
 /** True when this integration has data worth showing instead of the idle card. */
 export function hasIntegrationData(id: string): boolean {
   const info = State.integrations[id];
@@ -397,6 +516,8 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_notion":
       return arr(id, "pages").length > 0;
     case "integration_calcom":
+      return info.loaded;
+    case "integration_gitlab":
       return info.loaded;
     default:
       return false;
@@ -426,6 +547,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_gitlab":
+      return gitlabCard();
     default:
       return idleCard(task, hooks.openSettings);
   }
