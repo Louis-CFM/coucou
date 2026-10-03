@@ -476,7 +476,13 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Centred on a whole pixel of the screen. `translateX(-50%)` put the island
+    // on a fraction of one for as long as its width was animating, and whatever
+    // was painted then in a layer of its own — a scrolling list, say — kept
+    // that fraction once the island had settled: its text stayed smeared until
+    // it was drawn again.
+    const dpr = window.devicePixelRatio || 1;
+    this.islandEl.style.transform = `translateX(${-Math.round((w / 2) * dpr) / dpr}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
