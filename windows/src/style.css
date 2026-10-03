@@ -34,10 +34,18 @@
   padding: 0;
 }
 
+/* HACK, not the final fix. On the Chromium-based webview (WebView2) the page
+   box still claims the whole viewport after upstream's viewport/island changes,
+   which drags the island's own box out of shape and breaks the Mochi
+   animations. Letting html/body shrink to their content stops the page from
+   claiming the viewport; #island keeps being positioned by Island.applyGeometry,
+   so nothing here moves the island itself. Proper fix: have the island be in
+   flow (position: relative) and let its parents size to it, with the horizontal
+   offset moved out of the transform onto the parent — revisit before release. */
 html,
 body {
-  width: 100%;
-  height: 100%;
+  width: fit-content;
+  height: fit-content;
   background: transparent;
   overflow: hidden;
   font-family: var(--font);
@@ -45,11 +53,6 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
   cursor: default;
-}
-
-#root {
-  position: fixed;
-  inset: 0;
 }
 
 /* Invisible strip that wakes the island when it is hidden. Covers the fully

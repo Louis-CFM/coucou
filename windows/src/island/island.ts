@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, COMPACT_W, NO_NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, COMPACT_W, NO_NOTCH_H, NO_NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
@@ -53,6 +53,9 @@ export class Island {
   private width = new Tracked(NO_NOTCH_W);
   private height = new Tracked(0);
   private radius = new Tracked(ROUNDED_CORNER);
+  // How far the island has slid up past the top edge, 0 while it is on screen.
+  private slideY = new Tracked(0);
+  private slideOff = false;
   private botCx = new Spring(46);
   private botCy = new Spring(16);
   private botSize = new Spring(10);
@@ -734,6 +737,33 @@ if (now - this.lastDismiss < 50) return;
   }
 
   /**
+   * Keeps the off-screen slide in step with the FSM.
+   *
+   * The slide is the reverse of the pop up: same close curve as the geometry, so
+   * the bar shrinks and rises off the top edge in one move, and the same spring
+   * brings it back. It cannot be armed from `animateGeometry`, because `setMode`
+   * returns early when the mode is unchanged and the FSM reaches `gone` from
+   * `hidden` — so, like the fade this replaced, it is re-checked every frame.
+   *
+   * The island travels the height it had before the collapse, so an expanded
+   * island clears the window too, and `overflow: hidden` on the body clips it for
+   * the whole slide. The poll keeps its own 14px band at the resting position, so
+   * "hover to restore" still finds a bar that is no longer on screen.
+   */
+  private syncSlide() {
+    const off = this.hidesOffscreen();
+    if (off === this.slideOff) return;
+    this.slideOff = off;
+    const slide = off ? -Math.max(NO_NOTCH_H, this.height.value) : 0;
+    this.animateGeometry(off);
+    if (off) {
+      this.slideY.curveTowards(slide);
+    } else {
+      this.slideY.springTo(slide);
+    }
+  }
+
+  /**
    * Horizontal offset of the island inside the window, in logical px.
    *
    * The island must always open toward the middle of the screen: a bar resting
@@ -764,11 +794,12 @@ if (now - this.lastDismiss < 50) return;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
     // Auto-hide has to take the entire bar with it, not just the Mochi: the bot
     // already fades itself through `botPosition`'s opacity, but the bar's own
-    // background outlived the zero-height animation and stayed on screen. Fading
-    // the island is the only gate that covers the background, the pills and the bot
-    // in one place. Left clickable, so "hover to restore" can still find it.
-    this.islandEl.style.opacity = this.hidesOffscreen() ? "0" : "1";
-    this.islandEl.style.transform = `translateX(${offsetX}px)`;
+    // background outlived the zero-height animation and stayed on screen. Sliding
+    // the island up covers the background, the pills and the bot in one move, and
+    // reads better than a fade. `slideY` carries it clear of the window; the poll
+    // keeps its own 14px band at the resting position, so "hover to restore" still
+    // finds an island that is no longer on screen.
+    this.islandEl.style.transform = `translate(${offsetX}px, ${this.slideY.value}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     // The pill grid sits in the right end of the expanded panel and shrinks with the
@@ -1018,9 +1049,11 @@ if (now - this.lastDismiss < 50) return;
     const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
+    this.syncSlide();
     this.width.step(dt, nowMs);
     this.height.step(dt, nowMs);
     this.radius.step(dt, nowMs);
+    this.slideY.step(dt, nowMs);
     this.applyGeometry();
 
     if (this.dirty) {
@@ -1067,7 +1100,7 @@ if (now - this.lastDismiss < 50) return;
     // sweep — so a hidden island went on burning frames in exactly the states it
     // spends most of its life in. Geometry still has to finish retracting.
     const settling =
-      this.width.animating || this.height.animating || this.radius.animating;
+      this.width.animating || this.height.animating || this.radius.animating || this.slideY.animating;
     const busy = State.mode === "hidden"
       ? settling
       : settling ||

@@ -24,17 +24,19 @@ const CACHE_TTL: Duration = Duration::from_secs(20);
 /// instantly, so this budget is only ever spent on a real opencode server. It
 /// has to be generous because a server that has just been spawned is still
 /// loading its config and database, and answering `GET /session` slowly right
-/// after launch is normal Ã¢â‚¬â€ too short a budget reports a perfectly good server as
+/// after launch is normal — too short a budget reports a perfectly good server as
 /// absent, which sends the chat down the fallback path for no reason.
 const PROBE_TIMEOUT: Duration = Duration::from_millis(1500);
 
 /// 127.0.0.1 as it appears in the TCP table's network-order address field.
+#[cfg(windows)]
 const LOOPBACK: u32 = 0x0100_007F;
 
 static CACHE: std::sync::Mutex<Option<(String, Instant)>> = std::sync::Mutex::new(None);
 
 /// Every port listening on 127.0.0.1, with the pid holding it. Order is whatever
 /// the OS returns; the caller probes and keeps the first real match.
+#[cfg(windows)]
 fn listening_loopback_owners() -> Vec<(u16, u32)> {
     use windows::Win32::NetworkManagement::IpHelper::{
         GetExtendedTcpTable, MIB_TCPROW_OWNER_PID, TCP_TABLE_OWNER_PID_LISTENER,
@@ -102,6 +104,16 @@ fn listening_loopback_owners() -> Vec<(u16, u32)> {
     }
 }
 
+/// Same list without the Win32 table: none.
+///
+/// Discovery then finds no foreign server and starts Coucou's own, which is
+/// what already happens on Windows when nothing is running, so everything below
+/// keeps working there too — it just never reuses someone else's server.
+#[cfg(not(windows))]
+fn listening_loopback_owners() -> Vec<(u16, u32)> {
+    Vec::new()
+}
+
 /// Every port listening on 127.0.0.1.
 fn listening_loopback_ports() -> Vec<u16> {
     listening_loopback_owners()
@@ -135,6 +147,7 @@ static WATCHDOG: Mutex<bool> = Mutex::new(false);
 /// Ends a process without a console window flashing up. `taskkill` rather than
 /// `Child::kill`, because the target was started by an earlier run of Coucou and
 /// so is not a child of this one.
+#[cfg(windows)]
 fn kill_pid(pid: u32) {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -143,6 +156,11 @@ fn kill_pid(pid: u32) {
         .creation_flags(CREATE_NO_WINDOW)
         .output();
 }
+
+/// Nothing here owns a process on this platform (see
+/// [`listening_loopback_owners`]), so there is never anything to kill.
+#[cfg(not(windows))]
+fn kill_pid(_pid: u32) {}
 
 fn probe(base: &str) -> bool {
     let client = reqwest::blocking::Client::builder()
@@ -185,12 +203,6 @@ static START_LOCK: Mutex<()> = Mutex::new(());
 /// server. With no TUI running there is none, which is why the chat had nothing
 /// to show, so Coucou starts its own.
 fn start_managed(bin: &std::path::Path) -> Option<String> {
-    use std::os::windows::process::CommandExt;
-
-    /// A server is a background process the user never asked to see. Without
-    /// this a console window flashes up on the desktop at every launch.
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
     let url = managed_url();
     if managed_port_ours() {
         return Some(url);
@@ -200,21 +212,21 @@ fn start_managed(bin: &std::path::Path) -> Option<String> {
     if managed_port_ours() {
         return Some(url);
     }
-    let child = std::process::Command::new(bin)
-        .args(["serve", "--port", &MANAGED_PORT.to_string()])
+    let mut cmd = std::process::Command::new(bin);
+    cmd.args(["serve", "--port", &MANAGED_PORT.to_string()])
         // The working directory decides which project the server serves, and it
         // scopes both the session list and the project commands to it. Left to
         // inherit Coucou's own directory it answered with an empty session list
-        // and a fraction of the commands; started in the user's home Ã¢â‚¬â€ the same
-        // directory the mascot chats in by default Ã¢â‚¬â€ it matches the TUI's server
+        // and a fraction of the commands; started in the user's home — the same
+        // directory the mascot chats in by default — it matches the TUI's server
         // exactly. `?directory=` on the request does not change this.
         .current_dir(crate::opencode_chat::home_dir())
-        .creation_flags(CREATE_NO_WINDOW)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .ok()?;
+        .stderr(std::process::Stdio::null());
+    // A server is a background process the user never asked to see. Without
+    // this a console window flashes up on the desktop at every launch.
+    let child = crate::platform::no_console(&mut cmd).spawn().ok()?;
     if let Ok(mut guard) = MANAGED.lock() {
         // An earlier call may already have started one; never leak a second.
         if guard.is_none() {
@@ -238,7 +250,7 @@ fn start_managed(bin: &std::path::Path) -> Option<String> {
 /// Kills whoever holds the managed port rather than the process it spawned.
 /// On this machine `opencode` resolves to a scoop shim, which launches the real
 /// binary as a separate process and stays alive beside it, so the handle from
-/// `Command::spawn` is not the thing listening Ã¢â‚¬â€ killing that would leave the
+/// `Command::spawn` is not the thing listening — killing that would leave the
 /// actual server running. Going by the port also cleans up after a run that was
 /// killed before it could tidy up.
 pub fn shutdown() {
@@ -255,8 +267,8 @@ pub fn shutdown() {
 /// A server that is already answering on the managed port is kept rather than
 /// replaced. Switching the setting on in the middle of a conversation must not
 /// swap the server out from under it, and there is nothing to gain by replacing
-/// one that works. Only a port held by something that does *not* answer Ã¢â‚¬â€ a
-/// half-dead leftover Ã¢â‚¬â€ is cleared, because otherwise the bind below fails.
+/// one that works. Only a port held by something that does *not* answer — a
+/// half-dead leftover — is cleared, because otherwise the bind below fails.
 pub fn ensure_ready(configured_bin: &str) {
     let configured_bin = configured_bin.to_string();
     std::thread::spawn(move || {
@@ -469,7 +481,7 @@ pub fn discover(fresh: bool) -> Option<String> {
     }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Read-only endpoints built on top of discovery Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Read-only endpoints built on top of discovery ─────────────────────────────
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -651,7 +663,7 @@ pub fn act(name: &str, session: &str) -> Result<String, String> {
     // Everything below mutates a specific session, so it needs one to exist.
     if session.is_empty() {
         return Err(format!(
-            "`/{canonical}` needs an open session Ã¢â‚¬â€ start chatting first."
+            "`/{canonical}` needs an open session — start chatting first."
         ));
     }
 
@@ -858,7 +870,7 @@ mod tests {
                 println!("sessions available: {}", sess.len());
                 assert!(!cmds.is_empty(), "a live server must expose commands");
             }
-            None => println!("no opencode server running right now Ã¢â‚¬â€ skipping"),
+            None => println!("no opencode server running right now — skipping"),
         }
     }
 

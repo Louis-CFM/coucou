@@ -30,12 +30,6 @@ pub const PANEL_H: f64 = 320.0;
 /// `src/core/layout.ts`.
 pub const HIDDEN_W: f64 = 80.0;
 pub const HIDDEN_H: f64 = 24.0;
-/// Logical width of the resting (compact) island — what the front end paints as
-/// `COMPACT_W` in `src/core/layout.ts`. Rust needs it to centre the island inside
-/// the wider window, so the two must stay equal.
-pub const COMPACT_W: f64 = 240.0;
-/// Logical width of the open panel — `EXPANDED_W` in `src/core/layout.ts`.
-pub const EXPANDED_W: f64 = 640.0;
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -323,6 +317,13 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool, position: f6
 let x = island_left(mp.x, ms.width, pw, scale, position);
     let y = mp.y;
 
+    // GTK never sizes a non-resizable window below its natural size (200 px
+    // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
+    // re-applies the config's `resizable: false` after the first configure, so
+    // this is asked every time, just before the resize. Undecorated, the window
+    // still offers the user nothing to resize it by. (Found by @YossiYad, #44.)
+    #[cfg(target_os = "linux")]
+    let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Moving across displays can rescale the window: re-assert the physical size.
@@ -350,20 +351,24 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        // Without a cursor to read (Linux) the loop only watches the display
+        // layout, and twice a second is plenty for that: waking at 60 Hz just to
+        // find no cursor costs CPU for nothing.
+        let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
             gate.wait_until_active();
             let mut was_down = left_button_down();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+                std::thread::sleep(Duration::from_millis(period));
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % 30 == 0 {
+                if ticks % screen_every == 0 {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
@@ -392,12 +397,17 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 let r = *gate.rect.lock().unwrap();
                 if outside_press(r, x, y, down, was_down) {
                     // Native select popups belong to our window even when their
-                    // menu extends beyond the island's painted bounds.
+                    // menu extends beyond the island's painted bounds. Only
+                    // Windows has such popups — and only Windows can answer the
+                    // question — so elsewhere nothing is exempt.
+                    #[cfg(windows)]
                     let own_popup = win.hwnd().is_ok_and(|hwnd| unsafe {
                         let hit = WindowFromPoint(POINT { x: cx as i32, y: cy as i32 });
                         GetAncestor(hit, GA_ROOT).0 != hwnd.0 as *mut _
                             && GetAncestor(hit, GA_ROOTOWNER).0 == hwnd.0 as *mut _
                     });
+                    #[cfg(not(windows))]
+                    let own_popup = false;
                     // The gesture travels with the event: whether the press was near the island or
                     // anywhere else decides which of the two reduced-state clicks it
                     // is, and the front end's own cursor is only refreshed when the
@@ -478,7 +488,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 ///
 /// With the cursor poll (Windows) the window takes the mouse again and the next
 /// tick decides from the cursor. Without it (Linux) the input region is set to
-/// the island itself, or to the whole wake strip while collapsed.
+/// the island itself, or to the reduced stub while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     if platform::CURSOR_POLL {
         set_ignore_cursor(app, false);
@@ -487,7 +497,10 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     }
     let Some(win) = window(app) else { return };
     let region = if gate.collapsed.load(Ordering::Relaxed) {
-        None
+        // The reduced stub itself, never "the whole window": if the window ever
+        // fails to shrink to the stub, the rest of it must not swallow clicks
+        // meant for whatever sits under the top of the screen.
+        Some((0.0, 0.0, HIDDEN_W, HIDDEN_H))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {
@@ -513,6 +526,11 @@ pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every width the front end can paint, in logical px: the fully reduced bar,
+    /// the resting bar (`COMPACT_W`) and the open panel (`EXPANDED_W`) — mirror
+    /// `src/core/layout.ts`.
+    const ISLAND_WIDTHS: [f64; 3] = [HIDDEN_W, 240.0, 640.0];
 
     #[test]
     fn outside_click_is_a_press_edge_outside_the_painted_rect() {
@@ -546,7 +564,7 @@ mod tests {
 
     #[test]
     fn presets_pin_the_bar_to_each_edge() {
-        for island_w in [HIDDEN_W, COMPACT_W, EXPANDED_W] {
+        for island_w in ISLAND_WIDTHS {
             let w = island_w as i32;
             assert_eq!(island_x(PANEL_W as u32, island_w, 0.0), 0, "flush left at {island_w}");
             assert_eq!(
@@ -565,7 +583,7 @@ mod tests {
     #[test]
     fn bar_stays_on_the_display_at_every_position() {
         for window_w in [PANEL_W as u32, HIDDEN_W as u32] {
-            for island_w in [HIDDEN_W, COMPACT_W, EXPANDED_W] {
+            for island_w in ISLAND_WIDTHS {
                 for step in 0..=100 {
                     let left = island_x(window_w, island_w, step as f64 / 100.0);
                     let w = island_w as i32;
@@ -581,7 +599,7 @@ mod tests {
     #[test]
     fn bad_saved_values_cannot_move_the_bar_off_screen() {
         for bad in [f64::NAN, -3.0, 7.0] {
-            for island_w in [HIDDEN_W, COMPACT_W, EXPANDED_W] {
+            for island_w in ISLAND_WIDTHS {
                 let left = island_x(PANEL_W as u32, island_w, bad);
                 assert!(
                     left >= 0 && left + island_w as i32 <= SCREEN as i32,

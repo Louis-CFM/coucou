@@ -56,9 +56,7 @@ pub struct OpencodePreview {
 }
 
 pub fn plugin_dir() -> PathBuf {
-    std::env::var_os("USERPROFILE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
+    crate::platform::home_dir()
         .join(".config")
         .join("opencode")
         .join("plugins")
@@ -118,14 +116,12 @@ fn stamp() -> String {
 }
 
 /// Local timestamp without pulling in chrono: reuses the same shape as
-/// hooks.rs (`yyyyMMdd-HHmmss`) via the Win32 clock.
+/// hooks.rs (`yyyyMMdd-HHmmss`) via the platform clock.
 fn chrono_stamp() -> String {
-    // hooks.rs already depends on windows::GetLocalTime; duplicate the tiny
-    // call here rather than reaching into that module.
-    let t = unsafe { windows::Win32::System::SystemInformation::GetLocalTime() };
+    let t = crate::platform::local_time();
     format!(
         "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond
+        t.year, t.month, t.day, t.hour, t.minute, t.second
     )
 }
 

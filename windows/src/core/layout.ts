@@ -144,20 +144,27 @@ export interface BotPlacement {
   opacity: number;
 }
 
-/** IslandRootView.botPosition — cy is measured from the island's top edge. */
+/** IslandRootView.botPosition — cy is measured from the island's top edge.
+ *
+ *  `offscreen` no longer changes Mochi's placement: the island slides up past the
+ *  top edge to hide, so the bot rides out with the rest of it. The flag still
+ *  decides the island's own height, in `islandSize`.
+ */
 export function botPosition(
   mode: IslandMode,
   view: IslandViewName,
   islandH: number,
   uploadProgress = 0,
-  offscreen = false,
+  _offscreen = false,
 ): BotPlacement {
   switch (mode) {
     case "hidden": {
-      // Off-screen: zero height and fully transparent, so nothing is left on the
-      // top edge. Auto-close on Never: Mochi stays parked in the small bar, which
-      // is how the island behaved before there was anywhere to go.
-      if (offscreen) return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
+      // Off-screen is the parked bar with the island slid up past the top edge, so
+      // Mochi is placed and drawn exactly as it is on screen and the slide is the
+      // only thing that takes it away. Fading it here instead is what made Mochi
+      // blink out on the first frame of the hide, with no motion at all.
+      // Auto-close on Never keeps it parked in the small bar, which is how the
+      // island behaved before there was anywhere to go.
       const rest = restingLayout();
       return {
         cx: NO_NOTCH_W / 2,

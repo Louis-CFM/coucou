@@ -22,7 +22,7 @@ Windows and Linux: `cd windows && npm install && npm run tauri dev`
 - No telemetry. Network calls only to services the user configured.
 - Never block Claude Code: if the app doesn't answer, the hook exits immediately.
 - Never overwrite `~/.claude/settings.json`: dated backup, merge, show the diff, write only after the user confirms.
-- Never send an email or approve a Claude Code permission without an explicit click.
+- Never send an email or approve a Claude Code or Codex permission without an explicit click.
 - Performance: 0 % CPU when the island is hidden.
 - Keep the bundle identifier `fr.louisraille.NotchBuddy` (Keychain items, preferences and permissions depend on it).
 - Never restyle what already ships (pills, cards, Settings, chat…): existing views stay exactly as they are in `main`, which is the App Store build. Change the look of an existing view only when explicitly asked.

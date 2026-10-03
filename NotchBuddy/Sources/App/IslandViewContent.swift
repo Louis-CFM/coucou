@@ -34,6 +34,7 @@ struct IslandViewContent: View {
 struct OverviewView: View {
     @ObservedObject var state: AppState
     @State private var showingN8nDetail = false
+    @State private var activeDiffId: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
 
@@ -46,7 +47,9 @@ struct OverviewView: View {
                 // Title row + ticker stacked (or integration card)
                 if let agent = agent {
                     if agent.isIntegration {
-                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail)
+                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
+                            withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                        })
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(spacing: 6) {
@@ -82,7 +85,9 @@ struct OverviewView: View {
                             .padding(.leading, 108)
                             .padding(.trailing, 36)
 
-                            TickerView(task: agent)
+                            TickerView(task: agent, onDiffTap: { diffIdx in
+                                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                            })
                                 .frame(height: 44)
                                 .padding(.top, 6)
                                 .padding(.leading, 108)
@@ -93,8 +98,31 @@ struct OverviewView: View {
                     }
                 }
 
+                // Plan detail overlays on top of normal content (GitHub build, home view only)
+                #if !APPSTORE
+                if state.showingPlanDetail {
+                    CardBackground(wash: nil)
+                    ClaudePlanCardView(usage: state.claudePlanUsage)
+                        .transition(.opacity)
+                }
+                #endif
+
+                // Diff overlay — replaces ticker when a diff step is tapped
+                if let diffId = activeDiffId,
+                   let task = agent,
+                   let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
+                    CardBackground(wash: nil)
+                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                        .transition(.opacity)
+                }
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                if !showingN8nDetail {
+                #if !APPSTORE
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                #else
+                let hideJumpButton = showingN8nDetail || activeDiffId != nil
+                #endif
+                if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .medium))
@@ -116,7 +144,27 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, _ in showingN8nDetail = false }
+        .onChange(of: state.focusId) { _, new in
+            showingN8nDetail = false
+            activeDiffId = nil
+            #if !APPSTORE
+            withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
+            #endif
+            if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
+        }
+        #if !APPSTORE
+        .onChange(of: state.view) { _, v in
+            if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
+        }
+        #endif
+        .onChange(of: state.mode) { _, m in
+            #if !APPSTORE
+            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
+            #endif
+            if m == .expanded && state.focusId == "integration_github" {
+                GithubPoller.shared.refreshIfStale()
+            }
+        }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -134,7 +182,7 @@ struct OverviewView: View {
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
-            NSWorkspace.shared.open(URL(string: "https://github.com")!)
+            NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -175,6 +223,14 @@ struct OverviewView: View {
             switchChatProvider(.google)
         case "ai_openai":
             switchChatProvider(.openai)
+        case "ai_ollama":
+            switchChatProvider(.ollama)
+        case "ai_lmstudio":
+            switchChatProvider(.lmstudio)
+        case "integration_music":
+            #if !APPSTORE
+            MusicController.shared.openMusic()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -243,8 +299,11 @@ struct ApprovalView: View {
                     PrimaryButton("Allow") {
                         HookServer.shared.sendApprovalDecision("allow")
                     }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+                    // Codex rejects updatedPermissions, so "Always" is not offered
+                    if approval?.pillId != "agent_codex" {
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
                     }
                 }
             }
@@ -260,25 +319,185 @@ struct ApprovalView: View {
 
 struct QuestionView: View {
     @ObservedObject var state: AppState
+    @State private var questionIndex = 0
+    // Per-question selected labels (empty = none chosen yet)
+    @State private var selections: [[String]] = []
+    // Per-question custom "Other…" text
+    @State private var otherTexts: [String] = []
+    // Per-question "Other…" mode active
+    @State private var showOther: [Bool] = []
+    @FocusState private var otherFieldFocused: Bool
+
+    var question: AskQuestion? { state.pendingQuestion }
 
     var body: some View {
         ZStack {
             CardBackground(wash: .cyan)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
-                Text("Which search engine to use?")
-                    .font(.system(size: 15, weight: .semibold))
-                HStack(spacing: 8) {
-                    ForEach(["Postgres full-text", "Meilisearch", "Algolia"], id: \.self) { opt in
-                        SecondaryButton(opt) { /* answer */ }
+            if let q = question, !q.questions.isEmpty {
+                let qi = min(questionIndex, q.questions.count - 1)
+                let item = q.questions[qi]
+                let isLast = qi == q.questions.count - 1
+                let isMulti = item.multiSelect
+                let curSel = qi < selections.count ? selections[qi] : []
+                let curOther = qi < showOther.count ? showOther[qi] : false
+                let curOtherText = qi < otherTexts.count ? otherTexts[qi] : ""
+                let canProceed = !curSel.isEmpty || (curOther && !curOtherText.isEmpty)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    // Header row: agent name + question counter + "Reply in terminal" link
+                    HStack(spacing: 4) {
+                        AgentWho(task: nil, label: "Claude Code is asking")
+                        Spacer(minLength: 4)
+                        if q.questions.count > 1 {
+                            Text("\(qi + 1)/\(q.questions.count)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                        Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                            .underline()
+                    }
+                    // Optional short header label above question text
+                    if !item.header.isEmpty {
+                        Text(item.header)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                    }
+                    Text(item.question)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(2)
+                    // Options (wrapping) or "Other…" compact inline row
+                    if curOther {
+                        HStack(spacing: 6) {
+                            TextField("Your answer…", text: Binding(
+                                get: { qi < otherTexts.count ? otherTexts[qi] : "" },
+                                set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
+                            ))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .focused($otherFieldFocused)
+                            .onAppear { otherFieldFocused = true }
+                            .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
+                            .onExitCommand { if qi < showOther.count { showOther[qi] = false } }
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            Button(isLast ? "Send" : "Next") {
+                                commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(curOtherText.isEmpty ? Color(hex: "#6B7079") : Color(hex: "#F5F6F8"))
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(curOtherText.isEmpty ? 0.05 : 0.15))
+                            .clipShape(Capsule())
+                            .disabled(curOtherText.isEmpty)
+                            Button { if qi < showOther.count { showOther[qi] = false } } label: {
+                                Text("✕").font(.system(size: 9))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                    } else {
+                        ChipFlowLayout(spacing: 6) {
+                            ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
+                                let isSelected = curSel.contains(opt.label)
+                                if isMulti {
+                                    Button {
+                                        toggleSelection(qi: qi, label: opt.label)
+                                    } label: {
+                                        Text(opt.label)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
+                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
+                                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                } else {
+                                    SecondaryButton(opt.label) {
+                                        selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
+                                    }
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                }
+                            }
+                            // "Other…" implicit free-text option
+                            SecondaryButton("Other…") {
+                                if qi < showOther.count { showOther[qi] = true }
+                            }
+                        }
+                    }
+                    // Send/Next — only for multi-select (and not while "Other…" field is open)
+                    if isMulti && !curOther {
+                        PrimaryButton(isLast ? "Send" : "Next") {
+                            proceedFromQuestion(q: q, qi: qi, isLast: isLast)
+                        }
+                        .disabled(!canProceed)
+                        .opacity(canProceed ? 1 : 0.4)
                     }
                 }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { resetQuestionState() }
+        .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+        .onDisappear { HookServer.shared.releaseQuestionFD() }
+    }
+
+    private func resetQuestionState() {
+        questionIndex = 0
+        let count = state.pendingQuestion?.questions.count ?? 0
+        selections = Array(repeating: [], count: count)
+        otherTexts = Array(repeating: "", count: count)
+        showOther  = Array(repeating: false, count: count)
+    }
+
+    private func toggleSelection(qi: Int, label: String) {
+        guard qi < selections.count else { return }
+        if let i = selections[qi].firstIndex(of: label) {
+            selections[qi].remove(at: i)
+        } else {
+            selections[qi].append(label)
+        }
+    }
+
+    // Single-select: pick a label and immediately advance/send
+    private func selectAndProceed(q: AskQuestion, qi: Int, label: String, isLast: Bool) {
+        guard qi < selections.count else { return }
+        selections[qi] = [label]
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
+    }
+
+    // Multi-select Send/Next button
+    private func proceedFromQuestion(q: AskQuestion, qi: Int, isLast: Bool) {
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
+    }
+
+    // "Other…" confirm
+    private func commitOtherAndProceed(q: AskQuestion, qi: Int, isLast: Bool) {
+        let text = qi < otherTexts.count ? otherTexts[qi] : ""
+        guard !text.isEmpty else { return }
+        if qi < selections.count { selections[qi] = [text] }
+        if isLast {
+            sendAnswers(q: q)
+        } else {
+            if qi < showOther.count { showOther[qi] = false }
+            withAnimation { questionIndex = qi + 1 }
+        }
+    }
+
+    private func sendAnswers(q: AskQuestion) {
+        let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
+        HookServer.shared.sendQuestionAnswers(answers)
     }
 }
 
@@ -320,8 +539,14 @@ struct FinishedView: View {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
                 AgentWho(task: state.focusTask, label: "Claude Code finished")
-                Text(state.focusTask?.steps.last ?? "Session finished")
+                Text({
+                    if let fl = state.focusTask?.finalLine { return fl }
+                    if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
+                    return "Session finished"
+                }())
                     .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 HStack(spacing: 8) {
                     #if !APPSTORE
                     PrimaryButton("Open terminal") {
@@ -345,6 +570,142 @@ struct FinishedView: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+// MARK: - Diff Card
+
+struct DiffCardView: View {
+    let diff: FileDiff
+    let onDismiss: () -> Void
+
+    private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Button(action: onDismiss) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 8, weight: .medium))
+                        Text(diff.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 2)
+                if diff.added > 0 {
+                    Text("+\(diff.added)")
+                        .font(.system(size: 10, weight: .medium).monospaced())
+                        .foregroundColor(Color(hex: "#22C55E"))
+                }
+                if diff.removed > 0 {
+                    Text("−\(diff.removed)")
+                        .font(.system(size: 10, weight: .medium).monospaced())
+                        .foregroundColor(Color(hex: "#F4505E"))
+                }
+                Button(action: { openInEditor(diff) }) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(Color(hex: "#5F646D"))
+                        .frame(width: 14, height: 14)
+                        .background(Color.white.opacity(0.07))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
+            .padding(.bottom, 3)
+
+            // Content
+            if diff.tooLarge {
+                Text("Diff too large")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            } else if allLines.isEmpty {
+                Text("No changes")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(allLines.enumerated()), id: \.offset) { _, line in
+                            DiffLineRowView(line: line)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.leading, 108)
+        .padding(.trailing, 10)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onExitCommand { onDismiss() }
+    }
+
+    private func openInEditor(_ diff: FileDiff) {
+        let path = diff.path
+        #if !APPSTORE
+        let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
+                         "\(NSHomeDirectory())/.nvm/current/bin/code"]
+        if let codePath = codePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: codePath)
+            // Write: open at line 1; Edit/MultiEdit: open file without line number
+            p.arguments = diff.isNewFile ? ["-g", "\(path):1"] : [path]
+            try? p.run()
+            return
+        }
+        #endif
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+}
+
+struct DiffLineRowView: View {
+    let line: DiffLine
+
+    private var bgColor: Color {
+        switch line.kind {
+        case .added:   return Color(hex: "#22C55E").opacity(0.12)
+        case .removed: return Color(hex: "#F4505E").opacity(0.12)
+        case .context: return Color.clear
+        }
+    }
+    private var fgColor: Color {
+        switch line.kind {
+        case .added:   return Color(hex: "#86EFAC")
+        case .removed: return Color(hex: "#FCA5A5")
+        case .context: return Color(hex: "#6B7079")
+        }
+    }
+    private var symbol: String {
+        switch line.kind {
+        case .added:   return "+"
+        case .removed: return "−"
+        case .context: return " "
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(symbol)
+                .font(.system(size: 10.5).monospaced())
+                .foregroundColor(line.kind == .added ? Color(hex: "#22C55E") :
+                                 line.kind == .removed ? Color(hex: "#F4505E") :
+                                 Color(hex: "#454850"))
+                .frame(width: 12, alignment: .leading)
+            Text(line.text)
+                .font(.system(size: 10.5).monospaced())
+                .foregroundColor(fgColor)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(bgColor)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -772,13 +1133,17 @@ struct PromptView: View {
                             }
                             .padding(.vertical, 2)
                         }
-                        .onChange(of: state.chatHistory.count) { _, _ in
-                            if let last = state.chatHistory.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        .onChange(of: state.chatHistory) { _, _ in
+                            if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
                         .onChange(of: state.stateOverride) { _, v in
-                            if v != nil { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
+                            if v != nil {
+                                withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
+                            } else if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            }
                         }
                         .onAppear {
                             if let last = state.chatHistory.last {
@@ -878,15 +1243,48 @@ struct PromptView: View {
 
 // MARK: - Model / provider picker
 
+/// Wrapping horizontal flow layout — used by ModelPickerView and QuestionView.
+struct ChipFlowLayout: Layout {
+    var spacing: CGFloat = 6
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let r = rows(maxW: proposal.replacingUnspecifiedDimensions().width, subviews: subviews)
+        return r.size
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let r = rows(maxW: bounds.width, subviews: subviews)
+        for (idx, pt) in r.placements.enumerated() {
+            subviews[idx].place(at: CGPoint(x: bounds.minX + pt.x, y: bounds.minY + pt.y), proposal: .unspecified)
+        }
+    }
+    private func rows(maxW: CGFloat, subviews: Subviews) -> (size: CGSize, placements: [(x: CGFloat, y: CGFloat)]) {
+        var x: CGFloat = 0, y: CGFloat = 0, lineH: CGFloat = 0, maxX: CGFloat = 0
+        var pts: [(x: CGFloat, y: CGFloat)] = []
+        for sv in subviews {
+            let sz = sv.sizeThatFits(.unspecified)
+            if x + sz.width > maxW, x > 0 { x = 0; y += lineH + spacing; lineH = 0 }
+            pts.append((x: x, y: y))
+            x += sz.width + spacing
+            lineH = max(lineH, sz.height)
+            maxX = max(maxX, x - spacing)
+        }
+        return (CGSize(width: max(maxX, 0), height: y + lineH), pts)
+    }
+}
+
 struct ModelPickerView: View {
     @ObservedObject var state: AppState
     @Binding var isPresented: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Provider chips
-            HStack(spacing: 6) {
-                ForEach(ChatProvider.allCases, id: \.self) { provider in
+            // Provider chips — wrap; hide local providers when not connected and not already active
+            let visibleProviders = ChatProvider.allCases.filter { p in
+                if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
+                if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                return true
+            }
+            ChipFlowLayout(spacing: 6) {
+                ForEach(visibleProviders, id: \.self) { provider in
                     Button {
                         guard provider != state.chatProvider else { return }
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
@@ -926,8 +1324,19 @@ struct ModelPickerView: View {
         }
         .padding(14)
         .background(Color(hex: "#16171B"))
-        .onAppear { state.fetchModelsIfNeeded(for: state.chatProvider) }
+        .onAppear {
+            // Force-refresh local providers every time the picker opens
+            if state.chatProvider.isLocal {
+                state.fetchedProviderModels[state.chatProvider] = nil
+                state.providerModelFetchError[state.chatProvider] = nil
+            }
+            state.fetchModelsIfNeeded(for: state.chatProvider)
+        }
         .onChange(of: state.chatProvider) { _, provider in
+            if provider.isLocal {
+                state.fetchedProviderModels[provider] = nil
+                state.providerModelFetchError[provider] = nil
+            }
             state.fetchModelsIfNeeded(for: provider)
         }
     }
@@ -957,6 +1366,8 @@ struct ModelPickerView: View {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
+                            case .ollama:    state.ollamaChatModel = model.id
+                            case .lmstudio:  state.lmstudioChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -993,24 +1404,22 @@ struct ChatBubble: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top) {
-            if message.role == .user {
-                Spacer(minLength: 32)
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#F1F2F4"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.13))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#B0B5BE"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                Spacer(minLength: 8)
+        if !message.content.isEmpty {
+            HStack(alignment: .top) {
+                if message.role == .user {
+                    Spacer(minLength: 32)
+                    Text(message.content)
+                        .font(.system(size: 12.5))
+                        .foregroundColor(Color(hex: "#F1F2F4"))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color.white.opacity(0.13))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    ChatMarkdownView(markdown: message.content)
+                    Spacer(minLength: 8)
+                }
             }
         }
     }
@@ -1144,7 +1553,9 @@ struct NoteView: View {
 struct IntegrationCardView: View {
     let task: AgentTask
     @Binding var showingDetail: Bool
+    var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
+    @State private var githubDetailSection: GitHubDetailSection = .myPRs
 
     private var isConfigured: Bool {
         switch task.id {
@@ -1177,9 +1588,17 @@ struct IntegrationCardView: View {
             #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
+        case "integration_music":
+            #if !APPSTORE
+            return true  // Apple Music is always installed on macOS
+            #else
+            return false
+            #endif
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
+        case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -1230,9 +1649,14 @@ struct IntegrationCardView: View {
         task.id == "integration_resend" && !appState.resendEmails.isEmpty
     }
 
-    // GitHub with stats loaded
+    // GitHub with stats or pulse loaded
     private var githubHasData: Bool {
-        task.id == "integration_github" && appState.githubStats != nil
+        task.id == "integration_github" && (appState.githubPulse != nil || appState.githubStats != nil)
+    }
+
+    // GitHub with pulse loaded (richer card)
+    private var githubHasPulse: Bool {
+        task.id == "integration_github" && appState.githubPulse != nil
     }
 
     // Stripe: show card as soon as first poll completes (balance OR payments)
@@ -1250,7 +1674,24 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
+    private var musicIsActive: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_music" else { return false }
+        if appState.musicAutomationDenied { return true }
+        return MusicController.shared.trackTitle != nil
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return Color(hex: "#F4505E") }
+            return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1260,24 +1701,44 @@ struct IntegrationCardView: View {
     }
 
     private var statusLabel: String {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return "Automation not allowed" }
+            if appState.musicPlaying { return "Playing · \(MusicController.shared.trackTitle ?? "Unknown")" }
+            return "Not playing"
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
-        let isAI    = task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai"
+        let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }
             if isAI {
-                let model = task.id == "ai_anthropic" ? appState.claudeModel
-                          : task.id == "ai_google"    ? appState.googleChatModel
-                          :                             appState.openAIChatModel
+                let provider = ChatProvider(pillID: task.id)!
+                if provider.isLocal {
+                    let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
+                    return "Connected · \(model)"
+                }
+                let model: String
+                switch task.id {
+                case "ai_anthropic": model = appState.claudeModel
+                case "ai_google":    model = appState.googleChatModel
+                case "ai_openai":    model = appState.openAIChatModel
+                default:             model = ""
+                }
                 return "Key configured · \(model)"
             }
             return "Connected · loading…"
         } else {
             if isHooks { return "Hooks not installed" }
+            if isAI {
+                let provider = ChatProvider(pillID: task.id)!
+                return provider.isLocal ? "Not connected" : "Key not configured"
+            }
             return "Key not configured"
         }
     }
@@ -1301,6 +1762,25 @@ struct IntegrationCardView: View {
         } else if resendHasData {
             ResendCardView(emails: appState.resendEmails, total: appState.resendTotal)
                 .transition(.opacity)
+        } else if showingDetail && githubHasPulse {
+            GitHubDetailView(
+                section: githubDetailSection,
+                pulse: appState.githubPulse!,
+                onBack: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+                }
+            )
+            .transition(.opacity)
+        } else if githubHasPulse {
+            GitHubPulseCardView(
+                pulse: appState.githubPulse!,
+                stats: appState.githubStats,
+                onTapSection: { section in
+                    githubDetailSection = section
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                }
+            )
+            .transition(.opacity)
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
                 .transition(.opacity)
@@ -1313,6 +1793,11 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
+        } else if musicIsActive {
+            #if !APPSTORE
+            MusicCardView()
+                .transition(.opacity)
+            #endif
         } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
@@ -1341,7 +1826,7 @@ struct IntegrationCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                TickerView(task: task)
+                TickerView(task: task, onDiffTap: onDiffTap)
                     .frame(height: 44)
                     .padding(.top, 6)
                     .padding(.leading, 108)
@@ -1409,10 +1894,8 @@ struct IntegrationCardView: View {
                             .buttonStyle(.plain)
                         }
                         #endif
-                    } else if task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai" {
+                    } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {
-                            let provider: ChatProvider = task.id == "ai_anthropic" ? .anthropic
-                                                       : task.id == "ai_google"    ? .google : .openai
                             Button("Chat with \(task.name)") {
                                 switchChatProvider(provider)
                             }
@@ -1420,6 +1903,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
+                    } else if task.id == "integration_music" {
+                        #if !APPSTORE
+                        Button("Open Music") { MusicController.shared.openMusic() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if appState.musicAutomationDenied {
+                            Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -1461,12 +1957,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    // Settings button: shown when not configured, except cursor/codex (coming soon)
+                    // Settings button: shown when not configured, except cursor/codex and music
                     if !isConfigured
                        && task.id != "agent_cursor"
-                       && task.id != "agent_codex" {
+                       && task.id != "agent_codex"
+                       && task.id != "integration_music" {
                         Button("Settings…") {
-                            NotificationCenter.default.post(name: .openFullSettings, object: nil)
+                            let section: String
+                            switch PillCatalog.definition(for: task.id)?.category {
+                            case .workspace, .agent: section = "agents"
+                            case .ai:                section = "chat"
+                            default:                 section = "integrations"
+                            }
+                            NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
@@ -1761,6 +2264,345 @@ struct ResendCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - GitHub Pulse Card View
+
+private func ciWorstState(_ prs: [GitHubPR]) -> CIState {
+    if prs.contains(where: { $0.ci == .failure }) { return .failure }
+    if prs.contains(where: { $0.ci == .pending }) { return .pending }
+    if prs.contains(where: { $0.ci == .success }) { return .success }
+    return .unknown
+}
+
+private func ciColor(_ state: CIState) -> String {
+    switch state {
+    case .failure: return "#F4505E"
+    case .pending: return "#F5A524"
+    case .success: return "#22C55E"
+    case .unknown: return "#6B7079"
+    }
+}
+
+private func mainCIWorst(_ repos: [GitHubRepoCI]) -> CIState {
+    if repos.contains(where: { $0.ci == .failure }) { return .failure }
+    if repos.contains(where: { $0.ci == .pending }) { return .pending }
+    if repos.contains(where: { $0.ci == .success }) { return .success }
+    return .unknown
+}
+
+struct GitHubPulseCardView: View {
+    let pulse: GitHubPulse
+    let stats: GitHubStats?
+    let onTapSection: (GitHubDetailSection) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color(hex: "#F4505E"))
+                    .frame(width: 7, height: 7)
+                Text("GitHub")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                if let s = stats {
+                    Text("★ \(formatCount(s.totalStars)) · \(s.totalRepos) repos")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1)
+                } else {
+                    Text("Overview")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 36)
+
+            // Stat rows
+            VStack(alignment: .leading, spacing: 4) {
+                // My PRs
+                let prWorst = ciWorstState(pulse.myPRs)
+                let prValue: String = {
+                    let n = pulse.myPRs.count
+                    if n == 0 { return "0" }
+                    let failing = pulse.myPRs.filter { $0.ci == .failure }.count
+                    let pending = pulse.myPRs.filter { $0.ci == .pending }.count
+                    if failing > 0 { return "\(n) · \(failing) failing" }
+                    if pending > 0 { return "\(n) · running" }
+                    return "\(n)"
+                }()
+                GitHubStatRow(
+                    icon: "arrow.triangle.pull", iconColor: ciColor(prWorst),
+                    label: "My PRs", value: prValue
+                ) { onTapSection(.myPRs) }
+
+                // To review
+                let reviewCount = pulse.toReview.count
+                GitHubStatRow(
+                    icon: "eye",
+                    iconColor: reviewCount > 0 ? "#8AB4F8" : "#6B7079",
+                    label: "To review",
+                    value: "\(reviewCount)"
+                ) { onTapSection(.toReview) }
+
+                // Default branch CI
+                let mainWorst = mainCIWorst(pulse.mainCI)
+                let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                    switch mainWorst {
+                    case .failure:
+                        let n = pulse.mainCI.filter { $0.ci == .failure }.count
+                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                    case .pending:
+                        return ("checkmark.seal.fill", "#F5A524", "running")
+                    case .success:
+                        return ("checkmark.seal.fill", "#22C55E", "all green")
+                    case .unknown:
+                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                    }
+                }()
+                GitHubStatRow(
+                    icon: ciIcon, iconColor: ciIconColor,
+                    label: "Default branch CI", value: ciValue
+                ) { onTapSection(.mainCI) }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+        .clipped()
+    }
+
+    private func formatCount(_ n: Int) -> String {
+        if n >= 1000 { return String(format: "%.1fk", Double(n) / 1000) }
+        return "\(n)"
+    }
+}
+
+private struct GitHubStatRow: View {
+    let icon: String
+    let iconColor: String
+    let label: String
+    let value: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: iconColor))
+                    .frame(width: 14)
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                Spacer()
+                Text(value)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - GitHub Detail View
+
+struct GitHubDetailView: View {
+    let section: GitHubDetailSection
+    let pulse: GitHubPulse
+    let onBack: () -> Void
+
+    private var title: String {
+        switch section {
+        case .myPRs:   return "My PRs"
+        case .toReview: return "To review"
+        case .mainCI:  return "Default branch CI"
+        }
+    }
+
+    private var items: [GitHubPR] {
+        switch section {
+        case .myPRs:    return pulse.myPRs
+        case .toReview: return pulse.toReview
+        case .mainCI:   return []
+        }
+    }
+
+    private var repoItems: [GitHubRepoCI] {
+        section == .mainCI ? pulse.mainCI : []
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Button(action: onBack) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 8, weight: .medium))
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 2)
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+
+            // List
+            if items.isEmpty && repoItems.isEmpty {
+                Text("Nothing here")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                    .padding(.top, 8)
+                    .padding(.leading, 108)
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(items, id: \.id) { pr in
+                            GitHubPRRowView(pr: pr, showCI: section == .myPRs)
+                        }
+                        ForEach(repoItems, id: \.repo) { repo in
+                            GitHubRepoCIRowView(repo: repo)
+                        }
+                    }
+                }
+                .frame(maxHeight: 60)  // 3 rows × 20 pt; rest scrolls
+                .mask(
+                    Group {
+                        if (items.count + repoItems.count) > 3 {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0),
+                                    .init(color: .black, location: 0.8),
+                                    .init(color: .clear,  location: 1.0)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        } else {
+                            Color.black
+                        }
+                    }
+                )
+                .padding(.top, 4)
+                .padding(.leading, 108)
+                .padding(.trailing, 8)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+        .clipped()
+        .onAppear { GithubPoller.shared.refreshIfStale() }
+        .onExitCommand { onBack() }
+    }
+}
+
+private func ghCIDot(_ ci: CIState) -> Color {
+    switch ci {
+    case .failure: return Color(hex: "#F4505E")
+    case .pending: return Color(hex: "#F5A524")
+    case .success: return Color(hex: "#22C55E")
+    case .unknown: return Color.clear
+    }
+}
+
+private struct GitHubPRRowView: View {
+    let pr: GitHubPR
+    let showCI: Bool
+
+    var body: some View {
+        Button(action: {
+            if let url = safeWebURL(pr.url), url.host == "github.com" {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 5) {
+                if showCI {
+                    Circle()
+                        .fill(ghCIDot(pr.ci))
+                        .frame(width: 5, height: 5)
+                        .opacity(pr.ci == .unknown ? 0 : 1)
+                } else {
+                    Spacer().frame(width: 5)
+                }
+                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)#\(pr.number)")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#9398A1"))
+                    .lineLimit(1)
+                Text(pr.title)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if pr.isDraft {
+                    Text("Draft")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 20)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct GitHubRepoCIRowView: View {
+    let repo: GitHubRepoCI
+
+    private var ciStateWord: String? {
+        switch repo.ci {
+        case .failure: return "failing"
+        case .pending: return "running"
+        case .success: return "passing"
+        case .unknown: return nil
+        }
+    }
+
+    var body: some View {
+        Button(action: {
+            let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
+            if let url = safeWebURL(actionsURL), url.host == "github.com" {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(ghCIDot(repo.ci))
+                    .frame(width: 5, height: 5)
+                    .opacity(repo.ci == .unknown ? 0 : 1)
+                Text(repo.repo.components(separatedBy: "/").last ?? repo.repo)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#9398A1"))
+                    .lineLimit(1)
+                Text(repo.branch)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                if let word = ciStateWord {
+                    Text(word)
+                        .font(.system(size: 10))
+                        .foregroundColor(ghCIDot(repo.ci))
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 20)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -2334,6 +3176,7 @@ struct N8nDetailView: View {
 
 struct TickerView: View {
     let task: AgentTask?
+    var onDiffTap: ((Int) -> Void)? = nil
 
     @State private var rowA: String = "…"   // completed (above, left-shifted)
     @State private var rowB: String = "…"   // current (below) → animates diagonally up-left
@@ -2357,22 +3200,26 @@ struct TickerView: View {
     }
 
     var body: some View {
+        let isActive = task?.state == .thinking || task?.state == .working
+        let rowADiffTap: (() -> Void)? = rowA.parseDiffStep().map { dp in { onDiffTap?(dp.diffId) } }
+        let rowBDiffTap: (() -> Void)? = rowB.parseDiffStep().map { dp in { onDiffTap?(dp.diffId) } }
+
         ZStack(alignment: .topLeading) {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            TickerRowView(text: rowA, phase: 1.0)
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
 
             // Row B: current step → animates diagonally up-left, phase 0→1, scale 1→completedScale
-            TickerRowView(text: rowB, phase: rowBPhase)
+            TickerRowView(text: rowB, phase: rowBPhase, isActive: isActive, onDiffTap: rowBDiffTap)
                 .scaleEffect(1 - rowBPhase * (1 - completedScale), anchor: .leading)
                 .offset(x: -rowBPhase * 10, y: rowBOffset)
 
             // Row C: incoming new step — slides in from below at phase=0
-            TickerRowView(text: rowC, phase: 0.0)
+            TickerRowView(text: rowC, phase: 0.0, isActive: isActive)
                 .offset(y: rowCOffset)
                 .opacity(rowCOpacity)
         }
@@ -2451,35 +3298,87 @@ struct TickerView: View {
 struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
+    var isActive: Bool = true
+    var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Icon: chevron fades out first half, checkmark fades in second half
-            ZStack {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(Color(hex: "#8E939C"))
-                    .opacity(max(0, 1 - phase * 2))
-                Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .regular))
-                    .foregroundColor(Color(hex: "#454850"))
-                    .opacity(max(0, phase * 2 - 1))
-            }
-            .frame(width: 12, alignment: .center)
+        let chevronOpacity:   Double = isActive ? max(0, 1 - phase * 2)       : 0
+        let checkmarkOpacity: Double = isActive ? max(0, phase * 2 - 1)       : 1
+        let shimmerOpacity:   Double = isActive ? max(0, 1 - phase * 1.6)     : 0
+        let staticOpacity:    Double = isActive ? min(1, max(0, phase * 2 - 0.4)) : 1
+        let staticColor = (!isActive && phase < 0.5) ? Color(hex: "#C9CDD4") : Color(hex: "#6B7079")
 
-            // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
-            ZStack(alignment: .leading) {
-                TickerShimmerText(text: text)
-                    .opacity(max(0, 1 - phase * 1.6))
-                Text(text)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "#6B7079"))
-                    .lineLimit(1).truncationMode(.tail)
-                    .opacity(min(1, max(0, phase * 2 - 0.4)))
+        if let dp = text.parseDiffStep() {
+            HStack(spacing: 6) {
+                ZStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .opacity(chevronOpacity)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .regular))
+                        .foregroundColor(Color(hex: "#454850"))
+                        .opacity(checkmarkOpacity)
+                }
+                .frame(width: 12, alignment: .center)
+                // Filename + counts
+                HStack(spacing: 0) {
+                    ZStack(alignment: .leading) {
+                        TickerShimmerText(text: dp.filename)
+                            .opacity(shimmerOpacity)
+                        Text(dp.filename)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(staticColor)
+                            .lineLimit(1).truncationMode(.tail)
+                            .opacity(staticOpacity)
+                    }
+                    if dp.added > 0 {
+                        Text(" +\(dp.added)")
+                            .font(.system(size: 10, weight: .medium).monospaced())
+                            .foregroundColor(Color(hex: "#22C55E"))
+                            .fixedSize()
+                    }
+                    if dp.removed > 0 {
+                        Text(" −\(dp.removed)")
+                            .font(.system(size: 10, weight: .medium).monospaced())
+                            .foregroundColor(Color(hex: "#F4505E"))
+                            .fixedSize()
+                    }
+                }
             }
+            .frame(height: 22, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { onDiffTap?() }
+        } else {
+            HStack(spacing: 6) {
+                // Icon: chevron fades out first half, checkmark fades in second half
+                ZStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .opacity(chevronOpacity)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .regular))
+                        .foregroundColor(Color(hex: "#454850"))
+                        .opacity(checkmarkOpacity)
+                }
+                .frame(width: 12, alignment: .center)
+
+                // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
+                ZStack(alignment: .leading) {
+                    TickerShimmerText(text: text)
+                        .opacity(shimmerOpacity)
+                    Text(text)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(staticColor)
+                        .lineLimit(1).truncationMode(.tail)
+                        .opacity(staticOpacity)
+                }
+            }
+            .frame(height: 22, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 22, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -2529,12 +3428,30 @@ struct AgentPillsView: View {
             Spacer(minLength: 0)
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(displayTasks) { task in
+                    #if !APPSTORE
+                    if task.id == "integration_music" {
+                        MusicPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    } else {
+                        AgentPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    }
+                    #else
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
                         state.setFocus(task.id)
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
+                    #endif
                 }
             }
             .padding(.horizontal, 8)
@@ -2551,6 +3468,8 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
+    private var effectiveColor: String { task.color }
+
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
         task.id == "integration_claude" ? "VS Code" : task.name
@@ -2562,10 +3481,10 @@ struct AgentPill: View {
                 ZStack {
                     Capsule()
                         .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
+                              ? Color(hex: effectiveColor).opacity(0.18)
                               : Color(hex: "#0E0F11"))
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                        .stroke(Color(hex: effectiveColor).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
@@ -2576,7 +3495,7 @@ struct AgentPill: View {
                     Text(displayName)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
+                                         ? Color(hex: effectiveColor).lighter(by: 0.3)
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -2584,11 +3503,11 @@ struct AgentPill: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: effectiveColor).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {
-                    PillBadgeView(badge: badge, taskColor: task.color)
+                    PillBadgeView(badge: badge, taskColor: effectiveColor)
                         .offset(x: 3, y: -3)
                 }
             }
@@ -2602,6 +3521,209 @@ struct AgentPill: View {
         }
     }
 }
+
+// MARK: - Music Pill (GitHub build only)
+
+#if !APPSTORE
+struct MusicPill: View {
+    let task: AgentTask
+    @ObservedObject var state: AppState
+    @Binding var swapping: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    private var isPlaying: Bool { AppState.shared.musicPlaying }
+    private var showControls: Bool { isHovered && MusicController.shared.trackTitle != nil }
+
+    var body: some View {
+        ZStack {
+            // Selection target — full pill area, receives taps where controls don't
+            Capsule()
+                .fill(Color.clear)
+                .contentShape(Capsule())
+                .onTapGesture { onTap() }
+
+            // Visual fills
+            Capsule()
+                .fill(isHovered ? Color(hex: task.color).opacity(0.18) : Color(hex: "#0E0F11"))
+                .allowsHitTesting(false)
+            Capsule()
+                .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+
+            // Mini Mochi at leading edge
+            HStack(spacing: 0) {
+                MiniBotCanvasView(task: task, isDancing: isPlaying)
+                    .frame(width: 22 / 0.6, height: 22 / 0.6)
+                    .frame(width: 22, height: 22, alignment: .center)
+                    .padding(.leading, 8)
+                Spacer()
+            }
+            .allowsHitTesting(false)
+
+            // Title — trailing padding grows on hover to make room for buttons
+            Text(task.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isHovered ? Color(hex: task.color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 34)
+                .padding(.trailing, showControls ? 52 : 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
+                .allowsHitTesting(false)
+
+            // Playback controls — appear on hover when a track is loaded
+            if showControls {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: 2) {
+                        MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
+                            MusicController.shared.playPause()
+                        }
+                        MusicControlButton(icon: "forward.fill", color: task.color) {
+                            MusicController.shared.nextTrack()
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .brightness(isHovered ? 0.06 : 0)
+        .onHover { newHover in
+            guard !swapping else { return }
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+
+struct MusicControlButton: View {
+    let icon: String
+    let color: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(isHovered ? Color(hex: color).opacity(0.18) : Color(hex: "#0E0F11"))
+                Circle()
+                    .stroke(Color(hex: color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(isHovered ? Color(hex: color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+            }
+            .frame(width: 20, height: 20)
+            .shadow(color: Color(hex: color).opacity(isHovered ? 0.35 : 0), radius: 6)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isHovered ? 1.1 : 1.0)
+        .onHover { newHover in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+#endif
+
+// MARK: - Music Card View (GitHub build only)
+
+#if !APPSTORE
+struct MusicCardView: View {
+    @ObservedObject private var controller = MusicController.shared
+    @ObservedObject private var appState = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if appState.musicAutomationDenied {
+                // Automation denied — prompt user to fix
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#F4505E"))
+                        .frame(width: 7, height: 7)
+                    Text("Apple Music")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    Spacer(minLength: 2)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 36)
+
+                Text("Allow Coucou to control Music")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .padding(.leading, 108)
+                    .padding(.trailing, 12)
+
+                Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "#FA2D48").opacity(0.85))
+                    .buttonStyle(.plain)
+                    .padding(.leading, 108)
+                    .padding(.top, 2)
+            } else {
+                // Line 1: dot + title
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#FA2D48"))
+                        .frame(width: 7, height: 7)
+                    if let title = controller.trackTitle {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .frame(maxWidth: 150, alignment: .leading)
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+
+                // Line 2: artist
+                if let artist = controller.artist {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .padding(.leading, 108)
+                }
+
+                // Line 3: controls
+                HStack(spacing: 8) {
+                    Button(action: { MusicController.shared.previousTrack() }) {
+                        Image(systemName: "backward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.playPause() }) {
+                        Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#FA2D48"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.nextTrack() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+}
+#endif
 
 struct PillBadgeView: View {
     let badge: PillBadge

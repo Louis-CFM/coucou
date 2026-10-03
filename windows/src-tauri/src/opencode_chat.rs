@@ -434,15 +434,11 @@ fn send_via_server(
 
 /// Working dir + file attachments + context line for a fresh conversation.
 pub fn home_dir() -> String {
-    std::env::var_os("USERPROFILE")
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| ".".into())
+    crate::platform::home_dir().to_string_lossy().to_string()
 }
 
 fn first_turn_context(context: &Option<ChatContext>) -> (String, Vec<String>, String) {
-    let home = std::env::var_os("USERPROFILE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
+    let home = crate::platform::home_dir();
     match context {
         Some(ChatContext::File { name, path }) => {
             let dir = std::path::Path::new(path)
@@ -468,16 +464,13 @@ fn first_turn_context(context: &Option<ChatContext>) -> (String, Vec<String>, St
 /// the child on a full pipe buffer, then enforces the deadline.
 fn run_blocking(bin: &str, args: &[String]) -> Result<(bool, String, String), String> {
     use std::io::Read;
-    use std::os::windows::process::CommandExt;
 
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-    let mut child = std::process::Command::new(bin)
-        .args(args)
+    let mut cmd = std::process::Command::new(bin);
+    cmd.args(args)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .creation_flags(CREATE_NO_WINDOW)
+        .stderr(std::process::Stdio::piped());
+    let mut child = crate::platform::no_console(&mut cmd)
         .spawn()
         .map_err(|e| format!("could not start opencode: {e}"))?;
 
