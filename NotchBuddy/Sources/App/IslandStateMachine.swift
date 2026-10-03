@@ -17,6 +17,9 @@ final class IslandStateMachine {
     /// Fired on every transition: (from, to)
     var onTransition: ((State, State) -> Void)?
 
+    /// When non-nil and returns true, timers and mouse-leave never auto-collapse or hide the island.
+    var isHeldOpen: (() -> Bool)?
+
     /// home → petit delay (seconds). Override for debug.
     var homeToPetitDelay: TimeInterval = 15
     /// petit → hidden delay (seconds). Override for debug.
@@ -42,8 +45,13 @@ final class IslandStateMachine {
     func mouseEntered() {
         switch state {
         case .hidden:
-            cancelTimers()
-            transition(to: .petit)
+            if isHeldOpen?() == true {
+                // Island already expanded by an external call — sync FSM state without transition
+                state = .home
+            } else {
+                cancelTimers()
+                transition(to: .petit)
+            }
         case .petit:
             petitHideWork?.cancel()
             petitHideWork = nil
@@ -64,11 +72,13 @@ final class IslandStateMachine {
         case .petit:
             schedulePetitHide()
         case .home:
-            scheduleHomeCollapse()
+            if isHeldOpen?() != true { scheduleHomeCollapse() }
         case .coucou:
-            // Interrupt greeting immediately → compact (overrides 10s auto-collapse)
-            greetCollapseWork?.cancel(); greetCollapseWork = nil
-            transition(to: .petit)
+            if isHeldOpen?() != true {
+                // Interrupt greeting immediately → compact (overrides 10s auto-collapse)
+                greetCollapseWork?.cancel(); greetCollapseWork = nil
+                transition(to: .petit)
+            }
         }
     }
 
@@ -88,6 +98,15 @@ final class IslandStateMachine {
         guard state == .petit else { return }
         cancelTimers()
         state = .hidden
+    }
+
+    /// The app expanded the island externally (hookExpand for an alert).
+    /// Cancel timers and sync state to `.home` without firing `onTransition`, so the
+    /// next hover/mouseLeft behave correctly instead of collapsing the island.
+    func openedExternally() {
+        cancelTimers()
+        guard state != .home && state != .coucou else { return }
+        state = .home
     }
 
     /// The app folded the island itself (Escape, Settings, OK button, auto-close).
@@ -132,7 +151,7 @@ final class IslandStateMachine {
     private func schedulePetitHide() {
         petitHideWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            guard let self, self.state == .petit else { return }
+            guard let self, self.state == .petit, !(self.isHeldOpen?() ?? false) else { return }
             self.transition(to: .hidden)
         }
         petitHideWork = item
@@ -142,7 +161,7 @@ final class IslandStateMachine {
     private func scheduleHomeCollapse() {
         homeCollapseWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            guard let self, self.state == .home else { return }
+            guard let self, self.state == .home, !(self.isHeldOpen?() ?? false) else { return }
             self.transition(to: .petit)
         }
         homeCollapseWork = item

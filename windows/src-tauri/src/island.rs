@@ -164,6 +164,13 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y;
 
+    // GTK never sizes a non-resizable window below its natural size (200 px
+    // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
+    // re-applies the config's `resizable: false` after the first configure, so
+    // this is asked every time, just before the resize. Undecorated, the window
+    // still offers the user nothing to resize it by. (Found by @YossiYad, #44.)
+    #[cfg(target_os = "linux")]
+    let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Moving across displays can rescale the window: re-assert the physical size.
@@ -191,19 +198,23 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        // Without a cursor to read (Linux) the loop only watches the display
+        // layout, and twice a second is plenty for that: waking at 60 Hz just to
+        // find no cursor costs CPU for nothing.
+        let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+                std::thread::sleep(Duration::from_millis(period));
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % 30 == 0 {
+                if ticks % screen_every == 0 {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
@@ -281,7 +292,10 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     }
     let Some(win) = window(app) else { return };
     let region = if gate.collapsed.load(Ordering::Relaxed) {
-        None
+        // The wake strip itself, never "the whole window": if the window ever
+        // fails to shrink to the strip, the rest of it must not swallow clicks
+        // meant for whatever sits under the top of the screen.
+        Some((0.0, 0.0, STRIP_W, STRIP_H))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {

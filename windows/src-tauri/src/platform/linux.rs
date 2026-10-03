@@ -269,11 +269,12 @@ pub fn make_non_activating(win: &WebviewWindow) {
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Ok(gw) = win.gtk_window() else { return };
+    // The island is created `focusable: false` (tauri.linux.conf.json), so GTK
+    // refuses focus until we say otherwise — on a layer surface too.
+    gw.set_accept_focus(activating);
     if LAYER_SURFACE.load(Ordering::Relaxed) {
         let mode = if activating { layer::KEYBOARD_ON_DEMAND } else { layer::KEYBOARD_NONE };
         unsafe { layer::gtk_layer_set_keyboard_mode(gtk_window_ptr(&gw), mode) };
-    } else {
-        gw.set_accept_focus(activating);
     }
 }
 

@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 — October 3, 2026
+
+- Answer Claude's questions from the notch: when Claude Code asks a multiple-choice question, pick an option or type your own answer right in the island, and Reply in terminal hands it back. Update your hooks in Settings to turn it on (#165) — thanks @Vega8991 for the idea (#94)
+- Claude plan usage (GitHub build): turn on Settings → Agents → Plan usage to see your 5-hour and weekly limits in a small pill in the notch header, and click it for the details and reset times. Pro and Max plans; your current status line keeps working (#159)
+- Chat with local models through Ollama or LM Studio, no API key needed: connect them in Settings → Chat → Local models. Answers stream in, and thinking blocks stay hidden (#156)
+- Markdown in chat answers: bold, lists, headings, quotes, and code blocks with a copy button. Links open only when they are web links (#156)
+- Apple Music (GitHub build): see what is playing in the notch, play, pause and skip on hover, and Mochi dances along (#144, #153)
+- Settings are now organized in a sidebar (#153)
+- The chat greets you by your own first name (#154)
+
+## 0.1.2 — October 2, 2026
+
+- Codex support (GitHub build): sessions show up live on the Codex pill, and permission requests get Allow and Deny in the notch. Install from Settings → Codex Hooks, then trust the hooks once with /hooks in Codex (#130) — thanks @lacatu5
+- Cursor: Claude Code started in Cursor's terminal shows up on the Cursor pill, and you can answer its permission requests from the notch (#120).
+- Pick your main coding tool in Settings → Active pills: VS Code, Cursor, Codex or Antigravity (Codex and Antigravity: GitHub build). It stays on and no longer takes one of the 4 slots (#120).
+- The permission card stays in the notch until you answer it: the mouse no longer folds it, and reopening the island shows the request again (#117).
+- The permission card also shows when the island is already open, and the pill you were on comes back once you answer (#120).
+
+## 0.1.1 — October 2, 2026
 
 - Windows chat: one button is the mic while the field is empty and Send once it holds text; your words appear as you speak, it sends when you stop talking, and it never sends silence. "Keep the mic on" in Settings listens again after each reply. Replies render GitHub-style Markdown (Windows and Linux): tables that fit the chat, task lists, footnotes, alerts, math (KaTeX), strikethrough and GitHub's safe HTML.
 - Declare the tools you use in Settings: Gemini CLI, Antigravity, Anthropic, Google AI and OpenAI pills join the existing ones (Cursor and Codex pills are coming soon), and you pick the main pill.

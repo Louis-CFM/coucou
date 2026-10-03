@@ -93,8 +93,22 @@ struct OverviewView: View {
                     }
                 }
 
+                // Plan detail overlays on top of normal content (GitHub build, home view only)
+                #if !APPSTORE
+                if state.showingPlanDetail {
+                    CardBackground(wash: nil)
+                    ClaudePlanCardView(usage: state.claudePlanUsage)
+                        .transition(.opacity)
+                }
+                #endif
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                if !showingN8nDetail {
+                #if !APPSTORE
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail
+                #else
+                let hideJumpButton = showingN8nDetail
+                #endif
+                if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .medium))
@@ -116,7 +130,20 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, _ in showingN8nDetail = false }
+        .onChange(of: state.focusId) { _, _ in
+            showingN8nDetail = false
+            #if !APPSTORE
+            withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
+            #endif
+        }
+        #if !APPSTORE
+        .onChange(of: state.view) { _, v in
+            if v != .overview { state.showingPlanDetail = false }
+        }
+        .onChange(of: state.mode) { _, m in
+            if m != .expanded { state.showingPlanDetail = false }
+        }
+        #endif
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -175,6 +202,14 @@ struct OverviewView: View {
             switchChatProvider(.google)
         case "ai_openai":
             switchChatProvider(.openai)
+        case "ai_ollama":
+            switchChatProvider(.ollama)
+        case "ai_lmstudio":
+            switchChatProvider(.lmstudio)
+        case "integration_music":
+            #if !APPSTORE
+            MusicController.shared.openMusic()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -243,8 +278,11 @@ struct ApprovalView: View {
                     PrimaryButton("Allow") {
                         HookServer.shared.sendApprovalDecision("allow")
                     }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+                    // Codex rejects updatedPermissions, so "Always" is not offered
+                    if approval?.pillId != "agent_codex" {
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
                     }
                 }
             }
@@ -260,25 +298,185 @@ struct ApprovalView: View {
 
 struct QuestionView: View {
     @ObservedObject var state: AppState
+    @State private var questionIndex = 0
+    // Per-question selected labels (empty = none chosen yet)
+    @State private var selections: [[String]] = []
+    // Per-question custom "Other…" text
+    @State private var otherTexts: [String] = []
+    // Per-question "Other…" mode active
+    @State private var showOther: [Bool] = []
+    @FocusState private var otherFieldFocused: Bool
+
+    var question: AskQuestion? { state.pendingQuestion }
 
     var body: some View {
         ZStack {
             CardBackground(wash: .cyan)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
-                Text("Which search engine to use?")
-                    .font(.system(size: 15, weight: .semibold))
-                HStack(spacing: 8) {
-                    ForEach(["Postgres full-text", "Meilisearch", "Algolia"], id: \.self) { opt in
-                        SecondaryButton(opt) { /* answer */ }
+            if let q = question, !q.questions.isEmpty {
+                let qi = min(questionIndex, q.questions.count - 1)
+                let item = q.questions[qi]
+                let isLast = qi == q.questions.count - 1
+                let isMulti = item.multiSelect
+                let curSel = qi < selections.count ? selections[qi] : []
+                let curOther = qi < showOther.count ? showOther[qi] : false
+                let curOtherText = qi < otherTexts.count ? otherTexts[qi] : ""
+                let canProceed = !curSel.isEmpty || (curOther && !curOtherText.isEmpty)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    // Header row: agent name + question counter + "Reply in terminal" link
+                    HStack(spacing: 4) {
+                        AgentWho(task: nil, label: "Claude Code is asking")
+                        Spacer(minLength: 4)
+                        if q.questions.count > 1 {
+                            Text("\(qi + 1)/\(q.questions.count)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                        Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                            .underline()
+                    }
+                    // Optional short header label above question text
+                    if !item.header.isEmpty {
+                        Text(item.header)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                    }
+                    Text(item.question)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(2)
+                    // Options (wrapping) or "Other…" compact inline row
+                    if curOther {
+                        HStack(spacing: 6) {
+                            TextField("Your answer…", text: Binding(
+                                get: { qi < otherTexts.count ? otherTexts[qi] : "" },
+                                set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
+                            ))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .focused($otherFieldFocused)
+                            .onAppear { otherFieldFocused = true }
+                            .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
+                            .onExitCommand { if qi < showOther.count { showOther[qi] = false } }
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            Button(isLast ? "Send" : "Next") {
+                                commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(curOtherText.isEmpty ? Color(hex: "#6B7079") : Color(hex: "#F5F6F8"))
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(curOtherText.isEmpty ? 0.05 : 0.15))
+                            .clipShape(Capsule())
+                            .disabled(curOtherText.isEmpty)
+                            Button { if qi < showOther.count { showOther[qi] = false } } label: {
+                                Text("✕").font(.system(size: 9))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                    } else {
+                        ChipFlowLayout(spacing: 6) {
+                            ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
+                                let isSelected = curSel.contains(opt.label)
+                                if isMulti {
+                                    Button {
+                                        toggleSelection(qi: qi, label: opt.label)
+                                    } label: {
+                                        Text(opt.label)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
+                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
+                                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                } else {
+                                    SecondaryButton(opt.label) {
+                                        selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
+                                    }
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                }
+                            }
+                            // "Other…" implicit free-text option
+                            SecondaryButton("Other…") {
+                                if qi < showOther.count { showOther[qi] = true }
+                            }
+                        }
+                    }
+                    // Send/Next — only for multi-select (and not while "Other…" field is open)
+                    if isMulti && !curOther {
+                        PrimaryButton(isLast ? "Send" : "Next") {
+                            proceedFromQuestion(q: q, qi: qi, isLast: isLast)
+                        }
+                        .disabled(!canProceed)
+                        .opacity(canProceed ? 1 : 0.4)
                     }
                 }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { resetQuestionState() }
+        .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+        .onDisappear { HookServer.shared.releaseQuestionFD() }
+    }
+
+    private func resetQuestionState() {
+        questionIndex = 0
+        let count = state.pendingQuestion?.questions.count ?? 0
+        selections = Array(repeating: [], count: count)
+        otherTexts = Array(repeating: "", count: count)
+        showOther  = Array(repeating: false, count: count)
+    }
+
+    private func toggleSelection(qi: Int, label: String) {
+        guard qi < selections.count else { return }
+        if let i = selections[qi].firstIndex(of: label) {
+            selections[qi].remove(at: i)
+        } else {
+            selections[qi].append(label)
+        }
+    }
+
+    // Single-select: pick a label and immediately advance/send
+    private func selectAndProceed(q: AskQuestion, qi: Int, label: String, isLast: Bool) {
+        guard qi < selections.count else { return }
+        selections[qi] = [label]
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
+    }
+
+    // Multi-select Send/Next button
+    private func proceedFromQuestion(q: AskQuestion, qi: Int, isLast: Bool) {
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
+    }
+
+    // "Other…" confirm
+    private func commitOtherAndProceed(q: AskQuestion, qi: Int, isLast: Bool) {
+        let text = qi < otherTexts.count ? otherTexts[qi] : ""
+        guard !text.isEmpty else { return }
+        if qi < selections.count { selections[qi] = [text] }
+        if isLast {
+            sendAnswers(q: q)
+        } else {
+            if qi < showOther.count { showOther[qi] = false }
+            withAnimation { questionIndex = qi + 1 }
+        }
+    }
+
+    private func sendAnswers(q: AskQuestion) {
+        let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
+        HookServer.shared.sendQuestionAnswers(answers)
     }
 }
 
@@ -772,13 +970,17 @@ struct PromptView: View {
                             }
                             .padding(.vertical, 2)
                         }
-                        .onChange(of: state.chatHistory.count) { _, _ in
-                            if let last = state.chatHistory.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        .onChange(of: state.chatHistory) { _, _ in
+                            if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
                         .onChange(of: state.stateOverride) { _, v in
-                            if v != nil { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
+                            if v != nil {
+                                withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
+                            } else if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            }
                         }
                         .onAppear {
                             if let last = state.chatHistory.last {
@@ -878,15 +1080,48 @@ struct PromptView: View {
 
 // MARK: - Model / provider picker
 
+/// Wrapping horizontal flow layout — used by ModelPickerView and QuestionView.
+struct ChipFlowLayout: Layout {
+    var spacing: CGFloat = 6
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let r = rows(maxW: proposal.replacingUnspecifiedDimensions().width, subviews: subviews)
+        return r.size
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let r = rows(maxW: bounds.width, subviews: subviews)
+        for (idx, pt) in r.placements.enumerated() {
+            subviews[idx].place(at: CGPoint(x: bounds.minX + pt.x, y: bounds.minY + pt.y), proposal: .unspecified)
+        }
+    }
+    private func rows(maxW: CGFloat, subviews: Subviews) -> (size: CGSize, placements: [(x: CGFloat, y: CGFloat)]) {
+        var x: CGFloat = 0, y: CGFloat = 0, lineH: CGFloat = 0, maxX: CGFloat = 0
+        var pts: [(x: CGFloat, y: CGFloat)] = []
+        for sv in subviews {
+            let sz = sv.sizeThatFits(.unspecified)
+            if x + sz.width > maxW, x > 0 { x = 0; y += lineH + spacing; lineH = 0 }
+            pts.append((x: x, y: y))
+            x += sz.width + spacing
+            lineH = max(lineH, sz.height)
+            maxX = max(maxX, x - spacing)
+        }
+        return (CGSize(width: max(maxX, 0), height: y + lineH), pts)
+    }
+}
+
 struct ModelPickerView: View {
     @ObservedObject var state: AppState
     @Binding var isPresented: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Provider chips
-            HStack(spacing: 6) {
-                ForEach(ChatProvider.allCases, id: \.self) { provider in
+            // Provider chips — wrap; hide local providers when not connected and not already active
+            let visibleProviders = ChatProvider.allCases.filter { p in
+                if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
+                if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                return true
+            }
+            ChipFlowLayout(spacing: 6) {
+                ForEach(visibleProviders, id: \.self) { provider in
                     Button {
                         guard provider != state.chatProvider else { return }
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
@@ -926,8 +1161,19 @@ struct ModelPickerView: View {
         }
         .padding(14)
         .background(Color(hex: "#16171B"))
-        .onAppear { state.fetchModelsIfNeeded(for: state.chatProvider) }
+        .onAppear {
+            // Force-refresh local providers every time the picker opens
+            if state.chatProvider.isLocal {
+                state.fetchedProviderModels[state.chatProvider] = nil
+                state.providerModelFetchError[state.chatProvider] = nil
+            }
+            state.fetchModelsIfNeeded(for: state.chatProvider)
+        }
         .onChange(of: state.chatProvider) { _, provider in
+            if provider.isLocal {
+                state.fetchedProviderModels[provider] = nil
+                state.providerModelFetchError[provider] = nil
+            }
             state.fetchModelsIfNeeded(for: provider)
         }
     }
@@ -957,6 +1203,8 @@ struct ModelPickerView: View {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
+                            case .ollama:    state.ollamaChatModel = model.id
+                            case .lmstudio:  state.lmstudioChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -993,24 +1241,22 @@ struct ChatBubble: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top) {
-            if message.role == .user {
-                Spacer(minLength: 32)
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#F1F2F4"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.13))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#B0B5BE"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                Spacer(minLength: 8)
+        if !message.content.isEmpty {
+            HStack(alignment: .top) {
+                if message.role == .user {
+                    Spacer(minLength: 32)
+                    Text(message.content)
+                        .font(.system(size: 12.5))
+                        .foregroundColor(Color(hex: "#F1F2F4"))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color.white.opacity(0.13))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    ChatMarkdownView(markdown: message.content)
+                    Spacer(minLength: 8)
+                }
             }
         }
     }
@@ -1177,9 +1423,17 @@ struct IntegrationCardView: View {
             #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
+        case "integration_music":
+            #if !APPSTORE
+            return true  // Apple Music is always installed on macOS
+            #else
+            return false
+            #endif
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
+        case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -1250,7 +1504,24 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
+    private var musicIsActive: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_music" else { return false }
+        if appState.musicAutomationDenied { return true }
+        return MusicController.shared.trackTitle != nil
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return Color(hex: "#F4505E") }
+            return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1260,24 +1531,44 @@ struct IntegrationCardView: View {
     }
 
     private var statusLabel: String {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return "Automation not allowed" }
+            if appState.musicPlaying { return "Playing · \(MusicController.shared.trackTitle ?? "Unknown")" }
+            return "Not playing"
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
-        let isAI    = task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai"
+        let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }
             if isAI {
-                let model = task.id == "ai_anthropic" ? appState.claudeModel
-                          : task.id == "ai_google"    ? appState.googleChatModel
-                          :                             appState.openAIChatModel
+                let provider = ChatProvider(pillID: task.id)!
+                if provider.isLocal {
+                    let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
+                    return "Connected · \(model)"
+                }
+                let model: String
+                switch task.id {
+                case "ai_anthropic": model = appState.claudeModel
+                case "ai_google":    model = appState.googleChatModel
+                case "ai_openai":    model = appState.openAIChatModel
+                default:             model = ""
+                }
                 return "Key configured · \(model)"
             }
             return "Connected · loading…"
         } else {
             if isHooks { return "Hooks not installed" }
+            if isAI {
+                let provider = ChatProvider(pillID: task.id)!
+                return provider.isLocal ? "Not connected" : "Key not configured"
+            }
             return "Key not configured"
         }
     }
@@ -1313,6 +1604,11 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
+        } else if musicIsActive {
+            #if !APPSTORE
+            MusicCardView()
+                .transition(.opacity)
+            #endif
         } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
@@ -1409,10 +1705,8 @@ struct IntegrationCardView: View {
                             .buttonStyle(.plain)
                         }
                         #endif
-                    } else if task.id == "ai_anthropic" || task.id == "ai_google" || task.id == "ai_openai" {
+                    } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {
-                            let provider: ChatProvider = task.id == "ai_anthropic" ? .anthropic
-                                                       : task.id == "ai_google"    ? .google : .openai
                             Button("Chat with \(task.name)") {
                                 switchChatProvider(provider)
                             }
@@ -1420,6 +1714,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
+                    } else if task.id == "integration_music" {
+                        #if !APPSTORE
+                        Button("Open Music") { MusicController.shared.openMusic() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if appState.musicAutomationDenied {
+                            Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -1461,12 +1768,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    // Settings button: shown when not configured, except cursor/codex (coming soon)
+                    // Settings button: shown when not configured, except cursor/codex and music
                     if !isConfigured
                        && task.id != "agent_cursor"
-                       && task.id != "agent_codex" {
+                       && task.id != "agent_codex"
+                       && task.id != "integration_music" {
                         Button("Settings…") {
-                            NotificationCenter.default.post(name: .openFullSettings, object: nil)
+                            let section: String
+                            switch PillCatalog.definition(for: task.id)?.category {
+                            case .workspace, .agent: section = "agents"
+                            case .ai:                section = "chat"
+                            default:                 section = "integrations"
+                            }
+                            NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
@@ -2529,12 +2843,30 @@ struct AgentPillsView: View {
             Spacer(minLength: 0)
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(displayTasks) { task in
+                    #if !APPSTORE
+                    if task.id == "integration_music" {
+                        MusicPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    } else {
+                        AgentPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    }
+                    #else
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
                         state.setFocus(task.id)
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
+                    #endif
                 }
             }
             .padding(.horizontal, 8)
@@ -2551,6 +2883,8 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
+    private var effectiveColor: String { task.color }
+
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
         task.id == "integration_claude" ? "VS Code" : task.name
@@ -2562,10 +2896,10 @@ struct AgentPill: View {
                 ZStack {
                     Capsule()
                         .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
+                              ? Color(hex: effectiveColor).opacity(0.18)
                               : Color(hex: "#0E0F11"))
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                        .stroke(Color(hex: effectiveColor).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
@@ -2576,7 +2910,7 @@ struct AgentPill: View {
                     Text(displayName)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
+                                         ? Color(hex: effectiveColor).lighter(by: 0.3)
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -2584,11 +2918,11 @@ struct AgentPill: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: effectiveColor).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {
-                    PillBadgeView(badge: badge, taskColor: task.color)
+                    PillBadgeView(badge: badge, taskColor: effectiveColor)
                         .offset(x: 3, y: -3)
                 }
             }
@@ -2602,6 +2936,209 @@ struct AgentPill: View {
         }
     }
 }
+
+// MARK: - Music Pill (GitHub build only)
+
+#if !APPSTORE
+struct MusicPill: View {
+    let task: AgentTask
+    @ObservedObject var state: AppState
+    @Binding var swapping: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    private var isPlaying: Bool { AppState.shared.musicPlaying }
+    private var showControls: Bool { isHovered && MusicController.shared.trackTitle != nil }
+
+    var body: some View {
+        ZStack {
+            // Selection target — full pill area, receives taps where controls don't
+            Capsule()
+                .fill(Color.clear)
+                .contentShape(Capsule())
+                .onTapGesture { onTap() }
+
+            // Visual fills
+            Capsule()
+                .fill(isHovered ? Color(hex: task.color).opacity(0.18) : Color(hex: "#0E0F11"))
+                .allowsHitTesting(false)
+            Capsule()
+                .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+
+            // Mini Mochi at leading edge
+            HStack(spacing: 0) {
+                MiniBotCanvasView(task: task, isDancing: isPlaying)
+                    .frame(width: 22 / 0.6, height: 22 / 0.6)
+                    .frame(width: 22, height: 22, alignment: .center)
+                    .padding(.leading, 8)
+                Spacer()
+            }
+            .allowsHitTesting(false)
+
+            // Title — trailing padding grows on hover to make room for buttons
+            Text(task.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isHovered ? Color(hex: task.color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 34)
+                .padding(.trailing, showControls ? 52 : 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
+                .allowsHitTesting(false)
+
+            // Playback controls — appear on hover when a track is loaded
+            if showControls {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: 2) {
+                        MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
+                            MusicController.shared.playPause()
+                        }
+                        MusicControlButton(icon: "forward.fill", color: task.color) {
+                            MusicController.shared.nextTrack()
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .brightness(isHovered ? 0.06 : 0)
+        .onHover { newHover in
+            guard !swapping else { return }
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+
+struct MusicControlButton: View {
+    let icon: String
+    let color: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(isHovered ? Color(hex: color).opacity(0.18) : Color(hex: "#0E0F11"))
+                Circle()
+                    .stroke(Color(hex: color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(isHovered ? Color(hex: color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+            }
+            .frame(width: 20, height: 20)
+            .shadow(color: Color(hex: color).opacity(isHovered ? 0.35 : 0), radius: 6)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isHovered ? 1.1 : 1.0)
+        .onHover { newHover in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+#endif
+
+// MARK: - Music Card View (GitHub build only)
+
+#if !APPSTORE
+struct MusicCardView: View {
+    @ObservedObject private var controller = MusicController.shared
+    @ObservedObject private var appState = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if appState.musicAutomationDenied {
+                // Automation denied — prompt user to fix
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#F4505E"))
+                        .frame(width: 7, height: 7)
+                    Text("Apple Music")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    Spacer(minLength: 2)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 36)
+
+                Text("Allow Coucou to control Music")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .padding(.leading, 108)
+                    .padding(.trailing, 12)
+
+                Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "#FA2D48").opacity(0.85))
+                    .buttonStyle(.plain)
+                    .padding(.leading, 108)
+                    .padding(.top, 2)
+            } else {
+                // Line 1: dot + title
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#FA2D48"))
+                        .frame(width: 7, height: 7)
+                    if let title = controller.trackTitle {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .frame(maxWidth: 150, alignment: .leading)
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+
+                // Line 2: artist
+                if let artist = controller.artist {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .padding(.leading, 108)
+                }
+
+                // Line 3: controls
+                HStack(spacing: 8) {
+                    Button(action: { MusicController.shared.previousTrack() }) {
+                        Image(systemName: "backward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.playPause() }) {
+                        Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#FA2D48"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.nextTrack() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+}
+#endif
 
 struct PillBadgeView: View {
     let badge: PillBadge

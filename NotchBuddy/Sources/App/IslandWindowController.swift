@@ -19,6 +19,9 @@ final class IslandWindowController: NSWindowController {
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
 
+    // Suppress peek sound on next reveal (e.g. musicReveal)
+    var silentNextReveal = false
+
     // Finished-pin timer
     private var finishedPinTimer: DispatchWorkItem?
 
@@ -164,7 +167,11 @@ final class IslandWindowController: NSWindowController {
                     // Fire interrupt first so canvas collapse starts before mode change
                     NotificationCenter.default.post(name: .greetingInterrupt, object: nil)
                 } else if from == .hidden {
-                    SoundEngine.shared.play("peek")
+                    if self.silentNextReveal {
+                        self.silentNextReveal = false
+                    } else {
+                        SoundEngine.shared.play("peek")
+                    }
                 }
                 // setMode BEFORE changing view: onChange(of: state.view) guards on .expanded,
                 // so setting view while already compact won't trigger a spurious open animation.
@@ -191,6 +198,8 @@ final class IslandWindowController: NSWindowController {
         ) { [weak self] _ in
             self?.fsm.greetComplete()
         }
+
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
     }
 
     // MARK: - 60 Hz polling loop
@@ -330,7 +339,10 @@ final class IslandWindowController: NSWindowController {
             : .spring(response: 0.5, dampingFraction: 0.72)
         withAnimation(anim) { state.mode = mode }
         if mode == .expanded { SoundEngine.shared.play("open") }
-        if prev == .expanded { SoundEngine.shared.play("close"); state.isPinned = false }
+        if prev == .expanded {
+            SoundEngine.shared.play("close")
+            if fsm.isHeldOpen?() != true { state.isPinned = false }
+        }
     }
 
     func expand(to view: IslandView) {
@@ -344,6 +356,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     func collapse() {
+        guard fsm.isHeldOpen?() != true else { return }
         state.isPinned = false
         finishedPinTimer?.cancel()
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
@@ -369,6 +382,7 @@ final class IslandWindowController: NSWindowController {
         // Hook server expand requests (alerts only)
         NotificationCenter.default.addObserver(forName: .hookExpand, object: nil, queue: .main) { [weak self] note in
             guard let self, let view = note.object as? IslandView else { return }
+            self.fsm.openedExternally()
             self.expand(to: view)
         }
 
@@ -376,6 +390,14 @@ final class IslandWindowController: NSWindowController {
         NotificationCenter.default.addObserver(forName: .hookReveal, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.fsm.reveal()
+        }
+
+        // Music started playing: reveal silently (no peek sound)
+        NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.silentNextReveal = true
+            self.fsm.reveal()
+            self.silentNextReveal = false
         }
 
         // Collapse requests from views (OK button, etc.)
@@ -687,7 +709,8 @@ final class IslandWindowController: NSWindowController {
     // MARK: - Helpers
 
     func defaultView() -> IslandView {
-        state.tasks.isEmpty ? .empty : .overview
+        if state.pendingApproval != nil { return .approval }
+        return state.tasks.isEmpty ? .empty : .overview
     }
 
     func baseMode() -> IslandMode {
@@ -855,6 +878,7 @@ extension Notification.Name {
     static let islandCollapse   = Notification.Name("notchBuddy.islandCollapse")
     static let openFullSettings = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
+    static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
     // Greeting ↔ IslandWindowController
     static let greetComplete    = Notification.Name("notchBuddy.greetComplete")
     static let greetingHover    = Notification.Name("notchBuddy.greetingHover")

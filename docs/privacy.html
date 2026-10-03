@@ -29,28 +29,32 @@
 <p>Coucou only talks to the services you configure, directly from your Mac, using your own keys. Those services process your data under their own privacy policies:</p>
 <ul>
 <li><b>Anthropic (Claude API)</b> — when you chat using Anthropic or ask about a file or a window, the text you type, the file content and/or the window context you chose are sent to Anthropic. When you open the chat or Settings, the list of available models is also fetched from the Anthropic API using your key. <a href="https://www.anthropic.com/legal/privacy">Anthropic privacy policy</a>.</li>
-<li><b>Google AI (Gemini API)</b> <i>(macOS)</i> — when you chat using Google AI, the text you type and the current conversation are sent to Google's Gemini API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic). The list of available models is fetched when you open the chat. <a href="https://policies.google.com/privacy">Google privacy policy</a>.</li>
-<li><b>OpenAI</b> <i>(macOS)</i> — when you chat using OpenAI, the text you type and the current conversation are sent to the OpenAI API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic). The list of available models is fetched when you open the chat. <a href="https://openai.com/policies/privacy-policy">OpenAI privacy policy</a>.</li>
+<li><b>Google AI (Gemini API)</b> <i>(macOS)</i> — when you chat using Google AI, the text you type and the current conversation are sent to Google's Gemini API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic or to a local model server you connected). The list of available models is fetched when you open the chat. <a href="https://policies.google.com/privacy">Google privacy policy</a>.</li>
+<li><b>OpenAI</b> <i>(macOS)</i> — when you chat using OpenAI, the text you type and the current conversation are sent to the OpenAI API. If you attached a window, the app name, title and URL are also sent. If you attached a file, only its name is sent (file content is only sent to Anthropic or to a local model server you connected). The list of available models is fetched when you open the chat. <a href="https://openai.com/policies/privacy-policy">OpenAI privacy policy</a>.</li>
+<li><b>Ollama / LM Studio</b> <i>(macOS)</i> — when you chat using a local model, the text you type, the current conversation, and the content of any attached text file (up to 24 000 characters) are sent to the server address you configured in Settings → Chat → Local models. By default that address is <code>127.0.0.1</code> on your Mac — nothing leaves your computer. If you point it at a remote server, that server receives the data. The server address is stored in your Mac's user preferences (not the Keychain). The list of available models is fetched each time you open the model picker.</li>
 <li><b>Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n</b> — Coucou reads data from your own accounts (payments, repositories, deployments, emails, pages, bookings, workflow runs) to display them. Coucou only reads from them.</li>
 </ul>
 <p>We have no access to these requests or their responses.</p>
 
-<h2>5. Claude Code, Gemini CLI and Antigravity hooks</h2>
-<p>If you install the Claude Code hooks, Claude Code sends session events to Coucou through a local connection on your computer. If you install the Gemini CLI or Antigravity hooks, those agents send their session events the same way. These events never leave your computer through Coucou. Before changing any settings file (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>), Coucou makes a dated backup and shows you the changes.</p>
+<h2>5. Claude Code, Gemini CLI, Antigravity and Codex hooks</h2>
+<p>If you install the Claude Code hooks, Claude Code sends session events to Coucou through a local connection on your computer. If you install the Gemini CLI, Antigravity or Codex hooks, those agents send their session events the same way. These events never leave your computer through Coucou. If you install the Plan usage status line, Claude Code also passes the percentage used and the reset times of your plan windows to Coucou through the same local connection; nothing leaves your computer. Before changing any settings file (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>, <code>~/.codex/hooks.json</code>), Coucou makes a dated backup and shows you the changes.</p>
 
-<h2>6. Email</h2>
+<h2>6. Apple Music</h2>
+<p>If you activate the Apple Music pill <i>(macOS, GitHub build)</i>, Coucou reads the current track (title, artist, album) from Music on your Mac to display it in the notch, and only sends play, pause or skip commands to Music when you click. Nothing leaves your computer.</p>
+
+<h2>7. Email</h2>
 <p>When you send a file by email, the message is created and sent by your own Mail app. Coucou never sends email by itself.</p>
 
-<h2>7. System permissions</h2>
-<p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows and Linux versions ask for no special permission. On Linux, installing the .deb or .rpm package needs administrator rights; the AppImage doesn't.</p>
+<h2>8. System permissions</h2>
+<p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal, Music), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows and Linux versions ask for no special permission. On Linux, installing the .deb or .rpm package needs administrator rights; the AppImage doesn't.</p>
 
-<h2>8. Children</h2>
+<h2>9. Children</h2>
 <p>Coucou is a developer tool and is not directed at children.</p>
 
-<h2>9. Your rights</h2>
+<h2>10. Your rights</h2>
 <p>Since we hold no personal data about you, there is nothing for us to access, correct or delete. For data held by a service you connected, please contact that service. If you live in the EU, you can also contact your data protection authority (in France: the <a href="https://www.cnil.fr">CNIL</a>).</p>
 
-<h2>10. Changes</h2>
+<h2>11. Changes</h2>
 <p>If this policy changes, the new version will be published on this page with a new date.</p>
 </section>
 
@@ -81,28 +85,32 @@
 <p>Coucou ne communique qu’avec les services que tu configures, directement depuis ton Mac, avec tes propres clés. Ces services traitent tes données selon leur propre politique :</p>
 <ul>
 <li><b>Anthropic (API Claude)</b> : quand tu discutes via Anthropic ou poses une question sur un fichier ou une fenêtre, le texte saisi, le contenu du fichier et/ou le contexte de la fenêtre choisie sont envoyés à Anthropic. À l’ouverture du chat ou des Réglages, la liste des modèles disponibles est aussi récupérée depuis l’API d’Anthropic avec ta clé. <a href="https://www.anthropic.com/legal/privacy">Politique de confidentialité d’Anthropic</a>.</li>
-<li><b>Google AI (API Gemini)</b> <i>(macOS)</i> : quand tu discutes via Google AI, le texte saisi et la conversation en cours sont envoyés à l’API Gemini de Google. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://policies.google.com/privacy">Politique de confidentialité de Google</a>.</li>
-<li><b>OpenAI</b> <i>(macOS)</i> : quand tu discutes via OpenAI, le texte saisi et la conversation en cours sont envoyés à l’API OpenAI. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://openai.com/policies/privacy-policy">Politique de confidentialité d’OpenAI</a>.</li>
+<li><b>Google AI (API Gemini)</b> <i>(macOS)</i> : quand tu discutes via Google AI, le texte saisi et la conversation en cours sont envoyés à l’API Gemini de Google. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic ou vers le serveur de modèle local que tu as connecté). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://policies.google.com/privacy">Politique de confidentialité de Google</a>.</li>
+<li><b>OpenAI</b> <i>(macOS)</i> : quand tu discutes via OpenAI, le texte saisi et la conversation en cours sont envoyés à l’API OpenAI. Si une fenêtre est attachée, le nom de l’app, le titre et l’URL sont aussi envoyés. Si un fichier est attaché, seul son nom est envoyé (le contenu d’un fichier ne part que chez Anthropic ou vers le serveur de modèle local que tu as connecté). La liste des modèles disponibles est récupérée à l’ouverture du chat. <a href="https://openai.com/policies/privacy-policy">Politique de confidentialité d’OpenAI</a>.</li>
+<li><b>Ollama / LM Studio</b> <i>(macOS)</i> : quand tu discutes via un modèle local, le texte saisi, la conversation en cours et le contenu de tout fichier texte attaché (jusqu’à 24 000 caractères) sont envoyés à l’adresse de serveur configurée dans Réglages → Chat → Local models. Par défaut, cette adresse est <code>127.0.0.1</code> sur ton Mac — rien ne quitte ton ordinateur. Si tu la pointes vers un serveur distant, ce serveur reçoit les données. L’adresse est conservée dans les préférences utilisateur de ton Mac (pas dans le trousseau). La liste des modèles disponibles est récupérée à chaque ouverture du sélecteur de modèle.</li>
 <li><b>Stripe, GitHub, Vercel, Resend, Notion, Cal.com, n8n</b> : Coucou lit les données de tes propres comptes (paiements, dépôts, déploiements, e-mails, pages, rendez-vous, exécutions de workflows) pour les afficher. Coucou ne fait que lire.</li>
 </ul>
 <p>Le développeur n’a accès ni à ces requêtes ni à leurs réponses.</p>
 
-<h2>5. Claude Code, Gemini CLI et Antigravity</h2>
-<p>Si tu installes les hooks Claude Code, Claude Code envoie les événements de session à Coucou par une connexion locale sur ton ordinateur. Si tu installes les hooks Gemini CLI ou Antigravity, ces agents envoient leurs événements de la même façon. Coucou ne les fait jamais sortir de ton ordinateur. Avant de modifier un fichier de configuration (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>), Coucou en fait une sauvegarde datée et te montre les changements.</p>
+<h2>5. Claude Code, Gemini CLI, Antigravity et Codex</h2>
+<p>Si tu installes les hooks Claude Code, Claude Code envoie les événements de session à Coucou par une connexion locale sur ton ordinateur. Si tu installes les hooks Gemini CLI, Antigravity ou Codex, ces agents envoient leurs événements de la même façon. Coucou ne les fait jamais sortir de ton ordinateur. Si tu installes le relais de jauge de forfait (Plan usage), Claude Code transmet aussi à Coucou, par la même connexion locale, les pourcentages utilisés et les heures de remise à zéro de tes fenêtres de forfait ; rien ne quitte ton ordinateur. Avant de modifier un fichier de configuration (<code>~/.claude/settings.json</code>, <code>~/.gemini/settings.json</code>, <code>~/.gemini/config/hooks.json</code>, <code>~/.codex/hooks.json</code>), Coucou en fait une sauvegarde datée et te montre les changements.</p>
 
-<h2>6. E-mail</h2>
+<h2>6. Apple Music</h2>
+<p>Si tu actives la pastille Apple Music <i>(macOS, version GitHub)</i>, Coucou lit le morceau en cours (titre, artiste, album) depuis l’app Musique de ton Mac pour l’afficher dans le notch, et n’envoie lecture, pause ou morceau suivant à Musique que quand tu cliques. Rien ne quitte ton ordinateur.</p>
+
+<h2>7. E-mail</h2>
 <p>Quand tu envoies un fichier par e-mail, le message est créé et envoyé par ta propre app Mail. Coucou n’envoie jamais d’e-mail de lui-même.</p>
 
-<h2>7. Autorisations système</h2>
+<h2>8. Autorisations système</h2>
 <p>Selon la version et les fonctions utilisées, macOS peut te demander d’autoriser l’Automatisation (Mail, Terminal), l’Accessibilité (lire le titre de la fenêtre que tu attaches) ou l’Enregistrement de l’écran (capturer une fenêtre que tu attaches). Elles ne servent qu’à la fonction que tu as déclenchée et se retirent à tout moment dans Réglages Système → Confidentialité et sécurité. Les versions Windows et Linux ne demandent aucune autorisation particulière. Sous Linux, l’installation du paquet .deb ou .rpm nécessite des droits administrateur ; l’AppImage non.</p>
 
-<h2>8. Enfants</h2>
+<h2>9. Enfants</h2>
 <p>Coucou est un outil pour développeurs, il ne s’adresse pas aux enfants.</p>
 
-<h2>9. Tes droits</h2>
+<h2>10. Tes droits</h2>
 <p>Le développeur ne détenant aucune donnée personnelle te concernant, il n’y a rien à consulter, corriger ou supprimer de son côté. Pour les données détenues par un service que tu as connecté, contacte ce service. Tu peux aussi saisir la <a href="https://www.cnil.fr">CNIL</a>.</p>
 
-<h2>10. Modifications</h2>
+<h2>11. Modifications</h2>
 <p>En cas de changement, la nouvelle version sera publiée sur cette page avec une nouvelle date.</p>
 </section>
 <footer>© 2026 Louis Raillé · Coucou is free and open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
