@@ -74,6 +74,14 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+**Settings… → Chat provider** lets the chat run on any OpenAI-compatible server
+(AvalAI, OpenRouter…) instead of the Anthropic API: pick *Custom provider*, then
+enter its base URL (e.g. `https://api.avalai.ir/v1`), key and model id. The key
+goes to the Credential Manager like the others. This mode is chat only — no web
+search, and PDFs are not read. In `npm run tauri dev` builds only, `AVALAI_BASE_URL`,
+`AVALAI_API_KEY` and `AVALAI_MODEL` from a git-ignored `.env` fill in whatever
+Settings leaves empty; release builds never read it.
+
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 

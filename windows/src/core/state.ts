@@ -92,6 +92,12 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Which backend answers the chat: Claude, or any OpenAI-compatible server. */
+  chatProvider: "anthropic" | "custom";
+  /** Base URL of the custom provider, e.g. https://api.avalai.ir/v1 */
+  customBaseUrl: string;
+  /** Model id sent to the custom provider. */
+  customModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "anthropic",
+  customBaseUrl: "",
+  customModel: "",
 };
 
 type Listener = () => void;

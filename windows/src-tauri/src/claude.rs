@@ -79,29 +79,7 @@ pub async fn send(
     let key = secrets::get("anthropic-api-key")
         .ok_or_else(|| "API key missing. Open settings.".to_string())?;
 
-    let mut content: Vec<Value> = Vec::new();
-
-    // File / window context rides along with the first message only, exactly
-    // like ClaudeService.chat().
-    if chat.is_empty() {
-        match &context {
-            Some(ChatContext::File { name, path }) => {
-                if let Some(block) = file_block(path) {
-                    content.push(block);
-                }
-                content.push(json!({ "type": "text", "text": format!("File: {name}") }));
-            }
-            Some(ChatContext::Window { app_name, title, url }) => {
-                let mut text = format!("Context — App: {app_name}, Window: {title}");
-                if let Some(url) = url {
-                    text.push_str(&format!(", URL: {url}"));
-                }
-                content.push(json!({ "type": "text", "text": text }));
-            }
-            None => {}
-        }
-    }
-    content.push(json!({ "type": "text", "text": query }));
+    let content = user_content(chat, context.as_ref(), query);
 
     chat.push(json!({ "role": "user", "content": content }));
 
@@ -157,6 +135,32 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
+/// The user turn's content blocks. File / window context rides along with the
+/// first message only, exactly like ClaudeService.chat().
+fn user_content(chat: &Chat, context: Option<&ChatContext>, query: String) -> Vec<Value> {
+    let mut content: Vec<Value> = Vec::new();
+    if chat.is_empty() {
+        match context {
+            Some(ChatContext::File { name, path }) => {
+                if let Some(block) = file_block(path) {
+                    content.push(block);
+                }
+                content.push(json!({ "type": "text", "text": format!("File: {name}") }));
+            }
+            Some(ChatContext::Window { app_name, title, url }) => {
+                let mut text = format!("Context — App: {app_name}, Window: {title}");
+                if let Some(url) = url {
+                    text.push_str(&format!(", URL: {url}"));
+                }
+                content.push(json!({ "type": "text", "text": text }));
+            }
+            None => {}
+        }
+    }
+    content.push(json!({ "type": "text", "text": query }));
+    content
+}
+
 async fn call(key: &str, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(90))
@@ -188,6 +192,209 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
             })
             .unwrap_or_else(|| text.chars().take(200).collect());
         return Err(format!("Claude API {status}: {detail}"));
+    }
+    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
+}
+
+// ── Custom provider (OpenAI-compatible, e.g. AvalAI) ──────────────────────────
+//
+// Same history as the Claude path (Anthropic-shaped blocks), converted to
+// /chat/completions messages at call time. No web search: that tool is Claude's.
+
+const CUSTOM_KEY: &str = "custom-api-key";
+const CUSTOM_SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
+You can help with absolutely anything — research, coding, recommendations, tasks, questions. \
+Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
+No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
+
+pub struct CustomProvider {
+    pub base_url: String,
+    pub model: String,
+}
+
+/// Debug builds only: lets `npm run tauri dev` read AVALAI_* from the git-ignored
+/// `.env` at the repo root. Release builds never look at it — keys live in the
+/// Credential Manager.
+#[cfg(debug_assertions)]
+fn dev_env(name: &str) -> Option<String> {
+    if let Ok(v) = std::env::var(name) {
+        if !v.trim().is_empty() {
+            return Some(v.trim().to_string());
+        }
+    }
+    let mut dir = std::env::current_dir().ok()?;
+    loop {
+        if let Ok(text) = std::fs::read_to_string(dir.join(".env")) {
+            for line in text.lines() {
+                let Some((k, v)) = line.trim().split_once('=') else { continue };
+                if k.trim() == name {
+                    let v = v.trim().trim_matches('"').trim_matches('\'');
+                    return (!v.is_empty()).then(|| v.to_string());
+                }
+            }
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn dev_env(_name: &str) -> Option<String> {
+    None
+}
+
+fn non_empty(value: &str) -> Option<String> {
+    let v = value.trim();
+    (!v.is_empty()).then(|| v.to_string())
+}
+
+/// `https://host/v1/` → `https://host/v1`; a pasted `/chat/completions` is cut off.
+fn normalise_base_url(url: &str) -> String {
+    let url = url.trim().trim_end_matches('/');
+    url.strip_suffix("/chat/completions").unwrap_or(url).trim_end_matches('/').to_string()
+}
+
+/// Anthropic-shaped history → OpenAI messages. Images become `image_url` data
+/// URIs; a PDF has no OpenAI equivalent, so the model is told it was left out.
+fn to_openai_messages(history: &[Value]) -> Vec<Value> {
+    let mut out = vec![json!({ "role": "system", "content": CUSTOM_SYSTEM_PROMPT })];
+    for message in history {
+        let role = message.get("role").and_then(Value::as_str).unwrap_or("user");
+        let blocks: Vec<Value> = match message.get("content") {
+            Some(Value::Array(blocks)) => blocks.clone(),
+            Some(Value::String(text)) => vec![json!({ "type": "text", "text": text })],
+            _ => continue,
+        };
+
+        let mut parts: Vec<Value> = Vec::new();
+        let mut has_image = false;
+        for block in &blocks {
+            match block.get("type").and_then(Value::as_str) {
+                Some("text") => {
+                    if let Some(text) = block.get("text").and_then(Value::as_str) {
+                        parts.push(json!({ "type": "text", "text": text }));
+                    }
+                }
+                Some("image") if role == "user" => {
+                    let source = &block["source"];
+                    if let (Some(media), Some(data)) = (
+                        source.get("media_type").and_then(Value::as_str),
+                        source.get("data").and_then(Value::as_str),
+                    ) {
+                        has_image = true;
+                        parts.push(json!({
+                            "type": "image_url",
+                            "image_url": { "url": format!("data:{media};base64,{data}") },
+                        }));
+                    }
+                }
+                Some("document") if role == "user" => parts.push(json!({
+                    "type": "text",
+                    "text": "[A PDF was attached, but this provider cannot read PDFs.]",
+                })),
+                _ => {}
+            }
+        }
+        if parts.is_empty() {
+            continue;
+        }
+
+        let content = if has_image {
+            Value::Array(parts)
+        } else {
+            let text = parts
+                .iter()
+                .filter_map(|p| p.get("text").and_then(Value::as_str))
+                .collect::<Vec<_>>()
+                .join("\n");
+            Value::String(text)
+        };
+        out.push(json!({ "role": role, "content": content }));
+    }
+    out
+}
+
+/// One chat turn through the custom provider.
+pub async fn send_custom(
+    chat: &Chat,
+    provider: &CustomProvider,
+    query: String,
+    context: Option<ChatContext>,
+) -> Result<ChatReply, String> {
+    let base = non_empty(&provider.base_url)
+        .or_else(|| dev_env("AVALAI_BASE_URL"))
+        .map(|u| normalise_base_url(&u))
+        .ok_or_else(|| "Set the provider's base URL in Settings.".to_string())?;
+    let key = secrets::get(CUSTOM_KEY)
+        .or_else(|| dev_env("AVALAI_API_KEY"))
+        .ok_or_else(|| "Custom provider API key missing. Open settings.".to_string())?;
+    let model = non_empty(&provider.model)
+        .or_else(|| dev_env("AVALAI_MODEL"))
+        .ok_or_else(|| "Set the provider's model in Settings.".to_string())?;
+
+    let content = user_content(chat, context.as_ref(), query);
+    chat.push(json!({ "role": "user", "content": content }));
+
+    let body = json!({
+        "model": model,
+        "max_tokens": MAX_TOKENS,
+        "messages": to_openai_messages(&chat.snapshot()),
+    });
+
+    let response = match call_custom(&base, &key, &body).await {
+        Ok(v) => v,
+        Err(err) => {
+            chat.pop();
+            return Err(err);
+        }
+    };
+
+    let text = response
+        .get("choices")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(Value::as_str)
+        .map(|t| t.trim().to_string())
+        .unwrap_or_default();
+    if text.is_empty() {
+        chat.pop();
+        return Err("No response text.".into());
+    }
+
+    chat.push(json!({ "role": "assistant", "content": [{ "type": "text", "text": text }] }));
+    Ok(ChatReply { text })
+}
+
+async fn call_custom(base: &str, key: &str, body: &Value) -> Result<Value, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(90))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let response = client
+        .post(format!("{base}/chat/completions"))
+        .bearer_auth(key)
+        .header("content-type", "application/json")
+        .json(body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {e}"))?;
+
+    let status = response.status();
+    let text = response.text().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        // OpenAI-style errors: {"error":{"message":"…"}}; some gateways send a plain string.
+        let detail = serde_json::from_str::<Value>(&text)
+            .ok()
+            .and_then(|v| match v.get("error") {
+                Some(Value::String(s)) => Some(s.clone()),
+                Some(e) => e.get("message").and_then(Value::as_str).map(str::to_string),
+                None => None,
+            })
+            .unwrap_or_else(|| text.chars().take(200).collect());
+        return Err(format!("Provider API {status}: {detail}"));
     }
     serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
 }
@@ -248,7 +455,8 @@ fn base64(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::base64;
+    use super::{base64, normalise_base_url, to_openai_messages};
+    use serde_json::json;
 
     #[test]
     fn base64_matches_rfc4648_vectors() {
@@ -259,5 +467,32 @@ mod tests {
         assert_eq!(base64(b"foob"), "Zm9vYg==");
         assert_eq!(base64(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn base_url_is_normalised() {
+        assert_eq!(normalise_base_url(" https://api.avalai.ir/v1/ "), "https://api.avalai.ir/v1");
+        assert_eq!(
+            normalise_base_url("https://api.avalai.ir/v1/chat/completions"),
+            "https://api.avalai.ir/v1"
+        );
+    }
+
+    #[test]
+    fn history_converts_to_openai_messages() {
+        let history = vec![
+            json!({ "role": "user", "content": [
+                { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "AAAA" } },
+                { "type": "text", "text": "what is this?" },
+            ]}),
+            json!({ "role": "assistant", "content": [{ "type": "text", "text": "a cat" }] }),
+            json!({ "role": "user", "content": [{ "type": "text", "text": "thanks" }] }),
+        ];
+        let msgs = to_openai_messages(&history);
+        assert_eq!(msgs[0]["role"], "system");
+        assert_eq!(msgs[1]["content"][0]["image_url"]["url"], "data:image/png;base64,AAAA");
+        assert_eq!(msgs[1]["content"][1]["text"], "what is this?");
+        assert_eq!(msgs[2], json!({ "role": "assistant", "content": "a cat" }));
+        assert_eq!(msgs[3], json!({ "role": "user", "content": "thanks" }));
     }
 }

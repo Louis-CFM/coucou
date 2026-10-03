@@ -20,6 +20,20 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Which backend answers the chat: "anthropic" (default) or "custom", any
+    /// OpenAI-compatible server such as AvalAI. The custom key lives in the keychain.
+    #[serde(default = "default_chat_provider")]
+    pub chat_provider: String,
+    /// Base URL of the custom provider, e.g. https://api.avalai.ir/v1
+    #[serde(default)]
+    pub custom_base_url: String,
+    /// Model id sent to the custom provider.
+    #[serde(default)]
+    pub custom_model: String,
+}
+
+fn default_chat_provider() -> String {
+    "anthropic".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +57,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: default_chat_provider(),
+            custom_base_url: String::new(),
+            custom_model: String::new(),
         }
     }
 }
