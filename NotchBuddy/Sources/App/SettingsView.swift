@@ -69,6 +69,7 @@ struct SettingsView: View {
     @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
+    @State private var githubPRsToken: String = KeychainStore.shared.get("github-prs-token") ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
@@ -767,6 +768,20 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // GitHub Pull Requests
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#A371F7")).frame(width: 8, height: 8)
+                        Text("GitHub Pull Requests").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Personal Access Token  (empty = reuse the GitHub token)", text: $githubPRsToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Lists the open pull requests waiting for your review or assigned to you. Classic token: `repo` scope. Fine-grained token: Pull requests → Read-only on the repositories you want to watch.")
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 // Stripe
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -1073,6 +1088,7 @@ struct SettingsView: View {
         saveKey("n8n-api-key",     value: n8nKey)
         saveKey("vercel-token",    value: vercelToken)
         saveKey("github-token",    value: githubToken)
+        saveKey("github-prs-token", value: githubPRsToken)
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)

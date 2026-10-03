@@ -99,9 +99,9 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 | `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio | Chat | — |
-| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)* | Integration | — |
+| `service` | Services | Resend, n8n, Vercel, GitHub, GitHub PRs, Notion, Cal.com, Stripe, Apple Music *(GitHub only)* | Integration | — |
 
-Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
+Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, GitHub PRs `#A371F7`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
 
 Règles :
 - **`mainPillId`** (défaut `integration_claude`) est la pastille workspace toujours chargée. Elle ne compte pas dans les 4 places. Modifiable via le sélecteur Main dans Settings.

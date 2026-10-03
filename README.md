@@ -41,6 +41,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
+- 🔀 **GitHub pull requests** *(macOS)* — add the GitHub PRs pill to see the open pull requests waiting for your review or assigned to you, click one to open it, and get a nudge when a new review lands on your plate.
 - 🎵 **Apple Music pill** *(macOS, GitHub build)* — add the Apple Music pill in Settings → Active pills to see what's playing and control playback from the notch; Mochi dances while it plays.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
@@ -143,6 +144,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 | **LM Studio server** *(macOS)* | chat with local models via LM Studio | Settings → Chat → Local models → **Connect** |
 | **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
+| **GitHub Pull Requests** *(macOS)* | PRs to review or assigned to you, in the GitHub PRs pill | Settings → Integrations → GitHub Pull Requests · a token with the `repo` scope (classic) or Pull requests → Read-only (fine-grained); leave it empty to reuse the GitHub token |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 

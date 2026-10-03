@@ -264,6 +264,11 @@ final class AppState: ObservableObject {
     // GitHub stats (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
 
+    // GitHub pull requests (populated by GithubPullRequestsPoller)
+    @Published var githubPullRequests: [GitHubPullRequest] = []
+    @Published var githubPRsLoaded: Bool = false     // true after first successful poll
+    @Published var githubPRsError: String? = nil     // last API error (nil = ok)
+
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
     @Published var stripeBalance: Int = 0           // raw balance in cents

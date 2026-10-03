@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- GitHub pull requests in the notch: add the GitHub PRs pill in Settings → Active pills to see the open pull requests waiting for your review or assigned to you, click one to open it, and Mochi nudges you when a new review request arrives. Token in Settings → Integrations → GitHub Pull Requests (`repo` scope, or Pull requests → Read-only for a fine-grained token).
+
 ## 0.1.3 — October 3, 2026
 
 - Answer Claude's questions from the notch: when Claude Code asks a multiple-choice question, pick an option or type your own answer right in the island, and Reply in terminal hands it back. Update your hooks in Settings to turn it on (#165) — thanks @Vega8991 for the idea (#94)

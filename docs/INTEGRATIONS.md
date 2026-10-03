@@ -131,6 +131,22 @@ Réglages → Agents → Plan usage → **Uninstall relay**. Remet l'objet `stat
 
 ---
 
+## 2bis. GitHub Pull Requests (pastille `integration_github_prs`)
+
+**Fichiers** : `GithubPullRequests.swift` (modèle + parsing, Foundation seul, testé par `scripts/test-github-pull-requests.sh`), `GithubPullRequestsPoller.swift` (polling), `GitHubPullRequestsCardView` dans `IslandViewContent.swift`.
+**Plateforme** : macOS (la version Tauri n'a pas encore cette pastille).
+
+- Réglages → Integrations → **GitHub Pull Requests** : Personal Access Token dans le Trousseau sous `github-prs-token`. Champ vide → le poller réutilise `github-token` (pastille GitHub). Token classique : scope `repo` (sans lui, seules les PR publiques remontent). Token fine-grained : *Pull requests → Read-only* sur les dépôts à suivre.
+- **Polling** toutes les 120 s (première fois 8 s après le lancement), deux requêtes `GET /search/issues` (`advanced_search=true`, `sort=updated`, 30 résultats) :
+  - `is:pr is:open archived:false review-requested:@me` → raison `reviewRequested` ;
+  - `is:pr is:open archived:false assignee:@me` → raison `assigned`.
+  Les deux listes sont fusionnées par id `owner/repo#numéro` (une PR présente dans les deux garde les deux raisons), triées : revues demandées d'abord, puis par date de mise à jour.
+- **Carte** : en-tête « GitHub PRs · Pull requests · 2 to review · 1 assigned », puis jusqu'à 3 lignes (point violet `#A371F7` = revue demandée, gris = assignée, étiquette `draft`), titre, `repo#numéro`, ancienneté. Clic sur une ligne → ouvre la PR (liens web seulement, `safeWebURL`). Aucune PR → ligne verte « Nothing waiting for you ». Bouton ↗ et « Open GitHub PRs » → `https://github.com/pulls/review-requested`. Bouton « Refresh » dans la vue repos.
+- **Alerte** : premier chargement silencieux. Ensuite, toute nouvelle PR en revue demandée → badge `approval` sur la pastille (si elle n'est pas en focus), son `pop`, `hookReveal` (l'île sort en compact). Le badge s'efface après 60 s, la liste reste. Pas de changement d'état du bonhomme.
+- **Erreurs** : 401 « Invalid token », 403 « Rate limited or missing scope », 422, hors-ligne → message dans la vue repos (`githubPRsError`), point rouge. Effacé au prochain poll réussi.
+
+---
+
 ## 3. Fichiers déposés
 
 - Glisser-déposer natif sur la panel (types `fileURL`). Copier les fichiers dans `~/Library/Application Support/NotchBuddy/inbox/` (c'est la phase `uploading`).

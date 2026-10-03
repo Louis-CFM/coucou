@@ -162,6 +162,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
             NSWorkspace.shared.open(URL(string: "https://github.com")!)
+        case "integration_github_prs":
+            NSWorkspace.shared.open(URL(string: "https://github.com/pulls/review-requested")!)
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -1438,6 +1440,7 @@ struct IntegrationCardView: View {
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
         case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
+        case "integration_github_prs": return GithubPullRequestsPoller.isConfigured
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
@@ -1454,6 +1457,7 @@ struct IntegrationCardView: View {
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
         case "integration_github":  return URL(string: "https://github.com")
+        case "integration_github_prs": return URL(string: "https://github.com/pulls/review-requested")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
@@ -1487,6 +1491,11 @@ struct IntegrationCardView: View {
     // GitHub with stats loaded
     private var githubHasData: Bool {
         task.id == "integration_github" && appState.githubStats != nil
+    }
+
+    // GitHub pull requests: show the card as soon as the first poll completes (even when empty)
+    private var githubPRsHasData: Bool {
+        task.id == "integration_github_prs" && appState.githubPRsLoaded
     }
 
     // Stripe: show card as soon as first poll completes (balance OR payments)
@@ -1525,6 +1534,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_github_prs" ? appState.githubPRsError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1541,6 +1551,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_github_prs" ? appState.githubPRsError
                    : nil
         if let err = svcErr { return err }
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
@@ -1594,6 +1605,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
+                .transition(.opacity)
+        } else if githubPRsHasData {
+            GitHubPullRequestsCardView(pullRequests: appState.githubPullRequests)
                 .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
@@ -1766,6 +1780,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == "integration_github_prs" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in GithubPullRequestsPoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#A371F7").opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
@@ -2144,6 +2164,97 @@ private struct StatRow: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - GitHub Pull Requests Card View
+
+struct GitHubPullRequestsCardView: View {
+    let pullRequests: [GitHubPullRequest]
+
+    private let accent = Color(hex: "#A371F7")
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(accent)
+                    .frame(width: 7, height: 7)
+                Text("GitHub PRs")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                Text(GithubPullRequests.summary(pullRequests) ?? "Pull requests")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .monospacedDigit()
+                    .lineLimit(1).truncationMode(.tail)
+                    .help(GithubPullRequests.detailedSummary(pullRequests) ?? "Pull requests")
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 36)
+
+            // Rows — first is highlighted, rest plain (same structure as the Vercel list)
+            VStack(alignment: .leading, spacing: 3) {
+                if pullRequests.isEmpty {
+                    HStack(spacing: 5) {
+                        Circle().fill(Color(hex: "#22C55E")).frame(width: 5, height: 5)
+                        Text("Nothing waiting for you")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#C5C8CD"))
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(hex: "#22C55E").opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+
+                ForEach(Array(pullRequests.prefix(3).enumerated()), id: \.element.id) { index, pr in
+                    let dot = pr.needsReview ? accent : Color(hex: "#6B7079")
+                    Button(action: { open(pr) }) {
+                        HStack(spacing: 5) {
+                            Circle().fill(dot).frame(width: 5, height: 5)
+                            Text(pr.title)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: index == 0 ? "#C5C8CD" : "#9398A1"))
+                                .lineLimit(1).truncationMode(.tail)
+                            if pr.isDraft {
+                                Text("draft")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(Color(hex: "#6B7079"))
+                                    .padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(Color.white.opacity(0.06))
+                                    .clipShape(Capsule())
+                                    .fixedSize()
+                            }
+                            Spacer(minLength: 4)
+                            Text(pr.reference)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .lineLimit(1).truncationMode(.head)
+                                .frame(maxWidth: 96, alignment: .trailing)
+                                .layoutPriority(1)
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(index == 0 ? dot.opacity(0.08) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.top, 5)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+
+    private func open(_ pr: GitHubPullRequest) {
+        if let url = safeWebURL(pr.url) { NSWorkspace.shared.open(url) }
     }
 }
 
