@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- GitHub pull requests in the notch: add the GitHub PRs pill in Settings → Active pills to see the open pull requests waiting for your review or assigned to you, click one to open it, and Mochi nudges you when a new review request arrives. Token in Settings → Integrations → GitHub Pull Requests (`repo` scope, or Pull requests → Read-only for a fine-grained token).
+- GitHub pull requests in the notch: add the GitHub PRs pill in Settings → Active pills to see the open pull requests waiting for your review or assigned to you, click one to open it, and Mochi nudges you when a new review request arrives. With more than three waiting, the island grows and the list scrolls. Token in Settings → Integrations → GitHub Pull Requests (`repo` scope, or Pull requests → Read-only for a fine-grained token).
 
 ## 0.1.3 — October 3, 2026
 

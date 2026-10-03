@@ -773,6 +773,8 @@ final class IslandWindowController: NSWindowController {
             let base: CGFloat = 240
             let perMsg: CGFloat = 40
             islandH = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
+        } else if s.mode == .expanded && s.overviewIsTall {
+            islandH = IslandConst.tallOverviewHeight
         } else {
             islandH = fixedH
         }
@@ -838,6 +840,8 @@ final class IslandPanel: NSPanel {
             let base: CGFloat = 240
             let perMsg: CGFloat = 40
             h = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
+        } else if s.mode == .expanded && s.overviewIsTall {
+            h = IslandConst.tallOverviewHeight
         } else {
             h = fixedH
         }

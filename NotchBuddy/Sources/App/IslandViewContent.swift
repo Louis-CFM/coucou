@@ -1607,7 +1607,7 @@ struct IntegrationCardView: View {
             GitHubStatsCardView(stats: appState.githubStats!)
                 .transition(.opacity)
         } else if githubPRsHasData {
-            GitHubPullRequestsCardView(pullRequests: appState.githubPullRequests)
+            GitHubPullRequestsCardView(pullRequests: appState.githubPullRequests, tall: appState.overviewIsTall)
                 .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
@@ -2171,8 +2171,11 @@ private struct StatRow: View {
 
 struct GitHubPullRequestsCardView: View {
     let pullRequests: [GitHubPullRequest]
+    /// Tall overview: the whole list, scrollable. Regular: the first 3 rows.
+    var tall: Bool = false
 
     private let accent = Color(hex: "#A371F7")
+    private var visible: [GitHubPullRequest] { tall ? pullRequests : Array(pullRequests.prefix(3)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2196,7 +2199,7 @@ struct GitHubPullRequestsCardView: View {
             .padding(.trailing, 36)
 
             // Rows — first is highlighted, rest plain (same structure as the Vercel list)
-            VStack(alignment: .leading, spacing: 3) {
+            let rows = VStack(alignment: .leading, spacing: 3) {
                 if pullRequests.isEmpty {
                     HStack(spacing: 5) {
                         Circle().fill(Color(hex: "#22C55E")).frame(width: 5, height: 5)
@@ -2210,7 +2213,7 @@ struct GitHubPullRequestsCardView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                 }
 
-                ForEach(Array(pullRequests.prefix(3).enumerated()), id: \.element.id) { index, pr in
+                ForEach(Array(visible.enumerated()), id: \.element.id) { index, pr in
                     let dot = pr.needsReview ? accent : Color(hex: "#6B7079")
                     Button(action: { open(pr) }) {
                         HStack(spacing: 5) {
@@ -2249,8 +2252,17 @@ struct GitHubPullRequestsCardView: View {
             .padding(.top, 5)
             .padding(.leading, 108)
             .padding(.trailing, 12)
+
+            if tall {
+                ScrollView(.vertical, showsIndicators: false) {
+                    rows.padding(.bottom, 8)
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                rows
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: tall ? .infinity : nil, alignment: .topLeading)
         .padding(.top, 4)
     }
 

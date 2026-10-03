@@ -385,6 +385,15 @@ final class AppState: ObservableObject {
         stateOverride ?? focusTask?.state ?? .idle
     }
 
+    /// The overview grows to IslandConst.tallOverviewHeight when the GitHub PRs pill is in
+    /// focus with more pull requests than the 3 the regular card can show; the list scrolls.
+    var overviewIsTall: Bool {
+        view == .overview
+            && focusId == GithubPullRequestsPoller.pillId
+            && githubPRsLoaded
+            && githubPullRequests.count > 3
+    }
+
     // MARK: - Task management
 
     func addTask(_ task: AgentTask) {

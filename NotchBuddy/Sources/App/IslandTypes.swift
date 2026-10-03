@@ -162,6 +162,8 @@ enum IslandConst {
     static let notchWidth: CGFloat  = IslandScreenGeometry.fallbackNotchWidth
     static let notchHeight: CGFloat = 32
     static let expandedWidth: CGFloat = 640
+    /// Overview height when the GitHub PRs pill is in focus with a long list (see AppState.overviewIsTall).
+    static let tallOverviewHeight: CGFloat = 280
     static let earRadius: CGFloat   = 14
     static let roundedCorner: CGFloat = 14    // hidden/peek/compact
     static let expandedCorner: CGFloat = 22

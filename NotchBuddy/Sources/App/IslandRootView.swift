@@ -127,7 +127,7 @@ struct IslandContainer: View {
             let tr: CGFloat = 0
             withAnimation(anim) {
                 islandWidth      = w
-                islandHeight     = (newMode == .expanded && state.view == .prompt) ? chatPromptHeight : h
+                islandHeight     = newMode == .expanded ? expandedHeight(fixed: h, view: state.view) : h
                 cornerRadius     = cr
                 islandTopRadius  = tr
             }
@@ -144,25 +144,39 @@ struct IslandContainer: View {
                                     nw: state.notchWidth, nh: state.notchHeight)
             withAnimation(openSpring) {
                 islandWidth  = w
-                islandHeight = newView == .prompt ? chatPromptHeight : h
+                islandHeight = expandedHeight(fixed: h, view: newView)
             }
         }
         .onChange(of: state.chatHistory.count) { _, _ in
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
+        .onChange(of: state.overviewIsTall) { _, _ in
+            guard state.mode == .expanded, state.view == .overview else { return }
+            let (_, h) = islandSize(mode: .expanded, view: .overview,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            withAnimation(openSpring) { islandHeight = expandedHeight(fixed: h, view: .overview) }
+        }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
             islandWidth      = w
-            islandHeight     = state.view == .prompt ? chatPromptHeight : h
+            islandHeight     = state.mode == .expanded ? expandedHeight(fixed: h, view: state.view) : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             islandTopRadius  = 0
         }
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             greetNotif.toggle()
         }
+    }
+
+    /// Expanded height for a view: chat and the tall overview override the fixed layout height.
+    private func expandedHeight(fixed h: CGFloat, view: IslandView) -> CGFloat {
+        if view == .prompt { return chatPromptHeight }
+        if view == .overview && state.overviewIsTall { return IslandConst.tallOverviewHeight }
+        return h
     }
 
     private func modeOrder(_ m: IslandMode) -> Int {
@@ -367,10 +381,12 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
         if let fixedY = layout.botY {
             cy = fixedY
         } else {
-            // Center of the fixed 84pt card (VStack top=8, header=34 → content starts at y=42)
+            // Center of the fixed 84pt card (VStack top=8, header=34 → content starts at y=42).
+            // A tall overview (long GitHub PRs list) keeps Mochi where the regular overview puts it.
             let headerBottom: CGFloat = 42
             let cardH: CGFloat = 84
-            cy = headerBottom + (islandH - headerBottom - cardH) / 2 + cardH / 2
+            let h = view == .overview ? min(islandH, layout.height) : islandH
+            cy = headerBottom + (h - headerBottom - cardH) / 2 + cardH / 2
         }
         return (cx, cy, diameter, 1)
     }
@@ -437,7 +453,7 @@ struct IslandContentView: View {
                     // Views that fill available height instead of the fixed 98pt content frame:
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
-                    let isTall = v == .prompt || (v == .mail && active)
+                    let isTall = v == .prompt || (v == .mail && active) || (v == .overview && active && state.overviewIsTall)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)

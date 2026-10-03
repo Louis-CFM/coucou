@@ -41,7 +41,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
 - 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
-- 🔀 **GitHub pull requests** *(macOS)* — add the GitHub PRs pill to see the open pull requests waiting for your review or assigned to you, click one to open it, and get a nudge when a new review lands on your plate.
+- 🔀 **GitHub pull requests** *(macOS)* — add the GitHub PRs pill to see the open pull requests waiting for your review or assigned to you, click one to open it, and get a nudge when a new review lands on your plate. More than three waiting? The island grows and the list scrolls.
 - 🎵 **Apple Music pill** *(macOS, GitHub build)* — add the Apple Music pill in Settings → Active pills to see what's playing and control playback from the notch; Mochi dances while it plays.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
