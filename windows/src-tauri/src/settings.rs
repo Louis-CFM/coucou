@@ -74,6 +74,15 @@ pub struct ModelEntry {
     /// Whether it reads images, learnt the first time it is sent one.
     /// None = not known yet.
     pub vision: Option<bool>,
+    /// What it makes: "image", "video" or "audio" (see media.rs). Anything
+    /// else, including the empty string of a settings.json written before
+    /// this existed, is a text chat model.
+    pub output: String,
+    /// Text-to-speech voice, for "audio" models. Empty = the model's default.
+    pub voice: String,
+    /// Output detail for "3d" models that offer it (TRELLIS 2: "low",
+    /// "medium" or "high"). Empty = the model's default.
+    pub detail: String,
 }
 
 /// Settings written before the model list existed: turn the Claude model and
@@ -92,6 +101,7 @@ fn migrate(s: &mut Settings) {
         model: s.model.clone(),
         endpoint: String::new(),
         vision: Some(true),
+        ..Default::default()
     });
     s.active_model = "claude".into();
     if !s.chat_endpoint.trim().is_empty() && !s.custom_model.trim().is_empty() {
@@ -102,6 +112,7 @@ fn migrate(s: &mut Settings) {
             model: s.custom_model.trim().to_string(),
             endpoint: s.chat_endpoint.trim().to_string(),
             vision: None,
+            ..Default::default()
         });
         s.active_model = "custom".into();
     }
@@ -186,6 +197,8 @@ mod tests {
         assert_eq!(s.models[0].kind, "claude");
         assert_eq!(s.models[1].endpoint, "https://api.groq.com/openai/v1");
         assert_eq!(s.active_model, "custom");
+        // Saved before models had an output kind: still text models.
+        assert!(s.models.iter().all(|m| m.output.is_empty() && m.voice.is_empty()));
 
         // Fresh install: just Claude. A dangling active id is repaired.
         let mut fresh = Settings::default();
@@ -194,5 +207,15 @@ mod tests {
         fresh.active_model = "gone".into();
         migrate(&mut fresh);
         assert_eq!(fresh.active_model, "claude");
+    }
+
+    #[test]
+    fn model_entries_without_an_output_load_as_text() {
+        let m: super::ModelEntry =
+            serde_json::from_str(r#"{"id":"m","label":"x","kind":"openai","model":"llama","endpoint":"e","vision":null}"#)
+                .unwrap();
+        assert_eq!(m.output, "");
+        let m: super::ModelEntry = serde_json::from_str(r#"{"id":"m","model":"o","output":"audio","voice":"troy"}"#).unwrap();
+        assert_eq!((m.output.as_str(), m.voice.as_str()), ("audio", "troy"));
     }
 }

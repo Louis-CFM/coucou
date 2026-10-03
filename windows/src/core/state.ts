@@ -47,7 +47,19 @@ export interface ChatMessage {
   notice?: string | null;
   /** A dropped text or code file sent with this message, shown as a code card. */
   attachment?: { name: string; lang: string; text: string } | null;
+  /** Images, video or speech the model made. */
+  media?: MediaFile[];
 }
+
+/** A generated file in the app's media folder, by bare name. */
+export interface MediaFile {
+  name: string;
+  kind: "image" | "video" | "audio" | "3d";
+}
+
+/** What a model makes. "" = saved before this existed: text. */
+/** "stt" models turn speech into text for the mic button; they never chat. */
+export type ModelOutput = "text" | "image" | "video" | "audio" | "3d" | "stt" | "";
 
 export type PromptContext =
   | { kind: "window"; appName: string; title: string; url?: string }
@@ -148,6 +160,11 @@ export interface ModelEntry {
   endpoint: string;
   /** Reads images? Learnt the first time it is sent one; null = not known yet. */
   vision: boolean | null;
+  output?: ModelOutput;
+  /** Text-to-speech voice for "audio" models; empty = the model's default. */
+  voice?: string;
+  /** Output detail for "3d" models that offer it (TRELLIS 2: low/medium/high). */
+  detail?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

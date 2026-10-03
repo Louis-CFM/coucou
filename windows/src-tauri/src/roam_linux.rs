@@ -26,6 +26,16 @@ pub const LABEL: &str = "roam";
 
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 
+/// The overlay is one thing at a time: a roam, or a media preview (media.rs).
+/// False when it's already busy.
+pub fn claim_overlay() -> bool {
+    !ACTIVE.swap(true, Ordering::SeqCst)
+}
+
+pub fn release_overlay() {
+    ACTIVE.store(false, Ordering::SeqCst);
+}
+
 #[derive(Clone, Serialize)]
 struct Point {
     x: f64,

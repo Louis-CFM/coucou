@@ -22,6 +22,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Both already in the tree through Tauri: generated images arrive as base64,
+# and Download needs the real Downloads folder (it can be moved on Windows).
+base64 = "0.22"
+dirs = "7"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

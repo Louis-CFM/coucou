@@ -4,7 +4,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Settings } from "./state";
+import type { MediaFile, Settings } from "./state";
 import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
@@ -90,9 +90,26 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
-    callOrThrow<{ text: string; notice: string | null; sentImage: boolean; mood: string | null }>(
+    callOrThrow<{ text: string; notice: string | null; sentImage: boolean; mood: string | null; media: MediaFile[] }>(
       "chat_send", { query, context, textOnly },
     ),
+  /** A generated file as a blob: URL (revoke it when done), or null. Only
+   *  files in the app's media folder can be read, by bare name. */
+  mediaUrl: async (name: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("media_bytes", { name });
+    if (!bytes) return null;
+    const ext = name.split(".").pop() ?? "";
+    return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
+  },
+  /** A generated file's raw bytes (3D models are parsed, not shown by URL). */
+  mediaBytes: (name: string) => call<ArrayBuffer>("media_bytes", { name }),
+  /** Copies a generated file into Downloads; returns where it went. */
+  mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** Full-screen preview, on the overlay window. */
+  mediaPreview: (file: MediaFile) => call<void>("media_preview", { name: file.name, kind: file.kind }),
+  mediaPreviewClose: () => call<void>("media_preview_close"),
+  /** "image", "video", "audio" or "text", guessed from a model id. */
+  guessOutput: (model: string) => call<string>("guess_model_output", { model }),
   /** A dropped text or code file's contents, for the chat's code card. */
   readAttachment: (path: string) => call<{ text: string; lang: string }>("read_attachment", { path }),
   /** Credential Manager name of an endpoint's key (one per provider host). */
@@ -113,6 +130,13 @@ export const Bridge = {
       headers: { "x-file-name": encodeURIComponent(file.name) },
     });
   },
+  /** The mic's recording to text, through the saved speech-to-text model. */
+  transcribe: async (audio: Blob): Promise<string> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<string>("transcribe_audio", new Uint8Array(await audio.arrayBuffer()), {
+      headers: { "x-mime": audio.type || "audio/webm" },
+    });
+  },
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -125,6 +149,14 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+};
+
+/** Extensions media.rs saves with (it sniffs the bytes), and their types. */
+const MEDIA_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm",
+  wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4",
+  glb: "model/gltf-binary", ply: "application/octet-stream",
 };
 
 export interface IntegrationUpdate {

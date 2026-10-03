@@ -107,6 +107,8 @@ pub struct ChatReply {
     pub sent_image: bool,
     /// How the model felt about its answer, for Mochi to act out.
     pub mood: Option<String>,
+    /// Images, video or speech the model made (see media.rs).
+    pub media: Vec<crate::media::MediaFile>,
 }
 
 /// The error a text-only model's image refusal is reported as, so the island
@@ -182,7 +184,7 @@ pub async fn send(
                     // Stored in the Claude shape so switching provider mid-chat still works.
                     chat.push(json!({ "role": "assistant", "content": [{ "type": "text", "text": text }] }));
                     let (text, mood) = take_mood(&text);
-                    Ok(ChatReply { text, notice, sent_image, mood })
+                    Ok(ChatReply { text, notice, sent_image, mood, media: Vec::new() })
                 }
                 Err(err) => {
                     chat.pop();
@@ -242,7 +244,7 @@ pub async fn send(
         return Err("No response text.".into());
     }
     let (text, mood) = take_mood(&text);
-    Ok(ChatReply { text, notice, sent_image, mood })
+    Ok(ChatReply { text, notice, sent_image, mood, media: Vec::new() })
 }
 
 async fn call(key: &str, body: &Value) -> Result<Value, String> {
@@ -322,16 +324,7 @@ async fn call_openai(
     let text = response.text().await.map_err(|e| e.to_string())?;
     let parsed: Option<Value> = serde_json::from_str(&text).ok();
     if !status.is_success() {
-        // OpenRouter: {error:{message}}; NIM: {detail} or {error:"..."}.
-        let detail = parsed
-            .as_ref()
-            .and_then(|v| {
-                v.pointer("/error/message")
-                    .or_else(|| v.get("error"))
-                    .or_else(|| v.get("detail"))
-                    .map(|d| d.as_str().map(str::to_string).unwrap_or_else(|| d.to_string()))
-            })
-            .unwrap_or_else(|| text.chars().take(200).collect());
+        let detail = api_detail(&text);
         if with_image && matches!(status.as_u16(), 400 | 415 | 422) {
             log::line(format!("custom provider refused the image: {status} {detail}"));
             return Err(IMAGES_UNSUPPORTED.into());
@@ -350,9 +343,24 @@ async fn call_openai(
     Ok(reply.to_string())
 }
 
+/// The provider's own error message out of an error body. OpenRouter:
+/// {error:{message}}; NIM: {detail} or {error:"..."}; anything else: the start
+/// of the body.
+pub(crate) fn api_detail(text: &str) -> String {
+    serde_json::from_str::<Value>(text)
+        .ok()
+        .and_then(|v| {
+            v.pointer("/error/message")
+                .or_else(|| v.get("error"))
+                .or_else(|| v.get("detail"))
+                .map(|d| d.as_str().map(str::to_string).unwrap_or_else(|| d.to_string()))
+        })
+        .unwrap_or_else(|| text.chars().take(200).collect())
+}
+
 /// An API failure in words a non-technical user can act on. The raw detail is
 /// kept at the end for anyone who needs it.
-fn friendly_error(status: u16, detail: &str, model: &str) -> String {
+pub(crate) fn friendly_error(status: u16, detail: &str, model: &str) -> String {
     let hint = match status {
         401 | 403 => "The API key was refused. Check it in Settings.".to_string(),
         404 => format!("The model \"{}\" wasn't found at this provider. Check the model name in Settings.", model.trim()),

@@ -6,7 +6,8 @@ import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { codeBlock, renderMarkdown } from "./markdown";
-import { State, type ChatMessage } from "../core/state";
+import { generatingCard, mediaCard, releaseMedia, resetProgress } from "./media";
+import { State, type ChatMessage, type ModelEntry, type ModelOutput } from "../core/state";
 import type { ViewHost } from "./views";
 
 let nextId = 1;
@@ -31,7 +32,9 @@ function bubble(message: ChatMessage): HTMLElement {
     { class: "chat-row" },
     h("div", {},
       message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
-      reply,
+      // An image model may answer with pictures only.
+      message.content ? reply : null,
+      ...(message.media ?? []).map(mediaCard),
     ),
   );
 }
@@ -72,6 +75,11 @@ function activeModel() {
   return models.find((m) => m.id === State.settings.activeModel) ?? models[0] ?? null;
 }
 
+/** What a model makes; "text" for chat models, old entries included. */
+function outputOf(m: ModelEntry | null): Exclude<ModelOutput, ""> {
+  return m?.output || "text";
+}
+
 export function buildPrompt(onHeightChange: () => void): ViewHost {
   const chipRow = h("div", { class: "chip-row" });
   const log = h("div", { class: "chat-log" });
@@ -95,13 +103,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   };
   function drawMenu() {
     clear(modelMenu);
-    for (const m of State.settings.models ?? []) {
+    // Speech-to-text models only serve the mic: they can't answer a chat.
+    for (const m of (State.settings.models ?? []).filter((m) => m.output !== "stt")) {
       const item = h(
         "button",
         { class: m.id === activeModel()?.id ? "model-item on" : "model-item" },
         h("span", { class: "model-name", text: m.label || m.model }),
         m.vision === true ? h("span", { class: "model-tag eye", title: "Sees images" }, svg(ICONS.eye, 10)) : null,
         m.vision === false ? h("span", { class: "model-tag", text: "text" }) : null,
+        outputOf(m) !== "text" ? h("span", { class: "model-tag", text: outputOf(m) }) : null,
       );
       item.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -152,7 +162,106 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     onHeightChange();
   });
 
-  const bar = h("div", { class: "chat-bar" }, input, picker, send);
+  // Speak instead of typing: records, shows the words as they're heard, and
+  // sends when the mic is clicked again (Enter too; Esc throws it away).
+  const mic = h("button", { class: "mic-btn", title: "Speak instead of typing" }, svg(ICONS.mic, 13));
+  let recorder: MediaRecorder | null = null;
+  let micStream: MediaStream | null = null;
+  let chunks: Blob[] = [];
+  let micType = "audio/webm";
+  let liveTimer = 0;
+  let capTimer = 0;
+  const sttModel = () => (State.settings.models ?? []).find((m) => m.output === "stt") ?? null;
+  const heard = () => Bridge.transcribe(new Blob(chunks, { type: micType }));
+  const micFailed = (message: string) => {
+    State.noteMessage = message;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  };
+
+  async function startMic() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      micFailed("Coucou can't use the microphone: it's blocked, or there isn't one.");
+      return;
+    }
+    chunks = [];
+    const opus = "audio/webm;codecs=opus";
+    recorder = new MediaRecorder(micStream, MediaRecorder.isTypeSupported(opus) ? { mimeType: opus } : undefined);
+    micType = recorder.mimeType || "audio/webm";
+    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    recorder.start(500);
+    mic.classList.add("rec");
+    mic.title = "Listening: click to send, Esc to cancel";
+    input.value = "";
+    input.placeholder = "Listening…";
+    Sound.play("peek");
+    // The words so far, re-read every few seconds (gently: free tiers allow
+    // about 20 transcriptions a minute).
+    let busy = false;
+    liveTimer = window.setInterval(async () => {
+      if (busy || !chunks.length) return;
+      busy = true;
+      try {
+        const text = await heard();
+        if (recorder && text) input.value = text;
+      } catch {
+        // The final read reports any real problem.
+      } finally {
+        busy = false;
+      }
+    }, 4000);
+    capTimer = window.setTimeout(() => void stopMic(true), 120_000);
+  }
+
+  async function stopMic(sendIt: boolean) {
+    const r = recorder;
+    if (!r) return;
+    recorder = null;
+    window.clearInterval(liveTimer);
+    window.clearTimeout(capTimer);
+    await new Promise<void>((done) => {
+      r.onstop = () => done();
+      r.stop();
+    });
+    micStream?.getTracks().forEach((t) => t.stop());
+    micStream = null;
+    mic.classList.remove("rec");
+    mic.title = "Speak instead of typing";
+    if (!sendIt) {
+      chunks = [];
+      input.value = "";
+      State.notify();
+      return;
+    }
+    mic.classList.add("busy");
+    try {
+      const text = await heard();
+      chunks = [];
+      if (text) {
+        input.value = text;
+        void submit();
+      } else {
+        Sound.play("blip");
+      }
+    } catch (err) {
+      micFailed(String(err).replace(/^Error:\s*/, ""));
+    } finally {
+      mic.classList.remove("busy");
+      State.notify();
+    }
+  }
+
+  mic.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (mic.classList.contains("busy")) return;
+    if (recorder) void stopMic(true);
+    else void startMic();
+  });
+
+  const bar = h("div", { class: "chat-bar" }, input, picker, send, mic);
 
   // Under Mochi: start the conversation over, dropped file included, so an
   // unrelated question doesn't carry (and pay for) it again.
@@ -160,6 +269,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   clearChat.addEventListener("click", () => {
     if (sending) return;
     State.chatHistory = [];
+    releaseMedia();
     State.dropAttachment();
     void Bridge.chatReset();
     renderedCount = -1;
@@ -177,9 +287,12 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   let sending = false;
   let renderedCount = -1;
+  /** What the model in flight makes; anything but text shows the generating card. */
+  let making: ModelOutput = "text";
 
   async function submit(textOnly = false) {
-    const query = input.value.trim();
+    // A picture-to-3D model needs no words: the picture is the prompt.
+    const query = input.value.trim() || (outputOf(activeModel()) === "3d" ? "3D model" : "");
     if (!query || sending) return;
     const file = State.droppedFile;
     const firstTurn = State.chatHistory.length === 0;
@@ -196,6 +309,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     input.value = "";
     sending = true;
     askImage = false;
+    making = outputOf(model);
+    resetProgress();
     Sound.play("send");
 
     // A dropped text or code file goes along on the first turn: show it too.
@@ -211,12 +326,16 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
+    // A 3D model works from the dropped picture on every turn, not just the first.
+    const pictureTo3d = making === "3d" && !!file && IMAGE_FILE.test(file.path);
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      (State.chatHistory.length === 1 || pictureTo3d) && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
       const reply = await Bridge.chatSend(query, context, textOnly);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice });
+      State.chatHistory.push({
+        id: nextId++, role: "assistant", content: reply.text, notice: reply.notice, media: reply.media,
+      });
       // The model ends with how it feels about its answer; the island acts it out.
       if (reply.mood) window.dispatchEvent(new CustomEvent("mochi-mood", { detail: reply.mood }));
       State.stateOverride = null;
@@ -245,7 +364,14 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   send.addEventListener("click", () => void submit());
   input.addEventListener("keydown", (e) => {
-    if ((e as KeyboardEvent).key === "Enter") {
+    const key = (e as KeyboardEvent).key;
+    if (recorder && (key === "Enter" || key === "Escape")) {
+      e.preventDefault();
+      e.stopPropagation();
+      void stopMic(key === "Enter");
+      return;
+    }
+    if (key === "Enter") {
       e.preventDefault();
       void submit();
     }
@@ -277,13 +403,26 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         renderedCount = count;
         clear(log);
         for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
+        if (thinking) log.append(making === "text" ? typingDots() : generatingCard(making));
         log.scrollTop = log.scrollHeight;
       }
 
       const name = State.settings.mochiName?.trim() || "me";
-      input.placeholder = State.chatHistory.length === 0 ? `Ask ${name} anything…` : "Continue…";
+      const hint = {
+        image: "Describe an image…",
+        video: "Describe a video…",
+        audio: "Text to speak…",
+        "3d": State.droppedFile ? "Press Enter to make it 3D…" : "Drop a picture to make it 3D…",
+        stt: "Pick a chat model to talk to…",
+      };
+      const output = outputOf(activeModel());
+      input.placeholder =
+        output !== "text" ? hint[output] : State.chatHistory.length === 0 ? `Ask ${name} anything…` : "Continue…";
       input.disabled = sending;
+      if (recorder) input.placeholder = "Listening…";
+      const stt = sttModel();
+      mic.style.display = stt ? "" : "none";
+      if (stt && !recorder) mic.title = `Speak instead of typing (${stt.label || stt.model})`;
 
       const model = activeModel();
       modelBtn.textContent = `${model?.label || model?.model || "No model"} \u25BE`;

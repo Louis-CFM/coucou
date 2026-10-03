@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type ModelEntry, type Settings } from "../core/state";
+import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type ModelEntry, type ModelOutput, type Settings } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { SHAPES, hats, type Outfit } from "../mochi/wardrobe";
 import { h, clear } from "../views/dom";
@@ -267,6 +267,50 @@ function providerName(endpoint: string): string {
   return endpoint.replace(/^\w+:\/\//, "").split("/")[0] || "custom";
 }
 
+/** What a model makes: chat text, or a file. */
+function outputSelect(value: string): HTMLSelectElement {
+  const select = h("select", { title: "What this model makes" }) as HTMLSelectElement;
+  for (const [v, text] of [["text", "Text"], ["image", "Images"], ["video", "Video"], ["audio", "Speech"], ["3d", "3D"], ["stt", "Transcribes speech"]]) {
+    select.append(h("option", { value: v, text }));
+  }
+  select.value = value || "text";
+  return select;
+}
+
+/** Groq's Orpheus English voices (console.groq.com/docs/text-to-speech/orpheus). */
+const ORPHEUS_VOICES = ["autumn", "diana", "hannah", "austin", "daniel", "troy"];
+
+/** A speech model's voice: Orpheus's six to pick from, any other model's by name. */
+function voiceInput(m: ModelEntry): HTMLElement {
+  const orpheus = /orpheus-v1-english/i.test(m.model);
+  const el = orpheus
+    ? (h("select", {}) as HTMLSelectElement)
+    : (h("input", { type: "text", placeholder: "Voice, e.g. alloy", value: m.voice ?? "", spellcheck: "false" }) as HTMLInputElement);
+  if (el instanceof HTMLSelectElement) {
+    for (const v of ORPHEUS_VOICES) el.append(h("option", { value: v, text: v[0].toUpperCase() + v.slice(1) }));
+    el.value = ORPHEUS_VOICES.includes(m.voice ?? "") ? m.voice! : "troy";
+  }
+  el.addEventListener("change", () => {
+    m.voice = el.value.trim();
+    void save();
+  });
+  return el;
+}
+
+/** TRELLIS 2's output detail (Pollinations: low 512³, medium 1024³, high 1536³). */
+function detailInput(m: ModelEntry): HTMLSelectElement {
+  const el = h("select", { title: "More detail takes longer and costs more" }) as HTMLSelectElement;
+  for (const [v, text] of [["low", "Low detail"], ["medium", "Medium detail"], ["high", "High detail"]]) {
+    el.append(h("option", { value: v, text }));
+  }
+  el.value = ["low", "medium", "high"].includes(m.detail ?? "") ? m.detail! : "low";
+  el.addEventListener("change", () => {
+    m.detail = el.value;
+    void save();
+  });
+  return el;
+}
+
 /**
  * The chat's saved models, picked from the selector next to Send. Claude models
  * use the Claude key above; any OpenAI-compatible provider has one key per host,
@@ -277,11 +321,18 @@ function modelsSection(): HTMLElement {
   const input = (placeholder: string, type = "text") =>
     h("input", { type, placeholder, style: "flex:1 1 auto;min-width:0", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
 
+  // Draws overlap (adding a model saves, which redraws, and redraws again):
+  // each builds its rows apart and only the newest one is put on screen,
+  // or the rows of both would land in the list.
+  let drawn = 0;
   async function draw() {
-    clear(list);
+    const mine = ++drawn;
+    const rows: HTMLElement[] = [];
     for (const m of settings.models) {
       const active = m.id === settings.activeModel;
       const use = h("button", { class: active ? "primary" : "", text: active ? "In use" : "Use" });
+      // A speech-to-text model serves the mic, never the chat.
+      if (m.output === "stt") use.style.visibility = "hidden";
       use.addEventListener("click", () => {
         settings.activeModel = m.id;
         void save();
@@ -300,6 +351,15 @@ function modelsSection(): HTMLElement {
       );
       vision.value = m.vision === true ? "yes" : m.vision === false ? "no" : "auto";
       vision.disabled = m.kind === "claude";
+      const makes = outputSelect(m.output ?? "");
+      makes.disabled = m.kind === "claude";
+      makes.addEventListener("change", () => {
+        m.output = makes.value as ModelOutput;
+        void save();
+        void draw();
+      });
+      // Seeing images only matters to a chat model.
+      vision.style.display = (m.output || "text") === "text" ? "" : "none";
       vision.addEventListener("change", () => {
         m.vision = vision.value === "yes" ? true : vision.value === "no" ? false : null;
         void save();
@@ -325,11 +385,23 @@ function modelsSection(): HTMLElement {
       // the model has been given a name of its own.
       const provider = m.kind === "claude" ? "Claude" : providerName(m.endpoint);
       const named = m.label && m.label !== m.model && m.label !== m.model.split("/").pop();
-      list.append(
-        h("div", { class: "row" }, use, label, vision, keyDot, remove),
+      rows.push(
+        h("div", { class: "row" }, use, label, makes, vision, keyDot, remove),
         h("div", { class: "hint", style: "margin:-4px 0 6px 64px", text: named ? `${provider} \u00b7 ${m.model}` : provider }),
+        ...(m.output === "audio"
+          ? [h("div", { class: "row", style: "margin:-2px 0 8px 64px" }, h("span", { class: "hint", text: "Voice" }), voiceInput(m))]
+          : []),
+        ...(m.output === "stt"
+          ? [h("div", { class: "hint", style: "margin:-2px 0 8px 64px", text: "The mic next to Send uses this to turn your voice into text." })]
+          : []),
+        ...(m.output === "3d"
+          ? [h("div", { class: "row", style: "margin:-2px 0 8px 64px" },
+              /trellis/i.test(m.model) ? detailInput(m) : null,
+              h("span", { class: "hint", text: "Drop a picture on the island, then send (or make an image first)." }))]
+          : []),
       );
     }
+    if (mine === drawn) list.replaceChildren(...rows);
   }
   redrawModels = () => void draw();
 
@@ -345,6 +417,13 @@ function modelsSection(): HTMLElement {
   const claudeModel = h("select", {}) as HTMLSelectElement;
   for (const [id, name] of MODELS) claudeModel.append(h("option", { value: id, text: name }));
   const label = input("Name in the picker (optional)");
+  // Guessed from the model id until the user picks one.
+  const makes = outputSelect("text");
+  let makesPicked = false;
+  makes.addEventListener("change", () => (makesPicked = true));
+  modelId.addEventListener("input", async () => {
+    if (!makesPicked) makes.value = (await Bridge.guessOutput(modelId.value)) ?? "text";
+  });
   const key = input("API key for this provider", "password");
   const add = h("button", { class: "primary", text: "Add model" });
   const feedback = h("div", {});
@@ -352,10 +431,12 @@ function modelsSection(): HTMLElement {
   const providerRow = h("div", { class: "row" }, h("label", { text: "Provider" }), provider, endpoint);
   const modelRow = h("div", { class: "row" }, h("label", { text: "Model" }), modelId, claudeModel);
   const keyRow = h("div", { class: "row" }, h("label", { text: "API key" }), key);
+  const makesRow = h("div", { class: "row" }, h("label", { text: "Makes" }), makes);
   const syncKind = async () => {
     const openai = kind.value === "openai";
     providerRow.style.display = openai ? "" : "none";
     keyRow.style.display = openai ? "" : "none";
+    makesRow.style.display = openai ? "" : "none";
     modelId.style.display = openai ? "" : "none";
     claudeModel.style.display = openai ? "none" : "";
     endpoint.style.display = openai && provider.value === "" ? "" : "none";
@@ -392,13 +473,19 @@ function modelsSection(): HTMLElement {
       model: id,
       endpoint: openai ? url : "",
       vision: openai ? null : true,
+      output: openai ? (makes.value as ModelOutput) : "text",
+      voice: "",
+      detail: "",
     };
     settings.models = [...settings.models, entry];
-    settings.activeModel = entry.id;
+    // A speech-to-text model serves the mic; the chat keeps its model.
+    if (entry.output !== "stt") settings.activeModel = entry.id;
     await save();
     modelId.value = "";
     label.value = "";
     key.value = "";
+    makes.value = "text";
+    makesPicked = false;
     feedback.append(h("div", { class: "notice ok", text: `Added ${entry.label}, and it's now in use.` }));
     void draw();
     void syncKind();
@@ -412,13 +499,14 @@ function modelsSection(): HTMLElement {
     h("h2", {}, h("span", { text: "Models" })),
     h("span", {
       class: "hint",
-      text: "Pick between these from the menu next to Send. Web search is Claude-only. Text-only models are detected automatically; you'll be asked before an image is sent to one.",
+      text: "Pick between these from the menu next to Send. Web search is Claude-only. Text-only models are detected automatically; you'll be asked before an image is sent to one. Image, video and speech models turn your message into a file instead of answering.",
     }),
     list,
     h("h3", { text: "Add a model", style: "margin:14px 0 6px;font-size:12.5px" }),
     h("div", { class: "row" }, h("label", { text: "Type" }), kind),
     providerRow,
     modelRow,
+    makesRow,
     h("div", { class: "row" }, h("label", { text: "Name" }), label),
     keyRow,
     h("div", { class: "row" }, add),

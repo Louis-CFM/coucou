@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod media;
 mod pipe;
 mod platform;
 #[cfg_attr(not(windows), path = "roam_linux.rs")]
@@ -252,6 +253,38 @@ async fn chat_send(
         (entry, s.mochi_name.clone())
     };
     let entry = entry.ok_or("No model set up yet. Add one in Settings → Models.")?;
+    if entry.output == "stt" {
+        return Err("This model turns speech into text: it's used by the mic button. Pick a chat model to send this.".into());
+    }
+    // Image, video, speech and 3D models: one generation, outside the chat history.
+    if matches!(entry.output.as_str(), "image" | "video" | "audio" | "3d") {
+        if entry.kind == "claude" {
+            return Err("Claude models only write text. Pick another output in Settings → Models.".into());
+        }
+        let key = secrets::get(&secrets::endpoint_key(&entry.endpoint))
+            .or_else(|| secrets::get("custom-api-key"))
+            .ok_or("No API key for this model's provider yet. Add it in Settings → Models.")?;
+        let progress = |p: Option<f64>| {
+            let _ = app.emit_to(island::WINDOW_LABEL, "media-progress", p);
+        };
+        // A 3D model works from a picture: the dropped one, else the last
+        // image made in this session.
+        let dropped = match &context {
+            Some(ChatContext::File { path, .. }) if entry.output == "3d" => Some(std::path::PathBuf::from(path)),
+            _ => None,
+        };
+        let source = if entry.output == "3d" { dropped.clone().or_else(media::last_image) } else { None };
+        let (text, media) = media::generate(&entry, &key, &query, source.as_deref(), progress).await?;
+        let notice = if entry.output == "3d" {
+            source.is_some().then(|| {
+                let which = if dropped.is_some() { "Your picture" } else { "The last image made here" };
+                format!("{which} was uploaded to Pollinations to make this (an unlisted link that expires in 30 days).")
+            })
+        } else {
+            context.is_some().then(|| "Made from your words only: the attachment wasn't sent.".to_string())
+        };
+        return Ok(ChatReply { text, notice, sent_image: false, mood: None, media });
+    }
     let provider = if entry.kind == "claude" {
         claude::Provider::Claude { model: entry.model.clone() }
     } else {
@@ -327,6 +360,26 @@ fn ingest_bytes(request: tauri::ipc::Request<'_>) -> Result<DroppedFile, String>
         .map(files::percent_decode)
         .unwrap_or_else(|| "file".into());
     files::ingest_bytes(&name, bytes)
+}
+
+/// The chat's mic: the recording's bytes in, its words out, through the saved
+/// model that transcribes speech. The page sends the audio type as `x-mime`.
+#[tauri::command]
+async fn transcribe_audio(shared: State<'_, Shared>, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the recording".into());
+    };
+    let audio = bytes.clone();
+    let mime = request.headers().get("x-mime").and_then(|v| v.to_str().ok()).unwrap_or("audio/webm").to_string();
+    let entry = {
+        let s = shared.settings.lock().unwrap();
+        s.models.iter().find(|m| m.output == "stt").cloned()
+    }
+    .ok_or("No speech-to-text model yet. Add one in Settings → Models (Groq's whisper-large-v3-turbo, for one).")?;
+    let key = secrets::get(&secrets::endpoint_key(&entry.endpoint))
+        .or_else(|| secrets::get("custom-api-key"))
+        .ok_or("No API key for the speech-to-text model's provider yet. Add it in Settings → Models.")?;
+    media::transcribe(&entry, &key, audio, &mime).await
 }
 
 /// The island may only ask whether a key exists — never read it.
@@ -487,6 +540,12 @@ pub fn run() {
             roam::roam_capture,
             roam::roam_pointer,
             roam::roam_end,
+            media::guess_model_output,
+            transcribe_audio,
+            media::media_bytes,
+            media::media_download,
+            media::media_preview,
+            media::media_preview_close,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -497,6 +556,7 @@ pub fn run() {
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
+                platform::allow_microphone(&win);
                 island::apply_geometry(&handle, &loaded.screen, false);
                 let _ = win.show();
             }

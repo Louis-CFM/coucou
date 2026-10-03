@@ -350,6 +350,11 @@ mod tests {
 /// WebKitGTK has no memory target to set.
 pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
 
+/// The chat's mic on Linux: WebKitGTK asks through its own permission request.
+// ponytail: not wired yet (needs enable-media-stream and a permission-request
+// handler on the WebView); the mic button reports the error until then.
+pub fn allow_microphone(_win: &WebviewWindow) {}
+
 /// Click-through on or off (the overlay itself is set up by the layer shell).
 pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
     let _ = win.set_ignore_cursor_events(ignore);
@@ -368,6 +373,26 @@ static ROAM_LAYER: AtomicBool = AtomicBool::new(false);
 /// Clicks go through: an empty input region.
 fn no_input(gw: &impl IsA<gtk::Widget>) {
     apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+}
+
+/// True while a media preview is on the overlay: it then takes the mouse over
+/// its whole surface instead of none of it (a roaming Mochi never takes a click).
+static ROAM_INPUT: AtomicBool = AtomicBool::new(false);
+
+/// The overlay's input region as currently wanted; GTK resets it on every map.
+fn roam_input(gw: &impl IsA<gtk::Widget>) {
+    if ROAM_INPUT.load(Ordering::Relaxed) {
+        apply_input_region(gw, None);
+    } else {
+        no_input(gw);
+    }
+}
+
+pub fn set_roam_input(win: &WebviewWindow, take: bool) {
+    ROAM_INPUT.store(take, Ordering::Relaxed);
+    if let Ok(gw) = win.gtk_window() {
+        roam_input(&gw);
+    }
 }
 
 /// Turns the roam window into a transparent layer-shell surface over the whole
@@ -397,13 +422,13 @@ pub fn make_roam_overlay(win: &WebviewWindow) {
     // surface also needs one unmap/map to paint (see make_non_activating).
     let remapped = std::cell::Cell::new(false);
     gw.connect_map_event(move |w, _| {
-        no_input(w);
+        roam_input(w);
         if ROAM_LAYER.load(Ordering::Relaxed) && !remapped.replace(true) {
             let w = w.clone();
             gtk::glib::idle_add_local_once(move || {
                 w.hide();
                 w.show_all();
-                no_input(&w);
+                roam_input(&w);
             });
         }
         gtk::glib::Propagation::Proceed
@@ -428,7 +453,7 @@ pub fn show_roam_overlay(win: &WebviewWindow, island: &WebviewWindow) {
         let _ = win.show();
         let _ = win.set_focus();
     }
-    no_input(&gw);
+    roam_input(&gw);
 }
 
 pub fn hide_roam_overlay(win: &WebviewWindow) {
