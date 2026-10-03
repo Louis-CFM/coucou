@@ -52,6 +52,11 @@ struct SettingsView: View {
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
+
+    @State private var ompHooksInstalled: Bool = HookServer.ompHooksInstalled()
+    @State private var showOmpDiff: Bool = false
+    @State private var pendingOmpText: String = ""
+    @State private var ompPendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
@@ -478,6 +483,39 @@ struct SettingsView: View {
                         Button("Confirm & write") { confirmCodexOp() }
                             .buttonStyle(.borderedProminent)
                         Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Oh My Pi Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(ompHooksInstalled
+                     ? "Hooks installed — restart Oh My Pi (omp) to activate"
+                     : "~/.omp/agent/hooks/pre/coucou.ts")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { triggerOmpPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { triggerOmpPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showOmpDiff {
+                    ScrollView {
+                        Text(pendingOmpText)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmOmpOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showOmpDiff = false; pendingOmpText = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -1016,6 +1054,33 @@ struct SettingsView: View {
             statusMessage = codexPendingInstall
                 ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
                 : "✓ Codex hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerOmpPreview(install: Bool) {
+        do {
+            ompPendingInstall = install
+            pendingOmpText = try HookServer.shared.previewOmpHooks(install: install)
+            showOmpDiff = true
+            statusMessage = "Review the file below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmOmpOp() {
+        do {
+            try HookServer.shared.writeOmpHooks()
+            showOmpDiff = false
+            pendingOmpText = ""
+            ompHooksInstalled = ompPendingInstall
+            statusMessage = ompPendingInstall
+                ? "✓ Oh My Pi hooks installed in ~/.omp/agent/hooks/pre/coucou.ts"
+                : "✓ Oh My Pi hooks removed."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }

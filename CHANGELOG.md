@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Oh My Pi (omp) support: install from Settings → Oh My Pi and omp sessions show up in the island — prompt, tools and finished state, each in its own pill. The installer writes a self-contained TS hook to `~/.omp/agent/hooks/pre/coucou.ts` that omp discovers by itself (#9).
+
 ## 0.1.2 — October 2, 2026
 
 - Codex support (GitHub build): sessions show up live on the Codex pill, and permission requests get Allow and Deny in the notch. Install from Settings → Codex Hooks, then trust the hooks once with /hooks in Codex (#130) — thanks @lacatu5
