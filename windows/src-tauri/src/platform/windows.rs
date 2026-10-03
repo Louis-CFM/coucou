@@ -231,5 +231,14 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
+/// Windows has no work-area reservation: a borderless, always-on-top window
+/// goes exactly where it is put. Nothing to do.
+pub fn avoid_panels(_win: &WebviewWindow) {}
+
+/// No top panel to clear: the island is placed against the screen edge.
+pub fn top_panel_height(_win: &WebviewWindow) -> f64 {
+    0.0
+}
+
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}

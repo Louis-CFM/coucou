@@ -153,6 +153,11 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
 
+    // Before the move: on Linux the window manager lays the island out inside
+    // the work area unless the window asks to be a dock, which would put it
+    // under the top panel instead of over it. A no-op everywhere else.
+    platform::avoid_panels(&win);
+
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
@@ -161,7 +166,14 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    // Without a layer surface nothing anchors the island to the screen edge, so
+    // it is placed by hand. Where there are panels it goes just under them: on
+    // GNOME the top edge holds the clock and the date, and an island drawn over
+    // them would hide both. `top_panel_height` is the panel's own depth — 0 when
+    // there is none, or when the compositor anchors the island itself — so
+    // nothing about the desktop is assumed.
+    let panel = (platform::top_panel_height(&win) * scale).round().max(0.0) as i32;
+    let y = mp.y + panel;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao

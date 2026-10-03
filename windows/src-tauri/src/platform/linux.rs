@@ -5,6 +5,9 @@
 // window goes, so the island works differently from Windows:
 //   * it is a layer-shell surface anchored to the top edge, above everything,
 //     on compositors that support it (COSMIC, KDE, wlroots — not GNOME);
+//   * where layer-shell is missing, prepare_backend drops to X11 (XWayland
+//     included) and avoid_panels makes the island a dock, because that is the
+//     only combination where the window manager puts it at the top edge;
 //   * click-through is the window's input region, set to the island shape, so
 //     the compositor itself sends every other click to whatever is underneath;
 //   * the cursor comes from the page's own mouse events, which only fire over
@@ -61,12 +64,94 @@ pub fn local_dir() -> PathBuf {
 /// plugin paths that vanish once Coucou quits. Give ours its own file.
 pub fn prepare_environment() {
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
+        prepare_backend();
         return;
     }
     let cache = xdg("XDG_CACHE_HOME", ".cache").join("coucou");
     if std::fs::create_dir_all(&cache).is_ok() {
         std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
     }
+    prepare_backend();
+}
+
+/// Picks the GDK backend before GTK is initialised, so the island lands where it
+/// was asked to land.
+///
+/// On Wayland an app has no say over where its window goes, and there is no
+/// layer-shell on GNOME, so the island became an ordinary always-on-top window
+/// and the compositor centred it — vertically in the middle of the screen, and
+/// kept re-placing it on every configure. layer-shell is the reason for the
+/// top-edge placement, so it is asked for first:
+///
+///   * layer-shell available (KDE, wlroots/COSMIC/Sway/Hyprland): Wayland, and
+///     the compositor anchors the surface to the top edge;
+///   * no layer-shell but an X server reachable (GNOME, or any X11 session):
+///     X11, where the window manager does honour `set_position`, so the
+///     explicit placement in island::apply_geometry is what counts;
+///   * neither: leave GDK to decide, rather than lock ourselves out of a
+///     working display.
+///
+/// A `GDK_BACKEND` already in the environment is *not* taken as the user's
+/// choice here: GNOME sessions export `GDK_BACKEND=wayland` for every app they
+/// start, and honouring it is exactly what left the island in the middle.
+/// `COUCOU_GDK_BACKEND` is the per-app override, and `COUCOU_LAYER_SHELL=0`
+/// leaves the backend alone entirely.
+fn prepare_backend() {
+    if std::env::var("COUCOU_LAYER_SHELL").as_deref() == Ok("0") {
+        return;
+    }
+    if let Ok(forced) = std::env::var("COUCOU_GDK_BACKEND") {
+        if !forced.is_empty() {
+            crate::log::line(format!("backend: {forced} (COUCOU_GDK_BACKEND)"));
+            std::env::set_var("GDK_BACKEND", forced);
+        }
+        return;
+    }
+    if unsafe { layer::gtk_layer_is_supported() } != 0 {
+        std::env::set_var("GDK_BACKEND", "wayland");
+        crate::log::line("backend: wayland (layer-shell overlay)");
+    } else if has_x_display() {
+        // Overrides the session's GDK_BACKEND=wayland: the window manager moves
+        // the island for us, where a Wayland compositor would not.
+        std::env::set_var("GDK_BACKEND", "x11");
+        crate::log::line("backend: x11 (no layer-shell; XWayland keeps placement)");
+    } else {
+        crate::log::line("backend: default (no layer-shell, no X display)");
+    }
+}
+
+/// True when this process can reach an X server: `DISPLAY` set, and either
+/// X11 or XWayland underneath it. GDK picks the Wayland backend whenever
+/// `WAYLAND_DISPLAY` is present, which on a GNOME session is a compositor that
+/// will neither give us a layer surface nor let us move the window.
+fn has_x_display() -> bool {
+    if !std::env::var_os("DISPLAY").is_some_and(|d| !d.is_empty()) {
+        return false;
+    }
+    // An X server reachable through XWayland still speaks X11 to us, which is
+    // all the position calls need.
+    !x11_socket().is_empty() && std::path::Path::new(&x11_socket()).exists()
+}
+
+/// `DISPLAY` as a socket path: `:0` → `/tmp/.X11-unix/X0`. Empty when the value
+/// is not the simple host:socket form this app can use.
+fn x11_socket() -> String {
+    x11_socket_for(&std::env::var("DISPLAY").unwrap_or_default())
+}
+
+fn x11_socket_for(display: &str) -> String {
+    let Some((host, rest)) = display.rsplit_once(':') else {
+        return String::new();
+    };
+    let number = rest.split('.').next().unwrap_or_default();
+    if number.is_empty() || !number.bytes().all(|b| b.is_ascii_digit()) {
+        return String::new();
+    }
+    if !host.is_empty() && host != "unix" {
+        // A remote or TCP display: no local socket to stat.
+        return String::new();
+    }
+    format!("/tmp/.X11-unix/X{number}")
 }
 
 pub fn local_time() -> LocalTime {
@@ -201,6 +286,59 @@ fn gtk_window_ptr(win: &gtk::ApplicationWindow) -> *mut gtk::ffi::GtkWindow {
 /// WebKitGTK has no competing drop target to remove.
 pub fn unblock_webview_drops(_app: &AppHandle) {}
 
+/// How many logical pixels of the screen's top edge the panels cover, so the
+/// island can sit just under them instead of over them.
+///
+/// On GNOME the top edge holds the clock and the date. An island drawn over it
+/// hides both, so it goes below the bar rather than on it.
+///
+/// The number comes from the window manager's own work area (the `_NET_WORKAREA`
+/// property, surfaced by GDK as `Monitor::workarea`): the rectangle left over
+/// once the panels are subtracted. Asking beats hardcoding a figure that is
+/// right on one machine and wrong on the next — 32 is GNOME's default, but it
+/// follows whatever the user configured, and it is 0 on a desktop with no panel.
+///
+/// Always 0 on a layer surface: there the compositor anchors the island to the
+/// top edge itself, and an offset would defeat that.
+///
+/// The caller wants physical pixels; this is logical, so it is scaled by the
+/// caller rather than guessing at it here.
+pub fn top_panel_height(win: &WebviewWindow) -> f64 {
+    if LAYER_SURFACE.load(Ordering::Relaxed) {
+        return 0.0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0.0 };
+    let display = gw.display();
+    // The monitor the island actually lives on, not just the primary one.
+    // `window()` is the GdkWindow behind the GtkWindow; None before the window
+    // is realized, in which case the primary monitor is the right answer.
+    let monitor = gw
+        .window()
+        .and_then(|gdk_window| display.monitor_at_window(&gdk_window))
+        .or_else(|| display.primary_monitor());
+    let Some(monitor) = monitor else { return 0.0 };
+    let workarea = monitor.workarea();
+    // The work area starts where the panel ends. Negative would mean a bar on
+    // another edge only; clamp so a strange value can never push it off-screen.
+    workarea.y().max(0) as f64
+}
+
+/// Asks the window manager to keep the island out of the panels, so the
+/// placement in `island::apply_geometry` is the placement we get.
+///
+/// Only meaningful on the X11 path; a layer surface is anchored to the edge by
+/// the compositor and has no work area at all. Safe to call on every
+/// `apply_geometry`, which is why the set_resizable dance next to it is too.
+///
+/// Deliberately *not* a dock. A dock is the one type placed against the screen
+/// edge rather than inside the work area, which was how the island used to reach
+/// y = 0 — on top of GNOME's clock and date. It now sits under the panel
+/// instead, so the hint buys nothing and costs something: window managers that
+/// honour dock struts (XFCE, MATE, Cinnamon, i3, openbox) reserve vertical space
+/// for a dock window, which would shrink the usable desktop by the height of the
+/// island. Not a trade worth making for an empty win.
+pub fn avoid_panels(_win: &WebviewWindow) {}
+
 /// Turns the island into an overlay surface on the top edge that never takes
 /// the keyboard. Must run before the window is first shown: a layer surface
 /// cannot be made out of a window the compositor already knows.
@@ -223,6 +361,9 @@ pub fn make_non_activating(win: &WebviewWindow) {
         };
         crate::log::line(format!("island is a regular window ({why})"));
         gw.set_accept_focus(false);
+        // No dock hint here: see `avoid_panels`. The island is placed under the
+        // panel by hand, and a dock window would make window managers that honour
+        // struts reserve space for it.
         return;
     }
     // tao gives undecorated Wayland windows an empty titlebar to force
@@ -343,5 +484,23 @@ mod tests {
         ensure_private_dir(&dir).unwrap();
         assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_display_becomes_the_socket_we_can_stat() {
+        // The shapes a session actually hands us, Wayland ones included.
+        assert_eq!(x11_socket_for(":0"), "/tmp/.X11-unix/X0");
+        assert_eq!(x11_socket_for(":0.0"), "/tmp/.X11-unix/X0");
+        assert_eq!(x11_socket_for(":1"), "/tmp/.X11-unix/X1");
+        assert_eq!(x11_socket_for("unix:0"), "/tmp/.X11-unix/X0");
+    }
+
+    #[test]
+    fn a_display_we_cannot_reach_locally_is_never_claimed() {
+        // Picking x11 for a display we cannot connect to would give the app no
+        // window at all, which is worse than the misplacement we are fixing.
+        for display in ["", ":", "wayland-0", "hostname:0", ":abc", ":-1", ":0:1"] {
+            assert_eq!(x11_socket_for(display), "", "{display:?} must not resolve");
+        }
     }
 }
