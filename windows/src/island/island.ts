@@ -73,6 +73,8 @@ export class Island {
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
   private homeCollapseAt: number | null = null;
+  /** A file drag entered the island since the mouse button last went up. */
+  private fileDragSeen = false;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
   private botHovering = false;
@@ -353,7 +355,11 @@ export class Island {
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
         UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        this.fileDragSeen = true;
         this.alert("upload");
+        // Waking a hidden island passes through the home view, and leaving the
+        // drop views on the way switches the sequence off: switch it back on.
+        if (!UploadSeq.isActive) UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         break;
       }
       case "leave": {
@@ -384,7 +390,11 @@ export class Island {
    * than wait for a file that is never coming.
    */
   private onPointerReleased() {
-    if (State.fileDragOver || State.view !== "upload" || UploadSeq.dropped) return;
+    // Only a release that ends a file drag counts: the "+" tab opens the same
+    // view with a plain click, and that release must leave it open.
+    const wasFileDrag = this.fileDragSeen;
+    this.fileDragSeen = false;
+    if (!wasFileDrag || State.fileDragOver || State.view !== "upload" || UploadSeq.dropped) return;
     void Bridge.log("drag ended outside the island");
     this.engine.animateMorph(0);
     this.setView(State.defaultView());
