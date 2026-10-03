@@ -1466,6 +1466,22 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: Installed-state detection
 
+    /// True when ~/.claude/settings.json already routes Claude Code events to Coucou.
+    /// Cursor sessions ride on these same hooks, so they share this state.
+    static func claudeHooksInstalled() -> Bool {
+        #if APPSTORE
+        // Sandboxed: can't read ~/.claude directly — check the install flag set on write.
+        return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
+        #else
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        guard let data = try? Data(contentsOf: url),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return false }
+        return coucouHooksPresent(inSettings: json)
+        #endif
+    }
+
     static func geminiHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: geminiSettingsURL),
               let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],

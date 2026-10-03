@@ -1553,20 +1553,15 @@ struct IntegrationCardView: View {
 
     private var isConfigured: Bool {
         switch task.id {
-        case "integration_claude":
-            #if APPSTORE
-            // Sandboxed: can't read ~/.claude directly — check install flag set by HookServer
-            return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
+        // Cursor sessions are Claude Code running in Cursor's integrated terminal,
+        // so the Cursor pill is set up exactly when the Claude Code hooks are.
+        case "integration_claude", "agent_cursor":
+            return HookServer.claudeHooksInstalled()
+        case "agent_codex":
+            #if !APPSTORE
+            return HookServer.codexHooksInstalled()
             #else
-            let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/settings.json")
-            guard let data = try? Data(contentsOf: url),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let hooks = json["hooks"] as? [String: Any],
-                  let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
-            return ss.contains { ($0["hooks"] as? [[String: Any]])?.contains {
-                let cmd = $0["command"] as? String
-                return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
-            } ?? false }
+            return false
             #endif
         case "agent_gemini":
             #if !APPSTORE
@@ -1580,8 +1575,6 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
-        case "agent_cursor", "agent_codex":
-            return false  // coming soon
         case "integration_music":
             #if !APPSTORE
             return true  // Apple Music is always installed on macOS
@@ -1707,7 +1700,12 @@ struct IntegrationCardView: View {
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
-        let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
+        // Pills driven by hooks, never by a key: the idle card reports whether the
+        // hooks are in place. integration_claude read "Connected · loading…" with
+        // nothing left to load — a session replaces this card, it never resolves here.
+        let isHooks = task.id == "integration_claude" || task.id == "agent_gemini"
+                   || task.id == "agent_antigravity"  || task.id == "agent_cursor"
+                   || task.id == "agent_codex"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }

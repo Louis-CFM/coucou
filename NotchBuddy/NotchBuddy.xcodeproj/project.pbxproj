@@ -21,6 +21,7 @@
 		186AB8904029767DAA5277CF /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BC1357785CA1B099A33969 /* IslandScreenGeometry.swift */; };
 		18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
+		1DCF28998358810CDBC93F91 /* ClaudeHookDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA7D927F6BB2667D37AA963 /* ClaudeHookDetection.swift */; };
 		1F11EC4E6F604C612A1ADAD1 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E4F18AA940EFF7E047B9F7 /* AppState.swift */; };
 		2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3232F258523DD8D09B670363 /* FileDropView.swift */; };
 		2875610F701376BD65573386 /* WindowContextCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */; };
@@ -58,6 +59,7 @@
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
 		8FC5907E9506DC79EB1DDC3C /* ChatMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = D797CC384B5BC70D34F121BC /* ChatMarkdown.swift */; };
+		91B8AAADB623A12FF6769755 /* ClaudeHookDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA7D927F6BB2667D37AA963 /* ClaudeHookDetection.swift */; };
 		94E0849D13762C6EC8548FEF /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B5FDDE03F5F711146937E2 /* ResendPoller.swift */; };
 		9C653B8291EFFA414565E8A8 /* MusicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F142FB3952B5F0639383047 /* MusicController.swift */; };
@@ -97,6 +99,7 @@
 		15A1A8206F73376F4CAF2057 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
 		192844E7299DEED5C2372067 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1BE21C2B315D37AA70ED45E9 /* SoundEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEngine.swift; sourceTree = "<group>"; };
+		1EA7D927F6BB2667D37AA963 /* ClaudeHookDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeHookDetection.swift; sourceTree = "<group>"; };
 		2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripePoller.swift; sourceTree = "<group>"; };
 		3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcomPoller.swift; sourceTree = "<group>"; };
 		3232F258523DD8D09B670363 /* FileDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropView.swift; sourceTree = "<group>"; };
@@ -153,6 +156,7 @@
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
 				D797CC384B5BC70D34F121BC /* ChatMarkdown.swift */,
 				BFE88A53AEAA637F866D479D /* ChatMarkdownView.swift */,
+				1EA7D927F6BB2667D37AA963 /* ClaudeHookDetection.swift */,
 				F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */,
 				8BF22817EC70748F2D1FB2E7 /* ClaudePlanGauge.swift */,
 				A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */,
@@ -294,8 +298,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				12E59C1D41BFA3D2F7CDD7F5 /* NotchBuddy */,
 				495922874E20462B9FC47E53 /* CoucouAppStore */,
+				12E59C1D41BFA3D2F7CDD7F5 /* NotchBuddy */,
 			);
 		};
 /* End PBXProject section */
@@ -335,6 +339,7 @@
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
 				8FC5907E9506DC79EB1DDC3C /* ChatMarkdown.swift in Sources */,
 				4976F8BF814D6F817370F1D8 /* ChatMarkdownView.swift in Sources */,
+				1DCF28998358810CDBC93F91 /* ClaudeHookDetection.swift in Sources */,
 				94E0849D13762C6EC8548FEF /* ClaudePlanCardView.swift in Sources */,
 				D861479F6E7EAD07A6AC2105 /* ClaudePlanGauge.swift in Sources */,
 				2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */,
@@ -382,6 +387,7 @@
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
 				B2D86BE268D6F4C86BD0C446 /* ChatMarkdown.swift in Sources */,
 				733FCC6A45DE963EF2024B4E /* ChatMarkdownView.swift in Sources */,
+				91B8AAADB623A12FF6769755 /* ClaudeHookDetection.swift in Sources */,
 				18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */,
 				E9C21D11BCB72C392436D19E /* ClaudePlanGauge.swift in Sources */,
 				0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */,
