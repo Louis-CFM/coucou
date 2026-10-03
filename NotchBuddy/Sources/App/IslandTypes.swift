@@ -11,7 +11,7 @@ enum IslandMode: String, CaseIterable {
 enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
     case confused, upload, uploading, choose, mail, prompt
-    case searching, result, note, settings, greeting
+    case searching, result, note, settings, greeting, wardrobe
 }
 
 // MARK: - Bot State
@@ -59,6 +59,7 @@ struct AgentTask: Identifiable, Equatable {
     var miniEye: EyeShape? = nil
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
+    var finalLine: String?   = nil  // last assistant message shown as static text after Stop
 }
 
 enum AgentSource: Equatable {
@@ -73,12 +74,16 @@ enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
     case google    = "google"
     case openai    = "openai"
+    case ollama    = "ollama"
+    case lmstudio  = "lmstudio"
 
     var displayName: String {
         switch self {
         case .anthropic: "Anthropic"
         case .google:    "Google"
         case .openai:    "OpenAI"
+        case .ollama:    "Ollama"
+        case .lmstudio:  "LM Studio"
         }
     }
 
@@ -87,6 +92,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "#E07950"
         case .google:    "#4285F4"
         case .openai:    "#10A37F"
+        case .ollama:    "#FACC15"
+        case .lmstudio:  "#A3E635"
         }
     }
 
@@ -95,6 +102,8 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "claude-sonnet-4-6"
         case .google:    "gemini-2.0-flash"
         case .openai:    "gpt-4o"
+        case .ollama:    "llama3.2"
+        case .lmstudio:  "local-model"
         }
     }
 
@@ -103,6 +112,33 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "anthropic-api-key"
         case .google:    "google-api-key"
         case .openai:    "openai-api-key"
+        case .ollama:    ""
+        case .lmstudio:  ""
+        }
+    }
+
+    var isLocal: Bool {
+        self == .ollama || self == .lmstudio
+    }
+
+    var pillID: String {
+        switch self {
+        case .anthropic: "ai_anthropic"
+        case .google:    "ai_google"
+        case .openai:    "ai_openai"
+        case .ollama:    "ai_ollama"
+        case .lmstudio:  "ai_lmstudio"
+        }
+    }
+
+    init?(pillID: String) {
+        switch pillID {
+        case "ai_anthropic": self = .anthropic
+        case "ai_google":    self = .google
+        case "ai_openai":    self = .openai
+        case "ai_ollama":    self = .ollama
+        case "ai_lmstudio":  self = .lmstudio
+        default:             return nil
         }
     }
 }
@@ -152,6 +188,7 @@ enum IslandConst {
         .settings:  ViewLayout(height: 160, botX: 54,  botY: nil, botDiameter: 46, agentMode: .none),
         // Greeting: bot drawn by GreetingCanvasView; no BotPlacement needed
         .greeting:  ViewLayout(height: 150, botX: 320, botY: 90,  botDiameter: 0,  agentMode: .none),
+        .wardrobe:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

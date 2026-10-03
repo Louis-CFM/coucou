@@ -175,7 +175,8 @@ final class BotEngine: ObservableObject {
     // Animation state (mirrors prototype 's' object)
     var yaw:    CGFloat = 0
     var pitch:  CGFloat = 0
-    var roll:   CGFloat = 0
+    var roll:      CGFloat = 0
+    var rollTurns: CGFloat = 1
     var tilt:   CGFloat = 0
     var open:   CGFloat = 1          // eye open amount
     var sx:     CGFloat = 1          // scale X
@@ -186,8 +187,20 @@ final class BotEngine: ObservableObject {
     var morph:  CGFloat = 0          // morph to rect (for upload bucket)
     var hands:  CGFloat = 0
     var blush:  CGFloat = 0
+    var outfit: Outfit = .none
     var es:     CGFloat = 1          // eye scale
     var badgeS: CGFloat = 0          // badge scale
+    var outfitPresence: CGFloat = 0  // 0=hidden, 1=fully visible (animated)
+    private var outfitTarget: Outfit = .none
+
+    // Physical spring (hat/pompom lag) — updated in update()
+    var physDx: CGFloat = 0   // horizontal lag (-1..1)
+    var physDy: CGFloat = 0   // vertical lag (-1..1)
+    private var physVx: CGFloat = 0
+    private var physVy: CGFloat = 0
+    private var prevYaw: CGFloat = 0
+    private var prevOy: CGFloat = 0
+    private var prevRoll: CGFloat = 0
 
     // Targets
     var tgYaw:    CGFloat = 0
@@ -248,6 +261,10 @@ final class BotEngine: ObservableObject {
 
     // Slap tracking (for dizzy on 3 slaps)
     var slapTimes: [Double] = []
+
+    // Dancing (Apple Music)
+    var isDancing: Bool = false
+    var dancingLevel: CGFloat = 0   // 0→1 over 0.3s, 1→0 over 0.5s
 
     // Mini wandering look (random, ignores mouse)
     var miniLookTarget: CGPoint = .zero
@@ -319,6 +336,7 @@ final class BotEngine: ObservableObject {
     }
 
     func squash() {
+        physVy += 0.6
         anim("sy", keys: [
             TweenKey(target: 0.78, duration: 70,  ease: Ease.out),
             TweenKey(target: 1.1,  duration: 130, ease: Ease.out),
@@ -366,6 +384,8 @@ final class BotEngine: ObservableObject {
         slapTimes.append(now)
         SoundEngine.shared.play("slap")
         squash()
+        physVy -= 1.2
+        physVx += Bool.random() ? 0.7 : -0.7
         if slapTimes.count >= 3 {
             slapTimes = []
             NotificationCenter.default.post(name: .botDizzy, object: nil)
@@ -377,6 +397,13 @@ final class BotEngine: ObservableObject {
                 SoundEngine.shared.play("annoyed")
             }
         }
+    }
+
+    // MARK: - Dancing
+
+    func setDancing(_ dancing: Bool) {
+        guard isDancing != dancing else { return }
+        isDancing = dancing
     }
 
     // MARK: - Mini periodic behavior loop
@@ -454,8 +481,42 @@ final class BotEngine: ObservableObject {
 
     func doRoll(duration: CGFloat, turns: CGFloat) {
         roll = 0
+        rollTurns = turns
         anim("roll", keys: [TweenKey(target: .pi * 2 * turns, duration: duration, ease: Ease.inOut)]) { [weak self] in
             self?.roll = 0
+            self?.squash()
+        }
+    }
+
+    func setOutfit(_ newOutfit: Outfit, animated: Bool = true) {
+        guard newOutfit != outfitTarget else { return }
+        outfitTarget = newOutfit
+        tweens.removeValue(forKey: "outfitPresence")
+        locks.remove("outfitPresence")
+        if !animated {
+            outfit = newOutfit
+            outfitPresence = newOutfit != .none ? 1 : 0
+        } else if newOutfit == .none {
+            // Exit: fade out then clear outfit
+            anim("outfitPresence", keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)]) { [weak self] in
+                self?.outfit = .none
+            }
+        } else if outfit == .none {
+            // Enter: set outfit then animate in (Ease.back applied to position offsets in drawing code)
+            outfit = newOutfit
+            outfitPresence = 0
+            anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.inOut)]) { [weak self] in
+                self?.squash()
+            }
+        } else {
+            // Change: exit old, set new, enter
+            anim("outfitPresence", keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)]) { [weak self] in
+                guard let self else { return }
+                self.outfit = newOutfit
+                self.anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.inOut)]) { [weak self] in
+                    self?.squash()
+                }
+            }
         }
     }
 
@@ -465,6 +526,7 @@ final class BotEngine: ObservableObject {
         let tok = greetToken
         waveStart = now + 0.45   // wave begins at 0.45s
         waveUntil = now + 1.55   // wave ends at 1.55s
+        physVx += 0.2
 
         // 0s: happy eyes for full greeting (2s — no gap, no flicker)
         eyeOverride = .happy
@@ -574,6 +636,7 @@ final class BotEngine: ObservableObject {
                 TweenKey(target: 1,    duration: 500, ease: Ease.inOut),
             ])
         case .proud:
+            squash()
             emit(.star, count: 5)
             anim("tilt", keys: [
                 TweenKey(target: -0.14, duration: 220, ease: Ease.out),
@@ -777,7 +840,47 @@ final class BotEngine: ObservableObject {
         slotHVel += slotAcc * dtCG
         slotH = max(0, slotH + slotHVel * dtCG)
 
+        // Dance level: fade in 0.3s, out 0.5s
+        let dancingTarget: CGFloat = isDancing ? 1 : 0
+        if dancingLevel < dancingTarget {
+            dancingLevel = min(dancingTarget, dancingLevel + CGFloat(dt) / 0.3)
+        } else if dancingLevel > dancingTarget {
+            dancingLevel = max(dancingTarget, dancingLevel - CGFloat(dt) / 0.5)
+        }
+
+        // Phys spring for hat/pompom lag
+        let yawVel  = (yaw  - prevYaw)  / CGFloat(dt)
+        let oyVel   = (oy   - prevOy)   / CGFloat(dt)
+        let rollVel = (roll - prevRoll) / CGFloat(dt)
+        prevYaw = yaw; prevOy = oy; prevRoll = roll
+        // Centrifugal physDx impulse when rigidly rolling with an outfit
+        let centrifugal: CGFloat = (outfit != .none && outfitPresence > 0.05) ? rollVel * 0.18 : 0
+        let tDx = max(-1, min(1, -yawVel * 0.35 - tilt * 2 + centrifugal))
+        let tDy = max(-1, min(1,  oyVel  * 0.50))
+        let stiff: CGFloat = 60, damp: CGFloat = 9
+        physVx += (stiff * (tDx - physDx) - damp * physVx) * dtCG
+        physVy += (stiff * (tDy - physDy) - damp * physVy) * dtCG
+        physDx += physVx * dtCG
+        physDy += physVy * dtCG
+
         lastTime = now
+    }
+
+    // MARK: - Dance transform
+
+    /// Applies a 112-BPM dance bounce/sway around the bottom of the body.
+    /// Call this on a copy of the GraphicsContext before the three draw passes.
+    func applyDance(_ ctx: inout GraphicsContext, size: CGSize) {
+        guard dancingLevel > 0.001 else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let px = W / 2 + ox * R
+        let py = H / 2 + particleOverhang / 2 + oy * R + R * 0.06 + R * 0.88
+        let beat = CGFloat(CACurrentMediaTime()) * 112 / 60
+        let hop = abs(sin(.pi * beat)), land = pow(1 - hop, 6), l = dancingLevel
+        ctx.translateBy(x: px + 0.08 * R * sin(.pi * beat) * l, y: py - 0.20 * R * hop * l)
+        ctx.rotate(by: .radians(0.10 * sin(.pi * beat) * l))
+        ctx.scaleBy(x: 1 + 0.045 * land * l, y: 1 - 0.06 * land * l)
+        ctx.translateBy(x: -px, y: -py)
     }
 
     // MARK: - Draw
@@ -803,7 +906,8 @@ final class BotEngine: ObservableObject {
         let bodyPath = mochiPath(rx: rx, ry: ry, morph: morph, R: R)
 
         // Body fill
-        drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
+        drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
+                 pumpkinColors: outfit == .pumpkin && !isMini)
 
         // Blush — always shows a floor proportional to tint (prototype behaviour)
         let blushVal = max(blush, tint * 0.5) * (1 - morph)
@@ -978,6 +1082,49 @@ final class BotEngine: ObservableObject {
         drawParticles(context: context, size: size, R: R, cx: cx, cy: cy)
     }
 
+    func drawOutfitBehind(context: GraphicsContext, size: CGSize) {
+        guard outfit != .none, !isMini else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let cx = W / 2 + ox * R
+        let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        // Rigid roll: accessories see roll=0 (they rotate with the body via context transform)
+        let outfitRoll: CGFloat = outfitPresence > 0.05 ? 0 : roll
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: outfitRoll)
+        drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
+                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
+                               roll: outfitRoll, morph: morph, isMini: isMini,
+                               presence: outfitPresence, rollTurns: rollTurns)
+    }
+
+    func drawOutfitFront(context: GraphicsContext, size: CGSize) {
+        guard outfit != .none, !isMini else { return }
+        let W = size.width, H = size.height, R = W * 0.3
+        let cx = W / 2 + ox * R
+        let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        // Rigid roll: accessories see roll=0 (they rotate with the body via context transform)
+        let outfitRoll: CGFloat = outfitPresence > 0.05 ? 0 : roll
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: outfitRoll)
+        drawOutfitFrontStatic(context: context, outfit: outfit, H: mH,
+                              cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
+                              roll: outfitRoll, morph: morph, isMini: isMini,
+                              presence: outfitPresence, rollTurns: rollTurns)
+    }
+
+    /// World-space center of Mochi's body (used by BotCanvasView for rigid-roll transform)
+    func bodyCenter(size: CGSize) -> CGPoint {
+        let W = size.width, R = W * 0.3
+        let cx = W / 2 + ox * R
+        let cy = size.height / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        return CGPoint(x: cx, y: cy)
+    }
+
+    var outfitFollowsRoll: Bool {
+        switch outfit {
+        case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: return true
+        default: return false
+        }
+    }
+
     // MARK: - Private draw helpers
 
     private func mochiPath(rx: CGFloat, ry: CGFloat, morph: CGFloat, R: CGFloat) -> Path {
@@ -1050,16 +1197,17 @@ final class BotEngine: ObservableObject {
         return CGPoint(x: kx * W, y: ky * H)
     }
 
-    private func drawBody(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat) {
-        if let bc = bodyColor {
+    private func drawBody(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat,
+                          pumpkinColors: Bool = false) {
+        if let bc = bodyColor, !pumpkinColors {
             // Mini bots: flat solid fill — no gradient, no reflection, no highlight
             ctx.fill(path, with: .color(Color(cgColor: bc)))
         } else {
             // Main bot: linear gradient body
-            let c0 = cgColorToTuple(MochiConst.baseTop)
-            let c1 = cgColorToTuple(MochiConst.baseBottom)
+            let top: Color = pumpkinColors ? Color(hex: "#FFA94D") : Color(red: 0.929, green: 0.929, blue: 0.937)
+            let bot: Color = pumpkinColors ? Color(hex: "#E8590C") : Color(red: 0.769, green: 0.773, blue: 0.792)
             ctx.fill(path, with: .linearGradient(
-                Gradient(colors: [colorFromTuple(c0), colorFromTuple(c1)]),
+                Gradient(colors: [top, bot]),
                 startPoint: CGPoint(x: rx*0.7, y: -ry*0.85),
                 endPoint: CGPoint(x: -rx*0.8, y: ry*0.9)
             ))
@@ -1112,6 +1260,10 @@ final class BotEngine: ObservableObject {
 
     private func drawEyes(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat) {
         var shape = eyeOverride ?? cfg.eye
+        // Dance: happy eyes in calm states
+        if isDancing && dancingLevel > 0.15 && !isMini && (state == .idle || state == .finished) {
+            shape = .happy
+        }
         // In box mode: cup eyes when file over box (slotHTarget set), happy arcs while chewing
         if morph > 0.5 {
             if isChewing { shape = .happy }
@@ -1119,29 +1271,30 @@ final class BotEngine: ObservableObject {
         }
         ctx.clip(to: path)
 
-        for sd in [-1.0, 1.0] {
-            let eyeYaw   = CGFloat(sd) * MochiConst.eyeSp + yaw
-            var eyePitch = MochiConst.eyeP + pitch + roll
-            // Wrap pitch for roll-through effect
+        // Build eye frames: use mEyeFrames for position/foreshortening, but keep roll in eyePitch
+        // When an outfit is rigidly rotating, the whole body turns — eyes do NOT add roll
+        let rigidRoll = outfit != .none && outfitPresence > 0.05
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch)
+        for f in mEyeFrames(mH) {
+            // Re-derive pitch with roll for the roll-through effect (illusion, outfit=none only)
+            var eyePitch = MochiConst.eyeP + pitch + (rigidRoll ? 0 : roll)
             eyePitch = ((eyePitch + .pi).truncatingRemainder(dividingBy: .pi*2) + .pi*2).truncatingRemainder(dividingBy: .pi*2) - .pi
-
             let cp = cos(eyePitch)
-            guard cos(eyeYaw) * cp > 0.04 else { continue }  // behind head
+            let eyeYaw = f.sd * MochiConst.eyeSp + yaw
+            guard cos(eyeYaw) * cp > 0.04 else { continue }
 
-            let ex = sin(eyeYaw) * cp * rx
-            let ey = -sin(eyePitch) * ry + (morph > 0 ? ry * 0.14 * morph : 0)
-
-            let fx = lerp(max(0.18, cos(eyeYaw)), 1, morph * 0.7)
-            let fy = lerp(max(0.18, cp),          1, morph * 0.7)
+            let ey = f.y + (morph > 0 ? ry * 0.14 * morph : 0)
+            let fx = lerp(f.fx, 1, morph * 0.7)
+            let fy = lerp(f.fy, 1, morph * 0.7)
 
             let eyeMult: CGFloat = isMini ? 1.9 : 1.0
             let ew = R * MochiConst.eyeW * es * eyeMult
             let eh = R * MochiConst.eyeH * es * eyeMult
 
             var eyeCtx = ctx
-            eyeCtx.translateBy(x: ex, y: ey)
+            eyeCtx.translateBy(x: f.x, y: ey)
             eyeCtx.scaleBy(x: fx, y: fy)
-            drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: CGFloat(sd), R: R)
+            drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: f.sd, R: R)
         }
     }
 
@@ -1373,50 +1526,52 @@ final class BotEngine: ObservableObject {
 
     private func setProperty(_ key: String, value: CGFloat) {
         switch key {
-        case "yaw":    yaw    = value
-        case "pitch":  pitch  = value
-        case "roll":   roll   = value
-        case "tilt":   tilt   = value
-        case "open":   open   = value
-        case "sx":     sx     = value
-        case "sy":     sy     = value
-        case "oy":     oy     = value
-        case "ox":     ox     = value
-        case "tint":   tint   = value
-        case "morph":  morph  = value
-        case "hands":  hands  = value
-        case "blush":  blush  = value
-        case "es":     es     = value
-        case "badgeS": badgeS = value
+        case "yaw":           yaw           = value
+        case "pitch":         pitch         = value
+        case "roll":          roll          = value
+        case "tilt":          tilt          = value
+        case "open":          open          = value
+        case "sx":            sx            = value
+        case "sy":            sy            = value
+        case "oy":            oy            = value
+        case "ox":            ox            = value
+        case "tint":          tint          = value
+        case "morph":         morph         = value
+        case "hands":         hands         = value
+        case "blush":         blush         = value
+        case "es":            es            = value
+        case "badgeS":        badgeS        = value
+        case "outfitPresence": outfitPresence = value
         default: break
         }
     }
 
     private func getProperty(_ key: String) -> CGFloat {
         switch key {
-        case "yaw":    return yaw
-        case "pitch":  return pitch
-        case "roll":   return roll
-        case "tilt":   return tilt
-        case "open":   return open
-        case "sx":     return sx
-        case "sy":     return sy
-        case "oy":     return oy
-        case "ox":     return ox
-        case "tint":   return tint
-        case "morph":  return morph
-        case "hands":  return hands
-        case "blush":  return blush
-        case "es":     return es
-        case "badgeS": return badgeS
-        default:       return 0
+        case "yaw":           return yaw
+        case "pitch":         return pitch
+        case "roll":          return roll
+        case "tilt":          return tilt
+        case "open":          return open
+        case "sx":            return sx
+        case "sy":            return sy
+        case "oy":            return oy
+        case "ox":            return ox
+        case "tint":          return tint
+        case "morph":         return morph
+        case "hands":         return hands
+        case "blush":         return blush
+        case "es":            return es
+        case "badgeS":        return badgeS
+        case "outfitPresence": return outfitPresence
+        default:              return 0
         }
     }
 }
 
 // MARK: - Math helpers
 
-private func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b-a) * t }
+func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b-a) * t }
 private func clamp(_ v: CGFloat, _ lo: CGFloat, _ hi: CGFloat) -> CGFloat { max(lo, min(hi, v)) }
 
 private func cgColorToTuple(_ c: CGColor) -> (CGFloat, CGFloat, CGFloat) {
