@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Oh My Pi (omp) support: install from Settings → Oh My Pi and omp sessions show up in the island — prompt, tools and finished state, each in its own pill. The installer writes a self-contained TS hook to `~/.omp/agent/hooks/pre/coucou.ts` that omp discovers by itself (#9).
+
 ## 0.1.8 — October 5, 2026
 
 - Coucou on iPhone: turn on Settings → General → iPhone (off by default) and your agent sessions show up live in the Coucou iPhone app and its widgets, through your own private iCloud. Project names, commands and questions are encrypted with your iCloud keys; turning it off deletes them (#209, #211, #212, #213)

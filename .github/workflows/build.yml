@@ -45,6 +45,9 @@ jobs:
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
+      - name: Test omp hook
+        run: bash scripts/test-omp-hook.sh
+
       - name: Build
         run: |
           xcodebuild \
