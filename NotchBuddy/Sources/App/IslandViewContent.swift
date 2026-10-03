@@ -2243,6 +2243,7 @@ struct GitHubPullRequestsCardView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .help("\(pr.title) — \(pr.repoFullName)#\(pr.number) by \(pr.author)")
                 }
             }
             .padding(.top, 5)
