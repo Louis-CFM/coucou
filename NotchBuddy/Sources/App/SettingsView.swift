@@ -1075,7 +1075,17 @@ struct SettingsView: View {
         saveKey("n8n-url",         value: n8nUrl)
         saveKey("n8n-api-key",     value: n8nKey)
         saveKey("vercel-token",    value: vercelToken)
-        saveKey("github-token",    value: githubToken)
+
+        // Detect GitHub token changes before writing
+        let prevGithubToken = KeychainStore.shared.get("github-token")
+        saveKey("github-token", value: githubToken)
+        let nextGithubToken = KeychainStore.shared.get("github-token")
+        if nextGithubToken != prevGithubToken {
+            AppState.shared.githubPulse = nil
+            if nextGithubToken == nil { AppState.shared.githubStats = nil }
+            if nextGithubToken != nil { GithubPoller.shared.triggerPulseNow() }
+        }
+
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)

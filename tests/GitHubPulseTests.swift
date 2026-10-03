@@ -212,6 +212,62 @@ enum GitHubPulseTests {
             check("known review → no event", noEvents.isEmpty)
         }
 
+        // ── GitHubPulse.parse — duplicate ids ────────────────────────────────────
+        print("GitHubPulse.parse — duplicate ids")
+        do {
+            // JSON with PR #42 duplicated: should keep only first occurrence
+            let dupJSON: Data = """
+            {
+              "data": {
+                "viewer": {
+                  "login": "testuser",
+                  "pullRequests": {
+                    "nodes": [
+                      {
+                        "number": 42, "title": "Add feature",
+                        "url": "https://github.com/testuser/myrepo/pull/42",
+                        "isDraft": false, "reviewDecision": "APPROVED",
+                        "repository": {"nameWithOwner": "testuser/myrepo", "url": "https://github.com/testuser/myrepo"},
+                        "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "SUCCESS"}}}]}
+                      },
+                      {
+                        "number": 42, "title": "Duplicate entry",
+                        "url": "https://github.com/testuser/myrepo/pull/42",
+                        "isDraft": true, "reviewDecision": null,
+                        "repository": {"nameWithOwner": "testuser/myrepo", "url": "https://github.com/testuser/myrepo"},
+                        "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "FAILURE"}}}]}
+                      }
+                    ]
+                  },
+                  "repositories": {"nodes": []}
+                },
+                "reviewRequested": {"issueCount": 0, "nodes": []}
+              }
+            }
+            """.data(using: .utf8)!
+            let pulse = GitHubPulse.parse(dupJSON)
+            check("dup PR → 1 myPR",           pulse?.myPRs.count == 1)
+            check("dup PR → keeps first title", pulse?.myPRs[0].title == "Add feature")
+            check("dup PR → keeps first ci",    pulse?.myPRs[0].ci == .success)
+        }
+
+        // ── GitHubPulse.events — duplicate ids in old pulse ───────────────────
+        print("GitHubPulse.events — duplicate-safe Dictionary")
+        do {
+            // OLD has duplicate ids (uniquingKeysWith keeps first); NEW has one entry → fires once
+            var oldPulse = GitHubPulse.parse(emptyJSON)!
+            let pr1 = GitHubPR(id: "r/p#1", title: "T", url: "", repo: "r/p",
+                               number: 1, isDraft: false, ci: .pending, review: .unknown)
+            oldPulse.myPRs = [pr1, pr1]  // intentional duplicate in old
+            var newPulse = GitHubPulse.parse(emptyJSON)!
+            var pr1Passed = pr1; pr1Passed.ci = .success
+            newPulse.myPRs = [pr1Passed]  // single entry in new
+            let events = GitHubPulse.events(old: oldPulse, new: newPulse)
+            check("dup old ids → no crash", true)
+            check("dup old ids → ciPassed fires once",
+                  events.filter { if case .ciPassed = $0 { return true }; return false }.count == 1)
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

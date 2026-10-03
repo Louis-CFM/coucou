@@ -95,12 +95,15 @@ struct GitHubPulse: Equatable {
         var myPRs: [GitHubPR] = []
         if let prConn = viewer["pullRequests"] as? [String: Any],
            let nodes = prConn["nodes"] as? [[String: Any]] {
+            var seenPR = Set<String>()
             for node in nodes {
                 guard let number = node["number"] as? Int,
                       let title  = node["title"]  as? String,
                       let url    = node["url"]     as? String,
                       let repoNode = node["repository"] as? [String: Any],
                       let repo  = repoNode["nameWithOwner"] as? String else { continue }
+                let id = "\(repo)#\(number)"
+                guard seenPR.insert(id).inserted else { continue }   // skip duplicates
                 let isDraft = node["isDraft"] as? Bool ?? false
                 let reviewDecision = node["reviewDecision"] as? String
                 let ciRaw: String? = {
@@ -112,7 +115,7 @@ struct GitHubPulse: Equatable {
                     return rollup["state"] as? String
                 }()
                 myPRs.append(GitHubPR(
-                    id: "\(repo)#\(number)",
+                    id: id,
                     title: title,
                     url: url,
                     repo: repo,
@@ -149,15 +152,18 @@ struct GitHubPulse: Equatable {
         var toReview: [GitHubPR] = []
         if let searchResult = dataNode["reviewRequested"] as? [String: Any],
            let nodes = searchResult["nodes"] as? [[String: Any]] {
+            var seenReview = Set<String>()
             for node in nodes {
                 guard let number   = node["number"] as? Int,
                       let title    = node["title"]  as? String,
                       let url      = node["url"]    as? String,
                       let repoNode = node["repository"] as? [String: Any],
                       let repo     = repoNode["nameWithOwner"] as? String else { continue }
+                let id = "\(repo)#\(number)"
+                guard seenReview.insert(id).inserted else { continue }   // skip duplicates
                 let isDraft = node["isDraft"] as? Bool ?? false
                 toReview.append(GitHubPR(
-                    id: "\(repo)#\(number)",
+                    id: id,
                     title: title,
                     url: url,
                     repo: repo,
@@ -183,7 +189,7 @@ struct GitHubPulse: Equatable {
         var result: [GitHubEvent] = []
 
         // PR CI transitions
-        let oldPRmap = Dictionary(uniqueKeysWithValues: old.myPRs.map { ($0.id, $0) })
+        let oldPRmap = Dictionary(old.myPRs.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         for pr in new.myPRs {
             guard let prev = oldPRmap[pr.id] else { continue }
             if pr.ci == .failure && prev.ci != .failure {
@@ -194,7 +200,7 @@ struct GitHubPulse: Equatable {
         }
 
         // Default-branch CI failures
-        let oldRepoMap = Dictionary(uniqueKeysWithValues: old.mainCI.map { ($0.repo, $0) })
+        let oldRepoMap = Dictionary(old.mainCI.map { ($0.repo, $0) }, uniquingKeysWith: { a, _ in a })
         for repo in new.mainCI {
             guard let prev = oldRepoMap[repo.repo] else { continue }
             if repo.ci == .failure && prev.ci != .failure {

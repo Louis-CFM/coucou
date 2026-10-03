@@ -248,6 +248,10 @@ final class AppState: ObservableObject {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
                 UserDefaults.standard.set(data, forKey: "activeIntegrations")
             }
+            // Clear stale GitHub data when the integration is disabled
+            if !activeIntegrations.contains("integration_github") && oldValue.contains("integration_github") {
+                githubPulse = nil
+            }
         }
     }
 
@@ -485,7 +489,8 @@ final class AppState: ObservableObject {
                 if level < 1 { level = 1; badge = .finished; sound = "finish"   }
             }
         }
-        if let b = badge { setPillBadge(b, for: "integration_github") }
+        // Only set badge when the GitHub pill is not currently in focus
+        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
         if let s = sound { SoundEngine.shared.play(s) }
     }
 

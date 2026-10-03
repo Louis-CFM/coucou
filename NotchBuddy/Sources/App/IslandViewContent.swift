@@ -2369,6 +2369,7 @@ struct GitHubPulseCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
+        .clipped()
     }
 
     private func formatCount(_ n: Int) -> String {
@@ -2471,7 +2472,7 @@ struct GitHubDetailView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 88)  // ~4 rows visible
+                .frame(maxHeight: 80)  // 4 rows × 20 pt; rest scrolls
                 .padding(.top, 4)
                 .padding(.leading, 108)
                 .padding(.trailing, 8)
@@ -2479,6 +2480,7 @@ struct GitHubDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
+        .clipped()
         .onExitCommand { onBack() }
     }
 }
@@ -2536,9 +2538,19 @@ private struct GitHubPRRowView: View {
 private struct GitHubRepoCIRowView: View {
     let repo: GitHubRepoCI
 
+    private var ciStateWord: String? {
+        switch repo.ci {
+        case .failure: return "failing"
+        case .pending: return "running"
+        case .success: return "passing"
+        case .unknown: return nil
+        }
+    }
+
     var body: some View {
         Button(action: {
-            if let url = safeWebURL(repo.url), url.host == "github.com" {
+            let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
+            if let url = safeWebURL(actionsURL), url.host == "github.com" {
                 NSWorkspace.shared.open(url)
             }
         }) {
@@ -2551,11 +2563,18 @@ private struct GitHubRepoCIRowView: View {
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#9398A1"))
                     .lineLimit(1)
-                Text(repo.repo)
+                Text(repo.branch)
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#C5C8CD"))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                Spacer(minLength: 4)
+                if let word = ciStateWord {
+                    Text(word)
+                        .font(.system(size: 10))
+                        .foregroundColor(ghCIDot(repo.ci))
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 20)

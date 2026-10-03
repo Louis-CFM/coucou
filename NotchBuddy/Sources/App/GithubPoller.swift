@@ -3,20 +3,23 @@ import Foundation
 final class GithubPoller: @unchecked Sendable {
     static let shared = GithubPoller()
     private var timer: DispatchSourceTimer?
+    // All three properties below are accessed only on the main thread.
     private var pulseInFlight = false
+    private var nextPulse: DispatchWorkItem?
+    private var tokenGeneration = 0
     private init() {}
 
     func start() {
         guard timer == nil else { return }
-        // Existing stats poll: every 5 minutes
+        // Stats poll: every 5 minutes, starting 7 s after launch
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
         t.schedule(deadline: .now() + 7, repeating: 300)
         t.setEventHandler { [weak self] in self?.pollStats() }
         t.resume()
         timer = t
-        // Adaptive pulse poll starts 10 s after launch
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 10) { [weak self] in
-            self?.pollPulse()
+        // First pulse: 10 s after launch, stored in nextPulse so triggerPulseNow can cancel it
+        DispatchQueue.main.async { [weak self] in
+            self?.scheduleNextPulse(hasPending: false, delay: 10)
         }
     }
 
@@ -65,9 +68,9 @@ final class GithubPoller: @unchecked Sendable {
         }.resume()
     }
 
-    // MARK: - Pulse (GraphQL, adaptive cadence)
+    // MARK: - Pulse (GraphQL, single chain)
 
-    /// Kicks off on main to check guards safely, then fires the network call on background.
+    /// Dispatches guards + state reads to main, then fires network on background.
     private func pollPulse() {
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.pulseInFlight else { return }
@@ -77,11 +80,12 @@ final class GithubPoller: @unchecked Sendable {
                 return
             }
             self.pulseInFlight = true
-            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token) }
+            let gen = self.tokenGeneration
+            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token, generation: gen) }
         }
     }
 
-    private func fetchPulse(token: String) {
+    private func fetchPulse(token: String, generation: Int) {
         guard let url = URL(string: "https://api.github.com/graphql") else {
             finishPulse(hasPending: false); return
         }
@@ -98,23 +102,26 @@ final class GithubPoller: @unchecked Sendable {
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
-                // Keep previous data; log HTTP code only (no PR titles, no repo names)
-                print("[GithubPoller] pulse HTTP \(code)")
+                self.nbLog("pulse HTTP \(code)")
                 self.finishPulse(hasPending: false)
                 return
             }
-            // GraphQL errors in body → keep previous data
-            if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errors = root["errors"] as? [[String: Any]], !errors.isEmpty {
-                print("[GithubPoller] pulse GraphQL errors: \(errors.count)")
-                self.finishPulse(hasPending: false)
-                return
+            // Partial GraphQL errors: if "data" is present, parse anyway and log error count.
+            // Only discard if "data" is absent or null.
+            if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let errors = root["errors"] as? [[String: Any]], !errors.isEmpty {
+                    self.nbLog("pulse GraphQL errors: \(errors.count)")
+                }
+                guard root["data"] is [String: Any] else {
+                    self.finishPulse(hasPending: false); return
+                }
             }
             guard let pulse = GitHubPulse.parse(data) else {
-                self.finishPulse(hasPending: false)
-                return
+                self.finishPulse(hasPending: false); return
             }
             DispatchQueue.main.async {
+                // Discard stale response if token changed while request was in flight
+                guard self.tokenGeneration == generation else { return }
                 let old = AppState.shared.githubPulse
                 let events = GitHubPulse.events(old: old, new: pulse)
                 AppState.shared.githubPulse = pulse
@@ -124,16 +131,42 @@ final class GithubPoller: @unchecked Sendable {
         }.resume()
     }
 
-    private func finishPulse(hasPending: Bool) {
-        DispatchQueue.main.async { self.pulseInFlight = false }
-        scheduleNextPulse(hasPending: hasPending)
+    /// Cancels any scheduled next poll, increments tokenGeneration to invalidate in-flight
+    /// responses, then fires pollPulse immediately. If a request is already in flight,
+    /// does not launch another — finishPulse will reschedule.
+    /// Safe to call from any thread.
+    func triggerPulseNow() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.tokenGeneration += 1
+            self.nextPulse?.cancel()
+            self.nextPulse = nil
+            guard !self.pulseInFlight else { return }
+            self.pollPulse()
+        }
     }
 
-    private func scheduleNextPulse(hasPending: Bool) {
-        let delay = hasPending ? 60.0 : 300.0
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.pollPulse()
+    private func nbLog(_ message: String) {
+        appendAppLog("github.log", message)
+    }
+
+    /// Called from any thread; dispatches cleanup to main then schedules next poll.
+    private func finishPulse(hasPending: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.pulseInFlight = false
+            self.scheduleNextPulse(hasPending: hasPending)
         }
+    }
+
+    /// Cancels any pending scheduled poll and schedules a new one on the main queue.
+    /// Must run on the main thread.
+    private func scheduleNextPulse(hasPending: Bool, delay: Double? = nil) {
+        nextPulse?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.pollPulse() }
+        nextPulse = work
+        let d = delay ?? (hasPending ? 60.0 : 300.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + d, execute: work)
     }
 
     // MARK: - GraphQL query
