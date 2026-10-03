@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Coucou — Codex hook preview</title>
+<style>#preview-controls { pointer-events:auto; padding:12px; background:#24272d; } #preview-controls button { padding:8px 12px; margin:8px 4px 8px 0; cursor:pointer; }</style></head>
+<body>
+  <div id="root"></div>
+  <aside id="preview-controls" style="position:fixed;bottom:24px;left:24px;color:#eee;font:14px system-ui;z-index:9999">
+    <p>Local Codex preview · synthetic events · no commands execute</p>
+    <button id="preview-activity">Activity</button>
+    <button id="preview-approval">Permission request</button>
+    <button id="preview-finished">Finished</button>
+    <button id="preview-interrupt">Interrupted</button>
+    <p id="preview-status"></p>
+  </aside>
+  <script type="module" src="./codex-preview.ts"></script>
+</body>
+</html>

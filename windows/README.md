@@ -6,7 +6,7 @@
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
-Approve Claude Code permissions, watch your session work, drop a file, chat with Claude, keep an eye on your services — without leaving what you're doing.
+Approve agent permissions, watch your session work, drop a file, chat with Claude or OpenAI, keep an eye on your services — without leaving what you're doing.
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -68,11 +68,95 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Codex
+
+Native Windows Codex sessions can use the same local relay as Claude Code. Codex
+has its own pill, activity state and permission card. No API key is needed for
+this integration; the built-in chat uses a separate Claude or OpenAI API key.
+
+1. Open **Settings… → Codex → Install hooks…** and review the proposed changes.
+2. Confirm the write. Coucou merges only its handlers into
+   `%CODEX_HOME%\hooks.json`, or `%USERPROFILE%\.codex\hooks.json` when
+   `CODEX_HOME` is unset, and creates a dated backup if the file exists.
+3. In a Codex version with [hooks support](https://learn.chatgpt.com/docs/hooks),
+   review and trust those hooks using `/hooks` in the CLI. Restart or open a new
+   session as needed. Installing hooks does not grant trust, and Coucou never
+   changes Codex's `config.toml`, authentication or approval policy.
+
+The supported events are `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+`PostToolUse`, `PermissionRequest`, `Stop`, `SubagentStart`, `SubagentStop`,
+`Interrupt` and `SessionEnd`. This integration is for local, native Windows
+sessions. A Windows named pipe is not available to WSL or remote/cloud sessions.
+Hosted tools may not emit local tool hooks; the indicator is not a complete
+audit trail.
+
+Ordinary Codex activity forwards only local session identity, working directory,
+event and tool names. It does not forward prompts, tool arguments/results,
+transcript paths or assistant messages. A **permission request includes the exact
+tool arguments**, because you need to see what you are approving. Those details
+can contain sensitive text: review them locally and do not share screenshots of
+the card casually. Nothing in this integration sends the events to a network
+service or reads the session transcript.
+
+The relay labels Codex packets with `coucou_agent: "codex"`; an absent agent label
+keeps the existing Claude behavior. A closed or unresponsive Coucou, declined
+card, or unanswered request falls back to Codex's normal approval flow. Allow
+and Deny apply only to that request; they do not create permanent approval rules.
+Only one approval card is shown at a time; additional requests are returned to
+their original agent.
+
+To remove the integration, use **Codex → Uninstall hooks…**. Unrelated hooks,
+including other handlers sharing the same event group, are preserved. Invalid
+configuration or a file changed since the preview is refused rather than
+overwritten.
+
+### Checking a contribution
+
+```powershell
+npm ci
+npm run test:hooks
+cargo test --workspace --release --locked
+npm run pack
+# Close Coucou first: the smoke test uses its local named-pipe name.
+pwsh -File ./scripts/test-relay.ps1
+```
+
+The relay smoke test exchanges synthetic events and approval decisions. It
+does not execute the commands in those events or modify any agent configuration.
+
+For visual review, open `/dev/codex-preview.html` in the Vite development server.
+It uses synthetic events with the real handler and views, is excluded from the
+application build, and never executes the displayed commands.
+
+![Codex permission card with synthetic test arguments](dev/codex-preview.png)
+
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+Choose **Settings… → Chat → Provider**, then save the matching key under
+**Claude** (Anthropic) or **OpenAI**. Claude remains the default for existing
+installations. Each provider keeps its own model setting. OpenAI defaults to
+`gpt-4.1-mini`; you can enter another Responses-compatible model available to
+your API account. API usage is billed by the selected provider.
+
+Keys are stored in the **Windows Credential Manager** (Secret Service on Linux),
+not in preferences or chat history. After saving, the UI can only ask whether a
+key exists. Requests and attachment encoding happen in Rust.
+
+OpenAI uses `https://api.openai.com/v1/responses`, with `store: false` and local
+in-memory conversation history. It supports multiple turns, UTF-8 text/code
+attachments up to 200 KB, and PDFs/images up to 20 MiB. Supported image formats
+are PNG, JPEG, WebP and GIF (the API supports non-animated GIFs). The selected
+model must support the attachment type. Live web search is currently available
+only in the Claude chat. No provider is contacted automatically as a fallback.
+
+Changing the provider or its active model starts a fresh conversation and clears
+the attached file. Old conversations are not forwarded to the newly selected
+provider. A failed request does not enter the conversation history, and a late
+response after reset is discarded.
+
+To test with your own key: choose OpenAI, save your key, open **Ask Mochi**, send
+a short question, then a follow-up referring to the answer. Check a small text
+attachment separately. Never paste keys into issue reports or screenshots.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
@@ -126,7 +210,7 @@ windows/
     island/            state machine, hooks, integrations
     views/             every island view
     settings/          the settings window
-  src-tauri/           Rust backend: window, named pipe, Claude API, pollers
+  src-tauri/           Rust backend: window, named pipe, Claude/OpenAI APIs, pollers
   hook/                coucou-hook.exe, the Claude Code relay
   scripts/             icon generator
 ```

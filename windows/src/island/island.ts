@@ -10,7 +10,7 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, isCodingAgent } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -109,6 +109,8 @@ export class Island {
       collapse: () => this.collapse(),
       setFocus: (id) => {
         State.setFocus(id);
+        if (State.pendingApproval?.taskId === id) this.alert("approval");
+        else if (State.view === "approval") this.setView(State.defaultView());
         Sound.play("blip");
       },
       openTerminal: () => {
@@ -127,24 +129,24 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
+        if (isCodingAgent(task)) void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
-      decide: (d) => {
+      decide: (d, requestId) => {
         const req = State.pendingApproval;
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
-        if (!req) return;
+        if (!req || req.requestId !== requestId) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        State.updateTask(req.taskId, "working");
+        State.setPillBadge(req.taskId, null);
         this.setView(State.defaultView());
       },
       toggleSound: () => {
@@ -389,6 +391,7 @@ export class Island {
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
+    State.chatGeneration++;
     void Bridge.chatReset();
 
     UploadSeq.performDrop(State.uploadDuration);

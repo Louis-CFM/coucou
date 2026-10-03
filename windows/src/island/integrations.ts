@@ -37,6 +37,13 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_claude = { ...claude, configured: hooks };
+  const codexStatus = await Bridge.hooksStatus("codex");
+  const codex = State.integrations.integration_codex ?? {
+    data: {}, error: null, loaded: false, configured: false,
+  };
+  State.integrations.integration_codex = {
+    ...codex, configured: codexStatus?.installed ?? false, error: codexStatus?.error ?? null,
+  };
   State.notify();
 }
 

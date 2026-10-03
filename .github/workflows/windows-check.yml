@@ -1,0 +1,37 @@
+name: Windows checks
+
+on:
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/windows-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: windows-check-${{ hashFiles('windows/Cargo.lock') }}
+      - run: npm ci
+      - run: npm run test:hooks
+      - run: cargo test --workspace --release --locked
+      - run: npm run pack
+      - run: ./scripts/test-relay.ps1

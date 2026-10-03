@@ -1,11 +1,14 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod chat;
 mod claude;
 mod files;
 mod hooks;
+mod hooks_config;
 mod integrations;
 mod island;
 mod log;
+mod openai;
 mod pipe;
 mod platform;
 mod secrets;
@@ -20,9 +23,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
-use claude::{Chat, ChatContext, ChatReply};
+use chat::{Chat, Provider};
+use claude::{ChatContext, ChatReply};
 use files::DroppedFile;
-use hooks::{HookPreview, HookStatus};
+use hooks::{HookAgent, HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
 use pipe::Pending;
 use settings::Settings;
@@ -48,7 +52,7 @@ pub struct BootInfo {
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    settings.hooks_installed = hooks::status(HookAgent::Claude).installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -60,11 +64,14 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 }
 
 #[tauri::command]
-fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
+fn save_settings(app: AppHandle, shared: State<Shared>, chat: State<Chat>, settings: Settings) {
     let (screen_changed, autostart_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        if current.chat_provider != settings.chat_provider || current.chat_model() != settings.chat_model() {
+            chat.reset();
+        }
         *current = settings.clone();
         (screen_changed, autostart_changed)
     };
@@ -177,17 +184,17 @@ fn set_paused(paused: bool) {
     integrations::set_paused(paused);
 }
 
-// ── Claude Code hooks ─────────────────────────────────────────────────────────
+// ── Agent hooks ───────────────────────────────────────────────────────────────
 
 #[tauri::command]
-fn hooks_status() -> HookStatus {
-    hooks::status()
+fn hooks_status(agent: Option<HookAgent>) -> HookStatus {
+    hooks::status(agent.unwrap_or_default())
 }
 
 /// Returns the diff the user has to look at before anything is written.
 #[tauri::command]
-fn hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::preview(install)
+fn hooks_preview(install: bool, agent: Option<HookAgent>) -> Result<HookPreview, String> {
+    hooks::preview(install, agent.unwrap_or_default())
 }
 
 /// Only ever called from an explicit click in the settings window.
@@ -197,14 +204,20 @@ fn hooks_apply(
     shared: State<Shared>,
     install: bool,
     fingerprint: String,
+    agent: Option<HookAgent>,
 ) -> Result<String, String> {
     // The fingerprint comes from the preview the user actually looked at, so a
     // settings.json that changed in between is refused rather than overwritten.
-    let backup = hooks::write(install, &fingerprint)?;
+    let agent = agent.unwrap_or_default();
+    let backup = hooks::write(install, &fingerprint, agent)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.hooks_installed = install;
-        let _ = settings::save(&current);
+        // Keep the legacy Claude preference compatible. Codex state is read
+        // from hooks.json, so removing it externally cannot leave stale state.
+        if agent == HookAgent::Claude {
+            current.hooks_installed = hooks::status(agent).installed;
+            let _ = settings::save(&current);
+        }
         current.clone()
     };
     let _ = app.emit("settings-changed", updated);
@@ -241,8 +254,12 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let _turn = chat.turn.try_lock().map_err(|_| "A chat request is already running. Please wait.")?;
+    let settings = shared.settings.lock().unwrap().clone();
+    match settings.chat_provider {
+        Provider::Claude => claude::send(&chat, settings.chat_model(), query, context).await,
+        Provider::Openai => openai::send(&chat, settings.chat_model(), query, context).await,
+    }
 }
 
 #[tauri::command]

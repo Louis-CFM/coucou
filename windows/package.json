@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "test:hooks": "node --test tests/hook-events.test.mjs",
     "icons": "node scripts/gen-icons.mjs",
     "tauri": "tauri",
     "predev": "cargo build --release -p coucou-hook",

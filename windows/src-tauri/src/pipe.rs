@@ -33,14 +33,15 @@ use tokio::sync::mpsc;
 use crate::island::WINDOW_LABEL;
 use crate::log;
 
-/// Slightly under coucou-hook's own 110 s wait, so we always answer first.
-const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
+/// Leave room inside the relay's 110 s total for its 2 s preparation and ACK.
+const DECISION_TIMEOUT: Duration = Duration::from_secs(106);
 /// How long the island gets to say "the card is up". This is the whole of B4:
 /// without it, an island that is paused, hidden behind a crashed webview or
 /// simply not listening would leave Claude Code staring at a prompt nobody can
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+const READ_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -48,7 +49,7 @@ pub enum Reply {
     Ack,
     /// A human clicked: `allow` or `deny`.
     Decision(String),
-    /// Nobody can act on it — paused, or another request already holds the card.
+    /// Nobody can act on it â€” paused, or another request already holds the card.
     Decline,
 }
 
@@ -58,7 +59,7 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
-/// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
+/// `\\.\pipe\coucou-<sid>` â€” must match coucou-hook's `pipe_path()` exactly.
 #[cfg(windows)]
 pub fn pipe_name() -> String {
     let key = crate::platform::current_user_sid()
@@ -166,29 +167,9 @@ impl Relay for NamedPipeServer {
 impl Relay for tokio::net::UnixStream {}
 
 async fn handle(app: AppHandle, mut pipe: impl Relay) {
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        match pipe.read(&mut chunk).await {
-            Ok(0) => break,
-            Ok(n) => {
-                buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
-                }
-            }
-            Err(_) => return,
-        }
-    }
-    let line = match buf.iter().position(|b| *b == b'\n') {
-        Some(i) => &buf[..i],
-        None => &buf[..],
-    };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
-    if !payload.is_object() {
+    let Ok(Some(mut payload)) = tokio::time::timeout(READ_TIMEOUT, read_payload(&mut pipe)).await else {
         return;
-    }
-
+    };
     let event = payload
         .get("hook_event_name")
         .and_then(Value::as_str)
@@ -214,14 +195,52 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     let decision = wait_for_decision(&id, &mut rx).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
+    // A card must stop accepting clicks as soon as its request is no longer live.
+    let _ = app.emit_to(WINDOW_LABEL, "approval-ended", json!({ "request_id": id }));
 
-    // No decision: say nothing at all. coucou-hook then writes nothing to stdout
-    // and Claude Code asks in the terminal, exactly as if Coucou were closed.
     if let Some(d) = decision {
         let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// Reject incomplete and oversized frames instead of presenting partial approvals.
+async fn read_payload(pipe: &mut (impl tokio::io::AsyncRead + Unpin)) -> Option<Value> {
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 4096];
+    loop {
+        match pipe.read(&mut chunk).await {
+            Ok(0) => return None,
+            Ok(n) => {
+                buf.extend_from_slice(&chunk[..n]);
+                if buf.len() > MAX_PAYLOAD {
+                    return None;
+                }
+                if buf.contains(&b'\n') {
+                    break;
+                }
+            }
+            Err(_) => return None,
+        }
+    }
+    let line = match buf.iter().position(|b| *b == b'\n') {
+        Some(i) => &buf[..i],
+        None => &buf[..],
+    };
+    let mut payload = serde_json::from_slice::<Value>(line).ok()?;
+    if !payload.is_object() {
+        return None;
+    }
+    // Keep upstream's third-party routing contract. Invalid tags fall back to
+    // Claude; valid external agents are displayed but cannot approve requests.
+    let valid_agent = payload.get("coucou_agent").and_then(Value::as_str)
+        .is_some_and(|name| !name.is_empty() && name.len() <= 24
+            && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-'));
+    if !valid_agent {
+        payload.as_object_mut()?.remove("coucou_agent");
+    }
+    Some(payload)
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
@@ -234,12 +253,12 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
             return Some(d);
         }
         Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} not shown — terminal takes over"));
+            log::line(format!("hook id={id} not shown â€” terminal takes over"));
             return None;
         }
         Ok(None) => return None,
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
+            log::line(format!("hook id={id} island never acknowledged â€” terminal takes over"));
             return None;
         }
     }
@@ -254,7 +273,7 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
             None
         }
         _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
+            log::line(format!("hook id={id} timed out â€” terminal takes over"));
             None
         }
     }
@@ -270,7 +289,7 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
         Some(tx) => {
             let _ = tx.try_send(reply);
         }
-        None => log::line(format!("reply for id={request_id} — no pending request")),
+        None => log::line(format!("reply for id={request_id} â€” no pending request")),
     }
 }
 
@@ -279,7 +298,7 @@ pub fn acknowledge(app: &AppHandle, request_id: &str) {
     send(app, request_id, Reply::Ack, true);
 }
 
-/// Nobody can act on this one — paused, or another card already holds the view.
+/// Nobody can act on this one â€” paused, or another card already holds the view.
 pub fn decline(app: &AppHandle, request_id: &str) {
     log::line(format!("decline id={request_id}"));
     send(app, request_id, Reply::Decline, false);
@@ -294,4 +313,57 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn read(bytes: &[u8]) -> Option<Value> {
+        tokio::runtime::Builder::new_current_thread().build().unwrap()
+            .block_on(read_payload(&mut &bytes[..]))
+    }
+
+    #[test]
+    fn complete_frames_preserve_permission_arguments() {
+        let payload = json!({
+            "coucou_agent": "codex", "hook_event_name": "PermissionRequest",
+            "tool_input": { "command": "echo first\necho second", "description": "two lines" }
+        });
+        let frame = format!("{payload}\n");
+        assert_eq!(read(frame.as_bytes()), Some(payload));
+        assert!(read(b"{\"hook_event_name\":\"Stop\"}\n").is_some());
+    }
+
+    #[test]
+    fn invalid_incomplete_or_oversized_frames_are_rejected() {
+        assert!(read(b"{} ").is_none());
+        assert!(read(b"[]\n").is_none());
+        assert!(read(b"{broken}\n").is_none());
+        let oversized = format!("{{\"command\":\"{}\"}}\n", "x".repeat(MAX_PAYLOAD));
+        assert!(read(oversized.as_bytes()).is_none());
+    }
+
+    #[test]
+    fn third_party_tags_route_and_invalid_tags_fall_back_to_claude() {
+        let payload = read(b"{\"coucou_agent\":\"my-tool\"}\n").unwrap();
+        assert_eq!(payload["coucou_agent"], "my-tool");
+        for frame in [b"{\"coucou_agent\":null}\n".as_slice(),
+            b"{\"coucou_agent\":\"Invalid_name\"}\n",
+            b"{\"coucou_agent\":\"abcdefghijklmnopqrstuvwxyz\"}\n"] {
+            assert_eq!(read(frame), Some(json!({})));
+        }
+    }
+
+    #[test]
+    fn a_declined_or_closed_request_does_not_approve() {
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+        runtime.block_on(async {
+            let (tx, mut rx) = mpsc::channel(4);
+            tx.send(Reply::Decline).await.unwrap();
+            assert_eq!(wait_for_decision("test", &mut rx).await, None);
+            drop(tx);
+            assert_eq!(wait_for_decision("test", &mut rx).await, None);
+        });
+    }
 }
