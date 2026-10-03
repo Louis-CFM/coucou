@@ -1,33 +1,29 @@
 import Foundation
 
 enum Outfit: String, CaseIterable {
-    case auto, none, partyHat, beanie, crown, topHat, cap, sunglasses, roundGlasses,
-         bow, scarf, witchHat, pumpkin, santaHat, bunnyEars, heartsHeadband, strawHat
+    case auto, none, partyHat, beanie, crown, sunglasses, roundGlasses,
+         bow, scarf, witchHat, pumpkin, santaHat, bunnyEars
 
     var displayName: String {
         switch self {
-        case .auto:           return "Auto (seasons)"
-        case .none:           return "None"
-        case .partyHat:       return "Party hat"
-        case .beanie:         return "Beanie"
-        case .crown:          return "Crown"
-        case .topHat:         return "Top hat"
-        case .cap:            return "Cap"
-        case .sunglasses:     return "Sunglasses"
-        case .roundGlasses:   return "Round glasses"
-        case .bow:            return "Bow"
-        case .scarf:          return "Scarf"
-        case .witchHat:       return "Witch hat"
-        case .pumpkin:        return "Pumpkin"
-        case .santaHat:       return "Santa hat"
-        case .bunnyEars:      return "Bunny ears"
-        case .heartsHeadband: return "Hearts"
-        case .strawHat:       return "Straw hat"
+        case .auto:         return "Auto (seasons)"
+        case .none:         return "None"
+        case .partyHat:     return "Party hat"
+        case .beanie:       return "Beanie"
+        case .crown:        return "Crown"
+        case .sunglasses:   return "Sunglasses"
+        case .roundGlasses: return "Round glasses"
+        case .bow:          return "Bow"
+        case .scarf:        return "Scarf"
+        case .witchHat:     return "Witch hat"
+        case .pumpkin:      return "Pumpkin"
+        case .santaHat:     return "Santa hat"
+        case .bunnyEars:    return "Bunny ears"
         }
     }
 
     // Returns the seasonal outfit for the given date (user's local calendar).
-    // Priority: partyHat > santaHat > witchHat > heartsHeadband > bunnyEars > sunglasses > none
+    // Priority: partyHat > santaHat > witchHat > bunnyEars > sunglasses > none
     static func seasonal(for date: Date, calendar: Calendar) -> Outfit {
         let day   = calendar.component(.day,   from: date)
         let month = calendar.component(.month, from: date)
@@ -41,9 +37,6 @@ enum Outfit: String, CaseIterable {
 
         // Oct 1 – Nov 1 → witch hat
         if month == 10 || (month == 11 && day == 1) { return .witchHat }
-
-        // Feb 13–15 → hearts headband
-        if month == 2 && day >= 13 && day <= 15 { return .heartsHeadband }
 
         // Easter −2 / +1 → bunny ears (Meeus/Jones/Butcher algorithm)
         let (eMonth, eDay) = easterDate(year: year)

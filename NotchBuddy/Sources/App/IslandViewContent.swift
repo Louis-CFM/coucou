@@ -4104,10 +4104,14 @@ private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outf
     case .none:
         var ctx = context
         ctx.translateBy(x: cx, y: cy)
-        var dash = Path()
-        dash.move(to: CGPoint(x: -R * 0.8, y: 0))
-        dash.addLine(to: CGPoint(x: R * 0.8, y: 0))
-        ctx.stroke(dash, with: .color(Color(hex: "#454850")), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+        // Circle with diagonal slash (⊘)
+        var circle = Path()
+        circle.addEllipse(in: CGRect(x: -R * 0.82, y: -R * 0.82, width: R * 1.64, height: R * 1.64))
+        ctx.stroke(circle, with: .color(Color(hex: "#454850")), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+        var slash = Path()
+        slash.move(to:    CGPoint(x: -R * 0.56, y:  R * 0.56))
+        slash.addLine(to: CGPoint(x:  R * 0.56, y: -R * 0.56))
+        ctx.stroke(slash, with: .color(Color(hex: "#454850")), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
 
     case .partyHat:
         var ctx = context
@@ -4123,16 +4127,6 @@ private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outf
         var ctx = context
         ctx.translateBy(x: cx, y: cy)
         drawCrownIcon(ctx: &ctx, R: R)
-
-    case .topHat:
-        var ctx = context
-        ctx.translateBy(x: cx, y: cy)
-        drawTopHatIcon(ctx: &ctx, R: R)
-
-    case .cap:
-        var ctx = context
-        ctx.translateBy(x: cx, y: cy)
-        drawCapIcon(ctx: &ctx, R: R)
 
     case .sunglasses:
         var ctx = context
@@ -4174,15 +4168,6 @@ private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outf
         ctx.translateBy(x: cx, y: cy)
         drawBunnyEarsIcon(ctx: &ctx, R: R)
 
-    case .heartsHeadband:
-        var ctx = context
-        ctx.translateBy(x: cx, y: cy)
-        drawHeartsHeadbandIcon(ctx: &ctx, R: R)
-
-    case .strawHat:
-        var ctx = context
-        ctx.translateBy(x: cx, y: cy)
-        drawStrawHatIcon(ctx: &ctx, R: R)
     }
 }
 
@@ -4223,31 +4208,6 @@ private func drawCrownIcon(ctx: inout GraphicsContext, R: CGFloat) {
         pt.closeSubpath()
         ctx.fill(pt, with: .color(Color(hex: "#EAB308")))
     }
-}
-private func drawTopHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
-    var body = Path()
-    body.addRect(CGRect(x: -R * 0.72, y: -R, width: R * 1.44, height: R * 1.1))
-    ctx.fill(body, with: .color(Color(hex: "#1C1917")))
-    var brim = Path()
-    brim.addRoundedRect(in: CGRect(x: -R, y: R * 0.1, width: R * 2, height: R * 0.3),
-                        cornerSize: CGSize(width: R * 0.08, height: R * 0.08))
-    ctx.fill(brim, with: .color(Color(hex: "#1C1917")))
-    var band = Path()
-    band.addRect(CGRect(x: -R * 0.72, y: R * 0, width: R * 1.44, height: R * 0.18))
-    ctx.fill(band, with: .color(Color(hex: "#991B1B")))
-}
-private func drawCapIcon(ctx: inout GraphicsContext, R: CGFloat) {
-    var dome = Path()
-    dome.addArc(center: CGPoint(x: 0, y: R * 0.1), radius: R,
-                startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
-    dome.addLine(to: CGPoint(x: R, y: R * 0.5))
-    dome.addLine(to: CGPoint(x: -R, y: R * 0.5))
-    dome.closeSubpath()
-    ctx.fill(dome, with: .color(Color(hex: "#E11D48")))
-    var brim = Path()
-    brim.addRoundedRect(in: CGRect(x: R * 0.1, y: R * 0.35, width: R * 1.2, height: R * 0.3),
-                        cornerSize: CGSize(width: R * 0.08, height: R * 0.08))
-    ctx.fill(brim, with: .color(Color(hex: "#9F1239")))
 }
 private func drawSunglassesIcon(ctx: inout GraphicsContext, R: CGFloat) {
     for sd: CGFloat in [-1, 1] {
@@ -4355,32 +4315,6 @@ private func drawBunnyEarsIcon(ctx: inout GraphicsContext, R: CGFloat) {
         ctx.fill(inner, with: .color(Color(hex: "#FCA5A5").opacity(0.7)))
     }
 }
-private func drawHeartsHeadbandIcon(ctx: inout GraphicsContext, R: CGFloat) {
-    var band = Path()
-    band.addRoundedRect(in: CGRect(x: -R, y: R * 0.1, width: R * 2, height: R * 0.38),
-                        cornerSize: CGSize(width: R * 0.1, height: R * 0.1))
-    ctx.fill(band, with: .color(Color(hex: "#F472B6")))
-    for dx: CGFloat in [-R * 0.5, R * 0.5] {
-        var hCtx = ctx; hCtx.translateBy(x: dx, y: -R * 0.32)
-        hCtx.fill(outfitIconHeart(size: R * 0.6), with: .color(Color(hex: "#F43F5E")))
-    }
-}
-private func drawStrawHatIcon(ctx: inout GraphicsContext, R: CGFloat) {
-    var brim = Path()
-    brim.addEllipse(in: CGRect(x: -R, y: R * 0.2, width: R * 2, height: R * 0.38))
-    ctx.fill(brim, with: .color(Color(hex: "#D97706")))
-    var crown = Path()
-    crown.addRoundedRect(in: CGRect(x: -R * 0.76, y: -R * 0.7, width: R * 1.52, height: R * 0.9),
-                         cornerSize: CGSize(width: R * 0.5, height: R * 0.5))
-    ctx.fill(crown, with: .color(Color(hex: "#F59E0B")))
-    for i in 0..<6 {
-        if i % 2 == 0 {
-            var sq = Path()
-            sq.addRect(CGRect(x: -R * 0.76 + CGFloat(i) * R * 0.26, y: -R * 0.12, width: R * 0.26, height: R * 0.22))
-            ctx.fill(sq, with: .color(Color(hex: "#78350F")))
-        }
-    }
-}
 private func outfitIconStar(outer ro: CGFloat, inner ri: CGFloat) -> Path {
     var p = Path()
     for i in 0..<10 {
@@ -4392,19 +4326,6 @@ private func outfitIconStar(outer ro: CGFloat, inner ri: CGFloat) -> Path {
     p.closeSubpath()
     return p
 }
-private func outfitIconHeart(size s: CGFloat) -> Path {
-    var p = Path()
-    p.move(to: CGPoint(x: 0, y: s * 0.38))
-    p.addCurve(to: CGPoint(x: 0, y: -s * 0.38),
-               control1: CGPoint(x: -s * 1.05, y: -s * 0.15),
-               control2: CGPoint(x: -s * 0.5,  y: -s * 0.95))
-    p.addCurve(to: CGPoint(x: 0, y: s * 0.38),
-               control1: CGPoint(x: s * 0.5,   y: -s * 0.95),
-               control2: CGPoint(x: s * 1.05,  y: -s * 0.15))
-    p.closeSubpath()
-    return p
-}
-
 // MARK: - Card background
 
 struct CardBackground<Content: View>: View {

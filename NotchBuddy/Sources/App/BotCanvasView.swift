@@ -117,11 +117,6 @@ struct BotCanvasView: View {
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             engine.greet()
         }
-        .onChange(of: state.resolvedOutfit) { _, _ in
-            engine.squash()
-            engine.emit(.star, count: 3)
-            SoundEngine.shared.play("pop")
-        }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
         }

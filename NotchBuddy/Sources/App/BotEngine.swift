@@ -586,6 +586,7 @@ final class BotEngine: ObservableObject {
                 TweenKey(target: 1,    duration: 500, ease: Ease.inOut),
             ])
         case .proud:
+            squash()
             emit(.star, count: 5)
             anim("tilt", keys: [
                 TweenKey(target: -0.14, duration: 220, ease: Ease.out),
@@ -842,8 +843,8 @@ final class BotEngine: ObservableObject {
         // Body fill
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
 
-        // Pumpkin: orange body tint overlay (only when no integration bodyColor override)
-        if outfit == .pumpkin && bodyColor == nil {
+        // Pumpkin: orange body tint overlay (skip in mini mode only)
+        if outfit == .pumpkin && !isMini {
             ctx.fill(bodyPath, with: .linearGradient(
                 Gradient(colors: [Color(hex: "#F97316").opacity(0.82), Color(hex: "#EA580C").opacity(0.90)]),
                 startPoint: CGPoint(x: rx * 0.5, y: -ry * 0.8),
@@ -1490,7 +1491,7 @@ final class BotEngine: ObservableObject {
 
 // MARK: - Math helpers
 
-private func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b-a) * t }
+func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b-a) * t }
 private func clamp(_ v: CGFloat, _ lo: CGFloat, _ hi: CGFloat) -> CGFloat { max(lo, min(hi, v)) }
 
 private func cgColorToTuple(_ c: CGColor) -> (CGFloat, CGFloat, CGFloat) {
