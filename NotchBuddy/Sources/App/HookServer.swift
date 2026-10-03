@@ -46,6 +46,7 @@ final class HookServer: @unchecked Sendable {
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
+    private var sessions = PillSessionRegistry()      // live sessions behind each pill
 
     private init() {}
 
@@ -377,6 +378,14 @@ final class HookServer: @unchecked Sendable {
 
         let focused = state.focusId == agentId
 
+        // Several sessions can share one pill — it is chosen from the client, not
+        // from the session. The registry below tells a terminal event whether it
+        // may touch the pill, and which session owns the displayed project.
+        let display = PillSessionRegistry.Display(
+            session: sessionId,
+            projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
+            cwd: isExternalAgent ? "" : cwd)
+
         // While a permission request is pending, dismiss when the resolving event arrives,
         // then continue normal processing. Only skip normal processing when unresolved.
         if let pending = state.pendingApproval, agentId == pending.pillId {
@@ -413,7 +422,8 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            upsertTask(pill: agentId, display: display, working: false,
+                       externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
@@ -421,7 +431,8 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            upsertTask(pill: agentId, display: display, working: true,
+                       externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
@@ -436,7 +447,8 @@ final class HookServer: @unchecked Sendable {
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            upsertTask(pill: agentId, display: display, working: true,
+                       externalAgent: isExternalAgent ? validAgent : nil)
             state.updateTask(id: agentId, state: .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
@@ -444,6 +456,7 @@ final class HookServer: @unchecked Sendable {
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
+            sessions.note(pill: agentId, display: display, working: true)
             state.updateTask(id: agentId, state: .working)
             // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
@@ -455,10 +468,12 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "PostToolUseFailure":
+            sessions.note(pill: agentId, display: display, working: true)
             state.updateTask(id: agentId, state: .working)
             appendStep(id: agentId, step: "⚠ failed")
 
         case "Notification":
+            sessions.note(pill: agentId, display: display, working: false)
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
@@ -470,15 +485,22 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "Stop":
-            state.updateTask(id: agentId, state: .finished)
+            let scope = sessions.endTurn(pill: agentId, session: sessionId)
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
-            if !finalText.isEmpty {
-                appendStep(id: agentId, step: finalText)
-                if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                    state.tasks[idx].finalLine = finalText
-                }
+            // The step log is shared, so the conclusion is worth showing either way.
+            if !finalText.isEmpty { appendStep(id: agentId, step: finalText) }
+            // Another session is still mid-turn behind this pill: a finished
+            // state, the sound and the forced idle below would all land on its
+            // work. It gets its own Stop when its turn really ends.
+            guard scope == .pill else {
+                nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+                break
+            }
+            state.updateTask(id: agentId, state: .finished)
+            if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+                state.tasks[idx].finalLine = finalText
             }
             SoundEngine.shared.play("finish")
             if focused {
@@ -487,6 +509,8 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // A sibling session may have started working during the delay.
+                guard self.sessions.workingCount(pill: agentId) == 0 else { return }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -496,6 +520,7 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "StopFailure":
+            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
             state.updateTask(id: agentId, state: .error)
             SoundEngine.shared.play("error")
             if focused {
@@ -506,11 +531,18 @@ final class HookServer: @unchecked Sendable {
 
         case "Interrupt":
             // Codex: user stopped the turn
+            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
             activeSessionId = nil
             state.updateTask(id: agentId, state: .idle)
             clearPillBadge(id: agentId)
 
         case "SessionEnd":
+            // Only the last session behind the pill may take the card down.
+            guard sessions.endSession(pill: agentId, session: sessionId) == .pill else {
+                nbLog("SessionEnd \(sessionId.prefix(8)) — \(sessions.liveCount(pill: agentId)) session(s) left on \(agentId)")
+                applyDisplayOwner(pill: agentId)
+                break
+            }
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
@@ -684,7 +716,10 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        upsertTask(pill: pillId,
+                   display: PillSessionRegistry.Display(session: sessionId,
+                                                        projectName: projectName, cwd: cwd),
+                   working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
                                               command: command, inputKey: inputKey, pillId: pillId)
@@ -828,7 +863,10 @@ final class HookServer: @unchecked Sendable {
         activeSessionId = sessionId
         questionPillId = pillId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        upsertTask(pill: pillId,
+                   display: PillSessionRegistry.Display(session: sessionId,
+                                                        projectName: projectName, cwd: cwd),
+                   working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
         state.isPinned = true
@@ -863,13 +901,45 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    /// Records the session an event came from, then refreshes its card.
+    /// `externalAgent` is the validated `coucou_agent` name for a third-party
+    /// agent pill, nil for a workspace pill.
+    @MainActor
+    private func upsertTask(pill: String, display: PillSessionRegistry.Display,
+                            working: Bool, externalAgent: String?) {
+        sessions.note(pill: pill, display: display, working: working)
+        if let externalAgent {
+            upsertExternalAgent(id: pill, name: externalAgent)
+        } else {
+            upsertWorkspaceTask(id: pill, projectName: display.projectName,
+                                cwd: display.cwd, session: display.session)
+        }
+    }
+
+    /// Writes the pill's name and cwd from the session that owns it. Used when
+    /// the owner ends and a sibling session inherits the card.
+    @MainActor
+    private func applyDisplayOwner(pill: String) {
+        guard let owner = sessions.displayOwner(of: pill),
+              let idx = AppState.shared.tasks.firstIndex(where: { $0.id == pill }),
+              !owner.projectName.isEmpty else { return }
+        AppState.shared.tasks[idx].name = owner.projectName
+        if !owner.cwd.isEmpty { AppState.shared.tasks[idx].sessionCwd = owner.cwd }
+    }
+
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
+    ///
+    /// `session` names the session the event came from. Name and cwd belong to
+    /// the session that owns the pill, so a second session running under the
+    /// same client cannot rename the card out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "") {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String,
+                                     session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
+            guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
             return
