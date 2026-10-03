@@ -114,6 +114,68 @@ Réglages → Agents → Plan usage → **Uninstall relay**. Remet l'objet `stat
 
 ---
 
+## 1ter. Diff en direct (live diff)
+
+Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'app calcule un diff ligne à ligne et l'affiche dans le fil de l'île.
+
+**Données**
+- `Edit` : `old_string → new_string`
+- `MultiEdit` : liste `edits`, chaque entrée `old_string → new_string`
+- `Write` : `content` — tout le contenu est compté en ajout (on ne lit jamais le fichier sur le disque)
+- Le diff est calculé localement (Foundation, jamais de lecture sur le disque).
+- Limite : 200 Ko de texte combiné ou 4 000 lignes combinées → bilan seul, "Diff too large".
+- Mémoire : 50 diffs max par session, les plus anciens sont oubliés ; tout effacé à la fin de la session (`SessionEnd`) ou après une heure sans activité.
+
+**Fil (TickerView)** — les étapes de modification affichent le nom du fichier, `+N` en vert `#22C55E` et `−M` en rouge `#F4505E`, petits et monospacés.
+
+**Carte diff** — un clic sur une étape de modification ouvre la carte diff dans la vue principale :
+- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon `NSWorkspace`)
+- Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
+- Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
+
+**Vue Terminé (FinishedView)** — affiche la dernière ligne utile de la session (`finalLine` → dernière étape non-diff → "Session finished"), sur une ligne (`.lineLimit(1).truncationMode(.tail)`). Pas de liste de fichiers.
+
+---
+
+## 1quater. GitHub (pulse)
+
+**Plateforme** : macOS uniquement (build GitHub)
+
+**Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
+
+### Données récupérées
+
+Une seule requête GraphQL (POST `https://api.github.com/graphql`) :
+
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, état CI du dernier commit (`statusCheckRollup.state`)
+- **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
+- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : état CI du dernier commit sur `defaultBranchRef`
+
+**Cadence** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). La première requête part 10 s après le lancement.
+
+### États CI (`CIState`)
+
+| Valeur GitHub         | `CIState`  |
+|-----------------------|------------|
+| `PENDING`, `EXPECTED` | `.pending` |
+| `SUCCESS`             | `.success` |
+| `FAILURE`, `ERROR`    | `.failure` |
+| `null` ou autre       | `.unknown` |
+
+### Alertes
+
+Déclenchées uniquement si l'état **change** entre deux polls (premier poll silencieux) :
+
+| Événement             | Badge   | Son        |
+|-----------------------|---------|------------|
+| CI PR failure / main  | `.error` (rouge) | `error` |
+| Nouvelle review demandée | `.finished` (vert) | `question` |
+| CI PR success         | `.finished` (vert) | `finish` |
+
+Priorité : failure > review demandée > success. Un seul badge/son par cycle.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

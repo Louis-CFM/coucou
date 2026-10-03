@@ -3,18 +3,29 @@ import Foundation
 final class GithubPoller: @unchecked Sendable {
     static let shared = GithubPoller()
     private var timer: DispatchSourceTimer?
+    // All three properties below are accessed only on the main thread.
+    private var pulseInFlight = false
+    private var nextPulse: DispatchWorkItem?
+    private var tokenGeneration = 0
     private init() {}
 
     func start() {
         guard timer == nil else { return }
+        // Stats poll: every 5 minutes, starting 7 s after launch
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 7, repeating: 300)  // every 5 minutes
-        t.setEventHandler { [weak self] in self?.poll() }
+        t.schedule(deadline: .now() + 7, repeating: 300)
+        t.setEventHandler { [weak self] in self?.pollStats() }
         t.resume()
         timer = t
+        // First pulse: 10 s after launch, stored in nextPulse so triggerPulseNow can cancel it
+        DispatchQueue.main.async { [weak self] in
+            self?.scheduleNextPulse(hasPending: false, delay: 10)
+        }
     }
 
-    private func poll() {
+    // MARK: - Stats (unchanged logic)
+
+    private func pollStats() {
         guard let token = KeychainStore.shared.get("github-token") else { return }
         fetchUser(token: token)
     }
@@ -31,13 +42,11 @@ final class GithubPoller: @unchecked Sendable {
             guard let data, code == 200,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
-            let publicRepos  = (json["public_repos"]       as? Int) ?? 0
+            let publicRepos  = (json["public_repos"]        as? Int) ?? 0
             let privateOwned = (json["owned_private_repos"] as? Int)
                             ?? (json["total_private_repos"] as? Int)
                             ?? 0
-            let totalRepos = publicRepos + privateOwned
-
-            self.fetchStars(token: token, totalRepos: totalRepos)
+            self.fetchStars(token: token, totalRepos: publicRepos + privateOwned)
         }.resume()
     }
 
@@ -52,11 +61,149 @@ final class GithubPoller: @unchecked Sendable {
             guard let data, code == 200,
                   let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
-            let totalStars = repos.reduce(0) { $0 + ((($1["stargazers_count"] as? Int) ?? 0)) }
-
+            let totalStars = repos.reduce(0) { $0 + (($1["stargazers_count"] as? Int) ?? 0) }
             DispatchQueue.main.async {
                 AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: totalStars)
             }
         }.resume()
     }
+
+    // MARK: - Pulse (GraphQL, single chain)
+
+    /// Dispatches guards + state reads to main, then fires network on background.
+    private func pollPulse() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.pulseInFlight else { return }
+            guard let token = KeychainStore.shared.get("github-token"),
+                  AppState.shared.activeIntegrations.contains("integration_github") else {
+                self.scheduleNextPulse(hasPending: false)
+                return
+            }
+            self.pulseInFlight = true
+            let gen = self.tokenGeneration
+            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token, generation: gen) }
+        }
+    }
+
+    private func fetchPulse(token: String, generation: Int) {
+        guard let url = URL(string: "https://api.github.com/graphql") else {
+            finishPulse(hasPending: false); return
+        }
+        var req = URLRequest(url: url, timeoutInterval: 15)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        guard let body = try? JSONSerialization.data(withJSONObject: ["query": Self.graphQLQuery]) else {
+            finishPulse(hasPending: false); return
+        }
+        req.httpBody = body
+
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+            guard let self else { return }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard let data, code == 200 else {
+                self.nbLog("pulse HTTP \(code)")
+                self.finishPulse(hasPending: false)
+                return
+            }
+            // Partial GraphQL errors: if "data" is present, parse anyway and log error count.
+            // Only discard if "data" is absent or null.
+            if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let errors = root["errors"] as? [[String: Any]], !errors.isEmpty {
+                    self.nbLog("pulse GraphQL errors: \(errors.count)")
+                }
+                guard root["data"] is [String: Any] else {
+                    self.finishPulse(hasPending: false); return
+                }
+            }
+            guard let pulse = GitHubPulse.parse(data) else {
+                self.finishPulse(hasPending: false); return
+            }
+            DispatchQueue.main.async {
+                // Discard stale response if token changed while request was in flight
+                guard self.tokenGeneration == generation else { return }
+                let old = AppState.shared.githubPulse
+                let events = GitHubPulse.events(old: old, new: pulse)
+                AppState.shared.githubPulse = pulse
+                AppState.shared.handleGitHubEvents(events)
+            }
+            self.finishPulse(hasPending: pulse.hasPending)
+        }.resume()
+    }
+
+    /// Cancels any scheduled next poll, increments tokenGeneration to invalidate in-flight
+    /// responses, then fires pollPulse immediately. If a request is already in flight,
+    /// does not launch another — finishPulse will reschedule.
+    /// Safe to call from any thread.
+    func triggerPulseNow() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.tokenGeneration += 1
+            self.nextPulse?.cancel()
+            self.nextPulse = nil
+            guard !self.pulseInFlight else { return }
+            self.pollPulse()
+        }
+    }
+
+    private func nbLog(_ message: String) {
+        appendAppLog("github.log", message)
+    }
+
+    /// Called from any thread; dispatches cleanup to main then schedules next poll.
+    private func finishPulse(hasPending: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.pulseInFlight = false
+            self.scheduleNextPulse(hasPending: hasPending)
+        }
+    }
+
+    /// Cancels any pending scheduled poll and schedules a new one on the main queue.
+    /// Must run on the main thread.
+    private func scheduleNextPulse(hasPending: Bool, delay: Double? = nil) {
+        nextPulse?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.pollPulse() }
+        nextPulse = work
+        let d = delay ?? (hasPending ? 60.0 : 300.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + d, execute: work)
+    }
+
+    // MARK: - GraphQL query
+
+    private static let graphQLQuery = """
+    query {
+      viewer {
+        login
+        pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          nodes {
+            number title url isDraft reviewDecision
+            repository { nameWithOwner url }
+            commits(last: 1) {
+              nodes { commit { statusCheckRollup { state } } }
+            }
+          }
+        }
+        repositories(first: 10, ownerAffiliations: [OWNER], orderBy: {field: PUSHED_AT, direction: DESC}) {
+          nodes {
+            nameWithOwner url isArchived
+            defaultBranchRef {
+              name
+              target { ... on Commit { statusCheckRollup { state } } }
+            }
+          }
+        }
+      }
+      reviewRequested: search(query: "is:pr is:open review-requested:@me archived:false", type: ISSUE, first: 20) {
+        issueCount
+        nodes {
+          ... on PullRequest {
+            number title url isDraft
+            author { login }
+            repository { nameWithOwner url }
+          }
+        }
+      }
+    }
+    """
 }

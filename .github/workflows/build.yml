@@ -33,6 +33,15 @@ jobs:
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
 
+      - name: Diff engine tests
+        run: bash scripts/test-diff-engine.sh
+
+      - name: GitHub pulse tests
+        run: bash scripts/test-github-pulse.sh
+
+      - name: GitHub pull requests tests
+        run: bash scripts/test-github-pull-requests.sh
+
       - name: Build
         run: |
           xcodebuild \
