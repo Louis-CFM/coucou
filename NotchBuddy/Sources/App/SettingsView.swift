@@ -1084,7 +1084,10 @@ struct SettingsView: View {
             AppState.shared.githubPulse = nil
             AppState.shared.githubActivity = nil
             if nextGithubToken == nil { AppState.shared.githubStats = nil }
-            if nextGithubToken != nil { GithubPoller.shared.triggerPulseNow() }
+            if nextGithubToken != nil {
+                GithubPoller.shared.triggerPulseNow()
+                GithubPoller.shared.refreshActivityIfStale()
+            }
         }
 
         saveKey("stripe-api-key",  value: stripeKey)

@@ -2331,6 +2331,18 @@ struct GitHubPulseCardView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                } else if let act = activity {
+                    // No stats yet but activity loaded — show mini-row only
+                    Button(action: { onTapSection(.activity) }) {
+                        HStack(spacing: 2) {
+                            ForEach(act.lastDays(7), id: \.date) { day in
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(contributionColor(day.level))
+                                    .frame(width: 7, height: 7)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                 } else {
                     Text("Overview")
                         .font(.system(size: 11))
@@ -2549,10 +2561,10 @@ private struct GitHubActivityDetailContent: View {
 
     @State private var hoveredDay: ContributionDay? = nil
 
-    // Fixed grid: s=8pt, spacing=2pt → 20 weeks fit in ~202pt available width
-    private let squareSize: CGFloat = 8
-    private let spacing: CGFloat = 2
-    private let numWeeks: Int = 20
+    // Dynamic grid: s=7pt, spacing=1.5pt; numWeeks = floor((202 + 1.5) / (7 + 1.5)) = 23
+    private let squareSize: CGFloat = 7
+    private let spacing: CGFloat = 1.5
+    private var numWeeks: Int { Int((202 + spacing) / (squareSize + spacing)) }
 
     private var headerRight: String {
         if let day = hoveredDay {
@@ -2566,8 +2578,8 @@ private struct GitHubActivityDetailContent: View {
         }
         guard let act = activity else { return "" }
         let total = activityTotalLabel(act.total)
-        if let s = stats { return "\(total) this year · \(s.totalRepos) repos" }
-        return "\(total) this year"
+        if let s = stats { return "\(total) past year · \(s.totalRepos) repos" }
+        return "\(total) past year"
     }
 
     var body: some View {
@@ -2626,7 +2638,7 @@ private struct GitHubActivityDetailContent: View {
                         }
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, 5)
                 .padding(.leading, 108)
                 .padding(.trailing, 12)
             } else {
