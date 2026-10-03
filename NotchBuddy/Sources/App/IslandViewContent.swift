@@ -176,7 +176,7 @@ struct OverviewView: View {
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
-            NSWorkspace.shared.open(URL(string: "https://github.com")!)
+            NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -1549,6 +1549,7 @@ struct IntegrationCardView: View {
     @Binding var showingDetail: Bool
     var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
+    @State private var githubDetailSection: GitHubDetailSection = .myPRs
 
     private var isConfigured: Bool {
         switch task.id {
@@ -1642,9 +1643,14 @@ struct IntegrationCardView: View {
         task.id == "integration_resend" && !appState.resendEmails.isEmpty
     }
 
-    // GitHub with stats loaded
+    // GitHub with stats or pulse loaded
     private var githubHasData: Bool {
-        task.id == "integration_github" && appState.githubStats != nil
+        task.id == "integration_github" && (appState.githubPulse != nil || appState.githubStats != nil)
+    }
+
+    // GitHub with pulse loaded (richer card)
+    private var githubHasPulse: Bool {
+        task.id == "integration_github" && appState.githubPulse != nil
     }
 
     // Stripe: show card as soon as first poll completes (balance OR payments)
@@ -1750,6 +1756,25 @@ struct IntegrationCardView: View {
         } else if resendHasData {
             ResendCardView(emails: appState.resendEmails, total: appState.resendTotal)
                 .transition(.opacity)
+        } else if showingDetail && githubHasPulse {
+            GitHubDetailView(
+                section: githubDetailSection,
+                pulse: appState.githubPulse!,
+                onBack: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+                }
+            )
+            .transition(.opacity)
+        } else if githubHasPulse {
+            GitHubPulseCardView(
+                pulse: appState.githubPulse!,
+                stats: appState.githubStats,
+                onTapSection: { section in
+                    githubDetailSection = section
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                }
+            )
+            .transition(.opacity)
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
                 .transition(.opacity)
@@ -2233,6 +2258,309 @@ struct ResendCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - GitHub Pulse Card View
+
+private func ciWorstState(_ prs: [GitHubPR]) -> CIState {
+    if prs.contains(where: { $0.ci == .failure }) { return .failure }
+    if prs.contains(where: { $0.ci == .pending }) { return .pending }
+    if prs.contains(where: { $0.ci == .success }) { return .success }
+    return .unknown
+}
+
+private func ciColor(_ state: CIState) -> String {
+    switch state {
+    case .failure: return "#F4505E"
+    case .pending: return "#F5A524"
+    case .success: return "#22C55E"
+    case .unknown: return "#6B7079"
+    }
+}
+
+private func mainCIWorst(_ repos: [GitHubRepoCI]) -> CIState {
+    if repos.contains(where: { $0.ci == .failure }) { return .failure }
+    if repos.contains(where: { $0.ci == .pending }) { return .pending }
+    if repos.contains(where: { $0.ci == .success }) { return .success }
+    return .unknown
+}
+
+struct GitHubPulseCardView: View {
+    let pulse: GitHubPulse
+    let stats: GitHubStats?
+    let onTapSection: (GitHubDetailSection) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color(hex: "#F4505E"))
+                    .frame(width: 7, height: 7)
+                Text("GitHub")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Overview")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                Spacer()
+                if let s = stats {
+                    Text("★ \(formatCount(s.totalStars)) · \(s.totalRepos) repos")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .lineLimit(1)
+                }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+
+            // Stat rows
+            VStack(alignment: .leading, spacing: 4) {
+                // My PRs
+                let prWorst = ciWorstState(pulse.myPRs)
+                let prValue: String = {
+                    let n = pulse.myPRs.count
+                    if n == 0 { return "0" }
+                    let failing = pulse.myPRs.filter { $0.ci == .failure }.count
+                    let pending = pulse.myPRs.filter { $0.ci == .pending }.count
+                    if failing > 0 { return "\(n) · \(failing) failing" }
+                    if pending > 0 { return "\(n) · running" }
+                    return "\(n)"
+                }()
+                GitHubStatRow(
+                    icon: "arrow.triangle.pull", iconColor: ciColor(prWorst),
+                    label: "My PRs", value: prValue
+                ) { onTapSection(.myPRs) }
+
+                // To review
+                let reviewCount = pulse.toReview.count
+                GitHubStatRow(
+                    icon: "eye",
+                    iconColor: reviewCount > 0 ? "#8AB4F8" : "#6B7079",
+                    label: "To review",
+                    value: "\(reviewCount)"
+                ) { onTapSection(.toReview) }
+
+                // Default branch CI
+                let mainWorst = mainCIWorst(pulse.mainCI)
+                let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                    switch mainWorst {
+                    case .failure:
+                        let n = pulse.mainCI.filter { $0.ci == .failure }.count
+                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                    case .pending:
+                        return ("checkmark.seal.fill", "#F5A524", "running")
+                    case .success:
+                        return ("checkmark.seal.fill", "#22C55E", "all green")
+                    case .unknown:
+                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                    }
+                }()
+                GitHubStatRow(
+                    icon: ciIcon, iconColor: ciIconColor,
+                    label: "Default branch CI", value: ciValue
+                ) { onTapSection(.mainCI) }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+
+    private func formatCount(_ n: Int) -> String {
+        if n >= 1000 { return String(format: "%.1fk", Double(n) / 1000) }
+        return "\(n)"
+    }
+}
+
+private struct GitHubStatRow: View {
+    let icon: String
+    let iconColor: String
+    let label: String
+    let value: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: iconColor))
+                    .frame(width: 14)
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                Spacer()
+                Text(value)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - GitHub Detail View
+
+struct GitHubDetailView: View {
+    let section: GitHubDetailSection
+    let pulse: GitHubPulse
+    let onBack: () -> Void
+
+    private var title: String {
+        switch section {
+        case .myPRs:   return "My PRs"
+        case .toReview: return "To review"
+        case .mainCI:  return "Default branch CI"
+        }
+    }
+
+    private var items: [GitHubPR] {
+        switch section {
+        case .myPRs:    return pulse.myPRs
+        case .toReview: return pulse.toReview
+        case .mainCI:   return []
+        }
+    }
+
+    private var repoItems: [GitHubRepoCI] {
+        section == .mainCI ? pulse.mainCI : []
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Button(action: onBack) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 8, weight: .medium))
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 2)
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+
+            // List
+            if items.isEmpty && repoItems.isEmpty {
+                Text("Nothing here")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                    .padding(.top, 8)
+                    .padding(.leading, 108)
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(items, id: \.id) { pr in
+                            GitHubPRRowView(pr: pr, showCI: section == .myPRs)
+                        }
+                        ForEach(repoItems, id: \.repo) { repo in
+                            GitHubRepoCIRowView(repo: repo)
+                        }
+                    }
+                }
+                .frame(maxHeight: 88)  // ~4 rows visible
+                .padding(.top, 4)
+                .padding(.leading, 108)
+                .padding(.trailing, 8)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+        .onExitCommand { onBack() }
+    }
+}
+
+private func ghCIDot(_ ci: CIState) -> Color {
+    switch ci {
+    case .failure: return Color(hex: "#F4505E")
+    case .pending: return Color(hex: "#F5A524")
+    case .success: return Color(hex: "#22C55E")
+    case .unknown: return Color.clear
+    }
+}
+
+private struct GitHubPRRowView: View {
+    let pr: GitHubPR
+    let showCI: Bool
+
+    var body: some View {
+        Button(action: {
+            if let url = safeWebURL(pr.url), url.host == "github.com" {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 5) {
+                if showCI {
+                    Circle()
+                        .fill(ghCIDot(pr.ci))
+                        .frame(width: 5, height: 5)
+                        .opacity(pr.ci == .unknown ? 0 : 1)
+                } else {
+                    Spacer().frame(width: 5)
+                }
+                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)#\(pr.number)")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#9398A1"))
+                    .lineLimit(1)
+                Text(pr.title)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if pr.isDraft {
+                    Text("Draft")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 20)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct GitHubRepoCIRowView: View {
+    let repo: GitHubRepoCI
+
+    var body: some View {
+        Button(action: {
+            if let url = safeWebURL(repo.url), url.host == "github.com" {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(ghCIDot(repo.ci))
+                    .frame(width: 5, height: 5)
+                    .opacity(repo.ci == .unknown ? 0 : 1)
+                Text(repo.repo.components(separatedBy: "/").last ?? repo.repo)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#9398A1"))
+                    .lineLimit(1)
+                Text(repo.repo)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 20)
+        }
+        .buttonStyle(.plain)
     }
 }
 

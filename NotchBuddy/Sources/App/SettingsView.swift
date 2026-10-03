@@ -765,6 +765,9 @@ struct SettingsView: View {
                     }
                     SecureField("Personal Access Token", text: $githubToken)
                         .textFieldStyle(.roundedBorder)
+                    Text("Classic token with repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
                 }
 
                 // Stripe

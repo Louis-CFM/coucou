@@ -137,6 +137,45 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 ---
 
+## 1quater. GitHub (pulse)
+
+**Plateforme** : macOS uniquement (build GitHub)
+
+**Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
+
+### Données récupérées
+
+Une seule requête GraphQL (POST `https://api.github.com/graphql`) :
+
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, état CI du dernier commit (`statusCheckRollup.state`)
+- **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
+- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : état CI du dernier commit sur `defaultBranchRef`
+
+**Cadence** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). La première requête part 10 s après le lancement.
+
+### États CI (`CIState`)
+
+| Valeur GitHub         | `CIState`  |
+|-----------------------|------------|
+| `PENDING`, `EXPECTED` | `.pending` |
+| `SUCCESS`             | `.success` |
+| `FAILURE`, `ERROR`    | `.failure` |
+| `null` ou autre       | `.unknown` |
+
+### Alertes
+
+Déclenchées uniquement si l'état **change** entre deux polls (premier poll silencieux) :
+
+| Événement             | Badge   | Son        |
+|-----------------------|---------|------------|
+| CI PR failure / main  | `.error` (rouge) | `error` |
+| Nouvelle review demandée | `.finished` (vert) | `question` |
+| CI PR success         | `.finished` (vert) | `finish` |
+
+Priorité : failure > review demandée > success. Un seul badge/son par cycle.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

@@ -117,6 +117,14 @@ Règles :
 - Hooks (Gemini CLI, Antigravity, Codex) : `isConfigured` = `HookServer.geminiHooksInstalled()` / `agyHooksInstalled()` / `codexHooksInstalled()` sous `#if !APPSTORE`. La section Codex Hooks dans Settings installe les hooks dans `~/.codex/hooks.json` avec le même flux backup + preview que Gemini CLI. Après l'installation, la carte affiche : « run /hooks in Codex or open Hooks in the app's settings to trust them ». Approbations Codex : carte avec Allow et Deny seulement (pas Always) ; updatedPermissions jamais envoyé ; notes « Handled in Codex. » / « Still waiting in Codex. ».
 - Pastilles IA (cloud) : `isConfigured` = clé API dans le Keychain. Pastilles IA locales (Ollama, LM Studio) : `isConfigured` = URL serveur non vide (définie via le bouton **Connect** dans Réglages → Chat). Bouton « Chat with… » → change le fournisseur et ouvre la vue `.prompt`.
 
+### Carte GitHub (`GitHubPulseCardView`)
+
+Affichée à la place de `GitHubStatsCardView` quand un `GitHubPulse` est disponible (`githubPulse != nil`). Trois lignes `GitHubStatRow` (My PRs, To review, Default branch CI), chacune tappable → ouvre `GitHubDetailView` avec la section correspondante. En-tête : point rouge + « GitHub » + « Overview » + étoiles / dépôts à droite.
+
+### Vue détail GitHub (`GitHubDetailView`)
+
+Remplace la carte principale quand `showingDetail && githubHasPulse`. En-tête : chevron.left (← ferme) + titre de section. ScrollView hauteur 88 pt, 4 lignes. Section **My PRs** et **To review** → `GitHubPRRowView` (point CI + « repo#N » + titre tronqué + badge Draft). Section **Default branch CI** → `GitHubRepoCIRowView` (point CI + nom court + nom complet). Clic sur une PR → ouvre `https://github.com/…` dans le navigateur (filtré sur `host == "github.com"`). Échap ferme.
+
 ### Boutons
 - Pilule, 12,5 pt medium, fond blanc 9 % (survol 15 %), primaire : fond `#F5F6F8` texte `#0B0C0E`. Appui : échelle 0,94. Raccourcis affichés en petite pastille bordée (Y, N).
 

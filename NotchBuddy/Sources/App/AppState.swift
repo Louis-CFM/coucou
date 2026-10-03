@@ -261,8 +261,9 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats (populated by GithubPoller)
+    // GitHub stats + pulse (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
+    @Published var githubPulse: GitHubPulse? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -460,6 +461,32 @@ final class AppState: ObservableObject {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         focusId = id
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
+    }
+
+    func setPillBadge(_ badge: PillBadge, for id: String) {
+        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[idx].pillBadge = badge
+    }
+
+    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent]) {
+        guard !events.isEmpty else { return }
+        // Priority: error > question (reviewRequested) > finish (ciPassed)
+        var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
+        var badge: PillBadge?
+        var sound: String?
+        for event in events {
+            switch event {
+            case .ciFailed, .mainFailed:
+                if level < 3 { level = 3; badge = .error;    sound = "error"    }
+            case .reviewRequested:
+                if level < 2 { level = 2; badge = .finished; sound = "question" }
+            case .ciPassed:
+                if level < 1 { level = 1; badge = .finished; sound = "finish"   }
+            }
+        }
+        if let b = badge { setPillBadge(b, for: "integration_github") }
+        if let s = sound { SoundEngine.shared.play(s) }
     }
 
     func syncMode() {
