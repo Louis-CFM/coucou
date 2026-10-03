@@ -207,6 +207,8 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
+        case "agent_claude-desktop":
+            openClaudeDesktopApp()
         case "agent_gemini", "agent_antigravity":
             #if !APPSTORE
             let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
@@ -529,6 +531,15 @@ struct ErrorView: View {
     }
 }
 
+/// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
+private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
+
+private func openClaudeDesktopApp() {
+    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: claudeDesktopBundleId) {
+        NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+    }
+}
+
 // MARK: - Finished
 
 struct FinishedView: View {
@@ -548,18 +559,26 @@ struct FinishedView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    #if !APPSTORE
-                    PrimaryButton("Open terminal") {
-                        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                        let activated = terminalBundleIds.compactMap { id in
-                            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                        if activated == nil {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+                    if state.focusTask?.id == "agent_claude-desktop" {
+                        // Sessions from the Claude desktop app live there, not in a terminal.
+                        PrimaryButton("Open Claude") {
+                            openClaudeDesktopApp()
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    } else {
+                        #if !APPSTORE
+                        PrimaryButton("Open terminal") {
+                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+                            let activated = terminalBundleIds.compactMap { id in
+                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
+                            if activated == nil {
+                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+                            }
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                        #endif
                     }
-                    #endif
                     SecondaryButton("OK") {
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
@@ -1586,6 +1605,8 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "agent_claude-desktop":
+            return true  // nothing to install: the relay tags desktop sessions on its own
         case "agent_cursor", "agent_codex":
             return false  // coming soon
         case "integration_music":
@@ -1717,6 +1738,8 @@ struct IntegrationCardView: View {
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }
+            // No key or poller behind this pill: it only reflects hook events.
+            if task.id == "agent_claude-desktop" { return "Ready · no setup needed" }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
                 if provider.isLocal {
