@@ -6,11 +6,13 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
-import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
+import { washRGBA, type BotEmoteName, type BotStateName, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
-import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { renderIntegrationCard, type GithubOpening, type IntegrationCardHooks } from "./integrations";
+import { buildGithub, enterGithubPanel, newsFacts } from "./github";
+import type { IntegrationNews } from "../core/bridge";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -26,6 +28,25 @@ export interface ViewActions {
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
   blip(): void;
+  /** Mochi reacts to something a view just showed (the GitHub panel's news). */
+  emote(e: BotEmoteName): void;
+  /**
+   * Mochi's body takes a colour (hex) while the mouse is on something — a day
+   * of the GitHub graph. Null gives him his own back.
+   */
+  tintMochi(color: string | null): void;
+  /**
+   * The view is showing something Mochi should wear the state of — a run
+   * going (working), a run that just ended before your eyes (finished, error),
+   * with the entrance the engine plays for that state. It holds for as long
+   * as the view asks, unless Mochi's own state says more; null gives it back.
+   */
+  look(state: BotStateName | null): void;
+  /**
+   * Into the GitHub panel, on what the news at hand is about. Seen, it is not
+   * news any more: the pill goes back to rest. False when there was none.
+   */
+  followNews(): boolean;
 }
 
 export interface ViewHost {
@@ -101,7 +122,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      // The GitHub panel is reached from the overview and goes back to it.
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "github");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -156,6 +178,12 @@ function buildOverview(actions: ViewActions): ViewHost {
       State.notify();
     },
     openSettings: () => actions.openSettingsWindow(),
+    // The card's figure asks for the panel as a whole: while the pill has
+    // news, that leads to what the news is about.
+    openPanel: (open) => {
+      if (!open && actions.followNews()) return;
+      toGithubPanel(actions, open);
+    },
   };
 
   return {
@@ -339,6 +367,44 @@ function buildQuestion(): ViewHost {
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 
+/** Into the GitHub panel — on its lists, or straight on what `open` is about. */
+function toGithubPanel(actions: ViewActions, open?: GithubOpening) {
+  actions.blip();
+  enterGithubPanel(open);
+  actions.setView("github");
+}
+
+/** The news of the Mochi at the front, when its integration sent some. */
+function frontNews(): IntegrationNews | null {
+  const task = State.focusTask;
+  return (task && State.integrations[task.id]?.news) || null;
+}
+
+/**
+ * The two buttons of a card that tells an integration's news instead of a
+ * session's result: into the panel, to what the news is about; or just OK.
+ */
+function newsActions(actions: ViewActions): HTMLElement {
+  return h("div", { class: "actions" },
+    btn("Open", "primary", () => actions.followNews()),
+    // OK only folds the island: the news stays on the pill until it is opened
+    // or gets old, in case it was closed too fast.
+    btn("OK", "secondary", () => actions.collapse()),
+  );
+}
+
+/**
+ * What an integration's news puts on a result card, in the card's own three
+ * lines: who and what kind of news, the news itself, then the facts that go
+ * with it — the step that broke, who merged, how big.
+ */
+function tellNews(news: IntegrationNews, who: HTMLElement, title: HTMLElement, facts: HTMLElement) {
+  who.append(agentWho(State.focusTask, news.open?.says ?? (news.success ? "pull request merged" : "a build broke")));
+  title.textContent = news.open?.title ?? news.label;
+  clear(facts);
+  facts.append(...newsFacts(news));
+}
+
 function buildError(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title", text: "Workflow stopped." });
@@ -347,12 +413,23 @@ function buildError(actions: ViewActions): ViewHost {
     btn("Retry", "primary", () => actions.setView(State.defaultView())),
     btn("Open in n8n", "secondary", () => actions.openUrl("")),
   );
-  const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, row)));
+  const facts = h("div", { class: "nfs news-facts" });
+  const newsRow = newsActions(actions);
+  const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, facts, row, newsRow)));
   return {
     el,
     sync() {
       const task = State.focusTask;
+      const news = frontNews();
+      row.style.display = news ? "none" : "";
+      newsRow.style.display = news ? "" : "none";
+      detail.style.display = news ? "none" : "";
+      facts.style.display = news ? "" : "none";
       clear(who);
+      if (news) {
+        tellNews(news, who, title, facts);
+        return;
+      }
       who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
@@ -369,11 +446,21 @@ function buildFinished(actions: ViewActions): ViewHost {
     btn("Open terminal", "primary", () => actions.openTerminal()),
     btn("OK", "secondary", () => actions.collapse()),
   );
-  const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
+  const facts = h("div", { class: "nfs news-facts" });
+  const newsRow = newsActions(actions);
+  const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, facts, row, newsRow)));
   return {
     el,
     sync() {
+      const news = frontNews();
+      row.style.display = news ? "none" : "";
+      newsRow.style.display = news ? "" : "none";
+      facts.style.display = news ? "" : "none";
       clear(who);
+      if (news) {
+        tellNews(news, who, title, facts);
+        return;
+      }
       who.append(agentWho(State.focusTask, "Claude Code finished"));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
@@ -501,6 +588,7 @@ export function buildViews(
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
+  map.set("github", buildGithub(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
   map.set("searching", buildPlaceholder("Claude is searching…", ""));

@@ -21,7 +21,8 @@ export type IslandViewName =
   | "result"
   | "note"
   | "settings"
-  | "greeting";
+  | "greeting"
+  | "github";
 
 export type BotStateName =
   | "idle"
@@ -86,6 +87,11 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
   settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
+  // Windows only, no macOS counterpart yet: the GitHub panel, laid out like a
+  // Claude Code session's view — the biggest Mochi of any view, centred in the
+  // upper part of his own column (its middle is x 67), the screen in a panel
+  // on the right. As tall as the window allows (PANEL_H), like that view.
+  github: { height: PANEL_H, botX: 67, botY: 108, botDiameter: 71, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
@@ -97,10 +103,19 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/**
+ * A result card that tells an integration's news has one line more than a
+ * session's — the facts under the title, with air on both sides of it. The
+ * island grows by that much, so the card keeps the same room above and below
+ * its words.
+ */
+export const NEWS_LINE = 28;
+
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  news = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -111,7 +126,8 @@ export function islandSize(
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
-      return { w: EXPANDED_W, h };
+      const grown = news && (view === "finished" || view === "error") ? NEWS_LINE : 0;
+      return { w: EXPANDED_W, h: h + grown };
     }
   }
 }

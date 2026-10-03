@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type GithubAccount, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -28,8 +28,11 @@ function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
   return el;
 }
 
+/** Green for what is in place, red for what is missing. */
+const statusColor = (ok: boolean) => (ok ? "var(--green)" : "var(--red)");
+
 function statusDot(ok: boolean): HTMLElement {
-  return h("i", { class: "dot", style: `background:${ok ? "#22c55e" : "#f4505e"}` });
+  return h("i", { class: "dot", style: `background:${statusColor(ok)}` });
 }
 
 function renderDiff(text: string): HTMLElement {
@@ -197,7 +200,7 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
+    dot.style.background = statusColor(present);
     state.textContent = present
       ? "Key saved in the Windows Credential Manager."
       : "No key yet — the chat needs one.";
@@ -254,6 +257,161 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── GitHub setup ──────────────────────────────────────────────────────────────
+
+const GITHUB_ID = "integration_github";
+const GITHUB_KEY = "github-token";
+const GITHUB_NEW_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new";
+const DAY_MS = 86_400_000;
+/** A token this close to its end gets a word about it. */
+const EXPIRES_SOON_DAYS = 7;
+
+/** GitHub's line in the integrations, and what opens under it once it is on. */
+function githubSetup(present: Record<string, boolean>): IntegrationSetup {
+  const hasToken = present[GITHUB_KEY] ?? false;
+  const dot = statusDot(hasToken);
+  const state = h("span", { class: "hint" });
+
+  const field = h("input", {
+    type: "password",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  const saveBtn = h("button", { class: "primary", text: "Save token" });
+  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const testBtn = h("button", { text: "Test connection" });
+  const feedback = h("div", {});
+
+  function show(present: boolean) {
+    dot.style.background = statusColor(present);
+    state.textContent = present
+      ? "Token saved in the Windows Credential Manager."
+      : "No token yet — the GitHub pill needs one.";
+    field.placeholder = present ? "••••••••••••  (stored)" : "github_pat_…";
+    clearBtn.style.display = present ? "" : "none";
+  }
+
+  async function refresh() {
+    show((await Bridge.secretPresent(GITHUB_KEY)) ?? false);
+  }
+
+  /** Saves whatever is in the field. True when there was nothing to save, too. */
+  async function store(): Promise<boolean> {
+    const value = field.value.trim();
+    if (!value) return true;
+    try {
+      await Bridge.secretSet(GITHUB_KEY, value);
+      field.value = "";
+      await refresh();
+      // Fill the pill now rather than at the next poll.
+      void Bridge.refreshIntegration(GITHUB_ID);
+      return true;
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      return false;
+    }
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    if (!field.value.trim()) return;
+    clear(feedback);
+    if (await store()) {
+      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk — test it below." }));
+    }
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.secretClear(GITHUB_KEY);
+      feedback.append(h("div", { class: "notice ok", text: "Token removed." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  // A token pasted but not saved yet is saved first: the test only ever runs on
+  // the stored token, so the value never has to travel anywhere else.
+  testBtn.addEventListener("click", async () => {
+    clear(feedback);
+    if (!(await store())) return;
+    testBtn.disabled = true;
+    testBtn.textContent = "Testing…";
+    try {
+      feedback.append(githubResult(await Bridge.githubTest()));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    } finally {
+      testBtn.disabled = false;
+      testBtn.textContent = "Test connection";
+    }
+  });
+
+  const newToken = h("button", {
+    class: "link",
+    text: "fine-grained token",
+    onclick: () => void Bridge.openUrl(GITHUB_NEW_TOKEN_URL),
+  });
+
+  show(hasToken);
+
+  const status = h("div", { class: "row", style: "gap:8px;padding-top:5px" }, dot, state);
+  const panel = h(
+    "div",
+    { class: "setup" },
+    h("div", { class: "row" }, h("label", { text: "Token" }), field, saveBtn, clearBtn),
+    h(
+      "div",
+      { class: "hint" },
+      "Create a ", newToken, " with ",
+      h("b", { text: "Repository access: All repositories" }), ", then under ",
+      h("b", { text: "Repository permissions" }), " set ",
+      h("b", { text: "Actions" }), ", ", h("b", { text: "Contents" }), ", ",
+      h("b", { text: "Deployments" }), ", ", h("b", { text: "Issues" }), " and ",
+      h("b", { text: "Pull requests" }),
+      " to Read-only (Metadata is added on its own). Under ",
+      h("b", { text: "Account permissions" }), ", ", h("b", { text: "Events" }),
+      " Read-only is optional and adds your private activity. Nothing else — Coucou only reads.",
+    ),
+    h("div", { class: "row" }, testBtn),
+    feedback,
+  );
+  return { status, panel };
+}
+
+function githubResult(account: GithubAccount): HTMLElement {
+  const missing = account.checks.some((c) => !c.ok);
+  const who = account.name ? `@${account.login} (${account.name})` : `@${account.login}`;
+  const list = h("ul", { class: "checks" });
+  for (const c of account.checks) {
+    list.append(
+      h("li", {}, statusDot(c.ok), h("span", { text: c.label }), c.note ? h("span", { class: "check-note", text: c.note }) : null),
+    );
+  }
+  return h(
+    "div",
+    { class: missing ? "notice warn" : "notice ok" },
+    h("div", { text: `Connected as ${who}.` }),
+    h("div", { text: tokenExpiry(account.expiresAt) }),
+    list,
+  );
+}
+
+/** "2026-12-12 10:00:00 +0100" → a date, with a nudge when it is close. */
+function tokenExpiry(raw: string | null): string {
+  if (!raw) return "This token has no expiry date.";
+  const date = new Date(raw.slice(0, 10));
+  if (Number.isNaN(date.getTime())) return `Token expires ${raw}.`;
+  const when = date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  const days = Math.ceil((date.getTime() - Date.now()) / DAY_MS);
+  if (days < 0) return `This token expired on ${when}.`;
+  if (days <= EXPIRES_SOON_DAYS) return `Token expires on ${when} — in ${days} day${days === 1 ? "" : "s"}. Make a new one soon.`;
+  return `Token expires on ${when}.`;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -262,13 +420,22 @@ interface IntegrationDef {
   color: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
+  /** For an integration that needs more than its fields. */
+  setup?: (present: Record<string, boolean>) => IntegrationSetup;
+}
+
+interface IntegrationSetup {
+  /** Where it stands, on the integration's own line. */
+  status: HTMLElement;
+  /** Opens under the line while the integration is on. */
+  panel: HTMLElement;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
-    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }] },
+    fields: [], setup: githubSetup },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
     fields: [{ key: "vercel-token", label: "Token", placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
@@ -298,6 +465,14 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   for (const def of INTEGRATIONS) {
     const active = settings.activeIntegrations.includes(def.id);
     const sw = h("button", { class: active ? "switch on" : "switch" });
+    const setup = def.setup?.(present);
+    const drawer = setup ? h("div", { class: "drawer" }, h("div", {}, setup.panel)) : null;
+    const open = (on: boolean) => {
+      drawer?.classList.toggle("open", on);
+      // Folded away, its fields are out of reach of the keyboard too.
+      if (setup) setup.panel.inert = !on;
+    };
+    open(active);
     sw.addEventListener("click", () => {
       const on = settings.activeIntegrations.includes(def.id);
       if (on) {
@@ -307,11 +482,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
+      open(!on);
       updateNote();
       void save();
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    if (setup) rows.append(setup.status);
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -342,16 +519,15 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       );
     }
 
-    list.append(
-      h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
-        h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
-          sw,
-          h("i", { class: "dot", style: `background:${def.color}` }),
-          h("span", { style: "font-size:12.5px", text: def.name }),
-        ),
-        rows,
+    const line = h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+      h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+        sw,
+        h("i", { class: "dot", style: `background:${def.color}` }),
+        h("span", { style: "font-size:12.5px", text: def.name }),
       ),
+      rows,
     );
+    list.append(drawer ? h("div", {}, line, drawer) : line);
   }
 
   updateNote();
