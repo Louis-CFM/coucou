@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State private var showStatusLineDiff: Bool = false
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
+    @State private var planTogglePending: Bool = false
 
     @State private var geminiHooksInstalled: Bool = HookServer.geminiHooksInstalled()
     @State private var showGeminiDiff: Bool = false
@@ -483,23 +484,39 @@ struct SettingsView: View {
 
         GroupBox("Plan usage") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Shows your Claude plan usage (5-hour and weekly limits) in the notch. Coucou adds a small status line relay to ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.")
+                Text("Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay to ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                let installed = HookServer.statusLineInstalled()
+                let relayInstalled = HookServer.statusLineInstalled()
+                Toggle("Show in the notch", isOn: Binding(
+                    get: { state.showPlanInNotch || planTogglePending },
+                    set: { on in
+                        if on {
+                            if relayInstalled {
+                                state.showPlanInNotch = true
+                            } else {
+                                planTogglePending = true
+                                installStatusLine()
+                            }
+                        } else {
+                            state.showPlanInNotch = false
+                            planTogglePending = false
+                        }
+                    }
+                ))
                 HStack(spacing: 10) {
-                    if installed {
-                        Text("Installed")
+                    if relayInstalled {
+                        Text("Relay: installed")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        Button("Uninstall") { uninstallStatusLine() }
+                        Button("Uninstall relay") { uninstallStatusLine() }
                             .buttonStyle(.bordered)
                     } else {
-                        Text("Not installed")
+                        Text("Relay: not installed")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        Button("Install") { installStatusLine() }
+                        Button("Install relay") { installStatusLine() }
                             .buttonStyle(.borderedProminent)
                     }
                 }
@@ -515,8 +532,12 @@ struct SettingsView: View {
                     HStack {
                         Button("Confirm & write") { confirmStatusLine() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") { showStatusLineDiff = false; pendingStatusLineJSON = "" }
-                            .buttonStyle(.bordered)
+                        Button("Cancel") {
+                            showStatusLineDiff = false
+                            pendingStatusLineJSON = ""
+                            planTogglePending = false
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
             }
@@ -1025,10 +1046,15 @@ struct SettingsView: View {
             try HookServer.shared.writeStatusLine()
             showStatusLineDiff = false
             pendingStatusLineJSON = ""
+            if planTogglePending {
+                state.showPlanInNotch = true
+                planTogglePending = false
+            }
             statusMessage = statusLinePendingInstall
                 ? "✓ Status line installed."
                 : "✓ Status line removed."
         } catch {
+            planTogglePending = false
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }

@@ -303,6 +303,15 @@ final class AppState: ObservableObject {
         }
     }
 
+    // Plan gauge: show pill in notch header — persisted
+    #if !APPSTORE
+    @Published var showPlanInNotch: Bool = false {
+        didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
+    }
+    // Transient — reset when island closes or view changes
+    @Published var showingPlanDetail: Bool = false
+    #endif
+
     // MARK: - Init (loads persisted settings)
 
     private init() {
@@ -340,6 +349,9 @@ final class AppState: ObservableObject {
         }
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
+        #if !APPSTORE
+        if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
+        #endif
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)

@@ -93,8 +93,22 @@ struct OverviewView: View {
                     }
                 }
 
+                // Plan detail overlays on top of normal content (GitHub build, home view only)
+                #if !APPSTORE
+                if state.showingPlanDetail {
+                    CardBackground(wash: nil)
+                    ClaudePlanCardView(usage: state.claudePlanUsage)
+                        .transition(.opacity)
+                }
+                #endif
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                if !showingN8nDetail {
+                #if !APPSTORE
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail
+                #else
+                let hideJumpButton = showingN8nDetail
+                #endif
+                if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .medium))
@@ -116,7 +130,20 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, _ in showingN8nDetail = false }
+        .onChange(of: state.focusId) { _, _ in
+            showingN8nDetail = false
+            #if !APPSTORE
+            withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
+            #endif
+        }
+        #if !APPSTORE
+        .onChange(of: state.view) { _, v in
+            if v != .overview { state.showingPlanDetail = false }
+        }
+        .onChange(of: state.mode) { _, m in
+            if m != .expanded { state.showingPlanDetail = false }
+        }
+        #endif
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -1222,12 +1249,6 @@ struct IntegrationCardView: View {
                 return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
             #endif
-        case "integration_claude_plan":
-            #if APPSTORE
-            return false  // App Store installer not yet implemented
-            #else
-            return HookServer.statusLineInstalled()
-            #endif
         case "agent_gemini":
             #if !APPSTORE
             return HookServer.geminiHooksInstalled()
@@ -1323,11 +1344,6 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
-    // Claude plan: show card when installed (even with no data yet)
-    private var claudePlanIsActive: Bool {
-        task.id == "integration_claude_plan" && isConfigured
-    }
-
     // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
         #if !APPSTORE
@@ -1346,11 +1362,6 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
-        if task.id == "integration_claude_plan" {
-            guard isConfigured else { return Color(hex: "#F4505E") }
-            let pct = appState.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) }
-            return Color(hex: ClaudePlanGauge.color(for: pct))
-        }
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1367,13 +1378,6 @@ struct IntegrationCardView: View {
             return "Not playing"
         }
         #endif
-        if task.id == "integration_claude_plan" {
-            guard isConfigured else { return "Status line not installed" }
-            if let usage = appState.claudePlanUsage {
-                return ClaudePlanGauge.pillLabel(usage)
-            }
-            return "Waiting for a Claude Code reply"
-        }
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1439,9 +1443,6 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
-                .transition(.opacity)
-        } else if claudePlanIsActive {
-            ClaudePlanCardView(usage: appState.claudePlanUsage)
                 .transition(.opacity)
         } else if musicIsActive {
             #if !APPSTORE
@@ -1614,14 +1615,10 @@ struct IntegrationCardView: View {
                        && task.id != "integration_music" {
                         Button("Settings…") {
                             let section: String
-                            if task.id == "integration_claude_plan" {
-                                section = "agents"
-                            } else {
-                                switch PillCatalog.definition(for: task.id)?.category {
-                                case .workspace, .agent: section = "agents"
-                                case .ai:                section = "chat"
-                                default:                 section = "integrations"
-                                }
+                            switch PillCatalog.definition(for: task.id)?.category {
+                            case .workspace, .agent: section = "agents"
+                            case .ai:                section = "chat"
+                            default:                 section = "integrations"
                             }
                             NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }
@@ -2726,20 +2723,11 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
-    private var effectiveColor: String {
-        if task.id == "integration_claude_plan" {
-            return ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
-        }
-        return task.color
-    }
+    private var effectiveColor: String { task.color }
 
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
-        if task.id == "integration_claude" { return "VS Code" }
-        if task.id == "integration_claude_plan" {
-            return ClaudePlanGauge.pillLabel(state.claudePlanUsage)
-        }
-        return task.name
+        task.id == "integration_claude" ? "VS Code" : task.name
     }
 
     var body: some View {
@@ -2753,10 +2741,7 @@ struct AgentPill: View {
                     Capsule()
                         .stroke(Color(hex: effectiveColor).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
-                        MiniBotCanvasView(task: task.id == "integration_claude_plan"
-                                              ? AgentTask(id: task.id, name: task.name, color: effectiveColor,
-                                                          state: task.state, steps: task.steps, source: task.source)
-                                              : task)
+                        MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
                             .frame(width: 22, height: 22, alignment: .center)
                             .padding(.leading, 8)

@@ -21,6 +21,8 @@ struct ClaudePlanCardView: View {
                 Text(subtitleText)
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
+                    .lineLimit(1)
+                    .fixedSize()
             }
             .padding(.top, 6)
             .padding(.leading, 108)
@@ -37,7 +39,7 @@ struct ClaudePlanCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
-        // Update countdown every 30 seconds, only while visible
+        // Update countdown every 30s, only while visible
         .background(
             TimelineView(.periodic(from: .now, by: 30)) { ctx in
                 Color.clear.onChange(of: ctx.date) { _, d in now = d }
@@ -48,16 +50,16 @@ struct ClaudePlanCardView: View {
     private var subtitleText: String {
         guard let usage else { return "Waiting for a Claude Code reply" }
         let diff = now.timeIntervalSince(usage.updatedAt)
-        if diff < 60 { return "Updated just now" }
+        if diff < 60 { return "just now" }
         let mins = Int(diff / 60)
-        if mins < 60 { return "Updated \(mins) min ago" }
-        let hrs = mins / 60
-        return "Updated \(hrs) h ago"
+        if mins < 60 { return "\(mins) min ago" }
+        return "\(mins / 60) h ago"
     }
 }
 
 // MARK: - Gauge Row
 
+// DateFormatter created once, in English, for the weekly reset label
 private let weeklyResetFormatter: DateFormatter = {
     let fmt = DateFormatter()
     fmt.locale = Locale(identifier: "en_US_POSIX")
@@ -72,35 +74,36 @@ private struct GaugeRowView: View {
     var weekly: Bool = false
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 5) {
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(Color(hex: "#6B7079"))
-                .frame(width: 42, alignment: .leading)
+                .frame(width: 36, alignment: .leading)
             if let w = window {
                 let pct = ClaudePlanGauge.effectivePct(w)
                 let accent = Color(hex: ClaudePlanGauge.color(for: pct))
-                // Thin bar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.white.opacity(0.08))
-                            .frame(height: 4)
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(accent)
-                            .frame(width: geo.size.width * CGFloat(pct / 100), height: 4)
-                    }
+                // Fixed-width bar (~50pt)
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 50, height: 4)
+                    Capsule()
+                        .fill(accent)
+                        .frame(width: max(0, 50 * CGFloat(pct / 100)), height: 4)
                 }
-                .frame(height: 4)
+                .frame(width: 50, height: 4)
                 Text("\(Int(pct.rounded()))%")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color(hex: "#C5C8CD"))
                     .monospacedDigit()
                     .frame(width: 30, alignment: .trailing)
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 8))
+                    .foregroundColor(Color(hex: "#6B7079"))
                 Text(resetLabel(w))
                     .font(.system(size: 10))
                     .foregroundColor(Color(hex: "#6B7079"))
-                    .lineLimit(1)
+                    .fixedSize()
             } else {
                 Text("—")
                     .font(.system(size: 11))
@@ -108,7 +111,6 @@ private struct GaugeRowView: View {
                 Spacer()
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     private func resetLabel(_ w: PlanWindow) -> String {
@@ -117,11 +119,10 @@ private struct GaugeRowView: View {
         if weekly {
             return "Resets \(weeklyResetFormatter.string(from: w.resetsAt))"
         } else {
-            // "Resets in 1 h 20" or "Resets in 45 min"
             let h = Int(secs / 3600)
             let m = Int((secs.truncatingRemainder(dividingBy: 3600)) / 60)
-            if h > 0 { return "Resets in \(h) h \(m) min" }
-            return "Resets in \(m) min"
+            if h > 0 { return "in \(h) h \(m)" }
+            return "in \(m) min"
         }
     }
 }
