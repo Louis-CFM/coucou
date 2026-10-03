@@ -9,7 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Ease } from "../core/anim";
 import { POD_FLIGHT_MS, drawAirPod } from "../mochi/airpod";
 
-const BIG = 76; // a bud's height mid-flight, CSS px
+const BIG = 190; // a bud's height mid-flight, CSS px
 const TRAIL = 6;
 const SPARK_LIFE = 0.55;
 
