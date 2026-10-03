@@ -92,6 +92,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Where the island was dragged to; null = top centre. Written by Rust only. */
+  islandOffset: [number, number] | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  islandOffset: null,
 };
 
 type Listener = () => void;

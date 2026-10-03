@@ -20,6 +20,11 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Where the user dragged the island: top-left of the panel, in logical
+    /// pixels from the top-left of its display. None = top centre. Owned by
+    /// Rust: save_settings never takes it from a page.
+    #[serde(default)]
+    pub island_offset: Option<(f64, f64)>,
 }
 
 fn default_model() -> String {
@@ -43,6 +48,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            island_offset: None,
         }
     }
 }

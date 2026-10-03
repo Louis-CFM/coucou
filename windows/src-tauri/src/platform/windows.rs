@@ -217,6 +217,11 @@ pub fn make_non_activating(win: &WebviewWindow) {
     }
 }
 
+/// Any window can be placed anywhere on Windows.
+pub fn island_movable() -> bool {
+    true
+}
+
 /// Temporarily allow activation so a text field inside the island can be typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };

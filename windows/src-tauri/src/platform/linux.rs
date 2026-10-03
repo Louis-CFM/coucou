@@ -263,6 +263,14 @@ pub fn make_non_activating(win: &WebviewWindow) {
     crate::log::line("island is a layer-shell overlay");
 }
 
+/// Whether the user can drag the island around. A layer surface is placed by
+/// the compositor, anchored to the top edge.
+// ponytail: layer-shell islands stay pinned; moving them would mean driving
+// gtk_layer_set_margin from the drag instead of set_position.
+pub fn island_movable() -> bool {
+    !LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {

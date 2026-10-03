@@ -42,6 +42,8 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+    /// False on a layer-shell surface, which the compositor pins to the top edge.
+    island_movable: bool,
 }
 
 #[tauri::command]
@@ -56,13 +58,16 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
+        island_movable: platform::island_movable(),
     }
 }
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
+    let mut settings = settings;
     let (screen_changed, autostart_changed) = {
         let mut current = shared.settings.lock().unwrap();
+        settings.island_offset = current.island_offset;
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         *current = settings.clone();
@@ -122,6 +127,45 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+}
+
+/// One step of a drag, in logical pixels.
+#[tauri::command]
+fn move_island(app: AppHandle, dx: f64, dy: f64) {
+    island::move_by(&app, dx, dy);
+}
+
+/// End of a drag: remember where the island was dropped.
+#[tauri::command]
+fn save_island_position(app: AppHandle, shared: State<Shared>) {
+    let pref = shared.settings.lock().unwrap().screen.clone();
+    let Some(offset) = island::current_offset(&app, &pref) else { return };
+    store_island_offset(&app, &shared, Some(offset));
+}
+
+#[tauri::command]
+fn reset_island_position(app: AppHandle, shared: State<Shared>) {
+    reset_island(&app, &shared);
+}
+
+/// Back to the top centre (tray and settings window).
+pub fn reset_island(app: &AppHandle, shared: &Shared) {
+    store_island_offset(app, shared, None);
+    let pref = shared.settings.lock().unwrap().screen.clone();
+    let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+    island::apply_geometry(app, &pref, collapsed);
+}
+
+fn store_island_offset(app: &AppHandle, shared: &Shared, offset: Option<(f64, f64)>) {
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.island_offset = offset;
+        current.clone()
+    };
+    if let Err(err) = settings::save(&updated) {
+        log::line(format!("could not save the island position: {err}"));
+    }
+    let _ = app.emit("settings-changed", updated);
 }
 
 #[tauri::command]
@@ -381,6 +425,9 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            move_island,
+            save_island_position,
+            reset_island_position,
             open_url,
             open_in_vscode,
             quit_app,
