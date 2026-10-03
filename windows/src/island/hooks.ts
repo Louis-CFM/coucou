@@ -34,9 +34,18 @@ function validateAgent(raw: string | undefined): string | null {
   return raw;
 }
 
+const AGENT_COLORS: Record<string, string> = {
+  opencode: "#5EEAD4",
+  gemini: "#8AB4F8",
+  antigravity: "#E879F9",
+  codex: "#2DD4BF",
+  cursor: "#C0C4CC",
+};
+
 const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
 
 function agentColor(name: string): string {
+  if (AGENT_COLORS[name]) return AGENT_COLORS[name];
   let h = 0;
   for (let i = 0; i < name.length; i++) {
     h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;

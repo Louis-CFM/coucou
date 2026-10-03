@@ -201,7 +201,7 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
-        case "agent_gemini", "agent_antigravity":
+        case "agent_gemini", "agent_antigravity", "agent_opencode":
             #if !APPSTORE
             let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
                                      "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
@@ -1580,7 +1580,7 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
-        case "agent_cursor", "agent_codex":
+        case "agent_cursor", "agent_codex", "agent_opencode":
             return false  // coming soon
         case "integration_music":
             #if !APPSTORE
