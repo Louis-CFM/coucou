@@ -48,6 +48,11 @@ final class AppState: ObservableObject {
     // File drag-over state (mailbox morph glow + mouth spring)
     @Published var fileDragOver: Bool = false
 
+    // Empty means automatic; keep the UUID even when the display is disconnected.
+    @Published var preferredScreenID: String = "" {
+        didSet { UserDefaults.standard.set(preferredScreenID, forKey: "preferredScreenID") }
+    }
+
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
@@ -322,6 +327,7 @@ final class AppState: ObservableObject {
 
     private init() {
         let ud = UserDefaults.standard
+        preferredScreenID = ud.string(forKey: "preferredScreenID") ?? ""
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }

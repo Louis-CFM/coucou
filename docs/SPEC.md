@@ -245,3 +245,9 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
 - La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 
+### Écran par défaut
+
+Le réglage « Default screen » mémorise l’UUID de l’écran, pas son numéro ni l’ordre
+courant des moniteurs. Il s’applique au prochain lancement. « Automatic » préfère
+un écran avec encoche, puis l’écran principal. Si l’écran choisi est absent au
+lancement, le même repli s’applique sans effacer le choix mémorisé.

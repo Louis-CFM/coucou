@@ -48,7 +48,7 @@ final class IslandWindowController: NSWindowController {
     private var hasNotch = true
 
     convenience init() {
-        let screen = Self.notchScreen() ?? NSScreen.main!
+        let screen = IslandScreenSelection.preferredScreen(id: AppState.shared.preferredScreenID)!
         let geometry = Self.screenGeometry(for: screen)
         let nW = geometry.width
         let nH = geometry.height
