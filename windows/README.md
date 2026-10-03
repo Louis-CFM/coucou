@@ -166,8 +166,12 @@ What changes on Linux:
 
 - **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
   top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
-  and other wlroots compositors. GNOME has no layer-shell, so there the island
-  is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+  and other wlroots compositors. GNOME has no layer-shell and ignores where a
+  Wayland window asks to go, so there Coucou runs through XWayland as a dock
+  window: top centre, on every workspace, still there after Super+D.
+  `COUCOU_X11=0` keeps the native Wayland window, `COUCOU_DOCK=0` makes it a
+  utility window instead of a dock. `COUCOU_LAYER_SHELL=0` forces the regular
+  window anywhere.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
