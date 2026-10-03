@@ -162,6 +162,12 @@ npm run tauri dev      # live-reloading development build
 npm run pack           # AppImage, .deb and .rpm in windows/release/
 ```
 
+> [!NOTE]
+> On rolling-release distributions, the bundled libraries in the AppImage can
+> be older than the system GTK/WebKit stack and may cause a black area or
+> temporary freezes. If that happens, build against your system libraries with
+> `npm run tauri build -- --no-bundle` instead.
+
 What changes on Linux:
 
 - **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
