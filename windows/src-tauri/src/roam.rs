@@ -213,6 +213,58 @@ pub fn roam_end(app: AppHandle, path: Option<String>) {
     let _ = app.emit_to(island::WINDOW_LABEL, "roam-end", path);
 }
 
+/// Set while the AirPods cross the overlay, so their end never ends a roam.
+static PODS: AtomicBool = AtomicBool::new(false);
+
+/// The AirPods' trip to or from the edges of the monitor (island/pods.ts):
+/// the overlay covers the island's monitor, click-through, while they fly.
+/// `x`, `y` are in the island window. False when the overlay is busy (a roam,
+/// a preview): the buds skip the trip.
+#[tauri::command]
+pub fn pods_flight(app: AppHandle, out: bool, x: f64, y: f64, size: f64) -> bool {
+    let (Some(win), Some(isl)) = (app.get_webview_window(LABEL), island::window(&app)) else {
+        return false;
+    };
+    let Some(monitor) = isl.current_monitor().ok().flatten() else { return false };
+    if !claim_overlay() {
+        return false;
+    }
+    PODS.store(true, Ordering::SeqCst);
+    let scale = monitor.scale_factor();
+    let origin = *monitor.position();
+    let at = isl.outer_position().map(|p| (p.x, p.y)).unwrap_or((origin.x, origin.y));
+    let _ = win.set_position(origin);
+    let _ = win.set_size(*monitor.size());
+    crate::platform::set_click_through(&win, true);
+    crate::platform::set_memory_low(&win, false);
+    let _ = win.show();
+    let _ = win.set_always_on_top(true);
+    let _ = app.emit_to(
+        LABEL,
+        "pods-flight",
+        serde_json::json!({
+            "out": out,
+            "x": (at.0 - origin.x) as f64 / scale + x,
+            "y": (at.1 - origin.y) as f64 / scale + y,
+            "size": size,
+        }),
+    );
+    true
+}
+
+/// The buds are off the screen, or back in Mochi: hide the overlay.
+#[tauri::command]
+pub fn pods_flight_end(app: AppHandle) {
+    if !PODS.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(win) = app.get_webview_window(LABEL) {
+        let _ = win.hide();
+        crate::platform::set_memory_low(&win, true);
+    }
+    release_overlay();
+}
+
 fn capture(x: i32, y: i32, w: i32, h: i32, path: &PathBuf) -> Result<(), String> {
     if w <= 0 || h <= 0 {
         return Err("empty capture area".into());

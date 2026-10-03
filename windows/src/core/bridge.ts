@@ -148,6 +148,9 @@ export const Bridge = {
   musicNow: () => call<NowPlaying | null>("music_now"),
   /** Play/pause, next or previous on the player that's on show. */
   musicControl: (action: "toggle" | "next" | "previous") => call<void>("music_control", { action }),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay, from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 

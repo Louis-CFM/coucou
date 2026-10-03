@@ -27,6 +27,7 @@ import type { RoamLook } from "../core/bridge";
 import type { Settings } from "../core/state";
 // The same window shows generated media full screen between roams.
 import "./preview";
+import "./pods";
 
 const BOT = 84; // Mochi's width on the overlay, CSS px
 const OVERHANG = 40; // room above the body for particles

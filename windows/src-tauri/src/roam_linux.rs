@@ -152,6 +152,42 @@ pub fn roam_end(app: AppHandle, path: Option<String>) {
     let _ = app.emit_to(island::WINDOW_LABEL, "roam-end", path);
 }
 
+/// Set while the AirPods cross the overlay, so their end never ends a roam.
+static PODS: AtomicBool = AtomicBool::new(false);
+
+/// The AirPods' trip to or from the edges of the monitor (island/pods.ts), on
+/// the overlay over the island's monitor. False when it's busy.
+#[tauri::command]
+pub fn pods_flight(app: AppHandle, out: bool, x: f64, y: f64, size: f64) -> bool {
+    let (Some(win), Some(isl)) = (app.get_webview_window(LABEL), island::window(&app)) else {
+        return false;
+    };
+    if !claim_overlay() {
+        return false;
+    }
+    PODS.store(true, Ordering::SeqCst);
+    platform::show_roam_overlay(&win, &isl);
+    let (ox, oy) = island_origin(&app);
+    let _ = app.emit_to(
+        LABEL,
+        "pods-flight",
+        serde_json::json!({ "out": out, "x": ox + x, "y": oy + y, "size": size }),
+    );
+    true
+}
+
+/// The buds are off the screen, or back in Mochi: hide the overlay.
+#[tauri::command]
+pub fn pods_flight_end(app: AppHandle) {
+    if !PODS.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(win) = app.get_webview_window(LABEL) {
+        platform::hide_roam_overlay(&win);
+    }
+    release_overlay();
+}
+
 /// The desktop's screenshot tool, best match first; the first that writes a
 /// file wins.
 fn capture(path: &Path) -> Result<(), String> {

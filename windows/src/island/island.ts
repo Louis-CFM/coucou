@@ -64,7 +64,7 @@ export class Island {
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
-  private pods = new Pods();
+  private pods = new Pods(() => this.ensureRunning());
   private greeting = new Greeting();
 
   private running = false;
@@ -871,7 +871,7 @@ export class Island {
       botX: this.botCx.value,
       botY: this.botCy.value,
       botSize: this.botSize.value,
-    });
+    }, this.engine);
 
     const uploadActive = this.uploadActive;
     if (uploadActive) {
@@ -963,7 +963,6 @@ export class Island {
       (State.mode === "expanded" && State.view === "overview" && State.focusId === "integration_music");
     this.engine.setDancing(musicDancing() && calm && where);
     this.engine.particleOverhang = BOT_OVERHANG;
-    this.engine.lid = this.pods.lid;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
     if (this.engine.morph > 0.3) {

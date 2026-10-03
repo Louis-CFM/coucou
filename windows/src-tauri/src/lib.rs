@@ -541,6 +541,8 @@ pub fn run() {
             roam::roam_capture,
             roam::roam_pointer,
             roam::roam_end,
+            roam::pods_flight,
+            roam::pods_flight_end,
             media::guess_model_output,
             transcribe_audio,
             music::music_now,
