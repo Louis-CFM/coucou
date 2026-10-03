@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -41,6 +41,90 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
+// ── Changes to Claude Code's settings.json ────────────────────────────────────
+
+/** One kind of change to ~/.claude/settings.json, with the words that go with it. */
+interface Change {
+  preview: (install: boolean) => Promise<HookPreview | null>;
+  apply: (install: boolean, fingerprint: string) => Promise<string | null>;
+  installText: string;
+  removeText: string;
+  installButton: string;
+  removeButton: string;
+  done: (backup: string) => string;
+}
+
+const HOOKS_CHANGE: Change = {
+  preview: Bridge.hooksPreview,
+  apply: Bridge.hooksApply,
+  installText: "This is exactly what will change in your settings.json. Your own hooks are left untouched.",
+  removeText: "This removes Coucou's entries only. Your own hooks are left untouched.",
+  installButton: "Back up and write",
+  removeButton: "Back up and remove",
+  done: (backup) => `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+};
+
+const STATUS_LINE_CHANGE: Change = {
+  preview: Bridge.statusLinePreview,
+  apply: Bridge.statusLineApply,
+  installText: "This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you.",
+  removeText: "This puts your previous status line back, or removes the entry if there was none.",
+  installButton: "Back up and write",
+  removeButton: "Back up and remove",
+  done: (backup) => `Done. Previous settings saved as ${backup}. The numbers appear after the next reply of a Claude Code session.`,
+};
+
+/**
+ * Shows the diff of a change in `body` and writes it only after an explicit
+ * click, and only if settings.json still matches the diff that was shown.
+ * `back` redraws the section; `applied` runs a moment after a successful write.
+ */
+async function reviewChange(
+  body: HTMLElement,
+  change: Change,
+  install: boolean,
+  back: () => void,
+  applied: () => void,
+) {
+  let preview;
+  try {
+    preview = await change.preview(install);
+  } catch (err) {
+    // An unreadable or invalid settings.json stops here rather than being
+    // treated as empty and written over.
+    clear(body);
+    body.append(
+      h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+      h("div", { class: "row" }, h("button", { text: "Back", onclick: back })),
+    );
+    return;
+  }
+  if (!preview) return;
+  clear(body);
+  body.append(
+    h("div", { class: "hint", text: install ? change.installText : change.removeText }),
+    renderDiff(preview.diff),
+    h("div", { class: "row" }, h("span", { class: "path", text: `Backup → ${preview.backup}` })),
+  );
+  const confirm = h("button", {
+    class: install ? "primary" : "danger",
+    text: install ? change.installButton : change.removeButton,
+  });
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    try {
+      const backup = await change.apply(install, preview.fingerprint);
+      clear(body);
+      body.append(h("div", { class: "notice ok", text: change.done(String(backup)) }));
+      window.setTimeout(applied, 2600);
+    } catch (err) {
+      confirm.disabled = false;
+      body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+    }
+  });
+  body.append(h("div", { class: "row" }, confirm, h("button", { text: "Cancel", onclick: back })));
+}
+
 // ── Claude Code section ───────────────────────────────────────────────────────
 
 function claudeSection(status: HookStatus): HTMLElement {
@@ -52,11 +136,14 @@ function claudeSection(status: HookStatus): HTMLElement {
     body,
   );
 
+  const redraw = () => {
+    clear(body);
+    draw();
+  };
   const rebuild = async () => {
     const fresh = await Bridge.hooksStatus();
     if (fresh) Object.assign(status, fresh);
-    clear(body);
-    draw();
+    redraw();
     const head = section.querySelector("h2")!;
     clear(head);
     head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
@@ -88,11 +175,20 @@ function claudeSection(status: HookStatus): HTMLElement {
       }));
     }
 
+    // Hooks from before questions could be answered here lack the --ask entry.
+    const outdated = status.installed && !status.askHookInstalled;
+    if (outdated) {
+      body.append(h("div", {
+        class: "notice",
+        text: "Hooks outdated — update them to answer Claude's questions from the notch. You see the change before anything is written.",
+      }));
+    }
+
     const actions = h("div", { class: "row" });
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
-      onclick: () => showPreview(true),
+      text: outdated ? "Update hooks…" : status.installed ? "Reinstall hooks…" : "Install hooks…",
+      onclick: () => void reviewChange(body, HOOKS_CHANGE, true, redraw, () => void rebuild()),
     });
     // Writing hook commands that point at a relay which isn't there would give
     // every Claude Code session a broken hook and nothing to show for it.
@@ -105,66 +201,80 @@ function claudeSection(status: HookStatus): HTMLElement {
       actions.append(h("button", {
         class: "danger",
         text: "Uninstall hooks…",
-        onclick: () => showPreview(false),
+        onclick: () => void reviewChange(body, HOOKS_CHANGE, false, redraw, () => void rebuild()),
       }));
     }
     body.append(actions);
   }
 
-  async function showPreview(install: boolean) {
-    let preview;
-    try {
-      preview = await Bridge.hooksPreview(install);
-    } catch (err) {
-      // An unreadable or invalid settings.json stops here rather than being
-      // treated as empty and written over.
-      clear(body);
-      body.append(
-        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
-        h("div", { class: "row" }, h("button", {
-          text: "Back",
-          onclick: () => { clear(body); draw(); },
-        })),
-      );
-      return;
-    }
-    if (!preview) return;
+  draw();
+  return section;
+}
+
+// ── Plan usage section ────────────────────────────────────────────────────────
+
+/**
+ * The 5-hour and weekly limits in the island's header. They come from Claude
+ * Code's status line, so the relay has to be the status line first: turning the
+ * switch on without it starts the install, and the switch only stays on once
+ * that has been confirmed. A status line the user had keeps working.
+ */
+function planSection(status: HookStatus): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h("section", {}, h("h2", {}, h("span", { text: "Plan usage" })), body);
+
+  const redraw = () => {
     clear(body);
+    draw();
+  };
+  const rebuild = async () => {
+    const fresh = await Bridge.hooksStatus();
+    if (fresh) Object.assign(status, fresh);
+    // Cancelled or failed: a switch that was waiting for the install falls back.
+    if (!status.planRelayInstalled) settings.showPlanInNotch = false;
+    redraw();
+  };
+
+  function draw() {
+    // The switch shows "on" while the install it asked for is being reviewed.
+    const sw = toggle(settings.showPlanInNotch, (on) => {
+      if (!on) {
+        settings.showPlanInNotch = false;
+        void save();
+      } else if (status.planRelayInstalled) {
+        settings.showPlanInNotch = true;
+        void save();
+      } else {
+        // Turned on before the relay is in: install it first; it stays on once confirmed.
+        void reviewChange(body, STATUS_LINE_CHANGE, true, () => void rebuild(), () => {
+          settings.showPlanInNotch = true;
+          void save().then(rebuild);
+        });
+      }
+    });
     body.append(
       h("div", {
         class: "hint",
-        text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
+        text: "Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay to ~/.claude/settings.json; if you already have a status line, it keeps working as before. Pro and Max plans only.",
       }),
-      renderDiff(preview.diff),
+      h("div", { class: "row" }, h("label", { text: "Show in the notch" }), sw),
       h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
+        h("label", { text: "Relay" }),
+        statusDot(status.planRelayInstalled),
+        h("span", { class: "hint", text: status.planRelayInstalled ? "installed" : "not installed" }),
+        status.planRelayInstalled
+          ? h("button", {
+              class: "danger",
+              text: "Uninstall relay…",
+              onclick: () => void reviewChange(body, STATUS_LINE_CHANGE, false, redraw, () => void rebuild()),
+            })
+          : h("button", {
+              class: "primary",
+              text: "Install relay…",
+              onclick: () => void reviewChange(body, STATUS_LINE_CHANGE, true, redraw, () => void rebuild()),
+            }),
       ),
     );
-    const confirm = h("button", {
-      class: install ? "primary" : "danger",
-      text: install ? "Back up and write" : "Back up and remove",
-    });
-    confirm.addEventListener("click", async () => {
-      confirm.disabled = true;
-      try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
-        clear(body);
-        body.append(h("div", {
-          class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
-        }));
-        window.setTimeout(() => void rebuild(), 2600);
-      } catch (err) {
-        confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
-      }
-    });
-    body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
-      onclick: () => { clear(body); draw(); },
-    })));
   }
 
   draw();
@@ -252,6 +362,153 @@ function apiSection(hasKey: boolean): HTMLElement {
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
     feedback,
   );
+}
+
+// ── Local models section ──────────────────────────────────────────────────────
+
+type Local = "ollama" | "lmstudio" | "custom";
+
+const LOCAL: Record<Local, { name: string; url: "ollamaUrl" | "lmstudioUrl" | "customUrl"; model: "ollamaModel" | "lmstudioModel" | "customModel"; usual: string }> = {
+  ollama: { name: "Ollama", url: "ollamaUrl", model: "ollamaModel", usual: "http://127.0.0.1:11434" },
+  lmstudio: { name: "LM Studio", url: "lmstudioUrl", model: "lmstudioModel", usual: "http://127.0.0.1:1234" },
+  // No usual address: any server that speaks the OpenAI API (Unsloth, vLLM, llama.cpp…).
+  custom: { name: "OpenAI-compatible", url: "customUrl", model: "customModel", usual: "" },
+};
+
+/** Keychain entry of the OpenAI-compatible server's key. */
+const CUSTOM_KEY = "openai-compatible-key";
+
+/**
+ * Chat with a model on this computer through Ollama or LM Studio: connecting
+ * checks that the server answers and lists its models. No key; the address is
+ * the only place Coucou talks to, and it stays on this machine by default.
+ */
+function localSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h("section", {}, h("h2", {}, h("span", { text: "Local models" })), body);
+  const redraw = () => {
+    clear(body);
+    draw();
+  };
+
+  /** Who the chat talks to: Claude, or any server that is connected. */
+  function providerRow(): HTMLElement {
+    const pick = h("select", {}, h("option", { value: "anthropic", text: "Claude" })) as HTMLSelectElement;
+    for (const [id, def] of Object.entries(LOCAL) as [Local, (typeof LOCAL)[Local]][]) {
+      if (settings[def.url]) pick.append(h("option", { value: id, text: def.name }));
+    }
+    pick.value = [...pick.options].some((o) => o.value === settings.chatProvider) ? settings.chatProvider : "anthropic";
+    pick.addEventListener("change", () => {
+      settings.chatProvider = pick.value as Settings["chatProvider"];
+      void save();
+    });
+    return h("div", { class: "row" }, h("label", { text: "Chat with" }), pick);
+  }
+
+  function serverBlock(id: Local): HTMLElement {
+    const def = LOCAL[id];
+    const connected = settings[def.url] !== "";
+    const input = h("input", {
+      type: "text",
+      placeholder: def.usual || "http://127.0.0.1:8000",
+      value: settings[def.url],
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const status = h("div", { class: "hint" });
+    const row = h("div", { class: "row" }, h("label", { text: def.name }), input);
+    // An OpenAI-compatible server may want a key; it goes to the keychain, never to the settings file.
+    const key = h("input", {
+      type: "password",
+      placeholder: "API key (optional)",
+      style: "flex:1 1 auto;min-width:0",
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const keyRow = id === "custom" && !connected ? h("div", { class: "row" }, h("label", { text: "Key" }), key) : null;
+
+    if (connected) {
+      input.disabled = true;
+      const models = h("select", {}, h("option", { value: settings[def.model], text: settings[def.model] })) as HTMLSelectElement;
+      models.addEventListener("change", () => {
+        settings[def.model] = models.value;
+        void save();
+      });
+      row.append(
+        models,
+        h("button", {
+          class: "danger",
+          text: "Disconnect",
+          onclick: () => {
+            settings[def.url] = "";
+            settings[def.model] = "";
+            if (settings.chatProvider === id) settings.chatProvider = "anthropic";
+            if (id === "custom") void Bridge.secretClear(CUSTOM_KEY).catch(() => {});
+            void save().then(redraw);
+          },
+        }),
+      );
+      // The list is asked for again each time, so it is never older than the server.
+      Bridge.localConnect(id, settings[def.url]).then(
+        (server) => {
+          if (!server.models.length) return;
+          models.replaceChildren(...server.models.map((m) => h("option", { value: m, text: m })));
+          if (!server.models.includes(settings[def.model])) {
+            settings[def.model] = server.models[0];
+            void save();
+          }
+          models.value = settings[def.model];
+        },
+        (err) => { status.textContent = String(err).replace(/^Error:\s*/, ""); },
+      );
+    } else {
+      const connect = h("button", { class: "primary", text: "Connect" });
+      connect.addEventListener("click", async () => {
+        connect.disabled = true;
+        status.className = "hint";
+        status.textContent = "Connecting…";
+        try {
+          if (id === "custom" && key.value.trim()) {
+            await Bridge.secretSet(CUSTOM_KEY, key.value.trim());
+            key.value = "";
+          }
+          const server = await Bridge.localConnect(id, input.value);
+          if (!server.models.length) {
+            status.className = "notice err";
+            status.textContent = `No models yet. Download one in ${def.name} first.`;
+          } else {
+            settings[def.url] = server.url;
+            settings[def.model] = server.models[0];
+            await save();
+            redraw();
+            return;
+          }
+        } catch (err) {
+          status.className = "notice err";
+          status.textContent = String(err).replace(/^Error:\s*/, "");
+        }
+        connect.disabled = false;
+      });
+      row.append(connect);
+    }
+    return h("div", { style: "display:flex;flex-direction:column;gap:6px" }, row, keyRow, status);
+  }
+
+  function draw() {
+    body.append(
+      h("div", {
+        class: "hint",
+        text: "Chat with a model running on this computer through Ollama or LM Studio (leave the address empty for the usual one), or with any server that speaks the OpenAI API, such as Unsloth. If you point an address at another machine, that machine receives what you ask.",
+      }),
+      serverBlock("ollama"),
+      serverBlock("lmstudio"),
+      serverBlock("custom"),
+      providerRow(),
+    );
+  }
+
+  draw();
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -386,9 +643,28 @@ function generalSection(): HTMLElement {
     h("option", { value: "primary", text: "Main display" }),
     h("option", { value: "cursor", text: "Display under the cursor" }),
   );
+  const language = h("select", {}) as HTMLSelectElement;
+  language.append(
+    h("option", { value: "auto", text: "System language" }),
+    h("option", { value: "en", text: "English" }),
+    h("option", { value: "de", text: "Deutsch" }),
+    h("option", { value: "fr", text: "Français" }),
+  );
+  language.value = settings.language;
+  language.addEventListener("change", () => {
+    settings.language = language.value;
+    void save();
+  });
+
+  void Bridge.monitors().then((list) => {
+    for (const m of list ?? []) {
+      screen.append(h("option", { value: m.name, text: `${m.name} (${m.width}×${m.height})` }));
+    }
+    screen.value = settings.screen;
+  });
   screen.value = settings.screen;
   screen.addEventListener("change", () => {
-    settings.screen = screen.value as Settings["screen"];
+    settings.screen = screen.value;
     void save();
   });
 
@@ -411,6 +687,11 @@ function generalSection(): HTMLElement {
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: "Language" }),
+      language,
+      h("span", { class: "hint", text: "for Mochi's answers and the activity labels" }),
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
@@ -426,7 +707,7 @@ async function main() {
     version = boot.version;
   }
   const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+    installed: false, askHookInstalled: false, planRelayInstalled: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
@@ -442,7 +723,9 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    planSection(status),
     apiSection(hasKey),
+    localSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {

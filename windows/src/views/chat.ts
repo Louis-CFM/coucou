@@ -3,9 +3,10 @@
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
-import { Bridge, type ChatContext } from "../core/bridge";
+import { Bridge, onEvent, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
+import { renderMarkdown } from "./markdown";
 import type { ViewHost } from "./views";
 
 let nextId = 1;
@@ -18,7 +19,9 @@ function bubble(message: ChatMessage): HTMLElement {
       h("div", { class: "bubble", text: message.content }),
     );
   }
-  return h("div", { class: "chat-row" }, h("div", { class: "reply", text: message.content }));
+  const reply = h("div", { class: "reply" });
+  renderMarkdown(reply, message.content);
+  return h("div", { class: "chat-row" }, reply);
 }
 
 function typingDots(): HTMLElement {
@@ -57,6 +60,20 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   let sending = false;
   let renderedCount = -1;
+  // A local model answers token by token: the text so far, and where it is shown.
+  let live: HTMLElement | null = null;
+  void onEvent<string>("chat-delta", (text) => {
+    if (!sending) return;
+    if (!text) return; // still thinking: the dots stay
+    if (!live) {
+      live = h("div", { class: "reply" });
+      log.querySelector(".typing")?.parentElement?.remove();
+      log.append(h("div", { class: "chat-row" }, live));
+    }
+    renderMarkdown(live, text);
+    log.scrollTop = log.scrollHeight;
+    onHeightChange();
+  });
 
   async function submit() {
     const query = input.value.trim();
@@ -86,6 +103,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       Sound.play("error");
     } finally {
       sending = false;
+      live = null;
+      renderedCount = -1; // the finished answer replaces the streamed one
       State.notify();
       onHeightChange();
       input.focus();

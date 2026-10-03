@@ -1,15 +1,18 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod claude_cli;
 mod files;
 mod hooks;
 mod integrations;
 mod island;
+mod local_chat;
 mod log;
 mod pipe;
 mod platform;
 mod secrets;
 mod settings;
+mod snippet;
 mod tray;
 
 use std::process::Command;
@@ -48,7 +51,9 @@ pub struct BootInfo {
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    let hooks_status = hooks::status();
+    settings.hooks_installed = hooks_status.installed;
+    settings.plan_relay_installed = hooks_status.plan_relay_installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -117,6 +122,12 @@ fn focus_window(app: AppHandle, focused: bool) {
     }
 }
 
+/// Every display by name and size, for the picker in the settings.
+#[tauri::command]
+fn monitors(app: AppHandle) -> Vec<island::MonitorInfo> {
+    island::monitor_list(&app)
+}
+
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
@@ -132,10 +143,39 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to the file manager otherwise.
+/// The lines around an edit, for the session view (see snippet.rs).
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn file_snippet(
+    cwd: String,
+    path: String,
+    find: String,
+    context: usize,
+) -> Option<snippet::Snippet> {
+    snippet::around(&cwd, &path, &find, context.min(6))
+}
+
+/// Brings the Konsole tab a session runs in to the front (Linux). The three
+/// values come out of the hook's environment; `platform` checks their shape.
+#[tauri::command]
+fn focus_terminal(service: String, session: String, window: String) -> bool {
+    platform::focus_terminal(&service, &session, &window)
+}
+
+/// How "Open terminal" ended, as the island needs to tell it.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum OpenResult {
+    Opened,
+    /// No VS Code (or fork) on PATH: the folder went to the file manager instead.
+    NoEditor,
+    /// The path was not an existing folder given in full; nothing was launched.
+    BadPath,
+}
+
+/// "Open terminal" opens the working folder in VS Code (or a fork of it) when one
+/// is on PATH, and falls back to the file manager otherwise.
+#[tauri::command]
+fn open_in_vscode(path: Option<String>) -> OpenResult {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -147,22 +187,29 @@ fn open_in_vscode(path: Option<String>) -> bool {
     if let Some(p) = path.as_deref() {
         let p = std::path::Path::new(p);
         if !(p.is_absolute() && p.is_dir()) {
-            return false;
+            return OpenResult::BadPath;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    // VS Code under its various names (Microsoft's build, Insiders, the OSS
+    // build, VSCodium), then Cursor, a VS Code fork that takes the same arguments.
+    for name in ["code", "code-insiders", "code-oss", "codium", "vscodium", "cursor"] {
+        let Some(exe) = platform::find_on_path(name) else {
+            continue;
+        };
+        let mut cmd = Command::new(exe);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
         if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
+            return OpenResult::Opened;
         }
     }
+    // No editor: the folder in the file manager is still better than nothing,
+    // and the island says why nothing else happened.
     if let Some(p) = path.as_deref() {
         platform::reveal_folder(p);
     }
-    false
+    OpenResult::NoEditor
 }
 
 #[tauri::command]
@@ -211,9 +258,41 @@ fn hooks_apply(
     Ok(backup)
 }
 
+/// The diff of putting the plan usage relay into (or taking it out of) the
+/// status line: just the `statusLine` key, before and after.
+#[tauri::command]
+fn status_line_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::status_line_preview(install)
+}
+
+/// Only ever called from an explicit click in the settings window.
+#[tauri::command]
+fn status_line_apply(
+    app: AppHandle,
+    shared: State<Shared>,
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    let backup = hooks::status_line_write(install, &fingerprint)?;
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.plan_relay_installed = install;
+        let _ = settings::save(&current);
+        current.clone()
+    };
+    let _ = app.emit("settings-changed", updated);
+    Ok(backup)
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
+}
+
+/// A question from Claude Code was answered in the island.
+#[tauri::command]
+fn question_answer(app: AppHandle, request_id: String, answers: serde_json::Value) {
+    pipe::answer_question(&app, &request_id, answers);
 }
 
 /// The island has the card on screen, so the long wait for a human may begin.
@@ -236,13 +315,43 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let s = shared.settings.lock().unwrap().clone();
+    let key = secrets::get(CUSTOM_KEY);
+    match s.chat_provider.as_str() {
+        "ollama" => local_chat::send(&app, &chat, &s.ollama_url, None, &s.ollama_model, &s.language, query, context).await,
+        "lmstudio" => local_chat::send(&app, &chat, &s.lmstudio_url, None, &s.lmstudio_model, &s.language, query, context).await,
+        "custom" => local_chat::send(&app, &chat, &s.custom_url, key.as_deref(), &s.custom_model, &s.language, query, context).await,
+        _ => claude::send(&chat, &s.model, &s.language, query, context).await,
+    }
+}
+
+/// Keychain entry of the key of the user's own OpenAI-compatible server.
+const CUSTOM_KEY: &str = "openai-compatible-key";
+
+#[cfg(test)]
+#[test]
+fn the_openai_compatible_key_may_be_stored() {
+    // secrets.rs refuses anything outside its list ("unknown key").
+    assert!(secrets::KNOWN_KEYS.contains(&CUSTOM_KEY));
+}
+
+/// Settings → Local models → Connect: does the server answer, and which models does it have?
+/// `provider` picks the usual address for an empty field.
+#[tauri::command]
+async fn local_connect(provider: String, url: String) -> Result<local_chat::Server, String> {
+    // An OpenAI-compatible server has no usual address; the others do, and take no key.
+    let (usual, key) = match provider.as_str() {
+        "lmstudio" => ("http://127.0.0.1:1234", None),
+        "custom" => ("", secrets::get(CUSTOM_KEY)),
+        _ => ("http://127.0.0.1:11434", None),
+    };
+    local_chat::connect(&url, usual, key.as_deref()).await
 }
 
 #[tauri::command]
@@ -381,17 +490,24 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            monitors,
             open_url,
             open_in_vscode,
+            focus_terminal,
+            file_snippet,
             quit_app,
             hooks_status,
             hooks_preview,
             hooks_apply,
+            status_line_preview,
+            status_line_apply,
             approval_decision,
+            question_answer,
             approval_ack,
             approval_decline,
             log_line,
             chat_send,
+            local_connect,
             chat_reset,
             ingest_file,
             secret_present,

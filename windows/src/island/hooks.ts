@@ -4,14 +4,35 @@
 // terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
 
 import { Bridge, onEvent } from "../core/bridge";
+import { localized } from "../core/i18n";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
+import { beginTurn, dropSession, endTurn, hasSession, toolFinished, toolStarted } from "../views/session";
+import { parseQuestions } from "../views/question";
+import { parsePlanUsage } from "../views/usage";
 
 const CLAUDE_ID = "integration_claude";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
+/** The same for a question; the relay waits a little longer for those. */
+let questionTimeout: number | null = null;
+const QUESTION_CARD_MS = 125_000;
+
+/** The question card is over — answered in the terminal, or the hook gave up. */
+function dropQuestion(island: Island) {
+  if (questionTimeout != null) window.clearTimeout(questionTimeout);
+  questionTimeout = null;
+  if (!State.pendingQuestion) return;
+  State.pendingQuestion = null;
+  State.isPinned = false;
+  island.dropPin();
+  State.updateTask(CLAUDE_ID, "working");
+  State.setPillBadge(CLAUDE_ID, null);
+  if (State.view === "question") island.setView(State.defaultView());
+  State.notify();
+}
 
 interface HookPayload {
   hook_event_name?: string;
@@ -25,6 +46,16 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Konsole's D-Bus names for the terminal the session runs in (Linux). */
+  konsole_service?: string;
+  konsole_session?: string;
+  konsole_window?: string;
+  /** The last lines a Bash command printed (the relay keeps nothing else of its output). */
+  tool_tail?: string[];
+  /** PostToolUseFailure: why the tool failed. */
+  error?: string;
+  /** StatusLine: Claude Code's usage limits. */
+  rate_limits?: unknown;
 }
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
@@ -60,26 +91,28 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
-const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
-  NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+/** The island's own wording for what Claude is doing. Anything else falls back to English. */
+const TOOL_LABELS: { en: Record<string, string> } & Record<string, Record<string, string>> = {
+  en: {
+    Bash: "Runs", Read: "Reads", Write: "Writes", Edit: "Edits", Glob: "Finds", Grep: "Searches",
+    WebSearch: "Web search", WebFetch: "Fetches", TodoWrite: "Tasks", Task: "Agent", LS: "Lists",
+    MultiEdit: "Edits", NotebookEdit: "Notebook", PowerShell: "Runs",
+  },
+  de: {
+    Bash: "Führt aus", Read: "Liest", Write: "Schreibt", Edit: "Ändert", Glob: "Sucht", Grep: "Durchsucht",
+    WebSearch: "Websuche", WebFetch: "Ruft ab", TodoWrite: "Aufgaben", Task: "Agent", LS: "Listet",
+    MultiEdit: "Ändert", NotebookEdit: "Notebook", PowerShell: "Führt aus",
+  },
+  // Same labels as the macOS app.
+  fr: {
+    Bash: "Exécute", Read: "Lit", Write: "Écrit", Edit: "Modifie", Glob: "Cherche", Grep: "Recherche",
+    WebSearch: "Recherche web", WebFetch: "Récupère", TodoWrite: "Tâches", Task: "Agent", LS: "Liste",
+    MultiEdit: "Modifie", NotebookEdit: "Notebook", PowerShell: "Exécute",
+  },
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ?? tool;
+  const label = localized(TOOL_LABELS)[tool] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
@@ -121,14 +154,14 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
 }
 
 function upsert(projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+  const t = State.claudeTask;
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
 }
 
 function clearSession() {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+  const t = State.claudeTask;
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
@@ -140,7 +173,24 @@ export function registerHookHandlers(island: Island) {
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
 }
 
+/** Remembers which Konsole tab the session runs in, for "Open terminal". */
+function noteTerminal(payload: HookPayload) {
+  const { konsole_service: service, konsole_session: session, konsole_window: window } = payload;
+  const task = State.claudeTask;
+  if (task && service && session && window) task.terminal = { service, session, window };
+}
+
 function handleHook(island: Island, payload: HookPayload) {
+  // Account-wide numbers, not part of any session: just keep the latest.
+  if (payload.hook_event_name === "StatusLine") {
+    const usage = parsePlanUsage(payload.rate_limits);
+    if (usage) {
+      State.planUsage = usage;
+      State.notify();
+    }
+    return;
+  }
+
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,
@@ -151,6 +201,8 @@ function handleHook(island: Island, payload: HookPayload) {
 
   const name = payload.hook_event_name ?? "";
   const cwd = payload.cwd ?? "";
+  const sessionId = payload.session_id ?? "";
+  noteTerminal(payload);
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
 
@@ -195,26 +247,43 @@ function handleHook(island: Island, payload: HookPayload) {
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
       if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      if (!isExternalAgent) {
+        beginTurn(sessionId, cwd, projectName);
+        // The new turn has shown nothing yet; if no other session has, the editor view would be empty.
+        if (State.view === "session" && !hasSession()) island.setView(State.defaultView());
+      }
       surface("overview", false);
       break;
     }
 
     case "PreToolUse": {
+      // A question has its own hook (AskUserQuestion below); this one only repeats it.
+      if (payload.tool_name === "AskUserQuestion") break;
       ensurePill();
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
+      // What the editor view shows is kept up to date; opening it is the user's click.
+      if (!isExternalAgent) toolStarted(sessionId, tool, payload.tool_input ?? {}, cwd, projectName);
       surface("overview", false);
       break;
     }
 
     case "PostToolUse":
+      // Answered somewhere else (in the terminal): the card would be lying.
+      if (payload.tool_name === "AskUserQuestion" && State.pendingQuestion?.sessionId === sessionId) dropQuestion(island);
       State.updateTask(agentId, "working");
+      if (!isExternalAgent) {
+        toolFinished(sessionId, payload.tool_name ?? "", payload.tool_input ?? {}, cwd, { tail: payload.tool_tail });
+      }
       break;
 
     case "PostToolUseFailure":
       State.updateTask(agentId, "working");
       State.appendStep(agentId, "⚠ failed");
+      if (!isExternalAgent) {
+        toolFinished(sessionId, payload.tool_name ?? "", payload.tool_input ?? {}, cwd, { failed: true, error: payload.error });
+      }
       break;
 
     case "Notification": {
@@ -231,6 +300,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop":
+      if (!isExternalAgent) endTurn(sessionId);
       State.updateTask(agentId, "finished");
       if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
       Sound.play("finish");
@@ -242,6 +312,9 @@ function handleHook(island: Island, payload: HookPayload) {
         } else {
           State.updateTask(agentId, "idle");
           State.setPillBadge(agentId, null);
+          // The finished session is shown for a moment, then the view lets go.
+          dropSession(sessionId);
+          if (State.view === "session" && !hasSession()) island.setView(State.defaultView());
         }
       }, 5200);
       break;
@@ -259,6 +332,8 @@ function handleHook(island: Island, payload: HookPayload) {
       } else {
         State.updateTask(agentId, "idle");
         clearSession();
+        dropSession(sessionId);
+        if (State.view === "session" && !hasSession()) island.setView(State.defaultView());
       }
       break;
 
@@ -280,10 +355,16 @@ function handleHook(island: Island, payload: HookPayload) {
       }
 
       const requestId = payload.request_id ?? "";
+      // Older Claude Code asks questions this way. They are answered through the
+      // question hook, so there is no permission card; the terminal takes it.
+      if (payload.tool_name === "AskUserQuestion") {
+        if (requestId) void Bridge.approvalDecline(requestId);
+        break;
+      }
       // One card, one request. A second one must never quietly replace the first
       // — that would leave a human staring at request B while request A waits for
       // a decision nobody can give. Hand it straight back to the terminal.
-      if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
+      if (State.pendingQuestion || (State.pendingApproval && State.pendingApproval.requestId !== requestId)) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
@@ -325,6 +406,32 @@ function handleHook(island: Island, payload: HookPayload) {
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);
+      break;
+    }
+
+    case "AskUserQuestion": {
+      const requestId = payload.request_id ?? "";
+      const questions = isExternalAgent ? null : parseQuestions(payload.tool_input);
+      // Nothing the island can show, or another card already holds the view: the
+      // terminal asks, exactly as without Coucou. One card, one request.
+      if (!questions || State.pendingApproval || (State.pendingQuestion && State.pendingQuestion.requestId !== requestId)) {
+        if (requestId) void Bridge.approvalDecline(requestId);
+        break;
+      }
+      upsert(projectName, cwd);
+      if (questionTimeout != null) window.clearTimeout(questionTimeout);
+      State.pendingQuestion = { requestId, sessionId, questions };
+      if (requestId) void Bridge.approvalAck(requestId);
+      State.updateTask(CLAUDE_ID, "question");
+      State.isPinned = true;
+      Sound.play("question");
+      if (focused) {
+        island.alert("question");
+      } else {
+        State.setPillBadge(CLAUDE_ID, "approval");
+        island.reveal();
+      }
+      questionTimeout = window.setTimeout(() => dropQuestion(island), QUESTION_CARD_MS);
       break;
     }
 

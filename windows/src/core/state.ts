@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { PlanUsage } from "../views/usage";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -19,6 +20,15 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** Where the session's terminal lives, when we know how to jump to it. */
+  terminal?: TerminalRef | null;
+}
+
+/** Konsole's D-Bus names for a terminal tab, as the hook's environment gives them. */
+export interface TerminalRef {
+  service: string;
+  session: string;
+  window: string;
 }
 
 export interface ApprovalInfo {
@@ -26,6 +36,24 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+}
+
+/** One question of an AskUserQuestion call. */
+export interface AskQuestion {
+  question: string;
+  /** A short label (12 characters at most), shown as the chip's title. */
+  header: string;
+  options: { label: string; description: string }[];
+  multiSelect: boolean;
+}
+
+/** The label picked per question text; an array of labels for a multi-select. */
+export type AskAnswers = Record<string, string | string[]>;
+
+export interface QuestionInfo {
+  requestId: string;
+  sessionId: string;
+  questions: AskQuestion[];
 }
 
 export interface ChatMessage {
@@ -87,11 +115,28 @@ export interface Settings {
   autoCloseInterval: number;
   absenceInterval: number;
   activeIntegrations: string[];
-  screen: "primary" | "cursor";
+  /** "primary", "cursor", or a display name from Bridge.monitors(). */
+  screen: string;
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** "auto" (system language), "en", "de" or "fr". */
+  language: string;
+  /** Who the chat talks to: Claude, or a model server on this machine. */
+  chatProvider: "anthropic" | "ollama" | "lmstudio" | "custom";
+  /** Addresses of the local servers once connected (empty: not connected) and the model picked on each. */
+  ollamaUrl: string;
+  lmstudioUrl: string;
+  ollamaModel: string;
+  lmstudioModel: string;
+  /** Any other OpenAI-compatible server (its key, if any, is in the keychain). */
+  customUrl: string;
+  customModel: string;
+  /** Show the plan usage pill (5 h and weekly limits) in the island's header. */
+  showPlanInNotch: boolean;
+  /** Coucou's status line relay is installed in Claude Code's settings. */
+  planRelayInstalled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +151,16 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  language: "auto",
+  chatProvider: "anthropic",
+  ollamaUrl: "",
+  lmstudioUrl: "",
+  ollamaModel: "",
+  lmstudioModel: "",
+  customUrl: "",
+  customModel: "",
+  showPlanInNotch: false,
+  planRelayInstalled: false,
 };
 
 type Listener = () => void;
@@ -130,6 +185,10 @@ class AppState {
   uploadProgress = 0;
   uploadDuration = 2.4;
   fileDragOver = false;
+  /** Claude's 5 h / weekly limits, from the status line (null until the first call). */
+  planUsage: PlanUsage | null = null;
+  /** The plan card is open in place of the overview's left card. */
+  showingPlanDetail = false;
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
@@ -137,6 +196,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** A question from Claude Code waiting for an answer in the island. */
+  pendingQuestion: QuestionInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 
@@ -164,6 +225,11 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
+  /** The Claude Code pill. */
+  get claudeTask(): AgentTask | undefined {
+    return this.tasks.find((t) => t.id === "integration_claude");
+  }
+
   get otherTasks(): AgentTask[] {
     return this.tasks.filter((t) => t.id !== this.focusId);
   }
@@ -172,6 +238,7 @@ class AppState {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     this.focusId = id;
+    this.showingPlanDetail = false;
     t.pillBadge = null;
     this.notify();
   }
