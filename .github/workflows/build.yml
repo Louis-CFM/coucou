@@ -21,6 +21,9 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test fullscreen visibility
+        run: bash scripts/test-fullscreen-visibility.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 

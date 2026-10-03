@@ -6,13 +6,20 @@ import SwiftUI
 /// not in SwiftUI, to avoid interfering with SwiftUI hit-testing.
 struct IslandRootView: View {
     @EnvironmentObject var state: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var onContentAppear: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            IslandContainer(state: state)
-                .frame(maxWidth: .infinity, alignment: .center)
+            if !state.isIslandSuppressed {
+                IslandContainer(state: state)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .opacity(state.isIslandRevealed ? 1 : 0)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.24), value: state.isIslandRevealed)
+                    .onAppear { onContentAppear?() }
+            }
         }
         .ignoresSafeArea()
     }

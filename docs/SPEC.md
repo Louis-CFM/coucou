@@ -249,3 +249,35 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
 - La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 
+### Plein écran
+
+« Hide over fullscreen apps » est activé par défaut. Quand la fenêtre de contenu
+au centre du moniteur de Mochi couvre cet écran, le panneau et son contenu SwiftUI
+sont masqués. Les barres d’outils séparées, comme celle de Zen, ne changent pas cette
+décision. À la sortie du plein écran, le panneau revient dans son mode courant.
+Les tâches et leur suivi continuent. Un plein écran sur un autre moniteur ne
+suffit pas à masquer Mochi.
+
+La détection utilise Core Graphics et les événements AppKit/Spaces, avec quelques
+revérifications toutes les 100 ms pendant au plus deux secondes après un événement,
+annulables au prochain événement, sans polling au repos. Le résultat connu est
+appliqué immédiatement ; le retour n’attend pas la fin des deux secondes.
+Le moniteur physique est identifié indépendamment de la position temporaire du
+panneau pendant un swipe. Tant que les fenêtres sont décalées par la transition,
+la visibilité précédente est conservée : une Space normale ne provoque pas de
+masquage systématique, et deux Spaces plein écran ne provoquent pas de réapparition.
+
+Le masquage est immédiat pour éviter de dessiner Mochi sur la vue plein écran.
+Le panneau reste enregistré dans les Spaces, à opacité nulle et sans interaction
+souris ; le contenu SwiftUI est démonté. Au retour sur une Space normale, la présence
+effective du panneau est vérifiée même si l’état demandé était déjà « visible ».
+Le retour utilise un fondu de 240 ms sur le contenu SwiftUI, en mode minimisé
+comme en mode compact. Il démarre après le montage du contenu et le retour effectif
+du panneau à sa position. L’attente est bornée pour ne pas bloquer le retour si les
+métadonnées sont indisponibles. Le fondu est désactivé si macOS « Réduire les animations »
+est activé.
+
+Les fenêtres sans bordure couvrant tout le moniteur sont également concernées.
+Une fenêtre maximisée peut aussi être concernée si la barre de menus et le Dock
+sont tous les deux masqués : cette détection n’identifie pas exactement les Spaces
+plein écran natives.
