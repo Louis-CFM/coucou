@@ -16,6 +16,22 @@
   --green: #22c55e;
   --red: #f4505e;
   --amber: #f5a524;
+
+  --btn: rgba(255, 255, 255, 0.09);
+  --btn-hover: rgba(255, 255, 255, 0.15);
+  --field: rgba(255, 255, 255, 0.07);
+  --focus: rgba(255, 255, 255, 0.28);
+  --on-ink: #0b0c0e;
+  --primary-hover: #ffffff;
+  --knob: #ffffff;
+  --track: rgba(255, 255, 255, 0.15);
+  --danger-text: #ff8d97;
+  --ok-text: #86efac;
+  --warn-text: #fbc06a;
+  --diff-bg: #08090b;
+  --diff-add: #86efac;
+  --diff-del: #ff8d97;
+  --opt-bg: #1a1c20;
 }
 
 * {
@@ -104,14 +120,14 @@ button {
   padding: 7px 14px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--btn);
   color: var(--ink);
   cursor: pointer;
   transition: background 0.14s, transform 0.08s;
 }
 
 button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--btn-hover);
 }
 
 button:active:not(:disabled) {
@@ -120,16 +136,16 @@ button:active:not(:disabled) {
 
 button.primary {
   background: var(--ink);
-  color: #0b0c0e;
+  color: var(--on-ink);
 }
 
 button.primary:hover:not(:disabled) {
-  background: #fff;
+  background: var(--primary-hover);
 }
 
 button.danger {
   background: rgba(244, 80, 94, 0.16);
-  color: #ff8d97;
+  color: var(--danger-text);
 }
 
 button:disabled {
@@ -150,7 +166,7 @@ code,
   width: 36px;
   height: 20px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--track);
   flex: 0 0 36px;
   padding: 0;
 }
@@ -167,7 +183,7 @@ code,
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--knob);
   transition: transform 0.18s;
 }
 
@@ -189,7 +205,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--knob);
 }
 
 input[type="number"],
@@ -197,7 +213,7 @@ input[type="text"],
 input[type="password"],
 select {
   font: 400 12.5px var(--font);
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--field);
   border: 1px solid var(--hairline);
   border-radius: 8px;
   color: var(--ink);
@@ -211,19 +227,19 @@ input::placeholder {
 input:focus,
 select:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: var(--focus);
 }
 
 /* The popup is drawn by the OS: give it an explicit pair of colours rather than
    inheriting white on white. */
 select option {
-  background-color: #1a1c20;
+  background-color: var(--opt-bg);
   color: var(--ink);
 }
 
 .diff {
   font: 400 11.5px/1.5 var(--mono);
-  background: #08090b;
+  background: var(--diff-bg);
   border: 1px solid var(--hairline);
   border-radius: 10px;
   padding: 10px 12px;
@@ -234,11 +250,11 @@ select option {
 }
 
 .diff .add {
-  color: #86efac;
+  color: var(--diff-add);
 }
 
 .diff .del {
-  color: #ff8d97;
+  color: var(--diff-del);
 }
 
 .diff .ctx {
@@ -253,15 +269,74 @@ select option {
 
 .notice.ok {
   background: rgba(34, 197, 94, 0.12);
-  color: #86efac;
+  color: var(--ok-text);
 }
 
 .notice.err {
   background: rgba(244, 80, 94, 0.14);
-  color: #ff8d97;
+  color: var(--danger-text);
 }
 
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
-  color: #fbc06a;
+  color: var(--warn-text);
+}
+
+/* -- Light theme ----------------------------------------------------------- */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ink: #1b1e23;
+  --dim: #5d636d;
+  --dim-2: #757b85;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --hairline: rgba(0, 0, 0, 0.08);
+
+  --btn: rgba(0, 0, 0, 0.35);
+  --btn-hover: rgba(0, 0, 0, 0.45);
+  --on-ink: #ffffff;
+  --primary-hover: #000000;
+  --knob: #ffffff;
+  --danger-text: #d92d3e;
+  /* The switch knob is white, so its track has to stay off the white card even
+     when the toggle is on top of a white card. */
+  --track: rgba(0, 0, 0, 0.28);
+  --diff-bg: #f4f5f7;
+  --diff-add: #178a4c;
+  --diff-del: #d92d3e;
+  --opt-bg: #ffffff;
+}
+
+:root[data-theme="light"] button.danger {
+  background: rgba(244, 80, 94, 0.12);
+}
+
+:root[data-theme="light"] input[type="range"] {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] input[type="range"]::-webkit-slider-thumb {
+  background: #2a2e35;
+}
+
+:root[data-theme="light"] input[type="number"],
+:root[data-theme="light"] input[type="text"],
+:root[data-theme="light"] input[type="password"],
+:root[data-theme="light"] select {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] select:focus {
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="light"] .notice.ok {
+  color: #178a4c;
+}
+
+:root[data-theme="light"] .notice.warn {
+  color: #a96606;
 }

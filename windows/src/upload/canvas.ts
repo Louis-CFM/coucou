@@ -6,6 +6,7 @@
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
+import { getPalette, getTheme } from "../core/theme";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
@@ -124,15 +125,16 @@ export class UploadCanvas {
   // ── Scene ─────────────────────────────────────────────────────────────────
 
   private drawScene(ctx: CanvasRenderingContext2D, f: UploadFrame, wallTime: number) {
+    const pal = getPalette();
     // Island background.
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = pal.islandBg;
     ctx.fillRect(0, 0, USC.W, USC.ISL_H);
 
     // Card.
     ctx.save();
     rr(ctx, USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H, USC.CARD_R);
     ctx.clip();
-    ctx.fillStyle = "#0D0E10";
+    ctx.fillStyle = pal.card;
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
     // Green glow, fanning up from the bottom edge of the card.
@@ -152,7 +154,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : pal.overlay2;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -172,18 +174,19 @@ export class UploadCanvas {
   // ── Drop zone text and chips ──────────────────────────────────────────────
 
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
+    const pal = getPalette();
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, "#D5D7DB");
+    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, pal.ink);
 
     let cx = USC.TEXT_X;
     for (const chip of ["PDF", "Images", "Code", "Docs"]) {
       // The macOS port measures chips the same rough way, so the row lines up.
       const w = chip.length * 6.5 + 16;
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.fillStyle = pal.overlay1;
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, pal.dim2);
       cx += w + 6;
     }
     ctx.restore();
@@ -192,6 +195,7 @@ export class UploadCanvas {
   // ── Progress bar ──────────────────────────────────────────────────────────
 
   private drawProgressBar(ctx: CanvasRenderingContext2D, f: UploadFrame) {
+    const pal = getPalette();
     ctx.save();
     ctx.globalAlpha = Math.max(f.barAlpha, 0.001);
 
@@ -201,7 +205,7 @@ export class UploadCanvas {
     const barLen = (x1 - x0) * f.barReveal;
 
     const name = State.droppedFile?.name ?? "file";
-    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, "#A9ADB5");
+    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, pal.dim);
 
     if (f.check > 0) {
       ctx.save();
@@ -222,12 +226,12 @@ export class UploadCanvas {
       ctx.stroke();
       ctx.restore();
     } else {
-      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, "#A9ADB5", "right");
+      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, pal.dim, "right");
     }
 
     // Track.
     if (barLen > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = pal.overlay1;
       rr(ctx, x0, by - 3, barLen, 6, 3);
       ctx.fill();
     }
@@ -268,23 +272,24 @@ export class UploadCanvas {
   // ── Choose card ───────────────────────────────────────────────────────────
 
   private drawChoose(ctx: CanvasRenderingContext2D, f: UploadFrame) {
+    const pal = getPalette();
     ctx.save();
     ctx.globalAlpha = f.chooseAlpha;
     ctx.translate(0, (1 - f.chooseAlpha) * 4);
 
     const name = State.droppedFile?.name ?? "file";
-    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, "#F5F6F8");
-    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
+    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, pal.ink);
+    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, pal.dim);
 
-    ctx.fillStyle = "#F5F6F8";
+    ctx.fillStyle = pal.ink;
     rr(ctx, 114, 113, 168, 26, 13);
     ctx.fill();
-    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, pal.onInk, "center");
 
-    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.fillStyle = pal.overlay1;
     rr(ctx, 290, 113, 120, 26, 13);
     ctx.fill();
-    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
+    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, pal.ink2, "center");
     ctx.restore();
   }
 
@@ -315,6 +320,13 @@ export class UploadCanvas {
     sg.addColorStop(1, "rgba(0,0,0,0.12)");
     ctx.fillStyle = sg;
     ctx.fill();
+
+    const outline = getPalette().mochiOutline;
+    if (getTheme() === "light") {
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
 
     // The body path is reused as a clip for everything drawn inside it.
     ctx.save();

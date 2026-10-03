@@ -82,8 +82,24 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
+    apply_window_theme(&app, &settings.theme);
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
+}
+
+/// Title bars are drawn by the OS, so a Light/Dark override has to reach the
+/// native window too, not just the page.
+fn apply_window_theme(app: &AppHandle, mode: &str) {
+    let theme = match mode {
+        "light" => Some(tauri::Theme::Light),
+        "dark" => Some(tauri::Theme::Dark),
+        _ => None,
+    };
+    for label in ["island", "settings"] {
+        if let Some(win) = app.get_webview_window(label) {
+            let _ = win.set_theme(theme);
+        }
+    }
 }
 
 /// Hidden island → shrink the window to the invisible wake strip and park the
@@ -407,6 +423,7 @@ pub fn run() {
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
+            apply_window_theme(&handle, &loaded.theme);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);

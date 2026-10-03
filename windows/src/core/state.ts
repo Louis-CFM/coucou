@@ -5,6 +5,7 @@ import type { EyeShape } from "../mochi/engine";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
+export type ThemeMode = "light" | "dark" | "system";
 
 export interface AgentTask {
   id: string;
@@ -92,6 +93,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Light / dark / follow the OS. */
+  theme: ThemeMode;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +109,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  theme: "system",
 };
 
 type Listener = () => void;
