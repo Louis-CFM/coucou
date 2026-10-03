@@ -13,6 +13,13 @@ const SOCKET_PATH = path.join(
   "Library/Application Support/NotchBuddy/nb.sock",
 );
 
+// Double-load guard: the installer writes this plugin into the auto-discovered
+// global-plugins dir AND references it from the `plugins` config entry. If the
+// runtime initialises it via both paths, `setup` must not open a second socket
+// (that would forward every event twice). A module-level flag makes a second
+// `setup` on the same module instance a no-op.
+let started = false;
+
 // Minimal structural view of the V2 plugin ctx we actually use — no
 // @opencode/plugin import. Fields are read defensively: a ctx that lacks
 // them (or a ctx that isn't an object at all) simply disables forwarding.
@@ -33,17 +40,20 @@ type Ctx = {
 export default {
   id: "coucou",
   async setup(_ctx: unknown) {
+    if (started) return () => {}; // already initialised — do not open a 2nd socket
     const ctx = typeof _ctx === "object" && _ctx !== null ? (_ctx as Ctx) : {};
     let sock: import("node:net").Socket | null = null;
     try {
       sock = await connectSocket(SOCKET_PATH);
     } catch (err) {
       // Never throw — a dead socket must not block OpenCode startup.
+      // `started` stays false so a later load can retry once Coucou is up.
       console.error(
         `[coucou] cannot reach ${SOCKET_PATH}: ${err instanceof Error ? err.message : err}; plugin inactive`,
       );
       return () => {};
     }
+    started = true; // committed to this socket; further setup() calls no-op
     sock.on("error", (err) =>
       console.error(`[coucou] socket error: ${err.message}`),
     );
