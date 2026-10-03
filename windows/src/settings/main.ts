@@ -262,6 +262,8 @@ interface IntegrationDef {
   color: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
+  /** What follows the keys and isn't one: YouTrack's saved search. */
+  extra?: (present: Record<string, boolean>) => HTMLElement;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
@@ -282,7 +284,97 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: "Integration token", placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26",
+    fields: [
+      { key: "gitlab-url", label: "Instance URL", placeholder: "https://gitlab.com", secret: false },
+      { key: "gitlab-token", label: "Token (read_api)", placeholder: "glpat-…", secret: true },
+    ] },
+  { id: "integration_youtrack", name: "YouTrack", color: "#FF318C",
+    fields: [
+      { key: "youtrack-url", label: "Instance URL", placeholder: "https://youtrack.example.com", secret: false },
+      { key: "youtrack-token", label: "Permanent token", placeholder: "perm:…", secret: true },
+    ],
+    extra: youtrackSearchRow },
 ];
+
+/**
+ * The saved search the YouTrack pill follows, picked from the user's list. The
+ * list comes from the instance, so it is asked once the URL and the token are
+ * saved, and again whenever either changes.
+ */
+function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
+  const select = h("select", { style: "flex:1 1 auto;min-width:0" }) as HTMLSelectElement;
+  const reload = h("button", { text: "Reload" });
+  const dotEl = statusDot(false);
+  const hint = h("div", { class: "hint" });
+
+  function placeholder(text: string) {
+    clear(select);
+    select.append(h("option", { value: "", text }));
+    select.disabled = true;
+  }
+
+  async function load() {
+    hint.textContent = "";
+    if (!present["youtrack-url"] || !present["youtrack-token"]) {
+      placeholder("Save the URL and the token first");
+      dotEl.style.background = "#f4505e";
+      return;
+    }
+    placeholder("Loading…");
+    try {
+      const { searches, selected } = await Bridge.youtrackSavedSearches();
+      clear(select);
+      select.append(h("option", { value: "", text: searches.length ? "Choose a saved search…" : "No saved search yet" }));
+      const groups: [string, typeof searches][] = [
+        ["Yours", searches.filter((s) => s.mine)],
+        ["Shared with you", searches.filter((s) => !s.mine)],
+      ];
+      for (const [label, list] of groups) {
+        if (!list.length) continue;
+        const group = h("optgroup", { label });
+        for (const s of list) group.append(h("option", { value: s.id, text: s.name, title: s.query }));
+        select.append(group);
+      }
+      const found = selected != null && searches.some((s) => s.id === selected);
+      select.value = found ? selected : "";
+      select.disabled = searches.length === 0;
+      if (selected && !found) hint.textContent = "The saved search Coucou followed is gone. Choose another one.";
+      dotEl.style.background = found ? "#22c55e" : "#f4505e";
+    } catch (err) {
+      placeholder("Couldn't load the saved searches");
+      hint.textContent = String(err).replace(/^Error:\s*/, "");
+      dotEl.style.background = "#f5a524";
+    }
+  }
+
+  select.addEventListener("change", async () => {
+    try {
+      await Bridge.secretSet("youtrack-query", select.value);
+      dotEl.style.background = select.value ? "#22c55e" : "#f4505e";
+      // A pill that is switched off makes no request, even for this.
+      if (select.value && settings.activeIntegrations.includes("integration_youtrack")) {
+        void Bridge.refreshIntegration("integration_youtrack");
+      }
+    } catch {
+      dotEl.style.background = "#f5a524";
+    }
+  });
+  reload.addEventListener("click", () => void load());
+  window.addEventListener("secret-saved", (e) => {
+    const key = (e as CustomEvent<string>).detail;
+    if (key === "youtrack-url" || key === "youtrack-token") void load();
+  });
+
+  void load();
+  return h("div", { style: "display:flex;flex-direction:column;gap:4px" },
+    h("div", { class: "row" },
+      h("label", { style: "min-width:104px", text: "Saved search" }),
+      select, reload, dotEl,
+    ),
+    hint,
+  );
+}
 
 const MAX_ACTIVE = 4;
 
@@ -330,6 +422,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
           input.value = "";
           input.placeholder = value ? "••••••••  (stored)" : field.placeholder;
           dotEl.style.background = value ? "#22c55e" : "#f4505e";
+          window.dispatchEvent(new CustomEvent("secret-saved", { detail: field.key }));
         } catch {
           dotEl.style.background = "#f5a524";
         }
@@ -341,6 +434,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         ),
       );
     }
+    if (def.extra) rows.append(def.extra(present));
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
@@ -434,6 +528,7 @@ async function main() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gitlab-url", "gitlab-token", "youtrack-url", "youtrack-token",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

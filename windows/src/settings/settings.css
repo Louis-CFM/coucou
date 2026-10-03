@@ -216,7 +216,8 @@ select:focus {
 
 /* The popup is drawn by the OS: give it an explicit pair of colours rather than
    inheriting white on white. */
-select option {
+select option,
+select optgroup {
   background-color: #1a1c20;
   color: var(--ink);
 }

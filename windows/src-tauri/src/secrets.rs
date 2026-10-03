@@ -12,6 +12,13 @@ pub const KNOWN_KEYS: &[&str] = &[
     "n8n-api-key",
     "vercel-token",
     "github-token",
+    "gitlab-url",
+    "gitlab-token",
+    "youtrack-url",
+    "youtrack-token",
+    // Not a secret: the saved search the YouTrack pill follows. It lives next to
+    // the URL, which is no more secret and is stored here too.
+    "youtrack-query",
     "stripe-api-key",
     "resend-api-key",
     "notion-api-key",
