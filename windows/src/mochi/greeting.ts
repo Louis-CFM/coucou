@@ -1,6 +1,7 @@
 // The launch "coucou" — port of GreetingCanvasView.swift.
 // Everything is laid out in the same 640×150 reference space as on macOS.
 
+import { wipe } from "../core/canvas";
 import { Sound } from "../core/sound";
 import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
 
@@ -541,7 +542,7 @@ export class Greeting {
     if (!this.fired && t >= T.end && this.tc >= T.autoLeave) this.fire();
 
     const p = pose(t, this.tc);
-    x.clearRect(0, 0, 640, 150);
+    wipe(x);
 
     if (p.card > 0) {
       x.save();

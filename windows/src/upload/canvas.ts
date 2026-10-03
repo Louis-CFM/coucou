@@ -5,6 +5,7 @@
 // the file being sucked in. The island's own Mochi is hidden for the duration,
 // exactly as on macOS, because this canvas draws its own.
 
+import { wipe } from "../core/canvas";
 import { State } from "../core/state";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
@@ -113,7 +114,7 @@ export class UploadCanvas {
     const ctx = this.ctx;
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, USC.W, USC.ISL_H);
+    wipe(ctx);
 
     this.drawScene(ctx, f, wallTime);
 
