@@ -16,6 +16,7 @@ import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
+import { openSession } from "../views/open-session";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
@@ -23,6 +24,17 @@ import { IslandStateMachine } from "./fsm";
 const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+
+/** Time constant of the halo's colour and opacity easing, in seconds (~0.5 s to settle). */
+const GLOW_EASE_S = 0.16;
+
+/**
+ * After the pointer has left, page mouse-moves are ignored for this long. GTK's
+ * leave reaches the page over IPC and can overtake the last move the page was
+ * still handed; that stale move would put the mouse "inside" again, and since
+ * nothing follows it, for good — the island would never auto-close.
+ */
+const POINTER_LEAVE_GRACE_MS = 400;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -42,6 +54,10 @@ export class Island {
   private viewsEl!: HTMLElement;
   private botCanvas!: HTMLCanvasElement;
   private botGlow!: HTMLElement;
+  /** The halo's colour (0–1 per channel) and opacity, eased toward the state's. */
+  private glowRGB: [number, number, number] = [1, 1, 1];
+  private glowAlpha = 0;
+  private glowSettled = true;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
@@ -70,6 +86,8 @@ export class Island {
   private collapsed = false;
   private collapseTimer: number | null = null;
   private wasInIsland = false;
+  /** When the pointer last left the island window (performance.now()). */
+  private pointerLeftAt = -Infinity;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
   private homeCollapseAt: number | null = null;
@@ -111,10 +129,7 @@ export class Island {
         State.setFocus(id);
         Sound.play("blip");
       },
-      openTerminal: () => {
-        const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
-      },
+      openTerminal: () => void openSession(State.focusTask),
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
         const task = State.focusTask;
@@ -127,7 +142,7 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
+        if (task.id === "integration_claude") void openSession(task);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
@@ -328,6 +343,13 @@ export class Island {
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
+    // forceHome cancels the collapse timer, and one only starts again on a state
+    // change: an alert on an island that is already open, with the mouse
+    // elsewhere, would otherwise stay open for good.
+    if (!this.wasInIsland) {
+      this.fsm.mouseLeft();
+      if (!State.isPinned) this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    }
   }
 
   reveal() {
@@ -350,10 +372,11 @@ export class Island {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
         this.engine.animateMorph(1);
-        // enterZone must run before the island expands, so the sequence is
-        // already active by the time the view becomes `upload`.
-        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        // Open first, then start the sequence: waking a closed island passes
+        // through its default view, and leaving the drop views stops the sequence
+        // — started earlier, it would be dead before the drop (stuck "uploading").
         this.alert("upload");
+        UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         break;
       }
       case "leave": {
@@ -563,7 +586,10 @@ export class Island {
    * reported as a cursor far away, which is what the poll would have said.
    */
   followPageCursor() {
-    window.addEventListener("mousemove", (e) => this.onCursor(e.clientX, e.clientY));
+    window.addEventListener("mousemove", (e) => {
+      if (performance.now() - this.pointerLeftAt < POINTER_LEAVE_GRACE_MS) return;
+      this.onCursor(e.clientX, e.clientY);
+    });
     window.addEventListener("mouseout", (e) => {
       if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
     });
@@ -571,6 +597,7 @@ export class Island {
 
   /** Cursor in window-logical coordinates. */
   onCursor(x: number, y: number) {
+    if (x <= -9999) this.pointerLeftAt = performance.now();
     State.mouse = { x, y };
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };
@@ -692,7 +719,7 @@ export class Island {
       this.syncDom();
     }
 
-    this.updateBotTargets();
+    this.updateBotTargets(dt);
     this.botCx.step(dt);
     this.botCy.step(dt);
     this.botSize.step(dt);
@@ -715,6 +742,7 @@ export class Island {
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+    this.contentEl.classList.toggle("upload-on", uploadActive);
 
     tickMiniBots(dt);
     this.views.get(State.view)?.tick?.(nowMs);
@@ -732,7 +760,7 @@ export class Island {
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
-        !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
+        !this.botCx.settled || !this.botCy.settled || !this.botSize.settled || !this.glowSettled ||
         greetingActive || this.engine.busy || UploadSeq.isActive;
 
     if (busy) {
@@ -743,7 +771,7 @@ export class Island {
     }
   };
 
-  private updateBotTargets() {
+  private updateBotTargets(dt: number) {
     const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
@@ -756,17 +784,40 @@ export class Island {
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
       const d = p.diameter;
-      const color = botGlowColor(State.effectiveState);
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
       this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
       this.botGlow.style.top = `${this.botCy.value - d * 1.1}px`;
-      this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
-      this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
+      this.paintGlow(dt);
     } else {
       this.botGlow.style.display = "none";
+      // Fades in again from nothing the next time it shows.
+      this.glowAlpha = 0;
+      this.glowSettled = true;
     }
+  }
+
+  /**
+   * Eases the halo toward the colour and opacity of Mochi's state, and paints it.
+   * CSS cannot transition between two gradients (the colour would flip in one
+   * step), so this happens here, every frame, like Mochi's position does.
+   */
+  private paintGlow(dt: number) {
+    const target = hexToRGB(botGlowColor(State.effectiveState));
+    const alpha = botGlowOpacity(State.effectiveState);
+    const k = 1 - Math.exp(-dt / GLOW_EASE_S);
+    // How far from the target; colour channels count for less than opacity.
+    let off = Math.abs(alpha - this.glowAlpha);
+    this.glowAlpha += (alpha - this.glowAlpha) * k;
+    for (let i = 0; i < 3; i++) {
+      off = Math.max(off, Math.abs(target[i] - this.glowRGB[i]) * 0.4);
+      this.glowRGB[i] += (target[i] - this.glowRGB[i]) * k;
+    }
+    this.glowSettled = off < 0.004;
+    const [r, g, b] = this.glowRGB.map((c) => Math.round(c * 255));
+    this.botGlow.style.background = `radial-gradient(circle, rgb(${r},${g},${b}) 0%, transparent 62%)`;
+    this.botGlow.style.opacity = this.glowAlpha.toFixed(3);
   }
 
   private drawBot(dt: number) {

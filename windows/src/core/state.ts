@@ -19,6 +19,15 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** Where the session's terminal lives, when we know how to jump to it. */
+  terminal?: TerminalRef | null;
+}
+
+/** Konsole's D-Bus names for a terminal tab, as the hook's environment gives them. */
+export interface TerminalRef {
+  service: string;
+  session: string;
+  window: string;
 }
 
 export interface ApprovalInfo {
@@ -87,11 +96,14 @@ export interface Settings {
   autoCloseInterval: number;
   absenceInterval: number;
   activeIntegrations: string[];
-  screen: "primary" | "cursor";
+  /** "primary", "cursor", or a display name from Bridge.monitors(). */
+  screen: string;
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** "auto" (system language), "en", "de" or "fr". */
+  language: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +118,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  language: "auto",
 };
 
 type Listener = () => void;
@@ -162,6 +175,11 @@ class AppState {
 
   get effectiveState(): BotStateName {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
+  }
+
+  /** The Claude Code pill. */
+  get claudeTask(): AgentTask | undefined {
+    return this.tasks.find((t) => t.id === "integration_claude");
   }
 
   get otherTasks(): AgentTask[] {
