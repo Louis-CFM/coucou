@@ -5,8 +5,15 @@
 // one emits an `integration` event; the island owns the badge, the sound and the
 // 60 s auto-clear, exactly as the Swift handlers do.
 //
+// GitHub outgrew this file: its panel lives in github.rs, scheduled from here
+// like the others.
+//
 // Nothing is polled until its key exists in the Credential Manager, and no
 // request goes anywhere the user has not configured.
+//
+// One pill has no key and makes no request: what Spotify plays is asked of
+// Windows (media.rs). It is looked at often and speaks only when what it says
+// has changed.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -39,9 +46,13 @@ pub struct IntegrationEvent {
     pub success: bool,
     pub label: String,
     pub detail: Option<String>,
+    /// What the island can open for it, when the integration has a screen of
+    /// its own for the thing the event is about (GitHub: a run, a pull request).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub open: Option<Value>,
 }
 
-fn emit(app: &AppHandle, update: IntegrationUpdate) {
+pub(crate) fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
@@ -66,13 +77,30 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
-    spawn(app.clone(), "integration_github", 7, 300, poll_github);
+    spawn(app.clone(), "integration_github", 7, crate::github::TICK_SECS, crate::github::refresh);
+    crate::github::watch_live(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), SPOTIFY, 4, SPOTIFY_EVERY, poll_spotify);
+    // Windows says when the song changes: the island hears of it at once, and
+    // again a moment later, when the song's cover has caught up with its name.
+    crate::media::watch(move || {
+        if PAUSED.load(Ordering::Relaxed) || !enabled(&app, SPOTIFY) {
+            return;
+        }
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            poll_spotify(app.clone()).await;
+            for wait in COVER_LOOKS_MS {
+                tokio::time::sleep(Duration::from_millis(wait)).await;
+                poll_spotify(app.clone()).await;
+            }
+        });
+    });
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -107,14 +135,47 @@ where
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
         "integration_stripe" => poll_stripe(app).await,
-        "integration_github" => poll_github(app).await,
+        "integration_github" => crate::github::refresh(app).await,
         "integration_vercel" => poll_vercel(app).await,
         "integration_n8n" => poll_n8n(app).await,
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        // Asked for by hand: said again even if nothing changed.
+        SPOTIFY => {
+            *TOLD.lock().unwrap() = None;
+            poll_spotify(app).await
+        }
         _ => {}
     }
+}
+
+// ── Spotify: asked of Windows, no key ─────────────────────────────────────────
+
+const SPOTIFY: &str = "integration_spotify";
+/// Seconds between two looks. Windows says when a song changes (media::watch),
+/// so these are the net under it: a look asks Windows, not the network.
+const SPOTIFY_EVERY: u64 = 5;
+/// After a change, the waits before looking again: a song's cover reaches
+/// Windows a moment after its name.
+const COVER_LOOKS_MS: [u64; 2] = [900, 1800];
+
+/// What the island was last told, so it is told again only when it changes:
+/// a look that finds the same song must not wake the island.
+static TOLD: Mutex<Option<Value>> = Mutex::new(None);
+
+async fn poll_spotify(app: AppHandle) {
+    // Asking Windows waits on it: off the async runtime's own threads.
+    let Ok(now) = tauri::async_runtime::spawn_blocking(crate::media::now_playing).await else { return };
+    let data = serde_json::to_value(now).unwrap_or_else(|_| json!({}));
+    {
+        let mut told = TOLD.lock().unwrap();
+        if told.as_ref() == Some(&data) {
+            return;
+        }
+        *told = Some(data.clone());
+    }
+    emit(&app, IntegrationUpdate { id: SPOTIFY, data, error: None, event: None });
 }
 
 /// Remembers the newest id per integration so an event fires once, not on every poll.
@@ -249,7 +310,7 @@ async fn poll_stripe(app: AppHandle) {
                 let cents = payments[0].get("amount").and_then(Value::as_i64).unwrap_or(0);
                 format!("{:.2}", cents as f64 / 100.0)
             });
-        Some(IntegrationEvent { success: true, label, detail: None })
+        Some(IntegrationEvent { success: true, label, detail: None, open: None })
     } else {
         None
     };
@@ -259,67 +320,6 @@ async fn poll_stripe(app: AppHandle) {
         data: json!({ "balance": amount, "currency": currency, "payments": payments }),
         error: None,
         event,
-    });
-}
-
-// ── GitHub ────────────────────────────────────────────────────────────────────
-
-async fn poll_github(app: AppHandle) {
-    let Some(token) = secrets::get("github-token") else { return };
-    let http = client();
-
-    let user = http
-        .get("https://api.github.com/user")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let Ok(response) = user else { return };
-    if !response.status().is_success() {
-        emit(&app, IntegrationUpdate {
-            id: "integration_github",
-            data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Token lacks the needed scope")),
-            event: None,
-        });
-        return;
-    }
-    let json: Value = response.json().await.unwrap_or(json!({}));
-    let public = json.get("public_repos").and_then(Value::as_i64).unwrap_or(0);
-    let private = json
-        .get("owned_private_repos")
-        .or_else(|| json.get("total_private_repos"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-
-    let repos = http
-        .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let stars: i64 = match repos {
-        Ok(r) if r.status().is_success() => r
-            .json::<Value>()
-            .await
-            .ok()
-            .and_then(|v| v.as_array().cloned())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
-                    .sum()
-            })
-            .unwrap_or(0),
-        _ => 0,
-    };
-
-    emit(&app, IntegrationUpdate {
-        id: "integration_github",
-        data: json!({ "totalRepos": public + private, "totalStars": stars }),
-        error: None,
-        event: None,
     });
 }
 
@@ -384,6 +384,7 @@ async fn poll_vercel(app: AppHandle) {
             success,
             label: latest.get("projectName")?.as_str()?.to_string(),
             detail: None,
+            open: None,
         })
     });
 
@@ -691,7 +692,7 @@ async fn poll_n8n(app: AppHandle) {
         id: "integration_n8n",
         data: json!({ "workflow": name, "status": status }),
         error: None,
-        event: Some(IntegrationEvent { success, label: name, detail }),
+        event: Some(IntegrationEvent { success, label: name, detail, open: None }),
     });
 }
 

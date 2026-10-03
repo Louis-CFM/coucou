@@ -192,6 +192,14 @@ body {
   transition: opacity 0.2s ease-in-out;
 }
 
+/* Keep it light: 0 % CPU when the island is hidden. Folded or hidden, the
+   views are invisible but still in the page, and an animation with no end — a
+   shimmering line, a pulsing dot, a turning ring — would go on being computed
+   for nobody. They all stop, and pick up when the island unfolds. */
+#content.away * {
+  animation-play-state: paused !important;
+}
+
 #header {
   height: 34px;
   flex: 0 0 34px;
@@ -438,51 +446,7 @@ body {
   z-index: 2;
 }
 
-/* Ticker */
-
-.ticker {
-  position: relative;
-  height: 44px;
-  margin: 6px 12px 0 108px;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 12%,
-    #000 85%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 85%, transparent 100%);
-}
-
-.ticker-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transform-origin: left center;
-  will-change: transform, opacity;
-}
-
-.ticker-row .tick-icon {
-  width: 12px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 12px;
-  color: var(--dim-2);
-}
-
-.ticker-row .tick-text {
-  font: 500 13px var(--font);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
+/* Shimmer sweep, 2.2 s — same as ShimmeringText */
 .shimmer {
   background: linear-gradient(
     90deg,
@@ -1197,38 +1161,6 @@ input[type="range"]::-webkit-slider-thumb {
   height: 28px;
 }
 
-.int-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding-top: 8px;
-  padding-right: 12px;
-}
-
-.int-stat {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.int-stat-icon {
-  width: 14px;
-  display: grid;
-  place-items: center;
-}
-
-.int-stat-label {
-  font: 400 11px var(--font);
-  color: var(--dim-3);
-}
-
-.int-stat-value {
-  margin-left: auto;
-  font: 600 12px var(--font);
-  color: #c5c8cd;
-  font-variant-numeric: tabular-nums;
-}
-
 .int-balance {
   display: flex;
   align-items: baseline;
@@ -1245,6 +1177,97 @@ input[type="range"]::-webkit-slider-thumb {
   font: 600 9px var(--font);
   font-style: normal;
   color: var(--dim-3);
+}
+
+/* GitHub's figure is a way in: it opens the panel, and lights up under the
+   mouse like the pills. The last seven days ride at its right, as GitHub
+   draws a day. */
+.int-figure {
+  align-self: stretch;
+  margin: 2px -6px 0;
+  padding: 2px 6px 1px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out;
+}
+
+.int-figure:hover {
+  background: var(--gh-hover);
+}
+
+/* Its right edge on the times of the lines under it. */
+.int-week {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0 4px 0 auto;
+  align-self: center;
+}
+
+.int-week i {
+  width: 6px;
+  height: 6px;
+  border-radius: 34%;
+}
+
+.int-star {
+  display: grid;
+  place-items: center;
+  color: var(--amber);
+}
+
+/* A line of the card that opens its sheet in the panel. Its dot sits just
+   inside the account's dot over it, as on the macOS cards, not a row's full
+   padding in. */
+.int-go {
+  width: 100%;
+  padding-left: 4px;
+  padding-right: 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out;
+}
+
+.int-go:hover {
+  background: var(--gh-hover);
+}
+
+.int-go:hover .int-name {
+  color: var(--ink);
+}
+
+/* Read from the left, like a line of the panel: the title, what goes with it
+   right after, and only the time at the far end. A fact — "#12" — keeps its
+   room and the title is cut short; a project's name shares the cut with it. */
+.int-go .int-name {
+  flex: 0 1 auto;
+}
+
+.int-go .int-amount {
+  font: 500 10.5px var(--mono);
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+.int-where {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 2px;
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.int-go .int-ago {
+  margin-left: auto;
+  padding-left: 6px;
 }
 
 .int-page {
@@ -1364,4 +1387,2907 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── GitHub panel (github view) ─────────────────────────────────────────── */
+
+/* The panel's own tones, on top of the island's palette: each written once.
+   White laid over the dark ground comes in a few strengths, named for what
+   they are used for; the last block is an editor's colours, for a file's
+   code. */
+:root {
+  --gh-text: #c5c8cd;      /* a line's words: between the ink and the dims */
+  --gh-edge: rgba(255, 255, 255, 0.05);   /* the panel's border */
+  --gh-hover: rgba(255, 255, 255, 0.05);  /* a line under the mouse */
+  --gh-track: rgba(255, 255, 255, 0.06);  /* the empty length of a bar */
+  --gh-plate: rgba(255, 255, 255, 0.07);  /* a round button, the step on show, a tag */
+  --gh-tile: color-mix(in srgb, var(--card), #fff 3.5%);     /* a block of a sheet */
+  --gh-tile-hover: color-mix(in srgb, var(--card), #fff 7%);
+
+  --spotify: #1db954;        /* Spotify's green: its pill, what plays, a song announced */
+  --on-light: #0b0c0e;       /* a mark or a word on a light or a coloured ground */
+
+  --code: #d6d9df;
+  --code-keyword: #c792ea;
+  --code-string: #c3e88d;
+  --code-call: #82aaff;      /* a call, a property */
+  --code-constant: #f78c6c;  /* a number, a constant */
+  --code-type: #ffcb6b;
+  --code-comment: #5c6370;
+  --code-added: #6ee7b7;     /* the number and the sign of a line added */
+  --code-gone: #b86f78;      /* the words of a line removed */
+}
+
+/* The panel stays in the page while another view is up, and it holds
+   animations with no end: a running build's ring, a live job's bar, today's
+   square. They stop while it is not the view on show, and pick up when it is
+   back. (Folded or hidden, #content.away stops them with everything else.) */
+.gh-view:not(.on) * {
+  animation-play-state: paused !important;
+}
+
+/* Laid out like a Claude Code session's view: Mochi's column on the left —
+   Mochi at full size, whose GitHub this is, and the way down to the screen on
+   show — and the screen itself in a darker panel on the right, headed like an
+   editor's tab. */
+.gh-card {
+  display: flex;
+}
+
+/* Mochi is drawn by the island at the top of this column (VIEW_LAYOUTS.github):
+   the column starts under him. */
+.gh-side {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 113px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 119px 8px 12px 13px;
+}
+
+.gh-side-who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.gh-side-who b {
+  font: 600 14px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-side-who span {
+  font: 400 12px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The tabs at the top, and deeper, the way down: every level a way back. */
+.gh-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+  margin-top: 11px;
+  min-width: 0;
+}
+
+.gh-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 21px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dim-3);
+  font: 500 12.5px var(--font);
+  text-align: left;
+  cursor: default;
+  transition: color 0.12s ease-out;
+}
+
+button.gh-step:hover {
+  color: var(--dim);
+}
+
+.gh-step.on {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The marks hang a little left of the words above them, as in the session view. */
+.gh-step > i {
+  width: 14px;
+  margin-left: -2px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.gh-step.on > i {
+  color: var(--c, var(--ink));
+}
+
+.gh-step > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Deeper, the column is no longer a choice between two tabs but the way down
+   to the screen on show, and has to read as one: the levels above are a notch
+   brighter than an unlit tab (each is a way back), a rail ties every mark to
+   the one above it, and the screen on show sits on a plate of its own. */
+.gh-trail.deep .gh-step {
+  color: var(--dim);
+}
+
+.gh-trail.deep button.gh-step:hover {
+  color: var(--ink);
+}
+
+.gh-trail.deep .gh-step > i {
+  position: relative;
+  height: 12px;
+}
+
+.gh-trail.deep .gh-step > i svg {
+  width: 12px;
+  height: 12px;
+}
+
+.gh-trail.deep .gh-step + .gh-step > i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  width: 1px;
+  height: 6.5px;
+  margin-left: -0.5px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* The plate reaches into the column's margins, so the words stay lined up
+   with the ones above. */
+.gh-trail.deep .gh-step.on {
+  color: var(--ink);
+  margin: 0 -4px 0 -7px;
+  padding: 0 4px 0 7px;
+  border-radius: 7px;
+  background: var(--gh-plate);
+}
+
+/* The panel wears the colour of the screen on it — on its tab, as an editor
+   marks the tab that is open: a rule under it, a breath of the colour in it,
+   and the head's line taking the colour along. Sharp marks on a sharp panel;
+   a glow behind the head said the same thing, but as a smudge. Registering
+   --accent as a colour lets it glide from one screen's colour to the next
+   instead of switching; unregistered, a custom property can't be
+   interpolated. Transparent on the lists, where nothing is open. */
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+.gh-main {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 7px 8px 7px 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--card-flat);
+  border: 1px solid var(--gh-edge);
+  overflow: hidden;
+  transition: --accent 0.35s ease-out;
+}
+
+.gh-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 0 auto;
+  height: 25px;
+  padding: 0 4px 0 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 38%, var(--gh-edge));
+}
+
+/* What is open, as an editor names its file: a tab standing on the head's
+   line, with a mark and a name. */
+.gh-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-self: flex-end;
+  height: 22px;
+  padding: 0 10px 0 6px;
+  border-radius: 7px 7px 0 0;
+  background:
+    linear-gradient(color-mix(in srgb, var(--accent) 13%, transparent) 0 0),
+    rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 -1px 0 var(--accent);
+  /* The rule takes the tab's last pixel: its mark and its name are centred in
+     what is left above it, not pressed against it. */
+  padding-bottom: 1px;
+}
+
+/* A file's name, in the face its code is set in — as an editor's tab has it. */
+.gh-tab b.file {
+  font: 400 11px var(--mono);
+}
+
+.gh-head .gh-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.gh-tab b {
+  font: 600 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gh-head-badge {
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  flex: 0 0 auto;
+}
+
+/* Beside the tab: what happened to a file, and its lines added and removed. */
+.gh-head-aside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.gh-head-aside:empty {
+  display: none;
+}
+
+.gh-head-badge .gh-block-icon {
+  margin-top: 0;
+  width: 16px;
+  height: 16px;
+}
+
+/* Where it sits, on the right, like the file's path. */
+.gh-sub {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+  padding-right: 2px;
+}
+
+/* A file's path, as an editor writes it. */
+.gh-sub.path {
+  font: 400 10.5px var(--mono);
+}
+
+.gh-icon {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gh-plate);
+  color: var(--dim-2);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  cursor: default;
+  transition: background 0.12s ease-out, color 0.12s ease-out;
+}
+
+.gh-icon:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+
+.gh-icon.spin svg {
+  animation: gh-spin 0.8s linear infinite;
+}
+
+@keyframes gh-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gh-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  min-width: 0;
+  padding: 7px 12px 0;
+}
+
+/* The panel and, over it, the news that came in while it was open. */
+.gh-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* News that came in while the panel was open — a build that broke, a pull
+   request that went in: one line in the card, over the panel and as wide as
+   it, on the card's own ground. Apart from what is being read, and clear of
+   the island's bar, whose middle is the notch on a MacBook. It opens what it
+   is about, and leaves with the pill's badge. */
+.gh-notice-slot {
+  flex: 0 0 auto;
+  margin: 6px 8px 0 0;
+}
+
+.gh-notice-slot:empty {
+  display: none;
+}
+
+.gh-notice-slot:not(:empty) + .gh-main {
+  margin-top: 5px;
+}
+
+.gh-notice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 9px 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+  color: var(--ink);
+  font: 500 11px var(--font);
+  text-align: left;
+  cursor: default;
+  animation: gh-rise 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+  transition: background 0.12s ease-out;
+}
+
+.gh-notice:hover {
+  background: color-mix(in srgb, var(--c) 17%, transparent);
+}
+
+.gh-notice > i {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--c);
+}
+
+.gh-notice > b {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-notice > span {
+  flex: 1 1 0;
+  min-width: 0;
+  font-weight: 400;
+}
+
+.gh-notice > em {
+  flex: 0 0 auto;
+  color: var(--c);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* The facts of a piece of news, each one a thing of its own: a mark, then
+   what it is. Grey for what frames it, clear for what is named. */
+.nfs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-width: 0;
+  font: 400 12px var(--font);
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.nf > svg {
+  flex: 0 0 auto;
+  color: var(--dim-3);
+}
+
+.nf b,
+.nf.strong {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.nf .gh-pm {
+  font-size: 11.5px;
+}
+
+.nf-branch {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--gh-plate);
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+
+.nf.bad,
+.nf.bad > svg {
+  color: var(--red-text);
+  font-weight: 500;
+}
+
+/* The longest of them — a commit's title — is the one that gives way. */
+.nf.quote {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.nf.quote {
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.nf.quote > svg {
+  vertical-align: -1px;
+  margin-right: 5px;
+}
+
+/* On a result card the facts belong to the title: they sit right under it, on
+   the stack's own gap, so the two read as one piece. The room goes between
+   them and the buttons, which are taller than a line and would otherwise
+   read as stuck to the facts. */
+.news-facts {
+  margin-bottom: 5px;
+}
+
+/* In the panel's notice they ride on one line beside the title, a size down. */
+.gh-notice .nfs {
+  gap: 10px;
+}
+
+.gh-notice .nf {
+  font-size: 11px;
+}
+
+.gh-status:empty {
+  display: none;
+}
+
+.gh-status span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 6px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Like the overview ticker, a row cut by the bottom edge fades out — but only
+   while there is more below. At the end of the list nothing is hidden. */
+.gh-list.more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+}
+
+.gh-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+}
+
+.gh-row:hover {
+  background: var(--gh-hover);
+}
+
+.gh-row-icon {
+  width: 14px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+/* The title keeps its room; the repository gives way first. */
+.gh-row-title {
+  font: 500 11.5px var(--font);
+  color: var(--gh-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.gh-row-where {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 100 auto;
+}
+
+.gh-row .int-ago {
+  margin-left: auto;
+  padding-left: 6px;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Projects: the right-hand columns line up from row to row. */
+.gh-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* When it was, in a column wide enough for the longest it says ("just now"):
+   a row pushed a minute ago would otherwise push its marks out of line. */
+.gh-right .int-ago {
+  margin-left: 0;
+  min-width: 50px;
+}
+
+.gh-lock {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--dim-3);
+}
+
+.gh-build {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--c);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  cursor: default;
+  transition: box-shadow 0.12s ease-out;
+}
+
+.gh-build:hover {
+  box-shadow: 0 0 0 3px var(--tint);
+}
+
+.gh-build.none {
+  background: transparent;
+}
+
+/* "Running": a ring turning in the badge's colour. */
+.gh-ring {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.6px solid currentColor;
+  border-top-color: transparent;
+  animation: gh-spin 0.9s linear infinite;
+}
+
+.gh-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  width: 36px;
+  flex: 0 0 auto;
+  font: 500 10.5px var(--font);
+  color: var(--dim-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-meta.link:hover {
+  color: var(--ink);
+}
+
+/* ── GitHub panel: contribution graph ───────────────────────────────────── */
+
+.gh-graph {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 8px 6px;
+}
+
+/* --cell, --gap and --columns are set from the graph's width in whole device
+   pixels (see contributionGraph): every day is drawn the same size, and each
+   week's column carries the gap after it, so the weeks fill the width to the
+   pixel. The fallbacks only hold until that first fit. */
+.gh-months,
+.gh-grid {
+  display: grid;
+  grid-template-columns: var(--columns, repeat(var(--weeks, 53), calc(var(--cell, 7px) + var(--gap, 2px))));
+}
+
+.gh-months {
+  height: 11px;
+  font: 400 9.5px var(--font);
+  color: var(--dim-3);
+}
+
+.gh-months span {
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.gh-grid {
+  grid-template-rows: repeat(7, var(--cell, 7px));
+  grid-auto-flow: column;
+  row-gap: var(--gap, 2px);
+}
+
+/* Each day is a tiny Mochi-shaped squircle in GitHub's colour for its level.
+   Hover grows it with the `scale` property, which composes with `transform`
+   instead of fighting the entrance and breathing animations over it. */
+.gh-grid i {
+  width: var(--cell, 7px);
+  border-radius: 34%;
+  background: var(--c);
+  cursor: default;
+  transition: scale 0.14s ease-out, opacity 0.2s ease-out;
+}
+
+/* The day under the mouse, and the picked day, just grow a little; no glow. */
+.gh-grid i:not(.pad):hover,
+.gh-grid i.on {
+  scale: 1.45;
+}
+
+/* A picked day: the rest of the year steps back, as on GitHub. */
+.gh-grid.picked i:not(.pad):not(.on) {
+  opacity: 0.3;
+}
+
+.gh-grid.picked i:not(.pad):not(.on):hover {
+  opacity: 0.7;
+}
+
+.gh-grid i.pad {
+  background: transparent;
+}
+
+/* Entering: the days light up left to right, after the view's own fade-in.
+   `backwards`, not `both`: once in, the cell's own transform takes over. */
+.gh-grid.sweep i:not(.pad) {
+  animation: gh-dot-in 0.34s cubic-bezier(0.3, 1.2, 0.4, 1) backwards;
+  animation-delay: calc(160ms + var(--col, 0) * 6ms);
+}
+
+@keyframes gh-dot-in {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Today breathes a little, the way Mochi does at rest. */
+.gh-grid i.today {
+  animation: gh-breathe 3.2s ease-in-out infinite;
+}
+
+.gh-grid.sweep i.today {
+  animation:
+    gh-dot-in 0.34s cubic-bezier(0.3, 1.2, 0.4, 1) backwards,
+    gh-breathe 3.2s ease-in-out 1.2s infinite;
+  animation-delay: calc(160ms + var(--col, 0) * 6ms), 1.2s;
+}
+
+@keyframes gh-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+.gh-graph-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 3px;
+}
+
+.gh-caption {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* GitHub's "Less ▪▪▪▪▪ More". */
+.gh-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  font: 400 9.5px var(--font);
+  color: var(--dim-3);
+}
+
+.gh-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 34%;
+  background: var(--c);
+}
+
+.gh-legend i:first-of-type {
+  margin-left: 2px;
+}
+
+.gh-legend i:last-of-type {
+  margin-right: 2px;
+}
+
+.gh-caption.day {
+  color: var(--ink-2);
+}
+
+/* ── GitHub panel: moving between screens ───────────────────────────────── */
+/* The island's own entrance curve and rhythm (.view.on): a deeper screen
+   comes from the right, going back from the left, a day's activity rises. */
+
+.gh-list.gh-from-right {
+  animation: gh-from-right 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+.gh-list.gh-from-left {
+  animation: gh-from-left 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+@keyframes gh-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gh-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gh-head.gh-swap b,
+.gh-head.gh-swap .gh-sub {
+  animation: gh-swap 0.26s ease-out both;
+}
+
+@keyframes gh-swap {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gh-below {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+
+.gh-below.gh-rise {
+  animation: gh-rise 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+/* Picking a day: the rest of the year steps back and the day steps forward,
+   instead of snapping. No fill mode — once over, the .picked rules hold. */
+.gh-grid.just-picked i:not(.pad):not(.on) {
+  animation: gh-dim 0.26s ease-out;
+}
+
+.gh-grid.just-picked i.on {
+  animation: gh-grow 0.3s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.gh-grid.just-unpicked i:not(.pad) {
+  animation: gh-undim 0.26s ease-out;
+}
+
+@keyframes gh-dim {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.3;
+  }
+}
+
+@keyframes gh-undim {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gh-grow {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: 1.45;
+  }
+}
+
+/* A picked day, under the graph: a head like a sheet's, then the day's rows. */
+.gh-day {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+  padding-bottom: 8px;
+}
+
+.gh-day-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 2px 8px;
+  font: 500 11px var(--font);
+  color: var(--ink-2);
+}
+
+.gh-day-head span {
+  flex: 1 1 auto;
+}
+
+.gh-day-close {
+  width: 22px;
+  height: 22px;
+}
+
+.gh-day .gh-loader-text {
+  padding-top: 2px;
+}
+
+.gh-row.muted {
+  color: var(--dim-3);
+}
+
+/* ── GitHub panel: activity sheets (pull request, issue, commits, release) ─ */
+
+.gh-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.gh-title > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 600 12.5px/1.35 var(--font);
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gh-title .gh-chip {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.gh-desc.long {
+  -webkit-line-clamp: 5;
+  color: var(--dim);
+}
+
+.gh-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+/* GitHub's label colours, kept readable on the dark card. */
+.gh-label {
+  font: 500 10px var(--font);
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--c) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+}
+
+.gh-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 0;
+  font: 500 10.5px var(--font);
+  color: var(--dim-3);
+}
+
+.gh-heading > span:first-child {
+  flex: 1 1 auto;
+}
+
+.gh-pm {
+  flex: 0 0 auto;
+  font: 500 10.5px var(--mono);
+  white-space: nowrap;
+}
+
+
+/* ── GitHub panel: a file's code ────────────────────────────────────────── */
+
+/* A file's kind as an editor's tab shows it: its letters on its language's
+   colour. */
+.gh-ext {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 17px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 3.5px;
+  background: var(--c);
+  color: #fff;
+  font: 700 7.5px/1 var(--font);
+  font-style: normal;
+  white-space: nowrap;
+  /* Centred on the line's box, a badge reads as standing on the name's
+     baseline: a name's weight is in its lower-case letters, which sit below
+     the middle of the line. A pixel down puts both on one axis. */
+  translate: 0 1px;
+}
+
+.gh-ext.dark {
+  color: var(--card);
+}
+
+
+/* In the column, a mark among marks: a size down. */
+.gh-step .gh-ext {
+  min-width: 14px;
+  height: 11px;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-size: 6.5px;
+}
+
+/* Badges are wider than the other rows' marks: the names still line up. */
+.gh-file .gh-row-icon {
+  width: 24px;
+  justify-items: start;
+}
+
+/* What happened to the file, in a word: grey for "modified", its colour for
+   the rest (see statusWord). */
+.gh-file-status {
+  flex: 0 0 auto;
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+}
+
+/* That word, then the lines added and removed, sit at the row's right edge,
+   each in a column of its own: down the list they read like a table, instead
+   of trailing wherever each path happens to end. */
+.gh-file .gh-file-status {
+  margin-left: auto;
+  padding-left: 8px;
+  min-width: 52px;
+  text-align: right;
+}
+
+.gh-file .gh-pm {
+  padding-left: 4px;
+}
+
+.gh-file .gh-pm > span {
+  display: inline-block;
+  min-width: 4ch;
+  text-align: right;
+}
+
+.gh-file .gh-pm > .gh-add {
+  min-width: 5ch;
+}
+
+/* The panel is the editor: the code runs from one edge to the other. */
+.gh-list.gh-edge {
+  padding: 0;
+}
+
+.gh-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 0 10px;
+}
+
+.gh-code > .gh-host {
+  align-self: flex-start;
+  margin-left: 12px;
+}
+
+.gh-code-empty {
+  padding: 10px 12px;
+}
+
+.gh-diff {
+  font: 400 10.5px/16px var(--mono);
+  color: var(--code);
+  user-select: text;
+}
+
+/* One gutter of numbers, the sign, the code. The left border is the bar a
+   changed line wears. */
+.gh-diff-line {
+  display: grid;
+  grid-template-columns: 34px 16px 1fr;
+  border-left: 2px solid transparent;
+}
+
+.gh-diff-line .n {
+  text-align: right;
+  color: var(--dim-5);
+  user-select: none;
+}
+
+.gh-diff-line .s {
+  text-align: center;
+  user-select: none;
+}
+
+.gh-diff-line .t {
+  min-width: 0;
+  padding: 0 10px 0 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.gh-diff-line.add {
+  background: color-mix(in srgb, var(--green-2) 10%, transparent);
+  border-left-color: var(--green-2);
+}
+
+.gh-diff-line.add .n,
+.gh-diff-line.add .s {
+  color: var(--code-added);
+}
+
+/* A line that is gone: struck through, its colours drained to the red. */
+.gh-diff-line.del {
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+  border-left-color: var(--red);
+}
+
+.gh-diff-line.del .n,
+.gh-diff-line.del .s {
+  color: var(--red-text);
+}
+
+.gh-diff-line.del .t {
+  color: var(--code-gone);
+}
+
+.gh-diff-line.del .gone {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--red-text) 50%, transparent);
+}
+
+/* Lines skipped: a quiet break, with where the next ones sit. */
+.gh-diff-line.hunk {
+  margin: 4px 0;
+  color: var(--dim-4);
+}
+
+.gh-diff-line.hunk .t {
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An editor's colours (see code.ts): keyword, string, key, number or
+   constant, call, type, comment. */
+.gh-diff .hl-k { color: var(--code-keyword); }
+.gh-diff .hl-s { color: var(--code-string); }
+.gh-diff .hl-p { color: var(--code-call); }
+.gh-diff .hl-c { color: var(--code-constant); }
+.gh-diff .hl-f { color: var(--code-call); }
+.gh-diff .hl-y { color: var(--code-type); }
+.gh-diff .hl-m { color: var(--code-comment); font-style: italic; }
+
+/* ── GitHub panel: what was said on a pull request ──────────────────────── */
+
+/* Who, what they did, when: one line over what they wrote. */
+.gh-say-head {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+}
+
+.gh-say-head b {
+  font: 600 11.5px var(--font);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gh-say-did {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.gh-say-head .int-ago {
+  margin-left: auto;
+  padding-left: 6px;
+}
+
+/* The words as they were written: their lines kept, and free to be copied. */
+.gh-say-body {
+  font: 400 11.5px/1.45 var(--font);
+  color: var(--gh-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.gh-say .gh-host,
+.gh-thread-talk .gh-host {
+  align-self: flex-start;
+}
+
+/* A thread on the code: the block's tile, with the lines it is about let into
+   it on the panel's own ground, like a window onto the file. */
+.gh-thread {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--gh-tile);
+  overflow: hidden;
+}
+
+.gh-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 9px 6px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out;
+}
+
+.gh-thread-head:hover {
+  background: var(--gh-hover);
+}
+
+/* The badge in a column of its own, as in a list of files. */
+.gh-thread-head .gh-row-icon {
+  width: 24px;
+  justify-items: start;
+}
+
+.gh-thread-head .gh-row-title {
+  font: 400 11px var(--mono);
+}
+
+.gh-thread-head .gh-file-status {
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+/* The mark of a way out to GitHub, as on the panel's own button. */
+.gh-thread-out {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--dim-3);
+}
+
+.gh-thread-head .gh-row-where + .gh-thread-out {
+  margin-left: auto;
+}
+
+.gh-thread > .gh-diff {
+  padding: 4px 0;
+  background: var(--card-flat);
+}
+
+.gh-thread-talk {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 9px;
+}
+
+.gh-thread-say {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* Settled: its head, who took part, and nothing more. */
+.gh-thread.resolved {
+  background: transparent;
+}
+
+.gh-thread.resolved .gh-row-title {
+  color: var(--dim-2);
+}
+
+.gh-thread-sum {
+  padding: 0 9px 6px 39px;
+  margin-top: -3px;
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* In a file's diff: the line a thread is about wears the comments' cyan, and
+   the thread sits under it, in from the gutter. */
+.gh-diff-line.noted {
+  border-left-color: var(--cyan);
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--cyan) 35%, transparent);
+}
+
+.gh-diff-note {
+  margin: 0 10px 6px 36px;
+  border-radius: 0 0 9px 9px;
+  background: var(--gh-tile);
+  user-select: none;
+}
+
+/* A thread whose line is not in the diff: over the code, not in it. */
+.gh-diff-note.apart {
+  margin: 0 10px 8px 12px;
+  border-radius: 9px;
+}
+
+.gh-diff-note-why {
+  padding: 8px 10px 0;
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+}
+
+.gh-diff-note-why + .gh-thread-talk {
+  padding-top: 6px;
+}
+
+/* ── GitHub panel: a project's sheet ────────────────────────────────────── */
+
+.gh-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 10px;
+}
+
+/* Arriving after a wait: the parts come in one after another, on the island's
+   own entrance curve (.view.on). */
+.gh-sheet.enter > *,
+.gh-day.enter > * {
+  animation: gh-rise 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes gh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* While Mochi looks: the shimmering line of the searching view, over ghosts
+   of the blocks to come. */
+.gh-loader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.gh-loader-text {
+  font: 500 11.5px var(--font);
+  padding: 0 8px 4px;
+}
+
+.gh-ghost {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.075) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 220% 100%;
+  animation: gh-ghost 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.14s);
+}
+
+.gh-ghost > i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--indigo) 22%, transparent);
+}
+
+.gh-ghost > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+
+.gh-ghost b,
+.gh-ghost span {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gh-plate);
+}
+
+.gh-ghost b {
+  width: 46%;
+}
+
+.gh-ghost span {
+  width: 72%;
+}
+
+@keyframes gh-ghost {
+  from {
+    background-position: 110% 0;
+  }
+  to {
+    background-position: -110% 0;
+  }
+}
+
+.gh-desc {
+  font: 400 11.5px/1.4 var(--font);
+  color: var(--gh-text);
+  padding: 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gh-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 12px;
+  padding: 0 8px 2px;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+}
+
+.gh-facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gh-host {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: default;
+}
+
+button.gh-host:hover {
+  color: var(--ink);
+}
+
+/* A way out to GitHub at the foot of a sheet, aligned with the rest. */
+.gh-sheet > .gh-host {
+  align-self: flex-start;
+  margin: 2px 8px 0;
+}
+
+.gh-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  /* The same grey as a white wash over the card, but solid: a translucent tile
+     let the card's glow show through and read as lying on top of it. */
+  background: var(--gh-tile);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out;
+}
+
+button.gh-block:hover {
+  background: var(--gh-tile-hover);
+}
+
+.gh-block.muted {
+  background: transparent;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.gh-block-icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: var(--tint);
+  color: var(--c);
+}
+
+.gh-block-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gh-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gh-block-title > span:first-child {
+  font: 500 11.5px var(--font);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gh-block-right {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  flex: 0 0 auto;
+}
+
+.gh-block-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font: 400 10.5px var(--font);
+  color: var(--dim-2);
+}
+
+.gh-block-sub .txt {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gh-chip {
+  display: inline-block;
+  font: 500 10px var(--font);
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--c);
+  background: var(--tint);
+}
+
+.gh-add {
+  color: var(--green-2);
+}
+
+.gh-del {
+  color: var(--red-text);
+}
+
+.gh-sha {
+  font: 400 10px var(--mono);
+}
+
+/* The last runs as a row of dots, oldest first. */
+.gh-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.gh-streak i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.gh-streak span {
+  margin-left: 3px;
+  font: 500 10px var(--font);
+  color: var(--dim-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── GitHub panel: a run's timeline ─────────────────────────────────────── */
+
+/* A job or a step: its line, then its bar under the words, where it ran. */
+.gh-timed {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  padding-bottom: 6px;
+}
+
+.gh-timed .gh-took {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A job's row opens with its Mochi instead of a mark: a little wider, so the
+   name and the bar under it move over by as much. */
+.gh-crew .gh-row-icon {
+  width: 20px;
+  height: 17px;
+  /* He stands beside the whole row — the name and the bar under it — not
+     beside the name alone: centred on the name he reads as riding high, all
+     the more as his badge and his hops are above him. Four pixels down is the
+     middle of the two. */
+  translate: 0 4px;
+}
+
+.gh-crew .gh-bar {
+  width: calc(100% - 27px);
+  margin-left: 27px;
+}
+
+/* Under the words, not under the mark: the bars line up with the names. */
+.gh-bar {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(100% - 21px);
+  margin-left: 21px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gh-track);
+}
+
+.gh-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 2px;
+  background: var(--c);
+}
+
+/* Still going: the bar breathes, like Mochi does. */
+.gh-bar i.live {
+  animation: gh-live 1.6s ease-in-out infinite;
+}
+
+@keyframes gh-live {
+  50% { opacity: 0.5; }
+}
+
+/* Waiting for its turn: an empty ring. */
+.gh-wait {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.6px solid currentColor;
+  opacity: 0.7;
+}
+
+.gh-langs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px 0;
+}
+
+.gh-lang-bar {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+}
+
+.gh-lang-bar i {
+  min-width: 3px;
+  border-radius: 3px;
+}
+
+.gh-lang-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font: 400 10px var(--font);
+  color: var(--dim-2);
+}
+
+.gh-lang-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── A Claude Code session, driven from the island ─────────────────────────
+   Windows only for now. A question answered here, what the session changed
+   (the GitHub panel's layout and diff). */
+
+/* The question as a title of two lines at most: its options must stay on show. */
+.q-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.q-options {
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.q-opt {
+  max-width: 100%;
+  padding: 6px 12px;
+}
+
+.q-opt > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One of several picked: the question's cyan, as Mochi wears it. */
+.q-opt.on {
+  background: color-mix(in srgb, var(--cyan) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 55%, transparent);
+  color: var(--ink);
+}
+
+.q-opt.other {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--dim);
+}
+
+.q-opt.other:hover {
+  color: var(--ink-2);
+}
+
+.q-chip {
+  font: 500 10.5px var(--font);
+  color: var(--cyan);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+}
+
+.q-count {
+  color: var(--dim-3);
+}
+
+/* Under the options: what the one under the mouse means, and the ways out. */
+.q-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 16px;
+}
+
+.q-hint {
+  font: 400 11.5px var(--font);
+  color: var(--dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-link {
+  flex: 0 0 auto;
+  color: var(--dim-3);
+  white-space: nowrap;
+}
+
+.q-link:hover {
+  color: var(--ink-2);
+}
+
+/* A session at work is its card: the whole of it opens the session panel. */
+.card.opens:hover {
+  background: color-mix(in srgb, var(--card), #fff 2.5%);
+}
+
+.who .gh-pm.count {
+  font-size: 10.5px;
+}
+
+/* The line that says what is asked never gives its height to the diff under it. */
+.proposed ~ .actions,
+.stack > .code {
+  flex: 0 0 auto;
+}
+
+/* What an edit asking for permission would do: its diff, in the approval card,
+   between the file's name and Deny / Allow. */
+.proposed {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 2px 0;
+  border-radius: 10px;
+  border: 1px solid var(--gh-edge);
+  background: var(--card-flat);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* The session's last steps, under its name: done, going, failed. */
+.sess-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.sess-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font: 500 12px var(--font);
+  color: var(--dim-3);
+}
+
+.sess-step > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sess-step.running {
+  color: var(--ink);
+}
+
+.sess-mark {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.sess-mark.done {
+  background: var(--green-2);
+  color: var(--on-light);
+}
+
+.sess-mark.failed {
+  background: var(--red);
+  color: var(--on-light);
+}
+
+/* Going: a ring that turns (and stops with everything else when out of sight). */
+.sess-mark.run {
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--ink);
+  animation: gh-spin 0.9s linear infinite;
+}
+
+/* A line of an edit not typed yet takes no room: the file grows as it is written. */
+.gh-diff-line.untyped {
+  display: none;
+}
+
+.sess-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--ink);
+}
+
+/* The tab of a file being written: an editor's dot for unsaved. */
+.gh-tab.writing::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: 0 0 auto;
+}
+
+/* The way to every file the session changed, in the panel's head. */
+.sess-files {
+  flex: 0 0 auto;
+  height: 17px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gh-plate);
+  color: var(--gh-text);
+  font: 500 10.5px var(--font);
+  cursor: default;
+}
+
+.sess-files:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+
+.sess-back {
+  margin-right: 2px;
+}
+
+/* The name — a conversation's title can be long — keeps the row's room: what
+   follows it gives way first, and is gone before the name loses a letter. */
+.who .name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.who .tool {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* What Claude said to end its turn, and above it what it was asked. */
+.sess-talk {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 4px 8px 6px;
+  user-select: text;
+}
+
+.sess-talk p {
+  font: 400 12.5px/1.45 var(--font);
+  color: var(--gh-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sess-asked {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 5px 10px;
+  border-radius: 11px;
+  background: var(--gh-plate);
+  font: 400 12px/1.4 var(--font);
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* A conversation's title is longer than a project's name: in the session's
+   column it gets a second line before it is cut. */
+.session-view .gh-side-who b {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
+}
+
+/* What Claude said, on the finished card: the whole of it is in the session
+   panel, here it is two lines and the buttons keep their place. */
+.title.said {
+  font: 500 13px/1.35 var(--font);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+/* A text field of the island's own — a typed answer to a question: the chat's,
+   at a card's scale. */
+.island-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font: 400 12.5px var(--font);
+  outline: none;
+}
+
+.island-field::placeholder {
+  color: var(--dim-3);
+}
+
+.island-field:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Options that explain themselves: one to a line, its name then what it means,
+   always on show — a choice is read before it is made. */
+.q-options.q-list {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.q-row {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  text-align: left;
+  cursor: default;
+  transition: background 0.12s ease-out;
+}
+
+.q-row:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.q-row > b {
+  font: 600 12.5px var(--font);
+  color: var(--ink);
+  max-width: 190px;
+}
+
+.q-row > span {
+  font: 400 11.5px/1.3 var(--font);
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.q-row.on {
+  background: color-mix(in srgb, var(--cyan) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 55%, transparent);
+}
+
+/* Under a list, "Other…" and Send, side by side at its foot. */
+.q-tail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.q-tail:empty {
+  display: none;
+}
+
+.q-tail .btn {
+  padding: 5px 11px;
+  font-size: 12px;
+}
+
+/* The question keeps its lines: it is the list that gives way, and scrolls. */
+.q-title,
+.q-foot {
+  flex: 0 0 auto;
+}
+
+/* Skip is a real way out of a question, so it is a real button. */
+.q-skip {
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  font-size: 12px;
+}
+
+/* Whose words these are, over a reply: Claude's, and how old. */
+.sess-said {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+}
+
+.sess-said b {
+  font: 600 11.5px var(--font);
+  color: var(--ink);
+}
+
+/* An answer as Claude wrote it: Markdown, at the island's scale. */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font: 400 12.5px/1.45 var(--font);
+  color: var(--gh-text);
+  overflow-wrap: anywhere;
+}
+
+.md p {
+  white-space: pre-line;
+}
+
+.md b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.md code {
+  font: 400 11.5px var(--mono);
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--gh-plate);
+  color: var(--ink-2);
+}
+
+.md-link {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--dim-3);
+  text-underline-offset: 2px;
+}
+
+.md-h {
+  margin-top: 3px;
+  font: 600 13px var(--font);
+  color: var(--ink);
+}
+
+.md-h.big {
+  font-size: 14px;
+}
+
+.md-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.md-item {
+  display: flex;
+  gap: 8px;
+}
+
+.md-item > i {
+  flex: 0 0 auto;
+  min-width: 10px;
+  font-style: normal;
+  color: var(--dim-3);
+}
+
+.md-code {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--card-flat);
+  border: 1px solid var(--gh-edge);
+  font: 400 11.5px/1.45 var(--mono);
+  color: var(--code);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.md-table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.md-table th,
+.md-table td {
+  padding: 4px 9px;
+  border: 1px solid var(--gh-edge);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-table th {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--gh-plate);
+}
+
+.md-rule {
+  border: 0;
+  border-top: 1px solid var(--gh-edge);
+  margin: 2px 0;
+}
+
+
+/* Several Claude Code sessions at once: where a session is shown, a chip with
+   how many there are, that leads to the list of them. */
+.sess-chip {
+  flex: 0 0 auto;
+  height: 17px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gh-plate);
+  color: var(--gh-text);
+  font: 500 10.5px var(--font);
+  white-space: nowrap;
+  cursor: default;
+  transition: color 0.3s ease-out, background 0.3s ease-out;
+}
+
+.sess-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+
+/* One of the sessions behind wants looking at: the chip says so in its colour. */
+.sess-chip.calls {
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+}
+
+/* In the card's first line the chip sits at the right, before what was written. */
+.who > .sess-chip {
+  margin-left: auto;
+}
+
+.who > .sess-chip + .count {
+  margin-left: 0;
+}
+
+/* The session on show, in the list of sessions. */
+.sess-row.on .gh-row-title {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* A card about a session names the conversation: a long title gives way to what follows it. */
+.who-row .n {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.who-row > span:not(.n),
+.who-row > .dot {
+  flex: 0 0 auto;
+}
+
+.who-waiting {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 500 10.5px var(--font);
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 14%, transparent);
+}
+
+/* What a session is doing now, as the prototype draws it: the step by its
+   icon and its name with what it is at, and under it a look at what it did. */
+.now-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 0 108px;
+  min-width: 0;
+  flex: 0 0 16px;
+}
+
+/* The session's card fills its height, with the same air under its last line
+   as above its first: the look at what the step did takes what is left. */
+.card-body.sess-card {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 0;
+}
+
+.sess-card > .who {
+  flex: 0 0 auto;
+}
+
+.now-line > i {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+}
+
+.now-line > b {
+  flex: 0 0 auto;
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+
+.now-line > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dim-2);
+}
+
+/* A file or a command, as it is typed; Claude's words, as they are said. */
+.now-line > .at {
+  font: 400 10.5px var(--mono);
+}
+
+.now-line > .said {
+  font: 400 11.5px var(--font);
+}
+
+.now-box {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0 12px 0 108px;
+  padding: 3px 0;
+  border-radius: 8px;
+  background: var(--card-flat);
+  overflow: hidden;
+}
+
+.now-box .gh-diff-line {
+  grid-template-columns: 26px 12px 1fr;
+}
+
+.now-box .gh-diff-line .t,
+.now-box .term-line .t {
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-words {
+  padding: 0 9px;
+  font: 400 11px/16px var(--font);
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* A terminal's lines: the prompt and the command, then what it printed. */
+.term-line {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  color: var(--dim);
+}
+
+.term-line .p {
+  text-align: right;
+  padding-right: 4px;
+  color: var(--dim-4);
+  user-select: none;
+}
+
+.term-line .t {
+  min-width: 0;
+  padding-right: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.term-line.cmd .t {
+  color: var(--ink-2);
+}
+
+.step-preview.failed .term-line:not(.cmd) .t {
+  color: var(--red-text);
+}
+
+/* The session's journal: what was asked, each thing Claude did, what it said —
+   one under the other, in the order they happened. */
+.sess-journal {
+  gap: 9px;
+  padding: 9px 9px 12px;
+  user-select: text;
+}
+
+.jr {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.jr-asked {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.jr-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 2px 4px;
+}
+
+/* A word from Claude Code between two steps: a subagent, a notification. */
+.jr-note {
+  padding: 0 4px;
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+}
+
+.jr-note.failed {
+  color: var(--red-text);
+}
+
+/* A step: its icon, its name and what it is at, then what it did. */
+.jr-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 18px;
+  padding: 0 4px;
+}
+
+.jr-head > i {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+}
+
+.jr-head > b {
+  flex: 0 0 auto;
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+
+.jr-head > .at {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 10.5px var(--mono);
+  color: var(--dim-2);
+}
+
+.jr-head > .grow {
+  flex: 1 1 0;
+}
+
+.jr-time {
+  flex: 0 0 auto;
+  font: 400 10px var(--font);
+  color: var(--dim-4);
+}
+
+.jr-chip {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 500 10px var(--font);
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+}
+
+.jr-body {
+  margin-top: 4px;
+  padding: 4px 0;
+  border-radius: 8px;
+  border: 1px solid var(--gh-edge);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.jr-step.failed .jr-body {
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
+}
+
+/* A question Claude asked: its words, its options, the ones picked lit. */
+.jr-asks {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 22%, transparent);
+  background: color-mix(in srgb, var(--cyan) 6%, transparent);
+}
+
+.jr-q {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.jr-q-title {
+  font: 500 12px/1.35 var(--font);
+  color: var(--ink-2);
+}
+
+.jr-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.jr-option {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gh-edge);
+  font: 500 10.5px var(--font);
+  color: var(--dim-3);
+}
+
+.jr-option.on {
+  color: var(--on-light);
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.jr-option.typed {
+  border-radius: 8px;
+}
+
+.jr-waiting {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+}
+
+/* ── How a session's states come and go ─────────────────────────────────────
+   Nothing a session shows changes at a stroke. What is new comes in the way a
+   view of the island does — a short rise with the same overshoot — and what
+   changes colour takes a moment to. All of it runs once and stops. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.985);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* The overview's step and what it did: the next one rises into place. */
+.now-in {
+  animation: rise-in 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+/* A line of the journal that is new; in one that got something more — what a
+   tool gave back, what was decided — only that. */
+.jr.in,
+.jr.more > .jr-body,
+.jr.more > .jr-asks,
+.sess-step.in {
+  animation: rise-in 0.32s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+.jr.more .jr-chip,
+.jr.more .jr-option.on,
+.sess-mark.in {
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+/* A step that ends dims where it stands. */
+.sess-step {
+  transition: color 0.3s ease-out;
+}
+
+.jr-body,
+.jr-asks {
+  transition: border-color 0.3s ease-out;
+}
+
+/* A stack whose middle stretches (an approval's diff) would fill its card to
+   the brim: it keeps the air the other cards have above and below. Over the
+   padding the stack is built with, which is set on the element. */
+.stack.airy {
+  padding-top: 20px !important;
+  padding-bottom: 20px !important;
+}
+
+/* On a project's row: whether the pill speaks up for it. Struck through and
+   dim when it is muted. */
+.gh-bell {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dim-2);
+  cursor: default;
+  transition: color 0.2s ease-out, background 0.2s ease-out;
+}
+
+.gh-bell:hover {
+  background: var(--gh-plate);
+  color: var(--ink);
+}
+
+.gh-bell.off {
+  color: var(--dim-5);
+}
+
+/* The Spotify card: the cover's place where Mochi stands on the other cards,
+   as big as the card allows, then the song, who plays it, and the player's
+   keys. The cover itself is the island's (#island-cover), laid over its place. */
+.media-card {
+  position: relative;
+  height: 100%;
+}
+
+.media-cover {
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  bottom: 11px;
+  aspect-ratio: 1;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--gh-plate);
+  color: transparent;
+  transition: color 0.3s ease-out;
+}
+
+/* No cover to lay over it: its own mark shows. */
+.media-cover.empty {
+  color: var(--dim-3);
+}
+
+/* The cover of what plays, the island's own: in the folded island and over
+   its place on the card, carried from one to the other (island/cover.ts). */
+#island-cover {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  background: var(--card-flat);
+  /* The shade under the cover, kept when it glows. */
+  --cover-shade: 0 3px 12px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--cover-shade);
+  /* Gone at once: what it stood on is already leaving. */
+  transition: opacity 0.1s ease-out;
+}
+
+#island-cover.on {
+  opacity: 1;
+  transition: opacity 0.28s ease-out;
+}
+
+/* A new song's cover comes in over the one before, from a little larger. */
+#island-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: cover-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cover-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+/* Three bars beside "Now playing": they dance while a song plays, and rest. */
+.media-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9px;
+  margin-left: 1px;
+}
+
+.media-bars > i {
+  width: 2px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--spotify);
+  transform-origin: bottom;
+  transition: height 0.3s ease-out, opacity 0.3s ease-out;
+  opacity: 0.45;
+}
+
+.media-bars.on > i {
+  height: 9px;
+  opacity: 1;
+  animation: media-bar 0.9s ease-in-out infinite alternate;
+}
+
+.media-bars.on > i:nth-child(2) {
+  animation-duration: 0.7s;
+  animation-delay: -0.3s;
+}
+
+.media-bars.on > i:nth-child(3) {
+  animation-duration: 1.1s;
+  animation-delay: -0.6s;
+}
+
+@keyframes media-bar {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.media-title {
+  padding-top: 4px;
+  font: 600 13px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.media-run {
+  display: inline-block;
+}
+
+/* A title too long for its line runs to its end and back, with a rest at each
+   end, its edges fading out. It stops with everything else when the island is
+   folded (see #content.away). */
+.media-title.runs {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 12px), transparent 100%);
+}
+
+.media-title.runs .media-run {
+  animation: media-run var(--run-time, 8s) ease-in-out infinite alternate;
+}
+
+@keyframes media-run {
+  0%, 18% {
+    transform: translateX(0);
+  }
+  82%, 100% {
+    transform: translateX(var(--run, 0));
+  }
+}
+
+.media-title.quiet {
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.media-artist {
+  font: 400 11.5px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* What the song is from. */
+.media-album {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+/* Under the finger a key gives; play turning into pause pops. */
+.media-key {
+  width: 24px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gh-plate);
+  color: var(--ink-2);
+  cursor: default;
+  transition: background 0.12s ease-out, transform 0.12s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.media-key:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.media-key:active {
+  transform: scale(0.88);
+}
+
+.media-key.pressed svg {
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+.media-key.main {
+  width: 30px;
+  background: var(--ink);
+  color: var(--on-light);
+}
+
+/* ── A song being announced ─────────────────────────────────────────────────
+   The island opened on its own: light says why. A wash of Spotify's green
+   breathes behind the cover, a sheen passes over the cover and it glows.
+   Each plays once. */
+.media-card.announce::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 140% at 12% 50%, color-mix(in srgb, var(--spotify) 34%, transparent), transparent 62%);
+  animation: announce-wash var(--announce, 4.5s) ease-in-out both;
+}
+
+@keyframes announce-wash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  45% { opacity: 0.55; }
+  70% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* The words of the card stay above its light. */
+.media-card > * {
+  position: relative;
+}
+
+.media-card > .media-cover {
+  position: absolute;
+}
+
+#island-cover.shine {
+  animation: cover-glow 1.6s ease-out both;
+}
+
+@keyframes cover-glow {
+  0% { box-shadow: var(--cover-shade), 0 0 0 0 color-mix(in srgb, var(--spotify) 90%, transparent); }
+  35% { box-shadow: var(--cover-shade), 0 0 22px 5px color-mix(in srgb, var(--spotify) 65%, transparent); }
+  100% { box-shadow: var(--cover-shade), 0 0 0 0 transparent; }
+}
+
+/* The sheen: a band of light that crosses the cover once. */
+#island-cover.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: cover-sheen 0.9s 0.25s ease-in-out both;
+}
+
+@keyframes cover-sheen {
+  to { transform: translateX(120%); }
 }

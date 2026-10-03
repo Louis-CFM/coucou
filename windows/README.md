@@ -66,7 +66,95 @@ exits cleanly if the app is closed, slow or crashed — **a Claude Code session 
 never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
-It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+It works wherever Claude Code runs — the Claude desktop app, VS Code, Windows
+Terminal, PowerShell, Git Bash. The Claude pill takes the name of the app the
+session is in, and its ↗ brings that app forward.
+
+### Watching a session
+
+<img src="screenshots/claude-card.png" width="640" alt="A session's card: the step under way with its icon and its file, and the lines it read">
+
+A session shows on its card, as the prototype draws it: the conversation's
+title, the step under way — its icon, its name, the file or the command it is at
+— and under it a look at what the step did: the lines of the file it read, the
+diff of its edit, the command it ran with the end of what that printed. Once the
+turn is over the card says **Done** and shows the first lines of what Claude
+replied.
+
+<img src="screenshots/claude-session.png" width="640" alt="The session panel: the session's steps on the left, its journal on the right, an edit being typed">
+
+Click the card for the **session panel**. On the left, Mochi's column: the
+session's name and its last steps, each going, done or failed. On the right, the
+session's **journal**, read like a conversation, in the order things happened:
+
+| A line of the journal | What it shows |
+|---|---|
+| What you asked | Your words, as you sent them |
+| A file read | Its first lines, numbered |
+| An edit | Its diff, the old line struck and the new ones typed under it |
+| A command | The command, then the end of what it printed |
+| A search | What it found |
+| A question from Claude | Its options, and the ones that were picked — on the island or in Claude Code |
+| A tool that had to ask first | **needs permission**, then **allowed** or **denied** |
+| The end of the turn | What Claude said, as it wrote it — also behind **Read reply** on the finished card |
+
+The journal follows the session while you are at its end, and stays where you
+scrolled otherwise. **N files**, at the top right, lists every file the session
+changed, each with its whole diff.
+
+<img src="screenshots/claude-journal.png" width="640" alt="The journal further up: a question with the option picked, a command that was allowed">
+
+An edit is shown the moment Claude Code reports it, so the typing is a replay of
+it, about a second behind. Nothing changes at a stroke: a new line rises into
+place, a state's colour fades to the next. The island only watches: to write to
+Claude, there is Claude Code.
+
+### Several sessions at once
+
+<img src="screenshots/claude-sessions.png" width="640" alt="The list of sessions: the one on show, one at work in a terminal, one that has finished">
+
+Two conversations in the Claude app, one more in a terminal: each is followed on
+its own, and one of them is in front — the one the card, the panel and Mochi
+show. With more than one, the session's card and the panel's head say how many
+there are: that chip opens the list of them — each with its name, its project
+and where it is at: at work, waiting for you, finished — and a click puts one in
+front. The chip takes a colour when a session behind the one on show wants
+looking at.
+
+The island stays on the session it shows for as long as that one is at work or
+being looked at. Another one takes its place when the first has nothing going
+on, or to ask for something. When two ask at once, the second waits its turn:
+the card says how many are waiting, and the next comes forward once the first is
+answered. Up to four sessions are followed; past that, the one at rest and heard
+from longest ago gives its place. Sessions started by a program rather than a
+person — a review run by a plugin, a script using the SDK — are left alone.
+
+### Answering from the island
+
+<img src="screenshots/claude-question.png" width="640" alt="A question from Claude, each option with what it means">
+<img src="screenshots/claude-approval.png" width="640" alt="A permission request for an edit, with the diff it would make">
+
+- **A question** Claude asks with its question tool opens on the island with
+  its options, each with what it means. Pick one — or several, then **Send** —
+  type your own with **Other…**, **Skip** it, or hand it back with **Answer in
+  Claude**. The session goes on exactly as if you had answered in Claude Code.
+- **A permission request for an edit** shows the diff the edit would make before
+  you click **Allow**.
+
+### What it reads
+
+Everything comes from the hooks Claude Code already sends — nothing is asked of
+Anthropic, and nothing leaves your machine. Of what a tool gives back, the relay
+forwards a few lines and no more: the diff of an edit, the first lines of a file
+that was read, the last lines a command printed, the names a search found, the
+answers to a question. A session's journal is kept in memory and empties as it
+fills — its last 80 lines, the oldest going for each new one — and is gone with
+the session. Two
+things are read from disk by the relay, and only then: the file an edit asks permission for (to show its diff —
+it is never written), and the end of the session's transcript at the start and
+end of a turn (for the conversation's title and Claude's last message). That
+transcript's format is Claude Code's own: if it changes, the title and the last
+message simply stop showing. None of it is written to the log.
 
 ## Chat and keys
 
@@ -76,6 +164,128 @@ only ask whether a key exists. Same for every integration key.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
+
+## GitHub
+
+<img src="screenshots/github-card.png" width="640" alt="The GitHub card in the overview: the year's contributions, the last seven days, the latest activity">
+
+With GitHub as the focused pill, the overview shows your year at a glance and
+your latest activity. Click the figure — or the arrow — and the island opens the
+**GitHub panel**, where everything is read without leaving for the browser.
+
+<img src="screenshots/github-activity.png" width="640" alt="The GitHub panel on its Activity tab: the contribution graph and the latest events">
+
+| Where | What you see |
+|---|---|
+| **Activity** | The contribution graph and your latest events. Click a day of the graph for what was done that day; click a line for its sheet |
+| **Projects** | Your repositories, most recently pushed first, each with its latest build |
+| A project | Description, languages, its last builds, its latest pull request, its latest deployment |
+| A pull request | State, branches, labels, review, checks, the files with their diff |
+| An issue, a push, a release | The same, each as its own sheet: the discussion, the commits and their files, the notes and assets |
+| A run | Its jobs as mini Mochis, each with its steps and how long they took — followed live while it runs |
+| Comments | A pull request's conversation: the description, the reviews, and each thread on the lines it is about |
+| A file | Its diff, syntax-coloured. A thread opens the file on the line it was written on |
+
+<img src="screenshots/github-project.png" width="640" alt="A project's sheet: its build, a pull request, its deployment">
+<img src="screenshots/github-run.png" width="640" alt="A pull request whose checks are running, one mini Mochi per job">
+<img src="screenshots/github-thread.png" width="640" alt="A review thread shown on the line of the diff it is about">
+
+The trail on the left is the way back: every step you went through stays there,
+one click away. The arrow at the top right opens the same thing on github.com.
+
+### News
+
+<img src="screenshots/github-news-merge.png" width="640" alt="The island opened on a merged pull request, with Open and OK">
+
+Three things make Mochi speak up, with a sound and a card: **a build of yours
+breaks**, **a pull request of yours is merged**, and **somebody opens a pull
+request on one of your projects** — the ones the Projects tab lists. **Open**
+goes straight to the run or the pull request. Each project of that tab has a
+bell: click it to mute a project you do not want to hear from, and again to give
+it its voice back. **OK** folds the island and leaves the news on the pill
+for five minutes, so it isn't lost: click Mochi, or the card, to go to it.
+
+### The token
+
+<img src="screenshots/github-settings.png" width="640" alt="Settings: GitHub switched on, its token, the permissions to grant and the connection test">
+
+**Settings… → Integrations → GitHub**: switching it on opens its setup under its
+line. Create a [fine-grained token](https://github.com/settings/personal-access-tokens/new)
+with **Repository access: All repositories** and these permissions, all
+**Read-only**:
+
+| Permission | What it is for |
+|---|---|
+| Actions | Builds, runs, jobs and steps |
+| Contents | Commits, diffs and releases |
+| Deployments | A project's latest deployment |
+| Issues | Issues and their comments |
+| Pull requests | Pull requests, reviews and threads |
+| Events (account, optional) | Your activity in private repositories |
+
+Metadata is added by GitHub on its own. **Test connection** checks each of them
+and names the one that is missing; in the panel, a part the token cannot read
+says which permission it needs instead of showing up empty.
+
+Coucou only reads, and nothing else is ever asked of GitHub. The token is stored
+in the Windows Credential Manager like every other key: it never touches the
+disk or the log, and the interface never sees it — every request is made by the
+Rust side.
+
+### How often it asks
+
+- Every **2 minutes** for the activity, the projects and their builds. Answers
+  GitHub says are unchanged (`304`) cost nothing against the rate limit.
+- Every **20 seconds**, builds only, and only while one of your builds is running.
+- A sheet is fetched **when you open it**, and kept for a minute.
+- Nothing while Coucou is paused or GitHub is switched off.
+
+## Spotify
+
+<img src="screenshots/spotify-card.png" width="640" alt="Spotify's card: the cover, the song, who plays it, the album, and the player's keys">
+
+A pill that needs no key and no account. Switch it on in **Settings… →
+Integrations**, like the others — four pills at most show next to Mochi.
+
+Its card shows the cover of what plays, the song, who plays it and the album it
+is from, with previous, play/pause and next. A title too long for its line runs
+across it. The cover stands where Mochi does on the other cards: he steps out
+of this one.
+
+<img src="screenshots/spotify-folded.png" width="288" alt="The folded island with the cover in Mochi's place">
+
+With Spotify's pill in front, the folded island shows the cover too, in Mochi's
+place, and unfolding carries it to the card.
+
+<img src="screenshots/spotify-announce.png" width="640" alt="A new song being announced: a green glow behind the cover">
+
+When the song changes, the island unfolds on that card for a few seconds and
+folds back, under a light that says why it opened: a green glow behind the
+cover, and a sheen across it. No sound — there is music playing. It never opens
+over something that waits for you, nor while the island is already open, and a
+mouse on the island keeps it there. **Settings… → Integrations → Spotify** has a
+switch to keep it folded.
+
+### Where it comes from
+
+Windows already knows what every player plays — it is what the volume flyout
+shows — and says when it changes. The pill asks Windows: the song, the artist,
+the album, the cover, whether it plays or is paused. Nothing is asked of
+Spotify and nothing touches the network; the keys go to Spotify's own session,
+never to another player.
+
+That is also where it stops:
+
+- Only the Spotify desktop app is seen. Spotify in a browser tab is the
+  browser's.
+- Until something has been played since the app was opened, Windows has nothing
+  to say about it, and neither has the card.
+- Windows is told one artist and the album. Featured artists show only when
+  the song's title names them, and the playlist a song is played from is not
+  something a player tells the system.
+
+The idea of a keyless Spotify pill comes from corefusiion's pull request on the
+main repository (Louis-CFM/coucou#80).
 
 ## Build it yourself
 
@@ -91,9 +301,17 @@ npm run pack           # builds the installer and drops it in windows/release/
 ```
 
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
-to work on the island's looks. It also serves `dev/upload-preview.html`, which
-replays the whole file-drop choreography on a loop — the one part of the UI that
-otherwise needs a real drag from Explorer to see. Neither page ships in the app.
+to work on the island's looks. It also serves two pages that never ship in the
+app:
+
+- `dev/upload-preview.html` replays the whole file-drop choreography on a loop —
+  the one part of the UI that otherwise needs a real drag from Explorer to see.
+- `dev/github-preview.html` shows the GitHub card and panel on made-up data, so
+  they can be worked on without a token. The links at the bottom of the page go
+  to each screen: a project, a run in progress, a failing build, the comments.
+- `dev/claude-preview.html` plays a made-up Claude Code session through the
+  island's own hook handler: a file being written, a question, a permission
+  request with its diff, the end of a turn, several sessions at once.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -142,10 +360,15 @@ problems. It stays on your machine.
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
+- The [session panel](#watching-a-session), answering Claude's questions and the
+  diff on a permission request are Windows-only for now.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- The [Spotify](#spotify) pill is Windows-only for now.
+- GitHub goes further than the Mac's card: the [panel](#github), the news of a
+  broken build or a merged pull request, and comments are Windows-only for now.
 
 ## Linux
 

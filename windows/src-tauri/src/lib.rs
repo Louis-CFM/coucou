@@ -2,10 +2,13 @@
 
 mod claude;
 mod files;
+mod github;
+mod github_detail;
 mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod media;
 mod pipe;
 mod platform;
 mod secrets;
@@ -132,6 +135,16 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
+/// The address the Claude desktop app answers to, through the scheme it registers.
+const CLAUDE_APP_URL: &str = "claude://";
+
+/// Brings the Claude desktop app forward. The address is fixed here: nothing
+/// the interface sends is run.
+#[tauri::command]
+fn open_claude_app() {
+    platform::open_url(CLAUDE_APP_URL);
+}
+
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -231,6 +244,12 @@ fn approval_decline(app: AppHandle, request_id: String) {
     pipe::decline(&app, &request_id);
 }
 
+/// The island answered a question Claude asked with its question tool.
+#[tauri::command]
+fn approval_answer(app: AppHandle, request_id: String, answers: serde_json::Map<String, serde_json::Value>) {
+    pipe::answer_question(&app, &request_id, &answers);
+}
+
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
@@ -263,13 +282,56 @@ fn secret_present(key: String) -> bool {
 }
 
 #[tauri::command]
-fn secret_set(key: String, value: String) -> Result<(), String> {
-    secrets::set(&key, &value)
+fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+    secrets::set(&key, &value)?;
+    secrets_changed(&app, &key);
+    Ok(())
 }
 
 #[tauri::command]
-fn secret_clear(key: String) -> Result<(), String> {
-    secrets::clear(&key)
+fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
+    secrets::clear(&key)?;
+    secrets_changed(&app, &key);
+    Ok(())
+}
+
+/// The island only learns which keys exist by asking, and used to ask once at
+/// launch: a key saved in the settings window left its pill saying "Key not
+/// configured" until a restart. This tells it to ask again. A new GitHub token
+/// may be another account's: what the old one fetched is forgotten first.
+fn secrets_changed(app: &AppHandle, key: &str) {
+    if key == github::TOKEN_KEY {
+        github::forget();
+    }
+    let _ = app.emit_to(island::WINDOW_LABEL, "secrets-changed", ());
+}
+
+/// Settings → GitHub → Test connection. Runs on the stored token and brings back
+/// the account and what the token can reach — never the token itself.
+#[tauri::command]
+async fn github_test() -> Result<github::Account, String> {
+    github::test().await
+}
+
+/// A click on a project in the GitHub panel: its CI, last pull request and last
+/// deployment. On demand only, cached a minute; `force` is the ↻ button.
+#[tauri::command]
+async fn github_project(full_name: String, force: bool) -> Result<github::Project, String> {
+    github::project(&full_name, force).await
+}
+
+/// A click on a day of the contribution graph: what was done that day, between
+/// the island's local midnights. On demand only, cached.
+#[tauri::command]
+async fn github_day(from: String, to: String, today: bool) -> Result<github::Day, String> {
+    github::day(&from, &to, today).await
+}
+
+/// A click on a line of GitHub activity: the pull request, issue, commits or
+/// release behind it, with the files' diffs. On demand only, cached a minute.
+#[tauri::command]
+async fn github_detail(target: github_detail::Target, force: bool) -> Result<github_detail::Detail, String> {
+    github_detail::detail(target, force).await
 }
 
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
@@ -284,6 +346,12 @@ fn open_n8n() {
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
+}
+
+/// From the Spotify card: "toggle", "next" or "previous", asked of Spotify's own session.
+#[tauri::command]
+async fn media_key(action: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || media::press(&action)).await.map_err(|e| e.to_string())?
 }
 
 /// Lets the island write to the same log as the Rust side.
@@ -383,6 +451,7 @@ pub fn run() {
             reposition,
             open_url,
             open_in_vscode,
+            open_claude_app,
             quit_app,
             hooks_status,
             hooks_preview,
@@ -390,6 +459,7 @@ pub fn run() {
             approval_decision,
             approval_ack,
             approval_decline,
+            approval_answer,
             log_line,
             chat_send,
             chat_reset,
@@ -397,7 +467,12 @@ pub fn run() {
             secret_present,
             secret_set,
             secret_clear,
+            github_test,
+            github_project,
+            github_day,
+            github_detail,
             refresh_integration,
+            media_key,
             open_n8n,
             open_settings_window,
             set_paused,

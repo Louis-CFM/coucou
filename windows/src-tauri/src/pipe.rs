@@ -17,6 +17,10 @@
 // What we write back is the bare word `allow` or `deny`. Turning that into the
 // documented hookSpecificOutput JSON is coucou-hook's job, so the wire format
 // Claude Code expects lives in exactly one place.
+//
+// One line carries more than a word: `answer {…}`, the answers picked on the
+// island to a question Claude asked with its question tool. They are never
+// written to the log.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -230,7 +234,7 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         Ok(Some(Reply::Ack)) => {}
         // A click that beats the ack is still a click.
         Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {d}"));
+            log::line(format!("hook id={id} answered {}", word(&d)));
             return Some(d);
         }
         Ok(Some(Reply::Decline)) => {
@@ -246,7 +250,7 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
 
     match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
         Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {d}"));
+            log::line(format!("hook id={id} answered {}", word(&d)));
             Some(d)
         }
         Ok(Some(Reply::Decline)) => {
@@ -258,6 +262,11 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
             None
         }
     }
+}
+
+/// The first word of a reply — `allow`, `deny`, `answer` — and never what follows.
+fn word(reply: &str) -> &str {
+    reply.split(' ').next().unwrap_or_default()
 }
 
 fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
@@ -290,8 +299,18 @@ pub fn decline(app: &AppHandle, request_id: &str) {
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     let word = match decision {
         "allow" | "always" => "allow",
+        "skip" => "skip",
         _ => "deny",
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// Called when the island answers a question Claude asked: what was picked,
+/// keyed by the question's own words. coucou-hook puts it back in the tool's
+/// input, which is how Claude Code takes an answer.
+pub fn answer_question(app: &AppHandle, request_id: &str, answers: &serde_json::Map<String, Value>) {
+    log::line(format!("decision id={request_id} answer"));
+    let line = format!("answer {}", Value::Object(answers.clone()));
+    send(app, request_id, Reply::Decision(line), false);
 }
