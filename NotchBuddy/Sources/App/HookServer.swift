@@ -139,6 +139,22 @@ final class HookServer: @unchecked Sendable {
         dismissQuestionCard(note: "")
     }
 
+    /// Called by QuestionView.onDisappear — card left screen without an explicit answer.
+    /// Sends "ask" immediately to unblock nb-hook; does NOT navigate (view already changed).
+    @MainActor
+    func releaseQuestionFD() {
+        guard pendingQuestionFD >= 0 else { return }
+        let fd = pendingQuestionFD
+        pendingQuestionFD = -1
+        let source = questionFDSource
+        questionFDSource = nil
+        AppState.shared.pendingQuestion = nil
+        Task.detached { [weak self] in
+            self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+            DispatchQueue.main.async { source?.cancel() }
+        }
+    }
+
     /// Called by QuestionView "Reply in terminal" button.
     @MainActor
     func sendQuestionAsk() {

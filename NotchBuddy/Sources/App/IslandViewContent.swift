@@ -325,7 +325,7 @@ struct QuestionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Header row: agent name + question counter + "Reply in terminal" link
                     HStack(spacing: 4) {
-                        AgentWho(task: state.focusTask, label: "is asking")
+                        AgentWho(task: nil, label: "Claude Code is asking")
                         Spacer(minLength: 4)
                         if q.questions.count > 1 {
                             Text("\(qi + 1)/\(q.questions.count)")
@@ -348,7 +348,7 @@ struct QuestionView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(2)
-                    // Options (wrapping) or "Other…" text field
+                    // Options (wrapping) or "Other…" compact inline row
                     if curOther {
                         HStack(spacing: 6) {
                             TextField("Your answer…", text: Binding(
@@ -361,9 +361,25 @@ struct QuestionView: View {
                             .focused($otherFieldFocused)
                             .onAppear { otherFieldFocused = true }
                             .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
-                            SecondaryButton("✕") {
-                                if qi < showOther.count { showOther[qi] = false }
+                            .onExitCommand { if qi < showOther.count { showOther[qi] = false } }
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            Button(isLast ? "Send" : "Next") {
+                                commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
                             }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(curOtherText.isEmpty ? Color(hex: "#6B7079") : Color(hex: "#F5F6F8"))
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .background(Color.white.opacity(curOtherText.isEmpty ? 0.05 : 0.15))
+                            .clipShape(Capsule())
+                            .disabled(curOtherText.isEmpty)
+                            Button { if qi < showOther.count { showOther[qi] = false } } label: {
+                                Text("✕").font(.system(size: 9))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(Color(hex: "#6B7079"))
                         }
                     } else {
                         ChipFlowLayout(spacing: 6) {
@@ -396,18 +412,10 @@ struct QuestionView: View {
                             }
                         }
                     }
-                    // Send/Next — only for multi-select (single-select auto-sends on click)
-                    if isMulti {
+                    // Send/Next — only for multi-select (and not while "Other…" field is open)
+                    if isMulti && !curOther {
                         PrimaryButton(isLast ? "Send" : "Next") {
                             proceedFromQuestion(q: q, qi: qi, isLast: isLast)
-                        }
-                        .disabled(!canProceed)
-                        .opacity(canProceed ? 1 : 0.4)
-                    }
-                    // "Other…" send button — appears inline below text field
-                    if curOther {
-                        PrimaryButton(isLast ? "Send" : "Next") {
-                            commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
                         }
                         .disabled(!canProceed)
                         .opacity(canProceed ? 1 : 0.4)
@@ -421,6 +429,7 @@ struct QuestionView: View {
         }
         .onAppear { resetQuestionState() }
         .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+        .onDisappear { HookServer.shared.releaseQuestionFD() }
     }
 
     private func resetQuestionState() {
