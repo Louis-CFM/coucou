@@ -37,6 +37,7 @@ struct PillDefinition {
         case "integration_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
+        case "agent_opencode":     return "opencode"
         default:                   return "Agent"
         }
     }
@@ -59,6 +60,10 @@ enum PillCatalog {
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        // No githubOnly: the bridge is an external plugin spawning the relay
+        // directly, so it works in every build with no hook installer.
+        .init(id: "agent_opencode",      name: "opencode",    color: "#EAB308",
+              category: .agent,     subtitle: "Agent",        source: .agent),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),

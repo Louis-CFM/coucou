@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, INTEGRATION_AGENTS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
@@ -358,6 +358,49 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
 }
 
+// ── Agents section ────────────────────────────────────────────────────────────
+
+function agentsSection(): HTMLElement {
+  // Third-party coding agents get a pill automatically while a session sends
+  // hook events. Pinning one here keeps it after the session ends (idle)
+  // instead of removing it. Shares the 4-pill budget with Integrations.
+  const defs = INTEGRATION_AGENTS.filter((t) => t.source === "agent");
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+
+  for (const def of defs) {
+    const active = settings.activeIntegrations.includes(def.id);
+    const sw = h("button", { class: active ? "switch on" : "switch" });
+    sw.addEventListener("click", () => {
+      const on = settings.activeIntegrations.includes(def.id);
+      if (on) {
+        settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
+      } else {
+        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+        settings.activeIntegrations = [...settings.activeIntegrations, def.id];
+      }
+      sw.classList.toggle("on", !on);
+      void save();
+    });
+
+    list.append(
+      h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
+        h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
+          sw,
+          h("i", { class: "dot", style: `background:${def.color}` }),
+          h("span", { style: "font-size:12.5px", text: def.name }),
+        ),
+        h("div", { class: "hint", style: "padding-top:4px", text: "No Coucou setup needed — events arrive over the hook relay." }),
+      ),
+    );
+  }
+
+  return h("section", {},
+    h("h2", {}, h("span", { text: "Agents" })),
+    h("div", { class: "hint", text: "Agent pills appear on their own while a session is active. Pin one to keep it afterwards." }),
+    list,
+  );
+}
+
 // ── General section ───────────────────────────────────────────────────────────
 
 function generalSection(): HTMLElement {
@@ -444,6 +487,7 @@ async function main() {
     claudeSection(status),
     apiSection(hasKey),
     integrationsSection(present),
+    agentsSection(),
     generalSection(),
     h("div", {
       class: "hint",

@@ -59,6 +59,10 @@ const task = (
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  // Third-party coding agent bridged over the hook relay with coucou_agent.
+  // Declared so it can be pinned in Settings → Active pills; sessions still
+  // arrive as dynamic events exactly like undeclared agents.
+  task("agent_opencode", "opencode", "#EAB308", "agent"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -71,6 +75,7 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   "integration_notion", "integration_calcom", "integration_stripe",
+  "agent_opencode",
 ];
 
 /** What an integration poller last reported. */
@@ -231,6 +236,22 @@ class AppState {
   removeTask(id: string) {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
+    // Declared + active: reset, never remove (mirror of AppState.removeTask on
+    // macOS). The user pinned this pill in Settings → Active pills; a finished
+    // session parks it as idle instead of taking it away.
+    const isActiveDecl =
+      INTEGRATION_AGENTS.some((t) => t.id === id) && this.settings.activeIntegrations.includes(id);
+    if (isActiveDecl) {
+      const t = this.tasks[idx];
+      t.state = "idle";
+      t.steps = [];
+      t.stepIndex = 0;
+      t.pillBadge = null;
+      const catalogName = INTEGRATION_AGENTS.find((t) => t.id === id)?.name;
+      if (catalogName) t.name = catalogName;
+      this.notify();
+      return;
+    }
     this.tasks.splice(idx, 1);
     if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
     this.notify();
