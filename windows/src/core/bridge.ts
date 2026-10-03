@@ -52,8 +52,20 @@ export const Bridge = {
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
-  /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
-  openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
+  /**
+   * "Open Visual Studio Code" → opens the folder in VS Code when `code` is on PATH.
+   * With a WSL distro, `path` is a Linux path and opens through Remote WSL.
+   */
+  openInVSCode: (path: string | null, wslDistro: string | null = null) =>
+    call<boolean>("open_in_vscode", { path, wslDistro }),
+
+  /**
+   * "Open terminal" → once WSL is set up, brings the session's terminal window
+   * forward, or any terminal; with none open, a new one in the session folder
+   * (WSL shell for a WSL session). Without WSL: the folder in VS Code.
+   */
+  openTerminal: (path: string | null, wslDistro: string | null, terminalPids: number[]) =>
+    call<boolean>("open_terminal", { path, wslDistro, terminalPids }),
 
   quit: () => call<void>("quit_app"),
 
@@ -73,6 +85,21 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Claude Code under WSL ─────────────────────────────────────────────────
+  /** Installed distros. Listing them starts nothing. */
+  wslDistros: () => call<string[]>("wsl_distros"),
+  /** Starts the distro if it isn't running — only call it when the user is looking. */
+  wslStatus: (distro: string) => callOrThrow<WslStatus>("wsl_status", { distro }),
+  wslHooksPreview: (distro: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_hooks_preview", { distro, install }),
+  /** Writes the relay script and the distro's settings.json — explicit click only. */
+  wslHooksApply: (distro: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_hooks_apply", { distro, install, fingerprint }),
+  /** The section the settings window was opened for, once ("" for none). */
+  takeSettingsSection: () => call<string>("take_settings_section"),
+  /** Is that Claude Code signed in? (`claude auth status`; null when unknown) */
+  claudeLoggedIn: (target: string) => call<boolean>("claude_logged_in", { target }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -83,7 +110,17 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+    callOrThrow<{ text: string; session?: string }>("chat_send", { query, context }),
+
+  // ── Mochi's sessions (local Claude Code only) ─────────────────────────────
+  sessionsList: () => callOrThrow<SessionInfo[]>("sessions_list"),
+  sessionHistory: (id: string) => callOrThrow<HistoryItem[]>("session_history", { id }),
+  sessionActive: () => call<ActiveSession>("session_active"),
+  sessionSelect: (id: string, cwd: string) => callOrThrow<void>("session_select", { id, cwd }),
+  /** Erases the transcript — only after the island's second click. */
+  sessionDelete: (id: string) => callOrThrow<void>("session_delete", { id }),
+  /** Folder picker, then a new session there. `null` when cancelled. */
+  sessionNewInFolder: () => callOrThrow<string | null>("session_new_in_folder"),
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
@@ -123,6 +160,43 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  /** Claude Code on Windows, if installed. */
+  claudeCli: string | null;
+}
+
+export interface WslStatus {
+  distro: string;
+  installed: boolean;
+  /** Linux paths, as the user knows them. */
+  settingsPath: string;
+  relayPath: string;
+  relayReady: boolean;
+  /** Claude Code inside the distro, if installed. */
+  claudeCli: string | null;
+  /** The distro could not be reached; nothing else is meaningful then. */
+  error: string | null;
+}
+
+/** A Claude Code session, as listed in Mochi's session menu. */
+export interface SessionInfo {
+  id: string;
+  /** Working folder, as that Claude Code sees it (a Linux path under WSL). */
+  cwd: string;
+  title: string;
+  /** Last change, ms since the epoch. */
+  updated: number;
+}
+
+export interface HistoryItem {
+  role: "user" | "assistant";
+  text: string;
+}
+
+/** The session Mochi's chat is in. No id yet: a new session (inbox when no cwd). */
+export interface ActiveSession {
+  backend: string;
+  id: string | null;
+  cwd: string | null;
 }
 
 export interface HookPreview {

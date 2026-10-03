@@ -68,7 +68,58 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+### Claude Code under WSL
+
+A Claude Code running inside a WSL distribution works too: WSL interop runs
+`coucou-hook.exe` as a Windows process, which reaches the named pipe like any
+other terminal. What it needs is a small relay script in the distribution,
+[`hook/coucou-hook-wsl.sh`](hook/coucou-hook-wsl.sh), and the hooks in the
+distribution's own `~/.claude/settings.json`.
+
+**Settings… → WSL** lists your distributions and installs both, one
+distribution at a time, with the same rules as on Windows: the exact diff, a
+dated backup next to the file, and nothing written until you click. Uninstalling
+removes Coucou's entries and the script, nothing else. On the first launch after
+installing, if WSL has distributions, Coucou opens the settings on that section
+once. Looking at a distribution starts it, so Coucou only does that while the
+settings window is open.
+
+Once WSL is set up, "Open terminal" and the ↗ button bring the session's
+terminal window forward (any terminal window if that one is closed), or open
+one in the session folder — for a WSL session, a shell in its own distro
+(`wsl.exe -d <distro> --cd <folder>`). "Open Visual Studio Code" opens a WSL
+session through **Remote WSL**. The relay passes `WSL_DISTRO_NAME` through
+`WSLENV` for that.
+Each hook costs about 0.3 s for the WSL → Windows hop.
+
+A session in the **Claude desktop app**'s Code tab has no terminal: "Open
+terminal" and ↗ bring the app forward instead, from the tray if it was closed
+there — WSL set up or not.
+
 ## Chat and keys
+
+### Mochi on your Claude subscription
+
+Mochi's chat (Ask, and questions about a dropped file) can run on the Claude
+Code you already use instead of an API key. Turn on **Use for Mochi** under
+*Settings… → Claude Code* (Claude Code on Windows) or under a distribution in
+*Settings… → WSL*; only one can be on, and with none on the API key is used.
+
+Coucou then runs `claude -p` there, on your subscription and with Claude Code's
+own model, in Coucou's inbox folder where dropped files land. Mochi only gets
+read-only tools (Read, WebSearch, WebFetch), and its runs never show up in the
+island: hooks are switched off for them.
+
+With Claude Code behind it, the **Ask** tab also manages sessions. On the left,
+under Mochi, a menu lists your Claude Code sessions, terminal ones included,
+with their folder and title, read from that Claude Code's own transcripts
+(`~/.claude/projects`). Picking one makes it the active session: the
+conversation shows on the right, and Mochi carries it on in its folder
+(`claude -p --resume`, still read-only). A new session starts from a dropped
+file, as before, or in a folder you pick (**New in a folder…**). Deleting a
+session erases its transcript, after a second click. Carrying on a session that
+is still open in a terminal adds to the same transcript, as a second
+`claude --resume` would.
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
@@ -144,7 +195,8 @@ problems. It stays on your machine.
   VS Code sessions.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
   attach it as context, and jumping to a specific terminal window — "Open
-  terminal" opens the working folder in VS Code when `code` is on your `PATH`.
+  terminal" opens the working folder in VS Code when `code` is on your `PATH`
+  (with WSL set up, it brings the session's terminal forward instead; see above).
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 
 ## Linux

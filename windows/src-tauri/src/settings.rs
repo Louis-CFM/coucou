@@ -20,6 +20,24 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// WSL distros whose Claude Code has Coucou's hooks, as last written or seen.
+    /// Owned by Rust: the windows never send it (see `save_settings`).
+    #[serde(default)]
+    pub wsl_hooks: Vec<String>,
+    /// The first-launch offer to set up WSL has been made. Shown once, ever.
+    #[serde(default)]
+    pub wsl_prompted: bool,
+    /// Where Mochi's chat goes: "api" (the API key), "windows" (Claude Code on
+    /// Windows) or "wsl:<distro>" (Claude Code inside that distro).
+    #[serde(default = "default_backend")]
+    pub chat_backend: String,
+    /// The session Mochi's chat is in, kept across restarts. Owned by Rust.
+    #[serde(default)]
+    pub mochi_session: Option<crate::local_claude::ActiveSession>,
+}
+
+fn default_backend() -> String {
+    "api".into()
 }
 
 fn default_model() -> String {
@@ -43,6 +61,10 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            wsl_hooks: Vec::new(),
+            wsl_prompted: false,
+            chat_backend: default_backend(),
+            mochi_session: None,
         }
     }
 }

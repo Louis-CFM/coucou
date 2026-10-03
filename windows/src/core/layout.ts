@@ -124,11 +124,20 @@ export interface BotPlacement {
 }
 
 /** IslandRootView.botPosition — cy is measured from the island's top edge. */
+/**
+ * The Ask view split for Mochi's sessions (local Claude Code): Mochi sits at the
+ * top of the left column, centred over the session menu. Island coordinates:
+ * content starts at x = 10 (#content padding) + 16 (chat-body padding) and
+ * y = 42 (header) + 12; the column is 156 wide.
+ */
+export const SESSIONS_COLUMN = { left: 26, width: 156, top: 54 };
+
 export function botPosition(
   mode: IslandMode,
   view: IslandViewName,
   islandH: number,
   uploadProgress = 0,
+  sessionsColumn = false,
 ): BotPlacement {
   switch (mode) {
     case "hidden":
@@ -137,6 +146,15 @@ export function botPosition(
       return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
+      if (view === "prompt" && sessionsColumn) {
+        const d = layout.botDiameter;
+        return {
+          cx: SESSIONS_COLUMN.left + SESSIONS_COLUMN.width / 2,
+          cy: SESSIONS_COLUMN.top + d / 2,
+          diameter: d,
+          opacity: 1,
+        };
+      }
       if (view === "uploading") {
         return {
           cx: 36 + uploadProgress * 526,

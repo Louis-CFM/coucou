@@ -7,6 +7,7 @@ import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
+import { buildSessionsPanel, usesSessions } from "./sessions";
 
 let nextId = 1;
 
@@ -48,10 +49,19 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const send = h("button", { class: "send-btn", title: "Send" }, svg(ICONS.arrowUp, 11));
   const bar = h("div", { class: "chat-bar" }, input, send);
 
+  // With a local Claude Code the view splits: sessions on the left, the
+  // conversation on the right. With the API key it is the chat alone.
+  const sessions = buildSessionsPanel(() => {
+    renderedCount = -1;
+    State.notify();
+    onHeightChange();
+  });
+  const main = h("div", { class: "chat-main" }, chipRow, log, bar);
+  const body = h("div", { class: "chat-body" }, sessions.el, main);
   const el = h(
     "div",
     { class: "view" },
-    h("div", { class: "card wash chat-card" }, h("div", { class: "chat-body" }, chipRow, log, bar)),
+    h("div", { class: "card wash chat-card" }, body),
   );
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
@@ -77,6 +87,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       const reply = await Bridge.chatSend(query, context);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      // A new session gets its id with its first answer: it joins the menu.
+      if (reply.session && State.activeSession?.id !== reply.session) {
+        State.activeSession = {
+          backend: State.settings.chatBackend,
+          id: reply.session,
+          cwd: State.activeSession?.cwd ?? null,
+        };
+        void sessions.refresh();
+      }
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
@@ -104,6 +123,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   return {
     el,
     sync() {
+      const split = usesSessions();
+      body.classList.toggle("split", split);
+      sessions.el.style.display = split ? "" : "none";
+      if (split) sessions.sync();
+
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";
       if (chipRow.dataset.label !== wantChip) {
@@ -128,6 +152,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     focus() {
       input.focus();
       input.select();
+      // The Ask tab shows the active session: its conversation, read back from
+      // the transcript when the chat has nothing yet.
+      if (usesSessions()) void sessions.showActive();
     },
   };
 }

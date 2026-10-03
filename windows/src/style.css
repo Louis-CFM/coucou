@@ -755,9 +755,186 @@ input[type="range"]::-webkit-slider-thumb {
   z-index: 1;
   height: 100%;
   display: flex;
+  gap: 10px;
+  padding: 12px 16px 14px 84px;
+}
+
+.chat-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 16px 14px 84px;
+}
+
+/* ── Mochi's sessions (left of the chat, local Claude Code only) ─────────── */
+
+/* Split: the column takes the room the chat kept for Mochi, and Mochi moves to
+   its top (SESSIONS_COLUMN in layout.ts) — the menu starts below him. */
+.chat-body.split {
+  padding-left: 16px;
+}
+
+.chat-body.split .sessions {
+  padding-top: 52px;
+}
+
+.sessions {
+  flex: 0 0 156px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sess-trigger {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 6px 22px 6px 9px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sess-trigger:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.sess-trigger svg {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  color: var(--dim-2);
+  transform: translateY(-50%) rotate(90deg);
+  transition: transform 0.15s ease-out;
+}
+
+.sessions.open .sess-trigger svg {
+  transform: translateY(-50%) rotate(-90deg);
+}
+
+.sess-title,
+.sess-folder {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sess-title {
+  font: 500 11.5px var(--font);
+  color: var(--ink-2);
+}
+
+.sess-folder {
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+}
+
+.sess-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.sess-row {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.sess-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sess-row.on {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.sess-pick,
+.sess-new {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 3px 4px 3px 9px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* In the menu's column, nothing grows: "New in a folder…" and the rows keep
+   their height, and the list just moves up when a session goes. */
+.sess-menu > .sess-new,
+.sess-menu > .sess-row {
+  flex: 0 0 auto;
+}
+
+.sess-new .sess-title {
+  color: #a5b4fc;
+}
+
+.sess-del {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-right: 3px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--dim-3);
+  font: 500 10px var(--font);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.sess-row:hover .sess-del,
+.sess-del.armed {
+  opacity: 1;
+}
+
+.sess-del:hover {
+  color: var(--ink-2);
+}
+
+.sess-del.armed {
+  color: var(--red-text);
+  background: rgba(244, 80, 94, 0.14);
+}
+
+.sess-error,
+.sess-empty {
+  font: 400 10.5px var(--font);
+  padding: 3px 9px;
+}
+
+.sess-error {
+  color: var(--red-text);
+}
+
+.sess-empty {
+  color: var(--dim-3);
 }
 
 .chip-row:empty {

@@ -18,6 +18,10 @@ interface HookPayload {
   request_id?: string;
   session_id?: string;
   cwd?: string;
+  /** Added by coucou-hook when the session runs under WSL. */
+  wsl_distro?: string;
+  /** Added by coucou-hook: its ancestor processes, nearest first. */
+  terminal_pids?: number[];
   message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
@@ -120,11 +124,16 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string) {
+function upsert(projectName: string, cwd: string, wslDistro: string, terminalPids: number[]) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
-  if (cwd) t.sessionCwd = cwd;
+  // The distro goes with the folder: a Windows session after a WSL one clears it.
+  if (cwd) {
+    t.sessionCwd = cwd;
+    t.sessionWslDistro = wslDistro || null;
+    t.sessionTerminalPids = terminalPids;
+  }
 }
 
 function clearSession() {
@@ -151,6 +160,8 @@ function handleHook(island: Island, payload: HookPayload) {
 
   const name = payload.hook_event_name ?? "";
   const cwd = payload.cwd ?? "";
+  const wslDistro = payload.wsl_distro ?? "";
+  const terminalPids = Array.isArray(payload.terminal_pids) ? payload.terminal_pids : [];
   const raw = lastPathComponent(cwd);
   const projectName = aliasProjectName(raw || "Session");
 
@@ -178,7 +189,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, wslDistro, terminalPids);
     }
   };
 
@@ -287,7 +298,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, wslDistro, terminalPids);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};

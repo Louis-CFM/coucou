@@ -261,6 +261,20 @@ select option {
   color: #ff8d97;
 }
 
+/* A command to copy: on its own line, selectable, wrapped anywhere (a path has
+   no spaces to break on). */
+.notice .cmd {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  font: 400 11.5px var(--mono);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
