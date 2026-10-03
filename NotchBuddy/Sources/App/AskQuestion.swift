@@ -43,13 +43,17 @@ struct AskQuestion: Equatable {
 
     // MARK: - Build answers dict
     // selections[i] = list of labels selected for question[i].
-    // Single-select: one label; multi-select: joined by ", ".
-    // Custom text answers arrive pre-keyed: selections[i] = [customText].
-    static func buildAnswers(questions: [AskQuestionItem], selections: [[String]]) -> [String: String] {
-        var answers: [String: String] = [:]
+    // Single-select / Other…: one label → String value (Claude Code 2.1.85+).
+    // Multi-select: array of labels → [String] value (Claude Code 2.1.136+).
+    static func buildAnswers(questions: [AskQuestionItem], selections: [[String]]) -> [String: Any] {
+        var answers: [String: Any] = [:]
         for (i, item) in questions.enumerated() {
             guard i < selections.count, !selections[i].isEmpty else { continue }
-            answers[item.question] = selections[i].joined(separator: ", ")
+            if item.multiSelect {
+                answers[item.question] = selections[i]          // array for multi-select
+            } else {
+                answers[item.question] = selections[i][0]       // string for single-select
+            }
         }
         return answers
     }

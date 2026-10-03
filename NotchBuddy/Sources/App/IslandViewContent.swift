@@ -319,10 +319,12 @@ struct QuestionView: View {
                 let isMulti = item.multiSelect
                 let curSel = qi < selections.count ? selections[qi] : []
                 let curOther = qi < showOther.count ? showOther[qi] : false
+                let curOtherText = qi < otherTexts.count ? otherTexts[qi] : ""
+                let canProceed = !curSel.isEmpty || (curOther && !curOtherText.isEmpty)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    // Header row
-                    HStack(spacing: 0) {
+                    // Header row: agent name + question counter + "Reply in terminal" link
+                    HStack(spacing: 4) {
                         AgentWho(task: state.focusTask, label: "is asking")
                         Spacer(minLength: 4)
                         if q.questions.count > 1 {
@@ -330,8 +332,13 @@ struct QuestionView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(Color(hex: "#6B7079"))
                         }
+                        Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                            .underline()
                     }
-                    // Question text (+ optional header label above)
+                    // Optional short header label above question text
                     if !item.header.isEmpty {
                         Text(item.header)
                             .font(.system(size: 10))
@@ -341,7 +348,7 @@ struct QuestionView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(2)
-                    // Options or "Other…" text field
+                    // Options (wrapping) or "Other…" text field
                     if curOther {
                         HStack(spacing: 6) {
                             TextField("Your answer…", text: Binding(
@@ -354,56 +361,56 @@ struct QuestionView: View {
                             .focused($otherFieldFocused)
                             .onAppear { otherFieldFocused = true }
                             .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
-                            SecondaryButton("Send") { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
                             SecondaryButton("✕") {
                                 if qi < showOther.count { showOther[qi] = false }
                             }
                         }
                     } else {
-                        HStack(spacing: 6) {
+                        ChipFlowLayout(spacing: 6) {
                             ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
                                 let isSelected = curSel.contains(opt.label)
                                 if isMulti {
-                                    // Toggle button
                                     Button {
                                         toggleSelection(qi: qi, label: opt.label)
                                     } label: {
                                         Text(opt.label)
                                             .font(.system(size: 12, weight: .medium))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.25) : Color.white.opacity(0.07))
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
                                             .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
                                             .clipShape(RoundedRectangle(cornerRadius: 7))
-                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.6) : Color.white.opacity(0.1), lineWidth: 1))
+                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
                                     }
                                     .buttonStyle(.plain)
                                     .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                                 } else {
-                                    SecondaryButton(opt.label) { selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast) }
-                                        .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                    SecondaryButton(opt.label) {
+                                        selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
+                                    }
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                                 }
                             }
-                            // "Other…" implicit option
+                            // "Other…" implicit free-text option
                             SecondaryButton("Other…") {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
                     }
-                    // Bottom row
-                    HStack(spacing: 8) {
-                        SecondaryButton("Reply in terminal") {
-                            HookServer.shared.sendQuestionAsk()
+                    // Send/Next — only for multi-select (single-select auto-sends on click)
+                    if isMulti {
+                        PrimaryButton(isLast ? "Send" : "Next") {
+                            proceedFromQuestion(q: q, qi: qi, isLast: isLast)
                         }
-                        Spacer(minLength: 0)
-                        if isMulti || !isLast {
-                            // For multiSelect: Send button; for multi-question nav: Next/Send
-                            let canProceed = !curSel.isEmpty || (curOther && !(qi < otherTexts.count ? otherTexts[qi] : "").isEmpty)
-                            PrimaryButton(isLast ? "Send" : "Next") {
-                                proceedFromQuestion(q: q, qi: qi, isLast: isLast)
-                            }
-                            .opacity(canProceed ? 1 : 0.4)
+                        .disabled(!canProceed)
+                        .opacity(canProceed ? 1 : 0.4)
+                    }
+                    // "Other…" send button — appears inline below text field
+                    if curOther {
+                        PrimaryButton(isLast ? "Send" : "Next") {
+                            commitOtherAndProceed(q: q, qi: qi, isLast: isLast)
                         }
+                        .disabled(!canProceed)
+                        .opacity(canProceed ? 1 : 0.4)
                     }
                 }
                 .padding(.leading, 116)
@@ -433,24 +440,16 @@ struct QuestionView: View {
         }
     }
 
-    // Single-select: select one label then navigate/send
+    // Single-select: pick a label and immediately advance/send
     private func selectAndProceed(q: AskQuestion, qi: Int, label: String, isLast: Bool) {
         guard qi < selections.count else { return }
         selections[qi] = [label]
-        if isLast {
-            sendAnswers(q: q)
-        } else {
-            withAnimation { questionIndex = qi + 1 }
-        }
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
     }
 
-    // Multi-select or multi-question "Next/Send" button
+    // Multi-select Send/Next button
     private func proceedFromQuestion(q: AskQuestion, qi: Int, isLast: Bool) {
-        if isLast {
-            sendAnswers(q: q)
-        } else {
-            withAnimation { questionIndex = qi + 1 }
-        }
+        if isLast { sendAnswers(q: q) } else { withAnimation { questionIndex = qi + 1 } }
     }
 
     // "Other…" confirm
@@ -1072,8 +1071,8 @@ struct PromptView: View {
 
 // MARK: - Model / provider picker
 
-/// Wrapping horizontal flow layout for provider chips.
-private struct ProviderChipFlow: Layout {
+/// Wrapping horizontal flow layout — used by ModelPickerView and QuestionView.
+struct ChipFlowLayout: Layout {
     var spacing: CGFloat = 6
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
         let r = rows(maxW: proposal.replacingUnspecifiedDimensions().width, subviews: subviews)
@@ -1112,7 +1111,7 @@ struct ModelPickerView: View {
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
                 return true
             }
-            ProviderChipFlow(spacing: 6) {
+            ChipFlowLayout(spacing: 6) {
                 ForEach(visibleProviders, id: \.self) { provider in
                     Button {
                         guard provider != state.chatProvider else { return }

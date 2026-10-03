@@ -122,7 +122,7 @@ final class HookServer: @unchecked Sendable {
 
     /// Called by QuestionView. Sends answers JSON and cleans up.
     @MainActor
-    func sendQuestionAnswers(_ answers: [String: String]) {
+    func sendQuestionAnswers(_ answers: [String: Any]) {
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
@@ -263,11 +263,26 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        let coucouKind = payload["coucou_kind"] as? String ?? ""
+
         // statusline payloads are handled separately — no session, no reveal, no sound
-        if let kind = payload["coucou_kind"] as? String, kind == "statusline" {
+        if coucouKind == "statusline" {
             Task { @MainActor in self.processStatusLine(payload: payload) }
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
+            return
+        }
+
+        // AskUserQuestion via --ask PreToolUse hook — hold fd open like PermissionRequest
+        if coucouKind == "ask_user_question" {
+            let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
+            if let parsed = AskQuestion.parse(toolInput: toolInput) {
+                Task { @MainActor in self.processQuestionRequest(fd: fd, parsed: parsed, payload: payload) }
+            } else {
+                // Malformed payload — fall back: send ask so Claude Code re-asks in terminal
+                sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
             return
         }
 
@@ -398,9 +413,12 @@ final class HookServer: @unchecked Sendable {
 
         case "PreToolUse":
             activeSessionId = sessionId
+            let tool = payload["tool_name"] as? String ?? "Tool"
+            // AskUserQuestion is handled via the dedicated --ask hook.
+            // Skip state/step update here to avoid flickering over the question card.
+            guard tool != "AskUserQuestion" else { break }
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .working)
-            let tool = payload["tool_name"] as? String ?? "Tool"
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
             appendStep(id: agentId, step: step)
@@ -603,11 +621,14 @@ final class HookServer: @unchecked Sendable {
         let inputKey = Self.approvalInputKey(toolInput)
         nbLog("PermissionRequest \(tool) [\(pillId)]")
 
-        // AskUserQuestion — show the question card if the payload parses correctly.
-        // On parse failure fall through to the normal Allow/Deny card.
-        if tool == "AskUserQuestion", let parsed = AskQuestion.parse(toolInput: toolInput) {
-            processQuestionRequest(fd: fd, parsed: parsed, sessionId: sessionId,
-                                   pillId: pillId, projectName: projectName, cwd: cwd)
+        // AskUserQuestion is now handled via the dedicated --ask PreToolUse hook.
+        // If it still arrives here as a PermissionRequest, reply "ask" so Claude Code
+        // re-asks in the terminal — never show the question twice.
+        if tool == "AskUserQuestion" {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
             return
         }
 
@@ -721,9 +742,42 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Question request
 
     @MainActor
-    private func processQuestionRequest(fd: Int32, parsed: AskQuestion, sessionId: String,
-                                         pillId: String, projectName: String, cwd: String) {
+    private func processQuestionRequest(fd: Int32, parsed: AskQuestion, payload: [String: Any]) {
         let state = AppState.shared
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
+        let cwd       = payload["cwd"]        as? String ?? ""
+        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
+        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+
+        let rawAgent    = payload["coucou_agent"] as? String ?? ""
+        let termProgram = payload["term_program"]  as? String ?? ""
+        let bundleId    = payload["bundle_id"]     as? String ?? ""
+        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
+        let isVSCodeEditor = !isCursorEditor && (
+            termProgram.lowercased().contains("vscode") ||
+            bundleId.lowercased().contains("vscode"))
+        #if !APPSTORE
+        let isCodexRequest = rawAgent == "codex"
+        #else
+        let isCodexRequest = false
+        #endif
+        let pillId: String
+        if isCodexRequest {
+            pillId = "agent_codex"
+        } else if isCursorEditor {
+            pillId = "agent_cursor"
+        } else {
+            pillId = "integration_claude"
+        }
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
 
         // Displace any previous question waiting for an answer.
         if pendingQuestionFD >= 0 {
@@ -759,8 +813,17 @@ final class HookServer: @unchecked Sendable {
         questionFDSource = source
 
         let captured = fd
-        DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
             guard let self, self.pendingQuestionFD == captured else { return }
+            // Send "ask" so nb-hook exits cleanly; Claude Code re-asks in terminal.
+            let askFD = self.pendingQuestionFD
+            self.pendingQuestionFD = -1
+            let src = self.questionFDSource
+            self.questionFDSource = nil
+            Task.detached { [weak self] in
+                self?.sendLine(fd: askFD, text: #"{"permissionDecision":"ask"}"#)
+                DispatchQueue.main.async { src?.cancel() }
+            }
             self.dismissQuestionCard(note: "")
         }
     }
@@ -951,27 +1014,45 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Outdated hook detection
 
-    /// Returns true if settings.json has a Coucou PermissionRequest hook with timeout < 120s.
+    /// Returns true if settings.json has a Coucou hook that needs updating:
+    /// either a PermissionRequest hook with timeout < 120s, or the AskUserQuestion
+    /// PreToolUse matcher is missing (requires Claude Code 2.1.85+).
     static func hooksNeedUpdate() -> Bool {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         guard let data = try? Data(contentsOf: settingsURL),
               let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = settings["hooks"] as? [String: Any],
-              let permReqHooks = hooks["PermissionRequest"] as? [[String: Any]] else {
+              let hooks = settings["hooks"] as? [String: Any] else {
             return false
         }
-        for matcher in permReqHooks {
-            if let hookList = matcher["hooks"] as? [[String: Any]] {
-                for hook in hookList {
-                    if let cmd = hook["command"] as? String,
-                       (cmd.contains("NotchBuddy") || cmd.contains("coucou")),
-                       let timeout = hook["timeout"] as? Int,
-                       timeout < 120 {
-                        return true
+        // Track whether any Coucou hook is installed at all
+        var hasCoucouHooks = false
+
+        if let permReqHooks = hooks["PermissionRequest"] as? [[String: Any]] {
+            for matcher in permReqHooks {
+                if let hookList = matcher["hooks"] as? [[String: Any]] {
+                    for hook in hookList {
+                        if let cmd = hook["command"] as? String,
+                           cmd.contains("NotchBuddy") || cmd.contains("coucou") {
+                            hasCoucouHooks = true
+                            if let timeout = hook["timeout"] as? Int, timeout < 120 { return true }
+                        }
                     }
                 }
             }
+        }
+
+        // Check that the AskUserQuestion PreToolUse entry exists
+        if hasCoucouHooks {
+            let preToolHooks = hooks["PreToolUse"] as? [[String: Any]] ?? []
+            let hasAskEntry = preToolHooks.contains { m in
+                (m["matcher"] as? String) == "AskUserQuestion"
+                && (m["hooks"] as? [[String: Any]])?.contains {
+                    let cmd = $0["command"] as? String ?? ""
+                    return cmd.contains("NotchBuddy") || cmd.contains("coucou")
+                } ?? false
+            }
+            if !hasAskEntry { return true }
         }
         return false
     }
@@ -1036,6 +1117,13 @@ final class HookServer: @unchecked Sendable {
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
+        // Dedicated AskUserQuestion PreToolUse hook (Claude Code 2.1.85+, timeout 130s)
+        var preToolUse = hooks["PreToolUse"] as? [[String: Any]] ?? []
+        preToolUse.append([
+            "matcher": "AskUserQuestion",
+            "hooks": [["type": "command", "command": "\(quotedCmd) --ask", "timeout": 130]],
+        ])
+        hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
         return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
     }
@@ -1280,6 +1368,13 @@ final class HookServer: @unchecked Sendable {
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
+        // Dedicated AskUserQuestion PreToolUse hook (Claude Code 2.1.85+, timeout 130s)
+        var preToolUse = hooks["PreToolUse"] as? [[String: Any]] ?? []
+        preToolUse.append([
+            "matcher": "AskUserQuestion",
+            "hooks": [["type": "command", "command": "\(quotedCmd) --ask", "timeout": 130]],
+        ])
+        hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
         return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
     }
@@ -1806,6 +1901,56 @@ def main():
                 pass
         return
 
+    # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
+    if '--ask' in sys.argv[1:]:
+        tool = payload.get('tool_name', '')
+        if tool != 'AskUserQuestion':
+            return  # Not an AskUserQuestion invocation — exit cleanly (no output)
+        payload['coucou_kind'] = 'ask_user_question'
+        env = os.environ
+        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        if 'cwd' not in payload or not payload['cwd']:
+            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+            if isinstance(paths, list) and paths:
+                payload['cwd'] = paths[0]
+            else:
+                payload['cwd'] = os.getcwd()
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(125)
+            s.connect(socket_path)
+            s.sendall((json.dumps(payload) + '\\n').encode())
+            chunks = []
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                if b'\\n' in chunk:
+                    break
+            s.close()
+            response = b''.join(chunks).decode().strip()
+            if response:
+                try:
+                    resp_obj = json.loads(response)
+                    decision = resp_obj.get('permissionDecision', '')
+                except Exception:
+                    decision = ''
+                if decision == 'answer':
+                    answers = resp_obj.get('answers', {})
+                    questions = payload.get('tool_input', {}).get('questions', [])
+                    out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                # 'ask' or unknown: fall through → no output → Claude Code asks in terminal
+        except Exception:
+            pass
+        return
+
     # Parse --agent <name> and optional positional event from argv.
     # --agent tags the payload with coucou_agent so the app routes to the right pill.
     # The positional arg is a fallback event name for agents that do not set hook_event_name.
@@ -2021,6 +2166,56 @@ def main():
                         sys.stdout.buffer.flush()
             except Exception:
                 pass
+        return
+
+    # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
+    if '--ask' in sys.argv[1:]:
+        tool = payload.get('tool_name', '')
+        if tool != 'AskUserQuestion':
+            return  # Not an AskUserQuestion invocation — exit cleanly (no output)
+        payload['coucou_kind'] = 'ask_user_question'
+        env = os.environ
+        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        if 'cwd' not in payload or not payload['cwd']:
+            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+            if isinstance(paths, list) and paths:
+                payload['cwd'] = paths[0]
+            else:
+                payload['cwd'] = os.getcwd()
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(125)
+            s.connect(socket_path)
+            s.sendall((json.dumps(payload) + '\\n').encode())
+            chunks = []
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                if b'\\n' in chunk:
+                    break
+            s.close()
+            response = b''.join(chunks).decode().strip()
+            if response:
+                try:
+                    resp_obj = json.loads(response)
+                    decision = resp_obj.get('permissionDecision', '')
+                except Exception:
+                    decision = ''
+                if decision == 'answer':
+                    answers = resp_obj.get('answers', {})
+                    questions = payload.get('tool_input', {}).get('questions', [])
+                    out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                # 'ask' or unknown: fall through → no output → Claude Code asks in terminal
+        except Exception:
+            pass
         return
 
     # Parse --agent <name> and optional positional event from argv.

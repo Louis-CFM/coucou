@@ -46,13 +46,16 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 - Raccourcis Y / N quand la vue `approval` est ouverte.
 
 ### Répondre aux questions (`AskUserQuestion`)
-- `AskUserQuestion` arrive comme `PermissionRequest` avec `tool_name == "AskUserQuestion"`.
+- **Claude Code 2.1.85+** : `AskUserQuestion` arrive en `PreToolUse` (avec `matcher: "AskUserQuestion"`), non plus en `PermissionRequest`. Un hook dédié avec `--ask` et un timeout de 130 s est requis dans `settings.json`. Si ce hook manque, l'app affiche la bannière « Hooks outdated — update them to answer Claude's questions from the notch » dans les réglages et propose la mise à jour.
+- `PermissionRequest` pour `AskUserQuestion` : l'app répond `{"permissionDecision":"ask"}` immédiatement (no-op) et n'affiche pas de carte.
+- `PreToolUse` général pour `AskUserQuestion` : l'app ignore l'événement (pas de mise à jour de l'état `.working`).
 - `tool_input.questions` : tableau de 1 à 4 questions, chacune avec `question` (texte), `header` (≤ 12 car.), `options` (2 à 4, chacune `label` + `description`), `multiSelect`.
-- L'app parse en un modèle Foundation (`AskQuestion`) ; si le parse échoue, elle retombe sur la carte Allow/Deny.
-- La vue `question` affiche une question à la fois (compteur 1/N), les options comme boutons (single-select : clic = réponse immédiate ; multi-select : toggles + bouton Send), un champ libre « Other… », et un bouton « Reply in terminal » (envoie `{"permissionDecision":"ask"}`).
-- Réponse via socket : `{"permissionDecision":"answer","answers":{"<question>":"<label>"}}`. Multi-select : labels joints par `", "`.
-- nb-hook.py : si `decision == 'answer'` → émet `hookSpecificOutput` avec `behavior: allow` et `updatedInput: {questions, answers}` — Claude Code reçoit les réponses et continue.
-- Fallback : si l'app ne répond pas (absente, timeout 115 s) ou renvoie `ask`, nb-hook n'émet rien → Claude Code re-pose la question dans le terminal.
+- L'app parse en un modèle Foundation (`AskQuestion`) ; si le parse échoue, nb-hook.py n'émet rien → Claude Code re-pose la question dans le terminal.
+- La vue `question` affiche une question à la fois (compteur 1/N), les options en grille fluide (`ChipFlowLayout`), un champ libre « Other… », et un lien « Reply in terminal » dans l'en-tête (envoie `ask`, aucune sortie).
+- Single-select : clic = réponse immédiate (pas de bouton Send). Multi-select : toggles + bouton Send/Next, désactivé tant qu'aucun choix.
+- Réponse via socket : `{"decision":"answer","answers":{"<question>":"<label>"}}`. Multi-select : valeur `[String]` (tableau, Claude Code 2.1.136+). Single-select et « Other… » : valeur `String`.
+- nb-hook.py `--ask` : si `decision == 'answer'` → émet `hookSpecificOutput` avec `hookEventName: "PreToolUse"`, `permissionDecision: "allow"` et `updatedInput: {questions, answers}` — Claude Code reçoit les réponses et continue.
+- Fallback : si l'app ne répond pas (absente, timeout 125 s) ou renvoie `ask`, nb-hook n'émet rien → Claude Code re-pose la question dans le terminal.
 
 ### Sauter au terminal
 | Contexte capté | Action |

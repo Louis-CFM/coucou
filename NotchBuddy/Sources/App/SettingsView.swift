@@ -330,7 +330,7 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
-                        Text("Hook timeout outdated — update to fix approvals")
+                        Text("Hooks outdated — update them to answer Claude's questions from the notch")
                             .font(.system(size: 11))
                             .foregroundColor(.orange)
                     }

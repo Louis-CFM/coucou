@@ -93,21 +93,21 @@ enum AskQuestionTests {
         let items = AskQuestion.parse(toolInput: multi)!.questions
         + AskQuestion.parse(toolInput: single)!.questions
 
-        // Single-select
+        // items[0] = "Pick features" (multiSelect: true), items[1] = "Which search engine?" (multiSelect: false)
         let sel1 = [["Postgres"], ["Meilisearch"]]
         let ans1 = AskQuestion.buildAnswers(questions: items, selections: sel1)
-        checkTrue("single-select answer",             ans1["Pick features"] == "Postgres")
-        checkTrue("second question answer",           ans1["Which search engine?"] == "Meilisearch")
+        checkTrue("multi-select single pick → [String]",  (ans1["Pick features"] as? [String]) == ["Postgres"])
+        checkTrue("single-select answer → String",        (ans1["Which search engine?"] as? String) == "Meilisearch")
 
-        // Multi-select joined by ", "
+        // Multi-select with multiple picks → [String] array
         let sel2 = [["Postgres", "Algolia"], []]
         let ans2 = AskQuestion.buildAnswers(questions: items, selections: sel2)
-        check("multi-select joined",                  ans2["Pick features"] ?? "", "Postgres, Algolia")
-        checkTrue("unanswered question omitted",      ans2["Which search engine?"] == nil)
+        checkTrue("multi-select multiple picks → [String]", (ans2["Pick features"] as? [String]) == ["Postgres", "Algolia"])
+        checkTrue("unanswered question omitted",            ans2["Which search engine?"] == nil)
 
         // Empty selections → empty dict
         let ans3 = AskQuestion.buildAnswers(questions: items, selections: [[], []])
-        checkTrue("all empty → empty dict",           ans3.isEmpty)
+        checkTrue("all empty → empty dict",               ans3.isEmpty)
 
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
