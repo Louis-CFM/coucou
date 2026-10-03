@@ -2,9 +2,10 @@
 //
 // Windows: the named pipe `\\.\pipe\coucou-<sid>`, one instance per connection.
 // Linux: the Unix socket `$XDG_RUNTIME_DIR/coucou.sock`. Every hook event is
-// forwarded to the island as a `hook` event. `PermissionRequest` is the only one
-// that keeps its connection open: it waits for the island's decision and writes
-// it back on the same connection, which is how approving from the island works.
+// forwarded to the island as a `hook` event. `PermissionRequest` and
+// `AskUserQuestion` are the only ones that keep their connection open: they wait
+// for the island's decision (or the answer to the question) and write it back on
+// the same connection, which is how approving and answering from the island work.
 //
 // Claude Code is never blocked by us. Three things guarantee it:
 //   * coucou-hook gives the connection 300 ms and exits cleanly if we are closed;
@@ -14,9 +15,10 @@
 //   * whatever happens we drop the connection after the decision timeout, and
 //     the terminal takes over.
 //
-// What we write back is the bare word `allow` or `deny`. Turning that into the
-// documented hookSpecificOutput JSON is coucou-hook's job, so the wire format
-// Claude Code expects lives in exactly one place.
+// What we write back is the bare word `allow` or `deny`, or for a question the
+// answers as one JSON line. Turning that into the documented hookSpecificOutput
+// JSON is coucou-hook's job, so the wire format Claude Code expects lives in
+// exactly one place.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -35,6 +37,8 @@ use crate::log;
 
 /// Slightly under coucou-hook's own 110 s wait, so we always answer first.
 const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
+/// A question takes longer to read and answer; coucou-hook waits 125 s for it.
+const QUESTION_TIMEOUT: Duration = Duration::from_secs(120);
 /// How long the island gets to say "the card is up". This is the whole of B4:
 /// without it, an island that is paused, hidden behind a crashed webview or
 /// simply not listening would leave Claude Code staring at a prompt nobody can
@@ -195,7 +199,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
-    if event != "PermissionRequest" {
+    if event != "PermissionRequest" && event != "AskUserQuestion" {
         log::line(format!("hook {event}"));
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
@@ -209,10 +213,11 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         pending.0.lock().unwrap().insert(id.clone(), tx);
     }
     payload["request_id"] = json!(id);
-    log::line(format!("hook PermissionRequest id={id}"));
+    log::line(format!("hook {event} id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    let limit = if event == "AskUserQuestion" { QUESTION_TIMEOUT } else { DECISION_TIMEOUT };
+    let decision = wait_for_decision(&id, &mut rx, limit).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -225,7 +230,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
-async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
+async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>, limit: Duration) -> Option<String> {
     match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
         Ok(Some(Reply::Ack)) => {}
         // A click that beats the ack is still a click.
@@ -244,7 +249,7 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
     }
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
+    match tokio::time::timeout(limit, rx.recv()).await {
         Ok(Some(Reply::Decision(d))) => {
             log::line(format!("hook id={id} answered {d}"));
             Some(d)
@@ -294,4 +299,12 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// Called when a question is answered in the island. `answers` maps each question's
+/// text to the label picked (or an array of labels for a multi-select); coucou-hook
+/// turns it into what Claude Code expects.
+pub fn answer_question(app: &AppHandle, request_id: &str, answers: Value) {
+    log::line(format!("answer id={request_id}"));
+    send(app, request_id, Reply::Decision(json!({ "answers": answers }).to_string()), false);
 }

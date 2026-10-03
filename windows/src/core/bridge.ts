@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { Settings, TerminalRef } from "./state";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -50,10 +50,20 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
 
+  /** Every display, for the settings picker. */
+  monitors: () => call<{ name: string; width: number; height: number }[]>("monitors"),
+
   openUrl: (url: string) => call<void>("open_url", { url }),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
-  openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
+  openInVSCode: (path: string | null) => call<"ok" | "no-editor" | "bad-path">("open_in_vscode", { path }),
+
+  /** The lines around an edit in the file itself (null: unreadable, outside the session folder, not found). */
+  fileSnippet: (cwd: string, path: string, find: string, context: number) =>
+    call<Snippet | null>("file_snippet", { cwd, path, find, context }),
+
+  /** Brings the terminal tab the session runs in to the front. False: not possible here. */
+  focusTerminal: (t: TerminalRef) => call<boolean>("focus_terminal", { ...t }),
 
   quit: () => call<void>("quit_app"),
 
@@ -73,8 +83,18 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Plan usage: the status line relay, installed apart from the hooks ──────
+  /** Diff of the `statusLine` key only. `install: false` previews taking the relay out. */
+  statusLinePreview: (install: boolean) => callOrThrow<HookPreview>("status_line_preview", { install }),
+  /** Same rules as hooksApply: an explicit click, and only for the diff that was shown. */
+  statusLineApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("status_line_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
+  /** The answers to a question from Claude Code, one value per question text. */
+  questionAnswer: (requestId: string, answers: Record<string, string | string[]>) =>
+    call<void>("question_answer", { requestId, answers }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
@@ -118,8 +138,22 @@ export interface DroppedFile {
   size: number;
 }
 
+/** The lines around an edit, read from the file itself (see snippet.rs). */
+export interface Snippet {
+  /** Line number (1-based) of `lines[0]`. */
+  start: number;
+  lines: string[];
+  /** Where the edited block begins in `lines`, and how many lines it spans. */
+  at: number;
+  len: number;
+}
+
 export interface HookStatus {
   installed: boolean;
+  /** The `--ask` hook is in. Missing on hooks installed before questions were supported. */
+  askHookInstalled: boolean;
+  /** Coucou's status line relay (plan usage) is the status line in settings.json. */
+  planRelayInstalled: boolean;
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;

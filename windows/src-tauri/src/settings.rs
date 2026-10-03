@@ -20,6 +20,22 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "auto" follows the system language; otherwise "en", "de" or "fr". Drives the
+    /// chat's answer language and the island's step labels.
+    #[serde(default = "default_language")]
+    pub language: String,
+    /// Show the plan usage pill (5 h and weekly limits) in the island's header.
+    /// Off until the user turns it on, so the header stays as it shipped.
+    #[serde(default)]
+    pub show_plan_in_notch: bool,
+    /// Coucou's status line relay is the one in settings.json. Like
+    /// `hooks_installed`, the real state wins at launch over what was stored.
+    #[serde(default)]
+    pub plan_relay_installed: bool,
+}
+
+fn default_language() -> String {
+    "auto".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +59,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            language: default_language(),
+            show_plan_in_notch: false,
+            plan_relay_installed: false,
         }
     }
 }

@@ -4,11 +4,15 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { fa } from "./fa";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
+import { buildQuestion } from "./question";
+import { buildSession, hasSession } from "./session";
+import { PlanCard, buildPlanPill, planPillVisible } from "./usage";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 
@@ -21,6 +25,10 @@ export interface ViewActions {
   openTarget(): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
+  /** The answers to Claude Code's question (one value per question text). */
+  answerQuestion(answers: Record<string, string | string[]>): void;
+  /** Hand the question back: Claude Code asks it in the terminal. */
+  replyInTerminal(): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
@@ -78,12 +86,13 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
-  const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
-  const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
-  const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, fa("house", 15));
+  const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, fa("comment", 15));
+  const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, fa("plus", 14));
 
-  const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
-  const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const planPill = buildPlanPill();
+  const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, fa("gear", 16));
+  const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, fa("volumeHigh", 16));
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,21 +103,24 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, planPill.el, gearBtn, soundBtn),
   );
 
   return {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "session");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
-      gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
+      gearBtn.append(fa("gear", 16));
       clear(soundBtn);
-      soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      soundBtn.append(fa(State.settings.soundEnabled ? "volumeHigh" : "volumeXmark", 16));
+      const pillOn = planPillVisible();
+      planPill.el.style.display = pillOn ? "" : "none";
+      if (pillOn) planPill.sync();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -126,9 +138,17 @@ function buildOverview(actions: ViewActions): ViewHost {
     { class: "icon-btn jump", title: "Open", onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
-  const left = card(null, leftBody, jump);
+  // While the session has edited a file or run a command, the left card opens
+  // the code view. Just a click: nothing changes by itself.
+  const expandHint = h("span", { class: "expand-hint", title: "Show the code" }, fa("expand", 10));
+  const left = card(null, leftBody, jump, expandHint);
+  left.addEventListener("click", (e) => {
+    if (mode === "ticker" && hasSession() && !(e.target as HTMLElement).closest(".jump")) actions.setView("session");
+  });
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
+  // Opened from the plan pill in the header: stands in for the left card.
+  const plan = new PlanCard();
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -138,7 +158,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
+  let mode: "ticker" | "card" | "plan" | null = null;
   let cardKey = "";
 
   const hooks: IntegrationCardHooks = {
@@ -162,6 +182,7 @@ function buildOverview(actions: ViewActions): ViewHost {
     el,
     tick(nowMs: number) {
       if (mode === "ticker") ticker.tick(nowMs);
+      if (mode === "plan") plan.sync();
     },
     sync() {
       const task = State.focusTask;
@@ -177,7 +198,18 @@ function buildOverview(actions: ViewActions): ViewHost {
       const sessionActive =
         task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
 
-      if (task && sessionActive) {
+      const planOpen = State.showingPlanDetail && planPillVisible();
+      if (mode === "plan" && !planOpen) mode = null;
+
+      if (planOpen) {
+        if (mode !== "plan") {
+          clear(leftBody);
+          leftBody.append(plan.el);
+          mode = "plan";
+          cardKey = "";
+        }
+        plan.sync();
+      } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
           leftBody.append(tickerBody);
@@ -212,7 +244,8 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" ? "none" : "";
+      left.classList.toggle("expandable", mode === "ticker" && hasSession());
 
       const others = State.otherTasks.slice(0, 4);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
@@ -317,26 +350,6 @@ function buildApproval(actions: ViewActions): ViewHost {
   };
 }
 
-// ── Question ──────────────────────────────────────────────────────────────────
-
-function buildQuestion(): ViewHost {
-  const who = h("div");
-  const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
-  return {
-    el,
-    sync() {
-      clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
-      const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
-      clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
-    },
-  };
-}
-
 // ── Error ─────────────────────────────────────────────────────────────────────
 
 function buildError(actions: ViewActions): ViewHost {
@@ -394,13 +407,21 @@ function buildConfused(): ViewHost {
 
 // ── Note ──────────────────────────────────────────────────────────────────────
 
-function buildNote(): ViewHost {
+function buildNote(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title" });
   const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title)));
+  let timer: number | null = null;
   return {
     el,
     sync() {
       title.textContent = State.noteMessage ?? "";
+      // A notice answers nothing and nobody is asked to dismiss it, so it goes
+      // away by itself. Scheduled once: sync runs on every state change.
+      if (timer != null) return;
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (State.view === "note") actions.setView(State.defaultView());
+      }, 5000);
     },
   };
 }
@@ -489,13 +510,14 @@ export function buildViews(
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
   map.set("overview", buildOverview(actions));
+  map.set("session", buildSession(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
-  map.set("question", buildQuestion());
+  map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());
-  map.set("note", buildNote());
+  map.set("note", buildNote(actions));
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("upload", buildUpload());

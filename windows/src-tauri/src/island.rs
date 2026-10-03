@@ -114,9 +114,15 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
-/// The display the island lives on: the primary one, or the one under the cursor.
+/// The display the island lives on: a named one, the one under the cursor, or
+/// the primary one (also the fallback when the named display is unplugged).
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
+    if pref != "primary" && pref != "cursor" {
+        if let Some(m) = monitors.iter().find(|m| m.name().is_some_and(|n| n == pref)) {
+            return Some(m.clone());
+        }
+    }
     if pref == "cursor" {
         if let Some((cx, cy)) = cursor_physical() {
             if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
@@ -124,10 +130,32 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
             }
         }
     }
-    app.primary_monitor()
-        .ok()
-        .flatten()
-        .or_else(|| monitors.into_iter().next())
+    if let Some((x, y)) = platform::primary_monitor_origin() {
+        if let Some(m) = monitors.iter().find(|m| m.position().x == x && m.position().y == y) {
+            return Some(m.clone());
+        }
+    }
+    app.primary_monitor().ok().flatten().or_else(|| monitors.into_iter().next())
+}
+
+#[derive(Serialize)]
+pub struct MonitorInfo {
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Every display, for the picker in the settings.
+// Known limit: two identical displays share a name and the first one wins.
+pub fn monitor_list(app: &AppHandle) -> Vec<MonitorInfo> {
+    app.available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|m| {
+            let s = m.size();
+            Some(MonitorInfo { name: m.name()?.clone(), width: s.width, height: s.height })
+        })
+        .collect()
 }
 
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
@@ -156,6 +184,12 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
+
+    if let Some(i) = app.available_monitors().ok().and_then(|all| {
+        all.iter().position(|o| o.position() == m.position() && o.size() == m.size())
+    }) {
+        platform::place_on_monitor(&win, i);
+    }
 
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;

@@ -38,7 +38,9 @@ function makeRow(): Row {
   const shimmer = h("span", { class: "tick-text shimmer" });
   const dim = h("span", {
     class: "tick-text",
-    style: "position:absolute;left:0;right:0;color:#6b7079",
+    // top:0 is needed: an absolute box without it keeps its static position, which
+    // WebKit puts one line below the shimmer text it is meant to overlap.
+    style: "position:absolute;left:0;right:0;top:0;color:#6b7079",
   });
   const el = h(
     "div",

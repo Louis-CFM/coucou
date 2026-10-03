@@ -74,6 +74,12 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+Without an API key, the chat asks **Claude Code** instead (`claude -p`, on your own
+login) when `claude` is on your PATH. It may read the dropped file and search or
+fetch the web, nothing else, and your hooks stay out of it. **Settings → Language**
+sets the language of the answers and of the island's activity labels (system
+language by default).
+
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
@@ -170,6 +176,12 @@ What changes on Linux:
   is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
+- **Which display**: Wayland has no "main display", so "Main display" is read from
+  XWayland's RandR primary (what KDE and Mutter set), via `xrandr`. Without it the
+  first display wins. **Settings → Island lives on** also lists every display by name.
+- **NVIDIA**: with the proprietary driver, WebKitGTK's DMABUF renderer makes the
+  compositor kill the app on its first frame, so Coucou switches it off
+  (`WEBKIT_DISABLE_DMABUF_RENDERER=1`) unless you set that variable yourself.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
   gives no app the cursor position anywhere else.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
@@ -178,6 +190,27 @@ What changes on Linux:
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
+- **Code view**: while a session has edited a file or run a command, a click on the
+  overview's left card opens a small editor (the changed lines in red and green with
+  a few lines of context from the file, then the last command and what it printed);
+  the button in its corner goes back. Nothing opens by itself.
+- **Answer Claude's questions** from the island, as on the Mac: when Claude Code asks
+  something (`AskUserQuestion`), the choices appear as chips: one click answers a single
+  choice, several questions or a multi-select use Next / Send, "Other…" takes free text, and
+  "Reply in terminal" hands the question back. Needs Claude Code 2.1.85 or newer and the
+  `--ask` hook; hooks installed before that show "Hooks outdated" in Settings with an update
+  button (you see the diff first). If Coucou is closed or can't show the question, Claude
+  Code asks in the terminal as usual.
+- **Plan usage**, as on the Mac: a small pill in the island's header ("Claude 73%", green
+  below 50 %, orange up to 80 %, red above) shows your 5-hour and weekly Claude limits,
+  and clicking it opens the details and reset times. Settings → Plan usage →
+  **Show in the notch** turns it on and installs a status line relay after showing you the
+  diff of `~/.claude/settings.json`; a status line you already have keeps working (the relay
+  runs it) and **Uninstall relay** puts it back. Pro and Max plans only, and the numbers
+  arrive with Claude Code's replies.
+- **Open terminal** jumps to the Konsole tab the session runs in: the relay passes
+  Konsole's D-Bus names, the app switches the tab over D-Bus and asks KWin (a
+  short script, via `gdbus`) to raise that window. In any other terminal it opens
+  the folder in VS Code, as on Windows.
 - What the Windows build leaves out, this one does too: sending a file by
-  email, dragging Mochi onto a window, and jumping to a specific terminal
-  window — "Open terminal" opens the folder in VS Code.
+  email and dragging Mochi onto a window.

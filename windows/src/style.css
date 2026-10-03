@@ -133,12 +133,31 @@ body {
   transition: opacity 0.22s ease-in-out;
 }
 
+/* `.view.on` sets pointer-events itself, which beats the value inherited from
+   #views: without this the invisible view sits on top of the drop canvas and
+   eats the clicks meant for its painted buttons. */
+#views.hidden-by-upload .view.on {
+  pointer-events: none;
+}
+
+/* #content sits above the drop canvas in the stacking order and covers the whole
+   island, so it has to let clicks through to the canvas's hit areas. Only the
+   header, which stays on top of the sequence, keeps the mouse. (!important:
+   the island sets pointer-events on #content inline.) */
+#content.upload-on {
+  pointer-events: none !important;
+}
+
+#content.upload-on #header {
+  pointer-events: auto;
+}
+
 #bot-glow {
   position: absolute;
   pointer-events: none;
   border-radius: 50%;
   filter: blur(6px);
-  transition: opacity 0.4s ease-in-out, background 0.4s ease-in-out;
+  /* No CSS transition: the island eases the colour and the opacity itself. */
 }
 
 #countdown {
@@ -208,13 +227,13 @@ body {
 }
 
 .tab {
-  width: 30px;
-  height: 22px;
+  width: 38px;
+  height: 26px;
   display: grid;
   place-items: center;
   border: 0;
   background: transparent;
-  border-radius: 11px;
+  border-radius: 13px;
   color: var(--dim-2);
   cursor: default;
 }
@@ -1364,4 +1383,544 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Session view: a small editor next to Mochi and the turn's phases ──────── */
+/* Proportions follow docs/media/claude-code.png (island 640 × 320). */
+
+.sess {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  height: 100%;
+  padding: 10px 11px 8px 10px;
+}
+
+.sess-left {
+  flex: 0 0 112px;
+  min-width: 0;
+  /* Mochi, on its own canvas, fills the top of this column. */
+  padding: 112px 0 0 8px;
+}
+
+.sess-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 14px var(--font);
+  color: var(--ink);
+}
+
+.sess-name span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sess-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1px 0 14px;
+  font: 400 12.5px var(--font);
+  color: var(--dim-2);
+}
+
+.sess-back {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim-4);
+  cursor: default;
+}
+
+.sess-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.phases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13.5px/16px var(--font);
+  color: var(--dim-4);
+}
+
+.ph-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.ph-icon.ok {
+  color: var(--green-2);
+}
+
+/* The running phase: Font Awesome's ring with a gap, turning. */
+.ph-icon.spin {
+  color: var(--ink);
+  animation: ph-spin 0.9s linear infinite;
+}
+
+/* A phase that has not started: its glyph in a rounded square. */
+.ph-icon.todo {
+  border-radius: 4.5px;
+  color: var(--dim-4);
+  box-shadow: inset 0 0 0 1.5px var(--dim-4);
+}
+
+/* "Done" before the end: the same disc, muted. */
+.ph-icon.done-todo {
+  color: var(--dim-4);
+}
+
+.phase.done {
+  color: var(--dim-2);
+}
+
+.phase.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+@keyframes ph-spin {
+  to { transform: rotate(360deg); }
+}
+
+.editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: #0b0c0e;
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+  font: 400 10px/17px var(--mono);
+}
+
+.ed-tab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 4px 8px;
+  color: var(--ink-2);
+  font: 500 10.5px var(--mono);
+}
+
+/* The file tab: one pill around the language chip, the name and the unsaved dot. */
+.ed-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.ed-chip {
+  padding: 0 4px;
+  border-radius: 3px;
+  font: 700 8.5px/13px var(--font);
+}
+
+.ed-dot {
+  font-size: 7px;
+  color: var(--amber);
+}
+
+.ed-dir {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--dim-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* a long path keeps its end, the useful part */
+}
+
+.ed-code {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 4px;
+}
+
+.ed-row {
+  display: flex;
+  white-space: pre;
+  overflow: hidden;
+  border-left: 2px solid transparent;
+}
+
+.ed-n {
+  flex: 0 0 34px;
+  padding-right: 8px;
+  text-align: right;
+  color: var(--dim-4);
+}
+
+.ed-sign {
+  flex: 0 0 14px;
+  text-align: center;
+  color: var(--dim-4);
+}
+
+.ed-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #c4cad4;
+}
+
+.ed-row.add {
+  background: rgba(52, 211, 153, 0.13);
+  border-left-color: var(--green-2);
+}
+
+.ed-row.add .ed-sign,
+.ed-row.add .ed-n {
+  color: var(--green-2);
+}
+
+.ed-row.del {
+  background: rgba(244, 80, 94, 0.15);
+  border-left-color: var(--red);
+}
+
+.ed-row.del .ed-sign,
+.ed-row.del .ed-n {
+  color: var(--red-text);
+}
+
+.ed-row.del .ed-text {
+  color: var(--dim-3);
+  text-decoration: line-through;
+  text-decoration-color: rgba(244, 80, 94, 0.5);
+}
+
+.term {
+  flex: 0 0 auto;
+  padding: 8px 12px 9px;
+}
+
+.term-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dim-2);
+}
+
+.term-line.good { color: var(--green-2); }
+.term-line.bad { color: var(--red-text); }
+
+.term-line .prompt {
+  color: var(--cyan);
+}
+
+.term-cmd {
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-run {
+  color: var(--dim-3);
+}
+
+.term-line .dim {
+  color: var(--dim-2);
+}
+
+.badge {
+  padding: 0 5px;
+  border-radius: 3px;
+  font: 700 9px/14px var(--font);
+  letter-spacing: 0.03em;
+}
+
+.badge.pass {
+  background: var(--green-2);
+  color: #052e1c;
+}
+
+.badge.fail {
+  background: var(--red);
+  color: #2c0509;
+}
+
+.tok-k { color: #c3a6ff; }
+.tok-s { color: #d3dd8e; }
+.tok-n { color: #f4a46a; }
+.tok-t { color: #f2c070; }
+.tok-f { color: #f2c070; }
+.tok-c { color: var(--dim-4); font-style: italic; }
+
+/* ── Question (AskUserQuestion) ─────────────────────────────────────────────── */
+
+.q-stack {
+  justify-content: center;
+  gap: 7px;
+  padding: 4px 16px 4px 116px; /* clear of Mochi, like the other cards */
+}
+
+.q-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.q-count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  font: 600 10.5px var(--font);
+  color: var(--dim-2);
+}
+
+.q-terminal {
+  border: 0;
+  background: transparent;
+  font: 500 11px var(--font);
+  color: var(--dim-2);
+  cursor: default;
+}
+
+.q-terminal:hover {
+  color: var(--ink);
+}
+
+.q-title {
+  font: 600 13.5px var(--font);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.q-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.q-chip {
+  max-width: 100%;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--ink-2);
+  font: 500 12px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out;
+}
+
+.q-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.q-chip.on {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.16);
+  color: var(--ink);
+}
+
+.q-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-other {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font: 400 12px var(--font);
+  outline: none;
+  cursor: text;
+}
+
+.q-other::placeholder {
+  color: var(--dim-3);
+}
+
+.q-go:disabled {
+  opacity: 0.4;
+}
+
+/* ── Plan usage: the pill in the header and the card behind it ─────────────── */
+
+.header-actions {
+  align-items: center;
+}
+
+.plan-pill {
+  --plan: #6b7079;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--plan) 14%, transparent);
+  border-radius: 999px;
+  background: #0e0f11;
+  color: var(--dim-3);
+  font: 600 10px var(--font);
+  white-space: nowrap;
+  cursor: default;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.plan-pill:hover,
+.plan-pill.active {
+  background: color-mix(in srgb, var(--plan) 18%, transparent);
+  border-color: color-mix(in srgb, var(--plan) 55%, transparent);
+  color: color-mix(in srgb, var(--plan) 70%, white);
+}
+
+.plan-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.plan-card {
+  position: relative;
+  z-index: 1;
+  padding-top: 10px;
+}
+
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 36px 0 108px;
+  white-space: nowrap;
+}
+
+.plan-head > * {
+  flex: 0 0 auto;
+}
+
+.plan-title {
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+
+.plan-sub {
+  flex: 0 1 auto !important; /* the one part that gives way, with an ellipsis */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+}
+
+.plan-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 12px 0 108px;
+}
+
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 11px var(--font);
+  white-space: nowrap;
+}
+
+.plan-label {
+  flex: 0 0 40px;
+  color: var(--dim-3);
+}
+
+.plan-bar {
+  flex: 0 0 50px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.plan-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.plan-pct {
+  flex: 0 0 30px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #c5c8cd;
+}
+
+.plan-reset-icon {
+  display: inline-flex;
+  color: var(--dim-3);
+}
+
+.plan-reset {
+  font-size: 10px;
+  color: var(--dim-3);
+}
+
+.plan-none {
+  color: var(--dim-3);
+}
+
+/* The overview's left card opens the code view when there is code to show. */
+.expand-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 2;
+  display: none;
+  color: var(--dim-4);
+}
+
+.card.expandable {
+  cursor: pointer;
+}
+
+.card.expandable:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.card.expandable .expand-hint {
+  display: block;
+}
+
+.card.expandable:hover .expand-hint {
+  color: var(--dim-2);
 }
