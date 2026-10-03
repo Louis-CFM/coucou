@@ -11,7 +11,33 @@ use serde_json::{json, Value};
 
 use crate::secrets;
 
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+const DEFAULT_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+
+/// Resolves the messages API endpoint, supporting custom base URLs from
+/// settings or the `ANTHROPIC_BASE_URL` environment variable.
+pub fn resolve_endpoint(custom: Option<&str>) -> String {
+    let custom_url = custom
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string())
+        .or_else(|| std::env::var("ANTHROPIC_BASE_URL").ok())
+        .filter(|s| !s.trim().is_empty());
+
+    match custom_url {
+        Some(url) => {
+            let trimmed = url.trim().trim_end_matches('/');
+            if trimmed.ends_with("/v1/messages") {
+                trimmed.to_string()
+            } else if trimmed.ends_with("/messages") {
+                trimmed.to_string()
+            } else if trimmed.ends_with("/v1") {
+                format!("{trimmed}/messages")
+            } else {
+                format!("{trimmed}/v1/messages")
+            }
+        }
+        None => DEFAULT_ENDPOINT.to_string(),
+    }
+}
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Server-side fallback: on a policy decline the API retries the same request on
 /// a fallback model inside the same call, so the island never shows a dead end.
@@ -73,6 +99,7 @@ pub struct ChatReply {
 pub async fn send(
     chat: &Chat,
     model: &str,
+    base_url: Option<&str>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
@@ -114,7 +141,8 @@ pub async fn send(
         "messages": chat.snapshot(),
     });
 
-    let response = match call(&key, &body).await {
+    let endpoint = resolve_endpoint(base_url);
+    let response = match call(&endpoint, &key, &body).await {
         Ok(v) => v,
         Err(err) => {
             chat.pop(); // keep the history consistent with what the model saw
@@ -157,14 +185,14 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
+async fn call(endpoint: &str, key: &str, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(90))
         .build()
         .map_err(|e| e.to_string())?;
 
     let response = client
-        .post(ENDPOINT)
+        .post(endpoint)
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)
         .header("anthropic-beta", FALLBACK_BETA)
@@ -259,5 +287,28 @@ mod tests {
         assert_eq!(base64(b"foob"), "Zm9vYg==");
         assert_eq!(base64(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn endpoint_resolution_handles_various_url_formats() {
+        use super::{resolve_endpoint, DEFAULT_ENDPOINT};
+        assert_eq!(resolve_endpoint(None), DEFAULT_ENDPOINT);
+        assert_eq!(resolve_endpoint(Some("")), DEFAULT_ENDPOINT);
+        assert_eq!(
+            resolve_endpoint(Some("https://api.anthropic.com")),
+            "https://api.anthropic.com/v1/messages"
+        );
+        assert_eq!(
+            resolve_endpoint(Some("https://proxy.example.com/v1/")),
+            "https://proxy.example.com/v1/messages"
+        );
+        assert_eq!(
+            resolve_endpoint(Some("https://proxy.example.com/v1/messages")),
+            "https://proxy.example.com/v1/messages"
+        );
+        assert_eq!(
+            resolve_endpoint(Some("http://localhost:11434/v1")),
+            "http://localhost:11434/v1/messages"
+        );
     }
 }
