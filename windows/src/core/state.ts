@@ -140,6 +140,8 @@ export interface Settings {
   keepVisible: boolean;
   /** The main Mochi's name (the chat persona). Empty = "Mochi". */
   mochiName: string;
+  /** After a spoken question, the mic listens again once the reply is in. */
+  keepMicOn: boolean;
   /** Coloured integration Mochis' names, by integration id. */
   mochiNames: Record<string, string>;
   /** Each Mochi's shape and hat, by task id ("integration_claude" = the main Mochi). */
@@ -184,6 +186,7 @@ export const DEFAULT_SETTINGS: Settings = {
   quickScan: false,
   keepVisible: false,
   mochiName: "",
+  keepMicOn: false,
   mochiNames: {},
   wardrobe: {},
   models: [],

@@ -37,6 +37,10 @@ pub struct Settings {
     /// The main Mochi's name: the chat's persona. Empty = "Mochi".
     #[serde(default)]
     pub mochi_name: String,
+    /// Hands-free chat: after a spoken question, the mic listens again once
+    /// the reply is in. Off = the mic turns off after each prompt.
+    #[serde(default)]
+    pub keep_mic_on: bool,
     /// Names of the coloured integration Mochis, by integration id. Missing or
     /// empty = the service's own name.
     #[serde(default)]
@@ -144,6 +148,7 @@ impl Default for Settings {
             quick_scan: false,
             keep_visible: false,
             mochi_name: String::new(),
+            keep_mic_on: false,
             mochi_names: HashMap::new(),
             models: Vec::new(),
             active_model: String::new(),

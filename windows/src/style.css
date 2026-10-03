@@ -1671,6 +1671,146 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
 }
 
+/* GitHub-flavoured extras: tables, task lists, footnotes, math, raw HTML. */
+
+.reply.md blockquote > :last-child,
+.reply.md li > :last-child,
+.reply.md details > :last-child {
+  margin-bottom: 0;
+}
+
+.reply.md li > ul,
+.reply.md li > ol {
+  margin: 1px 0 0;
+}
+
+.reply.md li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -16px;
+}
+
+.reply.md input[type="checkbox"] {
+  margin: 0 5px 0 0;
+  vertical-align: -1px;
+  accent-color: #7cc4ff;
+}
+
+.reply.md del,
+.reply.md s,
+.reply.md strike {
+  color: #7d828b;
+}
+
+.reply.md mark {
+  background: rgba(247, 179, 43, 0.25);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.reply.md kbd {
+  font: 400 10.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e3e6ea;
+}
+
+.reply.md sub,
+.reply.md sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.md-table {
+  max-width: 100%;
+  margin: 2px 0 8px;
+}
+
+.reply.md table {
+  border-collapse: collapse;
+  font-size: 11px;
+  /* Fits the chat: columns share the width and text wraps inside them. */
+  max-width: 100%;
+}
+
+.reply.md th,
+.reply.md td {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  vertical-align: top;
+  line-height: 1.35;
+  /* Words wrap; only something unbreakable (a URL) is split to fit. */
+  overflow-wrap: anywhere;
+}
+
+.reply.md th {
+  /* Headers keep whole words; the cells under them do the wrapping. */
+  overflow-wrap: normal;
+  color: #f1f3f6;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.reply.md tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.reply.md details {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.reply.md summary {
+  cursor: pointer;
+  color: #d5d9df;
+}
+
+.reply.md details[open] > summary {
+  margin-bottom: 4px;
+}
+
+.reply.md .md-footnotes {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #8f949c;
+}
+
+.reply.md .md-footnotes p {
+  margin: 0;
+}
+
+.reply.md sup a,
+.reply.md .md-footnotes a {
+  text-decoration: none;
+}
+
+/* TeX shows as source until KaTeX (loaded on first use) takes over. */
+.reply.md .md-math:not(:has(.katex)) {
+  font: 400 11.5px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: #9da2ab;
+}
+
+.reply.md .katex {
+  font-size: 1.08em;
+}
+
+.reply.md div.md-math {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.reply.md .katex-display {
+  margin: 4px 0 8px;
+}
+
 .reply-note {
   font: 400 11px var(--font);
   color: #f7b32b;
@@ -2171,44 +2311,64 @@ img.media-view {
   background: radial-gradient(ellipse at 50% 38%, rgba(120, 128, 255, 0.18), rgba(0, 0, 0, 0.35) 72%);
 }
 
-/* Speak instead of typing, right of Send. Red and breathing while it listens. */
-.mic-btn {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border: 0;
-  border-radius: 50%;
+/* Send turns into the mic while the field is empty. Red while it listens,
+   its halo following your voice; a turning ring while it writes it down. */
+.send-btn.mic {
+  position: relative;
   background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
-  display: grid;
-  place-items: center;
-  cursor: default;
-  transition: transform 0.08s ease-out, background 0.15s;
+  transition: transform 0.08s ease-out, background 0.15s, box-shadow 0.08s linear;
 }
 
-.mic-btn:hover {
+.send-btn.mic:hover {
   background: rgba(255, 255, 255, 0.16);
 }
 
-.mic-btn:active {
-  transform: scale(0.94);
-}
-
-.mic-btn.rec {
+.send-btn.mic.rec {
   background: #f4505e;
   color: #fff;
-  animation: mic-breathe 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 calc(1px + var(--level, 0) * 7px) rgba(244, 80, 94, 0.32);
 }
 
-.mic-btn.busy {
-  opacity: 0.55;
+.send-btn.mic.busy {
+  background: rgba(244, 80, 94, 0.35);
+  color: #fff;
 }
 
-@keyframes mic-breathe {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(244, 80, 94, 0.55);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(244, 80, 94, 0);
+.send-btn.mic.busy::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #f4505e;
+  animation: mic-spin 0.8s linear infinite;
+}
+
+@keyframes mic-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
+
+/* GitHub's alerts: > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]. */
+.reply.md .md-alert {
+  border-left-width: 3px;
+  color: inherit;
+}
+
+.reply.md .md-alert-title {
+  font-weight: 650;
+  margin-bottom: 2px;
+}
+
+.reply.md .md-alert-note { border-left-color: #58a6ff; }
+.reply.md .md-alert-note .md-alert-title { color: #58a6ff; }
+.reply.md .md-alert-tip { border-left-color: #56d364; }
+.reply.md .md-alert-tip .md-alert-title { color: #56d364; }
+.reply.md .md-alert-important { border-left-color: #b392f0; }
+.reply.md .md-alert-important .md-alert-title { color: #b392f0; }
+.reply.md .md-alert-warning { border-left-color: #f7b32b; }
+.reply.md .md-alert-warning .md-alert-title { color: #f7b32b; }
+.reply.md .md-alert-caution { border-left-color: #f4505e; }
+.reply.md .md-alert-caution .md-alert-title { color: #f4505e; }

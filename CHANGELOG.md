@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Windows chat: one button is the mic while the field is empty and Send once it holds text; your words appear as you speak, it sends when you stop talking, and it never sends silence. "Keep the mic on" in Settings listens again after each reply. Replies render GitHub-style Markdown (Windows and Linux): tables that fit the chat, task lists, footnotes, alerts, math (KaTeX), strikethrough and GitHub's safe HTML.
 - Declare the tools you use in Settings: Gemini CLI, Antigravity, Anthropic, Google AI and OpenAI pills join the existing ones (Cursor and Codex pills are coming soon), and you pick the main pill.
 - Chat now supports Google AI (Gemini) and OpenAI in addition to Anthropic; switch provider and model by clicking the model name in the chat view, on macOS.
 - Linux version: the Tauri app now builds for Linux too (AppImage, .deb, .rpm), with the island as a layer-shell overlay on Wayland and Claude Code hooks over a private Unix socket (#21) — thanks @Davy133

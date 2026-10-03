@@ -6,6 +6,7 @@ import { ICONS } from "./icons";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { codeBlock, renderMarkdown } from "./markdown";
+import { startDictation, type Dictation, type DictationPhase } from "./dictation";
 import { generatingCard, mediaCard, releaseMedia, resetProgress } from "./media";
 import { State, type ChatMessage, type ModelEntry, type ModelOutput } from "../core/state";
 import type { ViewHost } from "./views";
@@ -162,106 +163,100 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     onHeightChange();
   });
 
-  // Speak instead of typing: records, shows the words as they're heard, and
-  // sends when the mic is clicked again (Enter too; Esc throws it away).
-  const mic = h("button", { class: "mic-btn", title: "Speak instead of typing" }, svg(ICONS.mic, 13));
-  let recorder: MediaRecorder | null = null;
-  let micStream: MediaStream | null = null;
-  let chunks: Blob[] = [];
-  let micType = "audio/webm";
-  let liveTimer = 0;
-  let capTimer = 0;
+  // One button: the mic while the field is empty (and a model transcribes
+  // speech), Send as soon as it holds text. Listening shows the words as
+  // they're spoken and sends once you stop talking; a click sends right away,
+  // Esc throws it away.
+  let dictation: Dictation | null = null;
+  let micPhase: DictationPhase | null = null;
+  // A hidden page never keeps listening (besides the on-screen check below).
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) dictation?.cancel();
+  });
+  /** The prompt in flight was spoken: with "Keep the mic on", listen again after the reply. */
+  let spoken = false;
+  let opening = false;
   const sttModel = () => (State.settings.models ?? []).find((m) => m.output === "stt") ?? null;
-  const heard = () => Bridge.transcribe(new Blob(chunks, { type: micType }));
   const micFailed = (message: string) => {
     State.noteMessage = message;
     State.view = "note";
     Sound.play("error");
     State.notify();
   };
+  const chatOnScreen = () => State.mode === "expanded" && State.view === "prompt";
 
-  async function startMic() {
+  async function startMic(rearmed = false) {
+    if (dictation || opening || sending) return;
+    input.value = "";
+    opening = true;
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      dictation = await startDictation({
+        // Hands-free waits longer for the next question, but never forever.
+        idleMs: rearmed ? 30_000 : 8_000,
+        onText(text) {
+          input.value = text;
+          input.scrollLeft = input.scrollWidth;
+        },
+        onLevel(level) {
+          send.style.setProperty("--level", level.toFixed(2));
+          // The island closed or moved on: stop listening.
+          if (!chatOnScreen()) dictation?.cancel();
+        },
+        onPhase(phase) {
+          micPhase = phase;
+          drawButton();
+        },
+      });
     } catch {
       micFailed("Coucou can't use the microphone: it's blocked, or there isn't one.");
       return;
+    } finally {
+      opening = false;
     }
-    chunks = [];
-    const opus = "audio/webm;codecs=opus";
-    recorder = new MediaRecorder(micStream, MediaRecorder.isTypeSupported(opus) ? { mimeType: opus } : undefined);
-    micType = recorder.mimeType || "audio/webm";
-    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    recorder.start(500);
-    mic.classList.add("rec");
-    mic.title = "Listening: click to send, Esc to cancel";
-    input.value = "";
-    input.placeholder = "Listening…";
     Sound.play("peek");
-    // The words so far, re-read every few seconds (gently: free tiers allow
-    // about 20 transcriptions a minute).
-    let busy = false;
-    liveTimer = window.setInterval(async () => {
-      if (busy || !chunks.length) return;
-      busy = true;
-      try {
-        const text = await heard();
-        if (recorder && text) input.value = text;
-      } catch {
-        // The final read reports any real problem.
-      } finally {
-        busy = false;
-      }
-    }, 4000);
-    capTimer = window.setTimeout(() => void stopMic(true), 120_000);
-  }
-
-  async function stopMic(sendIt: boolean) {
-    const r = recorder;
-    if (!r) return;
-    recorder = null;
-    window.clearInterval(liveTimer);
-    window.clearTimeout(capTimer);
-    await new Promise<void>((done) => {
-      r.onstop = () => done();
-      r.stop();
-    });
-    micStream?.getTracks().forEach((t) => t.stop());
-    micStream = null;
-    mic.classList.remove("rec");
-    mic.title = "Speak instead of typing";
-    if (!sendIt) {
-      chunks = [];
-      input.value = "";
-      State.notify();
-      return;
-    }
-    mic.classList.add("busy");
+    drawButton();
+    let text = "";
     try {
-      const text = await heard();
-      chunks = [];
-      if (text) {
-        input.value = text;
-        void submit();
-      } else {
-        Sound.play("blip");
-      }
+      text = await dictation.done;
     } catch (err) {
       micFailed(String(err).replace(/^Error:\s*/, ""));
-    } finally {
-      mic.classList.remove("busy");
-      State.notify();
     }
+    dictation = null;
+    micPhase = null;
+    send.style.removeProperty("--level");
+    if (text && chatOnScreen()) {
+      input.value = text;
+      spoken = true;
+      void submit();
+    } else {
+      input.value = "";
+      if (chatOnScreen()) Sound.play("blip");
+    }
+    State.notify();
   }
 
-  mic.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (mic.classList.contains("busy")) return;
-    if (recorder) void stopMic(true);
-    else void startMic();
-  });
+  /** The one button's face: mic, listening (with the level), transcribing, or Send. */
+  function drawButton() {
+    const output = outputOf(activeModel());
+    const mic = !!dictation || (!input.value.trim() && !!sttModel() && output !== "3d");
+    const face = !mic ? "send" : micPhase ?? "mic";
+    input.readOnly = !!dictation;
+    if (send.dataset.face === face) return;
+    send.dataset.face = face;
+    send.classList.toggle("mic", mic);
+    send.classList.toggle("rec", face === "listening");
+    send.classList.toggle("busy", face === "transcribing");
+    send.replaceChildren(svg(mic ? ICONS.mic : ICONS.arrowUp, mic ? 13 : 11));
+    const stt = sttModel();
+    send.title = {
+      send: "Send",
+      mic: `Speak instead of typing (${stt?.label || stt?.model || "speech to text"})`,
+      listening: "Listening: click to send now, Esc to cancel",
+      transcribing: "Writing down what you said… Esc to cancel",
+    }[face];
+  }
 
-  const bar = h("div", { class: "chat-bar" }, input, picker, send, mic);
+  const bar = h("div", { class: "chat-bar" }, input, picker, send);
 
   // Under Mochi: start the conversation over, dropped file included, so an
   // unrelated question doesn't carry (and pay for) it again.
@@ -294,6 +289,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     // A picture-to-3D model needs no words: the picture is the prompt.
     const query = input.value.trim() || (outputOf(activeModel()) === "3d" ? "3D model" : "");
     if (!query || sending) return;
+    const wasSpoken = spoken;
+    spoken = false;
     const file = State.droppedFile;
     const firstTurn = State.chatHistory.length === 0;
     const withImage = firstTurn && !!file && IMAGE_FILE.test(file.path) && !textOnly;
@@ -359,16 +356,24 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.notify();
       onHeightChange();
       input.focus();
+      // Hands-free: the reply is in, listen for the next question.
+      if (wasSpoken && State.settings.keepMicOn && chatOnScreen() && sttModel()) void startMic(true);
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  send.addEventListener("click", () => {
+    if (dictation) dictation.finish();
+    else if (send.dataset.face === "mic") void startMic();
+    else void submit();
+  });
+  input.addEventListener("input", drawButton);
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
-    if (recorder && (key === "Enter" || key === "Escape")) {
+    if (dictation && (key === "Enter" || key === "Escape")) {
       e.preventDefault();
       e.stopPropagation();
-      void stopMic(key === "Enter");
+      if (key === "Enter") dictation.finish();
+      else dictation.cancel();
       return;
     }
     if (key === "Enter") {
@@ -419,10 +424,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       input.placeholder =
         output !== "text" ? hint[output] : State.chatHistory.length === 0 ? `Ask ${name} anything…` : "Continue…";
       input.disabled = sending;
-      if (recorder) input.placeholder = "Listening…";
-      const stt = sttModel();
-      mic.style.display = stt ? "" : "none";
-      if (stt && !recorder) mic.title = `Speak instead of typing (${stt.label || stt.model})`;
+      if (micPhase === "listening") input.placeholder = "Listening…";
+      drawButton();
 
       const model = activeModel();
       modelBtn.textContent = `${model?.label || model?.model || "No model"} \u25BE`;

@@ -392,7 +392,7 @@ function modelsSection(): HTMLElement {
           ? [h("div", { class: "row", style: "margin:-2px 0 8px 64px" }, h("span", { class: "hint", text: "Voice" }), voiceInput(m))]
           : []),
         ...(m.output === "stt"
-          ? [h("div", { class: "hint", style: "margin:-2px 0 8px 64px", text: "The mic next to Send uses this to turn your voice into text." })]
+          ? [h("div", { class: "hint", style: "margin:-2px 0 8px 64px", text: "The chat's mic uses this to turn your voice into text as you speak." })]
           : []),
         ...(m.output === "3d"
           ? [h("div", { class: "row", style: "margin:-2px 0 8px 64px" },
@@ -874,6 +874,11 @@ function generalSection(): HTMLElement {
       h("label", { text: "Quick screenshot" }),
       toggle(settings.quickScan, (v) => { settings.quickScan = v; void save(); }),
       h("span", { class: "hint", text: "skip Mochi's scan: capture 0.2 s after the drop" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Keep the mic on" }),
+      toggle(settings.keepMicOn, (v) => { settings.keepMicOn = v; void save(); }),
+      h("span", { class: "hint", text: "after a spoken question, listen again once the reply is in" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
