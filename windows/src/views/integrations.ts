@@ -70,7 +70,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         class: "link-btn",
         style: `color:${task.color}b3`,
         text: "Open Visual Studio Code",
-        onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
+        onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null, task.sessionWslDistro ?? null),
       }),
     );
   } else if (task.id === "integration_n8n") {

@@ -114,3 +114,48 @@ unsafe fn token_sid(process: HANDLE) -> Option<String> {
     let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
     sid
 }
+
+/// Our ancestors, nearest first, up to (not including) Explorer: the processes
+/// one of which owns the window the session runs in — WindowsTerminal.exe,
+/// Code.exe, a conhost. The island looks for that window when "Open terminal"
+/// is clicked. From WSL the chain is wsl.exe → wsl.exe → ubuntu.exe → the
+/// terminal, so a few levels are enough; the cap only guards against a loop.
+pub fn ancestor_pids() -> Vec<u32> {
+    use std::collections::HashMap;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    let mut parents: HashMap<u32, (u32, String)> = HashMap::new();
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return Vec::new() };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut ok = Process32FirstW(snap, &mut entry).is_ok();
+        while ok {
+            let len = entry.szExeFile.iter().position(|c| *c == 0).unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_ascii_lowercase();
+            parents.insert(entry.th32ProcessID, (entry.th32ParentProcessID, name));
+            ok = Process32NextW(snap, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snap);
+    }
+
+    let mut out = Vec::new();
+    let mut pid = std::process::id();
+    for _ in 0..12 {
+        let Some((parent, _)) = parents.get(&pid) else { break };
+        let parent = *parent;
+        match parents.get(&parent) {
+            Some((_, name)) if name != "explorer.exe" && !out.contains(&parent) => {
+                out.push(parent);
+                pid = parent;
+            }
+            _ => break,
+        }
+    }
+    out
+}

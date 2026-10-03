@@ -19,6 +19,10 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** WSL distribution of the session, when Claude Code runs under WSL. */
+  sessionWslDistro?: string | null;
+  /** The relay's ancestor processes; one of them owns the session's window. */
+  sessionTerminalPids?: number[];
 }
 
 export interface ApprovalInfo {
@@ -92,6 +96,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Mochi's chat engine: "api", "windows" or "wsl:<distro>" (local Claude Code). */
+  chatBackend: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatBackend: "api",
 };
 
 type Listener = () => void;

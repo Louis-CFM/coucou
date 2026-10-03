@@ -45,6 +45,10 @@ mod unix;
 use unix::connect;
 
 fn main() {
+    // Coucou's own Claude Code runs (Mochi's chat) must never reach the island.
+    if std::env::var_os("COUCOU_INTERNAL").is_some_and(|v| !v.is_empty()) {
+        std::process::exit(0);
+    }
     let Some((payload, event)) = read_event() else { std::process::exit(0) };
 
     let waits_for_answer = event == "PermissionRequest";
@@ -154,11 +158,21 @@ fn read_event() -> Option<(String, String)> {
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // Set when Claude Code runs under WSL and calls us through interop. It
+        // only reaches us if the caller lists it in WSLENV (coucou-hook-wsl.sh).
+        ("wsl_distro", "WSL_DISTRO_NAME"),
     ] {
         if !map.contains_key(key) {
             let value = std::env::var(var).unwrap_or_default();
             map.insert(key.into(), serde_json::Value::String(value));
         }
+    }
+
+    // The processes the session's window may belong to, for "Open terminal",
+    // which only brings windows forward on Windows.
+    #[cfg(windows)]
+    if let Some(map) = payload.as_object_mut() {
+        map.insert("terminal_pids".into(), serde_json::json!(win::ancestor_pids()));
     }
 
     truncate_strings(&mut payload);

@@ -1,2 +1,3 @@
 docs/** linguist-documentation
 design/** linguist-documentation
+*.sh text eol=lf
