@@ -20,6 +20,10 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Show the time and date in the island while it is compact or hidden,
+    /// for setups where the top panel (and its clock) auto-hides under it.
+    #[serde(default)]
+    pub show_clock: bool,
 }
 
 fn default_model() -> String {
@@ -43,6 +47,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            show_clock: false,
         }
     }
 }

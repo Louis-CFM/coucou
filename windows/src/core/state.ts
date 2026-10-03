@@ -92,6 +92,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Time and date in the island while compact or hidden. */
+  showClock: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  showClock: false,
 };
 
 type Listener = () => void;
