@@ -73,11 +73,11 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+All standard Claude Code hook events are supported, **except `PermissionRequest`**
+for relay-based agents: a `PermissionRequest` from an external relay agent is
+answered immediately with `"ask"`, so the agent re-asks in its own terminal.
+First-class agents — Codex and OpenCode (GitHub build only) — get the same notch
+approval card as Claude Code and Cursor.
 
 The pill lifecycle:
 
@@ -99,7 +99,7 @@ A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabl
 
 A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
 
-The GitHub build exposes Gemini CLI (`agent_gemini`) and Antigravity (`agent_antigravity`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as the main pill; session support is coming in a future version.
+The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`) and OpenCode (`agent_opencode`, full session support via the bundled plugin) in Settings → Active pills. Cursor (`agent_cursor`) and Codex (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as the main pill; session support is coming in a future version.
 
 ## Real-world examples
 
@@ -133,6 +133,37 @@ island's `tool_name` / `session_id`.
 | `PostToolUse` | `PostToolUse` |
 | `PostInvocation` | `PostToolUse` |
 | `Stop` | `Stop` |
+
+### OpenCode (macOS, GitHub build)
+
+Coucou supports OpenCode out of the box via **Settings → OpenCode Hooks → Install hooks**.
+Unlike Gemini CLI and Antigravity, OpenCode uses a native **plugin** instead of the hook
+relay: the installer writes a bundled OpenCode V2 plugin to
+`~/.config/opencode/plugins/coucou/index.mjs` (OpenCode auto-loads anything under
+`~/.config/opencode/plugins/`) and adds a `plugins` entry pointing to that file in
+`~/.config/opencode/opencode.json`. The plugin subscribes to OpenCode's event stream,
+maps the events to Coucou's canonical shape, and pushes them to the socket with
+`coucou_agent: "opencode"` — so OpenCode sessions get their own pill.
+
+| OpenCode V2 event | Canonical event |
+|---|---|
+| `session.created` | `SessionStart` |
+| `session.next.prompted` | `UserPromptSubmit` |
+| `session.next.tool.called` | `PreToolUse` |
+| `session.next.tool.success` | `PostToolUse` |
+| `session.next.tool.failed` | `PostToolUseFailure` |
+| `session.idle` | `Stop` |
+| `session.deleted` | `SessionEnd` |
+| `session.error` | `StopFailure` |
+
+`permission.asked` is not a lifecycle event — the plugin relays permission requests to
+the notch as an approval card; **Allow**, **Always** and **Deny** are returned to OpenCode
+as `once`, `always` and `reject`.
+
+The plugin fails soft: if the socket is unreachable (Coucou not running) it logs to
+OpenCode's output, stays inactive, and never blocks OpenCode. If Coucou was not running
+when OpenCode started, start Coucou and restart the OpenCode session to re-establish the
+connection (there is no mid-session socket reconnect).
 
 ### Any other tool
 
