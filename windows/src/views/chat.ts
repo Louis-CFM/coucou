@@ -139,15 +139,14 @@ menuActive = -1;
    *
    *  Picking a session shows what was already said in it, so the window opens on
    *  that conversation rather than blank. Going back to "New chat" clears it, and
-   *  either way the log is re-rendered from scratch by forcing the cached render
-   *  count out of date. */
+   *  either way the log is rebuilt from scratch by flagging it dirty. */
   async function showConversation(messages: { role: string; text: string }[]) {
     State.chatHistory = messages.map((m) => ({
       id: nextId++,
       role: m.role === "user" ? "user" : "assistant",
       content: m.text,
     }));
-    renderedCount = -1;
+    historyDirty = true;
     State.notify();
   }
 
@@ -451,7 +450,46 @@ const NAV_KEYS = new Set(["ArrowDown", "ArrowUp", "Tab", "Enter", "Escape"]);
   // Whether this pane is the one on screen. Set by `sync`, and deliberately left
   // true across the prompt's unmount so the cancel survives it.
   let chatMounted = false;
-  let renderedCount = -1;
+  // Only the tail of the conversation is in the DOM. The island rewrites its width
+  // every frame while it retracts, and that re-wraps the text of every bubble inside
+  // it, so the cost of the animation is proportional to the whole conversation. With
+  // a few hundred messages the retraction crawled. Older messages come back as the
+  // log is scrolled up; `State.chatHistory` always holds all of them either way.
+  const RENDER_WINDOW = 20;
+  // How many messages, counted back from the newest, are loaded.
+  let expandedTo = RENDER_WINDOW;
+  // The slice of history currently in the log: [renderedFrom, renderedTo).
+  let renderedFrom = 0;
+  let renderedTo = 0;
+  // Set when the log holds a different conversation, so the next sync starts over.
+  let historyDirty = true;
+  // Writing scrollTop fires a scroll event afterwards, asynchronously, so a flag
+  // cleared synchronously would not be set by the time it arrives. The time is what
+  // separates a load the renderer just did from the reader reaching the top again.
+  let loadedAt = 0;
+  // The typing dots are tracked apart from the message count. They used to be
+  // folded into it as a half, which meant showing or hiding them re-rendered the
+  // whole conversation.
+  let typingEl: HTMLElement | null = null;
+
+  /** The first row with any part of itself above the top of the log, if any. */
+  function firstVisibleRow(): HTMLElement | null {
+    for (const child of Array.from(log.children)) {
+      if (child instanceof HTMLElement && child.offsetTop + child.offsetHeight > log.scrollTop) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  /** Widens the window by another screenful, leaving the reader's place untouched. */
+  function loadEarlier() {
+    const total = State.chatHistory.length;
+    if (expandedTo >= total) return;
+    expandedTo = Math.min(total, expandedTo + RENDER_WINDOW);
+    loadedAt = performance.now();
+    State.notify();
+  }
   // Messages typed while a turn is still running wait here and go out as soon
   // as it finishes, so the input never locks up mid-answer.
   const queue: string[] = [];
@@ -545,6 +583,16 @@ async function submit() {
       if (next) void run(next);
     }
   }
+
+  // Reaching the top of the log pulls in the messages above it, the way a feed does.
+// There is no button: the window is only ever short by what the reader has not
+// scrolled back to yet. The 250ms guard is what stops the correction the renderer
+// makes just after loading from counting as the reader hitting the top again.
+  log.addEventListener("scroll", () => {
+    if (log.scrollTop > 8) return;
+    if (performance.now() - loadedAt < 250) return;
+    loadEarlier();
+  });
 
   send.addEventListener("click", () => void submit());
   input.addEventListener("keydown", (e) => {
@@ -699,14 +747,52 @@ function onEscape() {
         if (wantChip) chipRow.append(contextChip(wantChip));
       }
 
-      const thinking = State.stateOverride === "thinking";
-      const count = State.chatHistory.length + (thinking ? 0.5 : 0);
-      if (count !== renderedCount) {
-        renderedCount = count;
+      const history = State.chatHistory;
+      if (historyDirty || history.length < renderedTo) {
+        // A different conversation, or one that shrank, cannot be patched.
         clear(log);
-        for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
+        typingEl = null;
+        historyDirty = false;
+        expandedTo = RENDER_WINDOW;
+        renderedFrom = Math.max(0, history.length - expandedTo);
+        renderedTo = history.length;
+        for (let i = renderedFrom; i < history.length; i++) log.append(bubble(history[i]));
         log.scrollTop = log.scrollHeight;
+      } else if (history.length > renderedTo) {
+        // Only what arrived since last time.
+        for (let i = renderedTo; i < history.length; i++) log.append(bubble(history[i]));
+        renderedTo = history.length;
+        log.scrollTop = log.scrollHeight;
+      } else if (expandedTo > history.length - renderedFrom) {
+        // The reader scrolled up, and older messages go in above them. Adding content
+        // above pushes everything down, so the message being read has to be put back
+        // where it was. The anchor is the first row with any part of itself visible,
+        // tracked by how far it sat below the top of the viewport: `scrollHeight` on
+        // its own only says how much taller the log got, not where in it the reader
+        // was, which is what put them back at the start.
+        const anchor = firstVisibleRow();
+        const gap = anchor ? anchor.offsetTop - log.scrollTop : 0;
+        const from = Math.max(0, history.length - expandedTo);
+        const older = document.createDocumentFragment();
+        for (let i = from; i < renderedFrom; i++) older.append(bubble(history[i]));
+        log.prepend(older);
+        renderedFrom = from;
+        log.scrollTop = (anchor ? anchor.offsetTop : 0) - gap;
+      }
+
+      // The typing dots go in last, so a rebuild above cannot wipe them. They are an
+      // element of their own, which is what keeps them appearing and disappearing
+      // without touching a single message.
+      const thinking = State.stateOverride === "thinking";
+      if (thinking) {
+        if (!typingEl) {
+          typingEl = typingDots();
+          log.append(typingEl);
+          log.scrollTop = log.scrollHeight;
+        }
+      } else if (typingEl) {
+        typingEl.remove();
+        typingEl = null;
       }
 
       input.placeholder = sending

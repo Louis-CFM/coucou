@@ -796,6 +796,11 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 2px 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  /* Older messages are prepended above when the reader scrolls up, and this code
+     restores the position itself by tracking the row being read. Left on, the
+     browser anchors to a row of its own choosing at the same moment and the two
+     corrections fight, which threw the reader back to the start. */
+  overflow-anchor: none;
 }
 
 .chat-row {
