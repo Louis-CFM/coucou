@@ -464,7 +464,9 @@ body {
   align-items: center;
   gap: 6px;
   transform-origin: left center;
-  will-change: transform, opacity;
+  /* No will-change here: on WebKitGTK (Linux) the extra compositing layer drew
+     the shimmer's background-clip:text a few pixels off its row, on top of the
+     row above. The rows animate just as smoothly without the hint. */
 }
 
 .ticker-row .tick-icon {
@@ -476,6 +478,9 @@ body {
 }
 
 .ticker-row .tick-text {
+  /* Block, so text-overflow can ellipsize — on an inline span it is ignored and
+     a long step is simply cut off at the card edge. */
+  display: block;
   font: 500 13px var(--font);
   white-space: nowrap;
   overflow: hidden;
