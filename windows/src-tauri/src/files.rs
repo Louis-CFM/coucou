@@ -30,27 +30,13 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         return Err("Folders can't be dropped yet.".into());
     }
 
-    let dir = inbox_dir();
-    crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dir = prepare_inbox()?;
 
     let name = src
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "file".into());
-
-    let mut dest = dir.join(&name);
-    if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
-        for i in 2..1000 {
-            let candidate = dir.join(format!("{stem} ({i}){ext}"));
-            if !candidate.exists() {
-                dest = candidate;
-                break;
-            }
-        }
-    }
+    let dest = unique_dest(&dir, &name);
 
     std::fs::copy(src, &dest).map_err(|e| format!("cannot copy: {e}"))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
@@ -66,6 +52,68 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         path: dest.to_string_lossy().to_string(),
         size: meta.len(),
     })
+}
+
+/// A file handed over by its contents rather than its path — what WebView2 gives
+/// the page for a browser drag and drop. Lands in the inbox like any other drop.
+pub fn ingest_bytes(name: &str, bytes: &[u8]) -> Result<DroppedFile, String> {
+    // Only the last component: a name must never steer the write elsewhere.
+    let name = Path::new(name)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "file".into());
+    let dir = prepare_inbox()?;
+    let dest = unique_dest(&dir, &name);
+    std::fs::write(&dest, bytes).map_err(|e| format!("cannot save: {e}"))?;
+    sweep(&dir);
+
+    Ok(DroppedFile {
+        name,
+        path: dest.to_string_lossy().to_string(),
+        size: bytes.len() as u64,
+    })
+}
+
+fn prepare_inbox() -> Result<PathBuf, String> {
+    let dir = inbox_dir();
+    crate::platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+/// `name`, or `name (2)`, `name (3)`… — the inbox never overwrites.
+fn unique_dest(dir: &Path, name: &str) -> PathBuf {
+    let dest = dir.join(name);
+    if !dest.exists() {
+        return dest;
+    }
+    let as_path = Path::new(name);
+    let stem = as_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let ext = as_path.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+    (2..1000)
+        .map(|i| dir.join(format!("{stem} ({i}){ext}")))
+        .find(|candidate| !candidate.exists())
+        .unwrap_or(dest)
+}
+
+/// Decodes the `encodeURIComponent` file name the page sends in a header.
+pub fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(b) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(b);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Drops anything copied here more than a week ago. `ingest` stamps every copy

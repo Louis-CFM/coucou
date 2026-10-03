@@ -198,9 +198,6 @@ fn gtk_window_ptr(win: &gtk::ApplicationWindow) -> *mut gtk::ffi::GtkWindow {
     w.to_glib_none().0
 }
 
-/// WebKitGTK has no competing drop target to remove.
-pub fn unblock_webview_drops(_app: &AppHandle) {}
-
 /// Turns the island into an overlay surface on the top edge that never takes
 /// the keyboard. Must run before the window is first shown: a layer surface
 /// cannot be made out of a window the compositor already knows.
@@ -344,4 +341,13 @@ mod tests {
         assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
         let _ = std::fs::remove_dir_all(&dir);
     }
+}
+
+/// Layer-shell keeps the island above the other surfaces already.
+pub fn raise_topmost(_win: &WebviewWindow) {}
+
+pub fn keep_topmost(_app: &AppHandle) {}
+
+pub fn moving_window() -> bool {
+    false
 }
