@@ -2,7 +2,7 @@
 // Everything is laid out in the same 640×150 reference space as on macOS.
 
 import { Sound } from "../core/sound";
-import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
+import { restingLayout } from "../core/layout";
 
 // ── Timing (mirrors greeting-v2.html `T`) ─────────────────────────────────────
 
@@ -41,8 +41,11 @@ const EAR_Y = 16;
 const EAR_HB = 17;
 const CARD = { x: 10, y: 36, w: 620, h: 104 };
 const CARD_R = 20;
-const SMALL_W = COMPACT_W;
-const SMALL_H = NOTCH_H;
+// The greeting collapses into the real compact bar, so its resting pose has to
+// be derived from the live resting dimensions rather than fixed numbers (PR #22).
+const resting = restingLayout();
+const SMALL_W = resting.width;
+const SMALL_H = resting.height;
 
 // ── Easing ────────────────────────────────────────────────────────────────────
 
@@ -78,8 +81,10 @@ interface Pose {
 function greetPose(t: number): Pose {
   const gx = seg(t, 0, 0.5);
   const g = Math.sin((Math.PI * gx) / 2) + 0.04 * Math.sin(Math.PI * gx) * gx;
-  const iw = lerp(NOTCH_W, 640, g);
-  const ih = lerp(NOTCH_H, 150, g);
+  // Grows out of the compact bar's own dimensions, so the opening frame matches
+  // the bar it springs from instead of a stale notch size.
+  const iw = lerp(SMALL_W, 640, g);
+  const ih = lerp(SMALL_H, 150, g);
 
   const gg = E.back(seg(t, 0.02, T.grow));
   const hb = lerp(3, HB, gg);

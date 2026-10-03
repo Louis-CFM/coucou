@@ -52,14 +52,15 @@ body {
   inset: 0;
 }
 
-/* Invisible strip that wakes the island when it is hidden. */
+/* Invisible strip that wakes the island when it is hidden. Covers the fully
+   reduced bar (80×24) so hovering anywhere on it wakes Mochi. */
 #wake-strip {
   position: fixed;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 240px;
-  height: 6px;
+  height: 24px;
   background: transparent;
 }
 
@@ -68,7 +69,9 @@ body {
 #island {
   position: absolute;
   top: 0;
-  left: 50%;
+  /* The island's left edge is driven by Island.islandOffsetX, not centred by
+     CSS: opening the panel at a screen edge has to shift the island itself. */
+  left: 0;
   background: #000;
   border-radius: 0 0 14px 14px;
   overflow: visible;
@@ -800,6 +803,11 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 2px 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  /* Older messages are prepended above when the reader scrolls up, and this code
+     restores the position itself by tracking the row being read. Left on, the
+     browser anchors to a row of its own choosing at the same moment and the two
+     corrections fight, which threw the reader back to the start. */
+  overflow-anchor: none;
 }
 
 .chat-row {
@@ -878,6 +886,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 .chat-input::placeholder {
   color: var(--dim-3);
+}
+
+/* Armed Escape: the placeholder is the cancel prompt, so it is tinted to read as
+   an instruction rather than as idle hint text. */
+.chat-input.cancelling::placeholder {
+  color: var(--warn, #f59e0b);
 }
 
 .send-btn {
@@ -1364,4 +1378,146 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* -- Chat: session chip, `/` command menu, session picker -------------------- */
+
+.chat-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #8e939c;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: 500 10.5px var(--font);
+  cursor: default;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.chat-session:hover {
+  color: #c5c8cd;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-session.on {
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.chat-session span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-session-x {
+  cursor: default;
+  opacity: 0.6;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.chat-session-x:hover {
+  opacity: 1;
+}
+
+.chat-menu,
+.chat-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Without this the picker is a flex child of a column and gets shrunk to fit the
+     space left over, so `max-height` below never applied and roughly one row was
+     visible. Roughly five rows is the useful amount: enough to scan, few enough
+     that the list is not a wall. */
+  flex: 0 0 auto;
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(18, 20, 25, 0.94);
+}
+
+.chat-menu-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: default;
+  min-width: 0;
+}
+
+.chat-menu-row:hover,
+.chat-menu-row.first {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+/* Session picker row: the label and directory sit left, the delete button sits
+   in the top-right corner and only confirms on a second click. */
+.chat-menu-row.pick-row {
+  align-items: center;
+  cursor: default;
+}
+
+.chat-row-trash {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b7078;
+  font: 600 9.5px var(--font);
+  cursor: default;
+  align-self: flex-start;
+}
+
+.chat-row-trash:hover {
+  color: #f4505e;
+  background: rgba(244, 80, 94, 0.12);
+}
+
+.chat-row-trash.armed {
+  color: #fff;
+  background: #f4505e;
+}
+
+.chat-menu-name {
+  font: 500 11px var(--font);
+  color: #c5c8cd;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.chat-menu-desc {
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Quieter second label on a settings row, used to say which mode a
+   preference applies to. */
+.settings-sub {
+  font: 400 10.5px var(--font);
+  color: #767b84;
+  flex: 0 0 auto;
 }

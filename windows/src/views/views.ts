@@ -24,6 +24,16 @@ export interface ViewActions {
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
+  /** Seconds from compact to fully reduced; 0 = never fully reduce. */
+  setAbsence(seconds: number): void;
+  /** Seconds from fully compact to off-screen. */
+  setAutoCloseDelay(seconds: number): void;
+  /** Pins the island open (ignores outside clicks, Escape and auto-close). */
+  togglePin(): void;
+  /** Whether the reduced island wakes on hover or only on a click. */
+  toggleWakeOnHover(): void;
+  /** Brings the island back when it has gone off-screen. */
+  toggleHoverRestore(): void;
   openSettingsWindow(): void;
   blip(): void;
 }
@@ -59,9 +69,23 @@ function btn(
   );
 }
 
+/** Human label for an agent source. */
+function sourceLabel(source: AgentTask["source"]): string {
+  switch (source) {
+    case "claudeCode": return "Claude Code";
+    case "opencode": return "opencode";
+    default: return "n8n";
+  }
+}
+
+/** "Claude Code" / "opencode" for the focused agent pill. */
+function agentName(task: AgentTask | null): string {
+  if (!task) return "Claude Code";
+  return sourceLabel(task.source);
+}
+
 /** AgentWho — coloured dot + task name + grey label. */
-function agentWho(task: AgentTask | null, label: string): HTMLElement {
-  const row = h("div", { class: "who-row" });
+function agentWho(task: AgentTask | null, label: string): HTMLElement {  const row = h("div", { class: "who-row" });
   if (task) {
     row.append(dot(task.color, 8), h("span", { class: "n", text: task.name }));
   }
@@ -84,6 +108,19 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // Pin keeps the island open: outside clicks, Escape and the auto-close timer
+  // all stop working until it is unpinned.
+  const pinBtn = h(
+    "button",
+    {
+      title: "Pin — keep the island open",
+      onclick: () => {
+        actions.blip();
+        actions.togglePin();
+      },
+    },
+    svg(ICONS.pin, 14),
+  );
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,7 +131,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, pinBtn, gearBtn, soundBtn),
   );
 
   return {
@@ -109,6 +146,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      pinBtn.classList.toggle("on", State.settings.pinIsland);
+      pinBtn.title = State.settings.pinIsland
+        ? "Pinned — click to unpin"
+        : "Pin — keep the island open";
+      clear(pinBtn);
+      pinBtn.append(svg(State.settings.pinIsland ? ICONS.pinFill : ICONS.pin, 14));
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -172,10 +215,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
+      // A coding-agent pill with a live session keeps the ticker; every other
       // pill shows its own card, exactly like IntegrationCardView.
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        (task?.id === "integration_claude" || task?.id === "integration_opencode") &&
+        (task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +232,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: sourceLabel(task.source) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -328,7 +372,7 @@ function buildQuestion(): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
+      who.append(agentWho(State.focusTask, `${agentName(State.focusTask)} is asking a question`));
       const task = State.focusTask;
       title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
       clear(row);
@@ -353,7 +397,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, sourceLabel(task?.source ?? "n8n")));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -374,7 +418,7 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      who.append(agentWho(State.focusTask, `${agentName(State.focusTask)} finished`));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };
@@ -407,35 +451,124 @@ function buildNote(): ViewHost {
 
 // ── In-island settings ────────────────────────────────────────────────────────
 
+/** "90" → "1m 30s", so a fully-compact delay stays readable. */
+function formatSpan(seconds: number): string {
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  return rest === 0 ? `${m}m` : `${m}m ${rest}s`;
+}
+
 function buildSettings(actions: ViewActions): ViewHost {
   const soundSwitch = h("button", { class: "switch", onclick: () => actions.toggleSound() });
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
-  const autoLabel = h("span", {});
-  const segButtons = [10, 15, 30].map((s) =>
-    h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
-  );
+  // Three resting steps, each with its own delay: compact to the bar, auto-hide to
+  // a single Mochi, auto-close off-screen. Every one starts at Off/Never, tops out
+  // at a minute, and carries the same free-form slider alongside its presets.
+  const stepRow = (
+    label: () => string,
+    off: string,
+    values: number[],
+    get: () => number,
+    set: (v: number) => void,
+  ) => {
+    const lab = h("span", {});
+    const slider = h("input", {
+      type: "range", min: "5", max: "60", step: "5",
+      style: "width:96px",
+      oninput: (e: Event) => set(Number((e.target as HTMLInputElement).value)),
+    }) as HTMLInputElement;
+    const buttons = values.map((v) =>
+      h("button", { onclick: () => set(v) }, v === 0 ? off : `${v}s`),
+    );
+    const row = h(
+      "div",
+      { class: "settings-row" },
+      svg(ICONS.timer, 12),
+      lab,
+      slider,
+      h("div", { class: "seg" }, ...buttons),
+    );
+    return {
+      row,
+      sync() {
+        const v = get();
+        lab.textContent = label();
+        buttons.forEach((b, i) => b.classList.toggle("on", v === values[i]));
+        // Off/Never has no position on the bar, so the slider parks at the left.
+        if (document.activeElement !== slider) slider.value = String(Math.max(5, v || 5));
+        slider.style.opacity = v > 0 ? "1" : "0.45";
+      },
+    };
+  };
+
+const compactRow = stepRow(
+      () => (State.settings.absenceInterval > 0
+      ? `Compact · ${formatSpan(State.settings.absenceInterval)}`
+      : "Compact · Never"),
+      "Never",
+      [0, 5, 15, 30, 60],
+      () => State.settings.absenceInterval,
+      (v) => actions.setAbsence(v),
+    );
+const hideRow = stepRow(
+      () => (State.settings.autoCloseDelay > 0
+      ? `Auto-hide · ${formatSpan(State.settings.autoCloseDelay)}`
+      : "Auto-hide · Never"),
+      "Never",
+      [0, 5, 15, 30, 60],
+      () => State.settings.autoCloseDelay,
+      (v) => actions.setAutoCloseDelay(v),
+    );
+const closeRow = stepRow(
+      () => (State.settings.autoCloseInterval > 0
+      ? `Auto-close · ${Math.round(State.settings.autoCloseInterval)}s`
+      : "Auto-close · Off"),
+      "Off",
+      [0, 5, 10, 30, 60],
+      () => State.settings.autoCloseInterval,
+      (v) => actions.setAutoClose(v),
+    );
+  const hoverSwitch = h("button", { class: "switch", onclick: () => actions.toggleWakeOnHover() });
+  // Undoes the auto-hide step: bring the fully-compact bar back by hovering it.
+  const restoreSwitch = h("button", { class: "switch", onclick: () => actions.toggleHoverRestore() });
   const claudeBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
+  const ocBadge = h("span", { class: "status-badge" });
 
   const rows = h(
     "div",
     { class: "settings-rows" },
     h("div", { class: "settings-row" }, soundSwitch, h("span", { text: "Sound" }), volume),
+    closeRow.row,
+    compactRow.row,
+    hideRow.row,
+    h(
+      "div",
+      { class: "settings-row" },
+      svg(ICONS.chevronDown, 12),
+      h("span", { text: "Hover to restore" }),
+      h("div", { class: "grow" }),
+      restoreSwitch,
+    ),
     h(
       "div",
       { class: "settings-row" },
       svg(ICONS.timer, 12),
-      autoLabel,
-      h("div", { class: "seg" }, ...segButtons),
+      h("span", { text: "Wake on hover" }),
+      h("div", { class: "grow" }),
+      hoverSwitch,
     ),
     h(
       "div",
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
       apiBadge,
+      ocBadge,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -456,8 +589,10 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
-      autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
-      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
+      compactRow.sync();
+      hideRow.sync();
+      closeRow.sync();
+      hoverSwitch.classList.toggle("on", s.wakeOnHover);
       clear(claudeBadge);
       claudeBadge.append(
         dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
@@ -465,6 +600,16 @@ function buildSettings(actions: ViewActions): ViewHost {
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      restoreSwitch.classList.toggle("on", s.hoverRestore);
+      // Hover to restore is tied to auto-hide: it is the gesture that brings the island
+      // back from off-screen, so with auto-hide on Never it has nothing to act on.
+      restoreSwitch.disabled = !(s.autoCloseDelay > 0);
+      restoreSwitch.style.opacity = s.autoCloseDelay > 0 ? "1" : "0.4";
+      clear(ocBadge);
+      ocBadge.append(
+        dot(s.opencodeBin || s.chatViaServer ? "#22C55E" : "#8e939c", 6),
+        h("span", { text: "opencode" }),
+      );
     },
   };
 }

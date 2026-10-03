@@ -49,6 +49,12 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 
   reposition: () => call<void>("reposition"),
+  /** Moves the resting island sideways; `position` is 0 = left, 1 = right. */
+  setNotchPosition: (position: number) => call<void>("set_notch_position", { position }),
+  /** Marks a sideways drag, so the island holds its display instead of following the
+   * pointer across a boundary mid-drag. Only affects the "display under the cursor"
+   * preference. */
+  setDragging: (dragging: boolean) => call<void>("set_dragging", { dragging }),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
@@ -73,6 +79,17 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── opencode plugin ─────────────────────────────────────────────────────
+  opencodeStatus: () => call<OpencodeStatus>("opencode_status"),
+  /** Diff to show before anything is written. `install: false` previews removal. */
+  opencodePreview: (install: boolean) => callOrThrow<OpencodePreview>("opencode_preview", { install }),
+  /**
+   * Writes ~/.config/opencode/plugins/coucou.js — only ever after an explicit
+   * click, and only when the file still matches the preview the user looked at.
+   */
+  opencodeApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("opencode_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -81,14 +98,43 @@ export const Bridge = {
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
-  /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  /** One chat turn. The API key and any file bytes never leave Rust.
+   *  `session` targets a specific existing opencode session; omit for a new one. */
+  chatSend: (
+    query: string,
+    context: ChatContext | null,
+    session?: string | null,
+    model?: string | null,
+  ) =>
+    callOrThrow<{ text: string }>("chat_send", {
+      query,
+      context,
+      session: session ?? null,
+      model: model ?? null,
+    }),
+  /** Abandons the turn in flight, as Escape does. */
+  chatCancel: (session?: string | null) => call<void>("chat_cancel", { session: session ?? null }),
   chatReset: () => call<void>("chat_reset"),
+  /** Resolved opencode binary + key presence for the Settings → Chat section. */
+  chatStatus: () => call<ChatStatus>("chat_status"),
+  /** The `/`-menu commands of the running opencode; empty when none is up. */
+  opencodeCommands: () => call<OpencodeCommand[]>("opencode_commands"),
+  /** Live sessions of the running opencode, newest first. */
+  opencodeSessions: () => call<OpencodeSession[]>("opencode_sessions"),
+  /** Models the running server reports, as `provider/model`, for the model picker. */
+  opencodeModels: () => call<string[]>("opencode_models"),
+    /** Deletes a session. The island asks the user to confirm first. */
+    opencodeDeleteSession: (id: string) => callOrThrow<void>("opencode_delete_session", { id }),
+    /** A picked session's messages, oldest first, for the chat window. */
+    opencodeSessionMessages: (id: string) => call<OpencodeHistoryMessage[]>("opencode_session_messages", { id }),
+  /** Base URL of the opencode server Coucou found, or null. */
+  opencodeServerUrl: () => call<string | null>("opencode_server_url"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
+  /** Appends to coucou.log, for diagnosing state transitions. */
+  debugLog: (line: string) => call<void>("debug_log", { line }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
   secretClear: (key: string) => callOrThrow<void>("secret_clear", { key }),
 
@@ -118,6 +164,33 @@ export interface DroppedFile {
   size: number;
 }
 
+export interface ChatStatus {
+  binConfigured: string;
+  binResolved: string | null;
+  claudeKeyPresent: boolean;
+}
+
+/** One entry of the running opencode's `/` menu. */
+export interface OpencodeCommand {
+  name: string;
+  description: string;
+}
+
+/** A session of the running opencode. */
+export interface OpencodeSession {
+  id: string;
+  title: string;
+  directory: string;
+  /** Creation time in ms since the epoch. */
+  created: number;
+}
+
+/** One past turn of a session, as the chat window shows it. */
+export interface OpencodeHistoryMessage {
+  role: string;
+  text: string;
+}
+
 export interface HookStatus {
   installed: boolean;
   settingsPath: string;
@@ -130,6 +203,23 @@ export interface HookPreview {
   backup: string;
   settingsPath: string;
   /** Hand back to hooksApply so only the reviewed diff is ever written. */
+  fingerprint: string;
+}
+
+export interface OpencodeStatus {
+  installed: boolean;
+  pluginPath: string;
+  relayReady: boolean;
+  bundledVersion: number;
+  installedVersion: number | null;
+  needsUpdate: boolean;
+}
+
+export interface OpencodePreview {
+  diff: string;
+  backup: string;
+  pluginPath: string;
+  /** Hand back to opencodeApply so only the reviewed diff is ever written. */
   fingerprint: string;
 }
 
