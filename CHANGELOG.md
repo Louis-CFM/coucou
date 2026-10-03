@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Claude chat and structured search keep all response text without adding line breaks between text blocks.
+
 ## 0.1.2 — October 2, 2026
 
 - Codex support (GitHub build): sessions show up live on the Codex pill, and permission requests get Allow and Deny in the notch. Install from Settings → Codex Hooks, then trust the hooks once with /hooks in Codex (#130) — thanks @lacatu5
