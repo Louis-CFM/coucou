@@ -135,6 +135,10 @@ body {
 
 #bot-glow {
   position: absolute;
+  top: 0;
+  left: 0;
+  /* Moved by its transform: following Mochi costs no layout and no new blur. */
+  will-change: transform;
   pointer-events: none;
   border-radius: 50%;
   filter: blur(6px);
@@ -165,6 +169,27 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+/* The small Mochis on their way between the stack and their pills (see
+   island/flock.ts). They stand in for the ones at both ends, which stay out
+   of sight until they have landed. */
+#mini-flight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#mini-flight .mini {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+#island.flocking #mini-grid,
+#island.flocking .pill .mini {
+  visibility: hidden;
+}
+
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so
    hands, badges and particles are not cut off. */
 .mini {
@@ -183,9 +208,15 @@ body {
 
 /* ── Content shell (expanded) ───────────────────────────────────────────── */
 
+/* As wide as the unfolded island, whatever the island's width is on its way
+   there, and in a layer of its own: the island opening over it uncovers it,
+   and nothing in it is laid out or painted again for each frame of that. Its
+   height and its place are the island's to say (Island.applyGeometry). */
 #content {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  will-change: transform;
   padding: 8px 10px 10px;
   display: flex;
   flex-direction: column;

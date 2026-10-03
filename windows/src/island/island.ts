@@ -19,6 +19,7 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { Flock, STACK_BODY, STACK_GAP } from "./flock";
 
 const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
@@ -63,8 +64,28 @@ export class Island {
 
   private running = false;
   private lastFrame = 0;
+  /** Seconds between two frames, as last measured: what a loop's first frame steps by. */
+  private frameInterval = 1 / 60;
   private dirty = true;
-  private canvasPx = 0;
+  /** The size of Mochi the canvas he is drawn on has room for. */
+  private canvasRoom = 0;
+  /**
+   * How tall the views are laid out. Unfolding, the height the island is going
+   * to, at once; folded, the one it had: the island uncovers them and covers
+   * them, it does not squeeze them.
+   */
+  private contentH = 0;
+  private unfolding = false;
+  /** The height the island is on its way to. */
+  private goalH = 0;
+  /** The views' left edge, from the island's. */
+  private contentX = 0;
+  /** The small Mochis on their way between the stack and their pills, and which way they were last sent. */
+  private flock = new Flock();
+  private flockAsk: "out" | "back" | null = null;
+  /** The stack's corner, in the island. */
+  private stackX = 0;
+  private stackY = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
@@ -181,6 +202,7 @@ export class Island {
     this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
+    this.contentEl.style.width = `${EXPANDED_W}px`;
 
     // The drop sequence draws the card, the bar and its own Mochi. It sits under
     // the header, which stays visible on top of it exactly as on macOS.
@@ -200,6 +222,8 @@ export class Island {
       this.greetingCanvas,
       this.uploadCanvas.el,
       this.contentEl,
+      // Inside the island's shape: one of them out over the desktop would give the island away.
+      this.flock.el,
     );
     this.islandEl = h(
       "div",
@@ -260,7 +284,10 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
-    if (mode === "expanded") Sound.play("open");
+    if (mode === "expanded") {
+      Sound.play("open");
+      this.unfolding = true;
+    }
     if (prev === "expanded") {
       Sound.play("close");
       State.isPinned = false;
@@ -273,6 +300,9 @@ export class Island {
       // nothing while hidden.
       UploadSeq.deactivate();
     }
+    // The small Mochis go with the island: out to their pills, or back.
+    this.flockAsk =
+      prev === "compact" && mode === "expanded" ? "out" : prev === "expanded" && mode === "compact" ? "back" : null;
     this.updateWindowCollapsed();
     this.animateGeometry(modeOrder(mode) < modeOrder(prev));
     State.notify();
@@ -457,6 +487,11 @@ export class Island {
 
   private animateGeometry(shrinking: boolean) {
     const { w, h, r } = this.targetSize();
+    this.goalH = h;
+    // Rust is told once where the island is going, not at every frame of the
+    // way: growing, the shape it will have takes the mouse from the start;
+    // shrinking, the one it had keeps it until the island is there.
+    this.pushRect(Math.max(w, this.width.value), Math.max(h, this.height.value));
     if (shrinking) {
       this.width.curveTowards(w);
       this.height.curveTowards(h);
@@ -477,19 +512,36 @@ export class Island {
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
+    // The views stay where they are on the screen — the middle of the window —
+    // while the island's edges move over them: what the island is shifted by,
+    // they are shifted back. Only a layer moves, nothing is drawn again.
+    if (State.mode === "expanded") {
+      if (this.unfolding && !this.height.animating) this.unfolding = false;
+      this.contentH = this.unfolding ? this.goalH : hh;
+    }
+    this.contentEl.style.height = `${this.contentH}px`;
+    this.contentX = (w - EXPANDED_W) / 2;
+    this.contentEl.style.transform = `translateX(${this.contentX}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    const stackHalf = (2 * STACK_BODY + STACK_GAP) / 2;
+    this.stackX = w - 40 - stackHalf;
+    this.stackY = hh / 2 - stackHalf;
+    this.miniGrid.style.left = `${this.stackX}px`;
+    this.miniGrid.style.top = `${this.stackY}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    if (!this.width.animating && !this.height.animating) this.pushRect(w, hh);
+  }
+
+  /** Hands the island's shape to Rust, for the click-through test, when it is a new one. */
+  private pushRect(w: number, h: number) {
+    const x = (PANEL_W - w) / 2;
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
-      this.pushedRect = rect;
-      void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
-    }
+    if (Math.abs(p.x - x) <= 0.5 && Math.abs(p.w - w) <= 0.5 && Math.abs(p.h - h) <= 0.5) return;
+    this.pushedRect = { x, y: 0, w, h };
+    void Bridge.setIslandRect(x, 0, w, h);
   }
 
   /** Island rect in window coordinates (origin top-left of the 720×320 window). */
@@ -674,12 +726,17 @@ export class Island {
   ensureRunning() {
     if (this.running) return;
     this.running = true;
-    this.lastFrame = performance.now();
+    this.lastFrame = 0;
     requestAnimationFrame(this.frame);
   }
 
   private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
+    // A loop's first frame has no frame before it to measure from, and the
+    // clock is no help: a frame's time is when it began, which is before
+    // whatever woke the loop, so the step came out negative and everything
+    // moved back a touch before moving on. It steps by what a frame lasts.
+    const dt = this.lastFrame > 0 ? Math.min(0.05, (nowMs - this.lastFrame) / 1000) : this.frameInterval;
+    if (this.lastFrame > 0) this.frameInterval = dt;
     this.lastFrame = nowMs;
 
     this.width.step(dt, nowMs);
@@ -691,6 +748,7 @@ export class Island {
       this.dirty = false;
       this.syncDom();
     }
+    this.stepFlock(dt);
 
     this.updateBotTargets();
     this.botCx.step(dt);
@@ -733,7 +791,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || UploadSeq.isActive || this.flock.moving;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -742,6 +800,27 @@ export class Island {
       Sound.idle();
     }
   };
+
+  /**
+   * The small Mochis between the stack and their pills. They are sent off here
+   * rather than where the island changes shape: the pills they go to are only
+   * there once the view has been brought up to date. Only the overview has
+   * pills; any other view keeps the stack fading as it always did.
+   */
+  private stepFlock(dt: number) {
+    if (this.flockAsk) {
+      const out = this.flockAsk === "out";
+      this.flockAsk = null;
+      if (State.view === "overview" && !this.uploadActive) {
+        const pill = (id: string) =>
+          [...this.viewsEl.querySelectorAll<HTMLElement>(".pill")].find((p) => p.dataset.task === id)
+            ?.querySelector<HTMLElement>(".mini") ?? null;
+        this.flock.start(State.otherTasks.slice(0, 4), out, pill, this.contentEl);
+      }
+    }
+    if (this.flock.step(dt, this.stackX, this.stackY, this.contentX)) pruneMiniBots();
+    this.islandEl.classList.toggle("flocking", this.flock.moving);
+  }
 
   private updateBotTargets() {
     const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
@@ -760,8 +839,7 @@ export class Island {
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
-      this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
-      this.botGlow.style.top = `${this.botCy.value - d * 1.1}px`;
+      this.botGlow.style.transform = `translate(${this.botCx.value - d * 1.1}px, ${this.botCy.value - d * 1.1}px)`;
       this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
       this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
     } else {
@@ -774,15 +852,23 @@ export class Island {
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (this.canvasPx !== w) {
-      this.canvasPx = w;
-      this.botCanvas.width = Math.round(w * dpr);
-      this.botCanvas.height = Math.round(hCss * dpr);
-      this.botCanvas.style.width = `${w}px`;
-      this.botCanvas.style.height = `${hCss}px`;
+    // A canvas given a new size gets a new bitmap, and Mochi changes size at
+    // every frame of the way from one view to another. So while he is on his
+    // way the canvas has room for the largest he will be, and he is drawn in
+    // the middle of it; it is cut to his size once he is there.
+    const moving = !this.botSize.settled;
+    const goal = Math.max(1, Math.round(this.botSize.target));
+    const room = moving ? Math.max(w, goal, this.canvasRoom) : w;
+    if (this.canvasRoom !== room) {
+      this.canvasRoom = room;
+      this.botCanvas.width = Math.round(room * dpr);
+      this.botCanvas.height = Math.round((room + BOT_OVERHANG) * dpr);
+      this.botCanvas.style.width = `${room}px`;
+      this.botCanvas.style.height = `${room + BOT_OVERHANG}px`;
     }
-    this.botCanvas.style.left = `${this.botCx.value - w / 2}px`;
-    this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
+    const spare = (room - w) / 2;
+    this.botCanvas.style.left = `${this.botCx.value - room / 2}px`;
+    this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - (room + BOT_OVERHANG) / 2}px`;
 
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
@@ -802,8 +888,10 @@ export class Island {
       }
     }
     this.engine.update(dt);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, hCss);
+    // The whole bitmap, which has room for more than Mochi while he is on his way.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.botCanvas.width, this.botCanvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, spare * dpr, spare * dpr);
     this.engine.draw(ctx, w, hCss);
   }
 
@@ -870,7 +958,7 @@ export class Island {
         this.miniGrid.dataset.key = key;
         this.miniGrid.replaceChildren();
         for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
+          this.miniGrid.append(createMiniBot(t, STACK_BODY));
         }
         pruneMiniBots();
       }
