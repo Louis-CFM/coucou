@@ -131,6 +131,19 @@ final class GithubPoller: @unchecked Sendable {
         }.resume()
     }
 
+    /// Refreshes pulse data immediately if the last fetch is older than maxAge seconds (or absent).
+    /// No-op when a request is already in flight. Safe to call from any thread.
+    func refreshIfStale(maxAge: TimeInterval = 60) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.pulseInFlight else { return }
+            guard GitHubPulse.isStale(fetchedAt: AppState.shared.githubPulse?.fetchedAt,
+                                      maxAge: maxAge) else { return }
+            self.nextPulse?.cancel()
+            self.nextPulse = nil
+            self.pollPulse()
+        }
+    }
+
     /// Cancels any scheduled next poll, increments tokenGeneration to invalidate in-flight
     /// responses, then fires pollPulse immediately. If a request is already in flight,
     /// does not launch another — finishPulse will reschedule.
@@ -180,7 +193,7 @@ final class GithubPoller: @unchecked Sendable {
             number title url isDraft reviewDecision
             repository { nameWithOwner url }
             commits(last: 1) {
-              nodes { commit { statusCheckRollup { state } } }
+              nodes { commit { oid statusCheckRollup { state } } }
             }
           }
         }
@@ -189,7 +202,7 @@ final class GithubPoller: @unchecked Sendable {
             nameWithOwner url isArchived
             defaultBranchRef {
               name
-              target { ... on Commit { statusCheckRollup { state } } }
+              target { ... on Commit { oid statusCheckRollup { state } } }
             }
           }
         }

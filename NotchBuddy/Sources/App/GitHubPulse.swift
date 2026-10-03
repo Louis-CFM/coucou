@@ -43,6 +43,7 @@ struct GitHubPR: Equatable {
     var isDraft: Bool
     var ci: CIState
     var review: ReviewState
+    var headSha: String? = nil   // oid of last commit; nil if not fetched
 }
 
 // MARK: - GitHubRepoCI
@@ -52,6 +53,7 @@ struct GitHubRepoCI: Equatable {
     var url: String
     var branch: String
     var ci: CIState
+    var headSha: String? = nil   // oid of HEAD commit; nil if not fetched
 }
 
 // MARK: - GitHubDetailSection
@@ -106,23 +108,18 @@ struct GitHubPulse: Equatable {
                 guard seenPR.insert(id).inserted else { continue }   // skip duplicates
                 let isDraft = node["isDraft"] as? Bool ?? false
                 let reviewDecision = node["reviewDecision"] as? String
-                let ciRaw: String? = {
+                let (ciRaw, headSha): (String?, String?) = {
                     guard let commits = node["commits"] as? [String: Any],
                           let cNodes = commits["nodes"] as? [[String: Any]],
                           let last = cNodes.last,
-                          let commit = last["commit"] as? [String: Any],
-                          let rollup = commit["statusCheckRollup"] as? [String: Any] else { return nil }
-                    return rollup["state"] as? String
+                          let commit = last["commit"] as? [String: Any] else { return (nil, nil) }
+                    let rollup = commit["statusCheckRollup"] as? [String: Any]
+                    return (rollup?["state"] as? String, commit["oid"] as? String)
                 }()
                 myPRs.append(GitHubPR(
-                    id: id,
-                    title: title,
-                    url: url,
-                    repo: repo,
-                    number: number,
-                    isDraft: isDraft,
-                    ci: CIState(rawGitHub: ciRaw),
-                    review: ReviewState(rawGitHub: reviewDecision)
+                    id: id, title: title, url: url, repo: repo, number: number,
+                    isDraft: isDraft, ci: CIState(rawGitHub: ciRaw),
+                    review: ReviewState(rawGitHub: reviewDecision), headSha: headSha
                 ))
             }
         }
@@ -138,13 +135,13 @@ struct GitHubPulse: Equatable {
                       let url      = node["url"] as? String,
                       let branchRef = node["defaultBranchRef"] as? [String: Any],
                       let branch   = branchRef["name"] as? String else { continue }
-                let ciRaw: String? = {
-                    guard let target = branchRef["target"] as? [String: Any],
-                          let rollup = target["statusCheckRollup"] as? [String: Any] else { return nil }
-                    return rollup["state"] as? String
+                let (ciRaw, headSha): (String?, String?) = {
+                    guard let target = branchRef["target"] as? [String: Any] else { return (nil, nil) }
+                    let rollup = target["statusCheckRollup"] as? [String: Any]
+                    return (rollup?["state"] as? String, target["oid"] as? String)
                 }()
                 mainCI.append(GitHubRepoCI(repo: repo, url: url, branch: branch,
-                                           ci: CIState(rawGitHub: ciRaw)))
+                                           ci: CIState(rawGitHub: ciRaw), headSha: headSha))
             }
         }
 
@@ -183,6 +180,12 @@ struct GitHubPulse: Equatable {
 
     /// Returns events comparing old → new. If old is nil (first poll after launch) returns empty — no
     /// alerts on initial load, only on subsequent changes.
+    ///
+    /// headSha logic (catches fast CIs missed between polls):
+    /// - Same SHA (or both nil): classic transition rules apply.
+    /// - Different SHA or PR/repo absent in old: fire immediately if CI is already done.
+    ///   If still pending, nothing — next poll with the same SHA will catch the result.
+    /// - Main CI: no "green" alert, only .mainFailed on new failure.
     static func events(old: GitHubPulse?, new: GitHubPulse) -> [GitHubEvent] {
         guard let old else { return [] }
 
@@ -191,20 +194,32 @@ struct GitHubPulse: Equatable {
         // PR CI transitions
         let oldPRmap = Dictionary(old.myPRs.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         for pr in new.myPRs {
-            guard let prev = oldPRmap[pr.id] else { continue }
-            if pr.ci == .failure && prev.ci != .failure {
-                result.append(.ciFailed(prId: pr.id))
-            } else if pr.ci == .success && prev.ci == .pending {
-                result.append(.ciPassed(prId: pr.id))
+            if let prev = oldPRmap[pr.id], prev.headSha == pr.headSha {
+                // Same commit: classic state-transition rules
+                if pr.ci == .failure && prev.ci != .failure {
+                    result.append(.ciFailed(prId: pr.id))
+                } else if pr.ci == .success && prev.ci == .pending {
+                    result.append(.ciPassed(prId: pr.id))
+                }
+            } else {
+                // New PR or new commit: alert if CI already finished
+                if pr.ci == .success  { result.append(.ciPassed(prId: pr.id)) }
+                else if pr.ci == .failure { result.append(.ciFailed(prId: pr.id)) }
+                // pending → nothing; same-SHA rule catches it next poll
             }
         }
 
-        // Default-branch CI failures
+        // Default-branch CI
         let oldRepoMap = Dictionary(old.mainCI.map { ($0.repo, $0) }, uniquingKeysWith: { a, _ in a })
         for repo in new.mainCI {
-            guard let prev = oldRepoMap[repo.repo] else { continue }
-            if repo.ci == .failure && prev.ci != .failure {
-                result.append(.mainFailed(repo: repo.repo))
+            if let prev = oldRepoMap[repo.repo], prev.headSha == repo.headSha {
+                // Same commit: classic rule (failure transition only)
+                if repo.ci == .failure && prev.ci != .failure {
+                    result.append(.mainFailed(repo: repo.repo))
+                }
+            } else {
+                // New repo or new commit: only alert on failure (no "green" event for main)
+                if repo.ci == .failure { result.append(.mainFailed(repo: repo.repo)) }
             }
         }
 
@@ -217,5 +232,13 @@ struct GitHubPulse: Equatable {
         }
 
         return result
+    }
+
+    // MARK: - Staleness
+
+    /// Pure predicate: true when fetchedAt is nil or older than maxAge seconds before now.
+    static func isStale(fetchedAt: Date?, now: Date = Date(), maxAge: TimeInterval) -> Bool {
+        guard let t = fetchedAt else { return true }
+        return now.timeIntervalSince(t) > maxAge
     }
 }

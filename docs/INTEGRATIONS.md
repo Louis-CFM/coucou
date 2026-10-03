@@ -147,11 +147,13 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 Une seule requête GraphQL (POST `https://api.github.com/graphql`) :
 
-- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, état CI du dernier commit (`statusCheckRollup.state`)
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`)
 - **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
-- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : état CI du dernier commit sur `defaultBranchRef`
+- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : `oid` et état CI du commit HEAD sur `defaultBranchRef`
 
 **Cadence** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). La première requête part 10 s après le lancement.
+
+**Rafraîchissement à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` est appelé dès que l'intégration prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail GitHub. Si la dernière réponse date de moins de 60 s (ou si une requête est déjà en vol), l'appel est ignoré.
 
 ### États CI (`CIState`)
 
@@ -164,7 +166,16 @@ Une seule requête GraphQL (POST `https://api.github.com/graphql`) :
 
 ### Alertes
 
-Déclenchées uniquement si l'état **change** entre deux polls (premier poll silencieux) :
+Premier poll après lancement : toujours silencieux. Polls suivants :
+
+**Même `headSha` (oid) qu'au poll précédent** — règles classiques de transition :
+- CI passe de `!failure` → `failure` : `.ciFailed` / `.mainFailed`
+- CI passe de `pending` → `success` : `.ciPassed`
+
+**`headSha` différent ou PR/dépôt absent au poll précédent** (nouveau commit ou nouvelle PR, CI déjà terminée avant le poll) :
+- CI = `success` → `.ciPassed` (PR uniquement ; pas d'alerte vert pour main)
+- CI = `failure` → `.ciFailed` / `.mainFailed`
+- CI = `pending` → rien (le poll suivant, même sha, verra la transition)
 
 | Événement             | Badge   | Son        |
 |-----------------------|---------|------------|

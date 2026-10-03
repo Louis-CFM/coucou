@@ -268,6 +268,81 @@ enum GitHubPulseTests {
                   events.filter { if case .ciPassed = $0 { return true }; return false }.count == 1)
         }
 
+        // ── GitHubPulse.events — headSha: new PR already green ───────────────
+        print("GitHubPulse.events — headSha: new PR already green")
+        do {
+            let old = GitHubPulse.parse(emptyJSON)!
+            var newPulse = old
+            newPulse.myPRs = [GitHubPR(id: "r/p#10", title: "T", url: "", repo: "r/p",
+                                        number: 10, isDraft: false, ci: .success, review: .unknown,
+                                        headSha: "abc111")]
+            let events = GitHubPulse.events(old: old, new: newPulse)
+            check("new PR green → ciPassed", events == [.ciPassed(prId: "r/p#10")])
+        }
+
+        // ── GitHubPulse.events — headSha: new PR pending → nothing ───────────
+        print("GitHubPulse.events — headSha: new PR pending → nothing")
+        do {
+            let old = GitHubPulse.parse(emptyJSON)!
+            var newPulse = old
+            newPulse.myPRs = [GitHubPR(id: "r/p#11", title: "T", url: "", repo: "r/p",
+                                        number: 11, isDraft: false, ci: .pending, review: .unknown,
+                                        headSha: "abc222")]
+            let events = GitHubPulse.events(old: old, new: newPulse)
+            check("new PR pending → no events", events.isEmpty)
+        }
+
+        // ── GitHubPulse.events — headSha: new commit already red ─────────────
+        print("GitHubPulse.events — headSha: new commit already red → ciFailed")
+        do {
+            var oldPulse = GitHubPulse.parse(emptyJSON)!
+            oldPulse.myPRs = [GitHubPR(id: "r/p#12", title: "T", url: "", repo: "r/p",
+                                        number: 12, isDraft: false, ci: .success, review: .unknown,
+                                        headSha: "sha-old")]
+            var newPulse = oldPulse
+            newPulse.myPRs[0].ci = .failure
+            newPulse.myPRs[0].headSha = "sha-new"
+            let events = GitHubPulse.events(old: oldPulse, new: newPulse)
+            check("new commit red → ciFailed", events == [.ciFailed(prId: "r/p#12")])
+        }
+
+        // ── GitHubPulse.events — headSha: same sha success→success → nothing ─
+        print("GitHubPulse.events — headSha: same sha success→success → nothing")
+        do {
+            var oldPulse = GitHubPulse.parse(emptyJSON)!
+            oldPulse.myPRs = [GitHubPR(id: "r/p#13", title: "T", url: "", repo: "r/p",
+                                        number: 13, isDraft: false, ci: .success, review: .unknown,
+                                        headSha: "same")]
+            let newPulse = oldPulse  // identical SHA and CI
+            let events = GitHubPulse.events(old: oldPulse, new: newPulse)
+            check("same sha success→success → no event", events.isEmpty)
+        }
+
+        // ── GitHubPulse.events — headSha: new commit on main red → mainFailed ─
+        print("GitHubPulse.events — headSha: new commit on main red → mainFailed")
+        do {
+            var oldPulse = GitHubPulse.parse(emptyJSON)!
+            oldPulse.mainCI = [GitHubRepoCI(repo: "a/b", url: "", branch: "main",
+                                             ci: .success, headSha: "sha-old")]
+            var newPulse = oldPulse
+            newPulse.mainCI[0].ci = .failure
+            newPulse.mainCI[0].headSha = "sha-new"
+            let events = GitHubPulse.events(old: oldPulse, new: newPulse)
+            check("new commit on main red → mainFailed", events == [.mainFailed(repo: "a/b")])
+        }
+
+        // ── GitHubPulse.isStale ───────────────────────────────────────────────
+        print("GitHubPulse.isStale")
+        do {
+            let now = Date()
+            check("nil fetchedAt → stale",
+                  GitHubPulse.isStale(fetchedAt: nil, now: now, maxAge: 60))
+            check("fresh (same instant) → not stale",
+                  !GitHubPulse.isStale(fetchedAt: now, now: now, maxAge: 60))
+            check("61 s ago → stale",
+                  GitHubPulse.isStale(fetchedAt: now.addingTimeInterval(-61), now: now, maxAge: 60))
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

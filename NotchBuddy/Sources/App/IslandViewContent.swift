@@ -144,21 +144,27 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, _ in
+        .onChange(of: state.focusId) { _, new in
             showingN8nDetail = false
             activeDiffId = nil
             #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
+            if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
             if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
-        .onChange(of: state.mode) { _, m in
-            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
-        }
         #endif
+        .onChange(of: state.mode) { _, m in
+            #if !APPSTORE
+            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
+            #endif
+            if m == .expanded && state.focusId == "integration_github" {
+                GithubPoller.shared.refreshIfStale()
+            }
+        }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -2497,6 +2503,7 @@ struct GitHubDetailView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
         .clipped()
+        .onAppear { GithubPoller.shared.refreshIfStale() }
         .onExitCommand { onBack() }
     }
 }
