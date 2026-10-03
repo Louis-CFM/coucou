@@ -52,6 +52,11 @@ struct SettingsView: View {
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
+
+    @State private var opencodeHooksInstalled: Bool = HookServer.opencodeHooksInstalled()
+    @State private var showOpenCodeDiff: Bool = false
+    @State private var pendingOpenCodeJSON: String = ""
+    @State private var opencodePendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
@@ -478,6 +483,39 @@ struct SettingsView: View {
                         Button("Confirm & write") { confirmCodexOp() }
                             .buttonStyle(.borderedProminent)
                         Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("OpenCode Hooks") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(opencodeHooksInstalled
+                     ? "Plugin installed — restart OpenCode to load it"
+                     : "~/.config/opencode/plugins/coucou/")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button("Install hooks") { triggerOpenCodePreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Uninstall") { triggerOpenCodePreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showOpenCodeDiff {
+                    ScrollView {
+                        Text(pendingOpenCodeJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button("Confirm & write") { confirmOpenCodeOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel") { showOpenCodeDiff = false; pendingOpenCodeJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -1021,6 +1059,33 @@ struct SettingsView: View {
         }
     }
 
+    private func triggerOpenCodePreview(install: Bool) {
+        do {
+            opencodePendingInstall = install
+            pendingOpenCodeJSON = try HookServer.shared.previewOpenCodeHooks(install: install)
+            showOpenCodeDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmOpenCodeOp() {
+        do {
+            try HookServer.shared.writeOpenCodeHooks()
+            showOpenCodeDiff = false
+            pendingOpenCodeJSON = ""
+            opencodeHooksInstalled = opencodePendingInstall
+            statusMessage = opencodePendingInstall
+                ? "✓ OpenCode plugin installed — restart OpenCode to load it."
+                : "✓ OpenCode plugin removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
     private func installStatusLine() {
         do {
             pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: true)
@@ -1168,6 +1233,7 @@ struct SettingsView: View {
             if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
+            if def.id == "agent_opencode"      && !HookServer.opencodeHooksInstalled() { return "Hooks not installed" }
             #endif
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
