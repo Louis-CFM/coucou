@@ -395,6 +395,35 @@ private outsideClicks: number[] = [];
    * click on the bar still wakes the island instead of nudging it.
    */
   private beginNotchDrag(e: MouseEvent) {
+    this.beginDrag(e, () => this.fsm.click());
+  }
+
+  /**
+   * The open island is grabbed by its header band, the same 42 pt the layout
+   * reserves for it, and only where that band holds no control of its own. This
+   * is what makes a resting bar and an open island behave the same way under the
+   * pointer.
+   */
+  private pressGrabsHeader(e: MouseEvent): boolean {
+    const band = this.header.el.getBoundingClientRect();
+    const island = this.islandEl.getBoundingClientRect();
+    // From the island's own top edge, not the header's. `#content` pads 8px above the
+    // header, so measuring from the header left a dead strip across the full width at
+    // the top - the far left and right of the top row would not drag.
+    if (e.clientY < island.top || e.clientY > band.bottom) return false;
+    const target = e.target;
+    if (target instanceof Element && target.closest("button, input, textarea, select, a, label")) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Follows the pointer along the top edge and leaves the island where it is
+   * released. `onSettle` runs only when the press never became a drag, so a
+   * plain click keeps whatever meaning it had before.
+   */
+  private beginDrag(e: MouseEvent, onSettle: () => void) {
     if (e.button !== 0) return;
     const screen = State.screen;
     if (!screen || screen.width <= 0) {
@@ -425,9 +454,12 @@ private outsideClicks: number[] = [];
         void Bridge.setDragging(true);
       }
       const span = Math.max(1, screen.width - barW);
-      // screenX is in physical pixels; divide by the scale factor the server
-      // reported so the maths matches the logical pixels Rust positions with.
-      const next = this.dragStartPosition + dx / screen.scale / span;
+      // Both sides are already logical pixels: `screenX` is CSS pixels, and
+      // Rust divides the monitor metrics by the scale factor when it reports
+      // them, so `screen.width` is logical too. Dividing by `screen.scale` here
+      // scaled the drag twice, which only showed on a scaled display - the bar
+      // would move a fraction of the pointer's travel.
+      const next = this.dragStartPosition + dx / span;
       const clamped = Math.max(0, Math.min(1, next));
       State.settings.notchPosition = clamped;
       void Bridge.setNotchPosition(clamped);
@@ -444,8 +476,8 @@ private outsideClicks: number[] = [];
         // last move event landed a hair short of the release point.
         void Bridge.setNotchPosition(State.settings.notchPosition);
       } else {
-        // It was a click, not a drag, so open the island.
-        this.fsm.click();
+        // It was a click, not a drag, so run whatever the press would have done.
+        onSettle();
       }
     };
 
@@ -801,6 +833,13 @@ if (now - this.lastDismiss < 50) return;
         // on release instead. Opening on press would flip the mode to expanded
         // mid-gesture and resize the window out from under the drag.
         this.beginNotchDrag(e);
+        return;
+      }
+      if (this.pressGrabsHeader(e)) {
+        // The open island drags by its header. Opening on press is not a
+        // concern here - it is already open - so a press that never moves just
+        // falls through to whatever the header would otherwise do.
+        this.beginDrag(e, () => {});
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
