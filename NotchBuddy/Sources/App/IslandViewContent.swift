@@ -527,89 +527,42 @@ struct ErrorView: View {
 
 struct FinishedView: View {
     @ObservedObject var state: AppState
-    @State private var showingDiff: FileDiff? = nil
 
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
-            if let diff = showingDiff {
-                DiffCardView(diff: diff, onDismiss: { showingDiff = nil })
-                    .transition(.opacity)
-            } else {
-                VStack(alignment: .leading, spacing: 5) {
-                    AgentWho(task: state.focusTask, label: "Claude Code finished")
-                    Text({
-                        if let fl = state.focusTask?.finalLine { return fl }
-                        if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
-                        return "Session finished"
-                    }())
-                        .font(.system(size: 15, weight: .semibold))
-                    HStack(spacing: 8) {
-                        #if !APPSTORE
-                        PrimaryButton("Open terminal") {
-                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                            let activated = terminalBundleIds.compactMap { id in
-                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                            if activated == nil {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
-                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+            VStack(alignment: .leading, spacing: 5) {
+                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                Text({
+                    if let fl = state.focusTask?.finalLine { return fl }
+                    if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
+                    return "Session finished"
+                }())
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                HStack(spacing: 8) {
+                    #if !APPSTORE
+                    PrimaryButton("Open terminal") {
+                        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+                        let activated = terminalBundleIds.compactMap { id in
+                            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+                        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
+                        if activated == nil {
+                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                         }
-                        #endif
-                        SecondaryButton("OK") {
-                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
-                        }
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
-                    // Touched files (up to 4)
-                    let files = state.touchedFiles(for: state.focusTask?.id ?? "")
-                    if !files.isEmpty {
-                        let shown = Array(files.prefix(4))
-                        VStack(alignment: .leading, spacing: 2) {
-                            ForEach(shown.indices, id: \.self) { i in
-                                let f = shown[i]
-                                Button(action: {
-                                    withAnimation(.easeIn(duration: 0.16)) {
-                                        if let taskId = state.focusTask?.id,
-                                           let diffs = state.sessionDiffs[taskId],
-                                           let last = diffs.last(where: { $0.path == f.path }) {
-                                            showingDiff = last
-                                        }
-                                    }
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Text(URL(fileURLWithPath: f.path).lastPathComponent)
-                                            .font(.system(size: 10.5))
-                                            .foregroundColor(Color(hex: "#9398A1"))
-                                            .lineLimit(1).truncationMode(.middle)
-                                        if f.added > 0 {
-                                            Text("+\(f.added)")
-                                                .font(.system(size: 9, weight: .medium).monospaced())
-                                                .foregroundColor(Color(hex: "#22C55E"))
-                                        }
-                                        if f.removed > 0 {
-                                            Text("−\(f.removed)")
-                                                .font(.system(size: 9, weight: .medium).monospaced())
-                                                .foregroundColor(Color(hex: "#F4505E"))
-                                        }
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            if files.count > 4 {
-                                Text("+ \(files.count - 4) more")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color(hex: "#6B7079"))
-                            }
-                        }
+                    #endif
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
                 }
-                .padding(.leading, 116)
-                .padding(.trailing, 16)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .transition(.opacity)
             }
+            .padding(.leading, 116)
+            .padding(.trailing, 16)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

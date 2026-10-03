@@ -320,19 +320,6 @@ final class AppState: ObservableObject {
         // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
 
-    /// Unique touched files for a pill, in first-touch order, with summed totals.
-    func touchedFiles(for pillId: String) -> [(path: String, added: Int, removed: Int)] {
-        guard let diffs = sessionDiffs[pillId] else { return [] }
-        var seen: [String: (added: Int, removed: Int)] = [:]
-        var order: [String] = []
-        for d in diffs {
-            if seen[d.path] == nil { order.append(d.path) }
-            let p = seen[d.path] ?? (0, 0)
-            seen[d.path] = (p.added + d.added, p.removed + d.removed)
-        }
-        return order.map { path in let t = seen[path]!; return (path, t.added, t.removed) }
-    }
-
     private func resetSessionDiffTimer(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
         let work = DispatchWorkItem { [weak self] in

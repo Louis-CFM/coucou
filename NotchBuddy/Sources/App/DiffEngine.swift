@@ -218,23 +218,54 @@ enum DiffEngine {
     // MARK: - toOneLine
 
     /// Converts a possibly multi-line, markdown-formatted string to a single line of plain text.
-    /// Strips `**`, `__`, backticks and leading `#` chars from each line, collapses whitespace.
+    /// Uses only the first non-empty paragraph (stops at blank line, horizontal rule, or table row).
+    /// Strips `**`, `__`, backticks, leading `#`, and leading bullet markers.
     static func toOneLine(_ text: String, maxChars: Int = 200) -> String {
-        var s = text
-        s = s.replacingOccurrences(of: "**", with: "")
-        s = s.replacingOccurrences(of: "__", with: "")
-        s = s.replacingOccurrences(of: "`", with: "")
-        let processed: [String] = s.components(separatedBy: "\n").compactMap { line in
-            var l = line
-            while l.hasPrefix("#") { l = String(l.dropFirst()) }
-            let trimmed = l.trimmingCharacters(in: .whitespaces)
-            return trimmed.isEmpty ? nil : trimmed
+        let lines = text.components(separatedBy: "\n")
+
+        // Split into paragraphs. Separators: blank line, HR (3+ repeated -/*/_ chars), table row (starts with |).
+        var paragraphs: [[String]] = []
+        var current: [String] = []
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let isHR = trimmed.count >= 3 && (trimmed.allSatisfy { $0 == "-" } ||
+                                               trimmed.allSatisfy { $0 == "*" } ||
+                                               trimmed.allSatisfy { $0 == "_" })
+            let isSep = trimmed.isEmpty || isHR || trimmed.hasPrefix("|")
+            if isSep {
+                if !current.isEmpty { paragraphs.append(current); current = [] }
+            } else {
+                current.append(line)
+            }
         }
-        let joined = processed.joined(separator: " ")
-        let collapsed = joined.components(separatedBy: .whitespaces)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        return String(collapsed.prefix(maxChars))
+        if !current.isEmpty { paragraphs.append(current) }
+
+        // Find first paragraph that yields non-empty text after cleaning.
+        for paraLines in paragraphs {
+            var s = paraLines.joined(separator: "\n")
+            s = s.replacingOccurrences(of: "**", with: "")
+            s = s.replacingOccurrences(of: "__", with: "")
+            s = s.replacingOccurrences(of: "`", with: "")
+            let processed: [String] = s.components(separatedBy: "\n").compactMap { line in
+                var l = line
+                while l.hasPrefix("#") { l = String(l.dropFirst()) }
+                l = l.trimmingCharacters(in: .whitespaces)
+                // Strip leading bullet markers: -, *, •, or N. (ordered list)
+                if l.hasPrefix("- ") || l.hasPrefix("* ") || l.hasPrefix("• ") {
+                    l = String(l.dropFirst(2))
+                } else if let m = l.range(of: #"^\d+\.\s+"#, options: .regularExpression) {
+                    l = String(l[m.upperBound...])
+                }
+                let trimmed = l.trimmingCharacters(in: .whitespaces)
+                return trimmed.isEmpty ? nil : trimmed
+            }
+            let joined = processed.joined(separator: " ")
+            let collapsed = joined.components(separatedBy: .whitespaces)
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+            if !collapsed.isEmpty { return String(collapsed.prefix(maxChars)) }
+        }
+        return ""
     }
 }
 

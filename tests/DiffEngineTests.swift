@@ -175,6 +175,39 @@ enum DiffEngineTests {
             // truncation
             let long = DiffEngine.toOneLine(String(repeating: "x ", count: 200), maxChars: 10)
             checkTrue("truncated to maxChars", long.count <= 10)
+
+            // stop at blank line
+            checkTrue("blank line → first para only",
+                DiffEngine.toOneLine("First para.\n\nSecond para.") == "First para.")
+
+            // stop at --- separator
+            checkTrue("--- separator → first para only",
+                DiffEngine.toOneLine("Done. Single commit 450a657 on github-pulse.\n\n---\n\nFiles touched (7)…")
+                    == "Done. Single commit 450a657 on github-pulse.")
+
+            // stop at *** separator
+            checkTrue("*** separator → first para only",
+                DiffEngine.toOneLine("Summary line.\n***\nMore details.") == "Summary line.")
+
+            // stop at table row (|)
+            checkTrue("table row → first para only",
+                DiffEngine.toOneLine("Result:\n| Col1 | Col2 |\n|---|---|\n| A | B |") == "Result:")
+
+            // strip leading bullet -
+            checkTrue("strip bullet -",
+                DiffEngine.toOneLine("- item one\n- item two") == "item one item two")
+
+            // strip leading bullet *
+            checkTrue("strip bullet *",
+                DiffEngine.toOneLine("* first\n* second") == "first second")
+
+            // strip ordered list
+            checkTrue("strip ordered list",
+                DiffEngine.toOneLine("1. step one\n2. step two") == "step one step two")
+
+            // first paragraph empty → fall through to next
+            checkTrue("empty first para → next",
+                DiffEngine.toOneLine("\n\nActual content.") == "Actual content.")
         }
 
         // ── finish ─────────────────────────────────────────────────────────────

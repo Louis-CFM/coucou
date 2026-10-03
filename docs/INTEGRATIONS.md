@@ -133,7 +133,7 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 - Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
 - Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
 
-**Vue Terminé (FinishedView)** — liste les fichiers touchés (nom + bilan, 4 au plus, puis "+ N more"). Un clic affiche la carte diff du dernier diff connu pour ce fichier.
+**Vue Terminé (FinishedView)** — affiche la dernière ligne utile de la session (`finalLine` → dernière étape non-diff → "Session finished"), sur une ligne (`.lineLimit(1).truncationMode(.tail)`). Pas de liste de fichiers.
 
 ---
 
