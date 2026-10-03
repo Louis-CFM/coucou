@@ -33,12 +33,65 @@ body.settings-window {
 }
 
 #settings-root {
-  padding: 22px 24px 32px;
+  padding: 0 24px 32px;
   display: flex;
   flex-direction: column;
   gap: 18px;
   max-width: 720px;
   margin: 0 auto;
+}
+
+/* The title and the tabs stay on top while a long tab scrolls under them. */
+.settings-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 22px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  align-self: flex-start;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+}
+
+.tabs > button {
+  background: none;
+  color: var(--dim);
+  padding: 6px 16px;
+}
+
+.tabs > button:hover:not([aria-selected="true"]) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+}
+
+.tabs > button[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+
+.tabs > button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 1px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.panel[hidden] {
+  display: none;
 }
 
 h1 {

@@ -246,7 +246,7 @@ function apiSection(hasKey: boolean): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Anthropic API" })),
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
@@ -358,9 +358,10 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
 }
 
-// ── General section ───────────────────────────────────────────────────────────
+// ── General tab ───────────────────────────────────────────────────────────────
 
-function generalSection(): HTMLElement {
+/** Sound, the island, startup: the macOS app's Sound / Behavior / Startup groups. */
+function generalSections(): HTMLElement[] {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -392,29 +393,105 @@ function generalSection(): HTMLElement {
     void save();
   });
 
-  return h(
-    "section",
-    {},
-    h("h2", {}, h("span", { text: "General" })),
-    h("div", { class: "row" },
-      h("label", { text: "Sound" }),
-      toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
-      volume,
+  return [
+    h("section", {},
+      h("h2", {}, h("span", { text: "Sound" })),
+      h("div", { class: "row" },
+        h("label", { text: "Play sounds" }),
+        toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Volume" }),
+        volume,
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
-      autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+    h("section", {},
+      h("h2", {}, h("span", { text: "Island" })),
+      h("div", { class: "row" },
+        h("label", { text: "Auto-close" }),
+        autoClose,
+        h("span", { class: "hint", text: "seconds after you leave the island" }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Island lives on" }),
+        screen,
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Island lives on" }),
-      screen,
+    h("section", {},
+      h("h2", {}, h("span", { text: "Startup" })),
+      h("div", { class: "row" },
+        h("label", { text: "Launch at startup" }),
+        toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Launch at startup" }),
-      toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
-    ),
-  );
+  ];
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type TabId = "general" | "agents" | "integrations";
+
+/** The last tab open, for the next time — a convenience, so it may be lost. */
+const TAB_KEY = "coucou.settings.tab";
+
+function storedTab(): TabId | null {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return v === "general" || v === "agents" || v === "integrations" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A tab bar over one panel per tab. */
+function tabbed(defs: { id: TabId; label: string; content: HTMLElement[] }[]) {
+  const bar = h("div", { class: "tabs", role: "tablist" });
+  const panels = h("div", {});
+  const buttons = new Map<TabId, HTMLButtonElement>();
+  const bodies = new Map<TabId, HTMLElement>();
+  let current: TabId | null = null;
+
+  function select(id: TabId) {
+    if (id === current) return;
+    current = id;
+    for (const [key, button] of buttons) {
+      const on = key === id;
+      button.setAttribute("aria-selected", String(on));
+      button.tabIndex = on ? 0 : -1;
+      bodies.get(key)!.hidden = !on;
+    }
+    try {
+      localStorage.setItem(TAB_KEY, id);
+    } catch {
+      // Remembering the tab is a nicety; nothing depends on it.
+    }
+    window.scrollTo(0, 0);
+  }
+
+  for (const d of defs) {
+    const button = h("button", {
+      role: "tab", id: `tab-${d.id}`, "aria-controls": `panel-${d.id}`, text: d.label,
+    }) as HTMLButtonElement;
+    button.addEventListener("click", () => select(d.id));
+    bar.append(button);
+    buttons.set(d.id, button);
+    const body = h("div", { class: "panel", role: "tabpanel", id: `panel-${d.id}`, "aria-labelledby": `tab-${d.id}` },
+      ...d.content);
+    panels.append(body);
+    bodies.set(d.id, body);
+  }
+
+  // Arrow keys move between tabs, as in any tab bar.
+  bar.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !current) return;
+    const ids = defs.map((d) => d.id);
+    const step = e.key === "ArrowRight" ? 1 : ids.length - 1;
+    const next = ids[(ids.indexOf(current) + step) % ids.length];
+    select(next);
+    buttons.get(next)!.focus();
+  });
+
+  return { bar, panels, select };
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -438,13 +515,20 @@ async function main() {
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
 
+  const tabs = tabbed([
+    { id: "general", label: "General", content: generalSections() },
+    { id: "agents", label: "Agents", content: [claudeSection(status), apiSection(hasKey)] },
+    { id: "integrations", label: "Integrations", content: [integrationsSection(present)] },
+  ]);
+  tabs.select(storedTab() ?? "general");
+
   clear(root);
   root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    apiSection(hasKey),
-    integrationsSection(present),
-    generalSection(),
+    h("header", { class: "settings-head" },
+      h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+      tabs.bar,
+    ),
+    tabs.panels,
     h("div", {
       class: "hint",
       text: "No telemetry. Network requests only go to the services you configure yourself.",
