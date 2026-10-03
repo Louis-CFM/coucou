@@ -3968,6 +3968,16 @@ struct WardrobeView: View {
     private let columns = Array(repeating: GridItem(.fixed(30), spacing: 5), count: 14)
 
     private var headerRight: String {
+        // Hover takes priority: show hovered outfit name
+        if let h = hoveredOutfit {
+            if h == .auto {
+                let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
+                let name = seasonal == .none ? "None" : seasonal.displayName
+                return "Auto · follows the seasons (now: \(name))"
+            }
+            return h.displayName
+        }
+        // Fall back to current selection
         let sel = state.mochiOutfitSelection
         if sel == .auto {
             let seasonal = Outfit.seasonal(for: Date(), calendar: .current)

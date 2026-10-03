@@ -292,64 +292,139 @@ func drawOutfitFrontStatic(
     outfit: Outfit, H: MochiH,
     cx: CGFloat, cy: CGFloat, tilt: CGFloat, sx: CGFloat, sy: CGFloat,
     roll: CGFloat, morph: CGFloat, isMini: Bool,
-    presence: CGFloat = 1
+    presence: CGFloat = 1, rollTurns: CGFloat = 1
 ) {
     guard !isMini, outfit != .none, outfit != .auto else { return }
-
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
-    // Roll-following accessories: z-based rollFade; hats: fixed threshold
+    guard morphFade > 0.01 else { return }
+
+    // Roll-following accessories: skip in front pass when front-face z < 0 (handled by behind pass)
     let rollFollowing: Bool
     switch outfit {
-    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: rollFollowing = true
+    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin, .bunnyEars: rollFollowing = true
     default: rollFollowing = false
     }
-    let rollFade: CGFloat
-    if rollFollowing && abs(H.roll) > 0.05 {
-        let z = mProjRoll(H, (0, 0, 1)).z
-        rollFade = max(0, min(1, (z + 0.2) / 0.4))
-    } else {
-        rollFade = 1 - min(1, max(0, (abs(H.roll) - 1.2) / 0.5))
+    if rollFollowing {
+        if mProjRoll(H, (0, 0, 1)).z < 0 { return }
     }
-    let opacity = morphFade * rollFade * presence
-    guard opacity > 0.01 else { return }
+
+    // p = raw presence (0→1 via Ease.inOut tween)
+    // posP = Ease.back(p) — can overshoot for position bounce on entry
+    // opacP = clamped to [0, 1] for opacity
+    let p = presence
+    let posP = Ease.back(p)
+    let opacP = max(0, min(1, p))
 
     let simplified = H.R < 16
-
-    var ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
-    ctx.opacity = Double(opacity)
-
+    let ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
     let bodyPath = mochiOutfitPath(H.rx, H.ry)
 
+    // Hat fly-off during roll: beanie, santaHat, partyHat, crown, witchHat
+    let isHatType: Bool
+    switch outfit {
+    case .beanie, .santaHat, .partyHat, .crown, .witchHat: isHatType = true
+    default: isHatType = false
+    }
+    if isHatType && abs(H.roll) > 0.01 {
+        let rollProg = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
+        let flyHeight = H.ry * 0.9 * sin(rollProg * .pi)
+        let flyDrift  = H.physDx * H.rx * 0.4 * sin(rollProg * .pi)
+        var hatCtx = ctx
+        hatCtx.opacity = Double(morphFade * opacP)
+        hatCtx.translateBy(x: flyDrift, y: -flyHeight)
+        hatCtx.rotate(by: .radians(H.roll))
+        switch outfit {
+        case .beanie:
+            drawBeaniesFront(ctx: &hatCtx, H: H, bodyPath: bodyPath, simplified: simplified)
+        case .santaHat:
+            drawSantaHatFront(ctx: &hatCtx, H: H, bodyPath: bodyPath)
+        case .partyHat:
+            drawPartyHatFront(ctx: &hatCtx, H: H, bodyPath: bodyPath, simplified: simplified)
+        case .crown:
+            var g = hatCtx; g.clip(to: bodyPath)
+            g.clip(to: mCapClip(H, y: crownYb(H) - 0.1, s: 1))
+            var g2 = g
+            g2.clip(to: mInvert(mCapClip(H, y: crownYb(H), s: 1), H: H), style: FillStyle(eoFill: true))
+            var shp = Path(); shp.addRect(CGRect(x: -H.rx*4, y: -H.ry*4, width: H.rx*8, height: H.ry*8))
+            g2.fill(shp, with: .color(Color(red: 0.314, green: 0.196, blue: 0, opacity: 0.12)))
+            drawCrownPart(ctx: &hatCtx, H: H, side: 1, simplified: simplified)
+        case .witchHat:
+            drawWitchHatFront(ctx: &hatCtx, H: H, bodyPath: bodyPath)
+        default: break
+        }
+        return
+    }
+
+    // Normal rendering with per-accessory presence transition offsets
     switch outfit {
     case .beanie:
-        drawBeaniesFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        drawBeaniesFront(ctx: &c, H: H, bodyPath: bodyPath, simplified: simplified)
+
     case .santaHat:
-        drawSantaHatFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        drawSantaHatFront(ctx: &c, H: H, bodyPath: bodyPath)
+
     case .partyHat:
-        drawPartyHatFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        drawPartyHatFront(ctx: &c, H: H, bodyPath: bodyPath, simplified: simplified)
+
     case .crown:
-        // Shadow under crown
-        var g = ctx
-        g.clip(to: bodyPath)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        var g = c; g.clip(to: bodyPath)
         g.clip(to: mCapClip(H, y: crownYb(H) - 0.1, s: 1))
         var g2 = g
         g2.clip(to: mInvert(mCapClip(H, y: crownYb(H), s: 1), H: H), style: FillStyle(eoFill: true))
-        var shp = Path()
-        shp.addRect(CGRect(x: -H.rx * 4, y: -H.ry * 4, width: H.rx * 8, height: H.ry * 8))
+        var shp = Path(); shp.addRect(CGRect(x: -H.rx*4, y: -H.ry*4, width: H.rx*8, height: H.ry*8))
         g2.fill(shp, with: .color(Color(red: 0.314, green: 0.196, blue: 0, opacity: 0.12)))
-        drawCrownPart(ctx: &ctx, H: H, side: 1, simplified: simplified)
+        drawCrownPart(ctx: &c, H: H, side: 1, simplified: simplified)
+
     case .witchHat:
-        drawWitchHatFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        drawWitchHatFront(ctx: &c, H: H, bodyPath: bodyPath)
+
     case .sunglasses:
-        drawSunglassesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: (1 - p) * 0.15 * H.ry)
+        drawSunglassesFront(ctx: &c, H: H, bodyPath: bodyPath)
+
     case .roundGlasses:
-        drawRoundGlassesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: (1 - p) * 0.15 * H.ry)
+        drawRoundGlassesFront(ctx: &c, H: H, bodyPath: bodyPath)
+
     case .scarf:
-        drawScarfFront(ctx: &ctx, H: H)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: (1 - p) * 0.2 * H.ry)
+        drawScarfFront(ctx: &c, H: H)
+
     case .pumpkin:
-        drawPumpkinFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        drawPumpkinFront(ctx: &c, H: H, bodyPath: bodyPath, simplified: simplified)
+
     case .bow:
-        drawBowFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        let sc = max(0.001, p)
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.scaleBy(x: sc, y: sc)
+        drawBowFront(ctx: &c, H: H, bodyPath: bodyPath)
+
+    case .bunnyEars:
+        // anchorZ >= 0 already confirmed above
+        var c = ctx; c.opacity = Double(morphFade * opacP)
+        c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+        c.rotate(by: .radians((1 - posP) * 0.3))
+        drawBunnyEarsBack(ctx: &c, H: H)
+
     default:
         break
     }
@@ -362,39 +437,68 @@ func drawOutfitBehindStatic(
     outfit: Outfit, H: MochiH,
     cx: CGFloat, cy: CGFloat, tilt: CGFloat, sx: CGFloat, sy: CGFloat,
     roll: CGFloat, morph: CGFloat, isMini: Bool,
-    presence: CGFloat = 1
+    presence: CGFloat = 1, rollTurns: CGFloat = 1
 ) {
     guard !isMini, outfit != .none, outfit != .auto else { return }
-
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
-    // Roll-following accessories: z-based rollFade; hats: fixed threshold
+    guard morphFade > 0.01 else { return }
+
+    let opacP = max(0, min(1, presence))
+    let simplified = H.R < 16
+    var ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
+
+    // Roll-following accessories: draw here only when front-face z < 0
     let rollFollowing: Bool
     switch outfit {
-    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: rollFollowing = true
+    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin, .bunnyEars: rollFollowing = true
     default: rollFollowing = false
     }
-    let rollFade: CGFloat
-    if rollFollowing && abs(H.roll) > 0.05 {
-        let z = mProjRoll(H, (0, 0, 1)).z
-        rollFade = max(0, min(1, (z + 0.2) / 0.4))
-    } else {
-        rollFade = 1 - min(1, max(0, (abs(H.roll) - 1.2) / 0.5))
+    if rollFollowing {
+        guard mProjRoll(H, (0, 0, 1)).z < 0 else { return }
+        ctx.opacity = Double(morphFade * opacP)
+        let bodyPath = mochiOutfitPath(H.rx, H.ry)
+        switch outfit {
+        case .bunnyEars:        drawBunnyEarsBack(ctx: &ctx, H: H)
+        case .sunglasses:       drawSunglassesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        case .roundGlasses:     drawRoundGlassesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        case .scarf:            drawScarfFront(ctx: &ctx, H: H)
+        case .pumpkin:          drawPumpkinFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
+        case .bow:              drawBowFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        default: break
+        }
+        return
     }
-    let opacity = morphFade * rollFade * presence
-    guard opacity > 0.01 else { return }
 
-    let simplified = H.R < 16
-
-    var ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
-    ctx.opacity = Double(opacity)
+    // Non-roll-following behind parts: crown back, witch hat back
+    // Apply hat fly-off during roll, presence transitions otherwise
+    let posP = Ease.back(presence)
+    ctx.opacity = Double(morphFade * opacP)
 
     switch outfit {
-    case .bunnyEars:
-        drawBunnyEarsBack(ctx: &ctx, H: H)
     case .crown:
-        drawCrownPart(ctx: &ctx, H: H, side: -1, simplified: simplified)
+        var c = ctx
+        if abs(H.roll) > 0.01 {
+            let rollProg = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
+            c.translateBy(x: H.physDx * H.rx * 0.4 * sin(rollProg * .pi), y: -H.ry * 0.9 * sin(rollProg * .pi))
+            c.rotate(by: .radians(H.roll))
+        } else {
+            c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+            c.rotate(by: .radians((1 - posP) * 0.3))
+        }
+        drawCrownPart(ctx: &c, H: H, side: -1, simplified: simplified)
+
     case .witchHat:
-        drawWitchHatBack(ctx: &ctx, H: H)
+        var c = ctx
+        if abs(H.roll) > 0.01 {
+            let rollProg = min(1, abs(H.roll) / (2 * .pi * max(1, rollTurns)))
+            c.translateBy(x: H.physDx * H.rx * 0.4 * sin(rollProg * .pi), y: -H.ry * 0.9 * sin(rollProg * .pi))
+            c.rotate(by: .radians(H.roll))
+        } else {
+            c.translateBy(x: 0, y: -(1 - posP) * H.ry * 0.6)
+            c.rotate(by: .radians((1 - posP) * 0.3))
+        }
+        drawWitchHatBack(ctx: &c, H: H)
+
     default:
         break
     }
@@ -407,22 +511,26 @@ private func crownYb(_ H: MochiH) -> CGFloat { 0.46 }
 // MARK: - Bunny ears (behind body)
 
 private func drawBunnyEarsBack(ctx: inout GraphicsContext, H: MochiH) {
-    let R = H.R, rx = H.rx, ry = H.ry
-    let earHW = R * 0.22
+    let R = H.R
     let earH  = R * 0.85
-    let earSep = rx * 0.52
-    let earY  = -ry - earH * 0.65
-    let xS    = sin(H.yaw) * rx * 0.35
 
     for sd: CGFloat in [-1.0, 1.0] {
-        let ex = xS + sd * earSep * abs(cos(H.yaw))
+        // Project ear root using roll (ears follow roll)
+        let earRoot  = mProjRoll(H, (sd * 0.45, 0.92, 0))
+        let earRootL = mProjRoll(H, (sd * 0.45 - 0.22, 0.92, 0))
+        let earRootR = mProjRoll(H, (sd * 0.45 + 0.22, 0.92, 0))
+        let visHW = max(R * 0.04, abs(earRootR.x - earRootL.x) / 2)
+
+        let ex   = earRoot.x
+        let earY = earRoot.y - earH * 0.65
+
         var outer = Path()
-        outer.addEllipse(in: CGRect(x: ex - earHW, y: earY, width: earHW * 2, height: earH))
+        outer.addEllipse(in: CGRect(x: ex - visHW, y: earY, width: visHW * 2, height: earH))
         ctx.fill(outer, with: .color(Color(hex: "#F9F0F0")))
         ctx.stroke(outer, with: .color(Color.black.opacity(0.06)), lineWidth: 0.8)
         var inner = Path()
-        inner.addEllipse(in: CGRect(x: ex - earHW * 0.50, y: earY + R * 0.10,
-                                    width: earHW, height: earH * 0.65))
+        inner.addEllipse(in: CGRect(x: ex - visHW * 0.50, y: earY + R * 0.10,
+                                    width: visHW, height: earH * 0.65))
         ctx.fill(inner, with: .color(Color(hex: "#FCA5A5").opacity(0.70)))
     }
 }

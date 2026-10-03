@@ -175,7 +175,8 @@ final class BotEngine: ObservableObject {
     // Animation state (mirrors prototype 's' object)
     var yaw:    CGFloat = 0
     var pitch:  CGFloat = 0
-    var roll:   CGFloat = 0
+    var roll:      CGFloat = 0
+    var rollTurns: CGFloat = 1
     var tilt:   CGFloat = 0
     var open:   CGFloat = 1          // eye open amount
     var sx:     CGFloat = 1          // scale X
@@ -479,8 +480,10 @@ final class BotEngine: ObservableObject {
 
     func doRoll(duration: CGFloat, turns: CGFloat) {
         roll = 0
+        rollTurns = turns
         anim("roll", keys: [TweenKey(target: .pi * 2 * turns, duration: duration, ease: Ease.inOut)]) { [weak self] in
             self?.roll = 0
+            self?.squash()
         }
     }
 
@@ -498,16 +501,20 @@ final class BotEngine: ObservableObject {
                 self?.outfit = .none
             }
         } else if outfit == .none {
-            // Enter: set outfit then fade in
+            // Enter: set outfit then animate in (Ease.back applied to position offsets in drawing code)
             outfit = newOutfit
             outfitPresence = 0
-            anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.back)])
+            anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.inOut)]) { [weak self] in
+                self?.squash()
+            }
         } else {
             // Change: exit old, set new, enter
             anim("outfitPresence", keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)]) { [weak self] in
                 guard let self else { return }
                 self.outfit = newOutfit
-                self.anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.back)])
+                self.anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.inOut)]) { [weak self] in
+                    self?.squash()
+                }
             }
         }
     }
@@ -1080,7 +1087,7 @@ final class BotEngine: ObservableObject {
         drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
                                cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
                                roll: roll, morph: morph, isMini: isMini,
-                               presence: outfitPresence)
+                               presence: outfitPresence, rollTurns: rollTurns)
     }
 
     func drawOutfitFront(context: GraphicsContext, size: CGSize) {
@@ -1092,7 +1099,7 @@ final class BotEngine: ObservableObject {
         drawOutfitFrontStatic(context: context, outfit: outfit, H: mH,
                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
                               roll: roll, morph: morph, isMini: isMini,
-                              presence: outfitPresence)
+                              presence: outfitPresence, rollTurns: rollTurns)
     }
 
     var outfitFollowsRoll: Bool {
