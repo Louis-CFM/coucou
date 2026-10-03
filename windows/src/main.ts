@@ -25,6 +25,7 @@ async function main() {
   if (boot && !boot.cursorPoll) island.followPageCursor();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

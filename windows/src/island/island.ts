@@ -569,8 +569,24 @@ export class Island {
     });
   }
 
+  /**
+   * Pointer on/off the island as the compositor sees it (Linux only). Null
+   * until the first report, so a platform that never sends it is not gated.
+   */
+  private pointerInside: boolean | null = null;
+
+  setPointerInside(inside: boolean) {
+    this.pointerInside = inside;
+  }
+
   /** Cursor in window-logical coordinates. */
   onCursor(x: number, y: number) {
+    // WebKitGTK can deliver a mousemove after the pointer has left the layer
+    // surface; trusting it re-enters the island and the auto-close never runs.
+    if (this.pointerInside === false) {
+      x = -10_000;
+      y = -10_000;
+    }
     State.mouse = { x, y };
     const rect = this.islandRect();
     State.mouseInIsland = { x: x - rect.x, y: y - rect.y };

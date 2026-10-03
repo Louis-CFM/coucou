@@ -96,6 +96,7 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
+    platform::set_pointer_watch(!collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.

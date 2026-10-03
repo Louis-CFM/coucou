@@ -259,8 +259,82 @@ pub fn make_non_activating(win: &WebviewWindow) {
         }
         gtk::glib::Propagation::Proceed
     });
+    ISLAND_GTK.with(|cell| *cell.borrow_mut() = Some(gw.clone()));
+    watch_pointer_leave(win);
     LAYER_SURFACE.store(true, Ordering::Relaxed);
     crate::log::line("island is a layer-shell overlay");
+}
+
+thread_local! {
+    /// The island's GTK window, for the pointer watch (GTK main thread only).
+    static ISLAND_GTK: std::cell::RefCell<Option<gtk::ApplicationWindow>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Reports the pointer leaving the island, which the page cannot see by itself.
+///
+/// On a layer surface WebKitGTK does not send `mouseout` when the pointer leaves
+/// for good, and GTK's leave-notify fires spuriously while the pointer is still
+/// over the island (each followed by a re-enter), so neither tells "really
+/// gone". GDK's pointer focus does: it follows the compositor's wl_pointer
+/// enter/leave. It is read every 100 ms while the island is shown; both edges go
+/// to the page as `pointer-inside`, and leaving also emits the far-away cursor
+/// the page uses. While the island is hidden the timer is removed altogether
+/// (set_pointer_watch), so a hidden island costs nothing.
+static POINTER_WIN: std::sync::OnceLock<WebviewWindow> = std::sync::OnceLock::new();
+static WATCH_WANTED: AtomicBool = AtomicBool::new(true);
+static WATCH_RUNNING: AtomicBool = AtomicBool::new(false);
+
+fn watch_pointer_leave(win: &WebviewWindow) {
+    let _ = POINTER_WIN.set(win.clone());
+    start_pointer_watch();
+}
+
+/// Starts or parks the pointer watch. Called with the island's collapsed state;
+/// safe from any thread (the timer itself lives on the GTK main loop).
+pub fn set_pointer_watch(active: bool) {
+    WATCH_WANTED.store(active, Ordering::Relaxed);
+    if active {
+        gtk::glib::MainContext::default().invoke(start_pointer_watch);
+    }
+}
+
+/// Main thread only.
+fn start_pointer_watch() {
+    if !WATCH_WANTED.load(Ordering::Relaxed) || WATCH_RUNNING.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    use tauri::Emitter;
+    let Some(win) = POINTER_WIN.get().cloned() else {
+        WATCH_RUNNING.store(false, Ordering::Relaxed);
+        return;
+    };
+    let inside = std::cell::Cell::new(false);
+    gtk::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        if !WATCH_WANTED.load(Ordering::Relaxed) {
+            WATCH_RUNNING.store(false, Ordering::Relaxed);
+            return gtk::glib::ControlFlow::Break;
+        }
+        let now_inside = ISLAND_GTK
+            .with(|cell| {
+                let gw = cell.borrow().clone()?;
+                let ours = gw.window()?;
+                let pointer = gtk::gdk::Display::default()?.default_seat()?.pointer()?;
+                let (under, _, _) = pointer.window_at_position();
+                Some(under?.toplevel() == ours.toplevel())
+            })
+            .unwrap_or(false);
+        if inside.replace(now_inside) != now_inside {
+            // The page gates its own (late, sometimes stale) mouse events on
+            // this state, so a mousemove queued before the pointer left cannot
+            // pull the island back to "inside".
+            let _ = win.emit("pointer-inside", now_inside);
+            if !now_inside {
+                let _ = win.emit("cursor", crate::island::CursorPayload { x: -10_000.0, y: -10_000.0 });
+            }
+        }
+        gtk::glib::ControlFlow::Continue
+    });
 }
 
 /// Temporarily allow keyboard focus so a text field inside the island can be

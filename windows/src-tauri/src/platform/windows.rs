@@ -233,3 +233,6 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+/// The cursor poll already parks itself with the island (island.rs): nothing to do.
+pub fn set_pointer_watch(_active: bool) {}
