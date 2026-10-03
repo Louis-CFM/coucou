@@ -34,6 +34,7 @@ struct IslandViewContent: View {
 struct OverviewView: View {
     @ObservedObject var state: AppState
     @State private var showingN8nDetail = false
+    @State private var activeDiffStep: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
 
@@ -82,7 +83,9 @@ struct OverviewView: View {
                             .padding(.leading, 108)
                             .padding(.trailing, 36)
 
-                            TickerView(task: agent)
+                            TickerView(task: agent, onDiffTap: { stepIdx in
+                                withAnimation(.easeIn(duration: 0.16)) { activeDiffStep = stepIdx }
+                            })
                                 .frame(height: 44)
                                 .padding(.top, 6)
                                 .padding(.leading, 108)
@@ -102,11 +105,23 @@ struct OverviewView: View {
                 }
                 #endif
 
+                // Diff overlay — replaces ticker when a diff step is tapped
+                if let stepIdx = activeDiffStep,
+                   let task = agent,
+                   stepIdx < task.steps.count,
+                   let dp = task.steps[stepIdx].parseDiffStep(),
+                   let diffs = state.sessionDiffs[task.id],
+                   dp.diffIdx < diffs.count {
+                    CardBackground(wash: nil)
+                    DiffCardView(diff: diffs[dp.diffIdx], onDismiss: { activeDiffStep = nil })
+                        .transition(.opacity)
+                }
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffStep != nil
                 #else
-                let hideJumpButton = showingN8nDetail
+                let hideJumpButton = showingN8nDetail || activeDiffStep != nil
                 #endif
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
@@ -132,6 +147,7 @@ struct OverviewView: View {
         }
         .onChange(of: state.focusId) { _, _ in
             showingN8nDetail = false
+            activeDiffStep = nil
             #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
@@ -512,37 +528,222 @@ struct ErrorView: View {
 
 struct FinishedView: View {
     @ObservedObject var state: AppState
+    @State private var showingDiff: FileDiff? = nil
 
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
-                Text(state.focusTask?.steps.last ?? "Session finished")
-                    .font(.system(size: 15, weight: .semibold))
-                HStack(spacing: 8) {
-                    #if !APPSTORE
-                    PrimaryButton("Open terminal") {
-                        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                        let activated = terminalBundleIds.compactMap { id in
-                            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                        if activated == nil {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+            if let diff = showingDiff {
+                DiffCardView(diff: diff, onDismiss: { showingDiff = nil })
+                    .transition(.opacity)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    AgentWho(task: state.focusTask, label: "Claude Code finished")
+                    Text(state.focusTask?.steps.last ?? "Session finished")
+                        .font(.system(size: 15, weight: .semibold))
+                    HStack(spacing: 8) {
+                        #if !APPSTORE
+                        PrimaryButton("Open terminal") {
+                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+                            let activated = terminalBundleIds.compactMap { id in
+                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
+                            if activated == nil {
+                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+                            }
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        #endif
+                        SecondaryButton("OK") {
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
                     }
-                    #endif
-                    SecondaryButton("OK") {
-                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    // Touched files (up to 4)
+                    let files = state.touchedFiles(for: state.focusTask?.id ?? "")
+                    if !files.isEmpty {
+                        let shown = Array(files.prefix(4))
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(shown.indices, id: \.self) { i in
+                                let f = shown[i]
+                                Button(action: {
+                                    withAnimation(.easeIn(duration: 0.16)) {
+                                        if let taskId = state.focusTask?.id,
+                                           let diffs = state.sessionDiffs[taskId],
+                                           let last = diffs.last(where: { $0.path == f.path }) {
+                                            showingDiff = last
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Text(URL(fileURLWithPath: f.path).lastPathComponent)
+                                            .font(.system(size: 10.5))
+                                            .foregroundColor(Color(hex: "#9398A1"))
+                                            .lineLimit(1).truncationMode(.middle)
+                                        if f.added > 0 {
+                                            Text("+\(f.added)")
+                                                .font(.system(size: 9, weight: .medium).monospaced())
+                                                .foregroundColor(Color(hex: "#22C55E"))
+                                        }
+                                        if f.removed > 0 {
+                                            Text("−\(f.removed)")
+                                                .font(.system(size: 9, weight: .medium).monospaced())
+                                                .foregroundColor(Color(hex: "#F4505E"))
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            if files.count > 4 {
+                                Text("+ \(files.count - 4) more")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(hex: "#6B7079"))
+                            }
+                        }
+                    }
+                }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .transition(.opacity)
+            }
+        }
+    }
+}
+
+// MARK: - Diff Card
+
+struct DiffCardView: View {
+    let diff: FileDiff
+    let onDismiss: () -> Void
+
+    private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(spacing: 6) {
+                Button(action: onDismiss) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 8, weight: .medium))
+                        Text(diff.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 2)
+                if diff.added > 0 {
+                    Text("+\(diff.added)")
+                        .font(.system(size: 10, weight: .medium).monospaced())
+                        .foregroundColor(Color(hex: "#22C55E"))
+                }
+                if diff.removed > 0 {
+                    Text("−\(diff.removed)")
+                        .font(.system(size: 10, weight: .medium).monospaced())
+                        .foregroundColor(Color(hex: "#F4505E"))
+                }
+                Button(action: { openInEditor(diff) }) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(Color(hex: "#5F646D"))
+                        .frame(width: 14, height: 14)
+                        .background(Color.white.opacity(0.07))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
+            .padding(.bottom, 3)
+
+            // Content
+            if diff.tooLarge {
+                Text("Diff too large")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            } else if allLines.isEmpty {
+                Text("No changes")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(allLines.enumerated()), id: \.offset) { _, line in
+                            DiffLineRowView(line: line)
+                        }
                     }
                 }
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.leading, 108)
+        .padding(.trailing, 10)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onExitCommand { onDismiss() }
+    }
+
+    private func openInEditor(_ diff: FileDiff) {
+        let path = diff.path
+        let line = diff.firstChangedLine
+        #if !APPSTORE
+        let codePaths = ["/usr/local/bin/code", "/usr/bin/code",
+                         "\(NSHomeDirectory())/.nvm/current/bin/code"]
+        if let codePath = codePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: codePath)
+            p.arguments = ["-g", "\(path):\(line)"]
+            try? p.run()
+            return
+        }
+        #endif
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+}
+
+struct DiffLineRowView: View {
+    let line: DiffLine
+
+    private var bgColor: Color {
+        switch line.kind {
+        case .added:   return Color(hex: "#22C55E").opacity(0.12)
+        case .removed: return Color(hex: "#F4505E").opacity(0.12)
+        case .context: return Color.clear
+        }
+    }
+    private var fgColor: Color {
+        switch line.kind {
+        case .added:   return Color(hex: "#86EFAC")
+        case .removed: return Color(hex: "#FCA5A5")
+        case .context: return Color(hex: "#6B7079")
+        }
+    }
+    private var symbol: String {
+        switch line.kind {
+        case .added:   return "+"
+        case .removed: return "−"
+        case .context: return " "
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(symbol)
+                .font(.system(size: 10.5).monospaced())
+                .foregroundColor(line.kind == .added ? Color(hex: "#22C55E") :
+                                 line.kind == .removed ? Color(hex: "#F4505E") :
+                                 Color(hex: "#454850"))
+                .frame(width: 12, alignment: .leading)
+            Text(line.text)
+                .font(.system(size: 10.5).monospaced())
+                .foregroundColor(fgColor)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(bgColor)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -2648,6 +2849,7 @@ struct N8nDetailView: View {
 
 struct TickerView: View {
     let task: AgentTask?
+    var onDiffTap: ((Int) -> Void)? = nil
 
     @State private var rowA: String = "…"   // completed (above, left-shifted)
     @State private var rowB: String = "…"   // current (below) → animates diagonally up-left
@@ -2701,6 +2903,13 @@ struct TickerView: View {
             ],
             startPoint: .top, endPoint: .bottom
         ))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            let idx = displayIndex
+            guard idx >= 0 && idx < steps.count else { return }
+            guard steps[idx].isDiffStep else { return }
+            onDiffTap?(idx)
+        }
         .onAppear {
             let idx = task?.stepIndex ?? -1
             displayIndex = idx
@@ -2767,33 +2976,76 @@ struct TickerRowView: View {
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Icon: chevron fades out first half, checkmark fades in second half
-            ZStack {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(Color(hex: "#8E939C"))
-                    .opacity(max(0, 1 - phase * 2))
-                Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .regular))
-                    .foregroundColor(Color(hex: "#454850"))
-                    .opacity(max(0, phase * 2 - 1))
+        if let dp = text.parseDiffStep() {
+            HStack(spacing: 6) {
+                // Same icon as normal
+                ZStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .opacity(max(0, 1 - phase * 2))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .regular))
+                        .foregroundColor(Color(hex: "#454850"))
+                        .opacity(max(0, phase * 2 - 1))
+                }
+                .frame(width: 12, alignment: .center)
+                // Filename + counts
+                HStack(spacing: 0) {
+                    ZStack(alignment: .leading) {
+                        TickerShimmerText(text: dp.filename)
+                            .opacity(max(0, 1 - phase * 1.6))
+                        Text(dp.filename)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .opacity(min(1, max(0, phase * 2 - 0.4)))
+                    }
+                    if dp.added > 0 {
+                        Text(" +\(dp.added)")
+                            .font(.system(size: 10, weight: .medium).monospaced())
+                            .foregroundColor(Color(hex: "#22C55E"))
+                            .fixedSize()
+                    }
+                    if dp.removed > 0 {
+                        Text(" −\(dp.removed)")
+                            .font(.system(size: 10, weight: .medium).monospaced())
+                            .foregroundColor(Color(hex: "#F4505E"))
+                            .fixedSize()
+                    }
+                }
             }
-            .frame(width: 12, alignment: .center)
+            .frame(height: 22, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(spacing: 6) {
+                // Icon: chevron fades out first half, checkmark fades in second half
+                ZStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .opacity(max(0, 1 - phase * 2))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .regular))
+                        .foregroundColor(Color(hex: "#454850"))
+                        .opacity(max(0, phase * 2 - 1))
+                }
+                .frame(width: 12, alignment: .center)
 
-            // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
-            ZStack(alignment: .leading) {
-                TickerShimmerText(text: text)
-                    .opacity(max(0, 1 - phase * 1.6))
-                Text(text)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "#6B7079"))
-                    .lineLimit(1).truncationMode(.tail)
-                    .opacity(min(1, max(0, phase * 2 - 0.4)))
+                // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
+                ZStack(alignment: .leading) {
+                    TickerShimmerText(text: text)
+                        .opacity(max(0, 1 - phase * 1.6))
+                    Text(text)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .opacity(min(1, max(0, phase * 2 - 0.4)))
+                }
             }
+            .frame(height: 22, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 22, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

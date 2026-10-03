@@ -88,6 +88,10 @@ Centre vertical du bonhomme : 36 + (hauteur − 46) / 2, sauf `result` (y = 86).
 - Toutes les 2,8 s, si la tâche en focus travaille : tout monte de 30 pt en 450 ms `cubic-bezier(.3,.9,.3,1)`.
 - Dans l'app réelle, les lignes = les dernières actions de la session (outil + cible : « Edit Invoice.swift », « Bash npm test ») ou les nœuds n8n.
 
+### Diff en direct
+
+Quand une étape du fil est une modification de fichier (préfixe interne `\u{E001}`), elle s'affiche avec le nom du fichier et le bilan `+N −M` en couleur. Un clic ouvre la carte diff (voir DiffCardView) dans la carte gauche de la vue principale, en remplacement du fil. Échap ou le bouton ← de l'en-tête ferme la carte. La vue Terminé liste les fichiers touchés.
+
 ### Pastilles (overview)
 - 132 × 34, rayon 17, fond couleur de l'agent à 13 %, bord à 32 %, mini-bonhomme Ø 24 centré à 17 pt du bord gauche, libellé 12 pt couleur de l'agent éclaircie de 25 %. Deux colonnes, écart 8, centrées verticalement dans la carte droite (qui commence à x = 342).
 

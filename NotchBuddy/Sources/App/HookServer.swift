@@ -442,6 +442,14 @@ final class HookServer: @unchecked Sendable {
 
         case "PostToolUse":
             state.updateTask(id: agentId, state: .working)
+            // Live diff for Edit / MultiEdit / Write
+            let diffTool = payload["tool_name"] as? String ?? ""
+            let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
+            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
+                let idx = state.appendSessionDiff(diff, for: agentId)
+                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffIdx: idx)
+                appendStep(id: agentId, step: step)
+            }
 
         case "PostToolUseFailure":
             state.updateTask(id: agentId, state: .working)
@@ -495,6 +503,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionEnd":
             activeSessionId = nil
+            state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
 
         case "SubagentStart":
@@ -980,6 +989,45 @@ final class HookServer: @unchecked Sendable {
                            "xcodebuild test", "unittest"]
         if testRunners.contains(where: { command.contains($0) }) { return "Teste" }
         return "Exécute"
+    }
+
+    // MARK: - Live diff helpers
+
+    @MainActor
+    private func buildFileDiff(tool: String, input: [String: Any], pillId: String) -> FileDiff? {
+        switch tool {
+        case "Edit":
+            guard let old = input["old_string"] as? String,
+                  let new = input["new_string"] as? String,
+                  let path = input["file_path"] as? String,
+                  !old.isEmpty || !new.isEmpty else { return nil }
+            let d = DiffEngine.fromEdit(old: old, new: new, path: path)
+            return (d.added > 0 || d.removed > 0) ? d : nil
+
+        case "MultiEdit":
+            guard let path = input["file_path"] as? String,
+                  let edits = input["edits"] as? [[String: Any]], !edits.isEmpty else { return nil }
+            var totalAdded = 0, totalRemoved = 0, allHunks: [DiffHunk] = [], anyLarge = false
+            for edit in edits {
+                guard let old = edit["old_string"] as? String,
+                      let new = edit["new_string"] as? String else { continue }
+                let d = DiffEngine.fromEdit(old: old, new: new, path: path)
+                totalAdded += d.added; totalRemoved += d.removed
+                allHunks.append(contentsOf: d.hunks); if d.tooLarge { anyLarge = true }
+            }
+            guard totalAdded > 0 || totalRemoved > 0 else { return nil }
+            return FileDiff(path: path, added: totalAdded, removed: totalRemoved,
+                            hunks: allHunks, tooLarge: anyLarge)
+
+        case "Write":
+            guard let path = input["file_path"] as? String,
+                  let content = input["content"] as? String, !content.isEmpty else { return nil }
+            let d = DiffEngine.fromNew(content: content, path: path)
+            return (d.added > 0 || d.removed > 0) ? d : nil
+
+        default:
+            return nil
+        }
     }
 
     /// Collapses whitespace so a multi-line command stays one ticker row.
