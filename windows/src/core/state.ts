@@ -92,6 +92,9 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Who answers in the chat: the Anthropic API, or the Cursor CLI on the user's plan. */
+  chatProvider: "anthropic" | "cursor";
+  cursorModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +109,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "anthropic",
+  cursorModel: "auto",
 };
 
 type Listener = () => void;

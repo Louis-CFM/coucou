@@ -254,6 +254,108 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Cursor section ────────────────────────────────────────────────────────────
+
+const CURSOR_INSTALL = "curl https://cursor.com/install -fsS | bash";
+
+function cursorSection(hasKey: boolean): HTMLElement {
+  const dot = statusDot(false);
+  const state = h("span", { class: "hint", text: "Checking the Cursor CLI…" });
+
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "anthropic", text: "Claude (API key)" }),
+    h("option", { value: "cursor", text: "Cursor (your plan)" }),
+  );
+  provider.value = settings.chatProvider;
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value as Settings["chatProvider"];
+    void save();
+  });
+
+  const model = h("select", {}) as HTMLSelectElement;
+  const setModels = (list: [string, string][]) => {
+    clear(model);
+    if (!list.some(([id]) => id === "auto")) list.unshift(["auto", "Auto"]);
+    for (const [id, label] of list) model.append(h("option", { value: id, text: `${label} (${id})` }));
+    if (!list.some(([id]) => id === settings.cursorModel)) {
+      model.append(h("option", { value: settings.cursorModel, text: settings.cursorModel }));
+    }
+    model.value = settings.cursorModel;
+  };
+  setModels([]);
+  model.addEventListener("change", () => {
+    settings.cursorModel = model.value;
+    void save();
+  });
+
+  const login = h("button", { class: "primary", text: "Sign in with Cursor" });
+  const recheck = h("button", { text: "Check again" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const s = await Bridge.cursorStatus();
+    clear(feedback);
+    if (!s || !s.cli) {
+      dot.style.background = "#f4505e";
+      state.textContent = "Cursor CLI not found. Install it, then sign in:";
+      feedback.append(h("div", { class: "row" }, h("span", { class: "path", text: CURSOR_INSTALL })));
+      login.style.display = "none";
+      return;
+    }
+    dot.style.background = s.loggedIn ? "#22c55e" : "#f4505e";
+    state.textContent = s.loggedIn
+      ? `${s.status.replace(/^✓\s*/, "")}. The chat uses your Cursor plan, read-only.`
+      : "Not signed in. Sign in once in the browser, then check again.";
+    login.style.display = s.loggedIn ? "none" : "";
+    if (s.loggedIn) setModels((await Bridge.cursorModels()) ?? []);
+  }
+
+  login.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.cursorLogin();
+      feedback.append(h("div", { class: "notice ok", text: "Finish signing in in your browser, then click Check again." }));
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not start the sign-in: ${String(err)}` }));
+    }
+  });
+  recheck.addEventListener("click", () => void refresh());
+
+  const key = h("input", {
+    type: "password",
+    placeholder: hasKey ? "••••••••••••  (stored)" : "optional, instead of signing in",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const saveKey = h("button", { text: "Save" });
+  saveKey.addEventListener("click", async () => {
+    const value = key.value.trim();
+    try {
+      await Bridge.secretSet("cursor-api-key", value);
+      key.value = "";
+      key.placeholder = value ? "••••••••••••  (stored)" : "optional, instead of signing in";
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+
+  void refresh();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Cursor" })),
+    state,
+    h("div", { class: "row" }, h("label", { text: "Chat answers with" }), provider),
+    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, login, recheck),
+    h("div", { class: "row" }, h("label", { text: "API key" }), key, saveKey),
+    feedback,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -443,6 +545,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    cursorSection((await Bridge.secretPresent("cursor-api-key")) ?? false),
     integrationsSection(present),
     generalSection(),
     h("div", {

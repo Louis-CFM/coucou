@@ -6,6 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
+import { Bridge } from "../core/bridge";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -419,6 +420,22 @@ function buildSettings(actions: ViewActions): ViewHost {
   );
   const claudeBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
+  const cursorBadge = h("span", { class: "status-badge" });
+  let cursorLoggedIn = false;
+  let cursorCheckedAt = 0;
+  const paintCursor = () => {
+    clear(cursorBadge);
+    cursorBadge.append(dot(cursorLoggedIn ? "#22C55E" : "#F4505E", 6), h("span", { text: "Cursor" }));
+  };
+  // `agent status` spawns the CLI: checked at most every 30 s, not on every sync.
+  const refreshCursor = () => {
+    if (Date.now() - cursorCheckedAt < 30_000) return;
+    cursorCheckedAt = Date.now();
+    void Bridge.cursorStatus().then((st) => {
+      cursorLoggedIn = st?.loggedIn ?? false;
+      paintCursor();
+    });
+  };
 
   const rows = h(
     "div",
@@ -436,6 +453,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
       apiBadge,
+      cursorBadge,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -465,6 +483,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      paintCursor();
+      refreshCursor();
     },
   };
 }
