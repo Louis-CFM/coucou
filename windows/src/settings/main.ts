@@ -321,9 +321,13 @@ function modelsSection(): HTMLElement {
         keyDot.style.background = has ? "#22c55e" : "#f4505e";
       }
       keyDot.title = "API key for this provider";
+      // The name defaults to the model id, so the id only adds anything once
+      // the model has been given a name of its own.
+      const provider = m.kind === "claude" ? "Claude" : providerName(m.endpoint);
+      const named = m.label && m.label !== m.model && m.label !== m.model.split("/").pop();
       list.append(
         h("div", { class: "row" }, use, label, vision, keyDot, remove),
-        h("div", { class: "hint", style: "margin:-4px 0 6px 64px", text: `${m.kind === "claude" ? "Claude" : providerName(m.endpoint)} \u00b7 ${m.model}` }),
+        h("div", { class: "hint", style: "margin:-4px 0 6px 64px", text: named ? `${provider} \u00b7 ${m.model}` : provider }),
       );
     }
   }
