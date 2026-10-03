@@ -213,7 +213,7 @@ struct OutfitGrid: View {
 // MARK: - Roll planche
 
 private let rollOutfits: [Outfit] = [
-    .beanie, .santaHat, .witchHat, .crown,
+    .none, .beanie, .santaHat, .witchHat, .crown,
     .sunglasses, .roundGlasses, .scarf, .bow, .pumpkin, .bunnyEars
 ]
 

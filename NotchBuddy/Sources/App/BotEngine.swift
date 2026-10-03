@@ -200,6 +200,7 @@ final class BotEngine: ObservableObject {
     private var physVy: CGFloat = 0
     private var prevYaw: CGFloat = 0
     private var prevOy: CGFloat = 0
+    private var prevRoll: CGFloat = 0
 
     // Targets
     var tgYaw:    CGFloat = 0
@@ -848,10 +849,13 @@ final class BotEngine: ObservableObject {
         }
 
         // Phys spring for hat/pompom lag
-        let yawVel = (yaw - prevYaw) / CGFloat(dt)
-        let oyVel  = (oy  - prevOy)  / CGFloat(dt)
-        prevYaw = yaw; prevOy = oy
-        let tDx = max(-1, min(1, -yawVel * 0.35 - tilt * 2))
+        let yawVel  = (yaw  - prevYaw)  / CGFloat(dt)
+        let oyVel   = (oy   - prevOy)   / CGFloat(dt)
+        let rollVel = (roll - prevRoll) / CGFloat(dt)
+        prevYaw = yaw; prevOy = oy; prevRoll = roll
+        // Centrifugal physDx impulse when rigidly rolling with an outfit
+        let centrifugal: CGFloat = (outfit != .none && outfitPresence > 0.05) ? rollVel * 0.18 : 0
+        let tDx = max(-1, min(1, -yawVel * 0.35 - tilt * 2 + centrifugal))
         let tDy = max(-1, min(1,  oyVel  * 0.50))
         let stiff: CGFloat = 60, damp: CGFloat = 9
         physVx += (stiff * (tDx - physDx) - damp * physVx) * dtCG
@@ -1083,10 +1087,12 @@ final class BotEngine: ObservableObject {
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: roll)
+        // Rigid roll: accessories see roll=0 (they rotate with the body via context transform)
+        let outfitRoll: CGFloat = outfitPresence > 0.05 ? 0 : roll
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: outfitRoll)
         drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
                                cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                               roll: roll, morph: morph, isMini: isMini,
+                               roll: outfitRoll, morph: morph, isMini: isMini,
                                presence: outfitPresence, rollTurns: rollTurns)
     }
 
@@ -1095,11 +1101,21 @@ final class BotEngine: ObservableObject {
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: roll)
+        // Rigid roll: accessories see roll=0 (they rotate with the body via context transform)
+        let outfitRoll: CGFloat = outfitPresence > 0.05 ? 0 : roll
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: outfitRoll)
         drawOutfitFrontStatic(context: context, outfit: outfit, H: mH,
                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                              roll: roll, morph: morph, isMini: isMini,
+                              roll: outfitRoll, morph: morph, isMini: isMini,
                               presence: outfitPresence, rollTurns: rollTurns)
+    }
+
+    /// World-space center of Mochi's body (used by BotCanvasView for rigid-roll transform)
+    func bodyCenter(size: CGSize) -> CGPoint {
+        let W = size.width, R = W * 0.3
+        let cx = W / 2 + ox * R
+        let cy = size.height / 2 + particleOverhang / 2 + oy * R + R * 0.06
+        return CGPoint(x: cx, y: cy)
     }
 
     var outfitFollowsRoll: Bool {
@@ -1256,10 +1272,12 @@ final class BotEngine: ObservableObject {
         ctx.clip(to: path)
 
         // Build eye frames: use mEyeFrames for position/foreshortening, but keep roll in eyePitch
+        // When an outfit is rigidly rotating, the whole body turns — eyes do NOT add roll
+        let rigidRoll = outfit != .none && outfitPresence > 0.05
         let mH = MochiH(R: R, yaw: yaw, pitch: pitch)
         for f in mEyeFrames(mH) {
-            // Re-derive pitch with roll for the roll-through effect
-            var eyePitch = MochiConst.eyeP + pitch + roll
+            // Re-derive pitch with roll for the roll-through effect (illusion, outfit=none only)
+            var eyePitch = MochiConst.eyeP + pitch + (rigidRoll ? 0 : roll)
             eyePitch = ((eyePitch + .pi).truncatingRemainder(dividingBy: .pi*2) + .pi*2).truncatingRemainder(dividingBy: .pi*2) - .pi
             let cp = cos(eyePitch)
             let eyeYaw = f.sd * MochiConst.eyeSp + yaw
