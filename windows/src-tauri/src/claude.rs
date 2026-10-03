@@ -38,19 +38,19 @@ impl Chat {
         self.messages.lock().unwrap().clear();
     }
 
-    fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.messages.lock().unwrap().is_empty()
     }
 
-    fn push(&self, message: Value) {
+    pub(crate) fn push(&self, message: Value) {
         self.messages.lock().unwrap().push(message);
     }
 
-    fn pop(&self) {
+    pub(crate) fn pop(&self) {
         self.messages.lock().unwrap().pop();
     }
 
-    fn snapshot(&self) -> Vec<Value> {
+    pub(crate) fn snapshot(&self) -> Vec<Value> {
         self.messages.lock().unwrap().clone()
     }
 }

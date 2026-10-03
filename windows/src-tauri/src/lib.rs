@@ -2,6 +2,7 @@
 
 mod claude;
 mod files;
+mod gemini;
 mod hooks;
 mod integrations;
 mod island;
@@ -241,8 +242,25 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    match settings.chat_provider.as_str() {
+        "google" => {
+            let model = if settings.google_model.is_empty() {
+                gemini::DEFAULT_MODEL
+            } else {
+                &settings.google_model
+            };
+            gemini::send(&chat, model, query, context).await
+        }
+        _ => {
+            let model = if settings.model.is_empty() {
+                claude::DEFAULT_MODEL
+            } else {
+                &settings.model
+            };
+            claude::send(&chat, model, query, context).await
+        }
+    }
 }
 
 #[tauri::command]

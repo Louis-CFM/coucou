@@ -171,87 +171,132 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── AI Chat Provider section ──────────────────────────────────────────────────
 
-const MODELS: [string, string][] = [
+const ANTHROPIC_MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
   ["claude-sonnet-5", "Claude Sonnet 5"],
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+const GOOGLE_MODELS: [string, string][] = [
+  ["gemini-2.5-pro", "Gemini 2.5 Pro"],
+  ["gemini-2.0-flash", "Gemini 2.0 Flash"],
+  ["gemini-2.0-flash-lite", "Gemini 2.0 Flash Lite"],
+  ["gemini-1.5-flash", "Gemini 1.5 Flash"],
+  ["gemini-1.5-pro", "Gemini 1.5 Pro"],
+];
 
-  const field = h("input", {
-    type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
-    style: "flex:1 1 auto;min-width:0",
-    autocomplete: "off",
-    spellcheck: "false",
-  }) as HTMLInputElement;
+function apiSection(hasAnthropicKey: boolean, hasGoogleKey: boolean): HTMLElement {
+  const isGoogleInitial = (settings.chatProvider || "anthropic") === "google";
+  const initialKeyPresent = isGoogleInitial ? hasGoogleKey : hasAnthropicKey;
+  const dot = statusDot(initialKeyPresent);
+  const title = h("span", { text: "Chat Provider" });
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
-  const feedback = h("div", {});
-
-  async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
-    clearBtn.style.display = present ? "" : "none";
-  }
-
-  saveBtn.addEventListener("click", async () => {
-    const value = field.value.trim();
-    if (!value) return;
-    clear(feedback);
-    try {
-      await Bridge.secretSet("anthropic-api-key", value);
-      field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
-    }
-  });
-
-  clearBtn.addEventListener("click", async () => {
-    clear(feedback);
-    try {
-      await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
-    }
-  });
-
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
-  });
-
-  clearBtn.style.display = hasKey ? "" : "none";
-
-  return h(
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
-    state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
-    feedback,
+    h("h2", {}, dot, title),
+    body,
   );
+
+  async function redraw() {
+    clear(body);
+
+    const providerSelect = h("select", {}) as HTMLSelectElement;
+    providerSelect.append(
+      h("option", { value: "anthropic", text: "Claude (Anthropic)" }),
+      h("option", { value: "google", text: "Google Gemini" }),
+    );
+    providerSelect.value = settings.chatProvider || "anthropic";
+    providerSelect.addEventListener("change", async () => {
+      settings.chatProvider = providerSelect.value as "anthropic" | "google";
+      await save();
+      await redraw();
+    });
+
+    const isG = settings.chatProvider === "google";
+    const secretKeyName = isG ? "google-api-key" : "anthropic-api-key";
+    const hasKey = (await Bridge.secretPresent(secretKeyName)) ?? false;
+
+    dot.style.background = hasKey ? "#22c55e" : "#f4505e";
+
+    const state = h("span", {
+      class: "hint",
+      text: hasKey
+        ? "Key saved in the Windows Credential Manager."
+        : isG
+          ? "No key yet — get a free Gemini API key from aistudio.google.com."
+          : "No key yet — the chat needs an Anthropic API key.",
+    });
+
+    const field = h("input", {
+      type: "password",
+      placeholder: hasKey ? "••••••••••••  (stored)" : isG ? "AIzaSy..." : "sk-ant-...",
+      style: "flex:1 1 auto;min-width:0",
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+
+    const saveBtn = h("button", { class: "primary", text: "Save key" });
+    const clearBtn = h("button", { class: "danger", text: "Remove", style: hasKey ? "" : "display:none" });
+    const feedback = h("div", {});
+
+    saveBtn.addEventListener("click", async () => {
+      const value = field.value.trim();
+      if (!value) return;
+      clear(feedback);
+      try {
+        await Bridge.secretSet(secretKeyName, value);
+        field.value = "";
+        feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+        await redraw();
+      } catch (err) {
+        feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      }
+    });
+
+    clearBtn.addEventListener("click", async () => {
+      clear(feedback);
+      try {
+        await Bridge.secretClear(secretKeyName);
+        feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+        await redraw();
+      } catch (err) {
+        feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      }
+    });
+
+    const modelSelect = h("select", {}) as HTMLSelectElement;
+    const modelList = isG ? GOOGLE_MODELS : ANTHROPIC_MODELS;
+    const selectedModel = isG ? (settings.googleModel || "gemini-2.0-flash") : settings.model;
+
+    for (const [id, label] of modelList) modelSelect.append(h("option", { value: id, text: label }));
+    if (!modelList.some(([id]) => id === selectedModel)) {
+      modelSelect.append(h("option", { value: selectedModel, text: selectedModel }));
+    }
+    modelSelect.value = selectedModel;
+    modelSelect.addEventListener("change", () => {
+      if (isG) {
+        settings.googleModel = modelSelect.value;
+      } else {
+        settings.model = modelSelect.value;
+      }
+      void save();
+    });
+
+    body.append(
+      h("div", { class: "row" }, h("label", { text: "Provider" }), providerSelect),
+      state,
+      h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+      h("div", { class: "row" }, h("label", { text: "Model" }), modelSelect),
+      feedback,
+    );
+  }
+
+  void redraw();
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -429,7 +474,8 @@ async function main() {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasAnthropicKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasGoogleKey = (await Bridge.secretPresent("google-api-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -442,7 +488,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    apiSection(hasAnthropicKey, hasGoogleKey),
     integrationsSection(present),
     generalSection(),
     h("div", {
