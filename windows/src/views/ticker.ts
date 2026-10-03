@@ -78,7 +78,8 @@ export class Ticker {
   private c = makeRow(); // incoming
   private queue: string[] = [];
   private startMs: number | null = null;
-  private displayIndex = -1;
+  /** The task's step count last time it was seen; -1 before the first. */
+  private shown = -1;
 
   constructor() {
     this.el = h("div", { class: "ticker" }, this.a.el, this.b.el, this.c.el);
@@ -99,36 +100,32 @@ export class Ticker {
   }
 
   sync(task: AgentTask | null) {
-    const steps = task && task.steps.length > 0 ? task.steps : ["…"];
-    const idx = task ? Math.min(task.stepIndex, steps.length - 1) : -1;
+    const steps = task?.steps ?? [];
+    // Counted, not indexed: the list keeps its last 20 steps, so once full its
+    // length and index stay put while new steps keep coming, and the ticker
+    // used to freeze on the 20th step of a session.
+    const total = task?.stepCount ?? steps.length;
 
-    // First render: drop straight into place, no animation.
-    if (this.displayIndex < 0) {
-      this.displayIndex = idx;
-      setText(this.a, idx > 0 ? steps[idx - 1] : "…");
-      setText(this.b, steps[Math.max(idx, 0)]);
-      this.rest();
-      return;
-    }
-
-    // The session restarted (steps were cleared): re-seed rather than scroll.
-    if (idx < this.displayIndex) {
+    // First render, or the session restarted (steps were cleared): drop
+    // straight into place, no animation.
+    if (this.shown < 0 || total < this.shown) {
       this.queue = [];
       this.startMs = null;
-      this.displayIndex = idx;
+      this.shown = total;
+      const idx = steps.length - 1;
       setText(this.a, idx > 0 ? steps[idx - 1] : "…");
-      setText(this.b, steps[Math.max(idx, 0)]);
+      setText(this.b, idx >= 0 ? steps[idx] : "…");
       this.rest();
       return;
     }
 
-    for (let i = this.displayIndex + 1; i <= idx; i++) {
+    for (const step of steps.slice(Math.max(0, steps.length - (total - this.shown)))) {
       // A repeat of the step already on screen (or already queued) would scroll
       // an identical line into place: nothing to show.
       const last = this.queue.length > 0 ? this.queue[this.queue.length - 1] : this.b.text;
-      if (steps[i] !== last) this.queue.push(steps[i]);
+      if (step !== last) this.queue.push(step);
     }
-    this.displayIndex = idx;
+    this.shown = total;
     if (this.queue.length > MAX_QUEUE) {
       this.queue = this.queue.slice(-MAX_QUEUE);
     }

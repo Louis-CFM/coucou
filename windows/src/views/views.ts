@@ -222,7 +222,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       jump.style.display = detailOpen ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
+      const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}:${t.color}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
@@ -552,7 +552,7 @@ function buildConfused(): ViewHost {
     "div",
     { class: "stack", style: "padding:0 18px 0 128px" },
     h("div", { class: "title", text: "Too many hits at once." }),
-    h("div", { class: "sub", text: "Give me a sec — back to work in three seconds." }),
+    h("div", { class: "sub", text: "Give me a sec, back to work in three seconds." }),
   );
   return { el: h("div", { class: "view" }, card("pink", body)), sync() {} };
 }

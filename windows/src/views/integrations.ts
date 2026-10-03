@@ -543,6 +543,9 @@ export function musicPillControls(): HTMLElement {
     toggle.replaceChildren(svg(np?.playing ? ICONS.pause : ICONS.play, 12, { fill: "currentColor" }));
   };
   sync();
-  window.addEventListener("now-playing", sync);
+  // Pills are rebuilt wholesale (every new cover recolours them): one no longer
+  // on screen stops listening.
+  const listen = () => (box.isConnected ? sync() : window.removeEventListener("now-playing", listen));
+  window.addEventListener("now-playing", listen);
   return box;
 }

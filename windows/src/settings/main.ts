@@ -183,7 +183,7 @@ const MODELS: [string, string][] = [
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet. The chat needs one." });
 
   const field = h("input", {
     type: "password",
@@ -202,7 +202,7 @@ function apiSection(hasKey: boolean): HTMLElement {
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
       ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
+      : "No key yet. The chat needs one.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
@@ -570,7 +570,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi (${used}/${MAX_ACTIVE} in use). Keys are stored in the Windows Credential Manager, never on disk.`;
   }
 
   for (const def of INTEGRATIONS) {
@@ -890,6 +890,7 @@ function generalSection(): HTMLElement {
     ),
   );
 }
+
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 

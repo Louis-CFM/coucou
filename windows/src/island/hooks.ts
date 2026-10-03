@@ -155,6 +155,7 @@ function clearSession() {
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
+  t.stepCount = 0;
   t.name = State.settings.mochiName?.trim() || "Mochi";
   t.pillBadge = null;
 }
@@ -304,7 +305,8 @@ function handleHook(island: Island, payload: HookPayload) {
         if (isExternalAgent) {
           State.removeTask(agentId);
         } else {
-          State.updateTask(agentId, "idle");
+          // Another session may have started working since: it keeps its state.
+          if (State.tasks.find((t) => t.id === agentId)?.state === "finished") State.updateTask(agentId, "idle");
           State.setPillBadge(agentId, null);
         }
       }, 5200);

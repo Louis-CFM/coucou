@@ -1,6 +1,7 @@
 // Generated media in the chat: the "making it" card while a model works, and
 // the result (image, video or speech) with Download and a full-screen preview.
 
+import type { AnimationItem } from "lottie-web";
 import { h, svg } from "./dom";
 import { ICONS } from "./icons";
 import { Bridge, onEvent } from "../core/bridge";
@@ -68,23 +69,25 @@ export function resetProgress() {
 }
 
 /**
- * The card shown while a model makes something. Image and video get the
- * "aperture": a sparkle in a tile whose rainbow rim turns and a light sweep
- * crosses (all transforms, so the compositor does the work). Video adds a
- * progress bar; speech gets a simpler bouncing waveform.
+ * The card shown while a model makes something. Image, video and 3D get the
+ * "aurora": the shape of the coming picture, with colour drifting under a
+ * band of pixels developing (all transforms and opacity, so the compositor
+ * does the work). Video adds a progress bar. Speech plays a music-note
+ * animation, recoloured with a turning rainbow.
  */
 export function generatingCard(kind: ModelOutput): HTMLElement {
   const time = h("span", { class: "gen-time" });
   const visual =
     kind === "audio"
-      ? h("div", { class: "gen-wave" }, h("i"), h("i"), h("i"), h("i"), h("i"))
+      ? noteLoader()
       : h(
           "div",
-          { class: "gen-logo" },
-          h("i", { class: "gen-rim" }),
-          h("i", { class: "gen-face" }),
-          h("i", { class: "gen-sweep" }),
-          svg(SPARKLE, 26, { fill: "currentColor" }),
+          { class: `gen-aurora ${kind}` },
+          h("i"),
+          h("i"),
+          h("i"),
+          h("b", { class: "gen-pixels" }),
+          svg(SPARKLE, 16, { fill: "currentColor" }),
         );
   const card = h(
     "div",
@@ -112,6 +115,56 @@ export function generatingCard(kind: ModelOutput): HTMLElement {
   tick();
   paintProgress(card);
   return card;
+}
+
+/**
+ * The music-note loader (assets/music-loading.json, a Lottie) on a canvas.
+ * Each frame is drawn, then painted over "source-in" with a turning rainbow,
+ * so the whole animation takes the gradient. lottie-web loads on first use.
+ */
+function noteLoader(): HTMLElement {
+  const size = 44;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const canvas = h("canvas", { class: "gen-note", width: size * dpr, height: size * dpr });
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  void Promise.all([import("lottie-web/build/player/lottie_light_canvas"), import("../assets/music-loading.json")]).then(
+    ([lottie, data]) => {
+      // The light canvas build's typings only describe the SVG renderer.
+      const player = lottie.default as unknown as { loadAnimation(params: object): AnimationItem };
+      const anim = player.loadAnimation({
+        renderer: "canvas",
+        loop: true,
+        autoplay: false,
+        animationData: structuredClone(data.default),
+        rendererSettings: { context: ctx, clearCanvas: true, preserveAspectRatio: "xMidYMid meet" },
+      });
+      const frames = anim.totalFrames;
+      const t0 = performance.now();
+      const draw = (now: number) => {
+        if (!canvas.isConnected && now - t0 > 1000) {
+          anim.destroy();
+          return;
+        }
+        const t = (now - t0) / 1000;
+        anim.goToAndStop((t * 60) % frames, true);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = "source-in";
+        const c = canvas.width / 2;
+        const rainbow = ctx.createConicGradient(t * 2.4, c, c);
+        ["#ff6b5b", "#f7b32b", "#2dd4a7", "#38bdf8", "#a78bfa", "#ff6b5b"].forEach((col, i, all) =>
+          rainbow.addColorStop(i / (all.length - 1), col),
+        );
+        ctx.fillStyle = rainbow;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    },
+  );
+  return canvas;
 }
 
 /** A four-point sparkle, the "generating" mark. */

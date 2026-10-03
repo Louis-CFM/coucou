@@ -24,8 +24,8 @@ pub const DEFAULT_MODEL: &str = "claude-opus-5";
 
 /// Follows "You are <name>, " (see `system_prompt`).
 const SYSTEM_PROMPT: &str = "a personal AI assistant living at the top of the user's screen. \
-You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
-Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
+You have web search access and can help with absolutely anything: research, coding, finding places, recommendations, tasks, questions. \
+Respond in the user's language. Be thorough and complete, with as much detail as the task requires. \
 Format with Markdown: short paragraphs, lists where they help, code in backticks or fenced blocks. \
 Put the key words and phrases the user should notice in **bold** (a few per answer, never whole sentences). \
 End every reply with one last line holding only a JSON object with how you feel about it, for your avatar to act out, \
@@ -160,7 +160,7 @@ pub async fn send(
                 content.push(json!({ "type": "text", "text": format!("File: {name}") }));
             }
             Some(ChatContext::Window { app_name, title, url }) => {
-                let mut text = format!("Context — App: {app_name}, Window: {title}");
+                let mut text = format!("Context. App: {app_name}, Window: {title}");
                 if let Some(url) = url {
                     text.push_str(&format!(", URL: {url}"));
                 }

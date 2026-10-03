@@ -23,6 +23,61 @@ pub struct NowPlaying {
     pub playing: bool,
     /// Music (not a video, not a browser): what Mochi dances to.
     pub music: bool,
+    /// The cover's colour ("#RRGGBB"), which Melody wears; None without a cover.
+    pub color: Option<String>,
+    /// The cover's size in bytes: a new cover for the same track (players often
+    /// send the title first and the cover a moment later) is read again.
+    #[serde(skip)]
+    pub cover_size: u64,
+}
+
+/// The colour a cover reads as, from its RGBA pixels: the busiest hue among its
+/// vivid pixels (near-white, near-black and grey ones don't count), or the plain
+/// average when none is vivid. Lifted so it stays readable on the black island.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn cover_color(rgba: &[u8]) -> Option<String> {
+    const HUES: usize = 12;
+    // Per hue: total weight and the weighted sum of its pixels.
+    let mut hues = [(0.0f32, [0.0f32; 3]); HUES];
+    let (mut sum, mut n) = ([0.0f32; 3], 0.0f32);
+    for &[pr, pg, pb, alpha] in rgba.as_chunks::<4>().0 {
+        if alpha < 128 {
+            continue;
+        }
+        let px = [pr, pg, pb].map(f32::from);
+        let [r, g, b] = px;
+        sum = [sum[0] + r, sum[1] + g, sum[2] + b];
+        n += 1.0;
+        let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+        let chroma = max - min;
+        if max < 40.0 || min > 215.0 || chroma < 48.0 {
+            continue;
+        }
+        let hue = if max == r {
+            ((g - b) / chroma).rem_euclid(6.0)
+        } else if max == g {
+            (b - r) / chroma + 2.0
+        } else {
+            (r - g) / chroma + 4.0
+        };
+        let bucket = &mut hues[((hue / 6.0 * HUES as f32) as usize).min(HUES - 1)];
+        // The more colourful a pixel, the more it counts.
+        bucket.0 += chroma;
+        for (s, c) in bucket.1.iter_mut().zip(px) {
+            *s += c * chroma;
+        }
+    }
+    if n == 0.0 {
+        return None;
+    }
+    let (weight, vivid) = hues.into_iter().max_by(|a, b| a.0.total_cmp(&b.0))?;
+    let rgb = if weight > 0.0 { vivid.map(|c| c / weight) } else { sum.map(|c| c / n) };
+    // Too dark to read on black: blend towards white until it's bright enough.
+    const MIN_LUMA: f32 = 100.0;
+    let luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+    let t = if luma < MIN_LUMA { (MIN_LUMA - luma) / (255.0 - luma) } else { 0.0 };
+    let [r, g, b] = rgb.map(|c| (c + (255.0 - c) * t).round().clamp(0.0, 255.0) as u8);
+    Some(format!("#{r:02X}{g:02X}{b:02X}"))
 }
 
 /// An installed web app (Chrome/Edge "Install as app", e.g. YouTube Music):
@@ -83,19 +138,27 @@ fn app_name(app_id: &str) -> String {
 #[cfg(windows)]
 mod imp {
     use std::sync::{mpsc, Mutex};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use tauri::{AppHandle, Emitter};
     use windows::Foundation::TypedEventHandler;
+    use windows::Graphics::Imaging::{
+        BitmapAlphaMode, BitmapDecoder, BitmapInterpolationMode, BitmapPixelFormat, BitmapTransform,
+        ColorManagementMode, ExifOrientationMode,
+    };
     use windows::Media::Control::{
         GlobalSystemMediaTransportControlsSession as Session,
         GlobalSystemMediaTransportControlsSessionManager as Manager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
     };
     use windows::Media::MediaPlaybackType;
+    use windows::Storage::Streams::IRandomAccessStreamWithContentType;
 
-    use super::{app_name, is_browser, NowPlaying};
+    use super::{app_name, cover_color, is_browser, NowPlaying};
     use crate::log;
+
+    /// How long a player may go quiet before the Music pill says nothing plays.
+    const GRACE: Duration = Duration::from_secs(3);
 
     /// What's on show, and the session its controls act on.
     static LAST: Mutex<Option<NowPlaying>> = Mutex::new(None);
@@ -104,7 +167,8 @@ mod imp {
     fn read(s: &Session) -> Option<NowPlaying> {
         let app_id = s.SourceAppUserModelId().ok()?.to_string();
         let info = s.GetPlaybackInfo().ok()?;
-        let playing = info.PlaybackStatus().ok()? == Status::Playing;
+        // "Changing" is the moment between two tracks: still playing.
+        let playing = matches!(info.PlaybackStatus().ok()?, Status::Playing | Status::Changing);
         let video = info
             .PlaybackType()
             .ok()
@@ -116,7 +180,54 @@ mod imp {
             return None;
         }
         let artist = props.Artist().map(|a| a.to_string()).unwrap_or_default();
-        Some(NowPlaying { title, artist, app: app_name(&app_id), playing, music: !video && !is_browser(&app_id) })
+        Some(NowPlaying {
+            title,
+            artist,
+            app: app_name(&app_id),
+            playing,
+            music: !video && !is_browser(&app_id),
+            ..Default::default()
+        })
+    }
+
+    /// Fills in the cover's colour, decoding the cover only when the track or
+    /// the cover changed since `last`.
+    fn cover(s: &Session, np: &mut NowPlaying, last: Option<&NowPlaying>) {
+        let stream = s
+            .TryGetMediaPropertiesAsync()
+            .and_then(|op| op.get())
+            .and_then(|props| props.Thumbnail())
+            .and_then(|thumb| thumb.OpenReadAsync())
+            .and_then(|op| op.get())
+            .ok();
+        np.cover_size = stream.as_ref().and_then(|st| st.Size().ok()).unwrap_or(0);
+        np.color = match last {
+            Some(l) if l.title == np.title && l.artist == np.artist && l.cover_size == np.cover_size => l.color.clone(),
+            _ => stream.and_then(|st| decode_color(&st)),
+        };
+    }
+
+    /// The cover scaled down to 16x16 by Windows (JPEG or PNG alike), then its colour.
+    fn decode_color(stream: &IRandomAccessStreamWithContentType) -> Option<String> {
+        let decoder = BitmapDecoder::CreateAsync(stream).ok()?.get().ok()?;
+        let scale = BitmapTransform::new().ok()?;
+        scale.SetScaledWidth(16).ok()?;
+        scale.SetScaledHeight(16).ok()?;
+        scale.SetInterpolationMode(BitmapInterpolationMode::Fant).ok()?;
+        let pixels = decoder
+            .GetPixelDataTransformedAsync(
+                BitmapPixelFormat::Rgba8,
+                BitmapAlphaMode::Straight,
+                &scale,
+                ExifOrientationMode::IgnoreExifOrientation,
+                ColorManagementMode::DoNotColorManage,
+            )
+            .ok()?
+            .get()
+            .ok()?
+            .DetachPixelData()
+            .ok()?;
+        cover_color(&pixels)
     }
 
     /// The session worth showing: playing beats paused, music beats the rest,
@@ -200,6 +311,8 @@ mod imp {
             let mut watched = Vec::new();
             watch(&manager, &tx, &mut watched);
             let _ = tx.send(());
+            // When the player went quiet (see GRACE).
+            let mut quiet_since: Option<Instant> = None;
 
             while rx.recv().is_ok() {
                 // A track change fires a burst of events: read once after it.
@@ -209,19 +322,40 @@ mod imp {
                     while sessions_rx.try_recv().is_ok() {}
                     watch(&manager, &tx, &mut watched);
                 }
-                let picked = pick(&manager);
+                let mut picked = pick(&manager);
+                // A skip leaves the player without a title, or without a session,
+                // for a moment: the last track stays on show rather than flash
+                // "Nothing playing", and a timer looks again once GRACE is up.
+                if picked.is_none() && LAST.lock().unwrap().is_some() {
+                    let since = *quiet_since.get_or_insert_with(|| {
+                        let tx = tx.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(GRACE);
+                            let _ = tx.send(());
+                        });
+                        Instant::now()
+                    });
+                    if since.elapsed() < GRACE {
+                        continue;
+                    }
+                }
+                quiet_since = None;
+                if let Some((s, np)) = picked.as_mut() {
+                    cover(s, np, LAST.lock().unwrap().as_ref());
+                }
                 let now = picked.as_ref().map(|(_, np)| np.clone());
                 *TARGET.lock().unwrap() = picked.map(|(s, _)| s);
                 let mut last = LAST.lock().unwrap();
                 if *last != now {
                     log::line(match &now {
                         Some(np) => format!(
-                            "music: {} - {} ({}, {}{})",
+                            "music: {} - {} ({}, {}{}, {})",
                             np.title,
                             np.artist,
                             np.app,
                             if np.playing { "playing" } else { "paused" },
-                            if np.music { ", dances" } else { "" }
+                            if np.music { ", dances" } else { "" },
+                            np.color.as_deref().unwrap_or("no cover")
                         ),
                         None => "music: nothing playing".to_string(),
                     });
@@ -304,5 +438,31 @@ mod tests {
         assert_eq!(app_name(ytm), "YouTube Music");
         assert!(!is_browser(ytm));
         assert_eq!(app_name("MSEdge._crx_abcdef.UserData.Default"), "Web app");
+    }
+
+    fn image(pixels: &[[u8; 3]]) -> Vec<u8> {
+        pixels.iter().flat_map(|&[r, g, b]| [r, g, b, 255]).collect()
+    }
+
+    #[test]
+    fn covers_give_their_vivid_colour() {
+        assert_eq!(cover_color(&[]), None);
+        // Mostly grey, white and black with a little red: the red wins.
+        let mut px = vec![[128, 128, 128]; 40];
+        px.extend([[255, 255, 255]; 40]);
+        px.extend([[0, 0, 0]; 40]);
+        px.extend([[240, 40, 50]; 8]);
+        assert_eq!(cover_color(&image(&px)).as_deref(), Some("#F02832"));
+        // The busiest hue beats a smaller one.
+        let mut px = vec![[40, 200, 60]; 30];
+        px.extend([[230, 30, 40]; 10]);
+        assert_eq!(cover_color(&image(&px)).as_deref(), Some("#28C83C"));
+        // Nothing vivid: the average, lifted off black.
+        assert_eq!(cover_color(&image(&[[20, 20, 20]; 16])).as_deref(), Some("#646464"));
+        // Dark navy stays blue but bright enough to read on black.
+        let navy = cover_color(&image(&[[10, 20, 120]; 16])).unwrap();
+        let [r, g, b] = [1, 3, 5].map(|i| u8::from_str_radix(&navy[i..i + 2], 16).unwrap() as f32);
+        assert!(b > r && b > g, "{navy}");
+        assert!(0.299 * r + 0.587 * g + 0.114 * b >= 99.0, "{navy}");
     }
 }

@@ -50,6 +50,9 @@ windows = { version = "0.61", features = [
   "Foundation_Collections",
   "Media",
   "Media_Control",
+  # The cover's colour, for Melody: read the thumbnail and let Windows decode it.
+  "Graphics_Imaging",
+  "Storage_Streams",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

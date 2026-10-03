@@ -24,6 +24,10 @@ export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
   const nowPlaying = (np: NowPlaying | null) => {
     State.nowPlaying = np;
+    // Melody takes the colour of the cover: pill, card, Mochi and the CSS buttons.
+    const melody = State.tasks.find((t) => t.id === "integration_music");
+    if (melody) melody.color = State.musicColor;
+    document.documentElement.style.setProperty("--melody", State.musicColor);
     window.dispatchEvent(new Event("now-playing"));
     State.notify();
   };

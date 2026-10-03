@@ -14,6 +14,9 @@ export interface AgentTask {
   state: BotStateName;
   stepIndex: number;
   steps: string[];
+  /** Steps appended so far. `steps` keeps the last 20 only, so past that its
+   *  length and `stepIndex` stop moving; the ticker counts on this instead. */
+  stepCount?: number;
   source: AgentSource;
   isIntegration: boolean;
   emote?: BotEmoteName | null;
@@ -83,6 +86,9 @@ const task = (
   id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
 });
 
+/** Melody's colour when the track has no cover to take one from. */
+const MUSIC_RED = "#FA2D48";
+
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
@@ -93,7 +99,7 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_notion", "Notion", "#8C8C8C", "n8n"),
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
-  task("integration_music", "Music", "#FA2D48", "n8n"),
+  task("integration_music", "Music", MUSIC_RED, "n8n"),
 ];
 
 /** Default names of the coloured Mochis: a pun on what each one watches.
@@ -275,6 +281,11 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
+  /** Melody wears the current cover's colour (music.rs), its red without one. */
+  get musicColor(): string {
+    return this.nowPlaying?.color ?? MUSIC_RED;
+  }
+
   get otherTasks(): AgentTask[] {
     return this.tasks.filter((t) => t.id !== this.focusId);
   }
@@ -300,6 +311,7 @@ class AppState {
     t.steps.push(step);
     if (t.steps.length > 20) t.steps.shift();
     t.stepIndex = t.steps.length - 1;
+    t.stepCount = (t.stepCount ?? 0) + 1;
     this.notify();
   }
 
@@ -329,6 +341,7 @@ class AppState {
       if (proto) {
         t.name = this.settings.mochiNames?.[t.id]?.trim() || DEFAULT_MOCHI_NAMES[t.id] || proto.name;
       }
+      if (t.id === "integration_music") t.color = this.musicColor;
     }
     // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
     // then other integrations in declaration order.
@@ -400,6 +413,8 @@ export interface NowPlaying {
   playing: boolean;
   /** Music, not a video or a browser tab: what Mochi dances to. */
   music: boolean;
+  /** The cover's colour, "#RRGGBB"; null without a cover. */
+  color: string | null;
 }
 
 /** Mochi dances while music plays (not a YouTube video), as on macOS. */

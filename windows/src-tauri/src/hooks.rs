@@ -89,9 +89,9 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
+        Ok(_) => Err(format!("{path} isn't a JSON object, so Coucou won't touch it.")),
         Err(err) => Err(format!(
-            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
+            "{path} isn't valid JSON ({err}). Fix or move it, then try again. Coucou won't overwrite it."
         )),
     }
 }
@@ -286,7 +286,7 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let current = read_settings()?;
     if current_fingerprint() != fingerprint {
         return Err(format!(
-            "{} changed since the preview. Nothing was written — review the new diff.",
+            "{} changed since the preview. Nothing was written. Review the new diff.",
             path.display()
         ));
     }
