@@ -308,8 +308,14 @@ final class AppState: ObservableObject {
     @Published var showPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
     }
+    // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
+    @Published var planRelayInstalled: Bool = false
     // Transient — reset when island closes or view changes
     @Published var showingPlanDetail: Bool = false
+
+    func refreshPlanRelayState() {
+        planRelayInstalled = HookServer.statusLineInstalled()
+    }
     #endif
 
     // MARK: - Init (loads persisted settings)
@@ -351,6 +357,7 @@ final class AppState: ObservableObject {
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
+        planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 
         // Sync SoundEngine volume on launch

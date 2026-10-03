@@ -169,6 +169,9 @@ struct SettingsView: View {
             }
         }
         .onAppear {
+            #if !APPSTORE
+            state.refreshPlanRelayState()
+            #endif
             guard fetchedModels.isEmpty,
                   let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
             Task {
@@ -488,12 +491,11 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                let relayInstalled = HookServer.statusLineInstalled()
                 Toggle("Show in the notch", isOn: Binding(
                     get: { state.showPlanInNotch || planTogglePending },
                     set: { on in
                         if on {
-                            if relayInstalled {
+                            if state.planRelayInstalled {
                                 state.showPlanInNotch = true
                             } else {
                                 planTogglePending = true
@@ -506,7 +508,7 @@ struct SettingsView: View {
                     }
                 ))
                 HStack(spacing: 10) {
-                    if relayInstalled {
+                    if state.planRelayInstalled {
                         Text("Relay: installed")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
@@ -1046,9 +1048,13 @@ struct SettingsView: View {
             try HookServer.shared.writeStatusLine()
             showStatusLineDiff = false
             pendingStatusLineJSON = ""
+            state.refreshPlanRelayState()
             if planTogglePending {
                 state.showPlanInNotch = true
                 planTogglePending = false
+            }
+            if !statusLinePendingInstall {
+                state.showPlanInNotch = false
             }
             statusMessage = statusLinePendingInstall
                 ? "✓ Status line installed."

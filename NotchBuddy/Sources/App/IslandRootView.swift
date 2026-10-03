@@ -486,7 +486,7 @@ struct IslandHeader: View {
             // Right: plan pill (GitHub build, home view only) + action icons
             HStack(spacing: 8) {
                 #if !APPSTORE
-                if state.view == .overview && state.showPlanInNotch && HookServer.statusLineInstalled() {
+                if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
                     ClaudePlanHeaderPill(state: state)
                 }
                 #endif

@@ -78,7 +78,7 @@ private struct GaugeRowView: View {
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(Color(hex: "#6B7079"))
-                .frame(width: 36, alignment: .leading)
+                .frame(width: 40, alignment: .leading)
             if let w = window {
                 let pct = ClaudePlanGauge.effectivePct(w)
                 let accent = Color(hex: ClaudePlanGauge.color(for: pct))
@@ -117,7 +117,7 @@ private struct GaugeRowView: View {
         let secs = w.resetsAt.timeIntervalSince(now)
         guard secs > 0 else { return "Resetting…" }
         if weekly {
-            return "Resets \(weeklyResetFormatter.string(from: w.resetsAt))"
+            return weeklyResetFormatter.string(from: w.resetsAt)
         } else {
             let h = Int(secs / 3600)
             let m = Int((secs.truncatingRemainder(dividingBy: 3600)) / 60)
