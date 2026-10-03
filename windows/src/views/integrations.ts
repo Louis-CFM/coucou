@@ -54,6 +54,16 @@ const OPEN_URLS: Record<string, string> = {
 };
 
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
+  if (task.id === "integration_music") {
+    // No key: it shows whatever a player reports to Windows.
+    return h(
+      "div",
+      { class: "int-card" },
+      header(task.color, task.name, "Integration"),
+      h("div", { class: "int-status" }, dot("#6B7079", 5), h("span", { text: "Nothing playing" })),
+      h("div", { class: "int-hint", text: "Play something in Spotify, Apple Music or another player." }),
+    );
+  }
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
@@ -440,6 +450,7 @@ export interface IntegrationCardHooks {
 
 /** True when this integration has data worth showing instead of the idle card. */
 export function hasIntegrationData(id: string): boolean {
+  if (id === "integration_music") return State.nowPlaying != null;
   const info = State.integrations[id];
   if (!info || info.error) return false;
   switch (id) {
@@ -483,9 +494,55 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_music":
+      return musicCard(task);
     default:
       return idleCard(task, hooks.openSettings);
   }
 }
 
 export { clear };
+
+// ── Music ─────────────────────────────────────────────────────────────────────
+
+/** A player control button; the action goes to whichever player is on show. */
+function musicButton(icon: string, title: string, action: "toggle" | "next" | "previous", main = false): HTMLElement {
+  const b = h("button", { class: main ? "music-btn main" : "music-btn", title }, svg(icon, main ? 12 : 10, { fill: "currentColor" }));
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.musicControl(action);
+  });
+  return b;
+}
+
+function musicCard(task: AgentTask): HTMLElement {
+  const np = State.nowPlaying!;
+  return h(
+    "div",
+    { class: "int-card music-card" },
+    header(task.color, task.name, np.app),
+    h("div", { class: "music-title", text: np.title }),
+    np.artist ? h("div", { class: "music-artist", text: np.artist }) : null,
+    h(
+      "div",
+      { class: "music-controls" },
+      musicButton(ICONS.previous, "Previous", "previous"),
+      musicButton(np.playing ? ICONS.pause : ICONS.play, np.playing ? "Pause" : "Play", "toggle", true),
+      musicButton(ICONS.next, "Next", "next"),
+    ),
+  );
+}
+
+/** Play/pause and skip on the Music pill, shown on hover while a track is loaded. */
+export function musicPillControls(): HTMLElement {
+  const toggle = musicButton(ICONS.play, "Play/pause", "toggle", true);
+  const box = h("span", { class: "pill-music" }, toggle, musicButton(ICONS.next, "Next", "next"));
+  const sync = () => {
+    const np = State.nowPlaying;
+    box.classList.toggle("has-track", !!np);
+    toggle.replaceChildren(svg(np?.playing ? ICONS.pause : ICONS.play, 12, { fill: "currentColor" }));
+  };
+  sync();
+  window.addEventListener("now-playing", sync);
+  return box;
+}

@@ -7,6 +7,7 @@ mod integrations;
 mod island;
 mod log;
 mod media;
+mod music;
 mod pipe;
 mod platform;
 #[cfg_attr(not(windows), path = "roam_linux.rs")]
@@ -542,6 +543,8 @@ pub fn run() {
             roam::roam_end,
             media::guess_model_output,
             transcribe_audio,
+            music::music_now,
+            music::music_control,
             media::media_bytes,
             media::media_download,
             media::media_preview,
@@ -554,6 +557,7 @@ pub fn run() {
             create_settings_window(&handle);
             roam::create_window(&handle, page_url(&handle, "roam.html"), BROWSER_ARGS);
 
+            music::start(handle.clone());
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
                 platform::allow_microphone(&win);

@@ -542,6 +542,7 @@ interface IntegrationDef {
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
+  { id: "integration_music", name: "Music", color: "#FA2D48", fields: [] },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
@@ -601,6 +602,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         }),
       ),
     );
+    if (!def.fields.length && def.id === "integration_music") {
+      rows.append(h("div", { class: "hint", text: "No key needed: shows what's playing in Spotify, Apple Music and other players, with play/pause and skip. Mochi dances to music (not to videos)." }));
+    }
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",

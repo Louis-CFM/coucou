@@ -12,7 +12,7 @@ import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
-import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { renderIntegrationCard, type IntegrationCardHooks, musicPillControls } from "./integrations";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -209,6 +209,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           task.id, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
+          task.id === "integration_music" ? JSON.stringify(State.nowPlaying) : "",
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
@@ -242,6 +243,10 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
     h("span", { class: "lbl", text: label }),
   );
   pill.style.borderColor = `${task.color}24`;
+  if (task.id === "integration_music") {
+    pill.classList.add("music");
+    pill.append(musicPillControls());
+  }
   pill.addEventListener("mouseenter", () => {
     pill.style.background = `${task.color}2e`;
     pill.style.borderColor = `${task.color}8c`;

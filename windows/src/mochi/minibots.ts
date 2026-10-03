@@ -1,7 +1,7 @@
 // Mini Mochis (pills + compact grid) — port of MiniBotCanvasView.
 // Each canvas owns a BotEngine; the island's frame loop ticks every live one.
 
-import { State } from "../core/state";
+import { State, musicDancing } from "../core/state";
 import { BotEngine, hexToRGB } from "./engine";
 import type { AgentTask } from "../core/state";
 
@@ -72,6 +72,7 @@ export function syncMiniBotStates(tasks: AgentTask[]) {
     mb.engine.setState(task.state);
     mb.engine.bodyColor = hexToRGB(task.color);
     mb.engine.outfit = State.settings.wardrobe?.[task.id] ?? null;
+    mb.engine.setDancing(task.id === "integration_music" && musicDancing());
   }
 }
 

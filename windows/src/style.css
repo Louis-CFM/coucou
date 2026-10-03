@@ -88,6 +88,16 @@ body {
   pointer-events: none;
 }
 
+/* AirPods and music notes: over the whole panel, so they can leave the island. */
+#pods-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 720px;
+  height: 320px;
+  pointer-events: none;
+}
+
 /* The drop sequence. Sits under the header and takes over the island body; it
    cross-fades in and out, so the last frame stays up while the views return. */
 #upload-layer {
@@ -2379,3 +2389,75 @@ img.media-view {
 .reply.md .md-alert-warning .md-alert-title { color: #f7b32b; }
 .reply.md .md-alert-caution { border-left-color: #f4505e; }
 .reply.md .md-alert-caution .md-alert-title { color: #f4505e; }
+
+/* ── Music ─────────────────────────────────────────────────────────────────── */
+
+.music-title {
+  font: 600 12.5px var(--font);
+  color: #f5f6f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.music-artist {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.music-btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #8e939c;
+  cursor: default;
+}
+
+.music-btn:hover {
+  color: #f5f6f8;
+}
+
+.music-btn.main {
+  background: #fa2d48;
+  color: #0b0c0e;
+}
+
+/* On the pill: shown on hover while a track is loaded. */
+.pill-music {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.pill:hover .pill-music.has-track {
+  display: flex;
+}
+
+.pill-music .music-btn {
+  width: 16px;
+  height: 16px;
+  background: #fa2d48;
+  color: #0b0c0e;
+}
+
+.int-hint {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  margin-top: 4px;
+}

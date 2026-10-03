@@ -154,6 +154,11 @@ const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
 
 const now = () => performance.now() / 1000;
 
+/** The dance's tempo; the pods and music notes bob to it too. */
+export const DANCE_BPM = 112;
+/** Where the head opens like an AirPods case, as a fraction of ry above centre. */
+export const LID_SEAM = 0.5;
+
 export function hexToRGB(hex: string): RGB {
   const h = hex.replace("#", "");
   const v = parseInt(h, 16);
@@ -560,6 +565,7 @@ export class BotEngine {
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
     return (
+      this.isDancing || this.dancingLevel > 0.001 ||
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
@@ -636,6 +642,14 @@ export class BotEngine {
       tp = this.miniLookTarget.y * 0.5;
     }
 
+    // Dancing: the eyes groove to the beat instead of following the cursor.
+    if (this.dancingLevel > 0.001) {
+      const beat = now() * DANCE_BPM / 60;
+      const l = this.dancingLevel;
+      ty += (0.6 * Math.sin(Math.PI * beat / 2) - ty) * l;
+      tp += (0.12 - 0.22 * Math.abs(Math.cos(Math.PI * beat)) - tp) * l;
+    }
+
     this.tgYaw = ty;
     this.tgPitch = tp;
     this.tgTilt = this.cfg.tilt;
@@ -703,7 +717,36 @@ export class BotEngine {
     this.slotH = Math.max(0, this.slotH + this.slotHVel * dt);
 
     this.stepWear(dt);
+    // Dance: in over 0.3 s, out over 0.5 s.
+    const target = this.isDancing ? 1 : 0;
+    if (this.dancingLevel < target) this.dancingLevel = Math.min(target, this.dancingLevel + dt / 0.3);
+    else if (this.dancingLevel > target) this.dancingLevel = Math.max(target, this.dancingLevel - dt / 0.5);
     this.lastTime = n;
+  }
+
+  /** Music is playing (see musicDancing). */
+  isDancing = false;
+  /** The head's lid: 0 shut, 1 flipped open (the island's pods drive it). */
+  lid = 0;
+  private dancingLevel = 0;
+
+  setDancing(on: boolean) {
+    this.isDancing = on;
+  }
+
+  /** The dance's hop, sway and squash around the bottom of the body. */
+  private applyDance(x: CanvasRenderingContext2D, W: number, H: number) {
+    const R = W * 0.3;
+    const px = W / 2 + this.ox * R;
+    const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
+    const beat = now() * DANCE_BPM / 60;
+    const hop = Math.abs(Math.sin(Math.PI * beat));
+    const land = Math.pow(1 - hop, 6);
+    const l = this.dancingLevel;
+    x.translate(px + 0.08 * R * Math.sin(Math.PI * beat) * l, py - 0.2 * R * hop * l);
+    x.rotate(0.1 * Math.sin(Math.PI * beat) * l);
+    x.scale(1 + 0.045 * land * l, 1 - 0.06 * land * l);
+    x.translate(-px, -py);
   }
 
   /**
@@ -804,6 +847,17 @@ export class BotEngine {
    * `w`×`h` CSS pixels (the caller has already applied the DPR transform).
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
+    if (this.dancingLevel <= 0.001) return this.drawFrame(x, W, H);
+    x.save();
+    this.applyDance(x, W, H);
+    try {
+      this.drawFrame(x, W, H);
+    } finally {
+      x.restore();
+    }
+  }
+
+  private drawFrame(x: CanvasRenderingContext2D, W: number, H: number) {
     const R = W * 0.3;
     const shape = shapeOf(this.outfit?.shape);
     const rx = R * shape.rx;
@@ -822,6 +876,52 @@ export class BotEngine {
     const eyes = this.eyePoses(rx, ry, shape).filter((e) => e.vis > 0.04);
     this.wear.lastR = R;
     this.noteOutfit();
+    const lid = this.isMini ? 0 : Math.min(1, Math.max(0, this.lid));
+    if (lid < 0.001) {
+      this.paintBody(x, body, eyes, R, rx, ry, shape);
+    } else {
+      // An AirPods case: the top of the head (and whatever it wears) swings
+      // open on a hinge at the right of the seam, showing the dark inside.
+      const seam = -ry * LID_SEAM;
+      const hinge = rx * 0.86;
+      const big = R * 4;
+      x.save();
+      x.beginPath();
+      x.rect(-big, seam, big * 2, big);
+      x.clip();
+      this.paintBody(x, body, eyes, R, rx, ry, shape);
+      x.restore();
+      x.save();
+      x.clip(body);
+      x.fillStyle = "rgb(36,38,44)";
+      x.beginPath();
+      x.ellipse(0, seam, hinge * 0.92, ry * 0.2 * Math.min(1, lid * 2), 0, 0, Math.PI * 2);
+      x.fill();
+      x.restore();
+      x.save();
+      x.translate(hinge, seam);
+      x.rotate(1.5 * Ease.inOut(lid));
+      x.translate(-hinge, -seam);
+      x.beginPath();
+      x.rect(-big, seam - big, big * 2, big);
+      x.clip();
+      this.paintBody(x, body, eyes, R, rx, ry, shape);
+      x.restore();
+    }
+
+    x.restore();
+
+    if (this.badge && this.badgeS > 0.01 && this.morph < 0.25) {
+      this.drawBadge(x, this.badge, R, cx, cy);
+    }
+    this.drawParticles(x, R, cx, cy);
+  }
+
+  /** Hat, body, blush, eyes and mouth, in the body's own frame. */
+  private paintBody(
+    x: CanvasRenderingContext2D, body: Path2D, eyes: EyeSpot[],
+    R: number, rx: number, ry: number, shape: ShapeDef,
+  ) {
     if (this.outfit) this.drawHat(x, "back", R, rx, ry, shape, body);
     this.drawBody(x, body, R, rx, ry);
 
@@ -843,13 +943,6 @@ export class BotEngine {
     this.drawEyes(x, body, R, eyes);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
     if (this.outfit) this.drawHat(x, "front", R, rx, ry, shape, body);
-
-    x.restore();
-
-    if (this.badge && this.badgeS > 0.01 && this.morph < 0.25) {
-      this.drawBadge(x, this.badge, R, cx, cy);
-    }
-    this.drawParticles(x, R, cx, cy);
   }
 
   private bodyPath(R: number, shape: ShapeDef): Path2D {
@@ -939,6 +1032,10 @@ export class BotEngine {
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, spots: EyeSpot[]) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
+    // Dancing: happy eyes in calm states.
+    if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
+      shape = "happy";
+    }
     if (this.morph > 0.5) {
       if (this.isChewing) shape = "happy";
       else if (this.slotHTarget > 0.05 || this.slotH > 0.1) shape = "cup";

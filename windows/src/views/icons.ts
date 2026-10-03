@@ -2,6 +2,11 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // Player controls, for the Music pill.
+  play: "M8 5.5v13l10.5-6.5L8 5.5z",
+  pause: "M7 5h3.5v14H7V5zm6.5 0H17v14h-3.5V5z",
+  next: "M5.5 6v12l8.5-6-8.5-6zM15.5 6H18v12h-2.5V6z",
+  previous: "M18.5 6v12L10 12l8.5-6zM6 6h2.5v12H6V6z",
   // Microphone: the chat's speak-instead-of-typing button.
   mic: "M12 2.8a3.2 3.2 0 0 0-3.2 3.2v6a3.2 3.2 0 0 0 6.4 0V6A3.2 3.2 0 0 0 12 2.8zM5.6 11h1.8a4.6 4.6 0 0 0 9.2 0h1.8a6.4 6.4 0 0 1-5.5 6.33V20h3v1.8H8.1V20h3v-2.67A6.4 6.4 0 0 1 5.6 11z",
   // house.fill

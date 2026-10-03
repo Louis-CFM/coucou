@@ -4,7 +4,7 @@
 
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type NowPlaying } from "../core/state";
 import type { Island } from "./island";
 
 /** Which Credential Manager key backs each pill. */
@@ -22,6 +22,13 @@ const clearTimers = new Map<string, number>();
 
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
+  const nowPlaying = (np: NowPlaying | null) => {
+    State.nowPlaying = np;
+    window.dispatchEvent(new Event("now-playing"));
+    State.notify();
+  };
+  void onEvent<NowPlaying | null>("now-playing", nowPlaying);
+  void Bridge.musicNow().then((np) => nowPlaying(np ?? null));
   void refreshConfigured();
 }
 

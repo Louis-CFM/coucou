@@ -10,7 +10,7 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, musicDancing } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -19,6 +19,7 @@ import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { Pods } from "./pods";
 
 const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
@@ -63,6 +64,7 @@ export class Island {
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
+  private pods = new Pods();
   private greeting = new Greeting();
 
   private running = false;
@@ -239,7 +241,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.pods.el);
     this.applyGeometry();
   }
 
@@ -861,6 +863,15 @@ export class Island {
       // is already in the right place the moment the canvas fades out.
       this.drawBot(dt);
     }
+    this.pods.step(dt, {
+      music: musicDancing(),
+      dancing: this.engine.isDancing && !greetingActive,
+      visible: State.mode !== "hidden" && !State.roaming,
+      islandW: this.width.value,
+      botX: this.botCx.value,
+      botY: this.botCy.value,
+      botSize: this.botSize.value,
+    });
 
     const uploadActive = this.uploadActive;
     if (uploadActive) {
@@ -888,7 +899,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || this.pods.busy || UploadSeq.isActive;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -946,7 +957,13 @@ export class Island {
     const focus = State.focusTask;
     this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
     this.engine.outfit = State.settings.wardrobe?.[focus?.id ?? "integration_claude"] ?? null;
+    // Dances to music: always in the closed island, open only on the Music card.
+    const calm = ["idle", "working", "thinking", "searching", "finished"].includes(State.effectiveState);
+    const where = State.mode === "compact" ||
+      (State.mode === "expanded" && State.view === "overview" && State.focusId === "integration_music");
+    this.engine.setDancing(musicDancing() && calm && where);
     this.engine.particleOverhang = BOT_OVERHANG;
+    this.engine.lid = this.pods.lid;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
     if (this.engine.morph > 0.3) {

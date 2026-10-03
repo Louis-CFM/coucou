@@ -93,6 +93,7 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_notion", "Notion", "#8C8C8C", "n8n"),
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
+  task("integration_music", "Music", "#FA2D48", "n8n"),
 ];
 
 /** Default names of the coloured Mochis: a pun on what each one watches.
@@ -105,11 +106,12 @@ export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
   integration_n8n: "Nate", // "n-eight-n"
   integration_resend: "Mel", // mail
   integration_notion: "Ida", // ideas
+  integration_music: "Melody", // music
 };
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
+  "integration_notion", "integration_calcom", "integration_stripe", "integration_music",
 ];
 
 /** What an integration poller last reported. */
@@ -205,6 +207,8 @@ class AppState {
   returnFocusId: string | null = null;
   /** A `git push` Claude Code is running right now, for the GitHub card. */
   githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
+  /** What the system's media controls say is playing (music.rs); null = nothing. */
+  nowPlaying: NowPlaying | null = null;
 
   stateOverride: BotStateName | null = null;
 
@@ -387,3 +391,19 @@ class AppState {
 }
 
 export const State = new AppState();
+
+/** A player's track, from Windows' media controls (Spotify, Apple Music…). */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  app: string;
+  playing: boolean;
+  /** Music, not a video or a browser tab: what Mochi dances to. */
+  music: boolean;
+}
+
+/** Mochi dances while music plays (not a YouTube video), as on macOS. */
+export function musicDancing(): boolean {
+  const np = State.nowPlaying;
+  return !!np?.playing && np.music && State.settings.activeIntegrations.includes("integration_music");
+}

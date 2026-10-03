@@ -4,7 +4,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { MediaFile, Settings } from "./state";
+import type { MediaFile, Settings, NowPlaying } from "./state";
 import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
@@ -144,6 +144,10 @@ export const Bridge = {
 
   // ── Integrations ──────────────────────────────────────────────────────────
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
+  /** What's playing now (then the "now-playing" event keeps it current). */
+  musicNow: () => call<NowPlaying | null>("music_now"),
+  /** Play/pause, next or previous on the player that's on show. */
+  musicControl: (action: "toggle" | "next" | "previous") => call<void>("music_control", { action }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
