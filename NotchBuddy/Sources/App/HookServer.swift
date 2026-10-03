@@ -40,6 +40,10 @@ final class HookServer: @unchecked Sendable {
     private var connectionCount = 0
     private var pendingApprovalFD: Int32 = -1         // held open while user decides
     private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
+    private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
+    private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
+    private var questionPillId: String = ""           // pill that owns the pending question
+    private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
 
@@ -79,6 +83,78 @@ final class HookServer: @unchecked Sendable {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             NotificationCenter.default.post(name: .islandCollapse, object: nil)
         }
+    }
+
+    // MARK: - Question fd helpers
+
+    @MainActor
+    private func cancelQuestionFDSource() {
+        questionFDSource?.cancel()
+        questionFDSource = nil
+    }
+
+    @MainActor
+    private func dismissQuestionCard(note: String) {
+        cancelQuestionFDSource()
+        pendingQuestionFD = -1
+        let state = AppState.shared
+        let pillId = questionPillId
+        state.pendingQuestion = nil
+        state.isPinned = false
+        state.updateTask(id: pillId, state: .working)
+        clearPillBadge(id: pillId)
+        if let prev = focusBeforeQuestion {
+            focusBeforeQuestion = nil
+            if state.focusId == pillId, state.tasks.contains(where: { $0.id == prev }) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+            }
+        }
+        if !note.isEmpty {
+            state.noteMessage = note
+            state.view = .note
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+            }
+        } else {
+            state.view = state.tasks.isEmpty ? .empty : .overview
+        }
+    }
+
+    /// Called by QuestionView. Sends answers JSON and cleans up.
+    @MainActor
+    func sendQuestionAnswers(_ answers: [String: String]) {
+        let fd = pendingQuestionFD
+        pendingQuestionFD = -1
+        let source = questionFDSource
+        questionFDSource = nil
+        if fd >= 0, let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
+           let json = String(data: data, encoding: .utf8) {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: json)
+                DispatchQueue.main.async { source?.cancel() }
+            }
+        } else {
+            source?.cancel()
+        }
+        dismissQuestionCard(note: "")
+    }
+
+    /// Called by QuestionView "Reply in terminal" button.
+    @MainActor
+    func sendQuestionAsk() {
+        let fd = pendingQuestionFD
+        pendingQuestionFD = -1
+        let source = questionFDSource
+        questionFDSource = nil
+        if fd >= 0 {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                DispatchQueue.main.async { source?.cancel() }
+            }
+        } else {
+            source?.cancel()
+        }
+        dismissQuestionCard(note: "")
     }
 
     /// Returns the tool_input serialized as sorted-keys JSON, "" if absent or empty.
@@ -524,9 +600,18 @@ final class HookServer: @unchecked Sendable {
 
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
-        var command = toolInput["command"] as? String ?? tool
         let inputKey = Self.approvalInputKey(toolInput)
         nbLog("PermissionRequest \(tool) [\(pillId)]")
+
+        // AskUserQuestion — show the question card if the payload parses correctly.
+        // On parse failure fall through to the normal Allow/Deny card.
+        if tool == "AskUserQuestion", let parsed = AskQuestion.parse(toolInput: toolInput) {
+            processQuestionRequest(fd: fd, parsed: parsed, sessionId: sessionId,
+                                   pillId: pillId, projectName: projectName, cwd: cwd)
+            return
+        }
+
+        let command = toolInput["command"] as? String ?? tool
 
         if pendingApprovalFD >= 0 {
             // Displace the previous request: write "ask" then cancel its source.
@@ -631,6 +716,53 @@ final class HookServer: @unchecked Sendable {
             }
         }
         state.view = state.tasks.isEmpty ? .empty : .overview
+    }
+
+    // MARK: - Question request
+
+    @MainActor
+    private func processQuestionRequest(fd: Int32, parsed: AskQuestion, sessionId: String,
+                                         pillId: String, projectName: String, cwd: String) {
+        let state = AppState.shared
+
+        // Displace any previous question waiting for an answer.
+        if pendingQuestionFD >= 0 {
+            let old = pendingQuestionFD
+            let oldSrc = questionFDSource
+            questionFDSource = nil
+            Task.detached { [weak self] in
+                self?.sendLine(fd: old, text: #"{"permissionDecision":"ask"}"#)
+                DispatchQueue.main.async { oldSrc?.cancel() }
+            }
+        }
+        pendingQuestionFD = fd
+        activeSessionId = sessionId
+        questionPillId = pillId
+
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        state.updateTask(id: pillId, state: .question)
+        state.pendingQuestion = parsed
+        state.isPinned = true
+        SoundEngine.shared.play("approval")
+
+        if focusBeforeQuestion == nil { focusBeforeQuestion = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
+        expandIfNeeded(to: .question)
+
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.pendingQuestionFD == fd else { return }
+            self.dismissQuestionCard(note: "")
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        questionFDSource = source
+
+        let captured = fd
+        DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
+            guard let self, self.pendingQuestionFD == captured else { return }
+            self.dismissQuestionCard(note: "")
+        }
     }
 
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
@@ -1763,6 +1895,14 @@ def main():
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
+                elif decision == 'answer':
+                    # AskUserQuestion answered from the notch
+                    answers = resp_obj.get('answers', {})
+                    questions = payload.get('tool_input', {}).get('questions', [])
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
                 # 'ask' or unknown: fall through → no output → agent re-asks
         except Exception:
             pass
@@ -1968,6 +2108,14 @@ def main():
                     sys.exit(0)
                 elif decision == 'deny':
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'answer':
+                    # AskUserQuestion answered from the notch
+                    answers = resp_obj.get('answers', {})
+                    questions = payload.get('tool_input', {}).get('questions', [])
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)

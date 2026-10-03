@@ -288,6 +288,9 @@ final class AppState: ObservableObject {
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
+    // Pending AskUserQuestion from Claude Code hook
+    @Published var pendingQuestion: AskQuestion? = nil
+
     #if !APPSTORE
     @Published var musicPlaying: Bool = false
     @Published var musicAutomationDenied: Bool = false

@@ -45,9 +45,14 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 - « Toujours autoriser » : si la doc permet de renvoyer une règle de permission persistante, l'utiliser. Sinon l'app garde sa propre liste (projet + outil + motif de commande) et répond `allow` automatiquement ensuite. Liste visible et supprimable dans les réglages.
 - Raccourcis Y / N quand la vue `approval` est ouverte.
 
-### Répondre aux questions
-- Si Claude utilise l'outil de question (`AskUserQuestion`), l'intercepter en `PreToolUse` et afficher les options dans la vue `question`.
-- Vérifier dans la doc si un hook peut fournir la réponse. Si oui : clic sur une option = réponse. **Si non** : la vue affiche la question et un bouton « Répondre dans le terminal » qui saute à la session. Ne pas bricoler de frappe clavier simulée.
+### Répondre aux questions (`AskUserQuestion`)
+- `AskUserQuestion` arrive comme `PermissionRequest` avec `tool_name == "AskUserQuestion"`.
+- `tool_input.questions` : tableau de 1 à 4 questions, chacune avec `question` (texte), `header` (≤ 12 car.), `options` (2 à 4, chacune `label` + `description`), `multiSelect`.
+- L'app parse en un modèle Foundation (`AskQuestion`) ; si le parse échoue, elle retombe sur la carte Allow/Deny.
+- La vue `question` affiche une question à la fois (compteur 1/N), les options comme boutons (single-select : clic = réponse immédiate ; multi-select : toggles + bouton Send), un champ libre « Other… », et un bouton « Reply in terminal » (envoie `{"permissionDecision":"ask"}`).
+- Réponse via socket : `{"permissionDecision":"answer","answers":{"<question>":"<label>"}}`. Multi-select : labels joints par `", "`.
+- nb-hook.py : si `decision == 'answer'` → émet `hookSpecificOutput` avec `behavior: allow` et `updatedInput: {questions, answers}` — Claude Code reçoit les réponses et continue.
+- Fallback : si l'app ne répond pas (absente, timeout 115 s) ou renvoie `ask`, nb-hook n'émet rien → Claude Code re-pose la question dans le terminal.
 
 ### Sauter au terminal
 | Contexte capté | Action |

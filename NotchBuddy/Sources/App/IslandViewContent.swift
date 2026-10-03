@@ -298,25 +298,177 @@ struct ApprovalView: View {
 
 struct QuestionView: View {
     @ObservedObject var state: AppState
+    @State private var questionIndex = 0
+    // Per-question selected labels (empty = none chosen yet)
+    @State private var selections: [[String]] = []
+    // Per-question custom "Other…" text
+    @State private var otherTexts: [String] = []
+    // Per-question "Other…" mode active
+    @State private var showOther: [Bool] = []
+    @FocusState private var otherFieldFocused: Bool
+
+    var question: AskQuestion? { state.pendingQuestion }
 
     var body: some View {
         ZStack {
             CardBackground(wash: .cyan)
-            VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code is asking a question")
-                Text("Which search engine to use?")
-                    .font(.system(size: 15, weight: .semibold))
-                HStack(spacing: 8) {
-                    ForEach(["Postgres full-text", "Meilisearch", "Algolia"], id: \.self) { opt in
-                        SecondaryButton(opt) { /* answer */ }
+            if let q = question, !q.questions.isEmpty {
+                let qi = min(questionIndex, q.questions.count - 1)
+                let item = q.questions[qi]
+                let isLast = qi == q.questions.count - 1
+                let isMulti = item.multiSelect
+                let curSel = qi < selections.count ? selections[qi] : []
+                let curOther = qi < showOther.count ? showOther[qi] : false
+
+                VStack(alignment: .leading, spacing: 4) {
+                    // Header row
+                    HStack(spacing: 0) {
+                        AgentWho(task: state.focusTask, label: "is asking")
+                        Spacer(minLength: 4)
+                        if q.questions.count > 1 {
+                            Text("\(qi + 1)/\(q.questions.count)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                    }
+                    // Question text (+ optional header label above)
+                    if !item.header.isEmpty {
+                        Text(item.header)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                    }
+                    Text(item.question)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(2)
+                    // Options or "Other…" text field
+                    if curOther {
+                        HStack(spacing: 6) {
+                            TextField("Your answer…", text: Binding(
+                                get: { qi < otherTexts.count ? otherTexts[qi] : "" },
+                                set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
+                            ))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .focused($otherFieldFocused)
+                            .onAppear { otherFieldFocused = true }
+                            .onSubmit { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
+                            SecondaryButton("Send") { commitOtherAndProceed(q: q, qi: qi, isLast: isLast) }
+                            SecondaryButton("✕") {
+                                if qi < showOther.count { showOther[qi] = false }
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
+                                let isSelected = curSel.contains(opt.label)
+                                if isMulti {
+                                    // Toggle button
+                                    Button {
+                                        toggleSelection(qi: qi, label: opt.label)
+                                    } label: {
+                                        Text(opt.label)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(isSelected ? Color(hex: "#22D3EE").opacity(0.25) : Color.white.opacity(0.07))
+                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#C5C8CD"))
+                                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.6) : Color.white.opacity(0.1), lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                } else {
+                                    SecondaryButton(opt.label) { selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast) }
+                                        .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                                }
+                            }
+                            // "Other…" implicit option
+                            SecondaryButton("Other…") {
+                                if qi < showOther.count { showOther[qi] = true }
+                            }
+                        }
+                    }
+                    // Bottom row
+                    HStack(spacing: 8) {
+                        SecondaryButton("Reply in terminal") {
+                            HookServer.shared.sendQuestionAsk()
+                        }
+                        Spacer(minLength: 0)
+                        if isMulti || !isLast {
+                            // For multiSelect: Send button; for multi-question nav: Next/Send
+                            let canProceed = !curSel.isEmpty || (curOther && !(qi < otherTexts.count ? otherTexts[qi] : "").isEmpty)
+                            PrimaryButton(isLast ? "Send" : "Next") {
+                                proceedFromQuestion(q: q, qi: qi, isLast: isLast)
+                            }
+                            .opacity(canProceed ? 1 : 0.4)
+                        }
                     }
                 }
+                .padding(.leading, 116)
+                .padding(.trailing, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 16)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { resetQuestionState() }
+        .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+    }
+
+    private func resetQuestionState() {
+        questionIndex = 0
+        let count = state.pendingQuestion?.questions.count ?? 0
+        selections = Array(repeating: [], count: count)
+        otherTexts = Array(repeating: "", count: count)
+        showOther  = Array(repeating: false, count: count)
+    }
+
+    private func toggleSelection(qi: Int, label: String) {
+        guard qi < selections.count else { return }
+        if let i = selections[qi].firstIndex(of: label) {
+            selections[qi].remove(at: i)
+        } else {
+            selections[qi].append(label)
+        }
+    }
+
+    // Single-select: select one label then navigate/send
+    private func selectAndProceed(q: AskQuestion, qi: Int, label: String, isLast: Bool) {
+        guard qi < selections.count else { return }
+        selections[qi] = [label]
+        if isLast {
+            sendAnswers(q: q)
+        } else {
+            withAnimation { questionIndex = qi + 1 }
+        }
+    }
+
+    // Multi-select or multi-question "Next/Send" button
+    private func proceedFromQuestion(q: AskQuestion, qi: Int, isLast: Bool) {
+        if isLast {
+            sendAnswers(q: q)
+        } else {
+            withAnimation { questionIndex = qi + 1 }
+        }
+    }
+
+    // "Other…" confirm
+    private func commitOtherAndProceed(q: AskQuestion, qi: Int, isLast: Bool) {
+        let text = qi < otherTexts.count ? otherTexts[qi] : ""
+        guard !text.isEmpty else { return }
+        if qi < selections.count { selections[qi] = [text] }
+        if isLast {
+            sendAnswers(q: q)
+        } else {
+            if qi < showOther.count { showOther[qi] = false }
+            withAnimation { questionIndex = qi + 1 }
+        }
+    }
+
+    private func sendAnswers(q: AskQuestion) {
+        let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
+        HookServer.shared.sendQuestionAnswers(answers)
     }
 }
 
