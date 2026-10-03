@@ -20,6 +20,12 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    #[serde(default)]
+    pub custom_endpoint_enabled: bool,
+    #[serde(default)]
+    pub custom_endpoint_url: String,
+    #[serde(default)]
+    pub custom_endpoint_model: String,
 }
 
 fn default_model() -> String {
@@ -43,6 +49,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            custom_endpoint_enabled: false,
+            custom_endpoint_url: String::new(),
+            custom_endpoint_model: String::new(),
         }
     }
 }
