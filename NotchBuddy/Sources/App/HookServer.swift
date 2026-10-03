@@ -348,18 +348,24 @@ final class HookServer: @unchecked Sendable {
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
+        // • "opencode" → agent_opencode (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
         // • VS Code → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
+        let isOpenCodeEvent = rawAgent == "opencode"
         #else
         let isCodexEvent = false
+        let isOpenCodeEvent = false
         #endif
         let agentId: String
         let isExternalAgent: Bool
         if isCodexEvent {
             agentId = "agent_codex"
+            isExternalAgent = false
+        } else if isOpenCodeEvent {
+            agentId = "agent_opencode"
             isExternalAgent = false
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
@@ -384,6 +390,7 @@ final class HookServer: @unchecked Sendable {
             switch pending.pillId {
             case "agent_cursor": handledNote = "Handled in Cursor."
             case "agent_codex":  handledNote = "Handled in Codex."
+            case "agent_opencode": handledNote = "Handled in OpenCode."
             default:             handledNote = "Handled in VS Code."
             }
             var resolved = false
@@ -599,15 +606,17 @@ final class HookServer: @unchecked Sendable {
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
 
-        // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
+        // Codex and OpenCode get the same approval card as Claude Code / Cursor (GitHub build only).
         // Other external agents (any other coucou_agent) answer immediately with "ask"
         // so the agent re-asks in its own terminal — they do not get a notch card.
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
+        let isOpenCodeRequest = rawAgent == "opencode"
         #else
         let isCodexRequest = false
+        let isOpenCodeRequest = false
         #endif
-        if !isCodexRequest && Self.validateAgent(rawAgent) != nil {
+        if !isCodexRequest && !isOpenCodeRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -619,12 +628,14 @@ final class HookServer: @unchecked Sendable {
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
+        } else if isOpenCodeRequest {
+            pillId = "agent_opencode"
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        guard isCodexRequest || isOpenCodeRequest || isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -688,6 +699,7 @@ final class HookServer: @unchecked Sendable {
             switch capturedPillId {
             case "agent_cursor": note = "Handled in Cursor."
             case "agent_codex":  note = "Handled in Codex."
+            case "agent_opencode": note = "Handled in OpenCode."
             default:             note = "Handled in VS Code."
             }
             self.dismissApprovalCard(note: note)
@@ -705,6 +717,7 @@ final class HookServer: @unchecked Sendable {
             switch capturedPillId {
             case "agent_cursor": note = "Still waiting in Cursor."
             case "agent_codex":  note = "Still waiting in Codex."
+            case "agent_opencode": note = "Still waiting in OpenCode."
             default:             note = "Still waiting in VS Code."
             }
             self.dismissApprovalCard(note: note)
@@ -776,18 +789,22 @@ final class HookServer: @unchecked Sendable {
             bundleId.lowercased().contains("vscode"))
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
+        let isOpenCodeRequest = rawAgent == "opencode"
         #else
         let isCodexRequest = false
+        let isOpenCodeRequest = false
         #endif
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
+        } else if isOpenCodeRequest {
+            pillId = "agent_opencode"
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        guard isCodexRequest || isOpenCodeRequest || isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -927,6 +944,18 @@ final class HookServer: @unchecked Sendable {
             "apply_patch": "Modifie",
             "update_plan": "Tâches",
             "spawn_agent": "Agent",
+            // OpenCode tools (lowercase — opencode.ai/docs/tools)
+            "bash":        "Exécute",
+            "read":        "Lit",
+            "write":       "Écrit",
+            "edit":        "Modifie",
+            "grep":        "Recherche",
+            "glob":        "Cherche",
+            "webfetch":    "Récupère",
+            "websearch":   "Recherche web",
+            "todowrite":   "Tâches",
+            "skill":       "Chargement",
+            "question":    "Question",
         ]
         var label = labels[tool] ?? tool
 
