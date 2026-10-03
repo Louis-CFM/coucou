@@ -450,7 +450,7 @@ final class HookServer: @unchecked Sendable {
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
             if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
                 let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffIdx: idx)
+                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)
             }
 
@@ -1027,7 +1027,7 @@ final class HookServer: @unchecked Sendable {
             }
             guard totalAdded > 0 || totalRemoved > 0 else { return nil }
             return FileDiff(path: path, added: totalAdded, removed: totalRemoved,
-                            hunks: allHunks, tooLarge: anyLarge)
+                            hunks: allHunks, tooLarge: anyLarge, isNewFile: false)
 
         case "Write":
             guard let path = input["file_path"] as? String,

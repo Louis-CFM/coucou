@@ -121,10 +121,10 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 **Données**
 - `Edit` : `old_string → new_string`
 - `MultiEdit` : liste `edits`, chaque entrée `old_string → new_string`
-- `Write` : `content` — le fichier est traité comme nouveau s'il n'a pas encore été touché dans la session (toutes les lignes en +)
+- `Write` : `content` — tout le contenu est compté en ajout (on ne lit jamais le fichier sur le disque)
 - Le diff est calculé localement (Foundation, jamais de lecture sur le disque).
 - Limite : 200 Ko de texte combiné ou 4 000 lignes combinées → bilan seul, "Diff too large".
-- Mémoire : 50 fichiers max par session (la limite de 50 est implicite dans les 20 étapes du fil), tout effacé à la fin de la session (`SessionEnd`) ou après une heure sans activité.
+- Mémoire : 50 diffs max par session, les plus anciens sont oubliés ; tout effacé à la fin de la session (`SessionEnd`) ou après une heure sans activité.
 
 **Fil (TickerView)** — les étapes de modification affichent le nom du fichier, `+N` en vert `#22C55E` et `−M` en rouge `#F4505E`, petits et monospacés.
 

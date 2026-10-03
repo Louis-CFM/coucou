@@ -34,7 +34,7 @@ struct IslandViewContent: View {
 struct OverviewView: View {
     @ObservedObject var state: AppState
     @State private var showingN8nDetail = false
-    @State private var activeDiffIdx: Int? = nil
+    @State private var activeDiffId: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
 
@@ -48,7 +48,7 @@ struct OverviewView: View {
                 if let agent = agent {
                     if agent.isIntegration {
                         IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
-                            withAnimation(.easeIn(duration: 0.16)) { activeDiffIdx = diffIdx }
+                            withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
                         })
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
@@ -86,7 +86,7 @@ struct OverviewView: View {
                             .padding(.trailing, 36)
 
                             TickerView(task: agent, onDiffTap: { diffIdx in
-                                withAnimation(.easeIn(duration: 0.16)) { activeDiffIdx = diffIdx }
+                                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
                             })
                                 .frame(height: 44)
                                 .padding(.top, 6)
@@ -108,20 +108,19 @@ struct OverviewView: View {
                 #endif
 
                 // Diff overlay — replaces ticker when a diff step is tapped
-                if let diffIdx = activeDiffIdx,
+                if let diffId = activeDiffId,
                    let task = agent,
-                   let diffs = state.sessionDiffs[task.id],
-                   diffIdx < diffs.count {
+                   let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
-                    DiffCardView(diff: diffs[diffIdx], onDismiss: { activeDiffIdx = nil })
+                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
                         .transition(.opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffIdx != nil
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
                 #else
-                let hideJumpButton = showingN8nDetail || activeDiffIdx != nil
+                let hideJumpButton = showingN8nDetail || activeDiffId != nil
                 #endif
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
@@ -147,17 +146,17 @@ struct OverviewView: View {
         }
         .onChange(of: state.focusId) { _, _ in
             showingN8nDetail = false
-            activeDiffIdx = nil
+            activeDiffId = nil
             #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
-            if v != .overview { state.showingPlanDetail = false; activeDiffIdx = nil }
+            if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
         .onChange(of: state.mode) { _, m in
-            if m != .expanded { state.showingPlanDetail = false; activeDiffIdx = nil }
+            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
         }
         #endif
     }
@@ -539,7 +538,11 @@ struct FinishedView: View {
             } else {
                 VStack(alignment: .leading, spacing: 5) {
                     AgentWho(task: state.focusTask, label: "Claude Code finished")
-                    Text(state.focusTask?.steps.last ?? "Session finished")
+                    Text({
+                        if let fl = state.focusTask?.finalLine { return fl }
+                        if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
+                        return "Session finished"
+                    }())
                         .font(.system(size: 15, weight: .semibold))
                     HStack(spacing: 8) {
                         #if !APPSTORE
@@ -686,14 +689,14 @@ struct DiffCardView: View {
 
     private func openInEditor(_ diff: FileDiff) {
         let path = diff.path
-        let line = diff.firstChangedLine
         #if !APPSTORE
-        let codePaths = ["/usr/local/bin/code", "/usr/bin/code",
+        let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
                          "\(NSHomeDirectory())/.nvm/current/bin/code"]
         if let codePath = codePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: codePath)
-            p.arguments = ["-g", "\(path):\(line)"]
+            // Write: open at line 1; Edit/MultiEdit: open file without line number
+            p.arguments = diff.isNewFile ? ["-g", "\(path):1"] : [path]
             try? p.run()
             return
         }
@@ -2875,8 +2878,8 @@ struct TickerView: View {
 
     var body: some View {
         let isActive = task?.state == .thinking || task?.state == .working
-        let rowADiffTap: (() -> Void)? = rowA.parseDiffStep().map { dp in { onDiffTap?(dp.diffIdx) } }
-        let rowBDiffTap: (() -> Void)? = rowB.parseDiffStep().map { dp in { onDiffTap?(dp.diffIdx) } }
+        let rowADiffTap: (() -> Void)? = rowA.parseDiffStep().map { dp in { onDiffTap?(dp.diffId) } }
+        let rowBDiffTap: (() -> Void)? = rowB.parseDiffStep().map { dp in { onDiffTap?(dp.diffId) } }
 
         ZStack(alignment: .topLeading) {
             Color.clear
@@ -2980,7 +2983,7 @@ struct TickerRowView: View {
         let checkmarkOpacity: Double = isActive ? max(0, phase * 2 - 1)       : 1
         let shimmerOpacity:   Double = isActive ? max(0, 1 - phase * 1.6)     : 0
         let staticOpacity:    Double = isActive ? min(1, max(0, phase * 2 - 0.4)) : 1
-        let staticColor = isActive ? Color(hex: "#6B7079") : Color(hex: "#C9CDD4")
+        let staticColor = (!isActive && phase < 0.5) ? Color(hex: "#C9CDD4") : Color(hex: "#6B7079")
 
         if let dp = text.parseDiffStep() {
             HStack(spacing: 6) {

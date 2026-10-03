@@ -17,14 +17,15 @@ struct DiffHunk: Equatable {
 }
 
 struct FileDiff: Equatable {
+    var id: Int = 0         // stable identifier assigned by AppState.appendSessionDiff
     var path: String
     var added: Int
     var removed: Int
     var hunks: [DiffHunk]
     var tooLarge: Bool
+    var isNewFile: Bool     // true when produced by DiffEngine.fromNew (Write tool)
 
     var name: String { URL(fileURLWithPath: path).lastPathComponent }
-    var firstChangedLine: Int { hunks.first?.newStart ?? 1 }
 
     static let maxBytes = 200 * 1024
     static let maxLines = 4000
@@ -46,15 +47,27 @@ enum DiffEngine {
         if oldLines.count + newLines.count > FileDiff.maxLines {
             return countFallback(old: old, new: new, path: path, tooLarge: true)
         }
+        // LCS is O(m*n) — bail out before quadratic blowup
+        if oldLines.count * newLines.count > 1_000_000 {
+            return countFallback(old: old, new: new, path: path, tooLarge: true)
+        }
         let flat = buildDiffLines(oldLines: oldLines, newLines: newLines)
         let hunks = buildHunks(from: flat, context: 3)
         let added   = flat.filter { $0.kind == .added   }.count
         let removed = flat.filter { $0.kind == .removed }.count
-        return FileDiff(path: path, added: added, removed: removed, hunks: hunks, tooLarge: false)
+        return FileDiff(path: path, added: added, removed: removed, hunks: hunks, tooLarge: false, isNewFile: false)
     }
 
     static func fromNew(content: String, path: String) -> FileDiff {
+        // Size guard (same limits as fromEdit)
+        if content.utf8.count > FileDiff.maxBytes {
+            let lineCount = content.components(separatedBy: "\n").count
+            return FileDiff(path: path, added: lineCount, removed: 0, hunks: [], tooLarge: true, isNewFile: true)
+        }
         let lines = splitLines(content)
+        if lines.count > FileDiff.maxLines {
+            return FileDiff(path: path, added: lines.count, removed: 0, hunks: [], tooLarge: true, isNewFile: true)
+        }
         let diffLines = lines.enumerated().map { (i, text) in
             DiffLine(kind: .added, text: text, origLine: -1, newLine: i + 1)
         }
@@ -64,7 +77,8 @@ enum DiffEngine {
             added: diffLines.count,
             removed: 0,
             hunks: hunk.map { [$0] } ?? [],
-            tooLarge: false
+            tooLarge: false,
+            isNewFile: true
         )
     }
 
@@ -198,7 +212,7 @@ enum DiffEngine {
         let newSet = Set(newLines)
         let added   = newLines.filter { !$0.isEmpty && !oldSet.contains($0) }.count
         let removed = oldLines.filter { !$0.isEmpty && !newSet.contains($0) }.count
-        return FileDiff(path: path, added: added, removed: removed, hunks: [], tooLarge: tooLarge)
+        return FileDiff(path: path, added: added, removed: removed, hunks: [], tooLarge: tooLarge, isNewFile: false)
     }
 
     // MARK: - toOneLine
@@ -234,8 +248,8 @@ public extension String {
     var isDiffStep: Bool { hasPrefix(Self.diffStepMarker) }
 
     /// Parses a diff step string.
-    /// Format: `"\u{E001}<filename>\t<added>:<removed>:<diffIdx>"`
-    func parseDiffStep() -> (filename: String, added: Int, removed: Int, diffIdx: Int)? {
+    /// Format: `"\u{E001}<filename>\t<added>:<removed>:<diffId>"`
+    func parseDiffStep() -> (filename: String, added: Int, removed: Int, diffId: Int)? {
         guard isDiffStep else { return nil }
         let body = String(dropFirst())   // drop the marker character
         guard let tabIdx = body.firstIndex(of: "\t") else { return nil }
@@ -243,14 +257,14 @@ public extension String {
         let rest = String(body[body.index(after: tabIdx)...])
         let parts = rest.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count == 3,
-              let added   = Int(parts[0]),
+              let added  = Int(parts[0]),
               let removed = Int(parts[1]),
-              let diffIdx = Int(parts[2]) else { return nil }
-        return (filename, added, removed, diffIdx)
+              let diffId  = Int(parts[2]) else { return nil }
+        return (filename, added, removed, diffId)
     }
 
     /// Creates a diff step string from its components.
-    static func makeDiffStep(filename: String, added: Int, removed: Int, diffIdx: Int) -> String {
-        "\(diffStepMarker)\(filename)\t\(added):\(removed):\(diffIdx)"
+    static func makeDiffStep(filename: String, added: Int, removed: Int, diffId: Int) -> String {
+        "\(diffStepMarker)\(filename)\t\(added):\(removed):\(diffId)"
     }
 }

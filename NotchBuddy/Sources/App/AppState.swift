@@ -295,19 +295,29 @@ final class AppState: ObservableObject {
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]
     private var sessionDiffTimers: [String: DispatchWorkItem] = [:]
+    // Monotonically increasing — never reset, not even in clearSessionDiffs.
+    private var nextDiffId: Int = 0
 
     @discardableResult
     func appendSessionDiff(_ diff: FileDiff, for pillId: String) -> Int {
+        var d = diff
+        d.id = nextDiffId
+        nextDiffId += 1
         if sessionDiffs[pillId] == nil { sessionDiffs[pillId] = [] }
-        sessionDiffs[pillId]!.append(diff)
+        sessionDiffs[pillId]!.append(d)
+        // Keep at most 50 diffs per pill; drop oldest first
+        while sessionDiffs[pillId]!.count > 50 {
+            sessionDiffs[pillId]!.removeFirst()
+        }
         resetSessionDiffTimer(for: pillId)
-        return sessionDiffs[pillId]!.count - 1
+        return d.id
     }
 
     func clearSessionDiffs(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
         sessionDiffTimers.removeValue(forKey: pillId)
         sessionDiffs.removeValue(forKey: pillId)
+        // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
 
     /// Unique touched files for a pill, in first-touch order, with summed totals.

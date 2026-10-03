@@ -112,26 +112,42 @@ enum DiffEngineTests {
             checkTrue("has context before change", contextLines.count >= 3)
         }
 
-        // ── DiffEngine — firstChangedLine > 0 ────────────────────────────────
-        print("DiffEngine — firstChangedLine > 0")
+        // ── DiffEngine — m*n > 1_000_000 → tooLarge ─────────────────────────
+        print("DiffEngine — m*n > 1_000_000 → tooLarge")
         do {
-            let d = DiffEngine.fromEdit(old: "foo\nbar\nbaz\n",
-                                         new: "foo\nqux\nbaz\n",
-                                         path: "/f.ts")
-            checkTrue("firstChangedLine > 0", d.firstChangedLine > 0)
+            // 1001 old lines × 1001 new lines = > 1M
+            let many = (0..<1001).map { "line\($0)" }.joined(separator: "\n")
+            let d = DiffEngine.fromEdit(old: many, new: many + "\nextra", path: "/big.swift")
+            checkTrue("tooLarge when m*n > 1M", d.tooLarge)
+            checkTrue("hunks empty",            d.hunks.isEmpty)
+        }
+
+        // ── DiffEngine.fromNew — too large ────────────────────────────────────
+        print("DiffEngine.fromNew — too large")
+        do {
+            let bigContent = String(repeating: "x\n", count: FileDiff.maxLines + 1)
+            let d = DiffEngine.fromNew(content: bigContent, path: "/new.swift")
+            checkTrue("fromNew tooLarge",    d.tooLarge)
+            checkTrue("fromNew isNewFile",   d.isNewFile)
+            checkTrue("fromNew hunks empty", d.hunks.isEmpty)
+            checkTrue("fromNew added > 0",   d.added > 0)
         }
 
         // ── String.makeDiffStep / parseDiffStep ───────────────────────────────
         print("String.makeDiffStep / parseDiffStep")
         do {
-            let s = String.makeDiffStep(filename: "foo.swift", added: 3, removed: 1, diffIdx: 7)
+            let s = String.makeDiffStep(filename: "foo.swift", added: 3, removed: 1, diffId: 7)
             checkTrue("isDiffStep", s.isDiffStep)
             let parsed = s.parseDiffStep()
-            checkTrue("parsed != nil",         parsed != nil)
-            checkTrue("filename round-trips",  parsed?.filename == "foo.swift")
-            checkTrue("added round-trips",     parsed?.added    == 3)
-            checkTrue("removed round-trips",   parsed?.removed  == 1)
-            checkTrue("diffIdx round-trips",   parsed?.diffIdx  == 7)
+            checkTrue("parsed != nil",        parsed != nil)
+            checkTrue("filename round-trips", parsed?.filename == "foo.swift")
+            checkTrue("added round-trips",    parsed?.added    == 3)
+            checkTrue("removed round-trips",  parsed?.removed  == 1)
+            checkTrue("diffId round-trips",   parsed?.diffId   == 7)
+
+            // id > 9 (multi-digit) round-trips correctly
+            let s2 = String.makeDiffStep(filename: "bar.ts", added: 0, removed: 2, diffId: 42)
+            checkTrue("diffId 42 round-trips", s2.parseDiffStep()?.diffId == 42)
 
             // Non-diff step should not parse
             checkTrue("normal step !isDiffStep", !"Edit foo.swift".isDiffStep)

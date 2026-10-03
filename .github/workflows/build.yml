@@ -33,6 +33,9 @@ jobs:
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
 
+      - name: Diff engine tests
+        run: bash scripts/test-diff-engine.sh
+
       - name: Build
         run: |
           xcodebuild \
