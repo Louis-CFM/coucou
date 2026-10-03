@@ -2122,12 +2122,13 @@ export {
             ])
         }
         let fm = FileManager.default
-        try writeJSONFile(data, to: url, suffix: "opencode.json")
         if _pendingOpenCodeInstall {
             try fm.createDirectory(at: Self.opencodePluginDirURL, withIntermediateDirectories: true)
             try Data(opencodePluginSource.utf8).write(to: Self.opencodePluginFileURL, options: .atomic)
+            try writeJSONFile(data, to: url, suffix: "opencode.json")
         } else {
-            try? fm.removeItem(at: Self.opencodePluginDirURL)
+            try fm.removeItem(at: Self.opencodePluginDirURL)
+            try writeJSONFile(data, to: url, suffix: "opencode.json")
         }
         _pendingOpenCodeData = nil
         _pendingOpenCodeFingerprint = nil
