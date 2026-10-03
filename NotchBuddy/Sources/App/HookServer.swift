@@ -345,12 +345,13 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
+        let isClaudeDesktop = bundleId.lowercased().contains("claudefordesktop")
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
-        // • VS Code → integration_claude
+        // • Claude Code (all terminals & Claude Desktop) → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
         #else
@@ -367,12 +368,9 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
-        } else if isVSCodeEditor {
+        } else {
             agentId = "integration_claude"
             isExternalAgent = false
-        } else {
-            nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
-            return
         }
 
         let focused = state.focusId == agentId
@@ -384,7 +382,14 @@ final class HookServer: @unchecked Sendable {
             switch pending.pillId {
             case "agent_cursor": handledNote = "Handled in Cursor."
             case "agent_codex":  handledNote = "Handled in Codex."
-            default:             handledNote = "Handled in VS Code."
+            default:
+                if isVSCodeEditor {
+                    handledNote = "Handled in VS Code."
+                } else if isClaudeDesktop {
+                    handledNote = "Handled in Claude."
+                } else {
+                    handledNote = "Handled in terminal."
+                }
             }
             var resolved = false
             switch name {
@@ -642,13 +647,6 @@ final class HookServer: @unchecked Sendable {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
-        }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
-            Task.detached { [weak self] in
-                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-                close(fd)
-            }
-            return
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
