@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var autoCloseSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -156,6 +157,11 @@ final class IslandWindowController: NSWindowController {
     // MARK: - FSM wiring
 
     private func wireFSM() {
+        // Apply the persisted preference immediately and keep live edits in sync.
+        autoCloseSubscription = state.$autoCloseInterval.sink { [weak self] delay in
+            self?.fsm.homeToPetitDelay = delay
+        }
+
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
             switch to {

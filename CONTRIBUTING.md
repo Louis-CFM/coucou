@@ -17,6 +17,12 @@ Check resting island dimensions on screens with and without a notch:
 bash scripts/test-screen-geometry.sh
 ```
 
+Check auto-close timing and live setting changes:
+
+```bash
+bash scripts/test-auto-close.sh
+```
+
 ## Good first contributions
 
 - A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.
