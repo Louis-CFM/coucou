@@ -95,6 +95,12 @@ to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
 otherwise needs a real drag from Explorer to see. Neither page ships in the app.
 
+`npm run fake-session` plays a pretend Claude Code session through the real
+relay while Coucou is running — steps, a permission request, a finish — so the
+whole hook path can be tried without Claude Code. Nothing is executed; the
+script prints what Claude Code would have received. `npm run fake-session --
+permission` sends only the permission request.
+
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
 
