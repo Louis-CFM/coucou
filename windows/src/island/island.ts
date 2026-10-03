@@ -837,6 +837,10 @@ export class Island {
     const greetingActive = expanded && State.view === "greeting";
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
+    // Folded or hidden, the views are out of sight but still in the page: what
+    // moves in them on its own stops (see #content.away), and picks up when the
+    // island unfolds.
+    this.contentEl.classList.toggle("away", !expanded);
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 

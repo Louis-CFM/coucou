@@ -192,6 +192,14 @@ body {
   transition: opacity 0.2s ease-in-out;
 }
 
+/* Keep it light: 0 % CPU when the island is hidden. Folded or hidden, the
+   views are invisible but still in the page, and an animation with no end — a
+   shimmering line, a pulsing dot, a turning ring — would go on being computed
+   for nobody. They all stop, and pick up when the island unfolds. */
+#content.away * {
+  animation-play-state: paused !important;
+}
+
 #header {
   height: 34px;
   flex: 0 0 34px;
