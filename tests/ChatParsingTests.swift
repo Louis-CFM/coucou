@@ -104,6 +104,34 @@ enum ChatParsingTests {
         check("open after text",     LocalChat.progressiveFilter("answer<think>hidden"), "answer")
         check("closed think removed", LocalChat.progressiveFilter("<think>done</think>result"), "result")
 
+        print("TokenUsage.parse")
+
+        let openAIUsage = TokenUsage.parse([
+            "usage": ["prompt_tokens": 120, "completion_tokens": 30, "total_tokens": 150]
+        ])
+        checkTrue("OpenAI usage parsed", openAIUsage == TokenUsage(prompt: 120, completion: 30))
+        checkTrue("OpenAI total",         openAIUsage?.total == 150)
+
+        let anthropicUsage = TokenUsage.parse([
+            "usage": ["input_tokens": 40, "output_tokens": 8]
+        ])
+        checkTrue("Anthropic usage parsed", anthropicUsage == TokenUsage(prompt: 40, completion: 8))
+
+        let totalOnly = TokenUsage.parse(["usage": ["total_tokens": 77]])
+        checkTrue("total-only fallback", totalOnly == TokenUsage(prompt: 77, completion: 0))
+
+        checkTrue("missing usage → nil", TokenUsage.parse([:]) == nil)
+        checkTrue("empty usage → nil",
+                  TokenUsage.parse(["usage": ["prompt_tokens": 0, "completion_tokens": 0]]) == nil)
+        checkTrue("zero total → nil", TokenUsage.parse(["usage": ["total_tokens": 0]]) == nil)
+
+        print("TokenUsage.dayKey")
+        var components = DateComponents()
+        components.year = 2026; components.month = 10; components.day = 3
+        components.hour = 23; components.minute = 59
+        let dayDate = Calendar(identifier: .gregorian).date(from: components)!
+        check("day key format", TokenUsage.dayKey(dayDate), "2026-10-03")
+
         // ── End-to-end tests (fake server) ───────────────────────────────────
 
         let baseURL: String = {

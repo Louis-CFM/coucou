@@ -71,6 +71,7 @@ enum AgentSource: Equatable {
 
 enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
+    case deepseek  = "deepseek"
     case google    = "google"
     case openai    = "openai"
     case ollama    = "ollama"
@@ -79,6 +80,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var displayName: String {
         switch self {
         case .anthropic: "Anthropic"
+        case .deepseek:  "DeepSeek"
         case .google:    "Google"
         case .openai:    "OpenAI"
         case .ollama:    "Ollama"
@@ -89,6 +91,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var accentHex: String {
         switch self {
         case .anthropic: "#E07950"
+        case .deepseek:  "#4D6BFE"
         case .google:    "#4285F4"
         case .openai:    "#10A37F"
         case .ollama:    "#FACC15"
@@ -99,6 +102,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var defaultModel: String {
         switch self {
         case .anthropic: "claude-sonnet-4-6"
+        case .deepseek:  "deepseek-flash"
         case .google:    "gemini-2.0-flash"
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
@@ -109,6 +113,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var keychainKey: String {
         switch self {
         case .anthropic: "anthropic-api-key"
+        case .deepseek:  "deepseek-api-key"
         case .google:    "google-api-key"
         case .openai:    "openai-api-key"
         case .ollama:    ""
@@ -123,6 +128,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var pillID: String {
         switch self {
         case .anthropic: "ai_anthropic"
+        case .deepseek:  "ai_deepseek"
         case .google:    "ai_google"
         case .openai:    "ai_openai"
         case .ollama:    "ai_ollama"
@@ -133,6 +139,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     init?(pillID: String) {
         switch pillID {
         case "ai_anthropic": self = .anthropic
+        case "ai_deepseek":  self = .deepseek
         case "ai_google":    self = .google
         case "ai_openai":    self = .openai
         case "ai_ollama":    self = .ollama

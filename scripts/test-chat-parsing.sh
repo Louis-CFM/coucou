@@ -18,6 +18,7 @@ SERVER_PID=$!
 swiftc \
     NotchBuddy/Sources/App/LocalChat.swift \
     NotchBuddy/Sources/App/ChatMarkdown.swift \
+    NotchBuddy/Sources/App/TokenUsage.swift \
     tests/ChatParsingTests.swift \
     -o "$TEST_DIR/chat-parsing-tests"
 

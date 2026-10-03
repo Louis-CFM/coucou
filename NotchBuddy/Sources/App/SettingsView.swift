@@ -55,6 +55,7 @@ struct SettingsView: View {
     #endif
 
     // Multi-provider chat keys
+    @State private var deepSeekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
     @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
     @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
@@ -592,9 +593,23 @@ struct SettingsView: View {
 
         GroupBox("Chat — other providers") {
             VStack(alignment: .leading, spacing: 12) {
-                Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
+                Text("To use DeepSeek, Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#4D6BFE")).frame(width: 8, height: 8)
+                    Text("DeepSeek").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key (sk-…)", text: $deepSeekKey)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    KeychainStore.shared.set("deepseek-api-key", value: deepSeekKey)
+                    statusMessage = "✓ DeepSeek key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
 
                 HStack(spacing: 8) {
                     Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
@@ -1169,14 +1184,12 @@ struct SettingsView: View {
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
-            if def.category == .ai {
-                if let provider = ChatProvider(pillID: def.id), provider.isLocal {
+            if def.category == .ai, let provider = ChatProvider(pillID: def.id) {
+                if provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return "Not connected" }
-                } else {
-                    let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                               : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
-                    if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
+                } else if KeychainStore.shared.get(provider.keychainKey) == nil {
+                    return "Key not configured"
                 }
             }
             return nil

@@ -174,16 +174,21 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 5bis. Autres fournisseurs du chat (Google AI, OpenAI)
+## 5bis. Autres fournisseurs du chat (DeepSeek, Google AI, OpenAI)
 
-Clés dans Settings → Chat — other providers (Trousseau : `google-api-key`, `openai-api-key`). La liste des modèles est récupérée à l'ouverture du chat selon le fournisseur :
+Clés dans Settings → Chat — other providers (Trousseau : `deepseek-api-key`, `google-api-key`, `openai-api-key`). La liste des modèles est récupérée à l'ouverture du chat selon le fournisseur :
 
+- **DeepSeek** : `GET https://api.deepseek.com/models` (en-tête `Authorization: Bearer <clé>`) — `id` et `name` de chaque entrée. Le fournisseur par défaut du chat est `.deepseek`, modèle `deepseek-flash` ; si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « flash », sinon le premier de la liste. Endpoint du chat : `POST https://api.deepseek.com/chat/completions` (format OpenAI, réponse non-streamée).
 - **Google AI (Gemini)** : `GET https://generativelanguage.googleapis.com/v1beta/openai/models` (en-tête `Authorization: Bearer <clé>`) — on retire le préfixe `models/`, on filtre les modèles dont l'identifiant contient `embed`, `imagen`, `veo`, `aqa`, `tts`, `audio` ou `live`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « flash », sinon le premier de la liste. Endpoint du chat : `POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
 - **OpenAI** : `GET https://api.openai.com/v1/models` (en-tête `Authorization: Bearer <clé>`) — triés par champ `created` décroissant, on filtre les modèles dont l'identifiant contient `embed`, `tts`, `whisper`, `dall-e`, `audio`, `realtime`, `moderat`, `codex`, `computer-use`, `transcribe`, `image`, `sora`, `babbage`, `davinci` ou `instruct`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « mini », sinon le premier de la liste. Endpoint du chat : `POST https://api.openai.com/v1/chat/completions`.
 
 Ce qui est envoyé au fournisseur lors d'un échange : le texte saisi et la conversation en cours. Si une fenêtre est attachée : nom de l'app, titre et URL. Si un fichier est attaché : son nom seulement (le contenu d'un fichier ne part que chez Anthropic).
 
-Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de pastilles ») pour les pastilles `ai_google` et `ai_openai`.
+### Compteur de tokens du jour
+
+Chaque réponse qui contient un objet `usage` (Anthropic, DeepSeek, Google, OpenAI) additionne ses tokens dans un total persisté par jour calendaire (UserDefaults : `tokenUsageDay`, `tokenUsagePrompt`, `tokenUsageCompletion`). Le chat affiche « N tokens today » à gauche de la puce de modèle quand le total est supérieur à zéro ; le compteur se remet à zéro à minuit (vérifié à l'ouverture du chat et à chaque enregistrement). Les modèles locaux (streaming) ne sont pas comptés.
+
+Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de pastilles ») pour les pastilles `ai_deepseek`, `ai_google` et `ai_openai`.
 
 ---
 
