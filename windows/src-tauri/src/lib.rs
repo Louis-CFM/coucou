@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod openai_compat;
 mod pipe;
 mod platform;
 mod secrets;
@@ -238,16 +239,30 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    oai: State<'_, openai_compat::OaiChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, model, or_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.chat_provider.clone(), s.model.clone(), s.openrouter_model.clone())
+    };
+    match provider.as_str() {
+        "openrouter" => openai_compat::send(&oai, &or_model, query, context).await,
+        _ => claude::send(&chat, &model, query, context).await,
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, oai: State<openai_compat::OaiChat>) {
     chat.reset();
+    oai.reset();
+}
+
+/// OpenRouter's public model list (no key needed), free models first.
+#[tauri::command]
+async fn openrouter_models() -> Result<Vec<openai_compat::ModelInfo>, String> {
+    openai_compat::list_models().await
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -374,6 +389,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(openai_compat::OaiChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +409,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            openrouter_models,
             ingest_file,
             secret_present,
             secret_set,
