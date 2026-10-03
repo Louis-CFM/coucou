@@ -171,87 +171,230 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── AI & Chat Provider section (ChatGPT OAuth + API Keys) ─────────────────────
 
-const MODELS: [string, string][] = [
+const CLAUDE_MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
   ["claude-sonnet-5", "Claude Sonnet 5"],
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+const OPENAI_MODELS: [string, string][] = [
+  ["gpt-4o", "GPT-4o (Omni)"],
+  ["gpt-4o-mini", "GPT-4o mini"],
+  ["o3-mini", "o3-mini (Reasoning)"],
+  ["o1", "o1 (High Reasoning)"],
+];
 
-  const field = h("input", {
-    type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
-    style: "flex:1 1 auto;min-width:0",
-    autocomplete: "off",
-    spellcheck: "false",
-  }) as HTMLInputElement;
+function apiSection(): HTMLElement {
+  let activeTab: "chatgpt" | "apikey" = "chatgpt";
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px;" });
+  const dot = statusDot(false);
+  const section = h("section", {}, h("h2", {}, dot, h("span", { text: "AI & Chat Provider" })), body);
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
-  const feedback = h("div", {});
+  async function render() {
+    clear(body);
+    const chatgptStatus = (await Bridge.chatgptStatus()) ?? { signedIn: false, email: null, hasApiKey: false };
+    const hasAnthropicKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+    const hasOpenAIKey = (await Bridge.secretPresent("openai-api-key")) ?? false;
 
-  async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
-    clearBtn.style.display = present ? "" : "none";
+    const isConnected = chatgptStatus.signedIn || hasAnthropicKey || hasOpenAIKey;
+    dot.style.background = isConnected ? "#22c55e" : "#f4505e";
+
+    // Auto-select tab on first render if API key exists but not ChatGPT OAuth
+    if (!chatgptStatus.signedIn && (hasAnthropicKey || hasOpenAIKey) && activeTab === "chatgpt") {
+      activeTab = "apikey";
+    }
+
+    const chatgptTabBtn = h("button", {
+      class: activeTab === "chatgpt" ? "tab-btn active" : "tab-btn",
+      text: "ChatGPT Account (OAuth)",
+      onclick: () => { activeTab = "chatgpt"; void render(); },
+    });
+    const apikeyTabBtn = h("button", {
+      class: activeTab === "apikey" ? "tab-btn active" : "tab-btn",
+      text: "API Key (Claude / OpenAI)",
+      onclick: () => { activeTab = "apikey"; void render(); },
+    });
+    const tabs = h("div", { class: "tab-group" }, chatgptTabBtn, apikeyTabBtn);
+    body.append(tabs);
+
+    if (activeTab === "chatgpt") {
+      if (chatgptStatus.signedIn) {
+        const emailText = chatgptStatus.email || "ChatGPT Account";
+        const modelSel = h("select", {}) as HTMLSelectElement;
+        for (const [id, label] of OPENAI_MODELS) modelSel.append(h("option", { value: id, text: label }));
+        if (!OPENAI_MODELS.some(([id]) => id === settings.model)) {
+          modelSel.append(h("option", { value: settings.model, text: settings.model }));
+        }
+        modelSel.value = settings.model.startsWith("gpt-") || settings.model.startsWith("o") ? settings.model : "gpt-4o";
+        modelSel.addEventListener("change", () => {
+          settings.model = modelSel.value;
+          void save();
+        });
+
+        body.append(
+          h("div", { class: "oauth-card" },
+            h("div", { style: "display:flex;align-items:center;gap:10px;" },
+              statusDot(true),
+              h("div", {},
+                h("div", { style: "font-weight:600;font-size:13px;", text: "ChatGPT Connected" }),
+                h("div", { class: "hint", text: emailText }),
+              ),
+            ),
+            h("button", {
+              class: "danger",
+              text: "Sign out",
+              onclick: async () => {
+                await Bridge.chatgptSignOut();
+                void render();
+              },
+            }),
+          ),
+          h("div", { class: "row" },
+            h("label", { text: "Model" }),
+            modelSel,
+          ),
+          h("div", {
+            class: "hint",
+            text: "Tokens are stored securely in Windows Credential Manager and renewed automatically.",
+          }),
+        );
+      } else {
+        const feedback = h("div", {});
+        const signInBtn = h("button", {
+          class: "primary",
+          text: "Sign in with ChatGPT",
+          onclick: async () => {
+            signInBtn.disabled = true;
+            signInBtn.textContent = "Waiting for browser login…";
+            clear(feedback);
+            try {
+              const res = await Bridge.chatgptOAuthStart();
+              feedback.append(h("div", { class: "notice ok", text: `Connected as ${res}` }));
+              setTimeout(() => void render(), 1200);
+            } catch (err) {
+              signInBtn.disabled = false;
+              signInBtn.textContent = "Sign in with ChatGPT";
+              feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+            }
+          },
+        });
+
+        body.append(
+          h("div", {
+            class: "hint",
+            text: "Connect your ChatGPT account to use your existing subscription quota in Mochi without paying for developer API keys.",
+          }),
+          h("div", { class: "row" }, signInBtn),
+          feedback,
+        );
+      }
+    } else {
+      // ── Anthropic Claude API Key ──
+      const claudeDot = statusDot(hasAnthropicKey);
+      const claudeField = h("input", {
+        type: "password",
+        placeholder: hasAnthropicKey ? "••••••••••••  (stored)" : "sk-ant-...",
+        style: "flex:1 1 auto;min-width:0",
+        autocomplete: "off",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+
+      const claudeSaveBtn = h("button", { class: "primary", text: "Save key" });
+      const claudeClearBtn = h("button", { class: "danger", text: "Remove", style: hasAnthropicKey ? "" : "display:none" });
+      const claudeFeedback = h("div", {});
+
+      claudeSaveBtn.addEventListener("click", async () => {
+        const value = claudeField.value.trim();
+        if (!value) return;
+        clear(claudeFeedback);
+        try {
+          await Bridge.secretSet("anthropic-api-key", value);
+          claudeField.value = "";
+          claudeFeedback.append(h("div", { class: "notice ok", text: "Saved in Windows Credential Manager." }));
+          setTimeout(() => void render(), 800);
+        } catch (err) {
+          claudeFeedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+        }
+      });
+
+      claudeClearBtn.addEventListener("click", async () => {
+        clear(claudeFeedback);
+        try {
+          await Bridge.secretClear("anthropic-api-key");
+          claudeFeedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+          setTimeout(() => void render(), 800);
+        } catch (err) {
+          claudeFeedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+        }
+      });
+
+      const claudeModel = h("select", {}) as HTMLSelectElement;
+      for (const [id, label] of CLAUDE_MODELS) claudeModel.append(h("option", { value: id, text: label }));
+      if (!CLAUDE_MODELS.some(([id]) => id === settings.model)) {
+        claudeModel.append(h("option", { value: settings.model, text: settings.model }));
+      }
+      claudeModel.value = settings.model.startsWith("claude-") ? settings.model : "claude-opus-5";
+      claudeModel.addEventListener("change", () => {
+        settings.model = claudeModel.value;
+        void save();
+      });
+
+      // ── OpenAI API Key ──
+      const openaiDot = statusDot(hasOpenAIKey);
+      const openaiField = h("input", {
+        type: "password",
+        placeholder: hasOpenAIKey ? "••••••••••••  (stored)" : "sk-...",
+        style: "flex:1 1 auto;min-width:0",
+        autocomplete: "off",
+        spellcheck: "false",
+      }) as HTMLInputElement;
+
+      const openaiSaveBtn = h("button", { class: "primary", text: "Save key" });
+      const openaiClearBtn = h("button", { class: "danger", text: "Remove", style: hasOpenAIKey ? "" : "display:none" });
+      const openaiFeedback = h("div", {});
+
+      openaiSaveBtn.addEventListener("click", async () => {
+        const value = openaiField.value.trim();
+        if (!value) return;
+        clear(openaiFeedback);
+        try {
+          await Bridge.secretSet("openai-api-key", value);
+          openaiField.value = "";
+          openaiFeedback.append(h("div", { class: "notice ok", text: "OpenAI key saved." }));
+          setTimeout(() => void render(), 800);
+        } catch (err) {
+          openaiFeedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+        }
+      });
+
+      openaiClearBtn.addEventListener("click", async () => {
+        clear(openaiFeedback);
+        try {
+          await Bridge.secretClear("openai-api-key");
+          openaiFeedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+          setTimeout(() => void render(), 800);
+        } catch (err) {
+          openaiFeedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+        }
+      });
+
+      body.append(
+        h("div", { style: "display:flex;align-items:center;gap:6px;margin-top:4px;" }, claudeDot, h("span", { style: "font-weight:600;font-size:12.5px;", text: "Anthropic Claude" })),
+        h("div", { class: "row" }, h("label", { text: "Claude API key" }), claudeField, claudeSaveBtn, claudeClearBtn),
+        h("div", { class: "row" }, h("label", { text: "Claude Model" }), claudeModel),
+        claudeFeedback,
+        h("div", { style: "display:flex;align-items:center;gap:6px;margin-top:8px;" }, openaiDot, h("span", { style: "font-weight:600;font-size:12.5px;", text: "OpenAI API" })),
+        h("div", { class: "row" }, h("label", { text: "OpenAI API key" }), openaiField, openaiSaveBtn, openaiClearBtn),
+        openaiFeedback,
+      );
+    }
   }
 
-  saveBtn.addEventListener("click", async () => {
-    const value = field.value.trim();
-    if (!value) return;
-    clear(feedback);
-    try {
-      await Bridge.secretSet("anthropic-api-key", value);
-      field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
-    }
-  });
-
-  clearBtn.addEventListener("click", async () => {
-    clear(feedback);
-    try {
-      await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
-      await refresh();
-    } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
-    }
-  });
-
-  const model = h("select", {}) as HTMLSelectElement;
-  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
-  if (!MODELS.some(([id]) => id === settings.model)) {
-    model.append(h("option", { value: settings.model, text: settings.model }));
-  }
-  model.value = settings.model;
-  model.addEventListener("change", () => {
-    settings.model = model.value;
-    void save();
-  });
-
-  clearBtn.style.display = hasKey ? "" : "none";
-
-  return h(
-    "section",
-    {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
-    state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
-    feedback,
-  );
+  void render();
+  void onEvent("chatgpt-auth-changed", () => void render());
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -429,8 +572,6 @@ async function main() {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
@@ -442,7 +583,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    apiSection(hasKey),
+    apiSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {
