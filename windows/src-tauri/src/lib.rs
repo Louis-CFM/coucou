@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod ollama;
 mod pipe;
 mod platform;
 mod secrets;
@@ -21,6 +22,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
+use ollama::OllamaChat;
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -238,16 +240,47 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    ollama_chat: State<'_, OllamaChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    match settings.provider.as_str() {
+        "ollama" => ollama::send(&ollama_chat, &settings.ollama_model, query, context).await,
+        _ => claude::send(&chat, &settings.model, query, context).await,
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+async fn chat_send_stream(
+    app: AppHandle,
+    shared: State<'_, Shared>,
+    ollama_chat: State<'_, OllamaChat>,
+    request_id: String,
+    query: String,
+    context: Option<ChatContext>,
+) -> Result<(), String> {
+    let settings = shared.settings.lock().unwrap().clone();
+
+    if settings.provider != "ollama" {
+        return Err("Streaming is currently available for Ollama only.".into());
+    }
+
+    ollama::send_stream(
+        &app,
+        &ollama_chat,
+        &settings.ollama_model,
+        request_id,
+        query,
+        context,
+    )
+    .await
+}
+
+#[tauri::command]
+fn chat_reset(chat: State<Chat>, ollama_chat: State<OllamaChat>) {
     chat.reset();
+    ollama_chat.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -374,6 +407,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(OllamaChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +427,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            chat_send_stream,
             ingest_file,
             secret_present,
             secret_set,

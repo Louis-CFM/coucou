@@ -7,6 +7,13 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 
+export interface ChatStreamChunk {
+  requestId: string;
+  delta: string;
+  done: boolean;
+  error: string | null;
+}
+
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -84,6 +91,23 @@ export const Bridge = {
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSendStream: (
+  requestId: string,
+  query: string,
+  context: ChatContext | null,
+) =>
+  callOrThrow<void>("chat_send_stream", {
+    requestId,
+    query,
+    context,
+  }),
+
+listenChatStream: (
+  handler: (chunk: ChatStreamChunk) => void,
+) =>
+  listen<ChatStreamChunk>("chat-stream", (event) => {
+    handler(event.payload);
+  }),
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),

@@ -171,6 +171,47 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
+// ── AI provider section ───────────────────────────────────────────────────────
+
+function aiSection(): HTMLElement {
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "claude", text: "Claude" }),
+    h("option", { value: "ollama", text: "Ollama" }),
+  );
+  provider.value = settings.provider;
+  provider.addEventListener("change", () => {
+    settings.provider = provider.value as Settings["provider"];
+    void save();
+  });
+
+  const model = h("input", {
+    type: "text",
+    value: settings.ollamaModel,
+    placeholder: "gpt-oss:120b-cloud",
+    style: "flex:1 1 auto;min-width:0",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  model.addEventListener("change", () => {
+    const value = model.value.trim();
+    if (!value) {
+      model.value = settings.ollamaModel;
+      return;
+    }
+    settings.ollamaModel = value;
+    void save();
+  });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "AI Runtime" })),
+    h("div", { class: "hint", text: "Choose which AI backend powers Coucou chat. Ollama talks to the local Ollama server; its cloud models do not require Coucou to store a cloud API key." }),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
+    h("div", { class: "row" }, h("label", { text: "Ollama model" }), model),
+  );
+}
+
 // ── Claude API section ────────────────────────────────────────────────────────
 
 const MODELS: [string, string][] = [
@@ -441,6 +482,7 @@ async function main() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+    aiSection(),
     claudeSection(status),
     apiSection(hasKey),
     integrationsSection(present),

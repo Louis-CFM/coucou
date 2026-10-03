@@ -19,11 +19,19 @@ export const ICONS = {
   arrowUpRight: "M8.5 7h8.5v8.5h-2V10.4l-7.1 7.1-1.4-1.4 7.1-7.1H8.5V7z",
   // chevron.right
   chevronRight: "M9 5.5 15.5 12 9 18.5",
+  // chevron.up — collapse island
+  chevronUp: "M5.5 15 12 8.5 18.5 15",
   chevronLeft: "M15 5.5 8.5 12 15 18.5",
   // checkmark
   check: "M5 12.5 9.5 17 19 7.5",
+  // pin.fill — keep island visible
+ pin: "M15.2 3.5 20.5 8.8 17.8 11.5 17.4 16.2 13.8 19.8 12.4 18.4 15.2 15.6 10.6 15.2 7.9 17.9 6.5 16.5 9.2 13.8 8.8 9.2 5.9 6.3 7.3 4.9 12 9.6 15.2 3.5z",
   // arrow.up (send)
   arrowUp: "M12 4.5 5.5 11l1.5 1.5 4-4V19.5h2V8.5l4 4L18.5 11 12 4.5z",
+
+  // arrow.counterclockwise —> start a new chat / reset conversation
+  reset: "M12 4a8 8 0 1 0 7.45 5.1h-2.15A6 6 0 1 1 12 6c1.55 0 2.96.59 4.02 1.55L13 10.5h7V3.5l-2.45 2.45A7.94 7.94 0 0 0 12 4z",
+
   // exclamationmark
   bang: "M11 4h2v10h-2V4zm0 12.2h2v2.2h-2v-2.2z",
   // xmark

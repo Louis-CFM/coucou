@@ -86,12 +86,17 @@ export interface Settings {
   soundVolume: number;
   autoCloseInterval: number;
   absenceInterval: number;
+  keepVisible: boolean;
   activeIntegrations: string[];
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
+  /** AI provider used by the chat. */
+  provider: "claude" | "ollama";
   /** Claude model used by the chat. */
   model: string;
+  /** Ollama model used when the Ollama provider is selected. */
+  ollamaModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -99,13 +104,16 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
+  keepVisible: false,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   ],
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  provider: "claude",
   model: "claude-opus-5",
+  ollamaModel: "gpt-oss:120b-cloud",
 };
 
 type Listener = () => void;

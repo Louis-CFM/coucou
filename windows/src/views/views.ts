@@ -15,6 +15,7 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 export interface ViewActions {
   setView(v: IslandViewName): void;
   collapse(): void;
+  toggleKeepVisible(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
@@ -78,12 +79,75 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
-  const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
-  const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
-  const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabHome = h(
+    "button",
+    {
+      class: "tab",
+      title: "Overview",
+      onclick: () => go("overview"),
+    },
+    svg(ICONS.house, 13),
+  );
 
-  const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
-  const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const tabChat = h(
+    "button",
+    {
+      class: "tab",
+      title: "Ask",
+      onclick: () => go("prompt"),
+    },
+    svg(ICONS.bubble, 13),
+  );
+
+  const tabDrop = h(
+    "button",
+    {
+      class: "tab",
+      title: "Drop",
+      onclick: () => go("upload"),
+    },
+    svg(ICONS.plus, 13),
+  );
+
+  const gearBtn = h(
+    "button",
+    {
+      title: "Settings",
+      "aria-label": "Settings",
+      onclick: () => go("settings"),
+    },
+    svg(ICONS.gear, 14),
+  );
+
+  const soundBtn = h(
+    "button",
+    {
+      title: "Mute",
+      "aria-label": "Toggle sound",
+      onclick: () => actions.toggleSound(),
+    },
+    svg(ICONS.speakerOn, 14),
+  );
+
+  const collapseBtn = h(
+    "button",
+    {
+      title: "Collapse to top",
+      "aria-label": "Collapse to top",
+      onclick: () => actions.collapse(),
+    },
+    svg(ICONS.chevronUp, 15),
+  );
+
+  const keepVisibleBtn = h(
+    "button",
+    {
+      title: "Keep visible",
+      "aria-label": "Keep visible",
+      onclick: () => actions.toggleKeepVisible(),
+    },
+    svg(ICONS.pin, 14),
+  );
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -93,23 +157,84 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+
+    h(
+      "div",
+      { class: "tabs" },
+      tabHome,
+      tabChat,
+      tabDrop,
+    ),
+
+    h(
+      "div",
+      { class: "header-actions" },
+      gearBtn,
+      soundBtn,
+      collapseBtn,
+      keepVisibleBtn
+    ),
   );
 
   return {
     el,
+
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
-      tabChat.classList.toggle("on", v === "prompt");
-      tabDrop.classList.toggle("on", v === "upload");
-      gearBtn.classList.toggle("on", v === "settings");
+
+      tabHome.classList.toggle(
+        "on",
+        v === "overview" || v === "empty",
+      );
+
+      tabChat.classList.toggle(
+        "on",
+        v === "prompt",
+      );
+
+      tabDrop.classList.toggle(
+        "on",
+        v === "upload",
+      );
+
+      gearBtn.classList.toggle(
+        "on",
+        v === "settings",
+      );
+
       clear(gearBtn);
-      gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
+
+      gearBtn.append(
+        svg(
+          v === "settings"
+            ? ICONS.gearFill
+            : ICONS.gear,
+          14,
+        ),
+      );
+
       clear(soundBtn);
-      soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
-      el.style.opacity = v === "confused" ? "0" : "1";
+
+      soundBtn.append(
+        svg(
+          State.settings.soundEnabled
+            ? ICONS.speakerOn
+            : ICONS.speakerOff,
+          14,
+        ),
+      );
+
+      keepVisibleBtn.classList.toggle("on", State.settings.keepVisible);
+      keepVisibleBtn.title = State.settings.keepVisible
+        ? "Keep visible: On"
+        : "Keep visible: Off";
+      keepVisibleBtn.setAttribute(
+        "aria-label",
+        State.settings.keepVisible ? "Keep visible: On" : "Keep visible: Off",
+      );
+
+      el.style.opacity =
+        v === "confused" ? "0" : "1";
     },
   };
 }
@@ -283,7 +408,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
     h("div", { class: "grow" }),
     btn("Ask Claude", "primary", () => actions.setView("prompt")),
   );
-  return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
+  return { el: h("div", { class: "view" }, card(null, body)), sync() { } };
 }
 
 // ── Approval ──────────────────────────────────────────────────────────────────
@@ -389,7 +514,7 @@ function buildConfused(): ViewHost {
     h("div", { class: "title", text: "Too many hits at once." }),
     h("div", { class: "sub", text: "Give me a sec — back to work in three seconds." }),
   );
-  return { el: h("div", { class: "view" }, card("pink", body)), sync() {} };
+  return { el: h("div", { class: "view" }, card("pink", body)), sync() { } };
 }
 
 // ── Note ──────────────────────────────────────────────────────────────────────
@@ -478,7 +603,7 @@ function buildPlaceholder(title: string, sub: string): ViewHost {
     h("div", { class: "title", text: title }),
     h("div", { class: "sub", text: sub }),
   );
-  return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
+  return { el: h("div", { class: "view" }, card(null, body)), sync() { } };
 }
 
 // ── Registry ──────────────────────────────────────────────────────────────────

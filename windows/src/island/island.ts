@@ -165,6 +165,15 @@ export class Island {
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
+      toggleKeepVisible: () => {
+        const next = !State.settings.keepVisible;
+
+        State.settings.keepVisible = next;
+        this.fsm.setKeepVisible(next);
+
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
     };
@@ -732,8 +741,8 @@ export class Island {
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
-        !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+      !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
+      greetingActive || this.engine.busy || UploadSeq.isActive;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -885,6 +894,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.setKeepVisible(State.settings.keepVisible);
     State.notify();
   }
 

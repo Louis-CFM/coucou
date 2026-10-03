@@ -243,10 +243,36 @@ body {
   display: grid;
   place-items: center;
   cursor: default;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transition:
+    color 0.12s ease-out,
+    background 0.12s ease-out,
+    transform 0.08s ease-out;
+}
+
+.header-actions button:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.header-actions button:active {
+  transform: scale(0.88);
+}
+
+.header-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--dim-2);
+  display: grid;
+  place-items: center;
+  cursor: default;
 }
 
 .header-actions button.on {
   color: var(--ink);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 #views {
@@ -894,8 +920,40 @@ input[type="range"]::-webkit-slider-thumb {
   transition: transform 0.08s ease-out;
 }
 
+
 .send-btn:active {
   transform: scale(0.94);
+}
+
+.chat-reset-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  opacity: 0.55;
+  transition:
+    opacity 0.12s ease-out,
+    transform 0.08s ease-out,
+    background 0.12s ease-out;
+}
+
+.chat-reset-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-reset-btn:active {
+  transform: scale(0.9);
+}
+
+.chat-reset-btn:disabled {
+  opacity: 0.25;
 }
 
 /* ── Drop zone ──────────────────────────────────────────────────────────── */
