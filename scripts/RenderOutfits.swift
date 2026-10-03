@@ -45,74 +45,53 @@ extension Color {
     }
 }
 
-// MARK: - Mochi body helpers (inline, no BotEngine needed)
-
-private func mochiSuperellipse(rx: CGFloat, ry: CGFloat) -> Path {
-    let n = 72
-    let expN: CGFloat = 2.0 / 2.7
-    var path = Path()
-    for i in 0...n {
-        let a = CGFloat(i) / CGFloat(n) * .pi * 2
-        let ca = cos(a), sa = sin(a)
-        let px = rx * (ca >= 0 ? pow(ca, expN) : -pow(-ca, expN))
-        let py = ry * (sa >= 0 ? pow(sa, expN) : -pow(-sa, expN))
-        if i == 0 { path.move(to: CGPoint(x: px, y: py)) }
-        else       { path.addLine(to: CGPoint(x: px, y: py)) }
-    }
-    path.closeSubpath()
-    return path
-}
-
 // MARK: - Cell view — one outfit at one pose
 
 struct MochiCell: View {
     let outfit: Outfit
     let yaw: CGFloat
     let pitch: CGFloat
+    let tilt: CGFloat
+    let phys: (dx: CGFloat, dy: CGFloat)
     let cellSize: CGFloat
 
     var body: some View {
         Canvas { context, sz in
             let W = sz.width, H = sz.height
-            let R  = W * 0.3
+            // scale=0.62, R = W * 0.62 * 0.3
+            let R  = W * 0.62 * 0.3
             let rx = R * 1.14
             let ry = R * 0.88
             let cx = W / 2
             let cy = H / 2 + R * 0.06
-            let tilt: CGFloat = 0
             let sx: CGFloat = 1, sy: CGFloat = 1
             let morph: CGFloat = 0, roll: CGFloat = 0
 
-            // 1. Behind-body outfit (bunny ears)
+            let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: phys.dx, physDy: phys.dy)
+
+            // 1. Behind-body outfit
             drawOutfitBehindStatic(
-                context: context, outfit: outfit,
+                context: context, outfit: outfit, H: mH,
                 cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                yaw: yaw, roll: roll, morph: morph,
-                R: R, rx: rx, ry: ry, isMini: false
+                roll: roll, morph: morph, isMini: false
             )
 
-            // 2. Body (replicate BotEngine.drawBody for idle state)
+            // 2. Body (replicate BotEngine.drawBody for idle / pumpkin state)
             var bCtx = context
             bCtx.translateBy(x: cx, y: cy)
-            let body = mochiSuperellipse(rx: rx, ry: ry)
+            if tilt != 0 { bCtx.rotate(by: .radians(tilt)) }
+            bCtx.scaleBy(x: sx, y: sy)
+            let body = mochiOutfitPath(rx, ry)
 
-            // Base gradient
-            let cTop = Color(red: 0.929, green: 0.929, blue: 0.937)
-            let cBot = Color(red: 0.769, green: 0.773, blue: 0.792)
+            // Base gradient (pumpkin-aware)
+            let pumpkin = outfit == .pumpkin
+            let cTop: Color = pumpkin ? Color(hex: "#FFA94D") : Color(red: 0.929, green: 0.929, blue: 0.937)
+            let cBot: Color = pumpkin ? Color(hex: "#E8590C") : Color(red: 0.769, green: 0.773, blue: 0.792)
             bCtx.fill(body, with: .linearGradient(
                 Gradient(colors: [cTop, cBot]),
                 startPoint: CGPoint(x: rx * 0.7, y: -ry * 0.85),
                 endPoint:   CGPoint(x: -rx * 0.8, y: ry * 0.9)
             ))
-            // Pumpkin orange tint
-            if outfit == .pumpkin {
-                bCtx.fill(body, with: .linearGradient(
-                    Gradient(colors: [Color(hex: "#F97316").opacity(0.82),
-                                      Color(hex: "#EA580C").opacity(0.90)]),
-                    startPoint: CGPoint(x: rx * 0.5, y: -ry * 0.8),
-                    endPoint:   CGPoint(x: -rx * 0.5, y: ry * 0.8)
-                ))
-            }
             // Shadow rim
             bCtx.fill(body, with: .radialGradient(
                 Gradient(stops: [
@@ -135,38 +114,25 @@ struct MochiCell: View {
             var eyeBase = bCtx
             eyeBase.clip(to: body)
             let ink = Color(red: 0.102, green: 0.082, blue: 0.071)
-            for sd: Double in [-1.0, 1.0] {
-                let eyeYaw = CGFloat(sd) * MochiConst.eyeSp + yaw
-                var eyePitch = MochiConst.eyeP + pitch
-                eyePitch = ((eyePitch + .pi)
-                    .truncatingRemainder(dividingBy: .pi * 2) + .pi * 2)
-                    .truncatingRemainder(dividingBy: .pi * 2) - .pi
-                let cp = cos(eyePitch)
-                guard cos(eyeYaw) * cp > 0.04 else { continue }
-                let ex = sin(eyeYaw) * cp * rx
-                let ey = -sin(eyePitch) * ry
-                let fx = max(0.18, cos(eyeYaw))
-                let fy = max(0.18, cp)
-                let ew = R * MochiConst.eyeW
-                let eh = R * MochiConst.eyeH
+            for f in mEyeFrames(mH) {
+                guard f.visible else { continue }
                 var eCtx = eyeBase
-                eCtx.translateBy(x: ex, y: ey)
-                eCtx.scaleBy(x: fx, y: fy)
-                let hh = max(eh, ew * 0.3)
+                eCtx.translateBy(x: f.x, y: f.y)
+                eCtx.scaleBy(x: f.fx, y: f.fy)
+                let hh = max(f.h, f.w * 0.3)
                 var pill = Path()
                 pill.addRoundedRect(
-                    in: CGRect(x: -ew / 2, y: -hh / 2, width: ew, height: hh),
-                    cornerSize: CGSize(width: min(ew / 2, hh / 2), height: min(ew / 2, hh / 2))
+                    in: CGRect(x: -f.w / 2, y: -hh / 2, width: f.w, height: hh),
+                    cornerSize: CGSize(width: min(f.w / 2, hh / 2), height: min(f.w / 2, hh / 2))
                 )
                 eCtx.fill(pill, with: .color(ink))
             }
 
-            // 4. Front outfit (hats, glasses, bow, scarf, pumpkin details)
+            // 4. Front outfit
             drawOutfitFrontStatic(
-                context: context, outfit: outfit,
+                context: context, outfit: outfit, H: mH,
                 cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                yaw: yaw, pitch: pitch, roll: roll, morph: morph,
-                R: R, rx: rx, ry: ry, isMini: false, bodyColor: nil
+                roll: roll, morph: morph, isMini: false
             )
         }
         .frame(width: cellSize, height: cellSize)
@@ -175,28 +141,34 @@ struct MochiCell: View {
 
 // MARK: - Grid view
 
+// Outfit order matching sheet.html
 private let targetOutfits: [Outfit] = [
-    .none, .partyHat, .beanie, .crown, .witchHat, .santaHat,
-    .bunnyEars, .bow, .sunglasses, .roundGlasses, .scarf, .pumpkin,
+    .none, .beanie, .santaHat, .partyHat, .crown, .witchHat,
+    .sunglasses, .roundGlasses, .scarf, .pumpkin, .bow,
 ]
 
 private struct PoseSpec {
+    let label: String
     let yaw: CGFloat
     let pitch: CGFloat
-    let label: String
+    let tilt: CGFloat
+    let phys: (dx: CGFloat, dy: CGFloat)
     let size: CGFloat
 }
 
+// Columns matching sheet.html cols array + small pill-preview column (W=190, scale=0.62; small=64)
 private let poses: [PoseSpec] = [
-    PoseSpec(yaw: -0.45, pitch: 0,     label: "L",       size: 80),
-    PoseSpec(yaw:  0,    pitch: 0,     label: "front",   size: 80),
-    PoseSpec(yaw:  0.45, pitch: 0,     label: "R",       size: 80),
-    PoseSpec(yaw:  0,    pitch: -0.45, label: "up",      size: 80),
-    PoseSpec(yaw:  0,    pitch: 0,     label: "compact", size: 56),
+    PoseSpec(label: "L",     yaw: -0.5,  pitch:  0,     tilt: 0,    phys: (0.6,  0),    size: 190),
+    PoseSpec(label: "front", yaw:  0,    pitch:  0,     tilt: 0,    phys: (0,    0),    size: 190),
+    PoseSpec(label: "R",     yaw:  0.5,  pitch:  0,     tilt: 0,    phys: (-0.6, 0),    size: 190),
+    PoseSpec(label: "up",    yaw:  0.15, pitch:  0.4,   tilt: 0,    phys: (0,    0.4),  size: 190),
+    PoseSpec(label: "down",  yaw: -0.2,  pitch: -0.5,   tilt: 0,    phys: (0,   -0.4),  size: 190),
+    PoseSpec(label: "tilt",  yaw:  0.3,  pitch: -0.25,  tilt: 0.12, phys: (-0.3, 0),   size: 190),
+    PoseSpec(label: "mini",  yaw:  0,    pitch:  0,     tilt: 0,    phys: (0,    0),    size: 64),
 ]
 
 private let labelW: CGFloat = 90
-private let gap:    CGFloat = 3
+private let gap:    CGFloat = 6
 
 struct OutfitGrid: View {
     var body: some View {
@@ -215,21 +187,23 @@ struct OutfitGrid: View {
             ForEach(targetOutfits.indices, id: \.self) { oi in
                 let outfit = targetOutfits[oi]
                 HStack(spacing: gap) {
-                    Text(outfit.displayName)
-                        .font(.system(size: 9))
+                    Text(outfit.rawValue)
+                        .font(.system(size: 10))
                         .foregroundColor(.white)
                         .frame(width: labelW, alignment: .trailing)
                     ForEach(poses.indices, id: \.self) { pi in
                         let p = poses[pi]
                         MochiCell(outfit: outfit, yaw: p.yaw, pitch: p.pitch,
-                                  cellSize: p.size)
-                            .background(Color(red: 0.07, green: 0.075, blue: 0.09))
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                                  tilt: p.tilt, phys: p.phys, cellSize: p.size)
+                            .background(pi == poses.count - 1
+                                        ? Color.black
+                                        : Color(red: 0.083, green: 0.090, blue: 0.106))
+                            .clipShape(RoundedRectangle(cornerRadius: pi == poses.count - 1 ? 0 : 8))
                     }
                 }
             }
         }
-        .padding(10)
+        .padding(12)
         .background(Color(red: 0.043, green: 0.047, blue: 0.055))
     }
 }

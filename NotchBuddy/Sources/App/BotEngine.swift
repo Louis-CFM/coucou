@@ -190,6 +190,14 @@ final class BotEngine: ObservableObject {
     var es:     CGFloat = 1          // eye scale
     var badgeS: CGFloat = 0          // badge scale
 
+    // Physical spring (hat/pompom lag) — updated in update()
+    var physDx: CGFloat = 0   // horizontal lag (-1..1)
+    var physDy: CGFloat = 0   // vertical lag (-1..1)
+    private var physVx: CGFloat = 0
+    private var physVy: CGFloat = 0
+    private var prevYaw: CGFloat = 0
+    private var prevOy: CGFloat = 0
+
     // Targets
     var tgYaw:    CGFloat = 0
     var tgPitch:  CGFloat = 0
@@ -798,6 +806,18 @@ final class BotEngine: ObservableObject {
             dancingLevel = max(dancingTarget, dancingLevel - CGFloat(dt) / 0.5)
         }
 
+        // Phys spring for hat/pompom lag
+        let yawVel = (yaw - prevYaw) / CGFloat(dt)
+        let oyVel  = (oy  - prevOy)  / CGFloat(dt)
+        prevYaw = yaw; prevOy = oy
+        let tDx = max(-1, min(1, -yawVel * 0.35 - tilt * 2))
+        let tDy = max(-1, min(1,  oyVel  * 0.50))
+        let stiff: CGFloat = 60, damp: CGFloat = 9
+        physVx += (stiff * (tDx - physDx) - damp * physVx) * dtCG
+        physVy += (stiff * (tDy - physDy) - damp * physVy) * dtCG
+        physDx += physVx * dtCG
+        physDy += physVy * dtCG
+
         lastTime = now
     }
 
@@ -841,16 +861,8 @@ final class BotEngine: ObservableObject {
         let bodyPath = mochiPath(rx: rx, ry: ry, morph: morph, R: R)
 
         // Body fill
-        drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry)
-
-        // Pumpkin: orange body tint overlay (skip in mini mode only)
-        if outfit == .pumpkin && !isMini {
-            ctx.fill(bodyPath, with: .linearGradient(
-                Gradient(colors: [Color(hex: "#F97316").opacity(0.82), Color(hex: "#EA580C").opacity(0.90)]),
-                startPoint: CGPoint(x: rx * 0.5, y: -ry * 0.8),
-                endPoint: CGPoint(x: -rx * 0.5, y: ry * 0.8)
-            ))
-        }
+        drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
+                 pumpkinColors: outfit == .pumpkin && !isMini)
 
         // Blush — always shows a floor proportional to tint (prototype behaviour)
         let blushVal = max(blush, tint * 0.5) * (1 - morph)
@@ -1028,25 +1040,23 @@ final class BotEngine: ObservableObject {
     func drawOutfitBehind(context: GraphicsContext, size: CGSize) {
         guard outfit != .none, !isMini else { return }
         let W = size.width, H = size.height, R = W * 0.3
-        let rx = R * 1.14, ry = R * 0.88
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        drawOutfitBehindStatic(context: context, outfit: outfit,
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy)
+        drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
                                cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                               yaw: yaw, roll: roll, morph: morph,
-                               R: R, rx: rx, ry: ry, isMini: isMini)
+                               roll: roll, morph: morph, isMini: isMini)
     }
 
     func drawOutfitFront(context: GraphicsContext, size: CGSize) {
         guard outfit != .none, !isMini else { return }
         let W = size.width, H = size.height, R = W * 0.3
-        let rx = R * 1.14, ry = R * 0.88
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        drawOutfitFrontStatic(context: context, outfit: outfit,
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy)
+        drawOutfitFrontStatic(context: context, outfit: outfit, H: mH,
                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                              yaw: yaw, pitch: pitch, roll: roll, morph: morph,
-                              R: R, rx: rx, ry: ry, isMini: isMini, bodyColor: bodyColor)
+                              roll: roll, morph: morph, isMini: isMini)
     }
 
     // MARK: - Private draw helpers
@@ -1121,16 +1131,17 @@ final class BotEngine: ObservableObject {
         return CGPoint(x: kx * W, y: ky * H)
     }
 
-    private func drawBody(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat) {
+    private func drawBody(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat,
+                          pumpkinColors: Bool = false) {
         if let bc = bodyColor {
             // Mini bots: flat solid fill — no gradient, no reflection, no highlight
             ctx.fill(path, with: .color(Color(cgColor: bc)))
         } else {
             // Main bot: linear gradient body
-            let c0 = cgColorToTuple(MochiConst.baseTop)
-            let c1 = cgColorToTuple(MochiConst.baseBottom)
+            let top: Color = pumpkinColors ? Color(hex: "#FFA94D") : Color(red: 0.929, green: 0.929, blue: 0.937)
+            let bot: Color = pumpkinColors ? Color(hex: "#E8590C") : Color(red: 0.769, green: 0.773, blue: 0.792)
             ctx.fill(path, with: .linearGradient(
-                Gradient(colors: [colorFromTuple(c0), colorFromTuple(c1)]),
+                Gradient(colors: [top, bot]),
                 startPoint: CGPoint(x: rx*0.7, y: -ry*0.85),
                 endPoint: CGPoint(x: -rx*0.8, y: ry*0.9)
             ))
@@ -1194,29 +1205,28 @@ final class BotEngine: ObservableObject {
         }
         ctx.clip(to: path)
 
-        for sd in [-1.0, 1.0] {
-            let eyeYaw   = CGFloat(sd) * MochiConst.eyeSp + yaw
+        // Build eye frames: use mEyeFrames for position/foreshortening, but keep roll in eyePitch
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch)
+        for f in mEyeFrames(mH) {
+            // Re-derive pitch with roll for the roll-through effect
             var eyePitch = MochiConst.eyeP + pitch + roll
-            // Wrap pitch for roll-through effect
             eyePitch = ((eyePitch + .pi).truncatingRemainder(dividingBy: .pi*2) + .pi*2).truncatingRemainder(dividingBy: .pi*2) - .pi
-
             let cp = cos(eyePitch)
-            guard cos(eyeYaw) * cp > 0.04 else { continue }  // behind head
+            let eyeYaw = f.sd * MochiConst.eyeSp + yaw
+            guard cos(eyeYaw) * cp > 0.04 else { continue }
 
-            let ex = sin(eyeYaw) * cp * rx
-            let ey = -sin(eyePitch) * ry + (morph > 0 ? ry * 0.14 * morph : 0)
-
-            let fx = lerp(max(0.18, cos(eyeYaw)), 1, morph * 0.7)
-            let fy = lerp(max(0.18, cp),          1, morph * 0.7)
+            let ey = f.y + (morph > 0 ? ry * 0.14 * morph : 0)
+            let fx = lerp(f.fx, 1, morph * 0.7)
+            let fy = lerp(f.fy, 1, morph * 0.7)
 
             let eyeMult: CGFloat = isMini ? 1.9 : 1.0
             let ew = R * MochiConst.eyeW * es * eyeMult
             let eh = R * MochiConst.eyeH * es * eyeMult
 
             var eyeCtx = ctx
-            eyeCtx.translateBy(x: ex, y: ey)
+            eyeCtx.translateBy(x: f.x, y: ey)
             eyeCtx.scaleBy(x: fx, y: fy)
-            drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: CGFloat(sd), R: R)
+            drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: f.sd, R: R)
         }
     }
 
