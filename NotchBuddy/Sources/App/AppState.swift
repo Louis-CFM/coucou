@@ -251,6 +251,7 @@ final class AppState: ObservableObject {
             // Clear stale GitHub data when the integration is disabled
             if !activeIntegrations.contains("integration_github") && oldValue.contains("integration_github") {
                 githubPulse = nil
+                githubActivity = nil
             }
         }
     }
@@ -265,9 +266,10 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats + pulse (populated by GithubPoller)
+    // GitHub stats + pulse + activity (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
     @Published var githubPulse: GitHubPulse? = nil
+    @Published var githubActivity: GitHubActivity? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []

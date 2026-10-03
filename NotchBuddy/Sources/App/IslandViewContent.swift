@@ -1766,6 +1766,8 @@ struct IntegrationCardView: View {
             GitHubDetailView(
                 section: githubDetailSection,
                 pulse: appState.githubPulse!,
+                activity: appState.githubActivity,
+                stats: appState.githubStats,
                 onBack: {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
                 }
@@ -1775,6 +1777,7 @@ struct IntegrationCardView: View {
             GitHubPulseCardView(
                 pulse: appState.githubPulse!,
                 stats: appState.githubStats,
+                activity: appState.githubActivity,
                 onTapSection: { section in
                     githubDetailSection = section
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
@@ -2295,6 +2298,7 @@ private func mainCIWorst(_ repos: [GitHubRepoCI]) -> CIState {
 struct GitHubPulseCardView: View {
     let pulse: GitHubPulse
     let stats: GitHubStats?
+    let activity: GitHubActivity?
     let onTapSection: (GitHubDetailSection) -> Void
 
     var body: some View {
@@ -2308,10 +2312,25 @@ struct GitHubPulseCardView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 if let s = stats {
-                    Text("★ \(formatCount(s.totalStars)) · \(s.totalRepos) repos")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#8E939C"))
-                        .lineLimit(1)
+                    // Stars + 7-day mini-row → opens Activity detail
+                    Button(action: { onTapSection(.activity) }) {
+                        HStack(spacing: 4) {
+                            Text("★ \(formatCount(s.totalStars))")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .lineLimit(1)
+                            if let act = activity {
+                                HStack(spacing: 2) {
+                                    ForEach(act.lastDays(7), id: \.date) { day in
+                                        RoundedRectangle(cornerRadius: 1.5)
+                                            .fill(contributionColor(day.level))
+                                            .frame(width: 7, height: 7)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                 } else {
                     Text("Overview")
                         .font(.system(size: 11))
@@ -2418,13 +2437,16 @@ private struct GitHubStatRow: View {
 struct GitHubDetailView: View {
     let section: GitHubDetailSection
     let pulse: GitHubPulse
+    let activity: GitHubActivity?
+    let stats: GitHubStats?
     let onBack: () -> Void
 
     private var title: String {
         switch section {
-        case .myPRs:   return "My PRs"
+        case .myPRs:    return "My PRs"
         case .toReview: return "To review"
-        case .mainCI:  return "Default branch CI"
+        case .mainCI:   return "Default branch CI"
+        case .activity: return "Activity"
         }
     }
 
@@ -2432,12 +2454,120 @@ struct GitHubDetailView: View {
         switch section {
         case .myPRs:    return pulse.myPRs
         case .toReview: return pulse.toReview
-        case .mainCI:   return []
+        case .mainCI, .activity: return []
         }
     }
 
     private var repoItems: [GitHubRepoCI] {
         section == .mainCI ? pulse.mainCI : []
+    }
+
+    var body: some View {
+        if section == .activity {
+            GitHubActivityDetailContent(
+                activity: activity,
+                stats: stats,
+                login: pulse.login,
+                onBack: onBack
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack(spacing: 6) {
+                    Button(action: onBack) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 8, weight: .medium))
+                            Text(title)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 2)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 12)
+
+                // List
+                if items.isEmpty && repoItems.isEmpty {
+                    Text("Nothing here")
+                        .font(.system(size: 10.5))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.top, 8)
+                        .padding(.leading, 108)
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(items, id: \.id) { pr in
+                                GitHubPRRowView(pr: pr, showCI: section == .myPRs)
+                            }
+                            ForEach(repoItems, id: \.repo) { repo in
+                                GitHubRepoCIRowView(repo: repo)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 60)  // 3 rows × 20 pt; rest scrolls
+                    .mask(
+                        Group {
+                            if (items.count + repoItems.count) > 3 {
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .black, location: 0),
+                                        .init(color: .black, location: 0.8),
+                                        .init(color: .clear,  location: 1.0)
+                                    ],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                            } else {
+                                Color.black
+                            }
+                        }
+                    )
+                    .padding(.top, 4)
+                    .padding(.leading, 108)
+                    .padding(.trailing, 8)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.top, 4)
+            .clipped()
+            .onAppear { GithubPoller.shared.refreshIfStale() }
+            .onExitCommand { onBack() }
+        }
+    }
+}
+
+// MARK: - GitHub Activity Detail
+
+private struct GitHubActivityDetailContent: View {
+    let activity: GitHubActivity?
+    let stats: GitHubStats?
+    let login: String
+    let onBack: () -> Void
+
+    @State private var hoveredDay: ContributionDay? = nil
+
+    // Fixed grid: s=8pt, spacing=2pt → 20 weeks fit in ~202pt available width
+    private let squareSize: CGFloat = 8
+    private let spacing: CGFloat = 2
+    private let numWeeks: Int = 20
+
+    private var headerRight: String {
+        if let day = hoveredDay {
+            let label: String
+            switch day.count {
+            case 0:  label = "No contributions"
+            case 1:  label = "1 contribution"
+            default: label = "\(day.count) contributions"
+            }
+            return "\(activityDateLabel(day.date)) · \(label)"
+        }
+        guard let act = activity else { return "" }
+        let total = activityTotalLabel(act.total)
+        if let s = stats { return "\(total) this year · \(s.totalRepos) repos" }
+        return "\(total) this year"
     }
 
     var body: some View {
@@ -2448,63 +2578,96 @@ struct GitHubDetailView: View {
                     HStack(spacing: 3) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 8, weight: .medium))
-                        Text(title)
+                        Text("Activity")
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 }
                 .buttonStyle(.plain)
                 Spacer(minLength: 2)
+                if activity != nil {
+                    Button(action: {
+                        let urlStr = "https://github.com/\(login)"
+                        if let url = safeWebURL(urlStr), url.host == "github.com" {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        Text(headerRight)
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
             .padding(.trailing, 12)
 
-            // List
-            if items.isEmpty && repoItems.isEmpty {
-                Text("Nothing here")
+            // Grid
+            if let act = activity {
+                let weeks = act.lastWeeks(numWeeks)
+                HStack(alignment: .top, spacing: spacing) {
+                    ForEach(weeks.indices, id: \.self) { wi in
+                        VStack(spacing: spacing) {
+                            ForEach(0..<7, id: \.self) { dow in
+                                if let day = weeks[wi].first(where: { $0.weekday == dow }) {
+                                    RoundedRectangle(cornerRadius: 1.5)
+                                        .fill(contributionColor(day.level))
+                                        .frame(width: squareSize, height: squareSize)
+                                        .onHover { hovering in hoveredDay = hovering ? day : nil }
+                                        .onTapGesture {
+                                            hoveredDay = (hoveredDay?.date == day.date) ? nil : day
+                                        }
+                                } else {
+                                    Color.clear.frame(width: squareSize, height: squareSize)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 12)
+            } else {
+                Text("Loading…")
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#6B7079"))
                     .padding(.top, 8)
                     .padding(.leading, 108)
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(items, id: \.id) { pr in
-                            GitHubPRRowView(pr: pr, showCI: section == .myPRs)
-                        }
-                        ForEach(repoItems, id: \.repo) { repo in
-                            GitHubRepoCIRowView(repo: repo)
-                        }
-                    }
-                }
-                .frame(maxHeight: 60)  // 3 rows × 20 pt; rest scrolls
-                .mask(
-                    Group {
-                        if (items.count + repoItems.count) > 3 {
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black, location: 0),
-                                    .init(color: .black, location: 0.8),
-                                    .init(color: .clear,  location: 1.0)
-                                ],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        } else {
-                            Color.black
-                        }
-                    }
-                )
-                .padding(.top, 4)
-                .padding(.leading, 108)
-                .padding(.trailing, 8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
         .clipped()
-        .onAppear { GithubPoller.shared.refreshIfStale() }
+        .onAppear { GithubPoller.shared.refreshActivityIfStale() }
         .onExitCommand { onBack() }
+    }
+
+    private func activityDateLabel(_ dateStr: String) -> String {
+        let parts = dateStr.split(separator: "-")
+        guard parts.count == 3,
+              let month = Int(parts[1]), month >= 1 && month <= 12,
+              let day   = Int(parts[2]) else { return dateStr }
+        let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        return "\(months[month - 1]) \(day)"
+    }
+
+    private func activityTotalLabel(_ n: Int) -> String {
+        let nf = NumberFormatter()
+        nf.numberStyle = .decimal
+        nf.locale = Locale(identifier: "en_US")
+        return nf.string(from: NSNumber(value: n)) ?? "\(n)"
+    }
+}
+
+private func contributionColor(_ level: Int) -> Color {
+    switch level {
+    case 1: return Color(hex: "#0E4429")
+    case 2: return Color(hex: "#006D32")
+    case 3: return Color(hex: "#26A641")
+    case 4: return Color(hex: "#39D353")
+    default: return Color.white.opacity(0.06)
     }
 }
 

@@ -1082,6 +1082,7 @@ struct SettingsView: View {
         let nextGithubToken = KeychainStore.shared.get("github-token")
         if nextGithubToken != prevGithubToken {
             AppState.shared.githubPulse = nil
+            AppState.shared.githubActivity = nil
             if nextGithubToken == nil { AppState.shared.githubStats = nil }
             if nextGithubToken != nil { GithubPoller.shared.triggerPulseNow() }
         }

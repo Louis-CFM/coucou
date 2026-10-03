@@ -3,10 +3,12 @@ import Foundation
 final class GithubPoller: @unchecked Sendable {
     static let shared = GithubPoller()
     private var timer: DispatchSourceTimer?
-    // All three properties below are accessed only on the main thread.
+    // All properties below are accessed only on the main thread.
     private var pulseInFlight = false
     private var nextPulse: DispatchWorkItem?
     private var tokenGeneration = 0
+    private var activityInFlight = false
+    private var nextActivity: DispatchWorkItem?
     private init() {}
 
     func start() {
@@ -17,9 +19,13 @@ final class GithubPoller: @unchecked Sendable {
         t.setEventHandler { [weak self] in self?.pollStats() }
         t.resume()
         timer = t
-        // First pulse: 10 s after launch, stored in nextPulse so triggerPulseNow can cancel it
+        // First pulse: 10 s after launch
         DispatchQueue.main.async { [weak self] in
             self?.scheduleNextPulse(hasPending: false, delay: 10)
+        }
+        // First activity: 15 s after launch, then every 30 min
+        DispatchQueue.main.async { [weak self] in
+            self?.scheduleNextActivity(delay: 15)
         }
     }
 
@@ -182,7 +188,91 @@ final class GithubPoller: @unchecked Sendable {
         DispatchQueue.main.asyncAfter(deadline: .now() + d, execute: work)
     }
 
-    // MARK: - GraphQL query
+    // MARK: - Activity (contribution calendar, 30 min cadence)
+
+    private func pollActivity() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.activityInFlight else { return }
+            guard let token = KeychainStore.shared.get("github-token"),
+                  AppState.shared.activeIntegrations.contains("integration_github") else {
+                self.scheduleNextActivity()
+                return
+            }
+            self.activityInFlight = true
+            let gen = self.tokenGeneration
+            DispatchQueue.global(qos: .background).async { self.fetchActivity(token: token, generation: gen) }
+        }
+    }
+
+    private func fetchActivity(token: String, generation: Int) {
+        guard let url = URL(string: "https://api.github.com/graphql") else {
+            finishActivity(); return
+        }
+        var req = URLRequest(url: url, timeoutInterval: 15)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        guard let body = try? JSONSerialization.data(withJSONObject: ["query": Self.activityQuery]) else {
+            finishActivity(); return
+        }
+        req.httpBody = body
+
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+            guard let self else { return }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard let data, code == 200 else {
+                self.nbLog("activity HTTP \(code)")
+                self.finishActivity()
+                return
+            }
+            if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let errors = root["errors"] as? [[String: Any]], !errors.isEmpty {
+                    self.nbLog("activity GraphQL errors: \(errors.count)")
+                }
+                guard root["data"] is [String: Any] else {
+                    self.finishActivity(); return
+                }
+            }
+            guard let activity = GitHubActivity.parse(data) else {
+                self.finishActivity(); return
+            }
+            DispatchQueue.main.async {
+                guard self.tokenGeneration == generation else { return }
+                AppState.shared.githubActivity = activity
+            }
+            self.finishActivity()
+        }.resume()
+    }
+
+    /// Refreshes activity data immediately if stale. Safe to call from any thread.
+    func refreshActivityIfStale(maxAge: TimeInterval = 300) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.activityInFlight else { return }
+            guard GitHubPulse.isStale(fetchedAt: AppState.shared.githubActivity?.fetchedAt,
+                                      maxAge: maxAge) else { return }
+            self.nextActivity?.cancel()
+            self.nextActivity = nil
+            self.pollActivity()
+        }
+    }
+
+    private func finishActivity() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.activityInFlight = false
+            self.scheduleNextActivity()
+        }
+    }
+
+    private func scheduleNextActivity(delay: Double? = nil) {
+        nextActivity?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.pollActivity() }
+        nextActivity = work
+        let d = delay ?? 1800.0   // 30 minutes
+        DispatchQueue.main.asyncAfter(deadline: .now() + d, execute: work)
+    }
+
+    // MARK: - GraphQL queries
 
     private static let graphQLQuery = """
     query {
@@ -214,6 +304,24 @@ final class GithubPoller: @unchecked Sendable {
             number title url isDraft
             author { login }
             repository { nameWithOwner url }
+          }
+        }
+      }
+    }
+    """
+
+    private static let activityQuery = """
+    query {
+      viewer {
+        login
+        contributionsCollection {
+          contributionCalendar {
+            totalContributions
+            weeks {
+              contributionDays {
+                date contributionCount contributionLevel weekday
+              }
+            }
           }
         }
       }
