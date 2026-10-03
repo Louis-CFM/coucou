@@ -60,8 +60,11 @@ final class AppState: ObservableObject {
     }
 
     // In-chat provider + model — picked via the model selector in the prompt view
-    @Published var chatProvider: ChatProvider = .anthropic {
+    @Published var chatProvider: ChatProvider = .deepseek {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+    }
+    @Published var deepseekChatModel: String = ChatProvider.deepseek.defaultModel {
+        didSet { UserDefaults.standard.set(deepseekChatModel, forKey: "deepseekChatModel") }
     }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
         didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
@@ -142,6 +145,7 @@ final class AppState: ObservableObject {
             let models: [(id: String, label: String)]
             switch provider {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
+            case .deepseek:  models = await ClaudeService.fetchDeepSeekModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
@@ -155,6 +159,10 @@ final class AppState: ObservableObject {
                 case .anthropic:
                     if !models.contains(where: { $0.id == claudeModel }) {
                         claudeModel = models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
+                    }
+                case .deepseek:
+                    if !models.contains(where: { $0.id == deepseekChatModel }) {
+                        deepseekChatModel = models.first(where: { $0.id.contains("flash") })?.id ?? models.first!.id
                     }
                 case .google:
                     if !models.contains(where: { $0.id == googleChatModel }) {
@@ -174,6 +182,7 @@ final class AppState: ObservableObject {
     var activeChatModel: String {
         switch chatProvider {
         case .anthropic: return claudeModel
+        case .deepseek:  return deepseekChatModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
@@ -290,6 +299,12 @@ final class AppState: ObservableObject {
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 
+    // Tokens used by the chat today, across all providers — persisted per calendar day
+    @Published private(set) var tokensToday: Int = 0
+    private var tokenUsageDay: String = TokenUsage.dayKey()
+    private var tokenUsagePrompt = 0
+    private var tokenUsageCompletion = 0
+
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
@@ -374,6 +389,11 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        if !ud.bool(forKey: "chatProviderMigratedToDeepSeek") {
+            ud.set(true, forKey: "chatProviderMigratedToDeepSeek")
+            if chatProvider == .anthropic { chatProvider = .deepseek }
+        }
+        if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
@@ -408,6 +428,9 @@ final class AppState: ObservableObject {
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
+
+        // Restore today's token total (kept only within the same calendar day)
+        loadTokenUsage()
 
         // Always load integration pills
         loadIntegrationTasks()
@@ -507,6 +530,44 @@ final class AppState: ObservableObject {
         guard mode == .expanded else { return }
         if view == .empty && !tasks.isEmpty { view = .overview }
         else if view == .overview && tasks.isEmpty { view = .empty }
+    }
+
+    // MARK: - Token usage
+
+    /// Adds one API response's usage to today's total, rolling the counter over at midnight.
+    func recordTokenUsage(_ usage: TokenUsage) {
+        refreshTokenDay()
+        tokenUsagePrompt += usage.prompt
+        tokenUsageCompletion += usage.completion
+        tokensToday = tokenUsagePrompt + tokenUsageCompletion
+        persistTokenUsage()
+    }
+
+    /// Resets the counter when the calendar day changed since it was last touched.
+    func refreshTokenDay() {
+        let today = TokenUsage.dayKey()
+        guard today != tokenUsageDay else { return }
+        tokenUsageDay = today
+        tokenUsagePrompt = 0
+        tokenUsageCompletion = 0
+        tokensToday = 0
+        persistTokenUsage()
+    }
+
+    private func loadTokenUsage() {
+        let ud = UserDefaults.standard
+        if ud.string(forKey: "tokenUsageDay") == tokenUsageDay {
+            tokenUsagePrompt = ud.integer(forKey: "tokenUsagePrompt")
+            tokenUsageCompletion = ud.integer(forKey: "tokenUsageCompletion")
+        }
+        tokensToday = tokenUsagePrompt + tokenUsageCompletion
+    }
+
+    private func persistTokenUsage() {
+        let ud = UserDefaults.standard
+        ud.set(tokenUsageDay, forKey: "tokenUsageDay")
+        ud.set(tokenUsagePrompt, forKey: "tokenUsagePrompt")
+        ud.set(tokenUsageCompletion, forKey: "tokenUsageCompletion")
     }
 
     /// Load catalog pills into tasks, respecting activeIntegrations. Safe to call multiple times.

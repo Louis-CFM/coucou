@@ -18,17 +18,17 @@
 <h3>Where is the Windows download?</h3>
 <p>It is paused for now. Microsoft Defender wrongly flags the unsigned Windows installer as malware; a false-positive report is under review at Microsoft, and the installer will come back once it’s cleared and signed. Until then you can <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">build it from source</a>.</p>
 <h3>Is there a Linux version?</h3>
-<p>Yes, in beta: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it opens as a regular window. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
+<p>Yes, in beta: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it opens as a regular window. Gemini CLI, Antigravity and the DeepSeek, Google AI and OpenAI chat are macOS only for now. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi doesn’t show my Claude Code sessions</h3>
 <p>Open Settings → Claude Code → <b>Install hooks</b>, review the changes, confirm, then start a new Claude Code session.</p>
 <h3>Can I use Coucou with Gemini CLI or Antigravity (agy)? (macOS)</h3>
 <p>Yes. Open <b>Settings → Gemini CLI → Install hooks</b> or <b>Settings → Antigravity → Install hooks</b>. The same backup-and-diff flow as Claude Code applies. Once installed, each <code>gemini</code> or <code>agy</code> session gets its own pill in the island.</p>
 <h3>The chat doesn’t answer</h3>
-<p>Add your API key in Settings: <b>Settings → Anthropic API</b> for Claude, or <b>Settings → Chat — other providers</b> <i>(macOS)</i> for Google AI (Gemini) or OpenAI. API usage is billed by the provider, separately from any subscription.</p>
+<p>Add your API key in Settings: <b>Settings → Anthropic API</b> for Claude, or <b>Settings → Chat — other providers</b> <i>(macOS)</i> for DeepSeek, Google AI (Gemini) or OpenAI. API usage is billed by the provider, separately from any subscription.</p>
 <h3>An integration pill stays grey</h3>
 <p>Check its key in Settings. Up to 4 pills can be active at once in addition to the main workspace tool — see <b>Settings → Active pills</b>.</p>
 <h3>What are Active pills? (macOS)</h3>
-<p>Active pills are the coding tools, agents and AI providers you declare in <b>Settings → Active pills</b>. The <b>Main</b> picker at the top lets you choose your primary workspace tool (VS Code, Cursor, Codex or Antigravity — GitHub build only). You can then add up to 4 more pills: Gemini CLI, Anthropic, Google AI, OpenAI and service integrations. An agent that sends <code>coucou_agent</code> in its hook payload still gets its own automatic pill regardless.</p>
+<p>Active pills are the coding tools, agents and AI providers you declare in <b>Settings → Active pills</b>. The <b>Main</b> picker at the top lets you choose your primary workspace tool (VS Code, Cursor, Codex or Antigravity — GitHub build only). You can then add up to 4 more pills: Gemini CLI, Anthropic, DeepSeek, Google AI, OpenAI and service integrations. An agent that sends <code>coucou_agent</code> in its hook payload still gets its own automatic pill regardless.</p>
 <h3>Can I use Coucou with Cursor? (macOS)</h3>
 <p>Yes. Install the Claude Code hooks (<b>Settings → Claude Code → Install hooks</b>). Claude Code started in Cursor's terminal then shows up on the Cursor pill, and its permission requests can be answered from the notch, like in VS Code. Cursor's own agent shows up too when Cursor loads Claude Code's hooks; its requests are still answered in Cursor. Pick Cursor as your Main tool if that's where you code.</p>
 <h3>Can I use Coucou with Codex? (macOS, GitHub build)</h3>
@@ -40,7 +40,7 @@
 <h3>No sound</h3>
 <p>Check the speaker icon in the notch header and the volume in Settings.</p>
 <h3>Which model does the chat use?</h3>
-<p>On Mac, Claude Sonnet 4.6 by default (Anthropic). Switch provider and model by clicking the model name above the chat box. For Anthropic, the model can also be set in <b>Settings → Anthropic API</b>. Each model is billed at its own price by the provider.</p>
+<p>On Mac, DeepSeek Flash by default (DeepSeek). Switch provider and model by clicking the model name above the chat box — Claude, DeepSeek, Google AI, OpenAI and local models are available. For Anthropic, the model can also be set in <b>Settings → Anthropic API</b>. Each model is billed at its own price by the provider. The total tokens used today across all providers is shown next to the model name in the chat.</p>
 <h3>Can I use Ollama or LM Studio instead of a cloud API?</h3>
 <p>Yes <i>(macOS)</i>. Open <b>Settings → Chat → Local models</b>, type the server address (or leave blank for the default), and click <b>Connect</b>. Coucou checks that the server is reachable and lists available models. To stop using it, click <b>Disconnect</b>. No API key is needed; it is free: the model runs on your Mac.</p>
 <h3>Does it work without a notch?</h3>
@@ -65,17 +65,17 @@
 <h3>Où est le téléchargement Windows ?</h3>
 <p>Il est en pause pour le moment. Microsoft Defender détecte à tort l’installeur Windows (non signé) comme un malware ; un signalement de faux positif est en cours d’analyse chez Microsoft, et l’installeur reviendra dès que ce sera réglé et signé. En attendant, tu peux <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">le compiler depuis le code source</a>.</p>
 <h3>Y a-t-il une version Linux ?</h3>
-<p>Oui, en bêta : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle s’ouvre dans une fenêtre normale. Gemini CLI, Antigravity et le chat avec Google AI et OpenAI sont pour l’instant réservés au Mac. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
+<p>Oui, en bêta : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle s’ouvre dans une fenêtre normale. Gemini CLI, Antigravity et le chat avec DeepSeek, Google AI et OpenAI sont pour l’instant réservés au Mac. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi n’affiche pas mes sessions Claude Code</h3>
 <p>Réglages → Claude Code → <b>Install hooks</b>, vérifie les changements, confirme, puis lance une nouvelle session Claude Code.</p>
 <h3>Puis-je utiliser Coucou avec Gemini CLI ou Antigravity (agy) ? (macOS)</h3>
 <p>Oui. Ouvre <b>Réglages → Gemini CLI → Install hooks</b> ou <b>Réglages → Antigravity → Install hooks</b>. Le même flux sauvegarde + diff qu’avec Claude Code s’applique. Une fois installé, chaque session <code>gemini</code> ou <code>agy</code> obtient sa propre pastille dans l’island.</p>
 <h3>Le chat ne répond pas</h3>
-<p>Ajoute ta clé d’API dans les Réglages : <b>Réglages → Anthropic API</b> pour Claude, ou <b>Réglages → Chat — other providers</b> <i>(macOS)</i> pour Google AI (Gemini) ou OpenAI. L’API est facturée par le fournisseur, à part de tout abonnement.</p>
+<p>Ajoute ta clé d’API dans les Réglages : <b>Réglages → Anthropic API</b> pour Claude, ou <b>Réglages → Chat — other providers</b> <i>(macOS)</i> pour DeepSeek, Google AI (Gemini) ou OpenAI. L’API est facturée par le fournisseur, à part de tout abonnement.</p>
 <h3>Une pastille reste grise</h3>
 <p>Vérifie sa clé dans les Réglages. Jusqu’à 4 pastilles peuvent être actives en même temps, en plus de l’outil de code principal — voir <b>Réglages → Active pills</b>.</p>
 <h3>Qu’est-ce que les Active pills ? (macOS)</h3>
-<p>Les Active pills sont les outils de code, agents et fournisseurs IA que tu déclares dans <b>Réglages → Active pills</b>. Le sélecteur <b>Main</b> en haut te permet de choisir ton outil principal (VS Code, Cursor, Codex ou Antigravity — version GitHub uniquement). Tu peux ensuite ajouter jusqu’à 4 pastilles supplémentaires : Gemini CLI, Anthropic, Google AI, OpenAI et des intégrations de services. Un agent qui envoie <code>coucou_agent</code> dans son payload obtient quand même sa pastille automatique.</p>
+<p>Les Active pills sont les outils de code, agents et fournisseurs IA que tu déclares dans <b>Réglages → Active pills</b>. Le sélecteur <b>Main</b> en haut te permet de choisir ton outil principal (VS Code, Cursor, Codex ou Antigravity — version GitHub uniquement). Tu peux ensuite ajouter jusqu’à 4 pastilles supplémentaires : Gemini CLI, Anthropic, DeepSeek, Google AI, OpenAI et des intégrations de services. Un agent qui envoie <code>coucou_agent</code> dans son payload obtient quand même sa pastille automatique.</p>
 <h3>Puis-je utiliser Coucou avec Cursor ? (macOS)</h3>
 <p>Oui. Installe les hooks Claude Code (<b>Réglages → Claude Code → Install hooks</b>). Claude Code lancé dans le terminal de Cursor apparaît alors sur la pastille Cursor, et tu peux répondre à ses demandes d’autorisation depuis le notch, comme dans VS Code. L’agent de Cursor apparaît aussi quand Cursor charge les hooks de Claude Code ; ses demandes se règlent encore dans Cursor. Choisis Cursor comme outil principal si c’est là que tu codes.</p>
 <h3>Puis-je utiliser Coucou avec Codex ? (macOS, version GitHub)</h3>
@@ -87,7 +87,7 @@
 <h3>Pas de son</h3>
 <p>Vérifie l’icône haut-parleur dans l’en-tête du notch et le volume dans les Réglages.</p>
 <h3>Quel modèle utilise le chat ?</h3>
-<p>Sur Mac, Claude Sonnet 4.6 par défaut (Anthropic). Change de fournisseur et de modèle en cliquant sur le nom du modèle au-dessus du champ de chat. Pour Anthropic, le modèle peut aussi être défini dans <b>Réglages → Anthropic API</b>. Chaque modèle est facturé à son propre tarif par le fournisseur.</p>
+<p>Sur Mac, DeepSeek Flash par défaut (DeepSeek). Change de fournisseur et de modèle en cliquant sur le nom du modèle au-dessus du champ de chat — Claude, DeepSeek, Google AI, OpenAI et des modèles locaux sont disponibles. Pour Anthropic, le modèle peut aussi être défini dans <b>Réglages → Anthropic API</b>. Chaque modèle est facturé à son propre tarif par le fournisseur. Le total de tokens utilisés aujourd’hui, tous fournisseurs confondus, est affiché à côté du nom du modèle dans le chat.</p>
 <h3>Puis-je utiliser Ollama ou LM Studio à la place d'une API cloud ?</h3>
 <p>Oui <i>(macOS)</i>. Ouvre <b>Réglages → Chat → Local models</b>, entre l’adresse du serveur (ou laisse vide pour le défaut) et clique sur <b>Connect</b>. Coucou vérifie que le serveur est accessible et liste les modèles disponibles. Pour arrêter, clique sur <b>Disconnect</b>. Pas de clé d’API — c’est gratuit : le modèle tourne sur ton Mac.</p>
 <h3>Ça marche sans notch ?</h3>

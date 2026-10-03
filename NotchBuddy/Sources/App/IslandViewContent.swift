@@ -219,6 +219,8 @@ struct OverviewView: View {
             #endif
         case "ai_anthropic":
             switchChatProvider(.anthropic)
+        case "ai_deepseek":
+            switchChatProvider(.deepseek)
         case "ai_google":
             switchChatProvider(.google)
         case "ai_openai":
@@ -1157,6 +1159,11 @@ struct PromptView: View {
                 }
 
                 HStack(spacing: 0) {
+                    if state.tokensToday > 0 {
+                        Text("\(state.tokensToday.formatted()) tokens today")
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundColor(Color(hex: "#5C6370"))
+                    }
                     Spacer()
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -1213,7 +1220,10 @@ struct PromptView: View {
             .padding(.bottom, 14)
         }
         .padding(.bottom, 10)
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            state.refreshTokenDay()
+        }
         .onChange(of: state.view) { _, view in
             if view == .prompt {
                 state.fetchModelsIfNeeded(for: state.chatProvider)
@@ -1364,6 +1374,7 @@ struct ModelPickerView: View {
                         Button {
                             switch state.chatProvider {
                             case .anthropic: state.claudeModel = model.id
+                            case .deepseek:  state.deepseekChatModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
@@ -1595,6 +1606,7 @@ struct IntegrationCardView: View {
             return false
             #endif
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
+        case "ai_deepseek":   return KeychainStore.shared.get("deepseek-api-key")  != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
@@ -1726,6 +1738,7 @@ struct IntegrationCardView: View {
                 let model: String
                 switch task.id {
                 case "ai_anthropic": model = appState.claudeModel
+                case "ai_deepseek":  model = appState.deepseekChatModel
                 case "ai_google":    model = appState.googleChatModel
                 case "ai_openai":    model = appState.openAIChatModel
                 default:             model = ""

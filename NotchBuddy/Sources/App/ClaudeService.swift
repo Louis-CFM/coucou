@@ -62,6 +62,7 @@ final class KeychainStore: @unchecked Sendable {
 
     private static let allKeys = [
         "anthropic-api-key",
+        "deepseek-api-key",
         "google-api-key",
         "openai-api-key",
         "resend-api-key", "resend-from",
@@ -175,6 +176,21 @@ final class ClaudeService {
             .map { (id: $0.id, label: $0.id) }
     }
 
+    /// Fetches chat models from the DeepSeek API (OpenAI-compatible models endpoint).
+    static func fetchDeepSeekModels(apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "https://api.deepseek.com/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String else { return nil }
+            return (id: id, label: item["name"] as? String ?? id)
+        }
+    }
+
     /// Chosen in Settings; falls back to the default when the field is left empty.
     private var model: String {
         let m = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -277,6 +293,7 @@ final class ClaudeService {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
         } else {
             switch provider {
+            case .deepseek: baseURL = "https://api.deepseek.com"
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
@@ -430,6 +447,9 @@ final class ClaudeService {
                       let content = message["content"] as? String else {
                     throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
                 }
+                if let usage = TokenUsage.parse(json) {
+                    state.recordTokenUsage(usage)
+                }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                 conversationMessages.append(["role": "assistant", "content": trimmed])
                 state.chatHistory.append(ChatMessage(role: .assistant, content: trimmed))
@@ -537,6 +557,9 @@ final class ClaudeService {
             await showError("Unexpected API response.", state: state)
             return
         }
+        if let usage = TokenUsage.parse(json) {
+            state.recordTokenUsage(usage)
+        }
 
         // Store full content (includes tool_use/tool_result blocks) for correct multi-turn context
         conversationMessages.append(["role": "assistant", "content": content])
@@ -565,6 +588,9 @@ final class ClaudeService {
               let text = textBlock["text"] as? String else {
             await showError("Unexpected API response.", state: state)
             return
+        }
+        if let usage = TokenUsage.parse(json) {
+            state.recordTokenUsage(usage)
         }
 
         // Strip markdown code fences if present, then extract JSON object
