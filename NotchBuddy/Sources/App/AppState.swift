@@ -29,8 +29,9 @@ final class AppState: ObservableObject {
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
 
-    // Mouse tracking
+    // Cursor and hosting panel in global AppKit coordinates (Y increases upward).
     var mousePosition: CGPoint = .zero
+    var islandPanelFrame: CGRect = .zero
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
     var isPresent: Bool = true

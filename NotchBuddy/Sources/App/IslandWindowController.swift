@@ -86,6 +86,7 @@ final class IslandWindowController: NSWindowController {
         AppState.shared.notchWidth  = notchW
         AppState.shared.notchHeight = notchH
         AppState.shared.hasNotch = hasNotch
+        AppState.shared.islandPanelFrame = panel.frame
 
         let contentSize = panel.contentRect(forFrameRect: panel.frame).size
 
@@ -238,12 +239,12 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Mouse in screen coords (Y flipped, origin top-left) for Bot look-at
-        let screenH = panel.screen?.frame.height ?? NSScreen.main!.frame.height
-        let newPos = CGPoint(x: mouse.x - (panel.screen?.frame.minX ?? 0), y: screenH - mouse.y)
+        // Keep the cursor and panel in the same global coordinate space. The
+        // active screen can change independently of the screen hosting Mochi.
+        AppState.shared.islandPanelFrame = pf
         let cur = AppState.shared.mousePosition
-        if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
-            AppState.shared.mousePosition = newPos
+        if abs(mouse.x - cur.x) > 1 || abs(mouse.y - cur.y) > 1 {
+            AppState.shared.mousePosition = mouse
         }
 
         // AppState can hide the island by itself (last task ended): keep the FSM in step.
