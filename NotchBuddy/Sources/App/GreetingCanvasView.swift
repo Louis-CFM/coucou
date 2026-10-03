@@ -177,19 +177,19 @@ private func greetPose(_ t: Double, compact: IslandRestingLayout) -> GreetPose {
     // --- Scale ---
     var sx = 1.0, sy = 1.0
 
-    // Landing squash (peaks at ~0.63, pulse 0.56→0.72)
-    let landSqK = (t >= 0.56 && t < 0.72) ? sin(.pi * gSeg(t, 0.56, 0.72)) : 0
-    // Bounce stretch (peaks at 0.73, resolves 0.64→0.90)
-    let bounceK  = (t >= 0.64 && t < 0.90) ? sin(.pi * gSeg(t, 0.64, 0.90)) : 0
+    // Landing squash (peak at 0.60, pulse 0.52→0.68)
+    let landSqK = (t >= 0.52 && t < 0.68) ? sin(.pi * gSeg(t, 0.52, 0.68)) : 0
+    // Bounce stretch (peak at 0.73, resolves 0.62→0.84)
+    let bounceK  = (t >= 0.62 && t < 0.84) ? sin(.pi * gSeg(t, 0.62, 0.84)) : 0
     sx = 1.0 + 0.14 * landSqK - 0.10 * bounceK
     sy = 1.0 - 0.14 * landSqK + 0.18 * bounceK
 
     // Plunge squash (peaks at 1.30, pulse 1.18→1.42)
     let plungeK = (t >= 1.18 && t < 1.42) ? sin(.pi * gSeg(t, 1.18, 1.42)) : 0
-    // Spring stretch (peaks at 1.38, resolves 1.30→1.60)
-    let springK = (t >= 1.30 && t < 1.60) ? sin(.pi * gSeg(t, 1.30, 1.60)) : 0
-    sx += 0.12 * plungeK - 0.24 * springK
-    sy -= 0.12 * plungeK - 0.33 * springK
+    // Spring stretch (peak at 1.38, resolves 1.30→1.46)
+    let springK = (t >= 1.30 && t < 1.46) ? sin(.pi * gSeg(t, 1.30, 1.46)) : 0
+    sx += 0.12 * plungeK - 0.18 * springK
+    sy -= 0.12 * plungeK - 0.25 * springK
 
     // Sink squash (peak at 2.70)
     let sinkK: Double
@@ -385,8 +385,10 @@ private func drawHandR(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose)
     let hb = hh * 2, L = hb * 0.40 * k, T2 = hb * 0.22 * k
     let rx0 = gLerpF(hw * 0.35, hw + hb * 0.20, k)
     let ry0 = gLerpF(hh * 0.85, hh * 0.20, k)
-    let now = CGFloat(CACurrentMediaTime())
-    let ang: CGFloat = -0.61 + sin(now * 2 * .pi * 2.5) * 0.04
+    // Breathing rotation ±0.04 rad at 2.5 Hz, only while wave is active; no displacement
+    let ang: CGFloat = p.wave >= 0
+        ? -0.61 + CGFloat(sin(p.wave * 2 * .pi * 2.5)) * 0.04
+        : -0.61
     ctx.saveGState()
     ctx.translateBy(x: rx0, y: ry0)
     ctx.rotate(by: ang)
@@ -530,8 +532,9 @@ private func drawParticles(_ ctx: CGContext, t: Double, tc: Double, p: GreetPose
             let yBot = CGFloat(elapsed * s.speed)
             let yTop = yBot - CGFloat(s.len)
             guard yBot > 0 else { continue }
-            let streakX = CGFloat(320 - p.iw/2 + s.xNorm * p.iw)
-            let alpha   = CGFloat(s.alpha * fx)
+            let streakX  = CGFloat(320 - p.iw/2 + s.xNorm * p.iw)
+            let fadeOut  = 1 - gSeg(t, 0.40, 0.55)
+            let alpha    = CGFloat(s.alpha * fx * fadeOut)
             ctx.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: alpha))
             ctx.setLineWidth(CGFloat(s.thick)); ctx.setLineCap(.butt)
             ctx.beginPath()
