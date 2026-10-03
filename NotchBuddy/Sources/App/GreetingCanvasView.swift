@@ -171,7 +171,7 @@ private func greetPose(_ t: Double, compact: IslandRestingLayout) -> GreetPose {
     if t >= GT.pop1 && t < GT.tuck0 {
         let w = t - GT.pop1
         let rampIn = gClamp(w / 0.08, 0, 1)
-        y += sin(w * 2 * .pi * 6.5) * 0.02 * GH * rampIn
+        y += sin(w * 2 * .pi * 5.0) * 0.02 * GH * rampIn
     }
 
     // --- Scale ---
@@ -348,7 +348,8 @@ private func whiteFill(_ ctx: CGContext, _ path: CGPath,
     ctx.saveGState()
     ctx.addPath(path); ctx.clip()
     ctx.drawLinearGradient(g, start: CGPoint(x: x0, y: y0),
-                              end:   CGPoint(x: x1, y: y1), options: [])
+                              end:   CGPoint(x: x1, y: y1),
+                              options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
     ctx.restoreGState()
 }
 
@@ -367,7 +368,7 @@ private func drawHandL(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose)
         let waveEnd = GT.tuck0 - GT.pop1   // = 1.00
         let rampOut = 1 - gClamp((w - waveEnd) / (GT.tuck1 - GT.tuck0), 0, 1)
         let ramp    = rampIn * rampOut
-        ry += sin(w * 2 * .pi * 6.5) * Double(hb) * 0.14 * ramp
+        ry += sin(w * 2 * .pi * 5.0) * Double(hb) * 0.14 * ramp
     }
     ctx.saveGState()
     ctx.translateBy(x: rx, y: CGFloat(ry))
