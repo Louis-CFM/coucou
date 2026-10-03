@@ -24,6 +24,9 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test Claude response text
+        run: bash scripts/test-claude-response.sh
+
       - name: Test chat parsing
         run: bash scripts/test-chat-parsing.sh
 
