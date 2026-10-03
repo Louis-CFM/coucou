@@ -22,20 +22,50 @@ const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
 
-const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
+/// The language the chat answers in. An explicit choice wins over whatever
+/// language the question or the web results are in; "auto" follows the system.
+fn language_name(setting: &str) -> Option<&'static str> {
+    let system = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .find_map(|k| std::env::var(k).ok().filter(|v| !v.is_empty() && v != "C" && v != "POSIX"));
+    let code = if setting == "auto" { system.as_deref().unwrap_or("") } else { setting };
+    match code.get(..2)? {
+        "de" => Some("German"),
+        "en" => Some("English"),
+        "fr" => Some("French"),
+        _ => None,
+    }
+}
+
+/// The system prompt of both ways to ask: the API and Claude Code.
+pub(crate) fn system_prompt(language: &str) -> String {
+    let respond = match language_name(language) {
+        Some(name) => format!(
+            "Always respond in {name}, whatever language the question or the search results are in."
+        ),
+        None => "Respond in the user's language.".to_string(),
+    };
+    format!(
+        "You are Mochi, a personal AI assistant living at the top of the user's screen. \
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
-Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
+{respond} Be thorough and complete — use as much detail as the task requires. \
+No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks."
+    )
+}
 
 #[derive(Default)]
 pub struct Chat {
     /// Full multi-turn history, including tool_use / tool_result blocks.
     messages: Mutex<Vec<Value>>,
+    /// Claude Code session of this conversation, when it runs without an API key
+    /// (see claude_cli.rs).
+    pub(crate) cli_session: Mutex<Option<String>>,
 }
 
 impl Chat {
     pub fn reset(&self) {
         self.messages.lock().unwrap().clear();
+        *self.cli_session.lock().unwrap() = None;
     }
 
     fn is_empty(&self) -> bool {
@@ -73,11 +103,13 @@ pub struct ChatReply {
 pub async fn send(
     chat: &Chat,
     model: &str,
+    language: &str,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let Some(key) = secrets::get("anthropic-api-key") else {
+        return crate::claude_cli::send(chat, language, query, context).await;
+    };
 
     let mut content: Vec<Value> = Vec::new();
 
@@ -108,7 +140,7 @@ pub async fn send(
     let body = json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
+        "system": system_prompt(language),
         "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
         "fallbacks": "default",
         "messages": chat.snapshot(),
@@ -248,7 +280,7 @@ fn base64(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::base64;
+    use super::{base64, system_prompt};
 
     #[test]
     fn base64_matches_rfc4648_vectors() {
@@ -259,5 +291,13 @@ mod tests {
         assert_eq!(base64(b"foob"), "Zm9vYg==");
         assert_eq!(base64(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn an_explicit_language_overrides_the_language_of_the_search_results() {
+        assert!(system_prompt("de").contains("Always respond in German"));
+        assert!(system_prompt("fr").contains("Always respond in French"));
+        // Unknown choice: the model decides, as before.
+        assert!(system_prompt("xx").contains("Respond in the user's language."));
     }
 }
