@@ -3,8 +3,9 @@
 // anywhere node can, matching the bundled ponytail plugin pattern.
 import os from "node:os";
 import path from "node:path";
-import { connectSocket, sendEvent } from "./src/socket.ts";
+import { connectSocket, sendEvent, sendPermissionRequest } from "./src/socket.ts";
 import { mapEvent, type CanonicalEvent } from "./src/mapping.ts";
+import { buildPermissionPayload, decisionToReply } from "./src/permission.ts";
 
 // GitHub build of Coucou (NotchBuddy.swift, non-sandboxed branch).
 const SOCKET_PATH = path.join(
@@ -20,6 +21,13 @@ type Ctx = {
     subscribe?: (opts: { signal?: AbortSignal }) => AsyncIterable<unknown>;
   };
   location?: { directory?: unknown };
+  permission?: {
+    reply?: (req: {
+      sessionID: string;
+      requestID: string;
+      reply: string;
+    }) => Promise<unknown>;
+  };
 };
 
 export default {
@@ -53,9 +61,65 @@ export default {
         typeof ctx.location?.directory === "string"
           ? ctx.location.directory
           : undefined;
+
+      // Fire-and-forget permission relay (Task 3): forward to Coucou on a
+      // held connection, then ctx.permission.reply. Not awaited in the loop —
+      // a decision can take up to ~110 s and must not stall event forwarding.
+      // Every failure is logged and dropped, never thrown at the runtime.
+      let warnedNoReply = false;
+      const relayPermission = (properties: unknown) => {
+        void (async () => {
+          try {
+            const payload = buildPermissionPayload(properties, cwd);
+            if (!payload) return;
+            const requestID =
+              typeof properties === "object" && properties !== null
+                ? (properties as { id?: unknown }).id
+                : undefined;
+            if (typeof requestID !== "string") return;
+            const decision = await sendPermissionRequest(SOCKET_PATH, payload);
+            const reply = decisionToReply(decision);
+            if (!reply) return; // "ask" → let OpenCode re-ask in its terminal
+            const replyFn = ctx.permission?.reply;
+            if (typeof replyFn !== "function") {
+              // Feature-detect: no reply surface → decisions are dropped.
+              if (!warnedNoReply) {
+                warnedNoReply = true;
+                console.error(
+                  "[coucou] ctx.permission.reply unavailable; permission decisions dropped",
+                );
+              }
+              return;
+            }
+            // Live v2.0.18 signature (confirmed from the bundled SDK):
+            // reply({ requestID, reply }); sessionID is extra and used by the
+            // runtime wrapper for cache invalidation.
+            await replyFn({ sessionID: payload.session_id, requestID, reply });
+          } catch (err) {
+            console.error(
+              `[coucou] permission relay failed: ${err instanceof Error ? err.message : err}`,
+            );
+          }
+        })();
+      };
+
       void (async () => {
         try {
           for await (const event of subscribe({ signal: controller.signal })) {
+            // Permission requests take the relay path; lifecycle events go
+            // through mapEvent (which stays permission-free by contract).
+            const e =
+              typeof event === "object" && event !== null
+                ? (event as {
+                    type?: unknown;
+                    properties?: unknown;
+                    data?: unknown;
+                  })
+                : {};
+            if (e.type === "permission.asked") {
+              relayPermission(e.properties ?? e.data);
+              continue;
+            }
             let mapped: CanonicalEvent | null = null;
             try {
               mapped = mapEvent(event);
