@@ -1789,6 +1789,66 @@ final class HookServer: @unchecked Sendable {
                                          options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
 
+    // MARK: Oh My Pi hook installer  (#if !APPSTORE only)
+
+    static var ompHookURL: URL {
+        URL(fileURLWithPath: OmpHook.hookPath(home: FileManager.default.homeDirectoryForCurrentUser.path))
+    }
+
+    /// True when ~/.omp/agent/hooks/pre/coucou.ts exists and was written by Coucou.
+    static func ompHooksInstalled() -> Bool {
+        guard let content = try? String(contentsOf: ompHookURL, encoding: .utf8) else { return false }
+        return OmpHook.owns(content: content)
+    }
+
+    private var _pendingOmpInstall: Bool = true
+    private var _pendingOmpConfirmed: Bool = false
+
+    /// Returns the hook file Coucou will write (install) or a short notice (uninstall).
+    /// Call writeOmpHooks() to apply after the user confirms.
+    func previewOmpHooks(install: Bool) throws -> String {
+        let url = Self.ompHookURL
+        let existing = try? String(contentsOf: url, encoding: .utf8)
+        _pendingOmpInstall = install
+        _pendingOmpConfirmed = true
+        if !OmpHook.owns(content: existing) {
+            if let existing, !existing.isEmpty {
+                throw NSError(domain: "Coucou", code: 3, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.omp/agent/hooks/pre/coucou.ts exists and was not written by Coucou — Coucou has not touched it."
+                ])
+            }
+            if !install {
+                throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "No Oh My Pi hooks to remove."
+                ])
+            }
+        }
+        return install ? OmpHook.source : "(delete ~/.omp/agent/hooks/pre/coucou.ts)"
+    }
+
+    /// Applies the previewed operation (write or delete). Safe to call only after
+    /// previewOmpHooks(install:) succeeded; re-checks ownership before touching the file.
+    func writeOmpHooks() throws {
+        guard _pendingOmpConfirmed else { return }
+        defer { _pendingOmpConfirmed = false }
+        let url = Self.ompHookURL
+        let existing = try? String(contentsOf: url, encoding: .utf8)
+        guard OmpHook.owns(content: existing) || (existing ?? "").isEmpty else {
+            throw NSError(domain: "Coucou", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "~/.omp/agent/hooks/pre/coucou.ts exists and was not written by Coucou — Coucou has not touched it."
+            ])
+        }
+        if _pendingOmpInstall {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try OmpHook.source.write(to: url, atomically: true, encoding: .utf8)
+        } else {
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
     // MARK: SHA-256 fingerprint
 
     private func sha256Hex(_ data: Data) -> String {

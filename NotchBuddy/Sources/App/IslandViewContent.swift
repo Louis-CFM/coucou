@@ -186,7 +186,7 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
-        case "agent_gemini", "agent_antigravity":
+        case "agent_gemini", "agent_antigravity", "agent_oh-my-pi":
             #if !APPSTORE
             let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
                                      "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
@@ -1421,6 +1421,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "agent_oh-my-pi":
+            #if !APPSTORE
+            return HookServer.ompHooksInstalled()
+            #else
+            return false
+            #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
         case "integration_music":
@@ -1543,7 +1549,7 @@ struct IntegrationCardView: View {
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
-        let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
+        let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity" || task.id == "agent_oh-my-pi"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }
