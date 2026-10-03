@@ -2301,20 +2301,20 @@ struct GitHubPulseCardView: View {
                 Text("GitHub")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                Text("Overview")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(hex: "#8E939C"))
-                Spacer()
                 if let s = stats {
                     Text("★ \(formatCount(s.totalStars)) · \(s.totalRepos) repos")
                         .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#6B7079"))
+                        .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1)
+                } else {
+                    Text("Overview")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
                 }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
-            .padding(.trailing, 12)
+            .padding(.trailing, 36)
 
             // Stat rows
             VStack(alignment: .leading, spacing: 4) {
@@ -2472,7 +2472,23 @@ struct GitHubDetailView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 80)  // 4 rows × 20 pt; rest scrolls
+                .frame(maxHeight: 60)  // 3 rows × 20 pt; rest scrolls
+                .mask(
+                    Group {
+                        if (items.count + repoItems.count) > 3 {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0),
+                                    .init(color: .black, location: 0.8),
+                                    .init(color: .clear,  location: 1.0)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        } else {
+                            Color.black
+                        }
+                    }
+                )
                 .padding(.top, 4)
                 .padding(.leading, 108)
                 .padding(.trailing, 8)
