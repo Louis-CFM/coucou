@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou — Claude Code session preview</title>
+    <style>
+      /* A desktop-ish backdrop so the black island reads as it does on screen. */
+      html, body { background: #2a2d34 !important; }
+      #links { position: fixed; bottom: 12px; left: 0; right: 0; text-align: center; font: 12px system-ui; }
+      #links a { color: #c5c8cd; margin: 0 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="links">
+      <a href="?view=overview">At work</a>
+      <a href="?view=session&amp;live=1">Writing a file</a>
+      <a href="?view=session">The file written last</a>
+      <a href="?view=session&amp;list=1">Changes</a>
+      <a href="?view=session&amp;list=1&amp;file=1">A file's diff</a>
+      <a href="?view=session&amp;idle=1">Session stopped</a>
+      <a href="?view=question">Question</a>
+      <a href="?view=question&amp;multi=1">Question, several answers</a>
+      <a href="?view=question&amp;many=1">Three questions</a>
+      <a href="?view=approval">Permission</a>
+      <a href="?view=approval&amp;diff=1">Permission, an edit</a>
+      <a href="?view=finished">Finished</a>
+      <a href="?view=session&amp;answered=1">What Claude said</a>
+    </div>
+    <script type="module" src="./claude-preview.ts"></script>
+  </body>
+</html>

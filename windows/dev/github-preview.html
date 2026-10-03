@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou — GitHub panel preview</title>
+    <style>
+      /* A desktop-ish backdrop so the black island reads as it does on screen. */
+      html, body { background: #2a2d34 !important; }
+      #links { position: fixed; bottom: 12px; left: 0; right: 0; text-align: center; font: 12px system-ui; }
+      #links a { color: #c5c8cd; margin: 0 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="links">
+      <a href="?view=github">Panel</a>
+      <a href="?view=github&amp;tab=projects">Projects</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1">Project sheet</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;slow=1">Sheet, loading</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;locked=1">Sheet, no Deployments</a>
+      <a href="?view=overview">Card</a>
+      <a href="?view=github&amp;error=1">Panel, offline</a>
+      <a href="?view=github&amp;empty=1">Panel, no activity</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;pr=1&amp;running=play">Run, live</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;pr=1&amp;running=play&amp;fail=1">Run, live, breaking</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;pr=1&amp;talk=1">Comments</a>
+      <a href="?view=github&amp;tab=projects&amp;sheet=1&amp;pr=1&amp;talk=code">Comment, on its line</a>
+    </div>
+    <script type="module" src="./github-preview.ts"></script>
+  </body>
+</html>
