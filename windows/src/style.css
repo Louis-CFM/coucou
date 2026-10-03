@@ -245,6 +245,10 @@ body {
   cursor: default;
 }
 
+.header-actions button:hover {
+  color: var(--dim-1);
+}
+
 .header-actions button.on {
   color: var(--ink);
 }
