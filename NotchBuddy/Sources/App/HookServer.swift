@@ -534,12 +534,12 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         let isAlert: Bool
         switch view {
-        case .approval, .finished, .error, .confused: isAlert = true
+        case .approval, .question, .finished, .error, .confused: isAlert = true
         default: isAlert = false
         }
         if state.mode == .expanded {
-            // Approval always wins; other alerts are blocked while a card is showing
-            if view == .approval {
+            // Approval and question always win; other alerts are blocked while a card is showing
+            if view == .approval || view == .question {
                 state.view = view
             } else if isAlert && state.pendingApproval == nil {
                 state.view = view
