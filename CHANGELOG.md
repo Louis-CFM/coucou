@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Click anywhere outside the island to fold it, instead of waiting for the inactivity timer. Permission requests and questions stay open until you answer them, and folding from the chat brings you back to the chat when you reopen.
+
 ## 0.1.3 — October 3, 2026
 
 - Answer Claude's questions from the notch: when Claude Code asks a multiple-choice question, pick an option or type your own answer right in the island, and Reply in terminal hands it back. Update your hooks in Settings to turn it on (#165) — thanks @Vega8991 for the idea (#94)

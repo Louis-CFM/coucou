@@ -152,6 +152,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 |---|---|
 | Hover the notch (top edge on Windows and Linux) | peeks out and says hi 👋 |
 | Click it | opens |
+| Click anywhere else | folds back |
 | Hover Mochi | blinks, eyes grow |
 | Click Mochi | squish + annoyed |
 | Click 3 times fast | 😵‍💫 dizzy for a few seconds |

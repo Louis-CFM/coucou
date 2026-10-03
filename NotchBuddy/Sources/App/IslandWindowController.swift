@@ -14,6 +14,9 @@ final class IslandWindowController: NSWindowController {
     private var wasInIsland = false
     private var frameTimer: Timer?
     private var keyMonitor: Any?
+    private var clickOutsideMonitor: Any?
+    /// Folded by a click outside while chatting: the next reopen goes back to the chat.
+    private var resumeChatOnReopen = false
     private var viewSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
@@ -139,6 +142,7 @@ final class IslandWindowController: NSWindowController {
 
         startPolling()
         startKeyMonitor()
+        startClickOutsideMonitor()
         wireFSM()
 
         // Make panel key whenever the prompt/chat view becomes active
@@ -363,6 +367,28 @@ final class IslandWindowController: NSWindowController {
         fsm.collapse()
         setMode(.compact)
         window?.resignKey()
+    }
+
+    // MARK: - Click outside folds the island
+    //
+    // A global monitor only receives the clicks that go to other apps: clicks on the island,
+    // on the Settings window or on the menu bar item never reach it. Unlike key monitors,
+    // mouse monitors need no Accessibility permission. Alerts (permission, question) and the
+    // finished pin keep the island open, exactly like the inactivity timer.
+
+    private func startClickOutsideMonitor() {
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self,
+                      self.state.mode == .expanded,
+                      !self.state.isPinned,
+                      !self.inAttachDrag,
+                      self.state.pendingApproval == nil,
+                      self.state.pendingQuestion == nil else { return }
+                self.resumeChatOnReopen = self.state.view == .prompt
+                self.collapse()
+            }
+        }
     }
 
     // MARK: - Keyboard (Escape closes)
@@ -710,6 +736,7 @@ final class IslandWindowController: NSWindowController {
 
     func defaultView() -> IslandView {
         if state.pendingApproval != nil { return .approval }
+        if resumeChatOnReopen { resumeChatOnReopen = false; return .prompt }
         return state.tasks.isEmpty ? .empty : .overview
     }
 
