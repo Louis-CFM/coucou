@@ -236,6 +236,10 @@ struct SettingsView: View {
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
+                Toggle("Occasional idle glances", isOn: $state.idleAnimationsEnabled)
+                Text("Mochi occasionally looks around and blinks while resting. Respects Reduce Motion.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)

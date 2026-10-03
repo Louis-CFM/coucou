@@ -247,5 +247,11 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - Aucun clic perdu à cause de la fenêtre transparente.
 - Une session Claude Code n'est jamais bloquée par l'app (app fermée, plantée ou lente → le terminal prend le relais).
 - Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
+- Option « Occasional idle glances », désactivée par défaut : si Mochi est visible
+  et au repos, une pause aléatoire de 20 à 40 s précède un regard de 1,4 s, parfois
+  accompagné d'un clignement. Retour au centre et pause du rendu en mode réduit.
+  Aucun réveil d'animation si le personnage est invisible, occupé ou si « Réduire
+  les animations » est activé. Cette option ajoute un coût CPU pendant les brefs
+  mouvements ; l'objectif zéro animation au repos reste le comportement par défaut.
 - La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 

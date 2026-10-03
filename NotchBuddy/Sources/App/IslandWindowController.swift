@@ -244,6 +244,7 @@ final class IslandWindowController: NSWindowController {
         let cur = AppState.shared.mousePosition
         if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
             AppState.shared.mousePosition = newPos
+            AppState.shared.lastMouseMove = .now
         }
 
         // AppState can hide the island by itself (last task ended): keep the FSM in step.

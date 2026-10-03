@@ -305,7 +305,8 @@ struct BotPlacement: View {
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
-                BotCanvasView(state: state, particleOverhang: overhang)
+                BotCanvasView(state: state, particleOverhang: overhang,
+                              isVisible: opacity > 0 && !state.isDraggingBot)
                     .frame(width: canvasSize, height: canvasSize + overhang)
                     .opacity(state.isDraggingBot ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)

@@ -53,6 +53,11 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
+    // Optional idle glances — no animation wakeups unless enabled and visible.
+    @Published var idleAnimationsEnabled: Bool = false {
+        didSet { UserDefaults.standard.set(idleAnimationsEnabled, forKey: "idleAnimationsEnabled") }
+    }
+
     // Claude model used by the chat and the search — persisted
     static let defaultClaudeModel = "claude-sonnet-4-6"
     @Published var claudeModel: String = AppState.defaultClaudeModel {
@@ -378,6 +383,7 @@ final class AppState: ObservableObject {
         let ud = UserDefaults.standard
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
+        if let v = ud.object(forKey: "idleAnimationsEnabled") as? Bool { idleAnimationsEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
