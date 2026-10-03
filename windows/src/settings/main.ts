@@ -181,7 +181,7 @@ const MODELS: [string, string][] = [
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — needed only when the chat uses the Claude API." });
 
   const field = h("input", {
     type: "password",
@@ -200,7 +200,7 @@ function apiSection(hasKey: boolean): HTMLElement {
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
       ? "Key saved in the Windows Credential Manager."
-      : "No key yet — the chat needs one.";
+      : "No key yet — needed only when the chat uses the Claude API.";
     field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
@@ -250,6 +250,123 @@ function apiSection(hasKey: boolean): HTMLElement {
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    feedback,
+  );
+}
+
+// ── Chat provider / OpenRouter section ────────────────────────────────────────
+
+const OR_KEY = "openrouter-api-key";
+
+function openrouterSection(hasKey: boolean): HTMLElement {
+  const dot = statusDot(hasKey);
+  const state = h("span", { class: "hint" });
+
+  const provider = h("select", {}) as HTMLSelectElement;
+  provider.append(
+    h("option", { value: "anthropic", text: "Claude API (Anthropic)" }),
+    h("option", { value: "openrouter", text: "OpenRouter" }),
+  );
+  provider.value = settings.chatProvider;
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value as Settings["chatProvider"];
+    void save();
+  });
+
+  const field = h("input", {
+    type: "password",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const saveBtn = h("button", { class: "primary", text: "Save key" });
+  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const present = (await Bridge.secretPresent(OR_KEY)) ?? false;
+    dot.style.background = present ? "#22c55e" : "#f4505e";
+    state.textContent = present
+      ? "Key saved in the system keychain."
+      : "No key yet — create one at openrouter.ai/keys.";
+    field.placeholder = present ? "••••••••••••  (stored)" : "sk-or-...";
+    clearBtn.style.display = present ? "" : "none";
+  }
+  void refresh();
+
+  saveBtn.addEventListener("click", async () => {
+    const value = field.value.trim();
+    if (!value) return;
+    clear(feedback);
+    try {
+      await Bridge.secretSet(OR_KEY, value);
+      field.value = "";
+      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+  clearBtn.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.secretClear(OR_KEY);
+      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  // Model list: fetched live from OpenRouter, free models first.
+  const model = h("select", { style: "flex:1 1 auto;min-width:0;max-width:340px" }) as HTMLSelectElement;
+  let all: { id: string; name: string; free: boolean }[] = [];
+  let freeOnly = true;
+  function fillModels() {
+    clear(model);
+    const list = all.filter((m) => !freeOnly || m.free);
+    if (settings.openrouterModel && !list.some((m) => m.id === settings.openrouterModel)) {
+      model.append(h("option", { value: settings.openrouterModel, text: settings.openrouterModel }));
+    }
+    if (!settings.openrouterModel) model.append(h("option", { value: "", text: "Choose a model…" }));
+    for (const m of list) {
+      // OpenRouter already puts "(free)" in most free model names.
+      const label = m.free && !/\(free\)/i.test(m.name) ? `${m.name} (free)` : m.name;
+      model.append(h("option", { value: m.id, text: label }));
+    }
+    model.value = settings.openrouterModel;
+  }
+  model.addEventListener("change", () => {
+    settings.openrouterModel = model.value;
+    void save();
+  });
+  model.append(h("option", { value: settings.openrouterModel, text: settings.openrouterModel || "Loading models…" }));
+  void Bridge.openrouterModels()
+    .then((list) => {
+      all = list ?? [];
+      fillModels();
+    })
+    .catch((err) => {
+      feedback.append(h("div", { class: "notice err", text: `Could not load models: ${String(err)}` }));
+    });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Chat provider" })),
+    h("div", { class: "row" }, h("label", { text: "Chat uses" }), provider),
+    h("div", { class: "row" }, h("label", { text: "OpenRouter" }), state),
+    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" },
+      h("label", { text: "Model" }),
+      model,
+      h("label", { text: "Free only" }),
+      toggle(freeOnly, (v) => { freeOnly = v; fillModels(); }),
+    ),
+    h("div", {
+      class: "hint",
+      text: "Chat only: no tools are sent, the model cannot act on this computer. Free models have daily limits and their providers may log prompts.",
+    }),
     feedback,
   );
 }
@@ -443,6 +560,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    openrouterSection((await Bridge.secretPresent(OR_KEY)) ?? false),
     integrationsSection(present),
     generalSection(),
     h("div", {

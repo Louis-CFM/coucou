@@ -85,6 +85,9 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** OpenRouter's public catalogue, free models first. */
+  openrouterModels: () =>
+    callOrThrow<{ id: string; name: string; free: boolean }[]>("openrouter_models"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
