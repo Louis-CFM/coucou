@@ -2,6 +2,32 @@ import SwiftUI
 import ServiceManagement
 import AppKit
 
+/// What the last key check said, and the colour it should read in: a working key in
+/// green, a refused or unreachable one in red. Holding the verdict rather than only its
+/// sentence keeps the colour from being guessed back out of the text.
+private enum KeyCheckReport {
+    case none
+    case checking
+    case worked(String)
+    case failed(String)
+
+    var text: String {
+        switch self {
+        case .none: return ""
+        case .checking: return "Checking…"
+        case .worked(let message), .failed(let message): return message
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .none, .checking: return .secondary
+        case .worked: return .green
+        case .failed: return .red
+        }
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
@@ -14,7 +40,10 @@ struct SettingsView: View {
         ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
     ]
     private static let customModelTag = "__custom__"
+    private static let consoleKeysURL = URL(string: "https://console.anthropic.com/settings/keys")!
     @State private var fetchedModels: [(id: String, label: String)] = []
+    @State private var checkingKey: Bool = false
+    @State private var keyCheck: KeyCheckReport = .none
     @State private var modelChoice: String = {
         let m = AppState.shared.claudeModel
         return SettingsView.fallbackModels.contains { $0.id == m } ? m : SettingsView.customModelTag
@@ -25,6 +54,10 @@ struct SettingsView: View {
     }()
     private var displayModels: [(id: String, label: String)] {
         fetchedModels.isEmpty ? Self.fallbackModels : fetchedModels
+    }
+    /// Pasted keys often carry stray whitespace or a trailing newline, which the API rejects.
+    private var trimmedAPIKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
@@ -179,14 +212,7 @@ struct SettingsView: View {
                 guard !models.isEmpty else { return }
                 await MainActor.run {
                     fetchedModels = models
-                    let m = state.claudeModel
-                    if models.contains(where: { $0.id == m }) {
-                        modelChoice = m
-                        customModel = ""
-                    } else if modelChoice != Self.customModelTag {
-                        modelChoice = Self.customModelTag
-                        customModel = m
-                    }
+                    syncModelChoice(with: models)
                 }
             }
         }
@@ -555,11 +581,35 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField("API key (sk-ant-…)", text: $apiKey)
                     .textFieldStyle(.roundedBorder)
-                Button("Save") {
-                    KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                    statusMessage = "✓ Key saved."
+                Text("A Console API key, from your Anthropic account. "
+                     + "A Claude Code setup token or a Claude Pro/Max login will not work here: "
+                     + "the chat sends the key as x-api-key, which only Console keys answer to.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Link("Get a key on console.anthropic.com", destination: Self.consoleKeysURL)
+                    .font(.system(size: 11))
+
+                HStack(spacing: 8) {
+                    Button("Save") { saveAndCheckKey() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(checkingKey)
+                    Button("Test") { testKey() }
+                        .disabled(checkingKey || trimmedAPIKey.isEmpty)
+                    if checkingKey { ProgressView().controlSize(.small) }
                 }
-                .buttonStyle(.borderedProminent)
+                Text("Test tries the key in the field without saving it, "
+                     + "so trying one out does not replace the key you already use.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !keyCheck.text.isEmpty {
+                    Text(keyCheck.text)
+                        .font(.system(size: 11))
+                        .foregroundColor(keyCheck.color)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Divider().padding(.vertical, 2)
 
@@ -805,6 +855,71 @@ struct SettingsView: View {
     }
 
     // MARK: - Actions
+
+    /// Saves the key, then tells the user straight away whether it works, instead of
+    /// letting them find out the next time they open the chat.
+    private func saveAndCheckKey() {
+        let key = trimmedAPIKey
+        apiKey = key
+        KeychainStore.shared.set("anthropic-api-key", value: key)
+        statusMessage = "✓ Key saved."
+
+        guard !key.isEmpty else {
+            keyCheck = .failed("❌ No key to check.")
+            return
+        }
+        checkKey(key, refreshingModels: true)
+    }
+
+    /// Tries the key sitting in the field without touching the Keychain, so testing a
+    /// key you are unsure about cannot cost you the one that already works. The model
+    /// list stays as it is: it belongs to the saved key, not to the one being tried.
+    private func testKey() {
+        let key = trimmedAPIKey
+        guard !key.isEmpty else {
+            keyCheck = .failed("❌ No key to test.")
+            return
+        }
+        checkKey(key, refreshingModels: false)
+    }
+
+    /// Asks the API whether the key works and reports the three outcomes apart: a refused
+    /// key reads differently from being offline. The model list comes back from the same
+    /// call, so saving a working key also refreshes the picker.
+    private func checkKey(_ key: String, refreshingModels: Bool) {
+        checkingKey = true
+        keyCheck = .checking
+        Task {
+            let result = await ClaudeService.checkKey(key)
+            await MainActor.run {
+                checkingKey = false
+                switch result {
+                case .valid(let models):
+                    keyCheck = .worked("✓ Key works — \(models.count) models available.")
+                    guard refreshingModels, !models.isEmpty else { return }
+                    fetchedModels = models
+                    syncModelChoice(with: models)
+                case .refused(let message):
+                    keyCheck = .failed("❌ \(message)")
+                case .unreachable(let message):
+                    keyCheck = .failed("❌ Could not reach the API: \(message)")
+                }
+            }
+        }
+    }
+
+    /// Keeps the picker on the saved model when the fetched list contains it, and on
+    /// "Custom…" when it does not.
+    private func syncModelChoice(with models: [(id: String, label: String)]) {
+        let m = state.claudeModel
+        if models.contains(where: { $0.id == m }) {
+            modelChoice = m
+            customModel = ""
+        } else if modelChoice != Self.customModelTag {
+            modelChoice = Self.customModelTag
+            customModel = m
+        }
+    }
 
     private func applyCustomModel(_ value: String) {
         let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
