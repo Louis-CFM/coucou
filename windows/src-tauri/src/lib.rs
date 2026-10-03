@@ -132,10 +132,35 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -150,8 +175,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock().unwrap().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -430,4 +456,23 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running Coucou");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        let found = resolve_editor(Some("cmd"));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains("cmd"));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
+    }
 }
