@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod media;
 mod pipe;
 mod platform;
 mod secrets;
@@ -175,6 +176,19 @@ fn quit_app(app: AppHandle) {
 #[tauri::command]
 fn set_paused(paused: bool) {
     integrations::set_paused(paused);
+}
+
+/// What is playing, read from SMTC. The island normally gets this pushed as the
+/// `media` event; this is only the first render.
+#[tauri::command]
+async fn media_state() -> media::NowPlaying {
+    media::snapshot().await
+}
+
+/// Transport buttons: "play" | "pause" | "toggle" | "next" | "prev".
+#[tauri::command]
+async fn media_action(action: String) -> bool {
+    media::control(&action).await
 }
 
 // ── Claude Code hooks ─────────────────────────────────────────────────────────
@@ -401,6 +415,8 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            media_state,
+            media_action,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -426,6 +442,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            media::start(handle.clone());
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { NowPlaying, Settings } from "./state";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -99,6 +99,12 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+
+  // ── Now playing (SMTC) ────────────────────────────────────────────────────
+  mediaState: () => call<NowPlaying>("media_state"),
+  /** "play" | "pause" | "toggle" | "next" | "prev". True when the player took it. */
+  mediaAction: (action: "play" | "pause" | "toggle" | "next" | "prev") =>
+    call<boolean>("media_action", { action }),
 };
 
 export interface IntegrationUpdate {
@@ -143,6 +149,7 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
+  | { name: "media"; payload: NowPlaying }
   | { name: "screen-changed"; payload: null };
 
 export interface DragDropPayload {

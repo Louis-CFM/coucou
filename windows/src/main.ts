@@ -3,7 +3,7 @@
 import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
-import { State, type Settings } from "./core/state";
+import { State, type NowPlaying, type Settings } from "./core/state";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
@@ -52,6 +52,26 @@ async function main() {
   });
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
+
+  // What is playing. Rust only emits when it changes, so this is never busy;
+  // the first call is the initial read, and it is logged only if it found
+  // something — an idle machine should not write a line on every launch.
+  let lastMedia = "";
+  const applyMedia = (np: NowPlaying | null) => {
+    const live = np && (np.title !== "" || np.artist !== "") ? np : null;
+    const key = live ? [live.app, live.title, live.artist, live.playing].join("~") : "";
+    State.nowPlaying = live;
+    if (key === lastMedia) return;
+    lastMedia = key;
+    State.notify();
+    if (live) {
+      void Bridge.log(
+        `media: ${live.title} — ${live.artist} (${live.app}) ${live.playing ? "playing" : "paused"}`,
+      );
+    }
+  };
+  await onEvent<NowPlaying>("media", applyMedia);
+  void Bridge.mediaState().then(applyMedia);
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {

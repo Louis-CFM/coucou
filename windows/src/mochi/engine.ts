@@ -199,6 +199,10 @@ export class BotEngine {
   private badgeKey = "none";
   private badgeToken = 0;
 
+  /** Music is playing: Mochi sways along. Ramped by setDancing, never popped. */
+  private dancing = false;
+  danceLevel = 0;
+
   private tweens = new Map<PropKey, Tween>();
   private locks = new Set<PropKey>();
   private particles: Particle[] = [];
@@ -377,6 +381,12 @@ export class BotEngine {
     this.miniNextBehavior = now() + 0.8 + Math.random() * 1.7;
   }
 
+  /** Music on/off. The level ramps in over 0.3 s and out over 0.5 s (the same
+   *  ramps as the macOS build) so Mochi starts and stops on the beat. */
+  setDancing(on: boolean) {
+    this.dancing = on;
+  }
+
   triggerEmote(emote: BotEmoteName, duration = 1.8) {
     const t = now();
     this.eyeOverride = EMOTE_EYE[emote];
@@ -504,6 +514,14 @@ export class BotEngine {
     }
 
     const t = n - this.t0;
+
+    const danceTarget = this.dancing ? 1 : 0;
+    const danceStep = dt / (this.dancing ? 0.3 : 0.5);
+    this.danceLevel =
+      this.danceLevel < danceTarget
+        ? Math.min(danceTarget, this.danceLevel + danceStep)
+        : Math.max(danceTarget, this.danceLevel - danceStep);
+
     let ty = this.lookX * 0.62;
     let tp = this.lookY * 0.5;
 
@@ -539,8 +557,13 @@ export class BotEngine {
       const wt = n - this.waveStart;
       this.tgTilt = -0.06 + Math.sin(2 * Math.PI * 1.2 * wt) * 0.07;
     }
+    if (this.danceLevel > 0) {
+      this.tgTilt += Math.sin(t * 2.5) * 0.17 * this.danceLevel;
+    }
 
-    const bounce = this.cfg.bounces ? -Math.abs(Math.sin(t * 5.2)) * 0.07 : 0;
+    const bounce =
+      (this.cfg.bounces ? -Math.abs(Math.sin(t * 5.2)) * 0.07 : 0) +
+      Math.sin(t * 5.0) * 0.1 * this.danceLevel;
     const kGen = 1 - Math.pow(0.0008, dt);
     if (!this.locks.has("oy")) this.oy += (bounce - this.oy) * kGen;
 
