@@ -468,18 +468,36 @@ body {
 }
 
 .ticker-row .tick-icon {
+  position: relative;
   width: 12px;
+  height: 22px;
   display: grid;
   place-items: center;
   flex: 0 0 12px;
   color: var(--dim-2);
 }
 
+.ticker-row .tick-texts {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+}
+
+/* Two layers on one line: the shimmering current label and the dim completed
+   one, crossfaded by the ticker. Each is a single clipped, ellipsized line. */
 .ticker-row .tick-text {
-  font: 500 13px var(--font);
+  position: absolute;
+  inset: 0;
+  display: block;
+  font: 500 13px/22px var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ticker-row .tick-text.done {
+  color: var(--dim-3);
 }
 
 /* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
