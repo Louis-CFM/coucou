@@ -57,7 +57,11 @@ struct BotCanvasView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
-                engine.outfit = state.resolvedOutfit
+                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                                 animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
                 var ctx = context
@@ -119,6 +123,10 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 

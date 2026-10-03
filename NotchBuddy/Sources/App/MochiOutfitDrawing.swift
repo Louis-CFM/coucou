@@ -18,9 +18,10 @@ struct MochiH {
     let yaw, pitch: CGFloat
     let view: CGFloat      // = VIEW_TILT (-0.30)
     let physDx, physDy: CGFloat
+    let roll: CGFloat
 
     init(R: CGFloat, yaw: CGFloat = 0, pitch: CGFloat = 0,
-         physDx: CGFloat = 0, physDy: CGFloat = 0) {
+         physDx: CGFloat = 0, physDy: CGFloat = 0, roll: CGFloat = 0) {
         self.R = R
         self.rx = R * 1.14
         self.ry = R * 0.88
@@ -29,6 +30,7 @@ struct MochiH {
         self.view = kVIEW_TILT
         self.physDx = physDx
         self.physDy = physDy
+        self.roll = roll
     }
 }
 
@@ -110,17 +112,48 @@ private func mSurf(_ y: CGFloat, _ lon: CGFloat, _ s: CGFloat = 1) -> (CGFloat, 
     return (r * sin(lon), y, r * cos(lon))
 }
 
-// frontArc(H, y, s) — front (z >= -0.02) arc of ring at height y, sorted by screen x
+// Shared: given projected ring points, return front arc ordered L→R via silhouette tangents
+private func frontSilhouetteArc(_ pts: [P3]) -> [P3] {
+    let n = pts.count
+    guard n > 1 else { return pts }
+    let minIdx = pts.indices.min(by: { pts[$0].x < pts[$1].x })!
+    let maxIdx = pts.indices.max(by: { pts[$0].x < pts[$1].x })!
+    guard minIdx != maxIdx else { return [pts[minIdx]] }
+    // Arc A: minIdx→maxIdx going forward (+1 steps)
+    var arcA: [P3] = []; var i = minIdx
+    while true { arcA.append(pts[i]); if i == maxIdx { break }; i = (i+1)%n; if arcA.count > n { break } }
+    // Arc B: minIdx→maxIdx going backward (-1 steps)
+    var arcB: [P3] = []; i = minIdx
+    while true { arcB.append(pts[i]); if i == maxIdx { break }; i = (i-1+n)%n; if arcB.count > n { break } }
+    let zA = arcA.reduce(0) { $0+$1.z } / CGFloat(max(1, arcA.count))
+    let zB = arcB.reduce(0) { $0+$1.z } / CGFloat(max(1, arcB.count))
+    return zA >= zB ? arcA : arcB
+}
+
+// frontArc(H, y, s) — front arc of ring at height y, ordered left→right (silhouette tangent method)
 private func mFrontArc(_ H: MochiH, y: CGFloat, s: CGFloat) -> [P3] {
-    var pts: [P3] = []
     let n = 120
-    for i in 0...n {
+    let pts: [P3] = (0..<n).map { i in
         let lon = -.pi + CGFloat(i) / CGFloat(n) * 2 * .pi
-        let q = mProj(H, mSurf(y, lon, s))
-        if q.z >= -0.02 { pts.append(q) }
+        return mProj(H, mSurf(y, lon, s))
     }
-    pts.sort { $0.x < $1.x }
-    return pts
+    return frontSilhouetteArc(pts)
+}
+
+// proj with roll applied (for roll-following accessories)
+private func mProjRoll(_ H: MochiH, _ p: (CGFloat, CGFloat, CGFloat)) -> P3 {
+    let r = mRot3(p, yaw: H.yaw, pitch: H.view + H.pitch * kACC_PITCH + H.roll)
+    return P3(x: r.0 * H.rx, y: -r.1 * H.ry, z: r.2)
+}
+
+// frontArc using roll projection (for scarf)
+private func mFrontArcRoll(_ H: MochiH, y: CGFloat, s: CGFloat) -> [P3] {
+    let n = 120
+    let pts: [P3] = (0..<n).map { i in
+        let lon = -.pi + CGFloat(i) / CGFloat(n) * 2 * .pi
+        return mProjRoll(H, mSurf(y, lon, s))
+    }
+    return frontSilhouetteArc(pts)
 }
 
 // capClip(H, y, s) — path of the region ABOVE the front arc of ring y (what a cap covers)
@@ -137,29 +170,9 @@ private func mCapClip(_ H: MochiH, y: CGFloat, s: CGFloat, extraTop: CGFloat = 3
     return p
 }
 
-// frontRun — contiguous visible (z>=0) run of a CLOSED ring, ordered left→right
+// frontRun — front arc of a CLOSED ring, ordered left→right (silhouette tangent method)
 private func mFrontRun(_ ring: [P3]) -> [P3] {
-    let n = ring.count - 1
-    guard n > 0 else { return [] }
-    var start = -1
-    for i in 0..<n {
-        if ring[i].z >= 0 && ring[(i - 1 + n) % n].z < 0 { start = i; break }
-    }
-    if start < 0 {
-        // whole ring visible — use lower half
-        let my = ring.reduce(0) { $0 + $1.y } / CGFloat(ring.count)
-        var sub = ring.filter { $0.y >= my }
-        sub.sort { $0.x < $1.x }
-        return sub
-    }
-    var out: [P3] = []
-    for k in 0..<n {
-        let q = ring[(start + k) % n]
-        if q.z < 0 { break }
-        out.append(q)
-    }
-    if out.count > 1 && out.first!.x > out.last!.x { out.reverse() }
-    return out
+    frontSilhouetteArc(ring)
 }
 
 // invert(p, H) — complement of path p inside a large rect, with evenodd fill
@@ -278,14 +291,29 @@ func drawOutfitFrontStatic(
     context: GraphicsContext,
     outfit: Outfit, H: MochiH,
     cx: CGFloat, cy: CGFloat, tilt: CGFloat, sx: CGFloat, sy: CGFloat,
-    roll: CGFloat, morph: CGFloat, isMini: Bool
+    roll: CGFloat, morph: CGFloat, isMini: Bool,
+    presence: CGFloat = 1
 ) {
     guard !isMini, outfit != .none, outfit != .auto else { return }
 
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
-    let rollFade  = 1 - min(1, max(0, (abs(roll) - 1.2) / 0.5))
-    let opacity   = morphFade * rollFade
+    // Roll-following accessories: z-based rollFade; hats: fixed threshold
+    let rollFollowing: Bool
+    switch outfit {
+    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: rollFollowing = true
+    default: rollFollowing = false
+    }
+    let rollFade: CGFloat
+    if rollFollowing && abs(H.roll) > 0.05 {
+        let z = mProjRoll(H, (0, 0, 1)).z
+        rollFade = max(0, min(1, (z + 0.2) / 0.4))
+    } else {
+        rollFade = 1 - min(1, max(0, (abs(H.roll) - 1.2) / 0.5))
+    }
+    let opacity = morphFade * rollFade * presence
     guard opacity > 0.01 else { return }
+
+    let simplified = H.R < 16
 
     var ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
     ctx.opacity = Double(opacity)
@@ -294,16 +322,12 @@ func drawOutfitFrontStatic(
 
     switch outfit {
     case .beanie:
-        guard H.R > 14 else { return }
-        drawBeaniesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        drawBeaniesFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
     case .santaHat:
-        guard H.R > 14 else { return }
         drawSantaHatFront(ctx: &ctx, H: H, bodyPath: bodyPath)
     case .partyHat:
-        guard H.R > 14 else { return }
-        drawPartyHatFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        drawPartyHatFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
     case .crown:
-        guard H.R > 14 else { return }
         // Shadow under crown
         var g = ctx
         g.clip(to: bodyPath)
@@ -313,9 +337,8 @@ func drawOutfitFrontStatic(
         var shp = Path()
         shp.addRect(CGRect(x: -H.rx * 4, y: -H.ry * 4, width: H.rx * 8, height: H.ry * 8))
         g2.fill(shp, with: .color(Color(red: 0.314, green: 0.196, blue: 0, opacity: 0.12)))
-        drawCrownPart(ctx: &ctx, H: H, side: 1)
+        drawCrownPart(ctx: &ctx, H: H, side: 1, simplified: simplified)
     case .witchHat:
-        guard H.R > 14 else { return }
         drawWitchHatFront(ctx: &ctx, H: H, bodyPath: bodyPath)
     case .sunglasses:
         drawSunglassesFront(ctx: &ctx, H: H, bodyPath: bodyPath)
@@ -324,10 +347,8 @@ func drawOutfitFrontStatic(
     case .scarf:
         drawScarfFront(ctx: &ctx, H: H)
     case .pumpkin:
-        guard H.R > 14 else { return }
-        drawPumpkinFront(ctx: &ctx, H: H, bodyPath: bodyPath)
+        drawPumpkinFront(ctx: &ctx, H: H, bodyPath: bodyPath, simplified: simplified)
     case .bow:
-        guard H.R > 14 else { return }
         drawBowFront(ctx: &ctx, H: H, bodyPath: bodyPath)
     default:
         break
@@ -340,27 +361,39 @@ func drawOutfitBehindStatic(
     context: GraphicsContext,
     outfit: Outfit, H: MochiH,
     cx: CGFloat, cy: CGFloat, tilt: CGFloat, sx: CGFloat, sy: CGFloat,
-    roll: CGFloat, morph: CGFloat, isMini: Bool
+    roll: CGFloat, morph: CGFloat, isMini: Bool,
+    presence: CGFloat = 1
 ) {
     guard !isMini, outfit != .none, outfit != .auto else { return }
 
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
-    let rollFade  = 1 - min(1, max(0, (abs(roll) - 1.2) / 0.5))
-    let opacity   = morphFade * rollFade
+    // Roll-following accessories: z-based rollFade; hats: fixed threshold
+    let rollFollowing: Bool
+    switch outfit {
+    case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: rollFollowing = true
+    default: rollFollowing = false
+    }
+    let rollFade: CGFloat
+    if rollFollowing && abs(H.roll) > 0.05 {
+        let z = mProjRoll(H, (0, 0, 1)).z
+        rollFade = max(0, min(1, (z + 0.2) / 0.4))
+    } else {
+        rollFade = 1 - min(1, max(0, (abs(H.roll) - 1.2) / 0.5))
+    }
+    let opacity = morphFade * rollFade * presence
     guard opacity > 0.01 else { return }
+
+    let simplified = H.R < 16
 
     var ctx = outfitBodyTransform(context: context, cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy)
     ctx.opacity = Double(opacity)
 
     switch outfit {
     case .bunnyEars:
-        guard H.R > 14 else { return }
         drawBunnyEarsBack(ctx: &ctx, H: H)
     case .crown:
-        guard H.R > 14 else { return }
-        drawCrownPart(ctx: &ctx, H: H, side: -1)
+        drawCrownPart(ctx: &ctx, H: H, side: -1, simplified: simplified)
     case .witchHat:
-        guard H.R > 14 else { return }
         drawWitchHatBack(ctx: &ctx, H: H)
     default:
         break
@@ -396,7 +429,7 @@ private func drawBunnyEarsBack(ctx: inout GraphicsContext, H: MochiH) {
 
 // MARK: - Beanie
 
-private func drawBeaniesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
+private func drawBeaniesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path, simplified: Bool = false) {
     let s: CGFloat = 1.035, yEdge: CGFloat = 0.42, yCuff: CGFloat = 0.58
     let head = mochiOutfitPath(H.rx * s, H.ry * s)
 
@@ -419,23 +452,25 @@ private func drawBeaniesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: P
         startPoint: CGPoint(x: H.rx * 0.5,  y: -H.ry * 1.1),
         endPoint:   CGPoint(x: -H.rx * 0.6, y:  H.ry * 0.2)
     ))
-    // vertical knit ribs
-    var ribCtx = knitCtx
-    ribCtx.clip(to: head)
-    for k in -6...6 {
-        let lon = CGFloat(k) * 0.24
-        var pts: [P3] = []
-        for i in 0...16 {
-            let y = yCuff + (1.05 - yCuff) * CGFloat(i) / 16
-            let q = mProj(H, mSurf(y, lon, s))
-            if q.z > 0 { pts.append(q) }
+    // vertical knit ribs (skip when simplified)
+    if !simplified {
+        var ribCtx = knitCtx
+        ribCtx.clip(to: head)
+        for k in -6...6 {
+            let lon = CGFloat(k) * 0.24
+            var pts: [P3] = []
+            for i in 0...16 {
+                let y = yCuff + (1.05 - yCuff) * CGFloat(i) / 16
+                let q = mProj(H, mSurf(y, lon, s))
+                if q.z > 0 { pts.append(q) }
+            }
+            guard pts.count >= 2 else { continue }
+            var rp = Path()
+            rp.move(to: CGPoint(x: pts[0].x, y: pts[0].y))
+            for pt in pts.dropFirst() { rp.addLine(to: CGPoint(x: pt.x, y: pt.y)) }
+            ribCtx.stroke(rp, with: .color(Color(red: 20/255, green: 50/255, blue: 140/255, opacity: 0.16)),
+                          style: StrokeStyle(lineWidth: H.R * 0.045, lineCap: .round))
         }
-        guard pts.count >= 2 else { continue }
-        var rp = Path()
-        rp.move(to: CGPoint(x: pts[0].x, y: pts[0].y))
-        for pt in pts.dropFirst() { rp.addLine(to: CGPoint(x: pt.x, y: pt.y)) }
-        ribCtx.stroke(rp, with: .color(Color(red: 20/255, green: 50/255, blue: 140/255, opacity: 0.16)),
-                      style: StrokeStyle(lineWidth: H.R * 0.045, lineCap: .round))
     }
 
     // cuff (folded band) — clip to [yEdge, yCuff] band using invert
@@ -580,7 +615,7 @@ private func drawSantaHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: 
 
 // MARK: - Party hat
 
-private func drawPartyHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
+private func drawPartyHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path, simplified: Bool = false) {
     let baseY: CGFloat = 0.82, baseR: CGFloat = 0.42
     let lean: CGFloat = -0.24 + H.physDx * 0.12
     let c = mProj(H, (0.16, baseY + 0.06, 0))
@@ -627,20 +662,22 @@ private func drawPartyHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: 
 
     var dotCtx = ctx
     dotCtx.clip(to: cone)
-    // polka dots
-    let dots: [(CGFloat, CGFloat)] = [
-        (0.25, -0.35), (0.3, 0.3), (0.55, -0.05), (0.72, 0.28),
-        (0.8, -0.3),   (0.45, 0.6), (0.48, -0.65)
-    ]
-    for (t, u) in dots {
-        let bx = left.x + (right.x - left.x) * (0.5 + u * 0.5)
-        let by = left.y + (right.y - left.y) * (0.5 + u * 0.5)
-        let x  = bx + (apex.x - bx) * (1 - t)
-        let y  = by + (apex.y - by) * (1 - t)
-        let r  = H.R * 0.075 * (0.6 + t * 0.5)
-        var dot = Path()
-        dot.addEllipse(in: CGRect(x: x - r, y: y - r * 0.9, width: r * 2, height: r * 0.9 * 2))
-        dotCtx.fill(dot, with: .color(Color.white.opacity(0.92)))
+    // polka dots (skip when simplified)
+    if !simplified {
+        let dots: [(CGFloat, CGFloat)] = [
+            (0.25, -0.35), (0.3, 0.3), (0.55, -0.05), (0.72, 0.28),
+            (0.8, -0.3),   (0.45, 0.6), (0.48, -0.65)
+        ]
+        for (t, u) in dots {
+            let bx = left.x + (right.x - left.x) * (0.5 + u * 0.5)
+            let by = left.y + (right.y - left.y) * (0.5 + u * 0.5)
+            let x  = bx + (apex.x - bx) * (1 - t)
+            let y  = by + (apex.y - by) * (1 - t)
+            let r  = H.R * 0.075 * (0.6 + t * 0.5)
+            var dot = Path()
+            dot.addEllipse(in: CGRect(x: x - r, y: y - r * 0.9, width: r * 2, height: r * 0.9 * 2))
+            dotCtx.fill(dot, with: .color(Color.white.opacity(0.92)))
+        }
     }
     dotCtx.fill(cone, with: .linearGradient(
         Gradient(stops: [
@@ -666,7 +703,7 @@ private func drawPartyHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: 
 
 // MARK: - Crown
 
-private func drawCrownPart(ctx: inout GraphicsContext, H: MochiH, side: CGFloat) {
+private func drawCrownPart(ctx: inout GraphicsContext, H: MochiH, side: CGFloat, simplified: Bool = false) {
     let s: CGFloat = 1.06, yb: CGFloat = 0.46, yt: CGFloat = 0.66
     let n = 8, spikeH: CGFloat = 0.42
     let N = 120
@@ -721,40 +758,42 @@ private func drawCrownPart(ctx: inout GraphicsContext, H: MochiH, side: CGFloat)
             startPoint: CGPoint(x: -H.rx, y: 0),
             endPoint:   CGPoint(x:  H.rx, y: 0)
         ))
-        // gems + ball tips on front spikes
-        let gems: [Color] = [Color(hex: "#EF4444"), Color(hex: "#3B82F6"),
-                             Color(hex: "#22C55E"), Color(hex: "#A855F7")]
-        for k in 0..<n {
-            let lon = -.pi + (CGFloat(k) + 0.5) / CGFloat(n) * 2 * .pi
-            let sp = mSurf(yt, lon, s)
-            let tipP = mProj(H, (sp.0 * 0.92, yt + spikeH, sp.2 * 0.92))
-            let mid  = mProj(H, mSurf((yb + yt) / 2, lon, s * 1.01))
-            if mid.z <= 0.12 { continue }
-            let r = H.R * 0.055
-            var tip = Path()
-            tip.addEllipse(in: CGRect(x: tipP.x - r, y: tipP.y - r * 0.5 - r, width: r * 2, height: r * 2))
-            ctx.fill(tip, with: .radialGradient(
-                Gradient(stops: [.init(color: Color(hex: "#FFF6CC"), location: 0),
-                                 .init(color: Color(hex: "#E0A21A"), location: 1)]),
-                center: CGPoint(x: tipP.x - r * 0.3, y: tipP.y - r),
-                startRadius: 0, endRadius: r * 1.2
-            ))
-            let gr = H.R * 0.075
-            var gem = Path()
-            gem.addEllipse(in: CGRect(
-                x: mid.x - gr * max(0.35, mid.z),
-                y: mid.y - gr,
-                width: gr * max(0.35, mid.z) * 2,
-                height: gr * 2
-            ))
-            ctx.fill(gem, with: .color(gems[k % gems.count]))
-            var glint = Path()
-            glint.addEllipse(in: CGRect(
-                x: mid.x - gr * 0.25 * mid.z - gr * 0.28,
-                y: mid.y - gr * 0.35 - gr * 0.28,
-                width: gr * 0.56, height: gr * 0.56
-            ))
-            ctx.fill(glint, with: .color(Color.white.opacity(0.75)))
+        // gems + ball tips on front spikes (skip when simplified)
+        if !simplified {
+            let gems: [Color] = [Color(hex: "#EF4444"), Color(hex: "#3B82F6"),
+                                 Color(hex: "#22C55E"), Color(hex: "#A855F7")]
+            for k in 0..<n {
+                let lon = -.pi + (CGFloat(k) + 0.5) / CGFloat(n) * 2 * .pi
+                let sp = mSurf(yt, lon, s)
+                let tipP = mProj(H, (sp.0 * 0.92, yt + spikeH, sp.2 * 0.92))
+                let mid  = mProj(H, mSurf((yb + yt) / 2, lon, s * 1.01))
+                if mid.z <= 0.12 { continue }
+                let r = H.R * 0.055
+                var tip = Path()
+                tip.addEllipse(in: CGRect(x: tipP.x - r, y: tipP.y - r * 0.5 - r, width: r * 2, height: r * 2))
+                ctx.fill(tip, with: .radialGradient(
+                    Gradient(stops: [.init(color: Color(hex: "#FFF6CC"), location: 0),
+                                     .init(color: Color(hex: "#E0A21A"), location: 1)]),
+                    center: CGPoint(x: tipP.x - r * 0.3, y: tipP.y - r),
+                    startRadius: 0, endRadius: r * 1.2
+                ))
+                let gr = H.R * 0.075
+                var gem = Path()
+                gem.addEllipse(in: CGRect(
+                    x: mid.x - gr * max(0.35, mid.z),
+                    y: mid.y - gr,
+                    width: gr * max(0.35, mid.z) * 2,
+                    height: gr * 2
+                ))
+                ctx.fill(gem, with: .color(gems[k % gems.count]))
+                var glint = Path()
+                glint.addEllipse(in: CGRect(
+                    x: mid.x - gr * 0.25 * mid.z - gr * 0.28,
+                    y: mid.y - gr * 0.35 - gr * 0.28,
+                    width: gr * 0.56, height: gr * 0.56
+                ))
+                ctx.fill(glint, with: .color(Color.white.opacity(0.75)))
+            }
         }
     }
 }
@@ -933,7 +972,8 @@ private func drawWitchHatFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: 
 // MARK: - Sunglasses
 
 private func drawSunglassesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
-    let eyes = mEyeFrames(H)
+    let rollH = MochiH(R: H.R, yaw: H.yaw, pitch: H.pitch + H.roll, physDx: H.physDx, physDy: H.physDy)
+    let eyes = mEyeFrames(rollH)
     let w = H.R * 0.62, h = H.R * 0.46
 
     var g = ctx
@@ -990,7 +1030,8 @@ private func drawSunglassesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath
 // MARK: - Round glasses
 
 private func drawRoundGlassesFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
-    let eyes = mEyeFrames(H)
+    let rollH = MochiH(R: H.R, yaw: H.yaw, pitch: H.pitch + H.roll, physDx: H.physDx, physDy: H.physDy)
+    let eyes = mEyeFrames(rollH)
     let d = H.R * 0.56
 
     var g = ctx
@@ -1039,8 +1080,8 @@ private func drawRoundGlassesFront(ctx: inout GraphicsContext, H: MochiH, bodyPa
 
 private func drawScarfFront(ctx: inout GraphicsContext, H: MochiH) {
     let s: CGFloat = 1.05, y0: CGFloat = -0.34, y1: CGFloat = -0.66
-    let top = mFrontArc(H, y: y0, s: s)
-    let bot = mFrontArc(H, y: y1, s: s)
+    let top = mFrontArcRoll(H, y: y0, s: s)
+    let bot = mFrontArcRoll(H, y: y1, s: s)
     guard !top.isEmpty, !bot.isEmpty else { return }
 
     var band = Path()
@@ -1147,33 +1188,35 @@ private func drawScarfFront(ctx: inout GraphicsContext, H: MochiH) {
 
 // MARK: - Pumpkin
 
-private func drawPumpkinFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
+private func drawPumpkinFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path, simplified: Bool = false) {
     // ribs only — body recolor is done in BotEngine.drawBody(pumpkinColors:)
-    var g = ctx
-    g.clip(to: bodyPath)
-    for lon: CGFloat in [-1.15, -0.55, 0.0, 0.55, 1.15] {
-        var pts: [P3] = []
-        for i in 0...30 {
-            let y = -0.98 + 1.96 * CGFloat(i) / 30
-            let q = mProj(H, mSurf(y, lon, 1))
-            if q.z > 0 { pts.append(q) }
+    if !simplified {
+        var g = ctx
+        g.clip(to: bodyPath)
+        for lon: CGFloat in [-1.15, -0.55, 0.0, 0.55, 1.15] {
+            var pts: [P3] = []
+            for i in 0...30 {
+                let y = -0.98 + 1.96 * CGFloat(i) / 30
+                let q = mProjRoll(H, mSurf(y, lon, 1))
+                if q.z > 0 { pts.append(q) }
+            }
+            guard pts.count >= 2 else { continue }
+            var rib = Path()
+            rib.move(to: CGPoint(x: pts[0].x, y: pts[0].y))
+            for pt in pts.dropFirst() { rib.addLine(to: CGPoint(x: pt.x, y: pt.y)) }
+            let zz = pts[pts.count / 2].z
+            g.stroke(rib, with: .color(Color(red: 150/255, green: 50/255, blue: 0, opacity: 0.22 * zz)),
+                     style: StrokeStyle(lineWidth: H.R * 0.12, lineCap: .round))
+            // highlight offset stripe
+            var hi = Path()
+            hi.move(to: CGPoint(x: pts[0].x + H.R * 0.07, y: pts[0].y))
+            for pt in pts.dropFirst() { hi.addLine(to: CGPoint(x: pt.x + H.R * 0.07, y: pt.y)) }
+            g.stroke(hi, with: .color(Color(red: 1, green: 220/255, blue: 170/255, opacity: 0.18 * zz)),
+                     style: StrokeStyle(lineWidth: H.R * 0.04, lineCap: .round))
         }
-        guard pts.count >= 2 else { continue }
-        var rib = Path()
-        rib.move(to: CGPoint(x: pts[0].x, y: pts[0].y))
-        for pt in pts.dropFirst() { rib.addLine(to: CGPoint(x: pt.x, y: pt.y)) }
-        let zz = pts[pts.count / 2].z
-        g.stroke(rib, with: .color(Color(red: 150/255, green: 50/255, blue: 0, opacity: 0.22 * zz)),
-                 style: StrokeStyle(lineWidth: H.R * 0.12, lineCap: .round))
-        // highlight offset stripe
-        var hi = Path()
-        hi.move(to: CGPoint(x: pts[0].x + H.R * 0.07, y: pts[0].y))
-        for pt in pts.dropFirst() { hi.addLine(to: CGPoint(x: pt.x + H.R * 0.07, y: pt.y)) }
-        g.stroke(hi, with: .color(Color(red: 1, green: 220/255, blue: 170/255, opacity: 0.18 * zz)),
-                 style: StrokeStyle(lineWidth: H.R * 0.04, lineCap: .round))
     }
 
-    let t = mProj(H, (0.02, 1.0, 0))
+    let t = mProjRoll(H, (0.02, 1.0, 0))
     // stem
     var stem = Path()
     stem.move(to: CGPoint(x: t.x - H.R * 0.09, y: t.y + H.R * 0.04))
@@ -1227,22 +1270,24 @@ private func drawPumpkinFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: P
     leafCtx.stroke(vein, with: .color(Color(red: 30/255, green: 60/255, blue: 0, opacity: 0.4)),
                    style: StrokeStyle(lineWidth: H.R * 0.02, lineCap: .round))
 
-    // tendril
-    var tendril = Path()
-    tendril.move(to: CGPoint(x: t.x + H.R * 0.1, y: t.y - H.R * 0.12))
-    tendril.addCurve(
-        to:       CGPoint(x: t.x + H.R * 0.22, y: t.y - H.R * 0.06),
-        control1: CGPoint(x: t.x + H.R * 0.3,  y: t.y - H.R * 0.25),
-        control2: CGPoint(x: t.x + H.R * 0.35, y: t.y - H.R * 0.02)
-    )
-    ctx.stroke(tendril, with: .color(Color(hex: "#4D7C0F")),
-               style: StrokeStyle(lineWidth: H.R * 0.03, lineCap: .round))
+    // tendril (skip when simplified)
+    if !simplified {
+        var tendril = Path()
+        tendril.move(to: CGPoint(x: t.x + H.R * 0.1, y: t.y - H.R * 0.12))
+        tendril.addCurve(
+            to:       CGPoint(x: t.x + H.R * 0.22, y: t.y - H.R * 0.06),
+            control1: CGPoint(x: t.x + H.R * 0.3,  y: t.y - H.R * 0.25),
+            control2: CGPoint(x: t.x + H.R * 0.35, y: t.y - H.R * 0.02)
+        )
+        ctx.stroke(tendril, with: .color(Color(hex: "#4D7C0F")),
+                   style: StrokeStyle(lineWidth: H.R * 0.03, lineCap: .round))
+    }
 }
 
 // MARK: - Bow
 
 private func drawBowFront(ctx: inout GraphicsContext, H: MochiH, bodyPath: Path) {
-    let a = mProj(H, mSurf(0.86, 0.55, 1.02))
+    let a = mProjRoll(H, mSurf(0.86, 0.55, 1.02))
     guard a.z >= -0.2 else { return }
     let s = H.R * 0.26
     let sq = max(0.45, cos(0.55 + H.yaw))

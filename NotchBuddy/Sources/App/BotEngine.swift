@@ -189,6 +189,8 @@ final class BotEngine: ObservableObject {
     var outfit: Outfit = .none
     var es:     CGFloat = 1          // eye scale
     var badgeS: CGFloat = 0          // badge scale
+    var outfitPresence: CGFloat = 0  // 0=hidden, 1=fully visible (animated)
+    private var outfitTarget: Outfit = .none
 
     // Physical spring (hat/pompom lag) — updated in update()
     var physDx: CGFloat = 0   // horizontal lag (-1..1)
@@ -332,6 +334,7 @@ final class BotEngine: ObservableObject {
     }
 
     func squash() {
+        physVy += 0.6
         anim("sy", keys: [
             TweenKey(target: 0.78, duration: 70,  ease: Ease.out),
             TweenKey(target: 1.1,  duration: 130, ease: Ease.out),
@@ -379,6 +382,8 @@ final class BotEngine: ObservableObject {
         slapTimes.append(now)
         SoundEngine.shared.play("slap")
         squash()
+        physVy -= 1.2
+        physVx += Bool.random() ? 0.7 : -0.7
         if slapTimes.count >= 3 {
             slapTimes = []
             NotificationCenter.default.post(name: .botDizzy, object: nil)
@@ -479,12 +484,41 @@ final class BotEngine: ObservableObject {
         }
     }
 
+    func setOutfit(_ newOutfit: Outfit, animated: Bool = true) {
+        guard newOutfit != outfitTarget else { return }
+        outfitTarget = newOutfit
+        tweens.removeValue(forKey: "outfitPresence")
+        locks.remove("outfitPresence")
+        if !animated {
+            outfit = newOutfit
+            outfitPresence = newOutfit != .none ? 1 : 0
+        } else if newOutfit == .none {
+            // Exit: fade out then clear outfit
+            anim("outfitPresence", keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)]) { [weak self] in
+                self?.outfit = .none
+            }
+        } else if outfit == .none {
+            // Enter: set outfit then fade in
+            outfit = newOutfit
+            outfitPresence = 0
+            anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.back)])
+        } else {
+            // Change: exit old, set new, enter
+            anim("outfitPresence", keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)]) { [weak self] in
+                guard let self else { return }
+                self.outfit = newOutfit
+                self.anim("outfitPresence", keys: [TweenKey(target: 1, duration: 350, ease: Ease.back)])
+            }
+        }
+    }
+
     func greet() {
         let now = CACurrentMediaTime()
         greetToken += 1
         let tok = greetToken
         waveStart = now + 0.45   // wave begins at 0.45s
         waveUntil = now + 1.55   // wave ends at 1.55s
+        physVx += 0.2
 
         // 0s: happy eyes for full greeting (2s — no gap, no flicker)
         eyeOverride = .happy
@@ -1042,10 +1076,11 @@ final class BotEngine: ObservableObject {
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy)
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: roll)
         drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
                                cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                               roll: roll, morph: morph, isMini: isMini)
+                               roll: roll, morph: morph, isMini: isMini,
+                               presence: outfitPresence)
     }
 
     func drawOutfitFront(context: GraphicsContext, size: CGSize) {
@@ -1053,10 +1088,18 @@ final class BotEngine: ObservableObject {
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
-        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy)
+        let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: physDx, physDy: physDy, roll: roll)
         drawOutfitFrontStatic(context: context, outfit: outfit, H: mH,
                               cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                              roll: roll, morph: morph, isMini: isMini)
+                              roll: roll, morph: morph, isMini: isMini,
+                              presence: outfitPresence)
+    }
+
+    var outfitFollowsRoll: Bool {
+        switch outfit {
+        case .sunglasses, .roundGlasses, .bow, .scarf, .pumpkin: return true
+        default: return false
+        }
     }
 
     // MARK: - Private draw helpers
@@ -1133,7 +1176,7 @@ final class BotEngine: ObservableObject {
 
     private func drawBody(ctx: inout GraphicsContext, path: Path, R: CGFloat, rx: CGFloat, ry: CGFloat,
                           pumpkinColors: Bool = false) {
-        if let bc = bodyColor {
+        if let bc = bodyColor, !pumpkinColors {
             // Mini bots: flat solid fill — no gradient, no reflection, no highlight
             ctx.fill(path, with: .color(Color(cgColor: bc)))
         } else {
@@ -1458,43 +1501,45 @@ final class BotEngine: ObservableObject {
 
     private func setProperty(_ key: String, value: CGFloat) {
         switch key {
-        case "yaw":    yaw    = value
-        case "pitch":  pitch  = value
-        case "roll":   roll   = value
-        case "tilt":   tilt   = value
-        case "open":   open   = value
-        case "sx":     sx     = value
-        case "sy":     sy     = value
-        case "oy":     oy     = value
-        case "ox":     ox     = value
-        case "tint":   tint   = value
-        case "morph":  morph  = value
-        case "hands":  hands  = value
-        case "blush":  blush  = value
-        case "es":     es     = value
-        case "badgeS": badgeS = value
+        case "yaw":           yaw           = value
+        case "pitch":         pitch         = value
+        case "roll":          roll          = value
+        case "tilt":          tilt          = value
+        case "open":          open          = value
+        case "sx":            sx            = value
+        case "sy":            sy            = value
+        case "oy":            oy            = value
+        case "ox":            ox            = value
+        case "tint":          tint          = value
+        case "morph":         morph         = value
+        case "hands":         hands         = value
+        case "blush":         blush         = value
+        case "es":            es            = value
+        case "badgeS":        badgeS        = value
+        case "outfitPresence": outfitPresence = value
         default: break
         }
     }
 
     private func getProperty(_ key: String) -> CGFloat {
         switch key {
-        case "yaw":    return yaw
-        case "pitch":  return pitch
-        case "roll":   return roll
-        case "tilt":   return tilt
-        case "open":   return open
-        case "sx":     return sx
-        case "sy":     return sy
-        case "oy":     return oy
-        case "ox":     return ox
-        case "tint":   return tint
-        case "morph":  return morph
-        case "hands":  return hands
-        case "blush":  return blush
-        case "es":     return es
-        case "badgeS": return badgeS
-        default:       return 0
+        case "yaw":           return yaw
+        case "pitch":         return pitch
+        case "roll":          return roll
+        case "tilt":          return tilt
+        case "open":          return open
+        case "sx":            return sx
+        case "sy":            return sy
+        case "oy":            return oy
+        case "ox":            return ox
+        case "tint":          return tint
+        case "morph":         return morph
+        case "hands":         return hands
+        case "blush":         return blush
+        case "es":            return es
+        case "badgeS":        return badgeS
+        case "outfitPresence": return outfitPresence
+        default:              return 0
         }
     }
 }

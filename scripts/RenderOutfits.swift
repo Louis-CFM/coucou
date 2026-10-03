@@ -54,6 +54,8 @@ struct MochiCell: View {
     let tilt: CGFloat
     let phys: (dx: CGFloat, dy: CGFloat)
     let cellSize: CGFloat
+    var roll: CGFloat = 0
+    var presence: CGFloat = 1
 
     var body: some View {
         Canvas { context, sz in
@@ -65,15 +67,15 @@ struct MochiCell: View {
             let cx = W / 2
             let cy = H / 2 + R * 0.06
             let sx: CGFloat = 1, sy: CGFloat = 1
-            let morph: CGFloat = 0, roll: CGFloat = 0
+            let morph: CGFloat = 0
 
-            let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: phys.dx, physDy: phys.dy)
+            let mH = MochiH(R: R, yaw: yaw, pitch: pitch, physDx: phys.dx, physDy: phys.dy, roll: roll)
 
             // 1. Behind-body outfit
             drawOutfitBehindStatic(
                 context: context, outfit: outfit, H: mH,
                 cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                roll: roll, morph: morph, isMini: false
+                roll: roll, morph: morph, isMini: false, presence: presence
             )
 
             // 2. Body (replicate BotEngine.drawBody for idle / pumpkin state)
@@ -132,7 +134,7 @@ struct MochiCell: View {
             drawOutfitFrontStatic(
                 context: context, outfit: outfit, H: mH,
                 cx: cx, cy: cy, tilt: tilt, sx: sx, sy: sy,
-                roll: roll, morph: morph, isMini: false
+                roll: roll, morph: morph, isMini: false, presence: presence
             )
         }
         .frame(width: cellSize, height: cellSize)
@@ -208,35 +210,122 @@ struct OutfitGrid: View {
     }
 }
 
+// MARK: - Roll planche
+
+private let rollOutfits: [Outfit] = [
+    .beanie, .santaHat, .witchHat, .crown,
+    .sunglasses, .roundGlasses, .scarf, .bow, .pumpkin, .bunnyEars
+]
+
+private let rollValues: [CGFloat] = [0, CGFloat.pi/3, CGFloat.pi*2/3, CGFloat.pi, CGFloat.pi*4/3, CGFloat.pi*5/3]
+
+struct RollGrid: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: gap) {
+            // Column headers
+            HStack(spacing: gap) {
+                Spacer().frame(width: labelW)
+                ForEach(rollValues.indices, id: \.self) { i in
+                    Text(String(format: "%.2fπ", rollValues[i] / .pi))
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.gray)
+                        .frame(width: 120, alignment: .center)
+                }
+            }
+            ForEach(rollOutfits.indices, id: \.self) { oi in
+                let outfit = rollOutfits[oi]
+                HStack(spacing: gap) {
+                    Text(outfit.rawValue)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white)
+                        .frame(width: labelW, alignment: .trailing)
+                    ForEach(rollValues.indices, id: \.self) { ri in
+                        MochiCell(outfit: outfit, yaw: 0, pitch: 0, tilt: 0, phys: (0, 0),
+                                  cellSize: 120, roll: rollValues[ri])
+                            .background(Color(red: 0.083, green: 0.090, blue: 0.106))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.043, green: 0.047, blue: 0.055))
+    }
+}
+
+// MARK: - Transition planche
+
+private let transitionOutfits: [Outfit] = [.witchHat, .santaHat, .bunnyEars, .scarf]
+private let presenceValues: [CGFloat] = [0, 0.3, 0.6, 1]
+
+struct TransitionGrid: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: gap) {
+            // Column headers
+            HStack(spacing: gap) {
+                Spacer().frame(width: labelW)
+                ForEach(presenceValues.indices, id: \.self) { i in
+                    Text(String(format: "p=%.1f", presenceValues[i]))
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.gray)
+                        .frame(width: 120, alignment: .center)
+                }
+            }
+            ForEach(transitionOutfits.indices, id: \.self) { oi in
+                let outfit = transitionOutfits[oi]
+                HStack(spacing: gap) {
+                    Text(outfit.rawValue)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white)
+                        .frame(width: labelW, alignment: .trailing)
+                    ForEach(presenceValues.indices, id: \.self) { pi in
+                        MochiCell(outfit: outfit, yaw: 0, pitch: 0, tilt: 0, phys: (0, 0),
+                                  cellSize: 120, presence: presenceValues[pi])
+                            .background(Color(red: 0.083, green: 0.090, blue: 0.106))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.043, green: 0.047, blue: 0.055))
+    }
+}
+
+// MARK: - Helper to render and save a view
+
+@MainActor
+private func renderAndSave<V: View>(_ view: V, path: String) {
+    let renderer = ImageRenderer(content: view)
+    renderer.scale = 2.0
+    guard let nsImage = renderer.nsImage else {
+        print("Error: ImageRenderer returned nil for \(path)")
+        return
+    }
+    guard let tiff = nsImage.tiffRepresentation,
+          let rep  = NSBitmapImageRep(data: tiff),
+          let png  = rep.representation(using: .png, properties: [:])
+    else {
+        print("Error: PNG conversion failed for \(path)")
+        return
+    }
+    do {
+        try png.write(to: URL(fileURLWithPath: path))
+        print("✓ \(path) — \(Int(nsImage.size.width))×\(Int(nsImage.size.height)) @ 2×")
+    } catch {
+        print("Error writing \(path): \(error)")
+    }
+}
+
 // MARK: - Entry point
 
 @main
 struct RenderOutfits {
     static func main() {
         MainActor.assumeIsolated {
-            let renderer = ImageRenderer(content: OutfitGrid())
-            renderer.scale = 2.0
-
-            guard let nsImage = renderer.nsImage else {
-                print("Error: ImageRenderer returned nil")
-                Foundation.exit(1)
-            }
-            guard let tiff = nsImage.tiffRepresentation,
-                  let rep  = NSBitmapImageRep(data: tiff),
-                  let png  = rep.representation(using: .png, properties: [:])
-            else {
-                print("Error: PNG conversion failed")
-                Foundation.exit(1)
-            }
-
-            let path = "/tmp/coucou-outfits.png"
-            do {
-                try png.write(to: URL(fileURLWithPath: path))
-                print("✓ \(path) — \(Int(nsImage.size.width))×\(Int(nsImage.size.height)) @ 2×")
-            } catch {
-                print("Error writing PNG: \(error)")
-                Foundation.exit(1)
-            }
+            renderAndSave(OutfitGrid(),      path: "/tmp/coucou-outfits.png")
+            renderAndSave(RollGrid(),        path: "/tmp/coucou-roll.png")
+            renderAndSave(TransitionGrid(),  path: "/tmp/coucou-transition.png")
         }
     }
 }

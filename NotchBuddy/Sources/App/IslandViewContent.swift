@@ -4020,7 +4020,8 @@ struct WardrobeView: View {
                                 state.mochiOutfitSelection = outfit
                                 SoundEngine.shared.play("pop")
                                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
-                            }
+                            },
+                            seasonalOutfit: outfit == .auto ? state.resolvedOutfit : .none
                         )
                     }
                 }
@@ -4060,10 +4061,11 @@ struct OutfitPillView: View {
     let isHovered: Bool
     let onHover: (Bool) -> Void
     let onTap: () -> Void
+    var seasonalOutfit: Outfit = .none
 
     var body: some View {
         Canvas { context, size in
-            drawOutfitIcon(context: context, size: size, outfit: outfit)
+            drawOutfitIcon(context: context, size: size, outfit: outfit, seasonal: seasonalOutfit)
         }
         .frame(width: 30, height: 30)
         .background(
@@ -4079,26 +4081,68 @@ struct OutfitPillView: View {
     }
 }
 
-private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outfit) {
+private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outfit, seasonal: Outfit = .none) {
     let W = size.width, H = size.height
     let cx = W / 2, cy = H / 2
     let R: CGFloat = 6.5   // small scale for icon
 
     switch outfit {
     case .auto:
-        // Asterisk / sparkle
-        var ctx = context
-        ctx.translateBy(x: cx, y: cy)
-        for i in 0..<6 {
-            let a = CGFloat(i) * .pi / 3
-            var p = Path()
-            p.move(to: CGPoint(x: cos(a) * R * 0.3, y: sin(a) * R * 0.3))
-            p.addLine(to: CGPoint(x: cos(a) * R * 1.2, y: sin(a) * R * 1.2))
-            ctx.stroke(p, with: .color(Color(hex: "#F7B32B")), lineWidth: 1.5)
+        let iconR: CGFloat = 10.0
+        let rx = iconR * 1.14, ry = iconR * 0.88
+        let mH = MochiH(R: iconR, yaw: 0, pitch: 0)
+        let bodyPath = mochiOutfitPath(rx, ry)
+        let iconCY = cy + iconR * 0.62
+
+        // Draw the seasonal outfit behind body
+        if seasonal != .none && seasonal != .auto {
+            drawOutfitBehindStatic(context: context, outfit: seasonal, H: mH,
+                                   cx: cx, cy: iconCY, tilt: 0, sx: 1, sy: 1,
+                                   roll: 0, morph: 0, isMini: false)
         }
-        var dot = Path()
-        dot.addEllipse(in: CGRect(x: -R * 0.28, y: -R * 0.28, width: R * 0.56, height: R * 0.56))
-        ctx.fill(dot, with: .color(Color(hex: "#F7B32B")))
+        // Body
+        var ctx = context
+        ctx.translateBy(x: cx, y: iconCY)
+        ctx.fill(bodyPath, with: .linearGradient(
+            Gradient(colors: [Color(red: 0.929, green: 0.929, blue: 0.937),
+                              Color(red: 0.769, green: 0.773, blue: 0.792)]),
+            startPoint: CGPoint(x: rx*0.7, y: -ry*0.85),
+            endPoint:   CGPoint(x: -rx*0.8, y: ry*0.9)
+        ))
+        ctx.fill(bodyPath, with: .radialGradient(
+            Gradient(stops: [.init(color: .clear, location: 0.6),
+                             .init(color: Color.black.opacity(0.2), location: 1)]),
+            center: .zero, startRadius: iconR*0.15, endRadius: iconR*1.25
+        ))
+        // Eyes
+        var eyeCtx = ctx; eyeCtx.clip(to: bodyPath)
+        let ink = Color(red: 0.102, green: 0.082, blue: 0.071)
+        for f in mEyeFrames(mH) {
+            guard f.visible else { continue }
+            var ec = eyeCtx; ec.translateBy(x: f.x, y: f.y); ec.scaleBy(x: f.fx, y: f.fy)
+            let hh = max(f.h, f.w*0.3)
+            var pill = Path()
+            pill.addRoundedRect(in: CGRect(x: -f.w/2, y: -hh/2, width: f.w, height: hh),
+                                cornerSize: CGSize(width: min(f.w/2,hh/2), height: min(f.w/2,hh/2)))
+            ec.fill(pill, with: .color(ink))
+        }
+        // Front outfit
+        if seasonal != .none && seasonal != .auto {
+            drawOutfitFrontStatic(context: context, outfit: seasonal, H: mH,
+                                  cx: cx, cy: iconCY, tilt: 0, sx: 1, sy: 1,
+                                  roll: 0, morph: 0, isMini: false)
+        }
+        // AUTO badge at bottom
+        var badgeCtx = context
+        let badgeCY = iconCY + ry * 0.72
+        badgeCtx.translateBy(x: cx, y: badgeCY)
+        let bw: CGFloat = 14, bh: CGFloat = 6.5
+        var badge = Path()
+        badge.addRoundedRect(in: CGRect(x: -bw/2, y: -bh/2, width: bw, height: bh),
+                             cornerSize: CGSize(width: bh/2, height: bh/2))
+        badgeCtx.fill(badge, with: .color(Color.black.opacity(0.60)))
+        badgeCtx.draw(Text("AUTO").font(.system(size: 4.2, weight: .semibold)).foregroundColor(.white),
+                      at: .zero)
 
     case .none:
         var ctx = context
@@ -4114,11 +4158,11 @@ private func drawOutfitIcon(context: GraphicsContext, size: CGSize, outfit: Outf
 
     default:
         // Small Mochi wearing the outfit
-        let iconR: CGFloat = W * 0.62 * 0.3
+        let iconR: CGFloat = 10.0
         let rx = iconR * 1.14, ry = iconR * 0.88
         let mH = MochiH(R: iconR, yaw: 0, pitch: 0)
         let bodyPath = mochiOutfitPath(rx, ry)
-        let iconCY = cy + iconR * 0.45
+        let iconCY = cy + iconR * 0.62
 
         // Draw outfit behind
         drawOutfitBehindStatic(context: context, outfit: outfit, H: mH,
