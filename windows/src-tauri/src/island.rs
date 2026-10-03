@@ -195,6 +195,9 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
+        let mut pressed_outside = false;
+        let mut shielded = false;
+        let mut file_drag_seen = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
@@ -261,6 +264,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives.
                 let down = left_button_down();
+                let was_down_before = was_down;
                 if down && !was_down {
                     let handle = app.clone();
                     let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
@@ -272,6 +276,34 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     && x <= size.0
                     && y >= 0.0
                     && y <= size.1;
+
+                // A button pressed *outside* the panel and still held over it is a
+                // drag from elsewhere — a file, not a click. The window under the
+                // cursor is then WebView2's, in another process, and OLE never
+                // reaches the drop target on our windows above it. Disabling our
+                // webview host window for the length of the drag makes Windows
+                // skip that whole subtree, so the hit lands on WRY_WEBVIEW, which
+                // carries our own drop target (drop_target.rs). Released → back.
+                if down && !was_down_before {
+                    pressed_outside = !(x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1);
+                }
+                let file_drag = dragging && pressed_outside;
+                if file_drag != shielded {
+                    shielded = file_drag;
+                    let handle = app.clone();
+                    let _ = app.run_on_main_thread(move || {
+                        platform::shield_webview(&handle, file_drag)
+                    });
+                }
+                // The drag is over once the button comes up. A drop has already
+                // been delivered by then; anything else (released elsewhere, Esc)
+                // must not leave the island waiting for a file that never comes.
+                if file_drag {
+                    file_drag_seen = true;
+                } else if !down && file_drag_seen {
+                    file_drag_seen = false;
+                    let _ = app.emit_to(WINDOW_LABEL, "file-drag", serde_json::json!({ "type": "end" }));
+                }
 
                 let accept = on_island || dragging;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {

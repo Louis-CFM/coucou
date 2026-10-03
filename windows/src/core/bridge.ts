@@ -146,13 +146,23 @@ export type BridgeEvent =
   | { name: "screen-changed"; payload: null };
 
 export interface DragDropPayload {
-  type: "enter" | "over" | "drop" | "leave";
+  /** `end`: the drag finished without a drop on the island. */
+  type: "enter" | "over" | "drop" | "leave" | "end";
   paths?: string[];
 }
 
-/** Files dragged onto the island. Only reaches us when the window takes the mouse. */
+/**
+ * Files dragged onto the island. Only reaches us when the window takes the mouse.
+ * On Windows they come from Coucou's own drop target (drop_target.rs), not
+ * Tauri's: WebView2 replaces the one wry installs with a target that refuses
+ * every file. Elsewhere Tauri's own events work. WebView2 says "Windows" in its
+ * user agent.
+ */
 export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   if (!IS_TAURI) return () => {};
+  if (/Windows/.test(navigator.userAgent)) {
+    return listen<DragDropPayload>("file-drag", (e) => handler(e.payload));
+  }
   return getCurrentWebview().onDragDropEvent((event) => {
     handler(event.payload as DragDropPayload);
   });

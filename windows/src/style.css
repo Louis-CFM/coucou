@@ -133,6 +133,19 @@ body {
   transition: opacity 0.22s ease-in-out;
 }
 
+/* …and so do their clicks. The content sits above the sequence, and an
+   invisible-but-active view (or the content box itself) used to swallow the
+   clicks meant for the buttons the canvas paints — Cancel did nothing. Only the
+   header stays clickable on top. (`!important`: syncDom sets it inline.) */
+#content.upload-active,
+#views.hidden-by-upload .view.on {
+  pointer-events: none !important;
+}
+
+#content.upload-active #header {
+  pointer-events: auto;
+}
+
 #bot-glow {
   position: absolute;
   pointer-events: none;

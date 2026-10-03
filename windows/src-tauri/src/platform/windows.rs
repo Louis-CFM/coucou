@@ -191,7 +191,24 @@ pub fn unblock_webview_drops(app: &AppHandle) {
         unsafe {
             let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
         }
+        // That is no longer enough on its own: newer WebView2 runtimes also put
+        // a refusing target on `Chrome_WidgetWin_0`, in our own process, where
+        // wry's used to be. Our own target replaces both (see drop_target.rs).
+        if label == WINDOW_LABEL {
+            crate::drop_target::install(app, hwnd);
+        }
     }
+}
+
+/// The island's top-level window handle.
+pub fn island_hwnd(app: &AppHandle) -> Option<HWND> {
+    app.get_webview_window(WINDOW_LABEL).as_ref().and_then(hwnd_of)
+}
+
+/// For the length of a file drag from elsewhere, takes WebView2's host window
+/// out of the hit test so the drop lands on our own target (drop_target.rs).
+pub fn shield_webview(app: &AppHandle, on: bool) {
+    crate::drop_target::shield_webview(app, on);
 }
 
 unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {

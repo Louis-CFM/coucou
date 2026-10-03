@@ -159,6 +159,7 @@ export class Island {
         void Bridge.saveSettings(State.settings);
         State.notify();
       },
+      cancelDrop: () => this.cancelDrop(),
       setAutoClose: (s) => {
         State.settings.autoCloseInterval = s;
         this.fsm.homeToPetitDelay = s;
@@ -191,7 +192,7 @@ export class Island {
           : null;
         this.setView("prompt");
       },
-      cancel: () => this.setView(State.defaultView()),
+      cancel: () => this.cancelDrop(),
     });
 
     this.clipEl = h(
@@ -341,6 +342,18 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
+  /**
+   * Cancel on the drop card. The file goes with it: leaving it in the state
+   * meant the next chat still carried it, chip and all.
+   */
+  private cancelDrop() {
+    State.droppedFile = null;
+    State.promptContext = null;
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    this.setView(State.defaultView());
+  }
+
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
@@ -363,6 +376,17 @@ export class Island {
         // The island deliberately stays open: the drag session is still alive.
         UploadSeq.exitZone();
         State.notify();
+        break;
+      }
+      case "end": {
+        // Released somewhere else (or Esc): give the drop zone back, unless a
+        // drop got here first — the end can race the drop by a few ms.
+        window.setTimeout(() => {
+          if (State.view !== "upload" || UploadSeq.dropped) return;
+          State.fileDragOver = false;
+          this.engine.animateMorph(0);
+          this.setView(State.defaultView());
+        }, 250);
         break;
       }
       case "drop": {
@@ -715,6 +739,7 @@ export class Island {
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+    this.contentEl.classList.toggle("upload-active", uploadActive);
 
     tickMiniBots(dt);
     this.views.get(State.view)?.tick?.(nowMs);
