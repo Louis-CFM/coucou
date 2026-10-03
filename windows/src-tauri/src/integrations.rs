@@ -42,6 +42,7 @@ pub struct IntegrationEvent {
 }
 
 fn emit(app: &AppHandle, update: IntegrationUpdate) {
+    crate::island::before_news(app);
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 

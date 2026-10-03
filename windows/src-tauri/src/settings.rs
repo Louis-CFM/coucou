@@ -20,6 +20,15 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// The island stays away while an app has the whole display, and only a
+    /// request waiting for an answer brings it out. On until switched off, and
+    /// absent from a settings.json written before it existed.
+    #[serde(default = "yes")]
+    pub hide_in_fullscreen: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn default_model() -> String {
@@ -43,6 +52,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            hide_in_fullscreen: true,
         }
     }
 }

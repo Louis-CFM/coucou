@@ -10,8 +10,16 @@ export class IslandStateMachine {
 
   /** home → petit delay, seconds. */
   homeToPetitDelay = 15;
-  /** petit → hidden delay, seconds. */
-  petitToHiddenDelay = 60;
+  /**
+   * petit → hidden delay, seconds. Short: on a PC the folded island sits on
+   * tabs and title bars, not in a notch where there is nothing to cover.
+   */
+  petitToHiddenDelay = 6;
+  /**
+   * The same, for an island the mouse brought out and left without a click:
+   * it was a look, or the mouse was only passing, and it goes back at once.
+   */
+  peekToHiddenDelay = 2;
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -19,6 +27,8 @@ export class IslandStateMachine {
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
 
+  /** The mouse brought the island out of hiding, and has not clicked it since. */
+  private peeked = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
@@ -34,6 +44,7 @@ export class IslandStateMachine {
     switch (this.state) {
       case "hidden":
         this.cancelTimers();
+        this.peeked = true;
         this.transition("petit");
         break;
       case "petit":
@@ -106,10 +117,11 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    const delay = this.peeked ? this.peekToHiddenDelay : this.petitToHiddenDelay;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
-    }, this.petitToHiddenDelay * 1000);
+    }, delay * 1000);
   }
 
   private scheduleHomeCollapse() {
@@ -145,6 +157,7 @@ export class IslandStateMachine {
     if (next === this.state) return;
     const from = this.state;
     this.state = next;
+    if (next !== "petit") this.peeked = false;
     this.onTransition?.(from, next);
   }
 }

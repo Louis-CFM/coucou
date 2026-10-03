@@ -160,6 +160,12 @@ pub fn left_button_down() -> bool {
     false
 }
 
+/// Wayland tells no app what the window in front is, so the island never
+/// steps aside for one here.
+pub fn fullscreen_in_front(_island: &WebviewWindow) -> bool {
+    false
+}
+
 // ── Island window ─────────────────────────────────────────────────────────────
 
 /// The few gtk-layer-shell calls we need, straight from the C library.

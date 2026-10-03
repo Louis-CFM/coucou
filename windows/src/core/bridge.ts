@@ -38,6 +38,9 @@ export const Bridge = {
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   setCollapsed: (collapsed: boolean) => call<void>("set_collapsed", { collapsed }),
 
+  /** Whether an app has the whole display the island is on, looked up now. */
+  fullscreenApp: () => call<boolean>("fullscreen_app"),
+
   /**
    * Pushes the island shape in window coordinates. Rust flips click-through from
    * its own cursor poll, so the flag is never a frame behind a click.
@@ -143,7 +146,9 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
+  | { name: "screen-changed"; payload: null }
+  | { name: "fullscreen"; payload: boolean }
+  | { name: "outside-press"; payload: null };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

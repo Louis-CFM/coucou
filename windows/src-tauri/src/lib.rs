@@ -98,6 +98,13 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     shared.gate.set_active(!collapsed);
 }
 
+/// Whether an app has the whole display right now. Asked when the mouse reaches
+/// for a hidden island: nothing was watching while it was away.
+#[tauri::command]
+fn fullscreen_app(app: AppHandle, shared: State<Shared>) -> bool {
+    island::note_fullscreen(&app, &shared.gate)
+}
+
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
 fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
@@ -378,6 +385,7 @@ pub fn run() {
             boot,
             save_settings,
             set_collapsed,
+            fullscreen_app,
             set_island_rect,
             focus_window,
             reposition,

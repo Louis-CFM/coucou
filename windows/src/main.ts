@@ -37,11 +37,11 @@ async function main() {
     switch (what) {
       case "settings":
         setPaused(false);
-        island.alert("settings");
+        island.alert("settings", true);
         break;
       case "open":
         setPaused(false);
-        island.alert(State.defaultView());
+        island.alert(State.defaultView(), true);
         break;
       case "pause":
         setPaused(!State.paused);
@@ -52,6 +52,8 @@ async function main() {
   });
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
+  await onEvent<boolean>("fullscreen", (full) => island.setFullscreen(full));
+  await onEvent<null>("outside-press", () => island.outsidePress());
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {

@@ -7,7 +7,10 @@ use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use ::windows::core::{BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
+use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT, RECT};
+use ::windows::Win32::Graphics::Gdi::{
+    GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use ::windows::Win32::System::Ole::RevokeDragDrop;
@@ -15,7 +18,8 @@ use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
+    EnumChildWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
+    GetWindowRect, SetWindowLongPtrW,
     GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
@@ -195,13 +199,8 @@ pub fn unblock_webview_drops(app: &AppHandle) {
 }
 
 unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
-        }
+    if class_of(hwnd) == "Chrome_RenderWidgetHostHWND" {
+        let _ = unsafe { RevokeDragDrop(hwnd) };
     }
     true.into()
 }
@@ -228,6 +227,44 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
             ex | WS_EX_NOACTIVATE.0 as isize
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
+    }
+}
+
+/// Window classes of the desktop itself: it covers the whole display, and it is
+/// in front whenever nothing else is.
+const DESKTOP_CLASSES: [&str; 2] = ["Progman", "WorkerW"];
+
+fn class_of(hwnd: HWND) -> String {
+    let mut name = [0u16; 64];
+    let len = unsafe { GetClassNameW(hwnd, &mut name) };
+    String::from_utf16_lossy(&name[..len.max(0) as usize])
+}
+
+/// True while the window in front covers the whole display the island is on:
+/// a film, a game, a presentation. Windows has no flag for it, so the window's
+/// rectangle is held against its monitor's — a maximized window stops at the
+/// taskbar and does not count.
+pub fn fullscreen_in_front(island: &WebviewWindow) -> bool {
+    let Some(ours) = hwnd_of(island) else { return false };
+    unsafe {
+        let front = GetForegroundWindow();
+        if front.is_invalid() || front == ours {
+            return false;
+        }
+        let monitor = MonitorFromWindow(front, MONITOR_DEFAULTTONEAREST);
+        if monitor != MonitorFromWindow(ours, MONITOR_DEFAULTTONEAREST) {
+            return false;
+        }
+        if DESKTOP_CLASSES.contains(&class_of(front).as_str()) {
+            return false;
+        }
+        let mut info = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        let mut rect = RECT::default();
+        if !GetMonitorInfoW(monitor, &mut info).as_bool() || GetWindowRect(front, &mut rect).is_err() {
+            return false;
+        }
+        let screen = info.rcMonitor;
+        rect.left <= screen.left && rect.top <= screen.top && rect.right >= screen.right && rect.bottom >= screen.bottom
     }
 }
 

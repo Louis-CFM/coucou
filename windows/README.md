@@ -39,17 +39,34 @@ installs for the current user only — no admin prompt.
 
 | What you do | What happens |
 |---|---|
-| Move the mouse to the very top-centre of the screen | Mochi peeks out |
+| Rest the mouse on the very top-centre of the screen | Mochi peeks out. A mouse that only crosses the edge, on its way to a tab, wakes nothing |
 | Click the small island | It opens |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
-| `Esc` | Closes the island |
+| `Esc`, or a click anywhere else | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
+
+### Out of the way
+
+<img src="screenshots/out-of-the-way.gif" width="760" alt="The island waking on a mouse that rests on the top edge, folding on a click elsewhere, and staying hidden under a full-screen app until Claude asks for something">
+
+There is no notch on a PC: the island sits on tabs and title bars, so it leaves
+as soon as it has nothing to say.
+
+- Folded, it goes away after a few seconds — sooner still when the mouse only
+  brought it out for a look. A turn of Claude Code shows it when it starts and
+  when it ends, not at every step in between.
+- Open, a click anywhere else folds it. Not while a request waits for an answer,
+  a file is being dropped, or something is being typed in it.
+- While an app has the whole screen — a film, a game, a presentation — it stays
+  hidden: the top edge does not wake it and news does not unfold it. A
+  permission request or a question from Claude still does, and so does the tray
+  icon. **Hide in full screen**, in Settings, turns this off.
 
 ## Claude Code
 

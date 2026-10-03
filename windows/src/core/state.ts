@@ -92,6 +92,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** The island stays away while an app has the whole display. */
+  hideInFullscreen: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  hideInFullscreen: true,
 };
 
 type Listener = () => void;
