@@ -1,0 +1,11 @@
+{
+  "name": "opencode-coucou",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenCode V2 plugin bridging session events to the Coucou notch app over a Unix socket",
+  "main": "index.ts",
+  "scripts": {
+    "test": "node test/socket.test.mjs && node test/plugin.test.mjs"
+  }
+}
