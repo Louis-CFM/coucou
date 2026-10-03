@@ -34,7 +34,7 @@ struct IslandViewContent: View {
 struct OverviewView: View {
     @ObservedObject var state: AppState
     @State private var showingN8nDetail = false
-    @State private var activeDiffStep: Int? = nil
+    @State private var activeDiffIdx: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
 
@@ -47,7 +47,9 @@ struct OverviewView: View {
                 // Title row + ticker stacked (or integration card)
                 if let agent = agent {
                     if agent.isIntegration {
-                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail)
+                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
+                            withAnimation(.easeIn(duration: 0.16)) { activeDiffIdx = diffIdx }
+                        })
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(spacing: 6) {
@@ -83,8 +85,8 @@ struct OverviewView: View {
                             .padding(.leading, 108)
                             .padding(.trailing, 36)
 
-                            TickerView(task: agent, onDiffTap: { stepIdx in
-                                withAnimation(.easeIn(duration: 0.16)) { activeDiffStep = stepIdx }
+                            TickerView(task: agent, onDiffTap: { diffIdx in
+                                withAnimation(.easeIn(duration: 0.16)) { activeDiffIdx = diffIdx }
                             })
                                 .frame(height: 44)
                                 .padding(.top, 6)
@@ -106,22 +108,20 @@ struct OverviewView: View {
                 #endif
 
                 // Diff overlay — replaces ticker when a diff step is tapped
-                if let stepIdx = activeDiffStep,
+                if let diffIdx = activeDiffIdx,
                    let task = agent,
-                   stepIdx < task.steps.count,
-                   let dp = task.steps[stepIdx].parseDiffStep(),
                    let diffs = state.sessionDiffs[task.id],
-                   dp.diffIdx < diffs.count {
+                   diffIdx < diffs.count {
                     CardBackground(wash: nil)
-                    DiffCardView(diff: diffs[dp.diffIdx], onDismiss: { activeDiffStep = nil })
+                    DiffCardView(diff: diffs[diffIdx], onDismiss: { activeDiffIdx = nil })
                         .transition(.opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffStep != nil
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffIdx != nil
                 #else
-                let hideJumpButton = showingN8nDetail || activeDiffStep != nil
+                let hideJumpButton = showingN8nDetail || activeDiffIdx != nil
                 #endif
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
@@ -147,17 +147,17 @@ struct OverviewView: View {
         }
         .onChange(of: state.focusId) { _, _ in
             showingN8nDetail = false
-            activeDiffStep = nil
+            activeDiffIdx = nil
             #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
-            if v != .overview { state.showingPlanDetail = false }
+            if v != .overview { state.showingPlanDetail = false; activeDiffIdx = nil }
         }
         .onChange(of: state.mode) { _, m in
-            if m != .expanded { state.showingPlanDetail = false }
+            if m != .expanded { state.showingPlanDetail = false; activeDiffIdx = nil }
         }
         #endif
     }
@@ -1591,6 +1591,7 @@ struct NoteView: View {
 struct IntegrationCardView: View {
     let task: AgentTask
     @Binding var showingDetail: Bool
+    var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
 
     private var isConfigured: Bool {
@@ -1838,7 +1839,7 @@ struct IntegrationCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                TickerView(task: task)
+                TickerView(task: task, onDiffTap: onDiffTap)
                     .frame(height: 44)
                     .padding(.top, 6)
                     .padding(.leading, 108)
@@ -2873,22 +2874,26 @@ struct TickerView: View {
     }
 
     var body: some View {
+        let isActive = task?.state == .thinking || task?.state == .working
+        let rowADiffTap: (() -> Void)? = rowA.parseDiffStep().map { dp in { onDiffTap?(dp.diffIdx) } }
+        let rowBDiffTap: (() -> Void)? = rowB.parseDiffStep().map { dp in { onDiffTap?(dp.diffIdx) } }
+
         ZStack(alignment: .topLeading) {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            TickerRowView(text: rowA, phase: 1.0)
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
 
             // Row B: current step → animates diagonally up-left, phase 0→1, scale 1→completedScale
-            TickerRowView(text: rowB, phase: rowBPhase)
+            TickerRowView(text: rowB, phase: rowBPhase, isActive: isActive, onDiffTap: rowBDiffTap)
                 .scaleEffect(1 - rowBPhase * (1 - completedScale), anchor: .leading)
                 .offset(x: -rowBPhase * 10, y: rowBOffset)
 
             // Row C: incoming new step — slides in from below at phase=0
-            TickerRowView(text: rowC, phase: 0.0)
+            TickerRowView(text: rowC, phase: 0.0, isActive: isActive)
                 .offset(y: rowCOffset)
                 .opacity(rowCOpacity)
         }
@@ -2903,13 +2908,6 @@ struct TickerView: View {
             ],
             startPoint: .top, endPoint: .bottom
         ))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            let idx = displayIndex
-            guard idx >= 0 && idx < steps.count else { return }
-            guard steps[idx].isDiffStep else { return }
-            onDiffTap?(idx)
-        }
         .onAppear {
             let idx = task?.stepIndex ?? -1
             displayIndex = idx
@@ -2974,32 +2972,39 @@ struct TickerView: View {
 struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
+    var isActive: Bool = true
+    var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
+        let chevronOpacity:   Double = isActive ? max(0, 1 - phase * 2)       : 0
+        let checkmarkOpacity: Double = isActive ? max(0, phase * 2 - 1)       : 1
+        let shimmerOpacity:   Double = isActive ? max(0, 1 - phase * 1.6)     : 0
+        let staticOpacity:    Double = isActive ? min(1, max(0, phase * 2 - 0.4)) : 1
+        let staticColor = isActive ? Color(hex: "#6B7079") : Color(hex: "#C9CDD4")
+
         if let dp = text.parseDiffStep() {
             HStack(spacing: 6) {
-                // Same icon as normal
                 ZStack {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(Color(hex: "#8E939C"))
-                        .opacity(max(0, 1 - phase * 2))
+                        .opacity(chevronOpacity)
                     Image(systemName: "checkmark")
                         .font(.system(size: 8, weight: .regular))
                         .foregroundColor(Color(hex: "#454850"))
-                        .opacity(max(0, phase * 2 - 1))
+                        .opacity(checkmarkOpacity)
                 }
                 .frame(width: 12, alignment: .center)
                 // Filename + counts
                 HStack(spacing: 0) {
                     ZStack(alignment: .leading) {
                         TickerShimmerText(text: dp.filename)
-                            .opacity(max(0, 1 - phase * 1.6))
+                            .opacity(shimmerOpacity)
                         Text(dp.filename)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(hex: "#6B7079"))
+                            .foregroundColor(staticColor)
                             .lineLimit(1).truncationMode(.tail)
-                            .opacity(min(1, max(0, phase * 2 - 0.4)))
+                            .opacity(staticOpacity)
                     }
                     if dp.added > 0 {
                         Text(" +\(dp.added)")
@@ -3017,6 +3022,8 @@ struct TickerRowView: View {
             }
             .frame(height: 22, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { onDiffTap?() }
         } else {
             HStack(spacing: 6) {
                 // Icon: chevron fades out first half, checkmark fades in second half
@@ -3024,23 +3031,23 @@ struct TickerRowView: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(Color(hex: "#8E939C"))
-                        .opacity(max(0, 1 - phase * 2))
+                        .opacity(chevronOpacity)
                     Image(systemName: "checkmark")
                         .font(.system(size: 8, weight: .regular))
                         .foregroundColor(Color(hex: "#454850"))
-                        .opacity(max(0, phase * 2 - 1))
+                        .opacity(checkmarkOpacity)
                 }
                 .frame(width: 12, alignment: .center)
 
                 // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
                 ZStack(alignment: .leading) {
                     TickerShimmerText(text: text)
-                        .opacity(max(0, 1 - phase * 1.6))
+                        .opacity(shimmerOpacity)
                     Text(text)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "#6B7079"))
+                        .foregroundColor(staticColor)
                         .lineLimit(1).truncationMode(.tail)
-                        .opacity(min(1, max(0, phase * 2 - 0.4)))
+                        .opacity(staticOpacity)
                 }
             }
             .frame(height: 22, alignment: .leading)

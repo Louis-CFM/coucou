@@ -138,6 +138,29 @@ enum DiffEngineTests {
             checkTrue("normal step parseDiffStep == nil", "Edit foo.swift".parseDiffStep() == nil)
         }
 
+        // ── DiffEngine.toOneLine ──────────────────────────────────────────────
+        print("DiffEngine.toOneLine")
+        do {
+            // multi-line joined with space
+            checkTrue("multi-line joined",
+                DiffEngine.toOneLine("line one\nline two\nline three") == "line one line two line three")
+
+            // bold stripped
+            checkTrue("bold stripped",
+                DiffEngine.toOneLine("**hello** world") == "hello world")
+
+            // heading stripped
+            checkTrue("heading stripped",
+                DiffEngine.toOneLine("## My Title\nsome text") == "My Title some text")
+
+            // empty input → empty
+            checkTrue("empty → empty", DiffEngine.toOneLine("").isEmpty)
+
+            // truncation
+            let long = DiffEngine.toOneLine(String(repeating: "x ", count: 200), maxChars: 10)
+            checkTrue("truncated to maxChars", long.count <= 10)
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

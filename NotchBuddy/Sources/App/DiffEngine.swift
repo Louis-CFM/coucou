@@ -200,6 +200,28 @@ enum DiffEngine {
         let removed = oldLines.filter { !$0.isEmpty && !newSet.contains($0) }.count
         return FileDiff(path: path, added: added, removed: removed, hunks: [], tooLarge: tooLarge)
     }
+
+    // MARK: - toOneLine
+
+    /// Converts a possibly multi-line, markdown-formatted string to a single line of plain text.
+    /// Strips `**`, `__`, backticks and leading `#` chars from each line, collapses whitespace.
+    static func toOneLine(_ text: String, maxChars: Int = 200) -> String {
+        var s = text
+        s = s.replacingOccurrences(of: "**", with: "")
+        s = s.replacingOccurrences(of: "__", with: "")
+        s = s.replacingOccurrences(of: "`", with: "")
+        let processed: [String] = s.components(separatedBy: "\n").compactMap { line in
+            var l = line
+            while l.hasPrefix("#") { l = String(l.dropFirst()) }
+            let trimmed = l.trimmingCharacters(in: .whitespaces)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        let joined = processed.joined(separator: " ")
+        let collapsed = joined.components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        return String(collapsed.prefix(maxChars))
+    }
 }
 
 // MARK: - String diff step encoding
