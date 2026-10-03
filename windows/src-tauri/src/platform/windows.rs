@@ -233,3 +233,87 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+// ── Jumping to the session's terminal ─────────────────────────────────────────
+
+/// Brings the Claude Code session's window forward. `hwnd` is a classic conhost
+/// window the relay shared; otherwise the nearest ancestor process that owns a
+/// visible top-level window wins (Windows Terminal, VS Code, …). Among several
+/// windows of one process, the one whose title names the project folder wins.
+pub fn focus_terminal(hwnd: Option<isize>, pids: &[u32], hint: &str) -> bool {
+    use ::windows::Win32::UI::WindowsAndMessaging::{IsWindow, IsWindowVisible};
+
+    if let Some(h) = hwnd.map(|h| HWND(h as *mut _)) {
+        if unsafe { IsWindow(Some(h)).as_bool() && IsWindowVisible(h).as_bool() } {
+            return bring_forward(h);
+        }
+    }
+
+    let windows = top_level_windows();
+    let hint = hint.to_lowercase();
+    for pid in pids {
+        let mine: Vec<&(HWND, u32, String)> = windows.iter().filter(|w| w.1 == *pid).collect();
+        let pick = mine
+            .iter()
+            .find(|w| !hint.is_empty() && w.2.to_lowercase().contains(&hint))
+            .or(mine.first());
+        if let Some(w) = pick {
+            return bring_forward(w.0);
+        }
+    }
+    false
+}
+
+/// Visible, unowned, titled top-level windows: the ones a user would call "a window".
+fn top_level_windows() -> Vec<(HWND, u32, String)> {
+    use ::windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible,
+        GW_OWNER,
+    };
+
+    unsafe extern "system" fn collect(hwnd: HWND, out: LPARAM) -> BOOL {
+        let out = unsafe { &mut *(out.0 as *mut Vec<(HWND, u32, String)>) };
+        let visible = unsafe { IsWindowVisible(hwnd) }.as_bool();
+        let owned = unsafe { GetWindow(hwnd, GW_OWNER) }.is_ok_and(|o| !o.is_invalid());
+        if visible && !owned {
+            let mut buf = [0u16; 512];
+            let len = unsafe { GetWindowTextW(hwnd, &mut buf) };
+            if len > 0 {
+                let mut pid = 0u32;
+                unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+                out.push((hwnd, pid, String::from_utf16_lossy(&buf[..len as usize])));
+            }
+        }
+        true.into()
+    }
+
+    let mut out: Vec<(HWND, u32, String)> = Vec::new();
+    let _ = unsafe { EnumWindows(Some(collect), LPARAM(&mut out as *mut _ as isize)) };
+    out
+}
+
+fn bring_forward(hwnd: HWND) -> bool {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_MENU,
+    };
+    use ::windows::Win32::UI::WindowsAndMessaging::{IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE};
+
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        if SetForegroundWindow(hwnd).as_bool() {
+            return true;
+        }
+        // The island never takes focus, so Windows may refuse the switch. A tap
+        // of Alt counts as fresh input and lifts the foreground lock.
+        let key = |flags| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT { wVk: VK_MENU, dwFlags: flags, ..Default::default() },
+            },
+        };
+        SendInput(&[key(Default::default()), key(KEYEVENTF_KEYUP)], std::mem::size_of::<INPUT>() as i32);
+        SetForegroundWindow(hwnd).as_bool()
+    }
+}

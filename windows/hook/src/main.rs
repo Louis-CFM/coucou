@@ -161,6 +161,15 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
+    // Where the session's window is, so the island's ↗ can bring it forward.
+    #[cfg(windows)]
+    {
+        map.insert("terminal_pids".into(), serde_json::json!(win::ancestor_pids()));
+        if let Some(hwnd) = win::console_window() {
+            map.insert("console_hwnd".into(), serde_json::json!(hwnd));
+        }
+    }
+
     truncate_strings(&mut payload);
 
     let mut line = payload.to_string();
