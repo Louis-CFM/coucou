@@ -58,6 +58,7 @@ struct PillDefinition {
         case "agent_codex":        return "Codex"
         case "agent_hermes":       return "Hermes"
         case "agent_claude-desktop": return "Claude Desktop"
+        case "agent_oh-my-pi":     return "Oh My Pi"
         default:                   return String(localized: "Agent")
         }
     }
@@ -89,6 +90,8 @@ enum PillCatalog {
         .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
               category: .agent,     subtitle: String(localized: "Agent"),        source: .agent,  githubOnly: true),
         .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
+              category: .agent,     subtitle: String(localized: "Agent"),        source: .agent,  githubOnly: true),
+        .init(id: "agent_oh-my-pi",      name: "Oh My Pi",    color: "#A78BFA",
               category: .agent,     subtitle: String(localized: "Agent"),        source: .agent,  githubOnly: true),
         // Claude Code sessions run from the Claude desktop app: the relay tags them
         // `coucou_agent: claude-desktop` from CLAUDE_CODE_ENTRYPOINT, so nothing to install.

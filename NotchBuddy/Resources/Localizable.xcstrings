@@ -41404,6 +41404,182 @@
         }
       }
     },
+    "hooks.omp.installed" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الخطافات مثبَّتة — أعِد تشغيل Oh My Pi للتفعيل"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "হুক ইনস্টল হয়েছে — সক্রিয় করতে Oh My Pi রিস্টার্ট করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks installiert — starte Oh My Pi neu, um sie zu aktivieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks installed — restart Oh My Pi to activate them"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks instalados — reinicia Oh My Pi para activarlos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks installés — redémarre Oh My Pi pour les activer"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हुक इंस्टॉल हो गए — सक्रिय करने के लिए Oh My Pi रीस्टार्ट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks terpasang — mulai ulang Oh My Pi untuk mengaktifkan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks instalados — reinicie o Oh My Pi para ativar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хуки установлены — перезапусти Oh My Pi для активации"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดตั้ง Hooks แล้ว — เริ่ม Oh My Pi ใหม่เพื่อเปิดใช้งาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hook'lar kuruldu — etkinleştirmek için Oh My Pi'u yeniden başlat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已安装 — 重启 Oh My Pi 以激活"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks 已安裝，請重新啟動 Oh My Pi 以啟用"
+          }
+        }
+      }
+    },
+    "hooks.omp.title" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "خطافات Oh My Pi"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi হুক"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi-Hooks"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi hooks"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks de Oh My Pi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks Oh My Pi"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi हुक"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks Oh My Pi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hooks do Oh My Pi"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хуки Oh My Pi"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi Hooks"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi hook'ları"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi 钩子"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oh My Pi hooks"
+          }
+        }
+      }
+    },
     "hooks.outdated" : {
       "localizations" : {
         "ar" : {
@@ -65126,6 +65302,182 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "✓ Muse Code hooks 已移除。"
+          }
+        }
+      }
+    },
+    "status.omp-hooks-installed" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ خطافات Oh My Pi مثبَّتة في ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ ~/.omp/agent/hooks/pre/coucou.ts-এ Oh My Pi হুক ইনস্টল হয়েছে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi-Hooks in ~/.omp/agent/hooks/pre/coucou.ts installiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hooks installed in ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks de Oh My Pi instalados en ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks Oh My Pi installés dans ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ ~/.omp/agent/hooks/pre/coucou.ts में Oh My Pi हुक इंस्टॉल हुए"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks Oh My Pi terpasang di ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks do Oh My Pi instalados em ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Хуки Oh My Pi установлены в ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ ติดตั้ง Oh My Pi Hooks ใน ~/.omp/agent/hooks/pre/coucou.ts แล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hook'ları ~/.omp/agent/hooks/pre/coucou.ts içine kuruldu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi Hooks 已安装至 ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hooks 已安裝至 ~/.omp/agent/hooks/pre/coucou.ts"
+          }
+        }
+      }
+    },
+    "status.omp-hooks-removed" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ تمت إزالة خطافات Oh My Pi."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi হুক সরানো হয়েছে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi-Hooks entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hooks removed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks de Oh My Pi eliminados."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks Oh My Pi supprimés."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi हुक हटा दिए गए।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks Oh My Pi dihapus."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Hooks do Oh My Pi removidos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Хуки Oh My Pi удалены."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ ลบ Oh My Pi Hooks แล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hook'ları kaldırıldı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi Hooks 已移除。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Oh My Pi hooks 已移除。"
           }
         }
       }

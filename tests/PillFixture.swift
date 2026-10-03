@@ -17,6 +17,7 @@ enum PillFixture {
         .init(id: "agent_opencode",       name: "OpenCode",      color: "#4ADE80", category: .agent,     subtitle: "Agent",       source: .agent),
         .init(id: "agent_amp",            name: "Amp",           color: "#F59E0B", category: .agent,     subtitle: "Agent",       source: .agent),
         .init(id: "agent_hermes",         name: "Hermes",        color: "#C084FC", category: .agent,     subtitle: "Agent",       source: .agent),
+        .init(id: "agent_oh-my-pi",       name: "Oh My Pi",      color: "#A78BFA", category: .agent,     subtitle: "Agent",       source: .agent),
         .init(id: "agent_claude-desktop", name: "Claude Desktop",color: "#D97757", category: .agent,     subtitle: "Agent",       source: .agent),
         // ── AI for the chat ───────────────────────────────────────────────────
         .init(id: "ai_anthropic",         name: "Anthropic",     color: "#E07950", category: .ai,        subtitle: "Chat",        source: .n8n),

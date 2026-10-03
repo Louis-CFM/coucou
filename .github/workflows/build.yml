@@ -143,6 +143,9 @@ jobs:
       - name: Conversation context tests
         run: bash scripts/test-conversation-context.sh
 
+      - name: Test omp hook
+        run: bash scripts/test-omp-hook.sh
+
       - name: Build
         run: |
           set -o pipefail

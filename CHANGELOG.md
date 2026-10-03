@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Oh My Pi (omp) support: install from Settings → Oh My Pi and omp sessions show up in the island — prompt, tools and finished state, each in its own pill. The installer writes a self-contained TS hook to `~/.omp/agent/hooks/pre/coucou.ts` that omp discovers by itself (#9).
+
 ## 0.5.2 — October 20, 2026
 
 New versions now come to you: Mochi says it in the notch and one click installs it. Plus four new languages and a round of community work.
