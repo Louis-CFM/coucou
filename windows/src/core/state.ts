@@ -92,6 +92,14 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** "anthropic" (default) or "openai-compatible". */
+  chatProvider: string;
+  /** Base URL for the OpenAI-compatible provider. */
+  openaiBaseUrl: string;
+  /** Full endpoint URL for the Anthropic-compatible provider. */
+  anthropicBaseUrl: string;
+  /** Opt-in web search for the OpenAI-compatible provider (spends credits). */
+  webSearch: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +114,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "anthropic",
+  openaiBaseUrl: "https://api.openai.com/v1",
+  anthropicBaseUrl: "https://api.anthropic.com/v1/messages",
+  webSearch: false,
 };
 
 type Listener = () => void;

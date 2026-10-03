@@ -171,7 +171,13 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── Chat provider section ─────────────────────────────────────────────────────
+
+const PROVIDERS: [string, string][] = [
+  ["anthropic", "Anthropic (Claude)"],
+  ["anthropic-compatible", "Anthropic-compatible endpoint"],
+  ["openai-compatible", "OpenAI-compatible"],
+];
 
 const MODELS: [string, string][] = [
   ["claude-opus-5", "Claude Opus 5"],
@@ -179,7 +185,45 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
+/** Base-URL presets for the OpenAI-compatible provider (the field stays free text). */
+const OPENAI_PRESETS: [string, string][] = [
+  ["https://api.openai.com/v1", "OpenAI"],
+  ["https://openrouter.ai/api/v1", "OpenRouter"],
+  ["http://localhost:11434/v1", "Ollama (local)"],
+];
+
 function apiSection(hasKey: boolean): HTMLElement {
+  const provider = h("select", {}) as HTMLSelectElement;
+  for (const [id, label] of PROVIDERS) provider.append(h("option", { value: id, text: label }));
+  if (!PROVIDERS.some(([id]) => id === settings.chatProvider)) settings.chatProvider = "anthropic";
+  provider.value = settings.chatProvider;
+
+  const body = h("div", {});
+  const drawBody = () => {
+    clear(body);
+    if (settings.chatProvider === "openai-compatible") body.append(openaiSection());
+    else if (settings.chatProvider === "anthropic-compatible") body.append(anthropicCompatSection());
+    else body.append(anthropicSection(hasKey));
+  };
+  provider.addEventListener("change", () => {
+    settings.chatProvider = provider.value;
+    void save();
+    // Histories are provider-shaped; never let one provider read the other's.
+    void Bridge.chatReset();
+    drawBody();
+  });
+  drawBody();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Chat" })),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), provider),
+    body,
+  );
+}
+
+function anthropicSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
   const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
 
@@ -244,12 +288,159 @@ function apiSection(hasKey: boolean): HTMLElement {
   clearBtn.style.display = hasKey ? "" : "none";
 
   return h(
-    "section",
+    "div",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h3", {}, dot, h("span", { text: "Anthropic" })),
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    feedback,
+  );
+}
+
+function anthropicCompatSection(): HTMLElement {
+  const base = h("input", {
+    type: "text",
+    value: settings.anthropicBaseUrl,
+    placeholder: "https://…/v1/messages",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  base.addEventListener("change", () => {
+    settings.anthropicBaseUrl = base.value.trim() || "https://api.anthropic.com/v1/messages";
+    void save();
+  });
+
+  const model = h("select", {}) as HTMLSelectElement;
+  for (const [id, label] of MODELS) model.append(h("option", { value: id, text: label }));
+  if (!MODELS.some(([id]) => id === settings.model)) {
+    model.append(h("option", { value: settings.model, text: settings.model }));
+  }
+  model.value = settings.model;
+  model.addEventListener("change", () => {
+    settings.model = model.value;
+    void save();
+  });
+
+  return h(
+    "div",
+    {},
+    h("h3", {}, h("span", { text: "Anthropic-compatible endpoint" })),
+    h("div", { class: "hint", text: "Same Messages format, your endpoint: OpenRouter /v1/messages, LiteLLM, gateways. Uses the Anthropic key above. No web search here — official API only." }),
+    h("div", { class: "row" }, h("label", { text: "Endpoint" }), base),
+    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+  );
+}
+
+function openaiSection(): HTMLElement {
+  const dot = statusDot(false);
+  const state = h("span", { class: "hint", text: "Checking…" });
+
+  const base = h("input", {
+    type: "text",
+    value: settings.openaiBaseUrl,
+    placeholder: "https://api.openai.com/v1",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const presets = h("select", {}) as HTMLSelectElement;
+  presets.append(h("option", { value: "", text: "Presets…" }));
+  for (const [url, label] of OPENAI_PRESETS) presets.append(h("option", { value: url, text: label }));
+  presets.addEventListener("change", () => {
+    if (!presets.value) return;
+    base.value = presets.value;
+    settings.openaiBaseUrl = presets.value;
+    void save();
+    presets.value = "";
+  });
+  base.addEventListener("change", () => {
+    settings.openaiBaseUrl = base.value.trim() || "https://api.openai.com/v1";
+    void save();
+  });
+
+  const field = h("input", {
+    type: "password",
+    placeholder: "sk-… / sk-or-… (empty for local Ollama)",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  const saveBtn = h("button", { class: "primary", text: "Save key" });
+  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const present = (await Bridge.secretPresent("openai-api-key")) ?? false;
+    dot.style.background = present ? "#22c55e" : "#f4505e";
+    state.textContent = present
+      ? "Key saved in the Windows Credential Manager."
+      : "No key yet — local backends like Ollama need none.";
+    clearBtn.style.display = present ? "" : "none";
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    const value = field.value.trim();
+    if (!value) return;
+    clear(feedback);
+    try {
+      await Bridge.secretSet("openai-api-key", value);
+      field.value = "";
+      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+    }
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.secretClear("openai-api-key");
+      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  const model = h("input", {
+    type: "text",
+    value: settings.model,
+    placeholder: "gpt-5.4-mini / openai/gpt-4o / llama3.1 …",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  model.addEventListener("change", () => {
+    settings.model = model.value.trim() || settings.model;
+    void save();
+  });
+
+  const search = toggle(settings.webSearch === true, (v) => {
+    settings.webSearch = v;
+    void save();
+  });
+
+  clearBtn.style.display = "none";
+  void refresh();
+
+  return h(
+    "div",
+    {},
+    h("h3", {}, dot, h("span", { text: "OpenAI-compatible" })),
+    state,
+    h("div", { class: "row" }, h("label", { text: "Base URL" }), base, presets),
+    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: "Web search" }), search,
+      h("span", { class: "hint", text: "OpenRouter only, spends credits." })),
+    h("div", {
+      class: "hint",
+      text: "One client covers OpenAI, OpenRouter, Ollama, LiteLLM, LM Studio and vLLM. On OpenRouter you also get web search (opt-in above) and PDF parsing; elsewhere those stay skipped.",
+    }),
     feedback,
   );
 }
