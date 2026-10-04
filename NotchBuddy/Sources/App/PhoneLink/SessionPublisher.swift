@@ -18,7 +18,7 @@ import Combine
 final class SessionPublisher {
     static let shared = SessionPublisher()
 
-    private let container = CKContainer(identifier: CloudProbe.containerID)
+    private let container = CKContainer(identifier: "iCloud.fr.louisraille.Coucou")
     private var database: CKDatabase { container.privateCloudDatabase }
     private var cancellable: AnyCancellable?
 
@@ -63,7 +63,7 @@ final class SessionPublisher {
     private func write(_ snapshots: [String: SessionSnapshot]) async {
         do {
             if !zoneReady {
-                _ = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: CloudProbe.zoneID)], deleting: [])
+                _ = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: SessionSnapshot.zoneID)], deleting: [])
                 zoneReady = true
             }
             if !cleanedUp {
@@ -177,8 +177,13 @@ struct SessionSnapshot: Equatable {
                         cwd: "", finalLine: "", approvalTool: "", approvalCommand: "", question: "")
     }
 
+    /// Same zone as CloudProbe.zoneID, rebuilt here because that one is main-actor isolated.
+    static var zoneID: CKRecordZone.ID {
+        CKRecordZone.ID(zoneName: "Coucou", ownerName: CKCurrentUserDefaultName)
+    }
+
     static func recordID(for pillId: String) -> CKRecord.ID {
-        CKRecord.ID(recordName: "session-\(pillId)", zoneID: CloudProbe.zoneID)
+        CKRecord.ID(recordName: "session-\(pillId)", zoneID: zoneID)
     }
 
     static func pillId(from id: CKRecord.ID) -> String? {
