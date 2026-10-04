@@ -54,3 +54,22 @@ jobs:
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, DebugCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddyCloud \
+            -configuration DebugCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone app (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouPhone \
+            -destination 'generic/platform=iOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO

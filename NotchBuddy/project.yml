@@ -6,6 +6,14 @@ options:
   xcodeVersion: "27.0"
   createIntermediateGroups: true
 
+# DebugCloud = Debug, but signed with iCloud (CloudKit) and push entitlements
+# and compiled with PHONE_LINK, for the iPhone link spike. Debug and Release
+# are unchanged.
+configs:
+  Debug: debug
+  DebugCloud: debug
+  Release: release
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -16,6 +24,12 @@ settings:
     Debug:
       CODE_SIGNING_REQUIRED: NO
       CODE_SIGNING_ALLOWED: NO
+    DebugCloud:
+      CODE_SIGNING_REQUIRED: YES
+      CODE_SIGNING_ALLOWED: YES
+      CODE_SIGN_STYLE: Automatic
+      CODE_SIGN_IDENTITY: "Apple Development"
+      DEVELOPMENT_TEAM: 256AUJ9555
     Release:
       CODE_SIGNING_REQUIRED: YES
       CODE_SIGNING_ALLOWED: YES
@@ -42,6 +56,30 @@ schemes:
       config: Debug
     archive:
       config: Release
+  NotchBuddyCloud:
+    build:
+      targets:
+        NotchBuddy: all
+    run:
+      config: DebugCloud
+    archive:
+      config: Release
+  CoucouAppStoreCloud:
+    build:
+      targets:
+        CoucouAppStore: all
+    run:
+      config: DebugCloud
+    archive:
+      config: Release
+  CoucouPhone:
+    build:
+      targets:
+        CoucouPhone: all
+    run:
+      config: Debug
+    archive:
+      config: Release
 
 targets:
   NotchBuddy:
@@ -50,6 +88,8 @@ targets:
     sources:
       - path: Sources
         type: group
+        excludes:
+          - "Phone/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -79,6 +119,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
+      configs:
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
 
   CoucouAppStore:
     type: application
@@ -86,6 +130,8 @@ targets:
     sources:
       - path: Sources
         type: group
+        excludes:
+          - "Phone/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -120,3 +166,49 @@ targets:
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
         CODE_SIGNING_ALLOWED: YES
+      configs:
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStoreCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "APPSTORE PHONE_LINK"
+
+  # iPhone app. Same bundle ID as the Mac App Store build, for universal purchase.
+  CoucouPhone:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/Phone
+        type: group
+    info:
+      path: Resources/InfoPhone.plist
+      properties:
+        CFBundleName: Coucou
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou
+        CFBundleVersion: "1"
+        CFBundleShortVersionString: "0.1"
+        CFBundlePackageType: APPL
+        LSRequiresIPhoneOS: YES
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: YES
+        UIBackgroundModes:
+          - remote-notification
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: NO
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
+        PRODUCT_NAME: Coucou
+        INFOPLIST_FILE: Resources/InfoPhone.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhone.entitlements
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""

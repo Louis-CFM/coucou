@@ -18,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        #if PHONE_LINK
+        CloudProbe.shared.start()
+        #endif
     }
 
     // MARK: - Menu bar

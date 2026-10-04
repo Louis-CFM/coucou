@@ -1,0 +1,202 @@
+#if PHONE_LINK
+import AppKit
+import CloudKit
+
+// MARK: - iPhone link spike (DebugCloud only)
+//
+// Proves that the Mac and the iPhone app share a private CloudKit database:
+// writes a `Ping` every 60 s, waits for the iPhone's `Pong`, and logs the
+// round trip to ~/Library/Logs/NotchBuddy/nb.log. Pongs arrive both through a
+// silent push (CKDatabaseSubscription) and a 5 s poll, so the log shows which
+// path is faster. Compiled only with PHONE_LINK; normal builds never see it.
+
+@MainActor
+final class CloudProbe {
+    static let shared = CloudProbe()
+
+    static let containerID = "iCloud.fr.louisraille.Coucou"
+    static let zoneID = CKRecordZone.ID(zoneName: "Coucou", ownerName: CKCurrentUserDefaultName)
+    private static let subscriptionID = "coucou-zone-mac"
+
+    private let container = CKContainer(identifier: CloudProbe.containerID)
+    private var database: CKDatabase { container.privateCloudDatabase }
+
+    private let launchDate = Date()
+    private var ready = false
+    private var pingCount = 0
+    private var changeToken: CKServerChangeToken?
+    private var seenPongs = Set<String>()
+    private var fetching = false
+    private var lastPushAt: Date?
+    private var pingTask: Task<Void, Never>?
+    private var pollTask: Task<Void, Never>?
+
+    private var appLabel: String {
+        #if APPSTORE
+        "CoucouAppStore"
+        #else
+        "NotchBuddy"
+        #endif
+    }
+
+    private var macName: String {
+        Host.current().localizedName ?? ProcessInfo.processInfo.hostName
+    }
+
+    func start() {
+        guard pingTask == nil else { return }
+        log("starting (\(appLabel), container \(Self.containerID))")
+        NSApplication.shared.registerForRemoteNotifications()
+
+        pingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.pingTick()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                await self?.fetchChanges(source: "poll")
+            }
+        }
+    }
+
+    // MARK: Setup
+
+    /// Checks the iCloud account, creates the zone and the subscription.
+    /// Returns false (and logs why) when iCloud isn't usable yet; retried on the next tick.
+    private func prepare() async -> Bool {
+        if ready { return true }
+        do {
+            let status = try await container.accountStatus()
+            guard status == .available else {
+                log("iCloud account not available (status \(describe(status))), will retry in 60 s")
+                return false
+            }
+            _ = try await database.modifyRecordZones(saving: [CKRecordZone(zoneID: Self.zoneID)], deleting: [])
+            log("zone Coucou ready")
+
+            let sub = CKDatabaseSubscription(subscriptionID: Self.subscriptionID)
+            let info = CKSubscription.NotificationInfo()
+            info.shouldSendContentAvailable = true // silent push
+            sub.notificationInfo = info
+            _ = try await database.modifySubscriptions(saving: [sub], deleting: [])
+            log("database subscription saved")
+            ready = true
+            return true
+        } catch {
+            log("setup failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    // MARK: Ping
+
+    private func pingTick() async {
+        guard await prepare() else { return }
+        pingCount += 1
+        let record = CKRecord(recordType: "Ping",
+                              recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: Self.zoneID))
+        let sentAt = Date()
+        record["macName"] = macName
+        record["app"] = appLabel
+        record["sentAt"] = sentAt
+        record.encryptedValues["message"] = "Ping #\(pingCount) from \(appLabel)"
+        do {
+            _ = try await database.save(record)
+            log("Ping #\(pingCount) saved in \(String(format: "%.1f", Date().timeIntervalSince(sentAt))) s")
+        } catch {
+            log("Ping #\(pingCount) failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: Pong
+
+    func handleRemoteNotification(_ userInfo: [String: Any]) {
+        guard CKNotification(fromRemoteNotificationDictionary: userInfo) != nil else { return }
+        lastPushAt = Date()
+        log("push received")
+        Task { await fetchChanges(source: "push") }
+    }
+
+    private func fetchChanges(source: String) async {
+        guard ready, !fetching else { return }
+        fetching = true
+        defer { fetching = false }
+        do {
+            var more = true
+            while more {
+                let changes = try await database.recordZoneChanges(inZoneWith: Self.zoneID, since: changeToken)
+                for (_, result) in changes.modificationResultsByID {
+                    if case .success(let mod) = result { handle(mod.record, source: source) }
+                }
+                changeToken = changes.changeToken
+                more = changes.moreComing
+            }
+        } catch let error as CKError where error.code == .changeTokenExpired {
+            changeToken = nil
+        } catch let error as CKError where error.code == .zoneNotFound {
+            log("zone Coucou missing, recreating")
+            ready = false
+        } catch {
+            log("fetch (\(source)) failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func handle(_ record: CKRecord, source: String) {
+        guard record.recordType == "Pong" else { return }
+        let id = record.recordID.recordName
+        guard !seenPongs.contains(id) else { return }
+        seenPongs.insert(id)
+        // Older pongs from previous runs: remember them, don't log them.
+        guard let created = record.creationDate, created >= launchDate else { return }
+
+        let message = record.encryptedValues["message"] as? String ?? "?"
+        var line = "Pong from iPhone: \(message)"
+        if let pingSentAt = record["pingSentAt"] as? Date {
+            line += String(format: ", round trip %.1f s", Date().timeIntervalSince(pingSentAt))
+        }
+        if let repliedAt = record["repliedAt"] as? Date {
+            line += String(format: ", %.1f s after the tap", Date().timeIntervalSince(repliedAt))
+        }
+        line += " (via \(source)"
+        if source == "poll", let push = lastPushAt, Date().timeIntervalSince(push) < 10 {
+            line += ", push came \(String(format: "%.1f", Date().timeIntervalSince(push))) s ago"
+        }
+        line += ")"
+        log(line)
+    }
+
+    // MARK: Helpers
+
+    private func describe(_ status: CKAccountStatus) -> String {
+        switch status {
+        case .available: "available"
+        case .noAccount: "no account"
+        case .restricted: "restricted"
+        case .couldNotDetermine: "could not determine"
+        case .temporarilyUnavailable: "temporarily unavailable"
+        @unknown default: "unknown"
+        }
+    }
+
+    private func log(_ message: String) {
+        appendAppLog("nb.log", "[PhoneLink] \(message)")
+    }
+}
+
+extension AppDelegate {
+    @objc func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        appendAppLog("nb.log", "[PhoneLink] registered for remote notifications")
+    }
+
+    @objc func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        appendAppLog("nb.log", "[PhoneLink] remote notification registration failed: \(error.localizedDescription)")
+    }
+
+    @objc func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        CloudProbe.shared.handleRemoteNotification(userInfo)
+    }
+}
+#endif
