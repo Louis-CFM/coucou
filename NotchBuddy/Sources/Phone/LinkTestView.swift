@@ -5,7 +5,6 @@ struct LinkTestView: View {
     @State private var sending = false
 
     var body: some View {
-        NavigationStack {
             List {
                 Section {
                     statusRow
@@ -96,7 +95,6 @@ struct LinkTestView: View {
             .toolbar {
                 NavigationLink("Kit") { KitPreviewView() }
             }
-        }
     }
 
     @ViewBuilder private var statusRow: some View {
