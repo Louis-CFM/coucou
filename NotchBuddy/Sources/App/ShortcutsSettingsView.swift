@@ -27,12 +27,9 @@ struct ShortcutsSettingsView: View {
     private var globalSection: some View {
         GroupBox("Global shortcuts — work from any app") {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(ShortcutAction.allCases, id: \.self) { action in
-                    #if APPSTORE
-                    if action.isNonAppStore { EmptyView(); return }
-                    #endif
+                ForEach(globalActions, id: \.self) { action in
                     shortcutRow(action)
-                    if action != ShortcutAction.allCases.last {
+                    if action != globalActions.last {
                         Divider().padding(.leading, 24)
                     }
                 }
@@ -47,6 +44,15 @@ struct ShortcutsSettingsView: View {
             }
             .padding(6)
         }
+    }
+
+    /// Shortcuts listed here. The App Store build hides the ones it can't run.
+    private var globalActions: [ShortcutAction] {
+        #if APPSTORE
+        ShortcutAction.allCases.filter { !$0.isNonAppStore }
+        #else
+        ShortcutAction.allCases
+        #endif
     }
 
     @ViewBuilder
