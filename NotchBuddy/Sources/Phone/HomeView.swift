@@ -51,7 +51,8 @@ struct HomeView: View {
                         Image(systemName: "clock.arrow.circlepath")
                     }
                 }
-                // Step 1-3 test screens (the link test has its own "Kit" button).
+                #if DEBUG
+                // Test screens, in builds run from Xcode only (the link test has its own "Kit" button).
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         LinkTestView(link: link)
@@ -59,6 +60,7 @@ struct HomeView: View {
                         Image(systemName: "stethoscope")
                     }
                 }
+                #endif
             }
         }
     }

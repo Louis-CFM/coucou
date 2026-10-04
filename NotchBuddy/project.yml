@@ -124,8 +124,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "8"
-        CFBundleShortVersionString: "0.1.7"
+        CFBundleVersion: "9"
+        CFBundleShortVersionString: "0.1.8"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -177,8 +177,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "4"
-        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.1"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -231,8 +231,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "1"
-        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
         LSRequiresIPhoneOS: YES
         UILaunchScreen: {}
@@ -291,8 +291,8 @@ targets:
         CFBundleName: CoucouWidgets
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou.Widgets
-        CFBundleVersion: "1"
-        CFBundleShortVersionString: "0.1"
+        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.0"
         CFBundlePackageType: XPC!
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
