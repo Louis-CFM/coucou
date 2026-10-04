@@ -28,4 +28,4 @@ Windows and Linux: `cd windows && npm install && npm run tauri dev`
 - Never restyle what already ships (pills, cards, Settings, chat…): existing views stay exactly as they are in `main`, which is the App Store build. Change the look of an existing view only when explicitly asked.
 - Pill IDs are stable contract values (Keychain, UserDefaults, hook routing): never rename an existing pill ID.
 - New views follow the existing app style. `design/prototype/notch-buddy.html` and `design/captures/` are references for new work, not a reason to change existing views.
-- Every release adds its CHANGELOG.md section and a row in the README Versions table.
+- Every release adds its CHANGELOG.md section, a row in the README Versions table, and commits the regenerated Info.plist with the new version.
