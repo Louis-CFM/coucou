@@ -9,7 +9,9 @@ options:
 # DebugCloud = Debug, but signed with iCloud (CloudKit) and push entitlements
 # and compiled with PHONE_LINK, for the iPhone link spike. ReleaseCloud = the
 # same for a Developer ID build with its provisioning profile
-# (scripts/cloud-test-build.sh). Debug and Release are unchanged.
+# (scripts/cloud-test-build.sh); a Developer ID profile only allows the
+# Production CloudKit environment, so the iPhone joins it with the
+# CoucouPhoneProduction scheme. Debug and Release are unchanged.
 configs:
   Debug: debug
   DebugCloud: debug
@@ -87,6 +89,16 @@ schemes:
         CoucouPhone: all
     run:
       config: Debug
+    archive:
+      config: Release
+  # Same iPhone app on the Production CloudKit environment, to talk to the
+  # Developer ID build (scripts/cloud-test-build.sh), which can only use Production.
+  CoucouPhoneProduction:
+    build:
+      targets:
+        CoucouPhone: all
+    run:
+      config: DebugCloud
     archive:
       config: Release
 
@@ -225,3 +237,6 @@ targets:
         CODE_SIGNING_ALLOWED: YES
         ENABLE_HARDENED_RUNTIME: NO
         OTHER_CODE_SIGN_FLAGS: ""
+      configs:
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhoneProduction.entitlements

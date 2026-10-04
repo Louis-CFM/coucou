@@ -3,7 +3,9 @@
 # way release.sh does — Release optimizations, Developer ID signature — plus
 # the "Coucou Developer ID" provisioning profile, the iCloud entitlements and
 # the PHONE_LINK probe. Not notarized, not published: it only proves that a
-# Developer ID build can talk to iCloud.
+# Developer ID build can talk to iCloud. A Developer ID profile only allows the
+# Production CloudKit environment: the Ping/Pong schema must be deployed to
+# Production in the CloudKit Console first.
 #
 #   ./scripts/cloud-test-build.sh
 #
@@ -83,4 +85,5 @@ echo "To test:"
 echo "  1. Quit any other Coucou (menu bar icon → Quit) and stop it in Xcode."
 echo "  2. open $APP"
 echo "  3. tail -f ~/Library/Logs/NotchBuddy/nb.log | grep PhoneLink"
-echo "  4. On the iPhone, pull to refresh, then tap Send pong."
+echo "  4. Developer ID builds use the Production CloudKit environment: run the iPhone"
+echo "     app with the CoucouPhoneProduction scheme, pull to refresh, then tap Send pong."
