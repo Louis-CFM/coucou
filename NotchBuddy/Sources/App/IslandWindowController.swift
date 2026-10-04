@@ -405,6 +405,18 @@ final class IslandWindowController: NSWindowController {
             self?.collapse()
         }
 
+        // Wardrobe open/close from desktop Mochi right-click (does NOT post .hookExpand)
+        NotificationCenter.default.addObserver(forName: .openWardrobeFromDesktop, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            if self.state.mode == .expanded && self.state.view == .wardrobe {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    self.state.view = .overview
+                }
+            } else {
+                self.expand(to: .wardrobe)
+            }
+        }
+
         // .botDizzy — posted by BotEngine.slap() on 3rd hit; show confused view + recover after 3.3s
         NotificationCenter.default.addObserver(forName: .botDizzy, object: nil, queue: .main) { [weak self] _ in
             self?.handleDizzy()
@@ -475,7 +487,15 @@ final class IslandWindowController: NSWindowController {
                     self.hideDragGhost()
                 }
                 #else
-                self.hideDragGhost()
+                let inNotchZoneAS = self.window?.frame.contains(mouse) == true
+                if !inNotchZoneAS {
+                    let ghost = self.dragGhostPanel
+                    self.dragGhostPanel = nil
+                    self.hideDragGhost()
+                    DesktopMochiController.shared.install(ghostPanel: ghost, at: mouse)
+                } else {
+                    self.hideDragGhost()
+                }
                 #endif
             }
         }
@@ -697,7 +717,7 @@ final class IslandWindowController: NSWindowController {
 
     // MARK: - Window context at screen point (for drag-attach)
 
-    private func windowContextAtPoint(_ screenPoint: NSPoint) -> PromptContext? {
+    func windowContextAtPoint(_ screenPoint: NSPoint) -> PromptContext? {
         let screen = window?.screen ?? NSScreen.main
         // CGWindowList uses top-left origin; NSEvent.mouseLocation uses bottom-left
         let screenMaxY = screen?.frame.maxY ?? NSScreen.main!.frame.maxY
@@ -915,6 +935,7 @@ extension Notification.Name {
     static let greetComplete    = Notification.Name("notchBuddy.greetComplete")
     static let greetingHover    = Notification.Name("notchBuddy.greetingHover")
     static let greetingInterrupt = Notification.Name("notchBuddy.greetingInterrupt")
+    static let openWardrobeFromDesktop = Notification.Name("notchBuddy.openWardrobeFromDesktop")
 }
 
 // MARK: - islandSize (takes real notch dimensions)

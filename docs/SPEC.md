@@ -285,6 +285,14 @@ Chaque jalon se termine par build + capture + comparaison aux références + com
 - **M8 Fenêtres + recherche** : attache, capture, URL, API Claude avec recherche web, vue résultat (INTEGRATIONS §4 et §5).
 - **M9 Finition** : mode démo (DEMO.md), réglages complets, lancement au démarrage, écran sans notch, mesure CPU/RAM, passe finale de comparaison visuelle.
 
+## 12. Critères d'acceptation
+
+- Côte à côte avec le prototype, Louis ne voit pas de différence sur le personnage, les couleurs, les timings et les sons.
+- Aucun clic perdu à cause de la fenêtre transparente.
+- Une session Claude Code n'est jamais bloquée par l'app (app fermée, plantée ou lente → le terminal prend le relais).
+- Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
+- La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
+
 ## 13. Mochi sur le bureau
 
 Mochi peut quitter l'island et vivre comme une icône flottante sur le bureau. Il conserve tout son comportement (tenue, émotes, suivi des yeux, danse) et réagit aux alertes.
@@ -297,7 +305,7 @@ Mochi peut quitter l'island et vivre comme une icône flottante sur le bureau. I
 
 ### Installation
 
-- **Depuis le glisser** : quand l'utilisateur lâche Mochi hors de la zone notch et hors de toute fenêtre, `IslandWindowController.finishDrag` cède le panneau fantôme au `DesktopMochiController`. Le panneau est redimensionné (120 × 120), son contenu remplacé par `DesktopBotView`. Son de bienvenue : `pop`. Atterrissage avec émote `happy`.
+- **Depuis le glisser** : quand l'utilisateur lâche Mochi hors de la zone notch et hors de toute fenêtre, `IslandWindowController.finishDrag` cède le panneau fantôme au `DesktopMochiController`. Le panneau s'agrandit vers 120 × 120 (animation ressort ~0,25 s), son contenu remplacé par `DesktopBotView`. Son de bienvenue : `pop`. Atterrissage avec émote `happy`.
 - **Retour dans la zone notch** : lâcher dans le cadre du panneau island → Mochi retourne à la notch sans s'installer sur le bureau.
 - **Au démarrage** (si `UserDefaults["mochiOnDesktop"] == true`) : le greeting se joue normalement, puis à `greetComplete` un nouveau panneau part de la notch et vole vers la position sauvegardée (animation 0,45 s).
 
@@ -305,17 +313,19 @@ Mochi peut quitter l'island et vivre comme une icône flottante sur le bureau. I
 
 | Geste | Effet |
 |---|---|
-| Clic simple | Slap (`engine.slap()`) |
-| Double-clic | Vol vers la notch (`flyHome()`), island réapparaît |
-| Clic droit | Ouvre/ferme la garde-robe |
-| Glisser | Repositionne le panneau (borné au `visibleFrame`) |
+| Clic simple | Slap (`engine.slap()`) — différé de `NSEvent.doubleClickInterval` |
+| Double-clic | Annule le slap en attente ; vol vers la notch (`flyHome()`), island réapparaît |
+| Clic droit | Ouvre/ferme la garde-robe (`.openWardrobeFromDesktop`, sans `.hookExpand`) |
+| Glisser → zone notch | Vol vers la notch (`flyHome()`) |
+| Glisser → fenêtre (GitHub) | Attache le contexte, Mochi revient à sa position initiale, island ouvre `.prompt` |
+| Glisser → ailleurs | Repositionne le panneau (borné au `visibleFrame`) |
 
 ### Personnage complet
 
 - Respiration, clignements, suivi des yeux depuis la position du panneau (pas depuis l'island).
 - Tenue : toujours celle de `state.resolvedOutfit` (main Mochi = toujours habillé).
 - Danse : mêmes règles que le mode compact (musique + intégration active + état autorisé).
-- 30 fps max (`TimelineView(minimumInterval: 1/30)`).
+- 30 fps actif, 10 fps au repos (`TimelineView` adapte `minimumInterval` selon `isSleeping`).
 
 ### Absences de la notch
 
@@ -323,30 +333,25 @@ Quand `AppState.mochiOnDesktop == true`, `BotPlacement` masque le bonhomme de la
 
 ### Alertes
 
-1. La notification `.hookExpand` arrive → émote `surprised` sur le Mochi du bureau.
+Détection par `Publishers.CombineLatest($pendingApproval, $pendingQuestion)` — seules les transitions nil↔non-nil déclenchent l'action. La notification `.hookExpand` n'est pas utilisée (elle part aussi pour `.finished`, `.error`, le glisser de fichier, etc.).
+
+1. `pendingApproval` ou `pendingQuestion` passe à non-`nil` → émote `surprised` sur le Mochi du bureau.
 2. Après 0,45 s, `retractForAlert()` : le panneau vole vers la notch et se ferme ; `mochiOnDesktop` passe à `false` (le bonhomme de la notch réapparaît pour l'alerte) ; `UserDefaults["mochiOnDesktop"]` reste `true`.
-3. Quand `pendingApproval` ou `pendingQuestion` redevient `nil`, `launchFlyIfNeeded()` renvole Mochi vers la position sauvegardée.
+3. Quand `pendingApproval` **et** `pendingQuestion` sont tous deux `nil`, `launchFlyIfNeeded()` renvole Mochi vers la position sauvegardée après 0,6 s.
+4. Si l'alerte se résout pendant l'animation de retrait, le panneau ne s'ouvre pas sur la notch — Mochi repart directement vers le bureau.
 
 ### `.finished`
 
-Émote `happy` (saut de joie) sur le Mochi du bureau.
+Émote `happy` (saut de joie) sur le Mochi du bureau. Détecté par `Publishers.CombineLatest($stateOverride, $tasks)` → `effectiveState` ; ne déclenche pas de retrait vers la notch.
 
 ### Sommeil
 
-- 2 min sans activité d'agent ET souris à plus de 150 pt → `engine.setState(.sleeping)`.
-- Réveil à l'approche de la souris ou à la réception d'un événement.
-- Pause complète lors du sommeil écran (`NSWorkspace.screensDidSleepNotification`).
+- 2 min sans activité d'agent ET souris à plus de 150 pt → `engine.setState(.sleeping)`, `TimelineView` passe à 10 fps.
+- Réveil à l'approche de la souris ou à la réception d'un événement d'agent.
+- Pause complète lors du sommeil écran (`NSWorkspace.screensDidSleepNotification`) ou du verrouillage de session (`com.apple.screenIsLocked`).
 
 ### Persistance
 
 - Position et état sauvegardés dans `UserDefaults` (clés : `desktopMochiX`, `desktopMochiY`, `mochiOnDesktop`).
 - Position bornée au `visibleFrame` du meilleur écran disponible au chargement ; si aucun écran ne convient, coin bas-droit de l'écran principal avec 24 pt de marge.
-
-## 12. Critères d'acceptation
-
-- Côte à côte avec le prototype, Louis ne voit pas de différence sur le personnage, les couleurs, les timings et les sons.
-- Aucun clic perdu à cause de la fenêtre transparente.
-- Une session Claude Code n'est jamais bloquée par l'app (app fermée, plantée ou lente → le terminal prend le relais).
-- Hidden = 0 % CPU ; compact < 3 % ; mémoire < 100 Mo.
-- La démo (⌃⌥⌘D) se filme d'une traite sans intervention.
 

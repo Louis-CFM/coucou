@@ -8,25 +8,29 @@ import Combine
 /// coupling to SwiftUI @State.
 @MainActor
 final class DesktopBotViewState: ObservableObject {
-    /// When true the TimelineView is paused (screen sleep/lock).
+    /// Drop to 10 fps when sleeping (saves energy).
+    @Published var isSleeping: Bool = false
+    /// Pause entirely (screen sleep / lock).
     @Published var paused: Bool = false
     /// Bot center in the same coord space as AppState.mousePosition (y-down from screen top).
-    /// Updated every poll frame; Canvas reads it inside TimelineView, no @Published needed.
+    /// Updated every poll frame; Canvas reads it inside TimelineView — @Published not needed.
     var lookOrigin: CGPoint = .zero
 }
 
 // MARK: - Desktop bot view
 
 /// Full Mochi character rendered inside the desktop floating panel.
-/// Mirrors BotCanvasView but uses the controller-owned engine and look-origin override.
 struct DesktopBotView: View {
     @ObservedObject var appState: AppState
-    /// Engine owned by DesktopMochiController; the controller calls methods on it directly.
+    /// Engine owned by DesktopMochiController; controller calls methods on it directly.
     let engine: BotEngine
     @ObservedObject var viewState: DesktopBotViewState
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: viewState.paused)) { timeline in
+        TimelineView(.animation(
+            minimumInterval: viewState.isSleeping ? 1.0 / 10.0 : 1.0 / 30.0,
+            paused: viewState.paused
+        )) { timeline in
             Canvas { ctx, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dt  = min(0.05, now - engine.lastTime)
@@ -92,50 +96,59 @@ struct DesktopBotView: View {
 /// Life cycle:
 /// - **Install from drag**: `IslandWindowController.finishDrag` calls `install(ghostPanel:at:)`.
 /// - **Launch restore**: `AppDelegate` observes `.greetComplete` → `launchFlyIfNeeded()`.
-/// - **Alert**: hookExpand notification → surprised emote → `retractForAlert()` (panel gone,
-///   flag stays true) → alert resolved → `launchFlyIfNeeded()` restores it.
+/// - **Alert**: `pendingApproval`/`pendingQuestion` goes non-nil → surprised emote →
+///   `retractForAlert()` (panel gone, flag stays true) → both nil → `launchFlyIfNeeded()`.
 /// - **User flies home**: double-click → `flyHome()` → full teardown.
 @MainActor
 final class DesktopMochiController {
     static let shared = DesktopMochiController()
-    private init() { observeScreenSleep() }
+    private init() {
+        observeScreenSleep()
+        observeScreenLock()
+        observeAlerts()   // permanent — lives for the lifetime of the singleton
+    }
 
     private var panel: NSPanel?
     private var engine: BotEngine?
     private var viewState: DesktopBotViewState?
     private var frameTimer: Timer?
 
-    // Drag repositioning
+    // Alert state machine
+    private var phase: DesktopPhase = .home
+
+    // Desktop drag repositioning
     private var isDragging = false
     private var dragMouseStart: NSPoint = .zero
     private var dragOriginAtStart: NSPoint = .zero
+
+    // Deferred single-click slap
+    private var pendingSlapWorkItem: DispatchWorkItem?
 
     // Sleep detection
     private var lastAgentActive: Date = .distantPast
     private var isSleeping = false
 
-    // Screen sleep
+    // Screen sleep / lock
     private var screenSleeping = false
 
-    // Lifecycle subscriptions (cleared on full teardown)
+    // Lifecycle subscriptions (cleared on retractForAlert + fullTearDown)
     private var cancellables: Set<AnyCancellable> = []
-    // Alert-return subscriptions: survive retractForAlert(), cleared on full teardown
-    private var alertCancellables: Set<AnyCancellable> = []
-    private var hookExpandObserver: Any?
+    // Alert subscription — permanent, only released with the singleton
+    private var alertSubscription: AnyCancellable?
 
     // Event monitors
-    private var mouseDownMonitor: Any?
+    private var mouseDownMonitor:    Any?
     private var mouseDraggedMonitor: Any?
-    private var mouseUpMonitor: Any?
-    private var rightClickMonitor: Any?
+    private var mouseUpMonitor:      Any?
+    private var globalMouseUpMonitor: Any?
+    private var rightClickMonitor:   Any?
 
     // UserDefaults keys
     private static let posXKey    = "desktopMochiX"
     private static let posYKey    = "desktopMochiY"
     private static let enabledKey = "mochiOnDesktop"
 
-    /// Square side of the desktop Mochi panel (pt).
-    static let panelSize: CGFloat = 120
+    static let panelSize: CGFloat = DesktopMochiLogic.panelSize
 
     // MARK: - Install (from drag-drop)
 
@@ -148,53 +161,12 @@ final class DesktopMochiController {
         if let ghost = ghostPanel {
             p = ghost
         } else {
-            p = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: s, height: s),
-                styleMask: [.borderless, .nonactivatingPanel],
-                backing: .buffered, defer: false
-            )
-            p.backgroundColor = .clear
-            p.isOpaque = false
-            p.hasShadow = false
+            p = makeBlankPanel()
+            p.setFrame(NSRect(x: screenPoint.x - s/2, y: screenPoint.y - s/2, width: s, height: s),
+                       display: false)
         }
 
-        let origin = clampToVisibleFrame(NSPoint(x: screenPoint.x - s/2, y: screenPoint.y - s/2))
-        p.level = .floating
-        p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
-        p.ignoresMouseEvents = true
-        p.setFrame(NSRect(origin: origin, size: CGSize(width: s, height: s)), display: true)
-
-        activatePanel(p)
-        SoundEngine.shared.play("pop")
-        engine?.triggerEmote(.happy, duration: 0.6, silent: true)
-    }
-
-    // MARK: - Launch fly (app-start restore or alert return)
-
-    /// Fly a new panel from the notch to the saved desktop position.
-    /// Called by AppDelegate after `.greetComplete`, and by the alert-return sink.
-    func launchFlyIfNeeded() {
-        guard UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey) else { return }
-        guard panel == nil else { return }
-
-        let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
-        let startOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
-        let target = loadSavedPosition()
-
-        let p = NSPanel(
-            contentRect: NSRect(origin: startOrigin, size: CGSize(width: s, height: s)),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered, defer: false
-        )
-        p.backgroundColor = .clear
-        p.isOpaque = false
-        p.hasShadow = false
-        p.level = .floating
-        p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
-        p.ignoresMouseEvents = true
-
-        // Build content now so the engine is ready during the animation
+        // Build engine + hosting view (autoresizingMask lets it grow with the panel animation)
         let eng = BotEngine()
         eng.setState(AppState.shared.effectiveState, force: true)
         eng.setOutfit(AppState.shared.resolvedOutfit, animated: false)
@@ -206,14 +178,77 @@ final class DesktopMochiController {
         self.viewState = vs
 
         let hosting = NSHostingView(rootView:
-            DesktopBotView(appState: AppState.shared, engine: eng, viewState: vs)
-        )
+            DesktopBotView(appState: AppState.shared, engine: eng, viewState: vs))
+        hosting.frame = CGRect(origin: .zero, size: p.frame.size)
+        hosting.autoresizingMask = [.width, .height]
+        p.contentView = hosting
+
+        p.level = .floating
+        p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        p.ignoresMouseEvents = true
+        if !p.isVisible { p.orderFront(nil) }
+
+        // Squash emote + sound on landing
+        eng.triggerEmote(.happy, duration: 0.6, silent: true)
+        SoundEngine.shared.play("pop")
+
+        // Animate from current (ghost) size to 120 × 120, centered on drop point
+        let targetOrigin = clampToVisibleFrame(NSPoint(x: screenPoint.x - s/2, y: screenPoint.y - s/2))
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.25
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.17, 0.67, 0.38, 1.3)
+            p.animator().setFrame(NSRect(origin: targetOrigin, size: CGSize(width: s, height: s)),
+                                  display: true)
+        }, completionHandler: {
+            Task { @MainActor in
+                self.panel = p
+                self.phase = .onDesktop
+                AppState.shared.mochiOnDesktop = true
+                UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
+                self.persistPosition()
+                self.startPolling()
+                self.addEventMonitors()
+                self.observeLifecycle()
+            }
+        })
+    }
+
+    // MARK: - Launch fly (app-start restore or alert return)
+
+    /// Fly a new panel from the notch to the saved desktop position.
+    /// Called by AppDelegate after `.greetComplete`, and by the alert-return path.
+    func launchFlyIfNeeded() {
+        guard UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey) else { return }
+        guard phase == .home else { return }
+        guard panel == nil else { return }
+
+        phase = .flyingOut
+        let s = DesktopMochiController.panelSize
+        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let startOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
+        let target = loadSavedPosition()
+
+        let p = makeBlankPanel()
+        p.setFrame(NSRect(origin: startOrigin, size: CGSize(width: s, height: s)), display: false)
+
+        let eng = BotEngine()
+        eng.setState(AppState.shared.effectiveState, force: true)
+        eng.setOutfit(AppState.shared.resolvedOutfit, animated: false)
+        self.engine = eng
+
+        let vs = DesktopBotViewState()
+        vs.lookOrigin = lookOriginFor(panel: p)
+        vs.paused = screenSleeping
+        self.viewState = vs
+
+        let hosting = NSHostingView(rootView:
+            DesktopBotView(appState: AppState.shared, engine: eng, viewState: vs))
         hosting.frame = CGRect(x: 0, y: 0, width: s, height: s)
+        hosting.autoresizingMask = [.width, .height]
         p.contentView = hosting
         p.alphaValue = 0
         p.orderFront(nil)
 
-        // Hide notch Mochi before animation begins
         AppState.shared.mochiOnDesktop = true
 
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -224,6 +259,7 @@ final class DesktopMochiController {
         }, completionHandler: {
             Task { @MainActor in
                 self.panel = p
+                self.phase = .onDesktop
                 UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
                 self.persistPosition()
                 self.startPolling()
@@ -238,16 +274,20 @@ final class DesktopMochiController {
     /// Animate panel to notch then fully tear down.
     func flyHome() {
         guard let p = panel else { return }
+        phase = .home
+        pendingSlapWorkItem?.cancel()
         stopPolling()
         removeEventMonitors()
+        cancellables.removeAll()
+        isSleeping = false
         let s = DesktopMochiController.panelSize
         let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
         let targetOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45
             ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            p.animator().setFrame(
-                NSRect(origin: targetOrigin, size: CGSize(width: s, height: s)), display: true)
+            p.animator().setFrame(NSRect(origin: targetOrigin, size: CGSize(width: s, height: s)),
+                                  display: true)
         }, completionHandler: {
             Task { @MainActor in
                 SoundEngine.shared.play("peek")
@@ -256,7 +296,7 @@ final class DesktopMochiController {
         })
     }
 
-    // MARK: - Retract for alert (panel flies home, comes back after alert resolves)
+    // MARK: - Retract for alert (panel flies home; comes back after alert resolves)
 
     /// Close panel and show notch Mochi for the alert. UserDefaults flag stays true so
     /// `launchFlyIfNeeded` restores Mochi once the alert is dismissed.
@@ -264,7 +304,9 @@ final class DesktopMochiController {
         guard let p = panel else { return }
         stopPolling()
         removeEventMonitors()
-        cancellables.removeAll()   // lifecycle subs only; alertCancellables survive
+        cancellables.removeAll()
+        pendingSlapWorkItem?.cancel()
+        isSleeping = false
 
         let s = DesktopMochiController.panelSize
         let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
@@ -272,8 +314,8 @@ final class DesktopMochiController {
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45
             ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            p.animator().setFrame(
-                NSRect(origin: targetOrigin, size: CGSize(width: s, height: s)), display: true)
+            p.animator().setFrame(NSRect(origin: targetOrigin, size: CGSize(width: s, height: s)),
+                                  display: true)
         }, completionHandler: {
             Task { @MainActor in
                 p.close()
@@ -281,10 +323,14 @@ final class DesktopMochiController {
                 self.engine = nil
                 self.viewState = nil
                 self.isDragging = false
-                self.isSleeping = false
-                // mochiOnDesktop → false so notch Mochi appears for the alert
                 AppState.shared.mochiOnDesktop = false
                 // UserDefaults flag stays TRUE so launchFlyIfNeeded works
+                if self.phase == .alertResolvedDuringRetract {
+                    self.phase = .home
+                    self.launchFlyIfNeeded()
+                } else {
+                    self.phase = .atNotchForAlert
+                }
             }
         })
     }
@@ -298,9 +344,9 @@ final class DesktopMochiController {
     }
 
     private func fullTearDown() {
-        if let obs = hookExpandObserver { NotificationCenter.default.removeObserver(obs); hookExpandObserver = nil }
+        phase = .home
         cancellables.removeAll()
-        alertCancellables.removeAll()
+        pendingSlapWorkItem?.cancel()
         panel?.close()
         panel = nil
         engine = nil
@@ -311,105 +357,87 @@ final class DesktopMochiController {
         UserDefaults.standard.set(false, forKey: DesktopMochiController.enabledKey)
     }
 
-    // MARK: - Panel activation helper
+    // MARK: - Panel factory
 
-    private func activatePanel(_ p: NSPanel) {
-        let s = DesktopMochiController.panelSize
-
-        let eng = BotEngine()
-        eng.setState(AppState.shared.effectiveState, force: true)
-        eng.setOutfit(AppState.shared.resolvedOutfit, animated: false)
-        self.engine = eng
-
-        let vs = DesktopBotViewState()
-        vs.lookOrigin = lookOriginFor(panel: p)
-        vs.paused = screenSleeping
-        self.viewState = vs
-
-        let hosting = NSHostingView(rootView:
-            DesktopBotView(appState: AppState.shared, engine: eng, viewState: vs)
-        )
-        hosting.frame = CGRect(x: 0, y: 0, width: s, height: s)
-        p.contentView = hosting
-        p.alphaValue = 1
-        p.orderFront(nil)
-
-        self.panel = p
-        AppState.shared.mochiOnDesktop = true
-        UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
-        persistPosition()
-
-        startPolling()
-        addEventMonitors()
-        observeLifecycle()
-        observeAlertReturn()   // start watching for alerts (idempotent via hookExpandObserver)
+    private func makeBlankPanel() -> NSPanel {
+        let p = NSPanel(contentRect: .zero,
+                        styleMask: [.borderless, .nonactivatingPanel],
+                        backing: .buffered, defer: false)
+        p.backgroundColor = .clear
+        p.isOpaque = false
+        p.hasShadow = false
+        return p
     }
 
-    // MARK: - Lifecycle observation (active while panel is live)
+    // MARK: - Lifecycle observation (active while panel is live on desktop)
 
     private func observeLifecycle() {
         cancellables.removeAll()
 
-        // .finished state → joy jump
-        AppState.shared.$stateOverride
+        // effectiveState → .finished: joy jump (only when on desktop, not retracting)
+        Publishers.CombineLatest(AppState.shared.$stateOverride, AppState.shared.$tasks)
+            .map { _, _ in AppState.shared.effectiveState }
+            .removeDuplicates()
+            .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                if AppState.shared.effectiveState == .finished {
+            .sink { [weak self] newState in
+                guard let self, self.phase == .onDesktop else { return }
+                if newState == .finished {
                     self.engine?.triggerEmote(.happy, duration: 1.2, silent: true)
                 }
             }
             .store(in: &cancellables)
     }
 
-    // MARK: - Alert observation (survives retract/restore cycle)
+    // MARK: - Alert observation (permanent — installed once at init)
 
-    private func observeAlertReturn() {
-        // Only register once; hookExpandObserver guards against duplicates
-        guard hookExpandObserver == nil else { return }
+    private func observeAlerts() {
+        alertSubscription = Publishers.CombineLatest(
+            AppState.shared.$pendingApproval,
+            AppState.shared.$pendingQuestion
+        )
+        .map { a, q in a != nil || q != nil }
+        .removeDuplicates()
+        .dropFirst()
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] alertActive in
+            guard let self else { return }
 
-        hookExpandObserver = NotificationCenter.default.addObserver(
-            forName: .hookExpand, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self, self.panel != nil else { return }
-            // Surprised emote then fly home, leaving UserDefaults flag intact
-            self.engine?.triggerEmote(.surprised)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
-                guard let self, self.panel != nil else { return }
-                self.retractForAlert()
+            if alertActive {
+                guard self.phase == .onDesktop else { return }
+                self.engine?.triggerEmote(.surprised)
+                self.phase = .retracting
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+                    guard let self else { return }
+                    switch self.phase {
+                    case .retracting:
+                        self.retractForAlert()
+                    case .alertResolvedDuringRetract:
+                        // Alert cleared before animation started — no need to retract
+                        self.phase = .home
+                        self.launchFlyIfNeeded()
+                    default:
+                        break
+                    }
+                }
+            } else {
+                switch self.phase {
+                case .atNotchForAlert:
+                    self.phase = .home
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                        self?.launchFlyIfNeeded()
+                    }
+                case .retracting:
+                    // Alert resolved while waiting to retract — mark it
+                    self.phase = .alertResolvedDuringRetract
+                default:
+                    break
+                }
             }
         }
-
-        // When pendingApproval clears → fly back
-        AppState.shared.$pendingApproval
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] approval in
-                guard let self, approval == nil, self.panel == nil,
-                      UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey)
-                else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                    self?.launchFlyIfNeeded()
-                }
-            }
-            .store(in: &alertCancellables)
-
-        // When pendingQuestion clears → fly back
-        AppState.shared.$pendingQuestion
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] question in
-                guard let self, question == nil, self.panel == nil,
-                      UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey)
-                else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                    self?.launchFlyIfNeeded()
-                }
-            }
-            .store(in: &alertCancellables)
     }
 
-    // MARK: - 60 Hz polling
+    // MARK: - 60 Hz polling (only while panel is live)
 
     private func startPolling() {
         frameTimer?.invalidate()
@@ -433,7 +461,7 @@ final class DesktopMochiController {
         let s     = DesktopMochiController.panelSize
 
         // Toggle click-through
-        let overBody  = isOverBody(local: local, size: s)
+        let overBody   = DesktopMochiLogic.isOverBody(localPoint: local, panelSize: s)
         let needsMouse = overBody || isDragging
         if p.ignoresMouseEvents == needsMouse {
             p.ignoresMouseEvents = !needsMouse
@@ -442,24 +470,19 @@ final class DesktopMochiController {
         // Update eye-tracking origin every frame
         viewState?.lookOrigin = lookOriginFor(panel: p)
 
-        // Sleep detection: 2 min no agent activity + mouse > 150 pt away
+        // Sleep detection
         let agentActive = AppState.shared.effectiveState != .idle &&
                           AppState.shared.effectiveState != .sleeping
         if agentActive { lastAgentActive = .now }
-        let mouseNear = hypot(mouse.x - pf.midX, mouse.y - pf.midY) < 150
-        let idle2min  = Date.now.timeIntervalSince(lastAgentActive) > 120
-        let shouldSleep = idle2min && !mouseNear
-
+        let dist     = hypot(mouse.x - pf.midX, mouse.y - pf.midY)
+        let interval = Date.now.timeIntervalSince(lastAgentActive)
+        let shouldSleep = DesktopMochiLogic.shouldSleep(lastAgentActiveInterval: interval,
+                                                         mouseDistanceToPanelCenter: dist)
         if shouldSleep != isSleeping {
             isSleeping = shouldSleep
+            viewState?.isSleeping = shouldSleep
             engine?.setState(isSleeping ? .sleeping : AppState.shared.effectiveState)
         }
-    }
-
-    private func isOverBody(local: CGPoint, size: CGFloat) -> Bool {
-        let cx = size / 2, cy = size / 2
-        let r: CGFloat = size * 0.24
-        return (local.x - cx) * (local.x - cx) + (local.y - cy) * (local.y - cy) <= r * r
     }
 
     // MARK: - Event monitors
@@ -495,6 +518,7 @@ final class DesktopMochiController {
             return event
         }
 
+        // Local mouseUp (cursor still within panel)
         mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
@@ -502,25 +526,21 @@ final class DesktopMochiController {
                 self.isDragging = false
                 self.dragMouseStart = .zero
                 if wasDragging {
-                    self.persistPosition()
+                    self.handleDragRelease(at: NSEvent.mouseLocation)
                 } else if event.window === self.panel {
-                    if event.clickCount >= 2 {
-                        self.flyHome()
-                    } else {
-                        self.engine?.slap()
-                    }
+                    self.handleClick(clickCount: event.clickCount)
                 }
             }
             return event
         }
 
-        // Global mouseUp fallback (cursor moved outside all panels during drag)
-        NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { [weak self] _ in
+        // Global mouseUp (cursor moved outside panel during drag)
+        globalMouseUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.isDragging else { return }
                 self.isDragging = false
                 self.dragMouseStart = .zero
-                self.persistPosition()
+                self.handleDragRelease(at: NSEvent.mouseLocation)
             }
         }
 
@@ -528,23 +548,58 @@ final class DesktopMochiController {
             guard let self else { return event }
             MainActor.assumeIsolated {
                 guard event.window === self.panel else { return }
-                if AppState.shared.mode == .expanded && AppState.shared.view == .wardrobe {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        AppState.shared.view = .overview
-                    }
-                } else {
-                    NotificationCenter.default.post(name: .hookExpand, object: IslandView.wardrobe)
-                }
+                NotificationCenter.default.post(name: .openWardrobeFromDesktop, object: nil)
             }
             return event
         }
     }
 
+    // MARK: - Click / drag helpers
+
+    private func handleClick(clickCount: Int) {
+        if clickCount >= 2 {
+            pendingSlapWorkItem?.cancel()
+            flyHome()
+        } else {
+            pendingSlapWorkItem?.cancel()
+            let item = DispatchWorkItem { [weak self] in self?.engine?.slap() }
+            pendingSlapWorkItem = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + NSEvent.doubleClickInterval, execute: item)
+        }
+    }
+
+    private func handleDragRelease(at mouse: NSPoint) {
+        let islandController = (NSApp.delegate as? AppDelegate)?.islandController
+        let inNotchZone = islandController?.window?.frame.contains(mouse) == true
+
+        if inNotchZone {
+            flyHome()
+            return
+        }
+
+        #if !APPSTORE
+        if let ctx = islandController?.windowContextAtPoint(mouse) {
+            // Attach window context; Mochi returns to pre-drag position
+            AppState.shared.promptContext = ctx
+            SoundEngine.shared.play("approve")
+            engine?.triggerEmote(.happy, duration: 0.6, silent: true)
+            let origin = clampToVisibleFrame(dragOriginAtStart)
+            panel?.setFrameOrigin(origin)
+            persistPosition()
+            islandController?.expand(to: .prompt)
+            return
+        }
+        #endif
+        // Elsewhere: keep new position
+        persistPosition()
+    }
+
     private func removeEventMonitors() {
-        if let m = mouseDownMonitor    { NSEvent.removeMonitor(m); mouseDownMonitor    = nil }
-        if let m = mouseDraggedMonitor { NSEvent.removeMonitor(m); mouseDraggedMonitor = nil }
-        if let m = mouseUpMonitor      { NSEvent.removeMonitor(m); mouseUpMonitor      = nil }
-        if let m = rightClickMonitor   { NSEvent.removeMonitor(m); rightClickMonitor   = nil }
+        if let m = mouseDownMonitor     { NSEvent.removeMonitor(m); mouseDownMonitor     = nil }
+        if let m = mouseDraggedMonitor  { NSEvent.removeMonitor(m); mouseDraggedMonitor  = nil }
+        if let m = mouseUpMonitor       { NSEvent.removeMonitor(m); mouseUpMonitor       = nil }
+        if let m = globalMouseUpMonitor { NSEvent.removeMonitor(m); globalMouseUpMonitor = nil }
+        if let m = rightClickMonitor    { NSEvent.removeMonitor(m); rightClickMonitor    = nil }
     }
 
     // MARK: - Screen sleep / wake
@@ -568,30 +623,51 @@ final class DesktopMochiController {
         }
     }
 
+    // MARK: - Screen lock / unlock
+
+    private func observeScreenLock() {
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.screenSleeping = true
+                self?.viewState?.paused = true
+            }
+        }
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.screenSleeping = false
+                self?.viewState?.paused = false
+            }
+        }
+    }
+
     // MARK: - Position helpers
 
     private func lookOriginFor(panel: NSPanel) -> CGPoint {
-        let s = DesktopMochiController.panelSize
-        let screen  = panel.screen ?? NSScreen.main!
-        let screenH = screen.frame.height
-        let cx = panel.frame.minX + s / 2
-        let cy = panel.frame.minY + s / 2
-        return CGPoint(x: cx - screen.frame.minX, y: screenH - cy)
+        let screen = panel.screen ?? NSScreen.main!
+        return DesktopMochiLogic.lookOrigin(
+            panelMinX:    panel.frame.minX,
+            panelMinY:    panel.frame.minY,
+            screenMinX:   screen.frame.minX,
+            screenHeight: screen.frame.height,
+            panelSize:    DesktopMochiController.panelSize)
     }
 
     private func clampToVisibleFrame(_ origin: NSPoint) -> NSPoint {
-        let s = DesktopMochiController.panelSize
-        let margin: CGFloat = 24
         let screen = NSScreen.screens.min(by: {
             let da = hypot(origin.x - $0.visibleFrame.midX, origin.y - $0.visibleFrame.midY)
             let db = hypot(origin.x - $1.visibleFrame.midX, origin.y - $1.visibleFrame.midY)
             return da < db
         }) ?? NSScreen.main!
-        let vf = screen.visibleFrame
-        return NSPoint(
-            x: min(max(origin.x, vf.minX + margin), vf.maxX - s - margin),
-            y: min(max(origin.y, vf.minY + margin), vf.maxY - s - margin)
-        )
+        let pt = DesktopMochiLogic.clampOrigin(
+            CGPoint(x: origin.x, y: origin.y),
+            panelSize:    DesktopMochiController.panelSize,
+            visibleFrame: screen.visibleFrame,
+            margin:       DesktopMochiLogic.clampMargin)
+        return NSPoint(x: pt.x, y: pt.y)
     }
 
     private func loadSavedPosition() -> NSPoint {
@@ -605,9 +681,9 @@ final class DesktopMochiController {
     }
 
     private func defaultPosition() -> NSPoint {
-        let s = DesktopMochiController.panelSize
-        let margin: CGFloat = 24
-        let vf = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        let s      = DesktopMochiController.panelSize
+        let margin = DesktopMochiLogic.clampMargin
+        let vf     = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         return NSPoint(x: vf.maxX - s - margin, y: vf.minY + margin)
     }
 
