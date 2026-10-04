@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 
 use crate::secrets;
 
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+const DEFAULT_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Server-side fallback: on a policy decline the API retries the same request on
 /// a fallback model inside the same call, so the island never shows a dead end.
@@ -21,6 +21,15 @@ const MAX_TOKENS: u32 = 4096;
 const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
+
+fn endpoint() -> String {
+    std::env::var("COUCOU_ANTHROPIC_BASE_URL")
+        .or_else(|_| std::env::var("ANTHROPIC_BASE_URL"))
+        .ok()
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string())
+}
 
 const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
@@ -164,7 +173,7 @@ async fn call(key: &str, body: &Value) -> Result<Value, String> {
         .map_err(|e| e.to_string())?;
 
     let response = client
-        .post(ENDPOINT)
+        .post(endpoint())
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)
         .header("anthropic-beta", FALLBACK_BETA)
@@ -248,7 +257,31 @@ fn base64(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::base64;
+    use super::*;
+
+    #[test]
+    fn endpoint_defaults_to_public_api() {
+        // When neither env var is present, falls back to official endpoint
+        std::env::remove_var("COUCOU_ANTHROPIC_BASE_URL");
+        std::env::remove_var("ANTHROPIC_BASE_URL");
+        assert_eq!(endpoint(), DEFAULT_ENDPOINT);
+    }
+
+    #[test]
+    fn endpoint_respects_custom_gateway() {
+        std::env::set_var("COUCOU_ANTHROPIC_BASE_URL", "https://gateway.example.com/v1/messages/");
+        assert_eq!(endpoint(), "https://gateway.example.com/v1/messages");
+
+        // Specific env var takes precedence over ANTHROPIC_BASE_URL
+        std::env::set_var("ANTHROPIC_BASE_URL", "https://other.example.com/v1/messages");
+        assert_eq!(endpoint(), "https://gateway.example.com/v1/messages");
+
+        std::env::remove_var("COUCOU_ANTHROPIC_BASE_URL");
+        assert_eq!(endpoint(), "https://other.example.com/v1/messages");
+
+        // Cleanup
+        std::env::remove_var("ANTHROPIC_BASE_URL");
+    }
 
     #[test]
     fn base64_matches_rfc4648_vectors() {
