@@ -5,14 +5,14 @@
 <div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
 <section id="en">
 <h1>Privacy Policy</h1>
-<div class="meta">Last updated: October 2, 2026</div>
+<div class="meta">Last updated: October 5, 2026</div>
 <div class="card"><b>In short:</b> Coucou has no account, no analytics, no ads and no tracking. The developer receives none of your data. Everything stays on your computer (Mac or PC), except what you choose to send to the services you connect yourself.</div>
 
 <h2>1. Who is responsible</h2>
 <p>Coucou is published by Louis Raillé, an individual developer based in France (“we”). Contact: <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>.</p>
 
 <h2>2. Data we collect</h2>
-<p><b>None.</b> Coucou does not send any data to us or to any server we operate. There is no telemetry, no crash reporting service, no advertising identifier and no third-party SDK.</p>
+<p><b>None.</b> There is no telemetry, no crash reporting service, no advertising identifier and no third-party SDK. The only server we operate is the optional Live Activity relay described in section 9: it forwards a few words about your agent’s state to Apple and stores nothing.</p>
 
 <h2>3. Data stored on your computer</h2>
 <table>
@@ -48,27 +48,31 @@
 <h2>8. System permissions</h2>
 <p>Depending on the version and the features you use, macOS may ask you to allow Automation (Mail, Terminal, Music), Accessibility (to read the title of the window you attach) or Screen Recording (to capture a window you attach). These are only used for the feature you triggered and can be revoked at any time in System Settings → Privacy &amp; Security. The Windows and Linux versions ask for no special permission. On Linux, installing the .deb or .rpm package needs administrator rights; the AppImage doesn't.</p>
 
-<h2>9. Children</h2>
+<h2>9. iPhone app</h2>
+<p>If you turn on <b>Settings → General → iPhone</b> on your Mac (off by default), Coucou writes your agent sessions to your own private iCloud database, which only your devices signed in to your Apple Account can read. Project names, steps, folders, the last message, pending commands and questions are encrypted with your iCloud keys. When you allow or deny a command from the iPhone (Face ID is required to allow), the decision goes back to your Mac through the same database, and the iPhone keeps a history of your decisions on the iPhone only. Turning the setting off deletes the sessions from iCloud. We have no access to your iCloud data.</p>
+<p>If you also turn on <b>Move Mochi to my iPhone’s Dynamic Island when my Mac is locked</b>, then while your Mac is locked and an agent is working, your Mac sends the agent’s name and state (for example “VS Code · working 3/7”) and your iPhone’s Live Activity push token to the Coucou relay, a small server we run on Cloudflare, which forwards it to Apple’s push service to update the Live Activity. The relay never receives a project name, a command, a path or a message, stores nothing and keeps no logs.</p>
+
+<h2>10. Children</h2>
 <p>Coucou is a developer tool and is not directed at children.</p>
 
-<h2>10. Your rights</h2>
-<p>Since we hold no personal data about you, there is nothing for us to access, correct or delete. For data held by a service you connected, please contact that service. If you live in the EU, you can also contact your data protection authority (in France: the <a href="https://www.cnil.fr">CNIL</a>).</p>
+<h2>11. Your rights</h2>
+<p>Since we hold no personal data about you (the relay keeps nothing), there is nothing for us to access, correct or delete. For data held by a service you connected, please contact that service. If you live in the EU, you can also contact your data protection authority (in France: the <a href="https://www.cnil.fr">CNIL</a>).</p>
 
-<h2>11. Changes</h2>
+<h2>12. Changes</h2>
 <p>If this policy changes, the new version will be published on this page with a new date.</p>
 </section>
 
 <hr>
 <section id="fr" lang="fr">
 <h1>Politique de confidentialité</h1>
-<div class="meta">Dernière mise à jour : 2 octobre 2026</div>
+<div class="meta">Dernière mise à jour : 5 octobre 2026</div>
 <div class="card"><b>En bref :</b> Coucou n’a ni compte, ni statistiques, ni publicité, ni pistage. Le développeur ne reçoit aucune de tes données. Tout reste sur ton ordinateur (Mac ou PC), sauf ce que tu choisis d’envoyer aux services que tu connectes toi-même.</div>
 
 <h2>1. Responsable</h2>
 <p>Coucou est publié par Louis Raillé, développeur indépendant basé en France. Contact : <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>.</p>
 
 <h2>2. Données collectées</h2>
-<p><b>Aucune.</b> Coucou n’envoie aucune donnée au développeur ni à un serveur qu’il exploite. Pas de télémétrie, pas de service de rapport de plantage, pas d’identifiant publicitaire, pas de SDK tiers.</p>
+<p><b>Aucune.</b> Pas de télémétrie, pas de service de rapport de plantage, pas d’identifiant publicitaire, pas de SDK tiers. Le seul serveur exploité par le développeur est le relais Live Activity facultatif décrit à la section 9 : il transmet à Apple quelques mots sur l’état de ton agent et ne stocke rien.</p>
 
 <h2>3. Données stockées sur ton ordinateur</h2>
 <table>
@@ -104,13 +108,17 @@
 <h2>8. Autorisations système</h2>
 <p>Selon la version et les fonctions utilisées, macOS peut te demander d’autoriser l’Automatisation (Mail, Terminal), l’Accessibilité (lire le titre de la fenêtre que tu attaches) ou l’Enregistrement de l’écran (capturer une fenêtre que tu attaches). Elles ne servent qu’à la fonction que tu as déclenchée et se retirent à tout moment dans Réglages Système → Confidentialité et sécurité. Les versions Windows et Linux ne demandent aucune autorisation particulière. Sous Linux, l’installation du paquet .deb ou .rpm nécessite des droits administrateur ; l’AppImage non.</p>
 
-<h2>9. Enfants</h2>
+<h2>9. App iPhone</h2>
+<p>Si tu actives <b>Réglages → Général → iPhone</b> sur ton Mac (désactivé par défaut), Coucou écrit tes sessions d’agents dans ta propre base iCloud privée, que seuls tes appareils connectés à ton compte Apple peuvent lire. Les noms de projet, étapes, dossiers, dernier message, commandes en attente et questions sont chiffrés avec tes clés iCloud. Quand tu autorises ou refuses une commande depuis l’iPhone (Face ID est demandé pour autoriser), la décision revient à ton Mac par la même base, et l’iPhone garde l’historique de tes décisions sur l’iPhone uniquement. Désactiver le réglage supprime les sessions d’iCloud. Le développeur n’a aucun accès à tes données iCloud.</p>
+<p>Si tu actives aussi <b>Mochi passe sur l’île dynamique de l’iPhone quand le Mac est verrouillé</b>, alors pendant que ton Mac est verrouillé et qu’un agent travaille, ton Mac envoie le nom et l’état de l’agent (par exemple « VS Code · working 3/7 ») et le jeton push Live Activity de ton iPhone au relais Coucou, un petit serveur exploité par le développeur sur Cloudflare, qui le transmet au service de notifications d’Apple pour mettre à jour la Live Activity. Le relais ne reçoit jamais de nom de projet, de commande, de chemin ni de message, ne stocke rien et ne tient aucun journal.</p>
+
+<h2>10. Enfants</h2>
 <p>Coucou est un outil pour développeurs, il ne s’adresse pas aux enfants.</p>
 
-<h2>10. Tes droits</h2>
-<p>Le développeur ne détenant aucune donnée personnelle te concernant, il n’y a rien à consulter, corriger ou supprimer de son côté. Pour les données détenues par un service que tu as connecté, contacte ce service. Tu peux aussi saisir la <a href="https://www.cnil.fr">CNIL</a>.</p>
+<h2>11. Tes droits</h2>
+<p>Le développeur ne détenant aucune donnée personnelle te concernant (le relais ne garde rien), il n’y a rien à consulter, corriger ou supprimer de son côté. Pour les données détenues par un service que tu as connecté, contacte ce service. Tu peux aussi saisir la <a href="https://www.cnil.fr">CNIL</a>.</p>
 
-<h2>11. Modifications</h2>
+<h2>12. Modifications</h2>
 <p>En cas de changement, la nouvelle version sera publiée sur cette page avec une nouvelle date.</p>
 </section>
 <footer>© 2026 Louis Raillé · Coucou is free and open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>

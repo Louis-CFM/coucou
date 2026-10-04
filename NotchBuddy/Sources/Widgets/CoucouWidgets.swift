@@ -12,6 +12,7 @@ struct CoucouWidgetBundle: WidgetBundle {
         TeamWidget()
         ListWidget()
         LockScreenWidget()
+        MochiLiveActivity()
     }
 }
 

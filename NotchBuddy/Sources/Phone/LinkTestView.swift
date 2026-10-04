@@ -14,6 +14,8 @@ struct LinkTestView: View {
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Approval notifications", value: link.approvalsStatus)
+                    LabeledContent("Live Activities",
+                                   value: LiveActivityLink.shared.activitiesEnabled ? "Allowed" : "Off in Settings")
                     if let error = link.pushError {
                         Label("Push registration failed: \(error)", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.orange)

@@ -243,12 +243,16 @@ targets:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: NO
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
+        NSSupportsLiveActivities: YES
+        # Which APNs environment the Live Activity tokens belong to (read by the Mac).
+        CoucouAPNsEnvironment: $(COUCOU_APNS_ENV)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
         PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoPhone.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COUCOU_APNS_ENV: production
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
@@ -261,8 +265,11 @@ targets:
         ENABLE_HARDENED_RUNTIME: NO
         OTHER_CODE_SIGN_FLAGS: ""
       configs:
+        Debug:
+          COUCOU_APNS_ENV: development
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhoneProduction.entitlements
+          COUCOU_APNS_ENV: development
 
   # Home Screen and Lock Screen widgets (Solo, Team, List, accessories). They
   # read the sessions the iPhone app saves to the shared App Group.
@@ -277,6 +284,7 @@ targets:
         type: group
       - path: Sources/Phone/SharedSessions.swift
       - path: Sources/Phone/MacStubs.swift
+      - path: Sources/Phone/MochiActivityAttributes.swift
     info:
       path: Resources/InfoWidgets.plist
       properties:

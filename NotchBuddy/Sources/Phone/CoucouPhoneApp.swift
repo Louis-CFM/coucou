@@ -27,6 +27,7 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         ApprovalActions.register()
+        LiveActivityLink.shared.start()
         application.registerForRemoteNotifications()
         Task { await PhoneLink.shared.start() }
         return true

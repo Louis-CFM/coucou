@@ -1,0 +1,13 @@
+# Coucou relay: forwards Live Activity pushes from the Mac app to Apple (APNs).
+# Deploy: see README.md. Secrets (never in git): APNS_KEY, APNS_KEY_ID.
+name = "coucou-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+APNS_TEAM_ID = "256AUJ9555"
+APNS_TOPIC = "fr.louisraille.Coucou.push-type.liveactivity"
+
+[observability]
+enabled = false

@@ -97,6 +97,7 @@ struct SettingsView: View {
     @AppStorage("settingsSection") private var selectedSection: String = "general"
     #if PHONE_LINK
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
+    @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
     #endif
 
     private var appVersion: String {
@@ -300,6 +301,13 @@ struct SettingsView: View {
                 Toggle("Show my agent sessions on my iPhone", isOn: $iPhoneSyncEnabled)
                     .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
                 Text("Sends your sessions to your private iCloud for the Coucou iPhone app. Project names, commands and questions are encrypted with your iCloud keys. Turning it off deletes them from iCloud.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
+                    .disabled(!iPhoneSyncEnabled)
+                    .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
+                Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -71,6 +71,7 @@ final class CloudProbe {
         NSApplication.shared.unregisterForRemoteNotifications()
         SessionPublisher.shared.stop()
         ApprovalRelay.shared.stop()
+        LiveActivityRelay.shared.stop()
         log("iPhone sync off")
     }
 
@@ -86,6 +87,7 @@ final class CloudProbe {
         NSApplication.shared.registerForRemoteNotifications()
         SessionPublisher.shared.start()
         ApprovalRelay.shared.start()
+        LiveActivityRelay.shared.startIfEnabled()
 
         // Step 1 Ping/Pong test: off unless asked for, so the Mac stays idle at rest
         // (defaults write fr.louisraille.NotchBuddy phoneLinkPing -bool YES).
