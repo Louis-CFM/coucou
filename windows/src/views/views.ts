@@ -33,8 +33,8 @@ export interface ViewHost {
   sync(): void;
   /** Called when the view becomes active, for views with a text field. */
   focus?(): void;
-  /** Called every frame while the view is on screen. */
-  tick?(nowMs: number): void;
+  /** Called every frame while the view is on screen. True = needs another frame. */
+  tick?(nowMs: number): boolean | void;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -161,7 +161,9 @@ function buildOverview(actions: ViewActions): ViewHost {
   return {
     el,
     tick(nowMs: number) {
-      if (mode === "ticker") ticker.tick(nowMs);
+      if (mode !== "ticker") return false;
+      ticker.tick(nowMs);
+      return ticker.animating;
     },
     sync() {
       const task = State.focusTask;
