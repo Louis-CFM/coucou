@@ -64,7 +64,10 @@ final class PhoneLink {
 
     static let containerID = "iCloud.fr.louisraille.Coucou"
     static let zoneID = CKRecordZone.ID(zoneName: "Coucou", ownerName: CKCurrentUserDefaultName)
-    private static let subscriptionID = "coucou-zone-phone"
+    private static let subscriptionID = "coucou-zone-phone-silent"
+    /// Step 1's subscription showed a "Ping from your Mac" banner. A saved
+    /// subscription keeps its notification settings, so it is deleted rather than reused.
+    private static let oldSubscriptionID = "coucou-zone-phone"
 
     var status: Status = .starting
     var pings: [PingItem] = []
@@ -115,7 +118,7 @@ final class PhoneLink {
         info.shouldSendContentAvailable = true
         sub.notificationInfo = info
         do {
-            _ = try await database.modifySubscriptions(saving: [sub], deleting: [])
+            _ = try await database.modifySubscriptions(saving: [sub], deleting: [Self.oldSubscriptionID])
             subscribed = true
         } catch {
             status = .failed("Subscription: \(error.localizedDescription)")
