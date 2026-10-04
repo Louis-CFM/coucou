@@ -48,10 +48,11 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     // Approval notification actions.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             didReceive response: UNNotificationResponse) async {
-        let userInfo = response.notification.request.content.userInfo
-        guard let note = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification,
-              let fingerprint = note.recordFields?["fingerprint"] as? String else { return }
-        let pillId = note.recordFields?["pillId"] as? String ?? ""
+        let request = response.notification.request
+        guard let fingerprint = PhoneLink.approvalFingerprint(in: request) else { return }
+        let note = CKNotification(fromRemoteNotificationDictionary: request.content.userInfo) as? CKQueryNotification
+        let pillId = request.content.userInfo["pillId"] as? String
+            ?? note?.recordFields?["pillId"] as? String ?? ""
         let denied = response.actionIdentifier == ApprovalActions.deny
         await Self.handleApproval(denied: denied, fingerprint: fingerprint, pillId: pillId)
     }
@@ -74,6 +75,12 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     // Show banners even when the app is open.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // One banner per approval: skip the iCloud alert if the local one is already there.
+        let request = notification.request
+        if let fingerprint = PhoneLink.approvalFingerprint(in: request),
+           request.identifier != PhoneLink.approvalNotificationID(fingerprint) {
+            if await PhoneLink.shownApprovalFingerprints(localOnly: true).contains(fingerprint) { return [] }
+        }
+        return [.banner, .sound]
     }
 }

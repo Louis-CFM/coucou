@@ -13,6 +13,7 @@ struct LinkTestView: View {
                               systemImage: "bell.slash")
                             .foregroundStyle(.secondary)
                     }
+                    LabeledContent("Approval notifications", value: link.approvalsStatus)
                     if let error = link.pushError {
                         Label("Push registration failed: \(error)", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.orange)

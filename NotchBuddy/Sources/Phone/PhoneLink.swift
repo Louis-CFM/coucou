@@ -110,11 +110,14 @@ final class PhoneLink {
         if !subscribed { await subscribe() }
         if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
+        await notifyNewApprovals()
     }
 
     /// Called on a CloudKit push. Returns true when new records arrived.
     func handlePush() async -> Bool {
-        await fetchChanges()
+        let gotNew = await fetchChanges()
+        await notifyNewApprovals()
+        return gotNew
     }
 
     private func subscribe() async {
@@ -150,6 +153,7 @@ final class PhoneLink {
         do {
             _ = try await database.modifySubscriptions(saving: [approvals], deleting: [])
             approvalsSubscribed = true
+            approvalsStatus = "On"
         } catch {
             // In the Development environment a query subscription needs the
             // record type to exist: create it once with a throwaway record.
@@ -165,8 +169,9 @@ final class PhoneLink {
                 _ = try await database.modifyRecords(saving: [], deleting: [seed.recordID])
                 _ = try await database.modifySubscriptions(saving: [approvals], deleting: [])
                 approvalsSubscribed = true
+                approvalsStatus = "On (record type created)"
             } catch {
-                lastPong = "Approval notifications: \(error.localizedDescription)"
+                approvalsStatus = "Failed: \(error.localizedDescription)"
             }
         }
     }
@@ -226,6 +231,63 @@ final class PhoneLink {
             receivedAt: firstFetchDone ? .now : nil
         ))
         return true
+    }
+
+    // MARK: Approval notifications (step 7)
+
+    /// State of the "coucou-approvals" subscription, shown on the link test screen.
+    var approvalsStatus = "Not set up yet"
+    @ObservationIgnored private var notifiedFingerprints: Set<String> = []
+
+    nonisolated static func approvalNotificationID(_ fingerprint: String) -> String { "approval-\(fingerprint)" }
+
+    /// The iCloud alert for an approval doesn't always come. The silent push
+    /// that updates the sessions does, so a new approval also gets a local
+    /// notification, unless the iCloud one is already there.
+    private func notifyNewApprovals() async {
+        let fresh = sessions.filter {
+            $0.needsApproval && !$0.approvalFingerprint.isEmpty && !notifiedFingerprints.contains($0.approvalFingerprint)
+        }
+        guard !fresh.isEmpty else { return }
+        fresh.forEach { notifiedFingerprints.insert($0.approvalFingerprint) }
+        // Give the iCloud alert a moment to land first.
+        try? await Task.sleep(for: .seconds(3))
+        let shown = await Self.shownApprovalFingerprints()
+        for session in fresh where !shown.contains(session.approvalFingerprint) {
+            // Still waiting? It may have been answered on the Mac meanwhile.
+            guard sessions.contains(where: { $0.approvalFingerprint == session.approvalFingerprint }) else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "\(session.pillName) · \(session.title)"
+            content.body = session.approvalCommand.isEmpty
+                ? "An agent is waiting for your OK"
+                : "Waiting for your OK: \(session.approvalCommand.prefix(140))"
+            content.sound = .default
+            content.categoryIdentifier = ApprovalActions.category
+            content.userInfo = ["fingerprint": session.approvalFingerprint, "pillId": session.id]
+            let request = UNNotificationRequest(identifier: Self.approvalNotificationID(session.approvalFingerprint),
+                                                content: content, trigger: nil)
+            try? await UNUserNotificationCenter.current().add(request)
+        }
+    }
+
+    /// Fingerprints of the approval notifications in Notification Center
+    /// (only the local ones with `localOnly`).
+    nonisolated static func shownApprovalFingerprints(localOnly: Bool = false) async -> Set<String> {
+        let delivered = await UNUserNotificationCenter.current().deliveredNotifications()
+        return Set(delivered.compactMap { notification -> String? in
+            let request = notification.request
+            guard let fingerprint = approvalFingerprint(in: request) else { return nil }
+            if localOnly && request.identifier != approvalNotificationID(fingerprint) { return nil }
+            return fingerprint
+        })
+    }
+
+    /// The approval fingerprint carried by a notification, local or from iCloud.
+    nonisolated static func approvalFingerprint(in request: UNNotificationRequest) -> String? {
+        let userInfo = request.content.userInfo
+        if let fingerprint = userInfo["fingerprint"] as? String { return fingerprint }
+        let note = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification
+        return note?.recordFields?["fingerprint"] as? String
     }
 
     // MARK: Decisions (step 7)
