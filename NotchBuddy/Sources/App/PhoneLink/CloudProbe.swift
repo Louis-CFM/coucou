@@ -83,6 +83,8 @@ final class CloudProbe {
             sub.notificationInfo = info
             _ = try await database.modifySubscriptions(saving: [sub], deleting: [])
             log("database subscription saved")
+            let subs = try await database.allSubscriptions()
+            log("subscriptions on this iCloud account: \(subs.map(\.subscriptionID).sorted().joined(separator: ", "))")
             ready = true
             return true
         } catch {
@@ -114,7 +116,10 @@ final class CloudProbe {
     // MARK: Pong
 
     func handleRemoteNotification(_ userInfo: [String: Any]) {
-        guard CKNotification(fromRemoteNotificationDictionary: userInfo) != nil else { return }
+        guard CKNotification(fromRemoteNotificationDictionary: userInfo) != nil else {
+            log("remote notification received, not from CloudKit (keys: \(userInfo.keys.sorted().joined(separator: ", ")))")
+            return
+        }
         lastPushAt = Date()
         log("push received")
         Task { await fetchChanges(source: "push") }
@@ -181,18 +186,22 @@ final class CloudProbe {
         }
     }
 
-    private func log(_ message: String) {
+    /// Writes to nb.log and to the Xcode console (the sandboxed build's nb.log
+    /// sits in its container, which Terminal can't read).
+    func log(_ message: String) {
         appendAppLog("nb.log", "[PhoneLink] \(message)")
+        print("[PhoneLink] \(message)")
     }
 }
 
 extension AppDelegate {
     @objc func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        appendAppLog("nb.log", "[PhoneLink] registered for remote notifications")
+        let token = deviceToken.prefix(4).map { String(format: "%02x", $0) }.joined()
+        CloudProbe.shared.log("registered for remote notifications (token \(token)…)")
     }
 
     @objc func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        appendAppLog("nb.log", "[PhoneLink] remote notification registration failed: \(error.localizedDescription)")
+        CloudProbe.shared.log("remote notification registration failed: \(error.localizedDescription)")
     }
 
     @objc func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
