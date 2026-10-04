@@ -2,6 +2,7 @@ import CloudKit
 import Observation
 import UIKit
 import UserNotifications
+import WidgetKit
 
 /// A Ping written by the Mac, as seen by the iPhone.
 struct PingItem: Identifiable {
@@ -149,6 +150,7 @@ final class PhoneLink {
             }
             firstFetchDone = true
             status = .ready
+            if gotNew { updateWidgets() }
         } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
             status = .zoneMissing
         } catch let error as CKError where error.code == .changeTokenExpired {
@@ -181,6 +183,12 @@ final class PhoneLink {
             receivedAt: firstFetchDone ? .now : nil
         ))
         return true
+    }
+
+    /// Hands the sessions to the widgets and asks them to redraw.
+    private func updateWidgets() {
+        SharedSessions.save(sessions.map(\.shared))
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// Writes a Pong linked to the latest Ping.

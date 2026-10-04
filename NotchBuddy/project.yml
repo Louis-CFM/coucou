@@ -213,6 +213,8 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "18.0"
+    dependencies:
+      - target: CoucouWidgets
     sources:
       - path: Sources/Phone
         type: group
@@ -255,3 +257,46 @@ targets:
       configs:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhoneProduction.entitlements
+
+  # Home Screen and Lock Screen widgets (Solo, Team, List, accessories). They
+  # read the sessions the iPhone app saves to the shared App Group.
+  CoucouWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/Widgets
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/SharedSessions.swift
+      - path: Sources/Phone/MacStubs.swift
+    info:
+      path: Resources/InfoWidgets.plist
+      properties:
+        CFBundleName: CoucouWidgets
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou.Widgets
+        CFBundleVersion: "1"
+        CFBundleShortVersionString: "0.1"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.Widgets
+        PRODUCT_NAME: CoucouWidgets
+        INFOPLIST_FILE: Resources/InfoWidgets.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouWidgets.entitlements
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES

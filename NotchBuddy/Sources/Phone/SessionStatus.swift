@@ -45,6 +45,25 @@ extension SessionItem {
     }
 
     var title: String { name.isEmpty ? pillName : name }
+
+    var tone: SharedSession.Tone {
+        switch urgency {
+        case 0: .waiting
+        case 1: .question
+        case 2: .error
+        case 3: .working
+        case 4: .done
+        default: .idle
+        }
+    }
+
+    /// What the widgets get (SharedSessions).
+    var shared: SharedSession {
+        SharedSession(id: id, title: title, agent: pillName, color: color, state: state.rawValue,
+                      statusText: statusText, tone: tone, urgency: urgency,
+                      stepIndex: stepIndex, stepCount: steps.count,
+                      currentStep: currentStep ?? "", updatedAt: updatedAt)
+    }
 }
 
 extension Array where Element == SessionItem {
