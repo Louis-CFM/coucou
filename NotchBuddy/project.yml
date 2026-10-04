@@ -112,6 +112,7 @@ targets:
         type: group
         excludes:
           - "Phone/**"
+          - "Widgets/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -164,6 +165,7 @@ targets:
         type: group
         excludes:
           - "Phone/**"
+          - "Widgets/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
