@@ -39,12 +39,14 @@ final class ApprovalRelay {
 
     func start() {
         guard cancellable == nil else { return }
+        // @Published sends the new value before the property changes, so the
+        // value is passed along rather than read back from AppState.
         cancellable = AppState.shared.$pendingApproval
-            .map { $0.map(Self.fingerprint) }
-            .removeDuplicates()
-            .sink { [weak self] fingerprint in
-                MainActor.assumeIsolated { self?.pendingChanged(to: fingerprint) }
+            .removeDuplicates { $0.map(Self.fingerprint) == $1.map(Self.fingerprint) }
+            .sink { [weak self] approval in
+                MainActor.assumeIsolated { self?.pendingChanged(to: approval) }
             }
+        log("relay on")
     }
 
     func stop() {
@@ -54,7 +56,8 @@ final class ApprovalRelay {
 
     // MARK: Request lifecycle
 
-    private func pendingChanged(to fingerprint: String?) {
+    private func pendingChanged(to approval: ApprovalInfo?) {
+        let fingerprint = approval.map(Self.fingerprint)
         if let old = current, old.fingerprint != fingerprint {
             pollTask?.cancel()
             pollTask = nil
@@ -62,8 +65,7 @@ final class ApprovalRelay {
             let id = requestID(old.fingerprint)
             Task { _ = try? await database.modifyRecords(saving: [], deleting: [id]) }
         }
-        guard let fingerprint, let approval = AppState.shared.pendingApproval,
-              current?.fingerprint != fingerprint else { return }
+        guard let fingerprint, let approval, current?.fingerprint != fingerprint else { return }
         current = (fingerprint, Date())
         Task { await publishRequest(approval, fingerprint: fingerprint) }
         pollTask = Task { [weak self] in
