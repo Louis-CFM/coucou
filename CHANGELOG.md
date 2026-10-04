@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5 — October 4, 2026
+
+- Dress Mochi up: right-click him to open the wardrobe and pick a party hat, beanie, crown, witch hat, Santa hat, bunny ears, bow, sunglasses, round glasses, scarf or pumpkin, all drawn in code (#195)
+- Auto mode dresses Mochi for the seasons on his own (#195)
+- Outfits follow his head in 3D, glasses stay on his eyes, soft parts react when you tap or move him, and outfits come and go with a transition. Only the main Mochi wears them (#195)
+- A new launch greeting: Mochi drops into the island, bounces, slides to the side and waves hello with a quick little hand, then comes back, with a new soft whisper of a sound (#196)
+- Mochi's body is no longer clipped at two corners during the greeting (#196)
+
 ## 0.1.4 — October 3, 2026
 
 - See what Claude is editing, live: each file edit shows up in the session ticker with its +N −M lines, and a click opens the diff right in the notch (#177)
@@ -41,3 +49,14 @@
 - Windows build artifacts are now downloadable from a manual CI run — thanks @MysJofR
 - Any agent can talk to Mochi: tag a hook payload with `coucou_agent` (e.g. `nb-hook --agent my-agent`) and it gets its own pill in the island (#7, #9) — thanks @lacatu5
 - Gemini CLI and Antigravity (agy) hook support on macOS: install from Settings and their sessions show up in the island — thanks @corefusiion
+
+## 0.1.0 — September 27, 2026
+
+- First release: Mochi lives in your notch, breathing, blinking, with eyes that follow your cursor
+- Claude Code sessions: live steps, approve permissions, answer questions, jump to the terminal
+- Chat with Claude from the notch
+- Drop a file on the notch to ask a question about it or send it by email
+- Drag Mochi onto any window to attach it as context
+- Integrations: Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com
+- 28 handcrafted sounds
+- Hides when idle, peeks out when you hover

@@ -42,6 +42,8 @@ CHANGES=$(awk -v head="## $VERSION" '
 ' CHANGELOG.md)
 [ -n "$CHANGES" ] || die "CHANGELOG.md has no '## $VERSION' section"
 
+grep -q "| \[$VERSION\]" README.md || die "README.md has no row for $VERSION in the Versions table"
+
 if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   die "tag $TAG already exists here"
 fi
