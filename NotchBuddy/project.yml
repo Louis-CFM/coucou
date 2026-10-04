@@ -7,12 +7,14 @@ options:
   createIntermediateGroups: true
 
 # DebugCloud = Debug, but signed with iCloud (CloudKit) and push entitlements
-# and compiled with PHONE_LINK, for the iPhone link spike. Debug and Release
-# are unchanged.
+# and compiled with PHONE_LINK, for the iPhone link spike. ReleaseCloud = the
+# same for a Developer ID build with its provisioning profile
+# (scripts/cloud-test-build.sh). Debug and Release are unchanged.
 configs:
   Debug: debug
   DebugCloud: debug
   Release: release
+  ReleaseCloud: release
 
 settings:
   base:
@@ -38,6 +40,13 @@ settings:
       OTHER_CODE_SIGN_FLAGS: "--timestamp"
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
       CODE_SIGN_ENTITLEMENTS: Resources/Coucou.entitlements
+    ReleaseCloud:
+      CODE_SIGNING_REQUIRED: YES
+      CODE_SIGNING_ALLOWED: YES
+      CODE_SIGN_IDENTITY: "Developer ID Application"
+      DEVELOPMENT_TEAM: 256AUJ9555
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
 
 schemes:
   NotchBuddy:
@@ -123,6 +132,10 @@ targets:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
+        ReleaseCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
+          PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
 
   CoucouAppStore:
     type: application

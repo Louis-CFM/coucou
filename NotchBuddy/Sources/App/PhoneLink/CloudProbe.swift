@@ -45,7 +45,12 @@ final class CloudProbe {
 
     func start() {
         guard pingTask == nil else { return }
-        log("starting (\(appLabel), container \(Self.containerID))")
+        #if DEBUG
+        let build = "debug"
+        #else
+        let build = "release"
+        #endif
+        log("starting (\(appLabel), \(build) build, container \(Self.containerID))")
         NSApplication.shared.registerForRemoteNotifications()
 
         pingTask = Task { [weak self] in
