@@ -300,14 +300,14 @@ struct BotPlacement: View {
                     let uploadCx = 36 + CGFloat(t * (2 - t)) * 526
                     BotCanvasView(state: state, particleOverhang: 0)
                         .frame(width: canvasSize, height: canvasSize)
-                        .opacity(state.isDraggingBot ? 0 : opacity)
+                        .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
                 BotCanvasView(state: state, particleOverhang: overhang)
                     .frame(width: canvasSize, height: canvasSize + overhang)
-                    .opacity(state.isDraggingBot ? 0 : opacity)
+                    .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cx)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cy)

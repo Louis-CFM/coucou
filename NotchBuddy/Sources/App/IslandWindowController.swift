@@ -451,14 +451,31 @@ final class IslandWindowController: NSWindowController {
                 self.inAttachDrag = false
                 self.attachDragStart = nil
                 self.state.stateOverride = nil
-                self.hideDragGhost()
+
                 #if !APPSTORE
-                if let ctx = self.windowContextAtPoint(mouse) {
+                let windowCtx = self.windowContextAtPoint(mouse)
+                let inNotchZone = self.window?.frame.contains(mouse) == true
+
+                if let ctx = windowCtx {
+                    // Drop on a window → attach context as before
+                    self.hideDragGhost()
                     self.state.promptContext = ctx
                     SoundEngine.shared.play("approve")
                     NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
                     self.expand(to: .prompt)
+                } else if !inNotchZone {
+                    // Drop outside notch zone → install Mochi on the desktop.
+                    // Prevent hideDragGhost from closing the ghost panel so we can promote it.
+                    let ghost = self.dragGhostPanel
+                    self.dragGhostPanel = nil   // nil first so hideDragGhost skips close
+                    self.hideDragGhost()        // resets isDraggingBot, closes highlight panel
+                    DesktopMochiController.shared.install(ghostPanel: ghost, at: mouse)
+                } else {
+                    // Drop back in notch zone → Mochi returns to notch
+                    self.hideDragGhost()
                 }
+                #else
+                self.hideDragGhost()
                 #endif
             }
         }

@@ -105,6 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotionPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
+        // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
+            DesktopMochiController.shared.launchFlyIfNeeded()
+        }
         #if !APPSTORE
         _ = MusicController.shared
         #endif

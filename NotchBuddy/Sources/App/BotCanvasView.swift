@@ -5,6 +5,9 @@ import SwiftUI
 struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
+    /// When set, overrides island-based eye-tracking (used by desktop Mochi).
+    /// CGPoint in the same coord space as state.mousePosition (y-down from screen top).
+    var lookOriginOverride: CGPoint? = nil
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
@@ -147,6 +150,9 @@ struct BotCanvasView: View {
     }
 
     private func lookX(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return tanh((state.mousePosition.x - origin.x) / 260)
+        }
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
@@ -160,6 +166,9 @@ struct BotCanvasView: View {
     }
 
     private func lookY(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return -tanh((state.mousePosition.y - origin.y) / 200)
+        }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)

@@ -29,6 +29,9 @@ final class AppState: ObservableObject {
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
 
+    // Desktop Mochi: true while Mochi lives on the desktop instead of the notch
+    @Published var mochiOnDesktop: Bool = false
+
     // Mouse tracking
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
