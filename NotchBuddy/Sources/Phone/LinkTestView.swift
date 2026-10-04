@@ -20,6 +20,37 @@ struct LinkTestView: View {
                     }
                 }
 
+                Section("Sessions on your Mac") {
+                    if link.sessions.isEmpty {
+                        Text("No session yet. Open Coucou on your Mac (NotchBuddyCloud).")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(link.sessions) { session in
+                        HStack(alignment: .top, spacing: 12) {
+                            MochiStill(state: session.state)
+                                .padding(4)
+                                .frame(width: 40, height: 40)
+                                .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 10))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(session.name.isEmpty ? session.pillName : session.name)
+                                Text("\(session.pillName) · \(session.state.rawValue)" +
+                                     (session.steps.isEmpty ? "" : " · \(session.stepIndex + 1)/\(session.steps.count)"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                if session.needsApproval {
+                                    Text(session.approvalCommand.isEmpty ? "Waiting for your approval" : session.approvalCommand)
+                                        .font(.caption.monospaced()).foregroundStyle(.orange).lineLimit(2)
+                                } else if !session.question.isEmpty {
+                                    Text(session.question).font(.caption).foregroundStyle(.cyan).lineLimit(2)
+                                } else if let step = session.currentStep {
+                                    Text(step).font(.caption).lineLimit(1)
+                                }
+                                Text(session.updatedAt, style: .relative)
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 Section {
                     Button {
                         sending = true

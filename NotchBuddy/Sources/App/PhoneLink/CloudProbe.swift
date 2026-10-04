@@ -4,7 +4,8 @@ import CloudKit
 
 // MARK: - iPhone link spike (DebugCloud only)
 //
-// Proves that the Mac and the iPhone app share a private CloudKit database:
+// Step 1 spike, kept for testing: when the phoneLinkPing default is on, proves
+// that the Mac and the iPhone app share a private CloudKit database:
 // writes a `Ping` every 60 s, waits for the iPhone's `Pong`, and logs the
 // round trip to ~/Library/Logs/NotchBuddy/nb.log. Pongs arrive both through a
 // silent push (CKDatabaseSubscription) and a 5 s poll, so the log shows which
@@ -28,6 +29,7 @@ final class CloudProbe {
     private var seenPongs = Set<String>()
     private var fetching = false
     private var lastPushAt: Date?
+    private var started = false
     private var pingTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
 
@@ -44,7 +46,8 @@ final class CloudProbe {
     }
 
     func start() {
-        guard pingTask == nil else { return }
+        guard !started else { return }
+        started = true
         #if DEBUG
         let build = "debug"
         #else
@@ -52,7 +55,14 @@ final class CloudProbe {
         #endif
         log("starting (\(appLabel), \(build) build, container \(Self.containerID))")
         NSApplication.shared.registerForRemoteNotifications()
+        SessionPublisher.shared.start()
 
+        // Step 1 Ping/Pong test: off unless asked for, so the Mac stays idle at rest
+        // (defaults write fr.louisraille.NotchBuddy phoneLinkPing -bool YES).
+        guard UserDefaults.standard.bool(forKey: "phoneLinkPing") else {
+            log("ping test off (phoneLinkPing)")
+            return
+        }
         pingTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.pingTick()
