@@ -355,3 +355,55 @@ Détection par `Publishers.CombineLatest($pendingApproval, $pendingQuestion)` �
 - Position et état sauvegardés dans `UserDefaults` (clés : `desktopMochiX`, `desktopMochiY`, `mochiOnDesktop`).
 - Position bornée au `visibleFrame` du meilleur écran disponible au chargement ; si aucun écran ne convient, coin bas-droit de l'écran principal avec 24 pt de marge.
 
+## 14. Gravité, perchoir et promenade (Mochi vivant)
+
+Extension du §13 : Mochi tombe vers la surface la plus proche dès qu'il est posé sur le bureau, se perche dessus et se promène de temps en temps.
+
+### Surfaces de perchoir
+
+Une fenêtre est une surface valide si :
+- `kCGWindowLayer == 0` (fenêtre normale, pas un panneau système)
+- Application `.regular` (ni Coucou lui-même ni les processus en arrière-plan)
+- Largeur ≥ 160 pt
+- `kCGWindowAlpha > 0` (visible)
+- Le bord supérieur (top edge) n'est pas occulté par une autre fenêtre
+
+Mochi se pose les pieds sur le bord supérieur d'une surface (`panel.frame.minY = surface.frame.maxY`). Si aucune surface n'est trouvée sous lui, il tombe jusqu'au `visibleFrame.minY` de l'écran.
+
+### Chute et perchoir
+
+- **Chute** : dès que Mochi est posé (fin du vol depuis la notch ou lâcher de glisser), `startGravity()` trouve la surface la plus haute sous le centre horizontal du panneau et déclenche une chute animée par le timer (pas `NSAnimationContext`).
+  - Durée : `√(2d / 2000)`, bornée à [0,3 s … 0,6 s].
+  - Atterrissage : émote `happy`, son `pop`, bascule en mode `.perched`.
+- **Glisser → bord supérieur de fenêtre** : si le bas du panneau (bottom-center) est posé à ±30 pt du bord supérieur d'une fenêtre et à l'intérieur de sa largeur → Mochi se perche directement sans chute, sans attacher de contexte.
+- **Perchoir** : suivi à 4 Hz (lecture `CGWindowListCopyWindowInfo`). Mochi suit les déplacements/redimensionnements de la fenêtre. Il tombe si la fenêtre disparaît (fermée, minimisée) ou si son bord supérieur est occulté.
+  - Après un déplacement de fenêtre : boost à 60 Hz pendant 1 s, puis retour à 4 Hz.
+
+### Promenade (wander)
+
+Toutes les 25–70 s (aléatoire), si Mochi est éveillé, sans agent actif, sans alerte, sans glisser, et que la souris est à plus de 80 pt :
+1. **1 chance sur 4** : saut parabolique vers une surface voisine (distance verticale ≤ 220 pt, bord non occulté). Hauteur d'arc : 30 pt, durée : 0,5 s.
+2. **Sinon** : 2–5 sauts de 25–60 pt horizontaux sur la même surface, parabole 16 pt, 0,35 s par saut. Sauts silencieux. Si la souris s'approche à < 80 pt en cours de séquence → arrêt immédiat.
+
+### Performance
+
+| État | Fréquence timer | Lecture fenêtres |
+|---|---|---|
+| Chute / saut | 60 Hz | À chaque atterrissage |
+| Perché, stable | 4 Hz | À chaque tick |
+| Perché, fenêtre vient de bouger | 60 Hz pendant 1 s | À chaque tick |
+| Endormi | 1 Hz | À chaque tick |
+
+### Logique pure (`DesktopMochiLogic`)
+
+Fonctions sans AppKit, compilables et testables séparément :
+- `surfaceBelow(panelFrame:windows:visibleFrame:)` → surface cible et ID
+- `perchCandidate(dropBottom:windows:)` → fenêtre à ±30 pt
+- `isEdgeCovered(surface:windows:)` → occultation
+- `planWander(rng:currentX:minX:maxX:)` → positions de saut X
+- `hopY(t:height:)` → parabole `4·h·t·(1−t)`
+- `fallDuration(pixelDistance:)` → durée bornée [0,3 s, 0,6 s]
+- `nextPollInterval(inMotion:sleeping:)` → 1/60 s / 0,25 s / 1 s
+
+Toutes les conversions CG → AppKit se font en un seul endroit (`querySurfaces()`).
+

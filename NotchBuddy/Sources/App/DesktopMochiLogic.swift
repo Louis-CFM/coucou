@@ -19,15 +19,49 @@ enum DesktopPhase: Equatable {
     case atNotchForAlert
 }
 
+// MARK: - Window surface (pure value type, no AppKit)
+
+/// A window distilled to what the gravity / perching logic needs.
+/// All coordinates use AppKit screen space (y-up, origin at bottom-left of main screen).
+struct WindowSurface: Equatable {
+    let id: CGWindowID   // UInt32
+    let frame: CGRect    // AppKit screen space
+    var topY: CGFloat { frame.maxY }
+}
+
 // MARK: - Pure geometry / logic (no AppKit — fully unit-testable)
 
 /// Stateless helpers for `DesktopMochiController`.
 enum DesktopMochiLogic {
+
+    // MARK: - Existing constants
+
     static let panelSize:          CGFloat      = 120
     static let sleepTimeout:       TimeInterval = 120
     static let sleepMouseDistance: CGFloat      = 150
     static let clampMargin:        CGFloat      = 24
     static let bodyRadiusFraction: CGFloat      = 0.24
+
+    // MARK: - Gravity / perching / wander constants
+
+    static let surfaceMinWidth:   CGFloat      = 160
+    static let perchThreshold:    CGFloat      = 30   // pt tolerance around window top edge
+    static let fallGravity:       CGFloat      = 2000 // pt/s²
+    static let fallMinDuration:   TimeInterval = 0.3
+    static let fallMaxDuration:   TimeInterval = 0.6
+    static let wanderMinInterval: TimeInterval = 25
+    static let wanderMaxInterval: TimeInterval = 70
+    static let wanderMinHopDist:  CGFloat      = 25
+    static let wanderMaxHopDist:  CGFloat      = 60
+    static let wanderMinHops:     Int          = 2
+    static let wanderMaxHops:     Int          = 5
+    static let wanderHopDuration: TimeInterval = 0.35
+    static let wanderHopHeight:   CGFloat      = 16
+    static let wanderMouseStop:   CGFloat      = 80
+    static let neighborMaxDist:   CGFloat      = 220
+    static let neighborChance:    Double       = 0.25
+
+    // MARK: - Existing functions
 
     /// Whether Mochi should enter sleeping state.
     static func shouldSleep(lastAgentActiveInterval: TimeInterval,
@@ -69,5 +103,89 @@ enum DesktopMochiLogic {
             x: min(max(origin.x, visibleFrame.minX + margin), visibleFrame.maxX - panelSize - margin),
             y: min(max(origin.y, visibleFrame.minY + margin), visibleFrame.maxY - panelSize - margin)
         )
+    }
+
+    // MARK: - Gravity / surface functions
+
+    /// Highest window surface top edge at or below `panelFrame.minY`,
+    /// where the panel's center X falls within the window's horizontal span.
+    /// Returns `(targetPanelOriginY, windowID)` — `id` is nil when landing on screen bottom.
+    static func surfaceBelow(panelFrame:   CGRect,
+                              windows:     [WindowSurface],
+                              visibleFrame: CGRect) -> (y: CGFloat, id: CGWindowID?) {
+        let cx  = panelFrame.midX
+        let bot = panelFrame.minY
+        let best = windows
+            .filter { $0.topY <= bot && $0.frame.minX < cx && cx < $0.frame.maxX }
+            .max { $0.topY < $1.topY }
+        return best.map { ($0.topY, $0.id) } ?? (visibleFrame.minY, nil)
+    }
+
+    /// Window whose top edge is within ±`perchThreshold` of `dropBottom.y`
+    /// and `dropBottom.x` falls within its horizontal span.
+    /// `dropBottom` is the panel's bottom-center at the time of the drop.
+    static func perchCandidate(dropBottom: CGPoint,
+                                windows: [WindowSurface]) -> WindowSurface? {
+        windows.first {
+            abs($0.topY - dropBottom.y) <= perchThreshold &&
+            $0.frame.minX <= dropBottom.x && dropBottom.x <= $0.frame.maxX
+        }
+    }
+
+    /// Whether the center point of `surface`'s top edge is occluded by another window.
+    static func isEdgeCovered(surface: WindowSurface, windows: [WindowSurface]) -> Bool {
+        let cx = surface.frame.midX
+        let ey = surface.topY
+        return windows.contains {
+            $0.id != surface.id &&
+            $0.frame.minX <= cx && cx <= $0.frame.maxX &&
+            $0.frame.minY <= ey && ey < $0.frame.maxY
+        }
+    }
+
+    // MARK: - Wander functions
+
+    /// Generate wander hop X positions (absolute `panel.frame.origin.x`).
+    /// Each hop moves 25–60 pt left or right, clamped to [minX … maxX − panelSize].
+    static func planWander<R: RandomNumberGenerator>(
+        rng:      inout R,
+        currentX: CGFloat,
+        minX:     CGFloat,
+        maxX:     CGFloat
+    ) -> [CGFloat] {
+        let hi = maxX - panelSize
+        guard hi > minX else { return [] }
+        let count = Int.random(in: wanderMinHops...wanderMaxHops, using: &rng)
+        var x = currentX
+        var result: [CGFloat] = []
+        for _ in 0..<count {
+            let dist = CGFloat.random(in: wanderMinHopDist...wanderMaxHopDist, using: &rng)
+            let sign: CGFloat = Bool.random(using: &rng) ? 1 : -1
+            x = min(max(x + sign * dist, minX), hi)
+            result.append(x)
+        }
+        return result
+    }
+
+    /// Parabolic arch height at normalized time `t` ∈ [0, 1].
+    /// Peaks at `height` at t = 0.5; zero at t = 0 and t = 1.
+    static func hopY(t: CGFloat, height: CGFloat = wanderHopHeight) -> CGFloat {
+        4 * height * t * (1 - t)
+    }
+
+    /// Fall duration for a vertical drop distance (clamped to 0.3 – 0.6 s).
+    static func fallDuration(pixelDistance: CGFloat) -> TimeInterval {
+        let raw = sqrt(2 * Double(max(0, pixelDistance)) / Double(fallGravity))
+        return min(max(raw, fallMinDuration), fallMaxDuration)
+    }
+
+    /// Adaptive timer interval for the desktop poll loop.
+    /// - `inMotion` true (falling or hopping): 60 Hz
+    /// - `sleeping`: 1 Hz
+    /// - perched and still: 4 Hz
+    static func nextPollInterval(inMotion: Bool, sleeping: Bool) -> TimeInterval {
+        if sleeping { return 1.0 }
+        if inMotion { return 1.0 / 60.0 }
+        return 0.25
     }
 }
