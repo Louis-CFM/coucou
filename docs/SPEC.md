@@ -355,3 +355,55 @@ Détection par `Publishers.CombineLatest($pendingApproval, $pendingQuestion)` �
 - Position et état sauvegardés dans `UserDefaults` (clés : `desktopMochiX`, `desktopMochiY`, `mochiOnDesktop`).
 - Position bornée au `visibleFrame` du meilleur écran disponible au chargement ; si aucun écran ne convient, coin bas-droit de l'écran principal avec 24 pt de marge.
 
+
+## 14. Raccourcis clavier
+
+### 14.1 Raccourcis globaux (Carbon `RegisterEventHotKey`)
+
+Ces raccourcis fonctionnent en arrière-plan sans permission Accessibilité.
+
+| Action | Défaut | Clé UserDefaults | Activé par défaut |
+|--------|--------|-----------------|-------------------|
+| Afficher/masquer l'île (`toggleIsland`) | ⌘⇧N | `hotkeyCode` / `hotkeyFlags` (legacy) | Non |
+| Ouvrir le chat (`openChat`) | ⌃⌥Espace | `shortcut.openChat.keyCode` / `.flags` | Oui |
+| Aller à l'alerte (`goToAlert`) | ⌃⌥A | `shortcut.goToAlert.keyCode` / `.flags` | Oui |
+| Sauter au terminal (`jumpToTerminal`) | ⌃⌥T | `shortcut.jumpToTerminal.keyCode` / `.flags` | Oui |
+| Attacher la fenêtre active (`attachFrontWindow`) | ⌃⌥W | `shortcut.attachFrontWindow.keyCode` / `.flags` | Oui (hors App Store) |
+| Pilule suivante (`nextPill`) | ⌃⌥] | `shortcut.nextPill.keyCode` / `.flags` | Oui |
+| Pilule précédente (`prevPill`) | ⌃⌥[ | `shortcut.prevPill.keyCode` / `.flags` | Oui |
+| Couper le son (`toggleMute`) | ⌃⌥M | `shortcut.toggleMute.keyCode` / `.flags` | Oui |
+| Mochi sur le bureau (`toggleDesktopMochi`) | ⌃⌥D | `shortcut.toggleDesktopMochi.keyCode` / `.flags` | Oui |
+| Ouvrir la garde-robe (`openWardrobe`) | ⌃⌥G | `shortcut.openWardrobe.keyCode` / `.flags` | Oui |
+
+- Si Carbon ne peut pas enregistrer un raccourci (conflit système), l'action est marquée `.conflict` dans `HotKeyCenter` et un indicateur apparaît dans Réglages → Raccourcis.
+- `toggleIsland` conserve les clés UserDefaults historiques (`hotkeyCode`, `hotkeyFlags`, `hotkeyEnabled`) pour ne pas casser les préférences existantes.
+- Les actions marquées `isNonAppStore` (`attachFrontWindow`) sont omises du build App Store.
+
+### 14.2 Raccourcis locaux (actifs quand l'île a le focus)
+
+Ces raccourcis sont gérés par `NSEvent.addLocalMonitorForEvents`. L'île prend le focus clavier quand elle est ouverte via un raccourci global (jamais au survol ni à l'alerte).
+
+| Raccourci | Action |
+|-----------|--------|
+| ⌘→ | Pilule suivante |
+| ⌘← | Pilule précédente |
+| ⌘1…⌘9 | Passe directement à la pilule n° 1–9 |
+| ⌘↓ | Descend dans la liste de la carte active |
+| ⌘↑ | Monte dans la liste de la carte active |
+| ⌘O | Ouvre/développe l'élément sélectionné |
+| ⌘E | Modifier le prompt courant |
+| ⌘↩ | Envoyer le message (vue Prompt) |
+| ⌘K | Nouvelle conversation (vue Prompt) |
+| ⌘, | Ouvrir les Réglages |
+| ⌘P | Copier le dernier message |
+| ⌘⇧D | Afficher/masquer le diff |
+
+### 14.3 Personnalisation
+
+Réglages → Raccourcis (`ShortcutsSettingsView`) :
+
+- Chaque raccourci global dispose d'un toggle (activer/désactiver) et d'un `ShortcutRecorderButton` pour le reconfigurer.
+- Les conflits internes (deux actions avec le même raccourci) sont signalés en rouge.
+- Les conflits système (Carbon a refusé l'enregistrement) sont signalés en orange.
+- Bouton **Tout réinitialiser** remet les valeurs par défaut sur toutes les actions.
+- Les raccourcis locaux sont affichés en lecture seule.

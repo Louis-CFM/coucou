@@ -6,6 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
 
+    func applicationWillTerminate(_ notification: Notification) {
+        HotKeyCenter.shared.unregisterAll()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)

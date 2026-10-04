@@ -166,6 +166,15 @@ struct OverviewView: View {
                 GithubPoller.shared.refreshIfStale()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
+            if let id = activeDiffId {
+                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
+                _ = id
+            } else if let task = state.focusTask,
+                      let last = state.sessionDiffs[task.id]?.last {
+                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
+            }
+        }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -1224,6 +1233,17 @@ struct PromptView: View {
             if state.view == .prompt {
                 state.fetchModelsIfNeeded(for: provider)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .islandSendMessage)) { _ in
+            guard state.view == .prompt else { return }
+            sendMessage()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .islandNewConversation)) { _ in
+            guard state.view == .prompt else { return }
+            text = ""
+            state.chatHistory = []
+            ClaudeService.shared.clearConversation()
+            focused = true
         }
     }
 

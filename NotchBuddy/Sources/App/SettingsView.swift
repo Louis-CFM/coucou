@@ -134,6 +134,7 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
+                        SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
                     .scrollContentBackground(.hidden)
@@ -201,6 +202,7 @@ struct SettingsView: View {
         case "agents":       return "Agents"
         case "chat":         return "Chat"
         case "integrations": return "Integrations"
+        case "shortcuts":    return "Shortcuts"
         default:             return "General"
         }
     }
@@ -211,6 +213,7 @@ struct SettingsView: View {
         case "agents":       agentsSection
         case "chat":         chatSection
         case "integrations": integrationsSection
+        case "shortcuts":    ShortcutsSettingsView()
         default:             generalSection
         }
     }

@@ -47,6 +47,9 @@ final class IslandWindowController: NSWindowController {
     private var notchH: CGFloat = IslandConst.notchHeight
     private var hasNotch = true
 
+    // Island-local key monitor (active only when island is key window)
+    private var localKeyMonitor: Any?
+
     convenience init() {
         let screen = Self.notchScreen() ?? NSScreen.main!
         let geometry = Self.screenGeometry(for: screen)
@@ -139,6 +142,8 @@ final class IslandWindowController: NSWindowController {
 
         startPolling()
         startKeyMonitor()
+        startLocalKeyMonitor()
+        startHotKeys()
         wireFSM()
 
         // Make panel key whenever the prompt/chat view becomes active
@@ -365,6 +370,198 @@ final class IslandWindowController: NSWindowController {
         window?.resignKey()
     }
 
+    // MARK: - Global hot keys (Carbon)
+
+    private func startHotKeys() {
+        HotKeyCenter.shared.start { [weak self] action in
+            self?.handleHotKey(action)
+        }
+    }
+
+    func handleHotKey(_ action: ShortcutAction) {
+        switch action {
+        case .toggleIsland:
+            if state.mode == .expanded {
+                collapse()
+            } else {
+                islandPanel.makeKey()
+                expand(to: defaultView())
+            }
+
+        case .openChat:
+            islandPanel.makeKey()
+            expand(to: .prompt)
+
+        case .goToAlert:
+            if state.pendingApproval != nil {
+                islandPanel.makeKey()
+                expand(to: .approval)
+            } else if state.pendingQuestion != nil {
+                islandPanel.makeKey()
+                expand(to: .question)
+            } else {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
+                SoundEngine.shared.play("error")
+            }
+
+        case .jumpToTerminal:
+            #if !APPSTORE
+            performJumpToTerminal()
+            #endif
+
+        case .attachFrontWindow:
+            #if !APPSTORE
+            performAttachFrontWindow()
+            #endif
+
+        case .nextPill:
+            cyclePill(by: +1)
+
+        case .prevPill:
+            cyclePill(by: -1)
+
+        case .muteToggle:
+            state.soundEnabled.toggle()
+            if state.soundEnabled { SoundEngine.shared.play("tick") }
+            NotificationCenter.default.post(
+                name: .triggerEmote,
+                object: state.soundEnabled ? BotEmote.happy : BotEmote.annoyed)
+
+        case .desktopToggle:
+            DesktopMochiController.shared.flyOutOrHome()
+
+        case .wardrobeToggle:
+            if state.mode == .expanded && state.view == .wardrobe {
+                collapse()
+            } else {
+                islandPanel.makeKey()
+                expand(to: .wardrobe)
+            }
+        }
+    }
+
+    // MARK: - Island-local shortcuts
+
+    private func startLocalKeyMonitor() {
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.islandPanel.isKeyWindow else { return event }
+            return self.handleIslandKey(event) ? nil : event
+        }
+    }
+
+    @discardableResult
+    private func handleIslandKey(_ event: NSEvent) -> Bool {
+        let raw = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        let cmd = raw == .command
+
+        // ⌘→ — next pill
+        if cmd && event.keyCode == 124 { cyclePill(by: +1); return true }
+        // ⌘← — previous pill
+        if cmd && event.keyCode == 123 { cyclePill(by: -1); return true }
+        // ⌘↓ — navigate list down
+        if cmd && event.keyCode == 125 { navigateCard(by: +1); return true }
+        // ⌘↑ — navigate list up
+        if cmd && event.keyCode == 126 { navigateCard(by: -1); return true }
+        // ⌘O — open selected card item
+        if cmd && event.keyCode == 31  { openCardSelection(); return true }
+        // ⌘E — toggle diff
+        if cmd && event.keyCode == 14 && state.view == .overview {
+            NotificationCenter.default.post(name: .islandToggleDiff, object: nil)
+            return true
+        }
+        // ⌘↩ — send chat message
+        if cmd && event.keyCode == 36 && state.view == .prompt {
+            NotificationCenter.default.post(name: .islandSendMessage, object: nil)
+            return true
+        }
+        // ⌘K — new conversation
+        if cmd && event.keyCode == 40 && state.view == .prompt {
+            NotificationCenter.default.post(name: .islandNewConversation, object: nil)
+            return true
+        }
+        // ⌘, — open Settings
+        if cmd && event.keyCode == 43 {
+            NotificationCenter.default.post(name: .openFullSettings, object: nil)
+            return true
+        }
+        // ⌘P — pin / unpin
+        if cmd && event.keyCode == 35 {
+            state.isPinned.toggle()
+            return true
+        }
+        // ⌘1–⌘9 — switch to pill by number
+        let digitCodes: [UInt16: Int] = [18:1,19:2,20:3,21:4,23:5,22:6,26:7,28:8,25:9]
+        if cmd, let n = digitCodes[event.keyCode] {
+            switchToPill(number: n); return true
+        }
+        return false
+    }
+
+    // MARK: - Pill cycling helpers
+
+    private func cyclePill(by delta: Int) {
+        guard !state.tasks.isEmpty else { return }
+        let ids = state.tasks.map { $0.id }
+        let cur = ids.firstIndex(of: state.focusId ?? "") ?? 0
+        state.setFocus(ids[(cur + delta + ids.count) % ids.count])
+        state.cardSelection = nil
+        expand(to: .overview)
+    }
+
+    private func switchToPill(number: Int) {
+        guard number >= 1, number <= state.tasks.count else { return }
+        state.setFocus(state.tasks[number - 1].id)
+        state.cardSelection = nil
+        expand(to: .overview)
+    }
+
+    private func navigateCard(by delta: Int) {
+        guard !state.tasks.isEmpty else { return }
+        let cur    = state.cardSelection ?? -1
+        let items  = max(1, state.tasks.count)  // number of navigable items
+        let next   = max(0, min(items - 1, cur + delta))
+        state.cardSelection = next
+    }
+
+    private func openCardSelection() {
+        guard let idx = state.cardSelection, idx < state.tasks.count else { return }
+        // Default: open the terminal for the selected task
+        #if !APPSTORE
+        performJumpToTerminal()
+        #endif
+    }
+
+    // MARK: - Terminal jump
+
+    #if !APPSTORE
+    private func performJumpToTerminal() {
+        let termBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                             "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+        let activated = termBundleIds.compactMap { bid in
+            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == bid }
+        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
+        if activated == nil {
+            NSWorkspace.shared.open(
+                URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+        }
+        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+    }
+
+    private func performAttachFrontWindow() {
+        guard let app = state.lastExternalApp else {
+            SoundEngine.shared.play("error"); return
+        }
+        guard let ctx = WindowContextCapture.captureActive(from: app) else {
+            SoundEngine.shared.play("error"); return
+        }
+        state.promptContext = ctx
+        SoundEngine.shared.play("approve")
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        islandPanel.makeKey()
+        expand(to: .prompt)
+    }
+    #endif
+
     // MARK: - Keyboard (Escape closes)
 
     private func startKeyMonitor() {
@@ -541,18 +738,6 @@ final class IslandWindowController: NSWindowController {
                 }
             }
             return event
-        }
-
-        // Global hotkey to show island
-        NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            Task { @MainActor in
-                guard let self, self.state.hotkeyEnabled else { return }
-                let pressed = event.modifierFlags.intersection([.command, .control, .option, .shift]).rawValue
-                guard pressed == self.state.hotkeyFlags, event.keyCode == self.state.hotkeyCode else { return }
-                if self.state.mode == .hidden || self.state.mode == .compact {
-                    self.expand(to: .overview)
-                }
-            }
         }
 
         // Track last external app for window context capture
@@ -930,8 +1115,11 @@ extension Notification.Name {
     static let botGulp          = Notification.Name("notchBuddy.botGulp")
     static let botMorphTo       = Notification.Name("notchBuddy.botMorphTo")
     static let islandAction     = Notification.Name("notchBuddy.islandAction")
-    static let islandCollapse   = Notification.Name("notchBuddy.islandCollapse")
-    static let openFullSettings = Notification.Name("notchBuddy.openFullSettings")
+    static let islandCollapse      = Notification.Name("notchBuddy.islandCollapse")
+    static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
+    static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
+    static let islandToggleDiff    = Notification.Name("notchBuddy.islandToggleDiff")
+    static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
     // Greeting ↔ IslandWindowController

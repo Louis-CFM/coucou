@@ -150,6 +150,18 @@ final class DesktopMochiController {
 
     static let panelSize: CGFloat = DesktopMochiLogic.panelSize
 
+    // MARK: - Keyboard shortcut toggle (⌃⌥D)
+
+    /// Fly Mochi to the desktop if not there, or bring him back if he is.
+    func flyOutOrHome() {
+        if phase == .home {
+            UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
+            launchFlyIfNeeded()
+        } else if phase == .onDesktop {
+            uninstall()
+        }
+    }
+
     // MARK: - Install (from drag-drop)
 
     /// Promote `ghostPanel` (the drag ghost) or create a fresh panel as the desktop Mochi,
