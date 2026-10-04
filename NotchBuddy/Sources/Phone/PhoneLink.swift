@@ -27,6 +27,7 @@ struct SessionItem: Identifiable {
     let approvalCommand: String
     let question: String
     let finalLine: String
+    let cwd: String
     let updatedAt: Date
     let macName: String
 
@@ -41,6 +42,7 @@ struct SessionItem: Identifiable {
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
         question = record.encryptedValues["question"] as? String ?? ""
         finalLine = record.encryptedValues["finalLine"] as? String ?? ""
+        cwd = record.encryptedValues["cwd"] as? String ?? ""
         updatedAt = record["updatedAt"] as? Date ?? record.modificationDate ?? .now
         macName = record["macName"] as? String ?? ""
     }
