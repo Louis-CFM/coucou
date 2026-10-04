@@ -46,10 +46,14 @@ final class LiveActivityRelay {
     private var latest: MochiActivityState?
     /// Set while a Live Activity runs on the iPhone(s).
     private var startedAt: Date?
+    /// The startedAt whose start push actually went out.
+    private var startSent: Date?
     private var sent: MochiActivityState?
     private var sending = false
     private var retryTask: Task<Void, Never>?
     private var retries = 0
+    /// Ends the activity 10 minutes after the agents are done, if nothing restarts.
+    private var doneTask: Task<Void, Never>?
 
     private var relayURL: URL? {
         let value = UserDefaults.standard.string(forKey: Self.relayURLKey) ?? Self.defaultRelayURL
@@ -118,22 +122,37 @@ final class LiveActivityRelay {
         guard locked else { return }
         if startedAt == nil {
             if let lead, lead.isActive { begin(lead) }
-        } else if let lead, lead.isActive {
+            return
+        }
+        if let lead, lead.isActive {
+            // Back to work: the same activity carries on.
+            doneTask?.cancel(); doneTask = nil
             flush()
-        } else {
-            // Nothing going any more: show "done" a while, then leave.
-            finish(dismissAfter: 10 * 60)
+        } else if doneTask == nil {
+            // Nothing going any more: show "done" for 10 minutes, then leave,
+            // unless an agent starts again meanwhile.
+            if lead != nil { flush() }
+            doneTask = Task {
+                try? await Task.sleep(for: .seconds(10 * 60))
+                guard !Task.isCancelled else { return }
+                doneTask = nil
+                finish(dismissAfter: 0)
+            }
         }
     }
 
     // MARK: Sending
 
     private func begin(_ state: MochiActivityState) {
-        startedAt = Date()
+        let start = Date()
+        startedAt = start
         sent = state
         retries = 0
         Task {
             await refreshPhones()
+            // The Mac unlocked meanwhile: don't leave.
+            guard startedAt == start, locked else { return }
+            startSent = start
             let targets = phones.filter { !$0.value.startToken.isEmpty }
             if targets.isEmpty {
                 log("no iPhone token yet: open Coucou on the iPhone once, with Live Activities allowed")
@@ -172,10 +191,21 @@ final class LiveActivityRelay {
         guard let startedAt else { return }
         self.startedAt = nil
         retryTask?.cancel(); retryTask = nil
+        doneTask?.cancel(); doneTask = nil
         let last = latest ?? sent ?? .placeholder
         sent = nil
+        guard startSent == startedAt else {
+            // The start never went out: nothing to end on the iPhone.
+            log("Mochi is back on the Mac")
+            return
+        }
         Task {
-            let targets = await updateTargets(since: startedAt)
+            // A start sent a moment ago: its update token is still on its way.
+            var targets = await updateTargets(since: startedAt)
+            for _ in 0..<6 where targets.isEmpty {
+                try? await Task.sleep(for: .seconds(3))
+                targets = await updateTargets(since: startedAt)
+            }
             if targets.isEmpty { log("can't end the Live Activity: no update token from the iPhone") }
             for (id, phone) in targets {
                 await post(event: "end", token: phone.updateToken, env: phone.env, state: last,
