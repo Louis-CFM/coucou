@@ -95,6 +95,9 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    #if PHONE_LINK
+    @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
+    #endif
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -290,6 +293,20 @@ struct SettingsView: View {
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
+
+        #if PHONE_LINK
+        GroupBox("iPhone") {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Show my agent sessions on my iPhone", isOn: $iPhoneSyncEnabled)
+                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
+                Text("Sends your sessions to your private iCloud for the Coucou iPhone app. Project names, commands and questions are encrypted with your iCloud keys. Turning it off deletes them from iCloud.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+        }
+        #endif
     }
 
     // MARK: - Active pills section

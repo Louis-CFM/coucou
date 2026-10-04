@@ -29,6 +29,28 @@ final class SessionPublisher {
     private var publishing = false
     private var pending: [String: SessionSnapshot]?
 
+    /// Stops publishing and deletes this Mac's sessions from iCloud.
+    func stop() {
+        cancellable = nil
+        pending = nil
+        Task {
+            do {
+                let existing = try await existingSessions()
+                let ids = existing.keys.map { SessionSnapshot.recordID(for: $0) }
+                if !ids.isEmpty {
+                    _ = try await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false)
+                }
+                log("publisher off, removed \(ids.count) session(s) from iCloud")
+            } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
+                log("publisher off, nothing in iCloud")
+            } catch {
+                log("publisher off, cleanup failed: \(error.localizedDescription)")
+            }
+            published = [:]
+            cleanedUp = false
+        }
+    }
+
     func start() {
         guard cancellable == nil else { return }
         let state = AppState.shared

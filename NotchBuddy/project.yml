@@ -11,7 +11,8 @@ options:
 # same for a Developer ID build with its provisioning profile
 # (scripts/cloud-test-build.sh); a Developer ID profile only allows the
 # Production CloudKit environment, so the iPhone joins it with the
-# CoucouPhoneProduction scheme. Debug and Release are unchanged.
+# CoucouPhoneProduction scheme. Release also compiles PHONE_LINK (the sync
+# stays off until turned on in Settings); Debug stays unsigned without it.
 configs:
   Debug: debug
   DebugCloud: debug
@@ -144,6 +145,12 @@ targets:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
+        # The distributed build carries the iPhone sync (off until the user
+        # turns it on in Settings), so it needs iCloud and its Developer ID profile.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
+          PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
         ReleaseCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
@@ -193,6 +200,11 @@ targets:
         CODE_SIGNING_ALLOWED: YES
       configs:
         DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStoreCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "APPSTORE PHONE_LINK"
+        # App Store archive: same iCloud entitlements; Xcode switches push to
+        # production when exporting for the App Store.
+        Release:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStoreCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "APPSTORE PHONE_LINK"
 

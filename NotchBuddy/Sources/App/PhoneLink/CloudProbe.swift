@@ -2,7 +2,11 @@
 import AppKit
 import CloudKit
 
-// MARK: - iPhone link spike (DebugCloud only)
+// MARK: - iPhone link
+//
+// Starts and stops the iPhone sync (Settings → General → iPhone, off by
+// default): push registration and SessionPublisher. Nothing runs and nothing
+// is sent to iCloud while it is off.
 //
 // Step 1 spike, kept for testing: when the phoneLinkPing default is on, proves
 // that the Mac and the iPhone app share a private CloudKit database:
@@ -45,7 +49,31 @@ final class CloudProbe {
         Host.current().localizedName ?? ProcessInfo.processInfo.hostName
     }
 
-    func start() {
+    static let enabledKey = "iPhoneSyncEnabled"
+
+    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
+
+    /// Called at launch: starts only if the user turned the iPhone sync on.
+    func startIfEnabled() {
+        if Self.isEnabled { start() }
+    }
+
+    func setEnabled(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: Self.enabledKey)
+        if on { start() } else { stop() }
+    }
+
+    private func stop() {
+        guard started else { return }
+        started = false
+        pingTask?.cancel(); pingTask = nil
+        pollTask?.cancel(); pollTask = nil
+        NSApplication.shared.unregisterForRemoteNotifications()
+        SessionPublisher.shared.stop()
+        log("iPhone sync off")
+    }
+
+    private func start() {
         guard !started else { return }
         started = true
         #if DEBUG
