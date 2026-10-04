@@ -737,6 +737,8 @@ export class Island {
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+    // Lets the header stay clickable while #content passes clicks through.
+    this.contentEl.classList.toggle("upload-on", uploadActive);
 
     tickMiniBots(dt);
     this.views.get(State.view)?.tick?.(nowMs);
@@ -859,7 +861,9 @@ export class Island {
     const greetingActive = expanded && State.view === "greeting";
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
-    this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
+    // While the drop sequence owns the body, the content layer lets clicks through
+    // to the invisible hit areas under it (the header opts back in, see style.css).
+    this.contentEl.style.pointerEvents = expanded && !greetingActive && !this.uploadActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
     this.header.sync();
