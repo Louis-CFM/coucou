@@ -145,15 +145,30 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 ### Données récupérées
 
-Une seule requête GraphQL (POST `https://api.github.com/graphql`) :
+Deux requêtes GraphQL séparées (POST `https://api.github.com/graphql`, même token, même en-tête) :
 
+**Requête pulse** :
 - **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`)
 - **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
 - **CI branche par défaut** (10 derniers dépôts propres, non archivés) : `oid` et état CI du commit HEAD sur `defaultBranchRef`
 
-**Cadence** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). La première requête part 10 s après le lancement.
+**Cadence pulse** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). Première requête 10 s après le lancement.
 
-**Rafraîchissement à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` est appelé dès que l'intégration prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail GitHub. Si la dernière réponse date de moins de 60 s (ou si une requête est déjà en vol), l'appel est ignoré.
+**Rafraîchissement pulse à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` appelé quand `integration_github` prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail (sauf Activity). Si données < 60 s ou requête en vol, ignoré.
+
+**Requête activité** (`contributionCalendar`) :
+```graphql
+query { viewer { login contributionsCollection { contributionCalendar {
+  totalContributions weeks { contributionDays { date contributionCount contributionLevel weekday } }
+} } } }
+```
+- `contributionLevel` : NONE → 0, FIRST_QUARTILE → 1, SECOND_QUARTILE → 2, THIRD_QUARTILE → 3, FOURTH_QUARTILE → 4. Valeur inconnue → 0.
+
+**Cadence activité** : 30 min, première requête 15 s après le lancement.
+
+**Rafraîchissement activité à l'ouverture** : `GithubPoller.refreshActivityIfStale(maxAge: 300)` appelé à l'ouverture de la vue Activity. Si données < 5 min ou requête en vol, ignoré.
+
+Données gardées en mémoire (`AppState.githubActivity`). Remises à nil si token change ou si `integration_github` est désactivé.
 
 ### États CI (`CIState`)
 

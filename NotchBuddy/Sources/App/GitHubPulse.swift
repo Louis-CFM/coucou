@@ -58,7 +58,7 @@ struct GitHubRepoCI: Equatable {
 
 // MARK: - GitHubDetailSection
 
-enum GitHubDetailSection { case myPRs, toReview, mainCI }
+enum GitHubDetailSection { case myPRs, toReview, mainCI, activity }
 
 // MARK: - GitHubEvent
 

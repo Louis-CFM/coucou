@@ -800,6 +800,11 @@ if (now - this.lastDismiss < 50) return;
     // keeps its own 14px band at the resting position, so "hover to restore" still
     // finds an island that is no longer on screen.
     this.islandEl.style.transform = `translate(${offsetX}px, ${this.slideY.value}px)`;
+    // The retracted island is the only state in which nothing of it is on screen, so
+    // it is the only state in which its animations can be paused without being seen
+    // doing it. Set here rather than in `setMode` because the frame loop parks itself
+    // while hidden, and this has to be right for the first frame after a reload too.
+    this.islandEl.toggleAttribute("data-hidden", State.mode === "hidden");
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     // The pill grid sits in the right end of the expanded panel and shrinks with the
@@ -1046,7 +1051,18 @@ if (now - this.lastDismiss < 50) return;
   }
 
   private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
+    // Clamped at both ends, and the lower clamp is not cosmetic. `ensureRunning`
+    // stamps `lastFrame` with `performance.now()`, but the loop is resumed by
+    // `requestAnimationFrame`, whose callback timestamp is the vsync time and can
+    // therefore be *older* than that stamp — so the first frame after a resume had a
+    // negative dt. Every exponential smoother downstream reads dt as a rate, so a
+    // negative one runs them backwards: `1 - 0.0025^dt` goes negative and
+    // `yaw += (tgYaw - yaw) * kLook` amplifies the gap instead of closing it, at
+    // roughly 1.13x per frame. A parked loop restarts on every cursor event, so that
+    // was nearly every frame while the island was reduced, and Mochi's gaze walked off
+    // instead of following the pointer. The modes that keep the loop running never hit
+    // it, which is why only the reduced bar was affected.
+    const dt = Math.min(0.05, Math.max(0, (nowMs - this.lastFrame) / 1000));
     this.lastFrame = nowMs;
 
     this.syncSlide();
@@ -1099,10 +1115,20 @@ if (now - this.lastDismiss < 50) return;
     // looping animation — breathing, ratelimit sweat, sleeping z's, the search
     // sweep — so a hidden island went on burning frames in exactly the states it
     // spends most of its life in. Geometry still has to finish retracting.
+    //
+    // The exception is a reduced bar that is still on screen. Parking the loop is
+    // right for an island nobody can see, but Mochi is drawn by that loop, so a
+    // parked one left the last painted frame as all there was: his gaze stopped
+    // following the pointer entirely, and each cursor event bought a single frame
+    // before it parked again. Keying this on the pointer being over the bar was not
+    // enough either — moving the pointer *around* the island to watch him look is
+    // mostly moving it off an 80x24 bar, so it has to be the island's visibility that
+    // decides, and off-screen is the only state in which nothing is drawn at all.
     const settling =
       this.width.animating || this.height.animating || this.radius.animating || this.slideY.animating;
+    const onScreen = State.mode === "hidden" && !this.hidesOffscreen();
     const busy = State.mode === "hidden"
-      ? settling
+      ? settling || onScreen
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive;

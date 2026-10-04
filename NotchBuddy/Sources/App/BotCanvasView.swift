@@ -57,12 +57,35 @@ struct BotCanvasView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
+                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                                 animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
-                engine.drawHandsBehind(context: ctx, size: size)
-                engine.draw(context: ctx, size: size)
+                // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
+                // rotate the entire body+accessories context around the body center so the
+                // whole character genuinely turns. Particles/badge (drawHandsAndExtras) are
+                // drawn outside the rotated context and do not spin.
+                if engine.outfit != .none && engine.outfitPresence > 0.05 && abs(engine.roll) > 0.001 {
+                    let center = engine.bodyCenter(size: size)
+                    var rigidCtx = ctx
+                    rigidCtx.translateBy(x: center.x, y: center.y)
+                    rigidCtx.rotate(by: .radians(engine.roll))
+                    rigidCtx.translateBy(x: -center.x, y: -center.y)
+                    engine.drawHandsBehind(context: rigidCtx, size: size)
+                    engine.drawOutfitBehind(context: rigidCtx, size: size)
+                    engine.draw(context: rigidCtx, size: size)
+                    engine.drawOutfitFront(context: rigidCtx, size: size)
+                } else {
+                    engine.drawHandsBehind(context: ctx, size: size)
+                    engine.drawOutfitBehind(context: ctx, size: size)
+                    engine.draw(context: ctx, size: size)
+                    engine.drawOutfitFront(context: ctx, size: size)
+                }
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
@@ -116,6 +139,10 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 

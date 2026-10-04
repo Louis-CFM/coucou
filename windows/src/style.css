@@ -277,6 +277,19 @@ body {
   transition: opacity 0.3s ease-out 0.16s, transform 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) 0.16s;
 }
 
+/* Upstream's `.view:not(.on)` animation pause, kept but scoped to the retracted
+   island. Pausing anything inside the island while it is up makes WebView2 raster
+   the composited island wrongly - Mochi comes back the wrong size or not at all, and
+   the wake and retreat animations stop making sense - and `animation: none` is
+   affected identically, so it is the stopping of the animation rather than the
+   pausing of it. Nothing inside the island is visible while it is retracted, which
+   is also where the repaints it saves actually happen: a view that is not on is only
+   transparent, so the drop frame's infinite dashes used to run for as long as the app
+   did and kept the webview painting every frame. */
+#island[data-hidden] * {
+  animation-play-state: paused;
+}
+
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 
 .card {
