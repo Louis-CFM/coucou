@@ -106,7 +106,7 @@ struct SessionRow: View {
             MochiStill(state: session.state)
                 .padding(4)
                 .frame(width: 40, height: 40)
-                .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
+                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.title)
                     .font(.body.weight(.semibold))

@@ -33,3 +33,15 @@ struct MochiStill: View {
         .aspectRatio(1, contentMode: .fit)
     }
 }
+
+extension Color {
+    /// Background for a white Mochi on an agent's color. Very light colors
+    /// (VS Code's is near-white) would hide him, so they get a dark gray tile.
+    static func mochiTile(hex: String) -> Color {
+        guard let c = cgColorFromHex(hex), let comps = c.components, comps.count >= 3 else {
+            return Color(hex: hex)
+        }
+        let luminance = 0.2126 * comps[0] + 0.7152 * comps[1] + 0.0722 * comps[2]
+        return luminance > 0.7 ? Color(white: 0.32) : Color(hex: hex)
+    }
+}

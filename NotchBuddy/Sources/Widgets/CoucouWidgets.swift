@@ -166,7 +166,7 @@ struct TeamView: View {
             MochiStill(state: session.botState)
                 .padding(8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 16))
         } else {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.white.opacity(0.06))
@@ -191,7 +191,7 @@ struct ListView: View {
                     MochiStill(state: session.botState)
                         .padding(2)
                         .frame(width: 24, height: 24)
-                        .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 7))
+                        .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 7))
                     Text(session.title)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)

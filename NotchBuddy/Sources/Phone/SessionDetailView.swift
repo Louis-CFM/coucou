@@ -56,7 +56,7 @@ struct SessionDetailView: View {
             MochiStill(state: session.state)
                 .padding(10)
                 .frame(width: 84, height: 84)
-                .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 22))
+                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 22))
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(session.pillName) · \(session.title)")
                     .font(.headline)

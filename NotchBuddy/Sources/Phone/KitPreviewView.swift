@@ -43,7 +43,7 @@ struct KitPreviewView: View {
                             MochiStill()
                                 .padding(3)
                                 .frame(width: 30, height: 30)
-                                .background(Color(hex: pill.color), in: RoundedRectangle(cornerRadius: 8))
+                                .background(Color.mochiTile(hex: pill.color), in: RoundedRectangle(cornerRadius: 8))
                             VStack(alignment: .leading) {
                                 Text(pill.name)
                                 Text(pill.id).font(.caption2.monospaced()).foregroundStyle(.secondary)

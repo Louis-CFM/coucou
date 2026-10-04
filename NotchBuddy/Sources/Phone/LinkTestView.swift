@@ -29,7 +29,7 @@ struct LinkTestView: View {
                             MochiStill(state: session.state)
                                 .padding(4)
                                 .frame(width: 40, height: 40)
-                                .background(Color(hex: session.color), in: RoundedRectangle(cornerRadius: 10))
+                                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 10))
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(session.name.isEmpty ? session.pillName : session.name)
                                 Text("\(session.pillName) · \(session.state.rawValue)" +
