@@ -168,6 +168,7 @@ struct SessionSnapshot: Equatable {
     let finalLine: String
     let approvalTool: String
     let approvalCommand: String
+    let approvalFingerprint: String
     let question: String
 
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
@@ -189,6 +190,7 @@ struct SessionSnapshot: Equatable {
                 finalLine: task.finalLine ?? "",
                 approvalTool: hasApproval ? (approval?.tool ?? "") : "",
                 approvalCommand: hasApproval ? (approval?.command ?? "") : "",
+                approvalFingerprint: hasApproval ? (approval.map(ApprovalRelay.fingerprint) ?? "") : "",
                 question: questionText)
         }
         return result
@@ -196,7 +198,7 @@ struct SessionSnapshot: Equatable {
 
     static func placeholder(pillId: String) -> SessionSnapshot {
         SessionSnapshot(pillId: pillId, name: "", color: "", state: "", stepIndex: -1, steps: [],
-                        cwd: "", finalLine: "", approvalTool: "", approvalCommand: "", question: "")
+                        cwd: "", finalLine: "", approvalTool: "", approvalCommand: "", approvalFingerprint: "", question: "")
     }
 
     /// Same zone as CloudProbe.zoneID, rebuilt here because that one is main-actor isolated.
@@ -222,6 +224,8 @@ struct SessionSnapshot: Equatable {
         record["stepIndex"] = stepIndex
         record["stepCount"] = steps.count
         record["needsApproval"] = !approvalCommand.isEmpty || !approvalTool.isEmpty
+        // Identifies the exact request; the iPhone sends it back with its decision.
+        record["approvalFingerprint"] = approvalFingerprint
         record["needsAnswer"] = !question.isEmpty
         record["updatedAt"] = Date()
         record["macName"] = Host.current().localizedName ?? ""

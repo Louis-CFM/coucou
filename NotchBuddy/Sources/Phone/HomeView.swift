@@ -37,7 +37,20 @@ struct HomeView: View {
             .navigationDestination(for: String.self) { id in
                 SessionDetailView(link: link, sessionId: id)
             }
+            .sheet(isPresented: Binding(get: { link.reviewFingerprint != nil },
+                                        set: { if !$0 { link.reviewFingerprint = nil } })) {
+                if let fingerprint = link.reviewFingerprint {
+                    ReviewSheet(link: link, fingerprint: fingerprint)
+                }
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        HistoryView(link: link)
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                }
                 // Step 1-3 test screens (the link test has its own "Kit" button).
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {

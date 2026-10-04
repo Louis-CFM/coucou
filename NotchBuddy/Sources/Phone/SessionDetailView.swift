@@ -13,10 +13,7 @@ struct SessionDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     header(session)
                     if session.needsApproval {
-                        waiting(title: "Waiting for your OK",
-                                text: session.approvalCommand.isEmpty ? "The agent asks for a permission." : session.approvalCommand,
-                                monospaced: true, color: .orange,
-                                footnote: "Answer on your Mac for now. Approving from the iPhone comes next.")
+                        ApprovalCard(link: link, session: session)
                     } else if !session.question.isEmpty {
                         waiting(title: "Question", text: session.question, monospaced: false, color: .cyan,
                                 footnote: "Answer on your Mac for now.")

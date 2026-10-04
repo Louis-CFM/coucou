@@ -26,6 +26,7 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        ApprovalActions.register()
         application.registerForRemoteNotifications()
         Task { await PhoneLink.shared.start() }
         return true
@@ -44,7 +45,33 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         Task { @MainActor in PhoneLink.shared.pushError = message }
     }
 
-    // Show the "Ping from your Mac" banner even when the app is open.
+    // Approval notification actions.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        let userInfo = response.notification.request.content.userInfo
+        guard let note = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification,
+              let fingerprint = note.recordFields?["fingerprint"] as? String else { return }
+        let pillId = note.recordFields?["pillId"] as? String ?? ""
+        let denied = response.actionIdentifier == ApprovalActions.deny
+        await Self.handleApproval(denied: denied, fingerprint: fingerprint, pillId: pillId)
+    }
+
+    @MainActor
+    private static func handleApproval(denied: Bool, fingerprint: String, pillId: String) async {
+        let link = PhoneLink.shared
+        if denied {
+            // Awaited so the decision is saved before iOS suspends the app again.
+            let summary = link.sessions.first { $0.approvalFingerprint == fingerprint }?.approvalCommand
+            _ = await link.decide(.deny, fingerprint: fingerprint, pillId: pillId,
+                                  summary: summary ?? "Denied from the notification")
+        } else {
+            // Review, or a tap on the notification: open the command, Allow needs Face ID there.
+            await link.refresh()
+            link.reviewFingerprint = fingerprint
+        }
+    }
+
+    // Show banners even when the app is open.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .sound]

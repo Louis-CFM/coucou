@@ -242,6 +242,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: NO
+        NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou

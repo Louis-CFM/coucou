@@ -26,6 +26,7 @@ struct SessionItem: Identifiable {
     let steps: [String]
     let needsApproval: Bool
     let approvalCommand: String
+    let approvalFingerprint: String
     let question: String
     let finalLine: String
     let cwd: String
@@ -41,6 +42,7 @@ struct SessionItem: Identifiable {
         steps = record.encryptedValues["steps"] as? [String] ?? []
         needsApproval = record["needsApproval"] as? Bool ?? false
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
+        approvalFingerprint = record["approvalFingerprint"] as? String ?? ""
         question = record.encryptedValues["question"] as? String ?? ""
         finalLine = record.encryptedValues["finalLine"] as? String ?? ""
         cwd = record.encryptedValues["cwd"] as? String ?? ""
@@ -84,6 +86,7 @@ final class PhoneLink {
     @ObservationIgnored private var changeToken: CKServerChangeToken?
     @ObservationIgnored private var firstFetchDone = false
     @ObservationIgnored private var subscribed = false
+    @ObservationIgnored private var approvalsSubscribed = false
     @ObservationIgnored private var fetching = false
 
     func start() async {
@@ -105,6 +108,7 @@ final class PhoneLink {
             return
         }
         if !subscribed { await subscribe() }
+        if subscribed && !approvalsSubscribed { await subscribeToApprovals() }
         _ = await fetchChanges()
     }
 
@@ -115,8 +119,8 @@ final class PhoneLink {
 
     private func subscribe() async {
         let sub = CKDatabaseSubscription(subscriptionID: Self.subscriptionID)
-        // Silent: the Mac now writes on every session change, a banner each
-        // time would be noise. Real notifications come with step 7.
+        // Silent: the Mac writes on every session change, a banner each time
+        // would be noise. Approvals have their own subscription below.
         let info = CKSubscription.NotificationInfo()
         info.shouldSendContentAvailable = true
         sub.notificationInfo = info
@@ -125,6 +129,45 @@ final class PhoneLink {
             subscribed = true
         } catch {
             status = .failed("Subscription: \(error.localizedDescription)")
+        }
+    }
+
+    /// A visible notification for each approval request the Mac sends
+    /// (ApprovalRelay), with Review and Deny actions. Kept apart from the
+    /// silent subscription so a failure here never stops the sessions.
+    private func subscribeToApprovals() async {
+        let approvals = CKQuerySubscription(recordType: "ApprovalRequest", predicate: NSPredicate(value: true),
+                                            subscriptionID: "coucou-approvals", options: [.firesOnRecordCreation])
+        approvals.zoneID = Self.zoneID
+        let alert = CKSubscription.NotificationInfo()
+        alert.title = "Coucou"
+        alert.alertBody = "An agent is waiting for your OK"
+        alert.soundName = "default"
+        alert.category = ApprovalActions.category
+        alert.shouldSendContentAvailable = true
+        alert.desiredKeys = ["fingerprint", "pillId"]
+        approvals.notificationInfo = alert
+        do {
+            _ = try await database.modifySubscriptions(saving: [approvals], deleting: [])
+            approvalsSubscribed = true
+        } catch {
+            // In the Development environment a query subscription needs the
+            // record type to exist: create it once with a throwaway record.
+            let seed = CKRecord(recordType: "ApprovalRequest",
+                                recordID: CKRecord.ID(recordName: "approval-schema", zoneID: Self.zoneID))
+            seed["pillId"] = ""
+            seed["fingerprint"] = ""
+            seed["createdAt"] = Date()
+            seed.encryptedValues["tool"] = ""
+            seed.encryptedValues["command"] = ""
+            do {
+                _ = try await database.modifyRecords(saving: [seed], deleting: [], savePolicy: .allKeys)
+                _ = try await database.modifyRecords(saving: [], deleting: [seed.recordID])
+                _ = try await database.modifySubscriptions(saving: [approvals], deleting: [])
+                approvalsSubscribed = true
+            } catch {
+                lastPong = "Approval notifications: \(error.localizedDescription)"
+            }
         }
     }
 
@@ -183,6 +226,36 @@ final class PhoneLink {
             receivedAt: firstFetchDone ? .now : nil
         ))
         return true
+    }
+
+    // MARK: Decisions (step 7)
+
+    /// Decisions taken on this iPhone, newest first.
+    var history: [DecisionLog] = DecisionLog.load()
+
+    /// Set when the user taps "Review" on an approval notification.
+    var reviewFingerprint: String?
+
+    /// Sends allow / deny for one exact request. The Mac applies it only if the
+    /// fingerprint still matches the request it is waiting on.
+    func decide(_ decision: Decision, fingerprint: String, pillId: String, summary: String) async -> Bool {
+        let record = CKRecord(recordType: "Decision",
+                              recordID: CKRecord.ID(recordName: "decision-\(UUID().uuidString)", zoneID: Self.zoneID))
+        record["fingerprint"] = fingerprint
+        record["pillId"] = pillId
+        record["decision"] = decision.rawValue
+        record["decidedAt"] = Date()
+        record["deviceName"] = UIDevice.current.name
+        do {
+            _ = try await database.save(record)
+            history.insert(DecisionLog(decision: decision, pillId: pillId, summary: summary, date: .now), at: 0)
+            history = Array(history.prefix(50))
+            DecisionLog.save(history)
+            return true
+        } catch {
+            lastPong = "Decision failed: \(error.localizedDescription)"
+            return false
+        }
     }
 
     /// Hands the sessions to the widgets and asks them to redraw.
