@@ -25,8 +25,8 @@ IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Applica
 echo "Signing with: $IDENTITY"
 
 # ── 2. Provisioning profile ───────────────────────────────────────────────────
-# Xcode looks in both folders depending on its version; double-clicking a
-# downloaded .provisionprofile installs it in one of them.
+# Xcode looks in both folders depending on its version. Double-clicking a
+# downloaded .provisionprofile on macOS doesn't reliably put it in either.
 TMP_PLIST=$(mktemp)
 trap 'rm -f "$TMP_PLIST"' EXIT
 FOUND=""
@@ -43,7 +43,9 @@ for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME
 done
 [ -n "$FOUND" ] || die "no provisioning profile named '$PROFILE_NAME' is installed.
   developer.apple.com → Profiles → + → Developer ID → App ID fr.louisraille.NotchBuddy,
-  name it exactly '$PROFILE_NAME', download it and double-click it."
+  name it exactly '$PROFILE_NAME' and download it. Then copy it for Xcode:
+  mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\\ Profiles
+  cp ~/Downloads/*.provisionprofile ~/Library/Developer/Xcode/UserData/Provisioning\\ Profiles/"
 echo "Profile: $FOUND"
 
 PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" "$TMP_PLIST" 2>/dev/null || true)
