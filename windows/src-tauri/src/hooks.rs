@@ -40,6 +40,8 @@ const MARKER: &str = "coucou-hook";
 #[serde(rename_all = "camelCase")]
 pub struct HookStatus {
     pub installed: bool,
+    /// None for Windows itself, the distro name for a WSL distro.
+    pub distro: Option<String>,
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
@@ -60,15 +62,56 @@ pub fn settings_path() -> PathBuf {
     platform::home_dir().join(".claude").join("settings.json")
 }
 
+/// One settings.json to install into: this machine's own, or a WSL distro's.
+pub struct Target {
+    distro: Option<String>,
+    path: PathBuf,
+    /// The relay as the shell running the hook sees it.
+    exe: String,
+}
+
+impl Target {
+    pub fn local() -> Self {
+        let exe = settings::hook_exe_path().to_string_lossy().to_string();
+        Self { distro: None, path: settings_path(), exe }
+    }
+
+    /// Starts the distro if it is stopped; settings window only.
+    pub fn wsl(distro: &str) -> Result<Self, String> {
+        let exe = settings::hook_exe_path().to_string_lossy().to_string();
+        let (path, exe) = crate::wsl::locate(distro, &exe)?;
+        Ok(Self { distro: Some(distro.to_string()), path, exe })
+    }
+
+    pub fn from(distro: Option<&str>) -> Result<Self, String> {
+        distro.map_or_else(|| Ok(Self::local()), Self::wsl)
+    }
+
+    /// Windows: the quoted exe in forward slashes, run by Git Bash.
+    /// Linux: the exe single-quoted, since `sh` still reads `$`, `` ` `` and
+    /// `\` inside double quotes.
+    /// WSL: the exe through interop, plus the distro so the relay can turn the
+    /// Linux cwd into a path Windows can open. A missing exe (app uninstalled,
+    /// interop off) must stay silent, hence the redirect and `|| true`.
+    fn command(&self, event: &str) -> String {
+        match &self.distro {
+            #[cfg(windows)]
+            None => format!("\"{}\" {event}", self.exe.replace('\\', "/")),
+            #[cfg(unix)]
+            None => format!("{} {event}", sh_quote(&self.exe)),
+            Some(d) => format!("{} {event} {} 2>/dev/null || true", sh_quote(&self.exe), sh_quote(d)),
+        }
+    }
+}
+
 /// Reads `~/.claude/settings.json`.
 ///
 /// The only error that means "start from nothing" is the file not being there.
 /// Everything else — a lock held by another process, a permission problem, JSON
 /// we cannot parse — is reported, because the alternative is treating somebody's
 /// unreadable settings as an empty object and then writing that back over them.
-fn read_settings() -> Result<Value, String> {
-    let path = settings_path();
-    match std::fs::read(&path) {
+fn read_settings(path: &Path) -> Result<Value, String> {
+    match std::fs::read(path) {
         Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
         // A lock, a permission problem, a bad drive: all of them mean we do not
@@ -99,28 +142,13 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
 /// The settings as they are, or an empty object when we cannot tell. Only for
 /// read-only paths like `status()`, which must never fail loudly; anything that
 /// writes uses `read_settings()` and surfaces the error instead.
-fn read_settings_lossy() -> Value {
-    read_settings().unwrap_or_else(|_| json!({}))
-}
-
-#[cfg(windows)]
-fn hook_command(event: &str) -> String {
-    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
-    format!("\"{exe}\" {event}")
-}
-
-/// Claude Code runs the command through `sh`, which still reads `$`, `` ` ``
-/// and `\` inside double quotes. Single quotes keep the path a path, whatever
-/// the home directory is called.
-#[cfg(unix)]
-fn hook_command(event: &str) -> String {
-    format!("{} {event}", sh_quote(&settings::hook_exe_path().to_string_lossy()))
+fn read_settings_lossy(path: &Path) -> Value {
+    read_settings(path).unwrap_or_else(|_| json!({}))
 }
 
 /// `s` as one single-quoted shell word: `'` becomes `'\''`, nothing else is
 /// special inside single quotes.
-#[cfg(unix)]
-fn sh_quote(s: &str) -> String {
+pub fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
@@ -140,7 +168,7 @@ fn entry_is_ours(entry: &Value) -> bool {
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched.
-fn merged(existing: &Value) -> Value {
+fn merged(existing: &Value, target: &Target) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = root
         .get("hooks")
@@ -158,7 +186,7 @@ fn merged(existing: &Value) -> Value {
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": target.command(event),
                 "timeout": timeout,
             }]
         }));
@@ -212,8 +240,7 @@ fn stamp() -> String {
     )
 }
 
-fn backup_path() -> PathBuf {
-    let p = settings_path();
+fn backup_path(p: &Path) -> PathBuf {
     p.with_file_name(format!("settings.json.bak-{}", stamp()))
 }
 
@@ -228,8 +255,8 @@ fn fingerprint(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
-fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
+fn current_fingerprint(path: &Path) -> String {
+    match std::fs::read(path) {
         Ok(bytes) => fingerprint(&bytes),
         Err(_) => fingerprint(b""),
     }
@@ -237,8 +264,8 @@ fn current_fingerprint() -> String {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-pub fn status() -> HookStatus {
-    let current = read_settings_lossy();
+pub fn status(target: &Target) -> HookStatus {
+    let current = read_settings_lossy(&target.path);
     let installed = current
         .get("hooks")
         .and_then(Value::as_object)
@@ -253,20 +280,21 @@ pub fn status() -> HookStatus {
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,
-        settings_path: settings_path().to_string_lossy().to_string(),
+        distro: target.distro.clone(),
+        settings_path: target.path.to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
     }
 }
 
-pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_settings()?;
-    let next = if install { merged(&current) } else { without_ours(&current) };
+pub fn preview(target: &Target, install: bool) -> Result<HookPreview, String> {
+    let current = read_settings(&target.path)?;
+    let next = if install { merged(&current, target) } else { without_ours(&current) };
     Ok(HookPreview {
         diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path().to_string_lossy().to_string(),
-        settings_path: settings_path().to_string_lossy().to_string(),
-        fingerprint: current_fingerprint(),
+        backup: backup_path(&target.path).to_string_lossy().to_string(),
+        settings_path: target.path.to_string_lossy().to_string(),
+        fingerprint: current_fingerprint(&target.path),
     })
 }
 
@@ -276,27 +304,27 @@ pub fn preview(install: bool) -> Result<HookPreview, String> {
 /// in between — another tool, another window, the user's own editor — we stop
 /// and make them look at a fresh diff, because the only thing worse than not
 /// installing the hooks is silently reverting somebody else's edit.
-pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = settings_path();
+pub fn write(target: &Target, install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = target.path.clone();
     let dir = path.parent().unwrap_or(Path::new("."));
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     // Read before the backup: an unreadable file must abort before we touch
     // anything at all.
-    let current = read_settings()?;
-    if current_fingerprint() != fingerprint {
+    let current = read_settings(&path)?;
+    if current_fingerprint(&path) != fingerprint {
         return Err(format!(
             "{} changed since the preview. Nothing was written — review the new diff.",
             path.display()
         ));
     }
 
-    let backup = backup_path();
+    let backup = backup_path(&path);
     if path.exists() {
         std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
     }
 
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    let next = if install { merged(&current, target) } else { without_ours(&current) };
     let mut text = pretty(&next);
     text.push('\n');
 
@@ -556,7 +584,7 @@ mod tests {
             }
         });
 
-        let after = merged(&existing);
+        let after = merged(&existing, &Target::local());
         assert_eq!(after["model"], "claude-opus-5");
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["enabledPlugins"], serde_json::json!(["a", "b"]));
@@ -575,13 +603,28 @@ mod tests {
     }
 
     #[test]
+    fn a_wsl_command_is_sh_quoted_and_still_ours() {
+        let target = Target {
+            distro: Some("Ubuntu".into()),
+            path: PathBuf::from(r"\\wsl$\Ubuntu\home\me\.claude\settings.json"),
+            exe: "/mnt/c/Users/Jo G/AppData/Local/Coucou/bin/coucou-hook.exe".into(),
+        };
+        assert_eq!(
+            target.command("Stop"),
+            "'/mnt/c/Users/Jo G/AppData/Local/Coucou/bin/coucou-hook.exe' Stop 'Ubuntu' 2>/dev/null || true"
+        );
+        let after = merged(&json!({}), &target);
+        assert!(after["hooks"]["Stop"].as_array().unwrap().iter().any(entry_is_ours));
+        assert_eq!(without_ours(&after), json!({}));
+    }
+
+    #[test]
     fn a_fingerprint_notices_any_change() {
         assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
         assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
         assert_ne!(fingerprint(b""), fingerprint(b"{}"));
     }
 
-    #[cfg(unix)]
     #[test]
     fn the_hook_path_is_one_shell_word_whatever_it_contains() {
         assert_eq!(sh_quote("/home/a b/x"), "'/home/a b/x'");
@@ -630,7 +673,8 @@ mod tests {
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
         std::env::set_var(platform::HOME_VAR, &tmp);
 
-        let path = settings_path();
+        let target = Target::local();
+        let path = target.path.clone();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
@@ -640,9 +684,9 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
 
         // Install.
-        let plan = preview(true).expect("a BOM must not stop the preview");
+        let plan = preview(&target, true).expect("a BOM must not stop the preview");
         assert!(plan.diff.contains("coucou-hook"), "the diff must show what changes");
-        let backup = write(true, &plan.fingerprint).expect("install should succeed");
+        let backup = write(&target, true, &plan.fingerprint).expect("install should succeed");
 
         // The backup holds the original bytes, BOM and all.
         assert_eq!(std::fs::read(&backup).unwrap(), bytes);
@@ -654,20 +698,20 @@ mod tests {
         assert_eq!(after["tui"]["x"], 1);
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
-        assert!(status().installed);
+        assert!(status(&target).installed);
 
         // A file that moved since the preview is refused, and left alone.
-        let stale = preview(false).unwrap();
+        let stale = preview(&target, false).unwrap();
         std::fs::write(&path, br#"{"model":"someone-else-edited-this"}"#).unwrap();
-        let err = write(false, &stale.fingerprint).unwrap_err();
+        let err = write(&target, false, &stale.fingerprint).unwrap_err();
         assert!(err.contains("changed since the preview"), "got: {err}");
         let untouched: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(untouched["model"], "someone-else-edited-this");
 
         // Content we cannot parse is refused before anything is written.
         std::fs::write(&path, b"{ broken").unwrap();
-        assert!(preview(true).is_err());
-        assert!(write(true, "whatever").is_err());
+        assert!(preview(&target, true).is_err());
+        assert!(write(&target, true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
         let _ = std::fs::remove_dir_all(&tmp);

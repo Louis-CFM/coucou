@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Windows: Claude Code sessions running inside WSL show up in the island — hooks install per distro from Settings (#52)
+
 ## 0.1.7 — October 4, 2026
 
 - Keyboard shortcuts from anywhere: ⌃⌥Space opens the chat, ⌃⌥A jumps to a waiting permission or question, ⌃⌥T brings your terminal forward, ⌃⌥] and ⌃⌥[ switch pills, ⌃⌥M mutes Mochi, ⌃⌥D sends him to the desktop and back, ⌃⌥G opens the wardrobe, and ⌃⌥W attaches the front window to the chat (GitHub build) (#205)
