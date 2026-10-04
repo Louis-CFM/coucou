@@ -67,10 +67,11 @@ body {
 
 #island {
   position: absolute;
-  top: 0;
+  top: 8px; /* TOP_GAP: floats below the edge, like the Dynamic Island */
   left: 50%;
   background: #000;
-  border-radius: 0 0 14px 14px;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
   overflow: visible;
   will-change: width, height, transform;
 }
@@ -186,10 +187,23 @@ body {
 #content {
   position: absolute;
   inset: 0;
-  padding: 8px 10px 10px;
+  padding: 10px 14px 14px;
   display: flex;
   flex-direction: column;
-  transition: opacity 0.2s ease-in-out;
+  opacity: 0;
+  transform: scale(0.94);
+  transform-origin: 50% 0;
+  filter: blur(8px);
+  transition: opacity 0.14s ease-in, transform 0.2s ease-in, filter 0.14s ease-in;
+}
+
+/* Opening: the shape leads, the content follows a beat later and sharpens. */
+#content.shown {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: opacity 0.3s ease-out 0.08s, transform 0.55s cubic-bezier(0.2, 1.15, 0.35, 1) 0.04s,
+    filter 0.32s ease-out 0.08s;
 }
 
 #header {
@@ -197,14 +211,14 @@ body {
   flex: 0 0 34px;
   display: flex;
   align-items: center;
-  margin: 0 -10px;
+  margin: 0 -14px;
   transition: opacity 0.2s ease-in-out;
 }
 
 .tabs {
   display: flex;
   gap: 5px;
-  padding-left: 14px;
+  padding-left: 20px;
 }
 
 .tab {
@@ -233,7 +247,7 @@ body {
   margin-left: auto;
   display: flex;
   gap: 14px;
-  padding-right: 16px;
+  padding-right: 22px;
 }
 
 .header-actions button {
@@ -259,16 +273,19 @@ body {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transform: scale(0.97);
+  transform: scale(0.96);
+  filter: blur(6px);
   pointer-events: none;
-  transition: opacity 0.16s ease-in;
+  transition: opacity 0.16s ease-in, filter 0.16s ease-in;
 }
 
 .view.on {
   opacity: 1;
   transform: scale(1);
+  filter: none;
   pointer-events: auto;
-  transition: opacity 0.3s ease-out 0.16s, transform 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) 0.16s;
+  transition: opacity 0.3s ease-out 0.12s, transform 0.45s cubic-bezier(0.2, 1.15, 0.35, 1) 0.12s,
+    filter 0.3s ease-out 0.12s;
 }
 
 /* A view that is not on is only transparent, not gone: an infinite animation
@@ -283,9 +300,8 @@ body {
 .card {
   position: relative;
   height: 100%;
-  border-radius: 20px;
+  border-radius: 22px; /* concentric: island 36 − inset 14 */
   background: var(--card);
-  border: 1px solid var(--hairline);
   overflow: hidden;
 }
 
@@ -383,13 +399,13 @@ body {
 
 .overview {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   height: 100%;
 }
 
 .overview > .left {
-  flex: 0 0 322px;
-  width: 322px;
+  flex: 0 0 336px;
+  width: 336px;
 }
 
 .overview > .right {
@@ -399,7 +415,8 @@ body {
 .card-body {
   position: relative;
   z-index: 1;
-  padding-top: 10px;
+  /* Centred next to Mochi; auto margins fall back to the top if it overflows. */
+  margin-block: auto;
 }
 
 .who {
@@ -433,8 +450,8 @@ body {
 
 .jump {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 12px;
+  right: 14px;
   z-index: 2;
 }
 
@@ -514,15 +531,15 @@ body {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-auto-rows: 28px;
-  gap: 4px;
+  grid-auto-rows: 30px;
+  gap: 8px;
   align-content: center;
-  padding: 0 8px;
+  padding: 0 12px;
 }
 
 .pill {
   position: relative;
-  height: 28px;
+  height: 30px;
   border-radius: 999px;
   background: var(--card-flat);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1046,10 +1063,13 @@ input[type="range"]::-webkit-slider-thumb {
   position: relative;
   z-index: 1;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .int-card {
-  padding: 10px 12px 0 108px;
+  padding: 10px 12px 10px 108px;
+  margin-block: auto;
   display: flex;
   flex-direction: column;
 }

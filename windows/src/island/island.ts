@@ -5,7 +5,7 @@ import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
-  ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
+  ROUNDED_CORNER, TOP_GAP, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
 } from "../core/layout";
@@ -457,15 +457,11 @@ export class Island {
 
   private animateGeometry(shrinking: boolean) {
     const { w, h, r } = this.targetSize();
-    if (shrinking) {
-      this.width.curveTowards(w);
-      this.height.curveTowards(h);
-      this.radius.curveTowards(r);
-    } else {
-      this.width.springTo(w);
-      this.height.springTo(h);
-      this.radius.springTo(r);
-    }
+    // Dynamic Island motion: a soft spring out, a critically damped one back in.
+    const [response, damping] = shrinking ? [0.38, 1] : [0.5, 0.8];
+    this.width.springTo(w, response, damping);
+    this.height.springTo(h, response, damping);
+    this.radius.springTo(r, response, damping);
     this.ensureRunning();
   }
 
@@ -475,7 +471,7 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    this.islandEl.style.borderRadius = `${Math.min(r, hh / 2)}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -484,7 +480,7 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = { x: (PANEL_W - w) / 2, y: TOP_GAP, w, h: hh };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -496,7 +492,7 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    return { x: (PANEL_W - w) / 2, y: TOP_GAP, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -682,9 +678,9 @@ export class Island {
     const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
-    this.width.step(dt, nowMs);
-    this.height.step(dt, nowMs);
-    this.radius.step(dt, nowMs);
+    this.width.step(dt);
+    this.height.step(dt);
+    this.radius.step(dt);
     this.applyGeometry();
 
     if (this.dirty) {
@@ -837,7 +833,7 @@ export class Island {
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
 
-    this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
+    this.contentEl.classList.toggle("shown", expanded && !greetingActive);
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 

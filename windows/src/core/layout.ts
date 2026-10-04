@@ -55,36 +55,39 @@ export const PANEL_H = 320;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
-export const NOTCH_H = 32;
+export const NOTCH_H = 36;
 export const COMPACT_W = 288; // NOTCH_W + 104
-export const EXPANDED_W = 640;
+export const EXPANDED_W = 680;
 
-export const ROUNDED_CORNER = 14; // hidden / compact
-export const EXPANDED_CORNER = 22;
+export const ROUNDED_CORNER = 18; // hidden / compact: a full capsule
+export const EXPANDED_CORNER = 36;
+
+/** The island floats this far below the top edge, like the Dynamic Island. */
+export const TOP_GAP = 8;
 
 /** Invisible hover strip that wakes the island when hidden. */
 export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
-  overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
-  empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
-  approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
-  question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
-  error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
+  overview: { height: 176, botX: 72, botY: null, botDiameter: 58, agentMode: "pills" },
+  empty: { height: 176, botX: 74, botY: null, botDiameter: 62, agentMode: "none" },
+  approval: { height: 176, botX: 66, botY: null, botDiameter: 56, agentMode: "column" },
+  question: { height: 176, botX: 66, botY: null, botDiameter: 56, agentMode: "column" },
+  error: { height: 176, botX: 66, botY: null, botDiameter: 58, agentMode: "column" },
+  finished: { height: 176, botX: 66, botY: null, botDiameter: 58, agentMode: "column" },
+  confused: { height: 176, botX: 80, botY: null, botDiameter: 66, agentMode: "column" },
   upload: { height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
   // botY 103 = bar top (42 + 58) + 3, so the dot really rides the bar. The Swift
   // layout says 118 while its own comment says 103; the comment matches the spec.
   uploading: { height: 176, botX: 46, botY: 103, botDiameter: 20, agentMode: "none" },
   choose: { height: 176, botX: 60, botY: 101, botDiameter: 52, agentMode: "column" },
-  mail: { height: 240, botX: 56, botY: null, botDiameter: 46, agentMode: "column" },
-  prompt: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  searching: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
-  note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
-  settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  mail: { height: 256, botX: 60, botY: null, botDiameter: 46, agentMode: "column" },
+  prompt: { height: 176, botX: 56, botY: null, botDiameter: 44, agentMode: "column" },
+  searching: { height: 176, botX: 56, botY: null, botDiameter: 44, agentMode: "column" },
+  result: { height: 176, botX: 56, botY: null, botDiameter: 44, agentMode: "column" },
+  note: { height: 176, botX: 64, botY: null, botDiameter: 50, agentMode: "column" },
+  settings: { height: 176, botX: 58, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
 };
 
@@ -94,7 +97,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {
-  return Math.min(300, 240 + messageCount * 40);
+  return Math.min(304, 256 + messageCount * 40);
 }
 
 export function islandSize(
@@ -132,9 +135,9 @@ export function botPosition(
 ): BotPlacement {
   switch (mode) {
     case "hidden":
-      return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
+      return { cx: 46, cy: 18, diameter: 6, opacity: 0 };
     case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+      return { cx: 40, cy: 18, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
       if (view === "uploading") {
@@ -148,10 +151,10 @@ export function botPosition(
       if (layout.botY != null) {
         return { cx: layout.botX, cy: layout.botY, diameter: layout.botDiameter, opacity: 1 };
       }
-      // Centre of the fixed 84 pt card (8 pt top inset + 34 pt header → content at y = 42)
-      const headerBottom = 42;
-      const cardH = 84;
-      const cy = headerBottom + (islandH - headerBottom - cardH) / 2 + cardH / 2;
+      // Centre of the card (10 px top inset + 34 px header → content at y = 44,
+      // 14 px bottom inset); −4 puts Mochi's body, not its canvas, on the centre.
+      const headerBottom = 44;
+      const cy = (headerBottom + islandH - 14) / 2 - 4;
       return { cx: layout.botX, cy, diameter: layout.botDiameter, opacity: 1 };
     }
   }

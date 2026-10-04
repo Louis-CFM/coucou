@@ -21,7 +21,7 @@ export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 export const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a), 0, 1);
 
-/** cubic-bezier(x1,y1,x2,y2) — used for the 340 ms close curve (.45,0,.2,1). */
+/** cubic-bezier(x1,y1,x2,y2). */
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): EaseFn {
   const cx = (t: number) => ((1 - t) ** 2 * 3 * t * x1) + (3 * (1 - t) * t * t * x2) + t ** 3;
   const cy = (t: number) => ((1 - t) ** 2 * 3 * t * y1) + (3 * (1 - t) * t * t * y2) + t ** 3;
@@ -39,8 +39,6 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
     return cy(t);
   };
 }
-
-export const closeCurve = cubicBezier(0.45, 0, 0.2, 1);
 
 /**
  * SwiftUI-equivalent spring: ω₀ = 2π / response, ζ = dampingFraction.
@@ -88,17 +86,10 @@ export class Spring {
   }
 }
 
-/**
- * Value driven either by a spring (growing) or a timed curve (shrinking) —
- * matches IslandContainer: openSpring for grow, closeEase 340 ms for shrink.
- */
+/** Spring-driven value that knows when it has come to rest. */
 export class Tracked {
   private spring: Spring;
-  private curveFrom = 0;
-  private curveTo = 0;
-  private curveStart = 0;
-  private curveDur = 0;
-  private mode: "spring" | "curve" | "idle" = "idle";
+  private mode: "spring" | "idle" = "idle";
 
   constructor(value: number) {
     this.spring = new Spring(value);
@@ -117,36 +108,17 @@ export class Tracked {
     this.mode = "idle";
   }
 
-  /** Spring to `v` (open / grow). */
   springTo(v: number, response = 0.5, damping = 0.72) {
     this.spring.configure(response, damping);
     this.spring.target = v;
     this.mode = "spring";
   }
 
-  /** Timed curve to `v` (close / shrink), no overshoot. */
-  curveTowards(v: number, durationMs = 340, now = performance.now()) {
-    this.curveFrom = this.spring.value;
-    this.curveTo = v;
-    this.curveStart = now;
-    this.curveDur = durationMs;
-    this.spring.target = v;
-    this.spring.velocity = 0;
-    this.mode = "curve";
-  }
-
-  step(dt: number, now = performance.now()) {
+  step(dt: number) {
     if (this.mode === "spring") {
       this.spring.step(dt);
       if (this.spring.settled) {
         this.spring.value = this.spring.target;
-        this.spring.velocity = 0;
-        this.mode = "idle";
-      }
-    } else if (this.mode === "curve") {
-      const p = clamp((now - this.curveStart) / this.curveDur, 0, 1);
-      this.spring.value = lerp(this.curveFrom, this.curveTo, closeCurve(p));
-      if (p >= 1) {
         this.spring.velocity = 0;
         this.mode = "idle";
       }
