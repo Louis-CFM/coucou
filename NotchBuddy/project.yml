@@ -223,6 +223,8 @@ targets:
       # Shared with the Mac targets (they get it through Sources/).
       - path: Sources/CoucouKit
         type: group
+      - path: PhoneAssets.xcassets
+        buildPhase: resources
     info:
       path: Resources/InfoPhone.plist
       properties:
@@ -245,6 +247,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
         PRODUCT_NAME: Coucou
         INFOPLIST_FILE: Resources/InfoPhone.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
