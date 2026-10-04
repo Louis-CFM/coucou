@@ -208,6 +208,11 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             let mut ticks: u32 = 0;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(period));
+                // Parked while we slept: the island is hidden, and nothing below
+                // may touch the window any more.
+                if !gate.is_active() {
+                    break;
+                }
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -273,7 +278,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     && y >= 0.0
                     && y <= size.1;
 
-                let accept = on_island || dragging;
+                // The wake strip always takes the mouse — it is all there is to
+                // hover. A tick that was already under way when the island hid
+                // used to switch click-through back on here, over the strip, and
+                // the island could then never be woken by the pointer again.
+                let collapsed = gate.collapsed.load(Ordering::Relaxed);
+                let accept = on_island || dragging || collapsed;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
