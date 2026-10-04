@@ -158,7 +158,7 @@ final class DesktopMochiController {
             UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
             launchFlyIfNeeded()
         } else if phase == .onDesktop {
-            uninstall()
+            flyHome()
         }
     }
 

@@ -13,6 +13,7 @@ enum ShortcutTests {
         testLegacyKeysForToggleIsland()
         testEnabledByDefault()
         testKeyCodeToString()
+        testCardNavigation()
         print("ShortcutLogic: all cases passed")
     }
 
@@ -199,5 +200,36 @@ enum ShortcutTests {
         // Unknown key code returns a placeholder
         let unknown = ShortcutLogic.keyCodeToString(200)
         precondition(!unknown.isEmpty, "unknown key code must return non-empty string")
+    }
+
+    // MARK: - testCardNavigation
+
+    static func testCardNavigation() {
+        // nil + down → first item
+        precondition(ShortcutLogic.navigate(selection: nil,  delta: +1, itemCount: 3) == 0,
+                     "nil+down must select first item")
+        // nil + up → last item
+        precondition(ShortcutLogic.navigate(selection: nil,  delta: -1, itemCount: 3) == 2,
+                     "nil+up must select last item")
+        // clamp at top
+        precondition(ShortcutLogic.navigate(selection: 0,   delta: -1, itemCount: 3) == 0,
+                     "selection 0 + up must clamp to 0")
+        // clamp at bottom
+        precondition(ShortcutLogic.navigate(selection: 2,   delta: +1, itemCount: 3) == 2,
+                     "selection last + down must clamp to last")
+        // normal step down
+        precondition(ShortcutLogic.navigate(selection: 1,   delta: +1, itemCount: 3) == 2,
+                     "1+down in 3-item list must yield 2")
+        // normal step up
+        precondition(ShortcutLogic.navigate(selection: 1,   delta: -1, itemCount: 3) == 0,
+                     "1+up in 3-item list must yield 0")
+        // delta 0 — no move
+        precondition(ShortcutLogic.navigate(selection: 1,   delta:  0, itemCount: 3) == 1,
+                     "delta 0 must not move selection")
+        // empty card → nil (navigateCard guards on cardItemCount > 0, but test the pure function)
+        precondition(ShortcutLogic.navigate(selection: nil, delta: +1, itemCount: 0) == nil,
+                     "empty card must return nil")
+        precondition(ShortcutLogic.navigate(selection: 0,   delta: +1, itemCount: 0) == nil,
+                     "any selection on empty card must return nil")
     }
 }

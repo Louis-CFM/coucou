@@ -2473,6 +2473,7 @@ struct GitHubDetailView: View {
     let activity: GitHubActivity?
     let stats: GitHubStats?
     let onBack: () -> Void
+    @ObservedObject private var appState = AppState.shared
 
     private var title: String {
         switch section {
@@ -2494,6 +2495,8 @@ struct GitHubDetailView: View {
     private var repoItems: [GitHubRepoCI] {
         section == .mainCI ? pulse.mainCI : []
     }
+
+    private var totalItems: Int { items.count + repoItems.count }
 
     var body: some View {
         if section == .activity {
@@ -2533,18 +2536,20 @@ struct GitHubDetailView: View {
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(items, id: \.id) { pr in
-                                GitHubPRRowView(pr: pr, showCI: section == .myPRs)
+                            ForEach(Array(items.enumerated()), id: \.element.id) { idx, pr in
+                                GitHubPRRowView(pr: pr, showCI: section == .myPRs,
+                                               selected: appState.cardSelection == idx)
                             }
-                            ForEach(repoItems, id: \.repo) { repo in
-                                GitHubRepoCIRowView(repo: repo)
+                            ForEach(Array(repoItems.enumerated()), id: \.element.repo) { idx, repo in
+                                GitHubRepoCIRowView(repo: repo,
+                                                   selected: appState.cardSelection == items.count + idx)
                             }
                         }
                     }
                     .frame(maxHeight: 60)  // 3 rows × 20 pt; rest scrolls
                     .mask(
                         Group {
-                            if (items.count + repoItems.count) > 3 {
+                            if totalItems > 3 {
                                 LinearGradient(
                                     stops: [
                                         .init(color: .black, location: 0),
@@ -2566,7 +2571,28 @@ struct GitHubDetailView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(.top, 4)
             .clipped()
-            .onAppear { GithubPoller.shared.refreshIfStale() }
+            .onAppear {
+                GithubPoller.shared.refreshIfStale()
+                appState.cardItemCount = totalItems
+            }
+            .onDisappear { appState.cardItemCount = 0 }
+            .onReceive(NotificationCenter.default.publisher(for: .islandActivateCardSelection)) { _ in
+                guard let sel = appState.cardSelection else { return }
+                if sel < items.count {
+                    let pr = items[sel]
+                    if let url = safeWebURL(pr.url), url.host == "github.com" {
+                        NSWorkspace.shared.open(url)
+                    }
+                } else {
+                    let repoIdx = sel - items.count
+                    guard repoIdx < repoItems.count else { return }
+                    let repo = repoItems[repoIdx]
+                    let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
+                    if let url = safeWebURL(actionsURL), url.host == "github.com" {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
             .onExitCommand { onBack() }
         }
     }
@@ -2716,6 +2742,7 @@ private func ghCIDot(_ ci: CIState) -> Color {
 private struct GitHubPRRowView: View {
     let pr: GitHubPR
     let showCI: Bool
+    var selected: Bool = false
 
     var body: some View {
         Button(action: {
@@ -2749,6 +2776,11 @@ private struct GitHubPRRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.12))
+                    .opacity(selected ? 1 : 0)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -2756,6 +2788,7 @@ private struct GitHubPRRowView: View {
 
 private struct GitHubRepoCIRowView: View {
     let repo: GitHubRepoCI
+    var selected: Bool = false
 
     private var ciStateWord: String? {
         switch repo.ci {
@@ -2797,6 +2830,11 @@ private struct GitHubRepoCIRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.12))
+                    .opacity(selected ? 1 : 0)
+            )
         }
         .buttonStyle(.plain)
     }

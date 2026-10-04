@@ -260,13 +260,22 @@ struct SettingsView: View {
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
+                    .onChange(of: state.hotkeyEnabled) { _, _ in
+                        HotKeyCenter.shared.reregister(.toggleIsland)
+                    }
                 if state.hotkeyEnabled {
                     HStack(spacing: 8) {
                         Text("Shortcut")
                             .frame(width: 70, alignment: .leading)
                         ShortcutRecorderButton(flags: $hotkeyFlags, code: $hotkeyCode)
-                            .onChange(of: hotkeyFlags) { _, v in state.hotkeyFlags = v }
-                            .onChange(of: hotkeyCode)  { _, v in state.hotkeyCode  = v }
+                            .onChange(of: hotkeyFlags) { _, v in
+                                state.hotkeyFlags = v
+                                HotKeyCenter.shared.reregister(.toggleIsland)
+                            }
+                            .onChange(of: hotkeyCode) { _, v in
+                                state.hotkeyCode = v
+                                HotKeyCenter.shared.reregister(.toggleIsland)
+                            }
                         Text("presses this → island opens")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)

@@ -494,6 +494,14 @@ final class IslandWindowController: NSWindowController {
         if cmd, let n = digitCodes[event.keyCode] {
             switchToPill(number: n); return true
         }
+        // ⎋ Escape — focused views (.onExitCommand) have first crack; fall back to collapse
+        if event.keyCode == 53 && raw.isEmpty {
+            let consumed = NSApp.sendAction(Selector(("cancelOperation:")), to: nil, from: nil)
+            if !consumed && state.mode == .expanded && !state.isPinned {
+                collapse()
+            }
+            return true
+        }
         return false
     }
 
@@ -516,35 +524,35 @@ final class IslandWindowController: NSWindowController {
     }
 
     private func navigateCard(by delta: Int) {
-        guard !state.tasks.isEmpty else { return }
-        let cur    = state.cardSelection ?? -1
-        let items  = max(1, state.tasks.count)  // number of navigable items
-        let next   = max(0, min(items - 1, cur + delta))
-        state.cardSelection = next
+        guard state.cardItemCount > 0 else { return }
+        state.cardSelection = ShortcutLogic.navigate(
+            selection: state.cardSelection, delta: delta, itemCount: state.cardItemCount)
     }
 
     private func openCardSelection() {
-        guard let idx = state.cardSelection, idx < state.tasks.count else { return }
-        // Default: open the terminal for the selected task
-        #if !APPSTORE
-        performJumpToTerminal()
-        #endif
+        guard state.cardSelection != nil else { return }
+        NotificationCenter.default.post(name: .islandActivateCardSelection, object: nil)
     }
 
     // MARK: - Terminal jump
 
     #if !APPSTORE
     private func performJumpToTerminal() {
-        let termBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                             "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-        let activated = termBundleIds.compactMap { bid in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == bid }
+        guard state.focusTask != nil else {
+            SoundEngine.shared.play("error")
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
+            return
+        }
+        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                                 "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+        let activated = terminalBundleIds.compactMap { id in
+            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
         }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
         if activated == nil {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
-        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+        collapse()
     }
 
     private func performAttachFrontWindow() {
@@ -1118,7 +1126,8 @@ extension Notification.Name {
     static let islandCollapse      = Notification.Name("notchBuddy.islandCollapse")
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
-    static let islandToggleDiff    = Notification.Name("notchBuddy.islandToggleDiff")
+    static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
+    static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")

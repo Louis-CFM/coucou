@@ -204,6 +204,20 @@ enum ShortcutLogic {
         return map[code] ?? "·"
     }
 
+    // MARK: - Card navigation (pure, no AppKit dependency)
+
+    /// Compute the next card-selection index.
+    /// - Returns `nil` when `itemCount == 0`.
+    /// - Clamps to `0 ..< itemCount`.
+    /// - `nil` selection + `delta > 0` → first item; `delta < 0` → last item.
+    static func navigate(selection: Int?, delta: Int, itemCount: Int) -> Int? {
+        guard itemCount > 0 else { return nil }
+        if let cur = selection {
+            return max(0, min(itemCount - 1, cur + delta))
+        }
+        return delta > 0 ? 0 : itemCount - 1
+    }
+
     // MARK: - Island-local shortcut table (read-only, shown in Settings)
 
     /// Descriptive table of island-local shortcuts for the Settings view.
