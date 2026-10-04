@@ -243,19 +243,24 @@ final class PhoneLink {
 
     /// The iCloud alert for an approval doesn't always come. The silent push
     /// that updates the sessions does, so a new approval also gets a local
-    /// notification, unless the iCloud one is already there.
+    /// notification, unless the iCloud one came, or the app is open.
+    /// Notifications for requests no longer pending are removed.
     private func notifyNewApprovals() async {
+        await removeAnsweredNotifications()
         let fresh = sessions.filter {
             $0.needsApproval && !$0.approvalFingerprint.isEmpty && !notifiedFingerprints.contains($0.approvalFingerprint)
         }
         guard !fresh.isEmpty else { return }
         fresh.forEach { notifiedFingerprints.insert($0.approvalFingerprint) }
-        // Give the iCloud alert a moment to land first.
+        // The app is open: the request is on screen.
+        guard UIApplication.shared.applicationState != .active else { return }
+        // Give the iCloud alert a moment to land first, then check the request still waits.
         try? await Task.sleep(for: .seconds(3))
-        let shown = await Self.shownApprovalFingerprints()
+        _ = await fetchChanges()
+        let shown = await Self.shownApprovals().map { $0.fingerprint }
         for session in fresh where !shown.contains(session.approvalFingerprint) {
-            // Still waiting? It may have been answered on the Mac meanwhile.
-            guard sessions.contains(where: { $0.approvalFingerprint == session.approvalFingerprint }) else { continue }
+            guard pendingFingerprints.contains(session.approvalFingerprint),
+                  !iCloudAlerted.contains(session.approvalFingerprint) else { continue }
             let content = UNMutableNotificationContent()
             content.title = "\(session.pillName) · \(session.title)"
             content.body = session.approvalCommand.isEmpty
@@ -270,16 +275,33 @@ final class PhoneLink {
         }
     }
 
-    /// Fingerprints of the approval notifications in Notification Center
-    /// (only the local ones with `localOnly`).
-    nonisolated static func shownApprovalFingerprints(localOnly: Bool = false) async -> Set<String> {
+    /// Fingerprints of the requests the Mac is still waiting on.
+    private var pendingFingerprints: Set<String> {
+        Set(sessions.filter(\.needsApproval).map(\.approvalFingerprint).filter { !$0.isEmpty })
+    }
+
+    /// Fingerprints whose iCloud alert reached this iPhone (shown or tapped).
+    @ObservationIgnored private var iCloudAlerted: Set<String> = []
+
+    func noteICloudAlert(_ fingerprint: String) {
+        iCloudAlerted.insert(fingerprint)
+        notifiedFingerprints.insert(fingerprint)
+    }
+
+    /// Clears the banners of requests answered on the Mac, on the iPhone or expired.
+    private func removeAnsweredNotifications() async {
+        let pending = pendingFingerprints
+        let stale = await Self.shownApprovals().filter { !pending.contains($0.fingerprint) }.map { $0.id }
+        if !stale.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: stale) }
+    }
+
+    /// Approval notifications in Notification Center, local or from iCloud.
+    nonisolated static func shownApprovals() async -> [(id: String, fingerprint: String)] {
         let delivered = await UNUserNotificationCenter.current().deliveredNotifications()
-        return Set(delivered.compactMap { notification -> String? in
+        return delivered.compactMap { notification in
             let request = notification.request
-            guard let fingerprint = approvalFingerprint(in: request) else { return nil }
-            if localOnly && request.identifier != approvalNotificationID(fingerprint) { return nil }
-            return fingerprint
-        })
+            return approvalFingerprint(in: request).map { (request.identifier, $0) }
+        }
     }
 
     /// The approval fingerprint carried by a notification, local or from iCloud.

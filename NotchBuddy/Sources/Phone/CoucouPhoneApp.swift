@@ -60,6 +60,7 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     @MainActor
     private static func handleApproval(denied: Bool, fingerprint: String, pillId: String) async {
         let link = PhoneLink.shared
+        link.noteICloudAlert(fingerprint)
         if denied {
             // Awaited so the decision is saved before iOS suspends the app again.
             let summary = link.sessions.first { $0.approvalFingerprint == fingerprint }?.approvalCommand
@@ -79,7 +80,9 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         let request = notification.request
         if let fingerprint = PhoneLink.approvalFingerprint(in: request),
            request.identifier != PhoneLink.approvalNotificationID(fingerprint) {
-            if await PhoneLink.shownApprovalFingerprints(localOnly: true).contains(fingerprint) { return [] }
+            let localID = PhoneLink.approvalNotificationID(fingerprint)
+            await MainActor.run { PhoneLink.shared.noteICloudAlert(fingerprint) }
+            if await PhoneLink.shownApprovals().contains(where: { $0.id == localID }) { return [] }
         }
         return [.banner, .sound]
     }
