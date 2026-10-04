@@ -105,7 +105,7 @@ struct WanderHop {
 enum DesktopMotion {
     /// Panel placed by the user; gravity not yet applied.
     case free
-    /// Timer-driven fall to a surface.
+    /// Timer-driven accelerated fall to a surface (t² easing).
     case falling(from: CGPoint, to: CGPoint, windowID: CGWindowID?,
                   startTime: TimeInterval, duration: TimeInterval)
     /// Sitting on a surface (window or screen bottom). Tracked at 4 Hz.
@@ -174,6 +174,8 @@ final class DesktopMochiController {
     // Gravity / perching / wander
     private var motion: DesktopMotion = .free
     private var wanderWorkItem: DispatchWorkItem?
+    // Throttle full surface list to once per second (perch coverage check)
+    private var lastCoverageCheckTime: TimeInterval = 0
 
     // UserDefaults keys
     private static let posXKey    = "desktopMochiX"
@@ -221,8 +223,7 @@ final class DesktopMochiController {
         p.ignoresMouseEvents = true
         if !p.isVisible { p.orderFront(nil) }
 
-        // Squash emote + sound on landing
-        eng.triggerEmote(.happy, duration: 0.6, silent: true)
+        // Sound on landing
         SoundEngine.shared.play("pop")
 
         // Animate from current (ghost) size to 120 × 120, centered on drop point
@@ -449,9 +450,13 @@ final class DesktopMochiController {
 
     // MARK: - Gravity: fall to nearest surface
 
-    /// Query visible windows, find the highest surface below the panel, and begin a
-    /// timer-driven fall (or perch immediately if already on the surface).
-    private func startGravity() {
+    /// Query visible windows, find the highest surface below Mochi's feet, and begin a
+    /// timer-driven accelerated fall (t² easing) — or perch immediately if already there.
+    ///
+    /// - Parameter comingFrom: window ID we just left (occlusion / gone). If the best
+    ///   landing target is that same window, stay put instead of starting another fall
+    ///   (anti-loop guard).
+    private func startGravity(comingFrom: CGWindowID? = nil) {
         guard phase == .onDesktop, let p = panel else { return }
         let windows = querySurfaces()
         let vf      = currentVisibleFrame()
@@ -460,10 +465,21 @@ final class DesktopMochiController {
         let (targetY, windowID) = DesktopMochiLogic.surfaceBelow(
             panelFrame: pf, windows: windows, visibleFrame: vf)
 
-        let dist = pf.minY - targetY   // positive = panel is above the surface
+        // Anti-loop: would land on the same window we just left → re-perch silently
+        if let from = comingFrom, windowID == from {
+            let wf = windows.first { $0.id == from }?.frame ?? .zero
+            motion = .perched(windowID: from,
+                               relativeX: pf.minX - wf.minX,
+                               lastFrame: wf)
+            setPollingInterval(DesktopMochiLogic.nextPollInterval(inMotion: false,
+                                                                   sleeping: isSleeping))
+            return
+        }
+
+        let dist = pf.minY - targetY   // fall distance (panel origin delta, always >= 0)
 
         if dist < 2 {
-            // Already on (or within rounding error of) a surface
+            // Already on surface (within rounding error)
             let wf = windowID.flatMap { id in windows.first { $0.id == id } }?.frame ?? .zero
             landOnSurface(at: CGPoint(x: pf.minX, y: targetY),
                            windowID: windowID, lastWindowFrame: wf, sound: false)
@@ -481,11 +497,11 @@ final class DesktopMochiController {
     /// Perch Mochi directly on a window found during a drag-drop (no fall animation).
     private func perchAtWindow(_ window: WindowSurface) {
         guard let p = panel else { return }
-        let relX = p.frame.minX - window.frame.minX
-        let targetY = window.topY
+        let targetY = window.topY - DesktopMochiLogic.bodyBottomInset
+        let relX    = p.frame.minX - window.frame.minX
         p.setFrameOrigin(NSPoint(x: p.frame.minX, y: targetY))
         persistPosition()
-        engine?.triggerEmote(.happy, duration: 0.4, silent: true)
+        engine?.squash()
         motion = .perched(windowID: window.id, relativeX: relX, lastFrame: window.frame)
         setPollingInterval(DesktopMochiLogic.nextPollInterval(inMotion: false, sleeping: isSleeping))
         scheduleWander()
@@ -498,7 +514,7 @@ final class DesktopMochiController {
         p.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
         persistPosition()
         if sound { SoundEngine.shared.play("pop") }
-        engine?.triggerEmote(.happy, duration: 0.4, silent: true)
+        engine?.squash()
         let relX = windowID != nil ? origin.x - lastWindowFrame.minX : origin.x
         motion = .perched(windowID: windowID, relativeX: relX, lastFrame: lastWindowFrame)
         setPollingInterval(DesktopMochiLogic.nextPollInterval(inMotion: false, sleeping: isSleeping))
@@ -536,30 +552,35 @@ final class DesktopMochiController {
         guard hypot(mouse.x - p.frame.midX, mouse.y - p.frame.midY)
                 > DesktopMochiLogic.wanderMouseStop else { scheduleWander(); return }
 
-        let windows = querySurfaces()
-        let vf      = currentVisibleFrame()
-        let baseY   = p.frame.minY
+        let windows    = querySurfaces()
+        let vf         = currentVisibleFrame()
+        let baseY      = p.frame.minY   // current panel origin.y (body feet = baseY + bodyBottomInset)
+        let bodyBottom = p.frame.minY + DesktopMochiLogic.bodyBottomInset
         let (boundsMinX, boundsMaxX) = surfaceBounds(windowID: windowID, windows: windows, visibleFrame: vf)
 
-        // 1-in-4 chance: jump to a neighboring surface
+        // 1-in-4 chance: jump to a neighboring surface (real 2D distance ≤ 220 pt)
         if Double.random(in: 0...1) < DesktopMochiLogic.neighborChance {
-            let neighbors = windows.filter { w in
+            let candidates = windows.filter { w in
                 w.id != windowID &&
-                abs(w.topY - baseY) <= DesktopMochiLogic.neighborMaxDist &&
-                !DesktopMochiLogic.isEdgeCovered(surface: w, windows: windows)
+                !DesktopMochiLogic.isEdgeCovered(surface: w, atX: p.frame.midX, windows: windows)
+            }.filter { w in
+                // Real 2D distance: from body-feet to landing spot
+                let targetX = p.frame.minX.clamped(to: w.frame.minX ... max(w.frame.minX, w.frame.maxX - DesktopMochiLogic.panelSize))
+                let dx = targetX + DesktopMochiLogic.panelSize / 2 - p.frame.midX
+                let dy = w.topY - bodyBottom
+                return hypot(dx, dy) <= DesktopMochiLogic.neighborMaxDist
             }
-            if let target = neighbors.randomElement() {
-                let targetX = min(max(p.frame.minX,
-                                      target.frame.minX),
-                                   target.frame.maxX - DesktopMochiLogic.panelSize)
+            if let target = candidates.randomElement() {
+                let targetX = p.frame.minX.clamped(to: target.frame.minX ...
+                              max(target.frame.minX, target.frame.maxX - DesktopMochiLogic.panelSize))
+                let targetY = target.topY - DesktopMochiLogic.bodyBottomInset
                 let hop = WanderHop(fromX: p.frame.minX,
                                      toX: targetX,
                                      fromY: baseY,
-                                     toY: target.topY,
+                                     toY: targetY,
                                      hopHeight: 30,
                                      duration: 0.5)
-                motion = .hopping(hops: [hop], index: 0,
-                                    startTime: now(), landingWindowID: target.id)
+                motion = .hopping(hops: [hop], index: 0, startTime: now(), landingWindowID: target.id)
                 setPollingInterval(DesktopMochiLogic.nextPollInterval(inMotion: true, sleeping: false))
                 return
             }
@@ -697,7 +718,7 @@ final class DesktopMochiController {
         // Update eye-tracking origin every frame
         viewState?.lookOrigin = lookOriginFor(panel: p)
 
-        // Sleep detection (only meaningful when perched / still)
+        // Sleep detection (only when perched / still)
         if case .perched = motion {
             updateSleep(panel: p, mouse: mouse)
         }
@@ -708,12 +729,13 @@ final class DesktopMochiController {
     private func updateMotion(panel p: NSPanel, mouse: NSPoint) {
         switch motion {
         case .free:
-            break   // gravity will be started externally
+            break
 
         case .falling(let from, let to, let windowID, let t0, let dur):
             let elapsed = now() - t0
             let t = CGFloat(min(elapsed / dur, 1.0))
-            let y = from.y + (to.y - from.y) * t
+            // t² for accelerated (gravity-like) feel
+            let y = from.y + (to.y - from.y) * t * t
             p.setFrameOrigin(NSPoint(x: from.x, y: y))
             if t >= 1.0 {
                 let windows = querySurfaces()
@@ -730,43 +752,48 @@ final class DesktopMochiController {
         }
     }
 
-    // MARK: - Perch tracking (4 Hz)
+    // MARK: - Perch tracking (4 Hz — single-window read; coverage at 1 Hz)
 
     private func updatePerch(panel p: NSPanel, windowID: CGWindowID?,
                                relativeX: CGFloat, lastFrame: CGRect) {
-        let windows = querySurfaces()
+        guard let id = windowID else { return }  // screen-bottom perch: nothing to track
 
-        if let id = windowID {
-            guard let w = windows.first(where: { $0.id == id }) else {
-                // Window gone — fall
-                startGravity()
+        // Fast single-window query at 4 Hz to check position
+        guard let w = queryWindowInfo(id: id) else {
+            // Window gone (closed / minimized)
+            startGravity(comingFrom: id)
+            return
+        }
+
+        // Coverage check: full surface list at most once per second
+        let t = now()
+        if t - lastCoverageCheckTime >= 1.0 {
+            lastCoverageCheckTime = t
+            let allWindows = querySurfaces()
+            if DesktopMochiLogic.isEdgeCovered(surface: w, atX: p.frame.midX, windows: allWindows) {
+                startGravity(comingFrom: id)
                 return
-            }
-            if DesktopMochiLogic.isEdgeCovered(surface: w, windows: windows) {
-                // Top edge covered — fall
-                startGravity()
-                return
-            }
-            // Follow window if it moved
-            if w.frame != lastFrame {
-                let newX = (w.frame.minX + relativeX)
-                    .clamped(to: w.frame.minX ... w.frame.maxX - DesktopMochiLogic.panelSize)
-                let newY = w.topY
-                p.setFrameOrigin(NSPoint(x: newX, y: newY))
-                persistPosition()
-                viewState?.lookOrigin = lookOriginFor(panel: p)
-                motion = .perched(windowID: id, relativeX: p.frame.minX - w.frame.minX,
-                                    lastFrame: w.frame)
-                // Boost to 60 Hz for 1 s after window moves
-                setPollingInterval(1.0 / 60.0)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                    guard let self, case .perched = self.motion else { return }
-                    self.setPollingInterval(
-                        DesktopMochiLogic.nextPollInterval(inMotion: false, sleeping: self.isSleeping))
-                }
             }
         }
-        // screen-bottom perch: nothing to track
+
+        // Follow window if it moved or resized
+        guard w.frame != lastFrame else { return }
+
+        let newX = (w.frame.minX + relativeX).clamped(
+            to: w.frame.minX ... max(w.frame.minX, w.frame.maxX - DesktopMochiLogic.panelSize))
+        let newY = w.topY - DesktopMochiLogic.bodyBottomInset
+        p.setFrameOrigin(NSPoint(x: newX, y: newY))
+        persistPosition()
+        viewState?.lookOrigin = lookOriginFor(panel: p)
+        motion = .perched(windowID: id, relativeX: p.frame.minX - w.frame.minX, lastFrame: w.frame)
+
+        // Boost to 60 Hz for 1 s after the window moves, then revert
+        setPollingInterval(1.0 / 60.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self, case .perched = self.motion else { return }
+            self.setPollingInterval(
+                DesktopMochiLogic.nextPollInterval(inMotion: false, sleeping: self.isSleeping))
+        }
     }
 
     // MARK: - Hop tick (60 Hz)
@@ -775,7 +802,6 @@ final class DesktopMochiController {
                              startTime: TimeInterval, landingWindowID: CGWindowID?,
                              mouse: NSPoint) {
         guard index < hops.count else {
-            // Shouldn't happen, but guard anyway
             let windows = querySurfaces()
             let wf = landingWindowID.flatMap { id in windows.first { $0.id == id } }?.frame ?? .zero
             landOnSurface(at: CGPoint(x: p.frame.minX, y: p.frame.minY),
@@ -786,7 +812,7 @@ final class DesktopMochiController {
         let elapsed = now() - startTime
         let t = CGFloat(min(elapsed / hop.duration, 1.0))
 
-        // Lerp X + lerp Y base + arch
+        // Lerp X + lerp Y base + parabolic arch
         let x = hop.fromX + (hop.toX - hop.fromX) * t
         let y = hop.fromY + (hop.toY - hop.fromY) * t
                 + DesktopMochiLogic.hopY(t: t, height: hop.hopHeight)
@@ -796,8 +822,8 @@ final class DesktopMochiController {
 
         let nextIdx = index + 1
         if nextIdx < hops.count {
-            // Brief squash between hops; stop if mouse is too close
-            engine?.triggerEmote(.happy, duration: 0.2, silent: true)
+            // Squash between hops; stop if mouse is too close
+            engine?.squash()
             let dist = hypot(mouse.x - p.frame.midX, mouse.y - p.frame.midY)
             if dist < DesktopMochiLogic.wanderMouseStop {
                 let windows = querySurfaces()
@@ -809,7 +835,6 @@ final class DesktopMochiController {
             motion = .hopping(hops: hops, index: nextIdx,
                                startTime: now(), landingWindowID: landingWindowID)
         } else {
-            // Last hop landed
             let windows = querySurfaces()
             let wf = landingWindowID.flatMap { id in windows.first { $0.id == id } }?.frame ?? .zero
             landOnSurface(at: CGPoint(x: hop.toX, y: hop.toY),
@@ -823,7 +848,7 @@ final class DesktopMochiController {
         let agentActive = AppState.shared.effectiveState != .idle &&
                           AppState.shared.effectiveState != .sleeping
         if agentActive { lastAgentActive = .now }
-        let dist     = hypot(mouse.x - p.midX, mouse.y - p.midY)
+        let dist     = hypot(mouse.x - p.frame.midX, mouse.y - p.frame.midY)
         let interval = Date.now.timeIntervalSince(lastAgentActive)
         let should   = DesktopMochiLogic.shouldSleep(lastAgentActiveInterval: interval,
                                                       mouseDistanceToPanelCenter: dist)
@@ -831,7 +856,6 @@ final class DesktopMochiController {
             isSleeping = should
             viewState?.isSleeping = should
             engine?.setState(isSleeping ? .sleeping : AppState.shared.effectiveState)
-            // Adjust poll rate to match sleep state (only when perched)
             if case .perched = motion {
                 setPollingInterval(
                     DesktopMochiLogic.nextPollInterval(inMotion: false, sleeping: isSleeping))
@@ -841,15 +865,16 @@ final class DesktopMochiController {
 
     // MARK: - Window surface query (CG → AppKit)
 
+    /// Full surface list, ordered front-to-back (zIndex 0 = frontmost).
     private func querySurfaces() -> [WindowSurface] {
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
         ) as? [[String: Any]] else { return [] }
 
         let ourBundle = Bundle.main.bundleIdentifier ?? ""
-        let mainH = NSScreen.main?.frame.height ?? NSScreen.screens.first?.frame.height ?? 0
+        let mainH = primaryScreenHeight()
 
-        return windowList.compactMap { info in
+        return windowList.enumerated().compactMap { (index, info) in
             guard let b = info[kCGWindowBounds as String] as? [String: Any],
                   let x = b["X"] as? CGFloat, let y = b["Y"] as? CGFloat,
                   let w = b["Width"] as? CGFloat, let h = b["Height"] as? CGFloat,
@@ -869,8 +894,27 @@ final class DesktopMochiController {
 
             // CG (top-left origin, y-down) → AppKit (bottom-left origin, y-up)
             let appkitFrame = CGRect(x: x, y: mainH - y - h, width: w, height: h)
-            return WindowSurface(id: wid, frame: appkitFrame)
+            return WindowSurface(id: wid, frame: appkitFrame, zIndex: index)
         }
+    }
+
+    /// Single-window read for perch tracking at 4 Hz.
+    /// Uses CGWindowListCopyWindowInfo with optionIncludingWindow + relativeToWindow = id.
+    private func queryWindowInfo(id: CGWindowID) -> WindowSurface? {
+        // CGWindowListOption: optionOnScreenOnly (1) | optionIncludingWindow (8)
+        let opt = CGWindowListOption(rawValue: 1 | 8)
+        guard let list = CGWindowListCopyWindowInfo(opt, id) as? [[String: Any]] else { return nil }
+        let mainH = primaryScreenHeight()
+        for (index, info) in list.enumerated() {
+            guard let wid = (info[kCGWindowNumber as String] as? Int).map({ CGWindowID($0) }),
+                  wid == id,
+                  let b = info[kCGWindowBounds as String] as? [String: Any],
+                  let x = b["X"] as? CGFloat, let y = b["Y"] as? CGFloat,
+                  let w = b["Width"] as? CGFloat, let h = b["Height"] as? CGFloat else { continue }
+            let appkitFrame = CGRect(x: x, y: mainH - y - h, width: w, height: h)
+            return WindowSurface(id: wid, frame: appkitFrame, zIndex: index)
+        }
+        return nil
     }
 
     // MARK: - Event monitors
@@ -968,10 +1012,11 @@ final class DesktopMochiController {
 
         guard let p = panel else { return }
 
-        // Perch candidate: panel bottom-center within ±30 pt of a window's top edge
-        let dropBottom = CGPoint(x: p.frame.midX, y: p.frame.minY)
+        // Perch candidate: check against body feet position (not panel bottom)
+        let bodyBottom = CGPoint(x: p.frame.midX,
+                                  y: p.frame.minY + DesktopMochiLogic.bodyBottomInset)
         let windows    = querySurfaces()
-        if let w = DesktopMochiLogic.perchCandidate(dropBottom: dropBottom, windows: windows) {
+        if let w = DesktopMochiLogic.perchCandidate(bodyBottom: bodyBottom, windows: windows) {
             perchAtWindow(w)
             return
         }
@@ -986,7 +1031,6 @@ final class DesktopMochiController {
             p.setFrameOrigin(origin)
             persistPosition()
             islandController?.expand(to: .prompt)
-            // Re-apply gravity from the restored position
             startGravity()
             return
         }
@@ -1076,6 +1120,14 @@ final class DesktopMochiController {
         (panel?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
     }
 
+    /// Height of the primary screen (the one whose bottom-left corner is the origin of
+    /// the global AppKit coordinate system). Used for CG ↔ AppKit Y-axis flips.
+    private func primaryScreenHeight() -> CGFloat {
+        NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
+            ?? NSScreen.screens.first?.frame.height
+            ?? 0
+    }
+
     private func surfaceBounds(windowID: CGWindowID?, windows: [WindowSurface],
                                 visibleFrame: CGRect) -> (minX: CGFloat, maxX: CGFloat) {
         if let id = windowID, let w = windows.first(where: { $0.id == id }) {
@@ -1113,14 +1165,7 @@ final class DesktopMochiController {
     private func now() -> TimeInterval { Date().timeIntervalSinceReferenceDate }
 }
 
-// MARK: - NSPanel convenience
-
-private extension NSPanel {
-    var midX: CGFloat { frame.midX }
-    var midY: CGFloat { frame.midY }
-}
-
-// MARK: - Comparable clamping (CGFloat)
+// MARK: - CGFloat clamping
 
 private extension CGFloat {
     func clamped(to range: ClosedRange<CGFloat>) -> CGFloat {

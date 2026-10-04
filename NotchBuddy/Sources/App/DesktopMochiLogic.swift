@@ -23,9 +23,11 @@ enum DesktopPhase: Equatable {
 
 /// A window distilled to what the gravity / perching logic needs.
 /// All coordinates use AppKit screen space (y-up, origin at bottom-left of main screen).
+/// `zIndex` reflects z-order in the CGWindowList (0 = frontmost on screen).
 struct WindowSurface: Equatable {
-    let id: CGWindowID   // UInt32
-    let frame: CGRect    // AppKit screen space
+    let id:     CGWindowID  // UInt32
+    let frame:  CGRect      // AppKit screen space
+    let zIndex: Int         // 0 = frontmost; larger = further back
     var topY: CGFloat { frame.maxY }
 }
 
@@ -41,6 +43,18 @@ enum DesktopMochiLogic {
     static let sleepMouseDistance: CGFloat      = 150
     static let clampMargin:        CGFloat      = 24
     static let bodyRadiusFraction: CGFloat      = 0.24
+
+    // MARK: - Body geometry
+
+    /// Distance from the panel's AppKit bottom edge to Mochi's feet (body bottom), at rest.
+    ///
+    /// Derived from BotEngine draw() at rest (oy = 0, particleOverhang = 0):
+    ///   R  = panelSize · 0.3
+    ///   cy = panelSize / 2 + R · 0.06     (canvas y-down, body center)
+    ///   ry = R · 0.88                      (body half-height)
+    ///   body bottom (canvas) = cy + ry
+    ///   inset = panelSize − (cy + ry)      = panelSize / 2 − R · 0.94
+    static let bodyBottomInset: CGFloat = panelSize / 2 - panelSize * 0.3 * 0.94  // ≈ 26.16 pt
 
     // MARK: - Gravity / perching / wander constants
 
@@ -94,51 +108,70 @@ enum DesktopMochiLogic {
     /// Whether Mochi should immediately retract after landing (alert was active during the flight).
     static func shouldRetractOnLanding(alertActive: Bool) -> Bool { alertActive }
 
-    /// Clamp a panel origin so the panel stays inside `visibleFrame` with `margin` on each side.
+    /// Clamp a panel origin so the panel stays inside `visibleFrame`.
+    /// Sides and top use `margin`; bottom allows Mochi's feet to rest exactly on
+    /// `visibleFrame.minY` (panel can extend `bodyBottomInset` below the visible frame).
     static func clampOrigin(_ origin:      CGPoint,
                              panelSize:    CGFloat,
                              visibleFrame: CGRect,
                              margin:       CGFloat) -> CGPoint {
         CGPoint(
             x: min(max(origin.x, visibleFrame.minX + margin), visibleFrame.maxX - panelSize - margin),
-            y: min(max(origin.y, visibleFrame.minY + margin), visibleFrame.maxY - panelSize - margin)
+            y: min(max(origin.y, visibleFrame.minY - bodyBottomInset),
+                   visibleFrame.maxY - panelSize - margin)
         )
     }
 
     // MARK: - Gravity / surface functions
 
-    /// Highest window surface top edge at or below `panelFrame.minY`,
-    /// where the panel's center X falls within the window's horizontal span.
-    /// Returns `(targetPanelOriginY, windowID)` — `id` is nil when landing on screen bottom.
+    /// Highest window surface at or below the body's feet, with Mochi's center X within
+    /// its horizontal span and its top edge not covered by a window in front.
+    ///
+    /// Returns the target **panel origin.y** (= surfaceTopY − bodyBottomInset) and the
+    /// window ID. When no surface is found, returns the screen-bottom landing position
+    /// (= visibleFrame.minY − bodyBottomInset) with id = nil.
     static func surfaceBelow(panelFrame:   CGRect,
                               windows:     [WindowSurface],
                               visibleFrame: CGRect) -> (y: CGFloat, id: CGWindowID?) {
-        let cx  = panelFrame.midX
-        let bot = panelFrame.minY
+        let cx          = panelFrame.midX
+        let bodyBottomY = panelFrame.minY + bodyBottomInset   // Mochi's feet in AppKit y-up
+
         let best = windows
-            .filter { $0.topY <= bot && $0.frame.minX < cx && cx < $0.frame.maxX }
+            .filter {
+                $0.topY <= bodyBottomY &&
+                $0.frame.minX < cx && cx < $0.frame.maxX &&
+                !isEdgeCovered(surface: $0, atX: cx, windows: windows)
+            }
             .max { $0.topY < $1.topY }
-        return best.map { ($0.topY, $0.id) } ?? (visibleFrame.minY, nil)
+
+        if let w = best {
+            return (w.topY - bodyBottomInset, w.id)
+        }
+        return (visibleFrame.minY - bodyBottomInset, nil)
     }
 
-    /// Window whose top edge is within ±`perchThreshold` of `dropBottom.y`
-    /// and `dropBottom.x` falls within its horizontal span.
-    /// `dropBottom` is the panel's bottom-center at the time of the drop.
-    static func perchCandidate(dropBottom: CGPoint,
+    /// Window whose top edge is within ±`perchThreshold` of `bodyBottom.y`
+    /// and `bodyBottom.x` falls within its horizontal span.
+    ///
+    /// `bodyBottom` is the panel's bottom-center **adjusted for the body inset**:
+    /// `CGPoint(x: panel.frame.midX, y: panel.frame.minY + bodyBottomInset)`.
+    static func perchCandidate(bodyBottom: CGPoint,
                                 windows: [WindowSurface]) -> WindowSurface? {
         windows.first {
-            abs($0.topY - dropBottom.y) <= perchThreshold &&
-            $0.frame.minX <= dropBottom.x && dropBottom.x <= $0.frame.maxX
+            abs($0.topY - bodyBottom.y) <= perchThreshold &&
+            $0.frame.minX <= bodyBottom.x && bodyBottom.x <= $0.frame.maxX
         }
     }
 
-    /// Whether the center point of `surface`'s top edge is occluded by another window.
-    static func isEdgeCovered(surface: WindowSurface, windows: [WindowSurface]) -> Bool {
-        let cx = surface.frame.midX
+    /// Whether the point `(atX, surface.topY)` is occluded by a window that is strictly
+    /// in front of `surface` in z-order (smaller `zIndex`).
+    static func isEdgeCovered(surface: WindowSurface, atX: CGFloat,
+                               windows: [WindowSurface]) -> Bool {
         let ey = surface.topY
         return windows.contains {
             $0.id != surface.id &&
-            $0.frame.minX <= cx && cx <= $0.frame.maxX &&
+            $0.zIndex < surface.zIndex &&        // must be in front
+            $0.frame.minX <= atX && atX <= $0.frame.maxX &&
             $0.frame.minY <= ey && ey < $0.frame.maxY
         }
     }
@@ -180,8 +213,8 @@ enum DesktopMochiLogic {
     }
 
     /// Adaptive timer interval for the desktop poll loop.
-    /// - `inMotion` true (falling or hopping): 60 Hz
     /// - `sleeping`: 1 Hz
+    /// - `inMotion` (falling or hopping): 60 Hz
     /// - perched and still: 4 Hz
     static func nextPollInterval(inMotion: Bool, sleeping: Bool) -> TimeInterval {
         if sleeping { return 1.0 }
