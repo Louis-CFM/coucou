@@ -435,6 +435,8 @@ final class IslandWindowController: NSWindowController {
                 self.botHovering = false
                 // Drag only starts when clicking directly on the bot head
                 guard self.isBotHit(event.locationInWindow) else { return }
+                // Notch Mochi is invisible when on desktop — no drag, no slap
+                guard !self.state.mochiOnDesktop else { return }
                 self.attachDragStart = NSEvent.mouseLocation
                 // Post slap only when expanded
                 guard self.state.mode == .expanded else { return }
@@ -529,6 +531,7 @@ final class IslandWindowController: NSWindowController {
             guard let self else { return event }
             MainActor.assumeIsolated {
                 guard self.wasInIsland, self.isBotHit(event.locationInWindow) else { return }
+                guard !self.state.mochiOnDesktop else { return }
                 if self.state.mode == .expanded && self.state.view == .wardrobe {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         self.state.view = .overview

@@ -7,6 +7,7 @@ enum DesktopMochiTests {
         testIsOverBody()
         testLookOrigin()
         testClampOrigin()
+        testShouldRetractOnLanding()
         print("DesktopMochiLogic: all cases passed")
     }
 
@@ -86,6 +87,15 @@ enum DesktopMochiTests {
         precondition(o2.x == 160, "lookOrigin x must be relative to screen minX")
         // cy = 100 + 60 = 160 → y = 1080 - 160 = 920
         precondition(o2.y == 920, "lookOrigin y on secondary screen")
+    }
+
+    // MARK: - shouldRetractOnLanding
+
+    static func testShouldRetractOnLanding() {
+        precondition(DesktopMochiLogic.shouldRetractOnLanding(alertActive: true),
+                     "must retract when alert is active on landing")
+        precondition(!DesktopMochiLogic.shouldRetractOnLanding(alertActive: false),
+                     "must not retract when no alert on landing")
     }
 
     // MARK: - clampOrigin

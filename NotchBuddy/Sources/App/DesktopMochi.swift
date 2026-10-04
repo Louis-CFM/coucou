@@ -155,6 +155,7 @@ final class DesktopMochiController {
     /// Promote `ghostPanel` (the drag ghost) or create a fresh panel as the desktop Mochi,
     /// centered on `screenPoint`. Called by `IslandWindowController.finishDrag`.
     func install(ghostPanel: NSPanel?, at screenPoint: NSPoint) {
+        guard panel == nil, phase == .home else { ghostPanel?.close(); return }
         let s = DesktopMochiController.panelSize
 
         let p: NSPanel
@@ -206,9 +207,24 @@ final class DesktopMochiController {
                 AppState.shared.mochiOnDesktop = true
                 UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
                 self.persistPosition()
-                self.startPolling()
-                self.addEventMonitors()
-                self.observeLifecycle()
+                // Alert may have fired during the animation (observeAlerts skipped: phase wasn't .onDesktop)
+                let alertNow = AppState.shared.pendingApproval != nil || AppState.shared.pendingQuestion != nil
+                if DesktopMochiLogic.shouldRetractOnLanding(alertActive: alertNow) {
+                    self.engine?.triggerEmote(.surprised)
+                    self.phase = .retracting
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+                        guard let self else { return }
+                        switch self.phase {
+                        case .retracting:              self.retractForAlert()
+                        case .alertResolvedDuringRetract: self.phase = .home; self.launchFlyIfNeeded()
+                        default: break
+                        }
+                    }
+                } else {
+                    self.startPolling()
+                    self.addEventMonitors()
+                    self.observeLifecycle()
+                }
             }
         })
     }
@@ -221,6 +237,11 @@ final class DesktopMochiController {
         guard UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey) else { return }
         guard phase == .home else { return }
         guard panel == nil else { return }
+        // Alert active: don't fly yet — park in .atNotchForAlert so observeAlerts restores us when it clears
+        if AppState.shared.pendingApproval != nil || AppState.shared.pendingQuestion != nil {
+            phase = .atNotchForAlert
+            return
+        }
 
         phase = .flyingOut
         let s = DesktopMochiController.panelSize
@@ -262,9 +283,24 @@ final class DesktopMochiController {
                 self.phase = .onDesktop
                 UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
                 self.persistPosition()
-                self.startPolling()
-                self.addEventMonitors()
-                self.observeLifecycle()
+                // Alert may have fired during the flight (observeAlerts skipped: phase was .flyingOut)
+                let alertNow = AppState.shared.pendingApproval != nil || AppState.shared.pendingQuestion != nil
+                if DesktopMochiLogic.shouldRetractOnLanding(alertActive: alertNow) {
+                    self.engine?.triggerEmote(.surprised)
+                    self.phase = .retracting
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+                        guard let self else { return }
+                        switch self.phase {
+                        case .retracting:              self.retractForAlert()
+                        case .alertResolvedDuringRetract: self.phase = .home; self.launchFlyIfNeeded()
+                        default: break
+                        }
+                    }
+                } else {
+                    self.startPolling()
+                    self.addEventMonitors()
+                    self.observeLifecycle()
+                }
             }
         })
     }

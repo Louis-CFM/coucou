@@ -57,6 +57,9 @@ enum DesktopMochiLogic {
         return CGPoint(x: cx - screenMinX, y: screenHeight - cy)
     }
 
+    /// Whether Mochi should immediately retract after landing (alert was active during the flight).
+    static func shouldRetractOnLanding(alertActive: Bool) -> Bool { alertActive }
+
     /// Clamp a panel origin so the panel stays inside `visibleFrame` with `margin` on each side.
     static func clampOrigin(_ origin:      CGPoint,
                              panelSize:    CGFloat,
