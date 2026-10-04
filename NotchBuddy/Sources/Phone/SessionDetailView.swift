@@ -94,7 +94,7 @@ struct SessionDetailView: View {
     }
 
     private func plan(_ session: SessionItem) -> some View {
-        card(title: "Plan · \(min(session.stepIndex + 1, session.steps.count))/\(session.steps.count)") {
+        card(title: "Activity · \(min(session.stepIndex + 1, session.steps.count))/\(session.steps.count)") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(session.steps.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
