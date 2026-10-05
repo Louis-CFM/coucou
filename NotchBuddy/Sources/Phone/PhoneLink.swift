@@ -83,6 +83,8 @@ final class PhoneLink {
     private static let oldSubscriptionID = "coucou-zone-phone"
 
     var status: Status = .starting
+    /// The first look at iCloud is over (whatever came of it): the intro can end.
+    var firstSyncDone = false
     var pings: [PingItem] = []
     var sessions: [SessionItem] = []
     /// Service Mochi (GitHub, Stripe…) the Mac publishes, by pill ID.
@@ -110,9 +112,13 @@ final class PhoneLink {
     @ObservationIgnored private var events: [AgentNotifier.Event] = []
 
     func start() async {
-        let center = UNUserNotificationCenter.current()
-        notificationsAllowed = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        // The fetch starts right away, not after the notification prompt: the
+        // intro hides it and should end as soon as everything is there.
+        let authorization = Task {
+            (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        }
         await refresh()
+        notificationsAllowed = await authorization.value
     }
 
     /// Checks the account, makes sure the subscription exists, then fetches new records.
@@ -121,10 +127,12 @@ final class PhoneLink {
             let accountStatus = try await container.accountStatus()
             guard accountStatus == .available else {
                 status = .noAccount(describe(accountStatus))
+                firstSyncDone = true
                 return
             }
         } catch {
             status = .noAccount(error.localizedDescription)
+            firstSyncDone = true
             return
         }
         if !subscribed { await subscribe() }
@@ -247,6 +255,7 @@ final class PhoneLink {
             status = .failed(error.localizedDescription)
         }
         pings.sort { $0.sentAt > $1.sentAt }
+        firstSyncDone = true
         return gotNew
     }
 

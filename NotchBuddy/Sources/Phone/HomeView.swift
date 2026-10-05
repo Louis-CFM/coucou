@@ -54,7 +54,7 @@ struct HomeView: View {
         // The opening: Mochi alone while the app loads, then he flies to his tile.
         .overlay {
             if !introDone {
-                IntroView(ready: link.status != .starting) { introDone = true }
+                IntroView(ready: link.firstSyncDone) { introDone = true }
                     .transition(.identity)
             }
         }

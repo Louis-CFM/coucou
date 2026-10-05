@@ -1,11 +1,13 @@
 import SwiftUI
 import QuartzCore
 
-// The opening: Mochi alone on black while the app loads, his gaze wandering
-// and his eyes slowly growing round, shrinking, flattening to a bar, all in
-// one continuous motion (no blink, no shape that snaps into another). When
-// iCloud has answered he flies to his spot on the home screen, the VS Code
-// session's tile (or the island at the top when there's no VS Code session).
+// The opening: Mochi alone on black while the app loads. He pops in and looks
+// around like the greeting on the Mac (without the hands): quick glances and
+// slow ones, eyes that pop round, shrink or squint to a bar, his body leaning,
+// hopping and squashing along. It hides the first iCloud fetch: as soon as
+// it's over he finishes with a little hop and flies to his spot on the home
+// screen, the VS Code session's tile (or the island at the top), and the home
+// screen behind is already up to date.
 
 /// Where the intro's Mochi lands. The tile reports its frame on screen.
 @MainActor
@@ -58,18 +60,19 @@ private struct IntroLandingModifier: ViewModifier {
 }
 
 struct IntroView: View {
-    /// True once the app has what it needs to show the home screen.
+    /// True once the first iCloud fetch is over.
     let ready: Bool
     let onFinished: () -> Void
 
-    @State private var start = Date()
     @State private var flightStart: Date?
     @State private var fade = false
     @State private var engine = IntroEngine()
     private var landing: IntroLanding { .shared }
 
-    /// He plays for at least this long, even if everything is already there.
-    private let minimum: TimeInterval = 3.2
+    /// He plays at least this long, even when everything is already there,
+    /// and never keeps the app waiting longer than `maximum`.
+    private let minimum: TimeInterval = 2.4
+    private let maximum: TimeInterval = 6
     private let size: CGFloat = 132
 
     var body: some View {
@@ -83,10 +86,9 @@ struct IntroView: View {
                 TimelineView(.animation) { timeline in
                     Canvas { context, size in
                         let now = timeline.date
-                        // Over 0.45 s of the flight his face settles back to neutral.
-                        let settle = flightStart.map { min(1, now.timeIntervalSince($0) / 0.45) } ?? 0
-                        engine.draw(context: context, size: size,
-                                    pose: IntroEngine.pose(at: now.timeIntervalSince(start)), settle: settle)
+                        // Over 0.4 s of the flight his face settles back to neutral.
+                        let settle = flightStart.map { min(1, now.timeIntervalSince($0) / 0.4) } ?? 0
+                        engine.draw(context: context, size: size, settle: settle)
                     }
                 }
                 .frame(width: flying ? (target?.width ?? size) : size,
@@ -100,25 +102,72 @@ struct IntroView: View {
         .allowsHitTesting(!fade)
         .task {
             try? await Task.sleep(for: .seconds(minimum))
-            // Wait for iCloud a little longer, but never more than 5 s in all.
             var waited = minimum
-            while !ready && waited < 5 {
-                try? await Task.sleep(for: .milliseconds(200))
-                waited += 0.2
+            while !ready && waited < maximum {
+                try? await Task.sleep(for: .milliseconds(100))
+                waited += 0.1
             }
-            withAnimation(.spring(duration: 0.75, bounce: 0.22)) { flightStart = Date() }
-            withAnimation(.easeOut(duration: 0.55).delay(0.15)) { fade = true }
-            try? await Task.sleep(for: .milliseconds(750))
+            // Everything is there: a last hop looking at you, then off he goes.
+            engine.finish()
+            try? await Task.sleep(for: .milliseconds(480))
+            withAnimation(.spring(duration: 0.7, bounce: 0.22)) { flightStart = Date() }
+            withAnimation(.easeOut(duration: 0.5).delay(0.12)) { fade = true }
+            try? await Task.sleep(for: .milliseconds(700))
             landing.landed = true
             onFinished()
         }
     }
 }
 
-/// Mochi's face for the opening, drawn by the same engine as everywhere else
-/// but driven by smooth curves: where he looks, how he tilts, how big and how
-/// open his eyes are. The eyes stay the same pill and only change size and
-/// height, so a round eye, a small one and a bar flow into each other.
+/// A damped spring: stiff ones snap (a glance), soft ones drift (a slow look).
+private struct Spring {
+    var value: CGFloat
+    var velocity: CGFloat = 0
+    var target: CGFloat
+    /// Stiffness and damping of the move in progress.
+    var k: CGFloat = 200
+    var c: CGFloat = 26
+
+    init(_ value: CGFloat) {
+        self.value = value
+        target = value
+    }
+
+    mutating func go(_ target: CGFloat, _ motion: Motion) {
+        self.target = target
+        k = motion.k
+        c = motion.c
+    }
+
+    mutating func step(_ dt: CGFloat) {
+        velocity += (k * (target - value) - c * velocity) * dt
+        value += velocity * dt
+    }
+}
+
+/// How a move happens.
+private struct Motion {
+    var k: CGFloat
+    var c: CGFloat
+    /// A glance: very fast, a hint of overshoot.
+    static let snap = Motion(k: 900, c: 42)
+    /// A normal look.
+    static let look = Motion(k: 260, c: 28)
+    /// A slow, curious drift.
+    static let drift = Motion(k: 55, c: 14)
+    /// Eyes popping open: bouncy.
+    static let pop = Motion(k: 520, c: 16)
+    /// Squinting: quick, no bounce.
+    static let squint = Motion(k: 700, c: 52)
+    /// Reopening after a squint: slow.
+    static let ease = Motion(k: 90, c: 17)
+}
+
+/// Mochi's face and body for the opening, drawn by the same engine as
+/// everywhere else, driven here by a little show of moves. Each move has its
+/// own speed, his body follows where he looks (leans, drifts, tilts with the
+/// motion) and hops land with a squash, so it never feels mechanical. The
+/// eyes stay the same pill and only change size and height: no blink.
 @MainActor
 final class IntroEngine {
     private let bot: BotEngine = {
@@ -129,56 +178,160 @@ final class IntroEngine {
         return bot
     }()
 
-    struct Pose {
-        var yaw: CGFloat = 0
-        var pitch: CGFloat = 0
-        var tilt: CGFloat = 0
-        /// Eye size (1 = usual).
-        var scale: CGFloat = 1
-        /// Eye height (1 = usual pill, ~0.2 = a bar).
-        var open: CGFloat = 1
+    private enum Body { case none, hop, squash, shiver }
+
+    private struct Beat {
+        var x: CGFloat = 0, y: CGFloat = 0
+        var gaze: Motion = .look
+        var eyes: CGFloat = 1, open: CGFloat = 1
+        var eyeMotion: Motion = .look
+        var body: Body = .none
+        /// How long he stays on it.
+        var hold: Double
     }
 
-    /// One loop of his show, every 0.6 s or so: look left, look right, eyes
-    /// big and round looking up, small, a bar, back at you.
-    private static let keys: [Pose] = [
-        Pose(),
-        Pose(yaw: -0.5, pitch: -0.08, tilt: -0.06, scale: 1.05, open: 1),
-        Pose(yaw: 0.45, pitch: 0.12, tilt: 0.08, scale: 0.92, open: 0.8),
-        Pose(yaw: 0.12, pitch: -0.28, tilt: 0, scale: 1.38, open: 1.2),
-        Pose(yaw: -0.22, pitch: 0.1, tilt: -0.05, scale: 0.68, open: 0.95),
-        Pose(yaw: 0.06, pitch: 0.02, tilt: 0.06, scale: 1.1, open: 0.18),
-        Pose(),
+    /// The show, in order, then random moves from `idle` while iCloud is still busy.
+    private static let show: [Beat] = [
+        Beat(eyes: 1.05, eyeMotion: .pop, hold: 0.42),                                         // hello
+        Beat(x: -0.75, y: 0.05, gaze: .snap, hold: 0.5),                                       // glance left
+        Beat(x: 0.62, y: 0.16, gaze: .drift, eyes: 0.82, eyeMotion: .drift, hold: 0.75),       // slowly to the right
+        Beat(x: 0.08, y: -0.45, gaze: .look, eyes: 1.42, eyeMotion: .pop, body: .hop, hold: 0.55), // up, big round eyes
+        Beat(x: 0.28, y: 0.04, gaze: .look, eyes: 1.05, open: 0.2, eyeMotion: .squint, body: .squash, hold: 0.5), // a bar
+        Beat(x: -0.42, y: 0.32, gaze: .drift, eyes: 0.74, eyeMotion: .ease, hold: 0.55),       // small, down left
+        Beat(x: 0.7, y: -0.04, gaze: .snap, eyes: 0.9, hold: 0.16),                            // double take…
+        Beat(x: 0, y: 0, gaze: .snap, eyes: 1.25, eyeMotion: .pop, body: .shiver, hold: 0.45), // …at you
     ]
-    private static let step: Double = 0.6
+    private static let idle: [Beat] = [
+        Beat(x: -0.6, y: -0.2, gaze: .snap, eyes: 1.15, eyeMotion: .pop, hold: 0.5),
+        Beat(x: 0.55, y: 0.25, gaze: .drift, eyes: 0.8, eyeMotion: .drift, hold: 0.6),
+        Beat(x: 0.15, y: -0.4, gaze: .look, eyes: 1.35, eyeMotion: .pop, body: .hop, hold: 0.5),
+        Beat(x: -0.2, y: 0.05, gaze: .look, open: 0.22, eyeMotion: .squint, body: .squash, hold: 0.45),
+        Beat(x: 0.7, y: 0, gaze: .snap, hold: 0.35),
+        Beat(x: -0.35, y: 0.3, gaze: .drift, eyes: 0.72, eyeMotion: .ease, hold: 0.55),
+    ]
+    private static let last = Beat(x: 0, y: 0, gaze: .look, eyes: 1.12, eyeMotion: .pop, body: .hop, hold: 10)
 
-    /// A smooth path through the keys (Catmull-Rom), looping: he never stops dead.
-    static func pose(at elapsed: TimeInterval) -> Pose {
-        let count = keys.count - 1                // the last key is the first again
-        let position = (elapsed / step).truncatingRemainder(dividingBy: Double(count))
-        let i = Int(position)
-        let t = CGFloat(position - Double(i))
-        func key(_ n: Int) -> Pose { keys[((n % count) + count) % count] }
-        let p0 = key(i - 1), p1 = key(i), p2 = key(i + 1), p3 = key(i + 2)
-        func spline(_ v: (Pose) -> CGFloat) -> CGFloat {
-            let a = v(p0), b = v(p1), c = v(p2), d = v(p3)
-            return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t)
-        }
-        return Pose(yaw: spline(\.yaw), pitch: spline(\.pitch), tilt: spline(\.tilt),
-                    scale: spline(\.scale), open: spline(\.open))
+    private var yaw = Spring(0), pitch = Spring(0)
+    private var eyes = Spring(0.6), open = Spring(1)
+    private var sx = Spring(0.25), sy = Spring(0.25)
+    private var lean = Spring(0), tilt = Spring(0)
+    /// Height off the ground (negative is up) and its speed, with gravity.
+    private var oy: CGFloat = 0, oyVelocity: CGFloat = 0
+    /// A hop waiting for its crouch to end.
+    private var launchAt: Double?
+    private var shiverUntil: Double = 0
+
+    private var index = 0
+    private var nextBeat: Double?
+    private var lastTime: Double?
+    private var lastIdle = -1
+    private var finishing = false
+
+    init() {
+        // He pops in from nothing.
+        sx.go(1, .pop)
+        sy.go(1, .pop)
     }
 
-    func draw(context: GraphicsContext, size: CGSize, pose: Pose, settle: Double) {
+    /// The app is ready: back to looking at you, one last hop.
+    func finish() {
+        guard !finishing else { return }
+        finishing = true
+        play(Self.last, at: CACurrentMediaTime())
+    }
+
+    private func play(_ beat: Beat, at now: Double) {
+        yaw.go(beat.x * 0.62, beat.gaze)
+        pitch.go(beat.y * 0.5, beat.gaze)
+        eyes.go(beat.eyes, beat.eyeMotion)
+        open.go(beat.open, beat.open < 0.5 ? .squint : beat.eyeMotion)
+        // The body leans the way he looks, a little behind his eyes.
+        lean.go(beat.x * 0.14, beat.gaze.k > 500 ? .look : .drift)
+        tilt.go(beat.x * 0.07, .drift)
+        // A quick glance jolts the body.
+        if beat.gaze.k > 500 {
+            sx.velocity += 0.9
+            sy.velocity -= 0.9
+        }
+        switch beat.body {
+        case .hop:
+            // Crouch first, then jump.
+            sx.velocity += 2.2
+            sy.velocity -= 2.6
+            launchAt = now + 0.1
+        case .squash:
+            sx.velocity += 1.8
+            sy.velocity -= 2.0
+        case .shiver:
+            shiverUntil = now + 0.28
+        case .none:
+            break
+        }
+        nextBeat = now + beat.hold
+    }
+
+    private func advance(_ now: Double) {
+        if finishing { return }
+        if index < Self.show.count {
+            play(Self.show[index], at: now)
+            index += 1
+        } else {
+            var pick = Int.random(in: 0..<Self.idle.count)
+            if pick == lastIdle { pick = (pick + 1) % Self.idle.count }
+            lastIdle = pick
+            play(Self.idle[pick], at: now)
+        }
+    }
+
+    private func step(_ now: Double) {
+        let dt = CGFloat(min(1.0 / 30, now - (lastTime ?? now)))
+        lastTime = now
+        if now >= nextBeat ?? 0 { advance(now) }
+
+        if let launch = launchAt, now >= launch {
+            launchAt = nil
+            oyVelocity = -2.3
+            sx.velocity -= 2.4    // stretched in the air
+            sy.velocity += 3.0
+        }
+        // Two half steps: the stiff springs stay stable at any frame rate.
+        for _ in 0..<2 {
+            let h = dt / 2
+            yaw.step(h); pitch.step(h)
+            eyes.step(h); open.step(h)
+            sx.step(h); sy.step(h)
+            lean.step(h); tilt.step(h)
+            if oy < 0 || oyVelocity < 0 {
+                oyVelocity += 15 * h
+                oy += oyVelocity * h
+                if oy >= 0 {
+                    // Landing: squash with the speed he had.
+                    sx.velocity += oyVelocity * 0.9
+                    sy.velocity -= oyVelocity * 1.1
+                    oy = 0
+                    oyVelocity = 0
+                }
+            }
+        }
+    }
+
+    func draw(context: GraphicsContext, size: CGSize, settle: Double) {
+        let now = CACurrentMediaTime()
+        step(now)
         let keep = CGFloat(1 - settle)
-        bot.yaw = pose.yaw * keep
-        bot.pitch = pose.pitch * keep
-        bot.tilt = pose.tilt * keep
-        bot.es = 1 + (pose.scale - 1) * keep
-        bot.open = 1 + (pose.open - 1) * keep
-        // A slow breath.
-        let breath = CGFloat(sin(CACurrentMediaTime() * 2.1)) * 0.018 * keep
-        bot.sx = 1 - breath
-        bot.sy = 1 + breath
+        // A slow breath, on top of the moves.
+        let breath = CGFloat(sin(now * 2.4)) * 0.022
+        let shiver = now < shiverUntil ? CGFloat(sin(now * 70)) * 0.035 * CGFloat((shiverUntil - now) / 0.28) : 0
+        bot.yaw = yaw.value * keep
+        bot.pitch = pitch.value * keep
+        bot.es = 1 + (eyes.value - 1) * keep
+        bot.open = 1 + (open.value - 1) * keep
+        bot.ox = (lean.value + shiver) * keep
+        bot.oy = oy * keep
+        // Leaning into the motion: he tilts with how fast his gaze moves.
+        bot.tilt = (tilt.value - yaw.velocity * 0.012) * keep
+        bot.sx = 1 + (sx.value - 1 - breath * 0.6) * keep
+        bot.sy = 1 + (sy.value - 1 + breath) * keep
         bot.draw(context: context, size: size)
     }
 }
