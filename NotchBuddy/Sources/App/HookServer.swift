@@ -338,13 +338,18 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
+        if !bundleId.isEmpty {
+            state.lastAgentBundleId = bundleId
+            state.lastAgentSessionId = sessionId
+        }
 
         // Cursor identified solely by its stable Electron bundle ID.
         // ToDesktop builds other apps too — do not match on "todesktop" alone.
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+            bundleId.lowercased().contains("vscode") ||
+            bundleId.lowercased() == "com.anthropic.claudefordesktop")
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
@@ -621,7 +626,8 @@ final class HookServer: @unchecked Sendable {
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+            bundleId.lowercased().contains("vscode") ||
+            bundleId.lowercased() == "com.anthropic.claudefordesktop")
 
         // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
         // Other external agents (any other coucou_agent) answer immediately with "ask"
@@ -797,7 +803,8 @@ final class HookServer: @unchecked Sendable {
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+            bundleId.lowercased().contains("vscode") ||
+            bundleId.lowercased() == "com.anthropic.claudefordesktop")
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
         #else

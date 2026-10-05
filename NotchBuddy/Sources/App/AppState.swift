@@ -26,6 +26,44 @@ final class AppState: ObservableObject {
     // Last app active before NotchBuddy (for window context capture)
     var lastExternalApp: NSRunningApplication? = nil
 
+    // Bundle ID of the app that sent the last agent event (Claude desktop, VS Code, a terminal...)
+    var lastAgentBundleId: String = ""
+
+    // CLI-side session_id of the last agent event
+    var lastAgentSessionId: String = ""
+
+    /// Claude desktop's own session id (`local_…`), found through the `cliSessionId` stored in its session files.
+    private func claudeDesktopSessionId(forCliSession cliId: String) -> String? {
+        guard !cliId.isEmpty, cliId != "unknown" else { return nil }
+        let root = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Claude/claude-code-sessions")
+        guard let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else { return nil }
+        let needle = Data(cliId.utf8)
+        for case let url as URL in files where url.pathExtension == "json" && url.lastPathComponent.hasPrefix("local_") {
+            guard let data = try? Data(contentsOf: url), data.range(of: needle) != nil,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  json["cliSessionId"] as? String == cliId,
+                  let id = json["sessionId"] as? String else { continue }
+            return id
+        }
+        return nil
+    }
+
+    /// Brings the app hosting the agent session back to the front. `false` if it is not running.
+    /// For Claude desktop, opens the right session directly when it can be found.
+    @discardableResult
+    func activateAgentApp() -> Bool {
+        if lastAgentBundleId == "com.anthropic.claudefordesktop",
+           let id = claudeDesktopSessionId(forCliSession: lastAgentSessionId),
+           let url = URL(string: "claude://code/continue?session=\(id)&source=coucou") {
+            return NSWorkspace.shared.open(url)
+        }
+        guard !lastAgentBundleId.isEmpty,
+              let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == lastAgentBundleId })
+        else { return false }
+        return app.activate(options: .activateIgnoringOtherApps)
+    }
+
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
 
