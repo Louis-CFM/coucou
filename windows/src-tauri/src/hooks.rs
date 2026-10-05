@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
+use crate::i18n::{tr, trf};
 use crate::{platform, settings};
 
 /// Every event the island reacts to, with the hook timeout written to settings.json.
@@ -73,7 +74,7 @@ fn read_settings() -> Result<Value, String> {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
         // A lock, a permission problem, a bad drive: all of them mean we do not
         // know what is in there, and not knowing is not the same as empty.
-        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+        Err(err) => Err(trf!("Can't read {}: {err}", "No se puede leer {}: {err}", path.display())),
     }
 }
 
@@ -89,9 +90,10 @@ fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
-        Err(err) => Err(format!(
-            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
+        Ok(_) => Err(trf!("{path} isn't a JSON object — Coucou won't touch it.", "{path} no es un objeto JSON — Coucou no lo tocará.")),
+        Err(err) => Err(trf!(
+            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it.",
+            "{path} no es JSON válido ({err}). Corrígelo o muévelo y vuelve a intentarlo — Coucou no lo sobrescribirá."
         )),
     }
 }
@@ -285,15 +287,16 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     // anything at all.
     let current = read_settings()?;
     if current_fingerprint() != fingerprint {
-        return Err(format!(
+        return Err(trf!(
             "{} changed since the preview. Nothing was written — review the new diff.",
+            "{} cambió desde la vista previa. No se escribió nada — revisa el nuevo diff.",
             path.display()
         ));
     }
 
     let backup = backup_path();
     if path.exists() {
-        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+        std::fs::copy(&path, &backup).map_err(|e| trf!("backup failed: {e}", "falló la copia de seguridad: {e}"))?;
     }
 
     let next = if install { merged(&current) } else { without_ours(&current) };
@@ -310,11 +313,11 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
         let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
+        return Err(trf!("write failed: {err}", "falló la escritura: {err}"));
     }
     if let Err(err) = std::fs::rename(&temp, &path) {
         let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
+        return Err(trf!("write failed: {err}", "falló la escritura: {err}"));
     }
     Ok(backup.to_string_lossy().to_string())
 }
@@ -480,7 +483,7 @@ fn unified_diff(before: &str, after: &str) -> String {
         .map(|(i, _)| i)
         .collect();
     if changed.is_empty() {
-        return "No change.".into();
+        return tr("No change.", "Sin cambios.").into();
     }
     let mut keep = vec![false; out.len()];
     for idx in changed {

@@ -3,6 +3,7 @@
 mod claude;
 mod files;
 mod hooks;
+mod i18n;
 mod integrations;
 mod island;
 mod log;
@@ -81,6 +82,12 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
         island::apply_geometry(&app, &settings.screen, collapsed);
+    }
+    if i18n::set(&settings.language) {
+        tray::retitle(&app);
+        if let Some(window) = app.get_webview_window("settings") {
+            let _ = window.set_title(i18n::tr("Settings — Coucou", "Ajustes — Coucou"));
+        }
     }
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
@@ -321,7 +328,7 @@ fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
-        .title("Settings — Coucou")
+        .title(i18n::tr("Settings — Coucou", "Ajustes — Coucou"))
         .inner_size(560.0, 680.0)
         .min_inner_size(460.0, 480.0)
         .resizable(true)
@@ -361,6 +368,7 @@ fn open_settings_window(app: AppHandle) {
 pub fn run() {
     platform::prepare_environment();
     let loaded = settings::load();
+    i18n::set(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
     tauri::Builder::default()

@@ -4,9 +4,22 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { adoptLanguage, language } from "./core/i18n";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
+
+/**
+ * Redraws the island in the new language. A permission card waiting for a click
+ * must not vanish under the user, so the reload waits until it is answered.
+ */
+function reloadWhenIdle() {
+  if (!State.pendingApproval) {
+    location.reload();
+    return;
+  }
+  window.setTimeout(reloadWhenIdle, 1000);
+}
 
 async function main() {
   const root = document.getElementById("root");
@@ -19,6 +32,16 @@ async function main() {
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+  }
+  // First run with this setting: pin the OS language so Rust (tray, errors) agrees.
+  if (!State.settings.language) {
+    State.settings.language = language();
+    void Bridge.saveSettings(State.settings);
+  }
+  // Views were built with the cached language; redraw if Settings says otherwise.
+  if (adoptLanguage(State.settings.language)) {
+    location.reload();
+    return;
   }
   island.applySettings();
   State.loadIntegrationTasks();
@@ -56,6 +79,7 @@ async function main() {
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };
+    if (adoptLanguage(State.settings.language)) reloadWhenIdle();
     island.applySettings();
     State.loadIntegrationTasks();
     void refreshConfigured();

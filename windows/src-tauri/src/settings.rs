@@ -20,6 +20,10 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// Interface language, "en" or "es". Empty until the settings window pins
+    /// the OS language on first open; treated as English until then.
+    #[serde(default)]
+    pub language: String,
 }
 
 fn default_model() -> String {
@@ -43,6 +47,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            language: String::new(),
         }
     }
 }

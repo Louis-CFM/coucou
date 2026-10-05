@@ -27,7 +27,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     let src = Path::new(source);
     let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
     if meta.is_dir() {
-        return Err("Folders can't be dropped yet.".into());
+        return Err(crate::i18n::tr("Folders can't be dropped yet.", "Todavía no se pueden soltar carpetas.").into());
     }
 
     let dir = inbox_dir();

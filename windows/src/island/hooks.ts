@@ -7,6 +7,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
+import { tr } from "../core/i18n";
 
 const CLAUDE_ID = "integration_claude";
 
@@ -60,22 +61,22 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
+/** Step labels shown in the ticker. */
 const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
-  NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+  Bash: tr("Runs", "Ejecuta"),
+  Read: tr("Reads", "Lee"),
+  Write: tr("Writes", "Escribe"),
+  Edit: tr("Edits", "Modifica"),
+  Glob: tr("Finds", "Busca"),
+  Grep: tr("Searches", "Busca texto"),
+  WebSearch: tr("Web search", "Busca en la web"),
+  WebFetch: tr("Fetches", "Descarga"),
+  TodoWrite: tr("Tasks", "Tareas"),
+  Task: tr("Agent", "Agente"),
+  LS: tr("Lists", "Lista"),
+  MultiEdit: tr("Edits", "Modifica"),
+  NotebookEdit: tr("Notebook", "Notebook"),
+  PowerShell: tr("Runs", "Ejecuta"),
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
@@ -214,7 +215,7 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PostToolUseFailure":
       State.updateTask(agentId, "working");
-      State.appendStep(agentId, "⚠ failed");
+      State.appendStep(agentId, tr("⚠ failed", "⚠ falló"));
       break;
 
     case "Notification": {
@@ -263,11 +264,11 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SubagentStart":
-      State.appendStep(agentId, "+ subagent");
+      State.appendStep(agentId, tr("+ subagent", "+ subagente"));
       break;
 
     case "SubagentStop":
-      State.appendStep(agentId, "• subagent done");
+      State.appendStep(agentId, tr("• subagent done", "• subagente terminado"));
       break;
 
     case "PermissionRequest": {
