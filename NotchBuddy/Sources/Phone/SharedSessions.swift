@@ -23,6 +23,28 @@ struct SharedSession: Codable, Identifiable, Hashable, Sendable {
 
     var isWaitingForYou: Bool { tone == .waiting || tone == .question }
     var isWorking: Bool { tone == .working }
+
+    /// Opens one session in the app (widgets link here).
+    static func url(for id: String) -> URL {
+        URL(string: "coucou://session/\(id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id)")!
+    }
+
+    /// The session id in a coucou://session/<id> link.
+    static func sessionId(from url: URL) -> String? {
+        guard url.scheme == "coucou", url.host == "session" else { return nil }
+        let id = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return id.isEmpty ? nil : id
+    }
+
+    /// Agents before services when equally urgent: the team shows who codes first.
+    var categoryRank: Int {
+        switch PillCatalog.definition(for: id)?.category {
+        case .workspace: 0
+        case .agent: 1
+        case .service: 2
+        default: 3
+        }
+    }
 }
 
 enum SharedSessions {
@@ -43,7 +65,9 @@ enum SharedSessions {
     static func load() -> [SharedSession] {
         guard let url = fileURL, let data = try? Data(contentsOf: url),
               let sessions = try? JSONDecoder().decode([SharedSession].self, from: data) else { return [] }
-        return sessions.sorted { ($0.urgency, $1.updatedAt) < ($1.urgency, $0.updatedAt) }
+        return sessions.sorted {
+            ($0.urgency, $0.categoryRank, $1.updatedAt) < ($1.urgency, $1.categoryRank, $0.updatedAt)
+        }
     }
 }
 

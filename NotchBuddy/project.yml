@@ -244,6 +244,11 @@ targets:
         ITSAppUsesNonExemptEncryption: NO
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
         NSSupportsLiveActivities: YES
+        # coucou://session/<id>: the widgets open a session in the app.
+        CFBundleURLTypes:
+          - CFBundleURLName: fr.louisraille.Coucou
+            CFBundleURLSchemes:
+              - coucou
         # Which APNs environment the Live Activity tokens belong to (read by the Mac).
         CoucouAPNsEnvironment: $(COUCOU_APNS_ENV)
     settings:

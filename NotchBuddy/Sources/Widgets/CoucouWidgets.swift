@@ -164,14 +164,61 @@ struct TeamView: View {
     @ViewBuilder private func tile(_ index: Int) -> some View {
         if sessions.indices.contains(index) {
             let session = sessions[index]
-            MochiStill(state: session.botState)
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 16))
+            // A tap opens that session in the app.
+            Link(destination: SharedSession.url(for: session.id)) {
+                TeamTile(session: session)
+            }
         } else {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.06))
+            EmptyTeamTile()
         }
+    }
+}
+
+/// One Mochi of the team: his face, his name, and a dot for his state.
+struct TeamTile: View {
+    let session: SharedSession
+
+    var body: some View {
+        VStack(spacing: 1) {
+            MochiStill(state: session.botState)
+                .padding(.horizontal, 6)
+                .padding(.top, 5)
+            Text(session.agent)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, 4)
+                .padding(.bottom, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(alignment: .topTrailing) {
+            if session.tone != .idle {
+                Circle()
+                    .fill(session.toneColor)
+                    .frame(width: 8, height: 8)
+                    .overlay(Circle().strokeBorder(Color.black.opacity(0.35), lineWidth: 1))
+                    .padding(6)
+            }
+        }
+        .overlay {
+            // Waiting on you: the whole tile is outlined, like the notch.
+            if session.isWaitingForYou {
+                RoundedRectangle(cornerRadius: 16).strokeBorder(session.toneColor, lineWidth: 2)
+            }
+        }
+    }
+}
+
+/// A free spot: Mochi asleep, faded, instead of an empty square.
+struct EmptyTeamTile: View {
+    var body: some View {
+        MochiStill(state: .sleeping, showBadge: false)
+            .padding(14)
+            .opacity(0.18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
     }
 }
 

@@ -4,9 +4,10 @@ import SwiftUI
 /// most urgent first.
 struct HomeView: View {
     let link: PhoneLink
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 16) {
                     NotchHeader(sessions: link.sessions, status: link.status)
@@ -36,6 +37,10 @@ struct HomeView: View {
             .refreshable { await link.refresh() }
             .navigationDestination(for: String.self) { id in
                 SessionDetailView(link: link, sessionId: id)
+            }
+            // A widget tile was tapped: open that session.
+            .onOpenURL { url in
+                if let id = SharedSession.sessionId(from: url) { path = [id] }
             }
             .sheet(isPresented: Binding(get: { link.reviewFingerprint != nil },
                                         set: { if !$0 { link.reviewFingerprint = nil } })) {
