@@ -3,7 +3,12 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import {
+  Bridge,
+  onEvent,
+  type CursorHookStatus,
+  type HookStatus,
+} from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -169,6 +174,43 @@ function claudeSection(status: HookStatus): HTMLElement {
 
   draw();
   return section;
+}
+
+// ── Cursor Agent section ──────────────────────────────────────────────────────
+function cursorSection(status: CursorHookStatus): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+
+  body.append(
+    h("div", {
+      class: "hint",
+      text: status.installed
+        ? "Coucou is hooked into Cursor Agent sessions. Prompts and tool activity can show up in the island."
+        : "Install Cursor hooks to show Cursor Agent sessions in the island.",
+    }),
+    h("div", { class: "row" },
+      h("label", { text: "hooks.json" }),
+      h("span", { class: "path", text: status.settingsPath }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Relay" }),
+      h("span", { class: "path", text: status.hookPath }),
+      statusDot(status.hookReady),
+    ),
+  );
+
+  if (!status.hookReady) {
+    body.append(h("div", {
+      class: "notice warn",
+      text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+    }));
+  }
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, statusDot(status.installed), h("span", { text: "Cursor Agent" })),
+    body,
+  );
 }
 
 // ── Claude API section ────────────────────────────────────────────────────────
@@ -428,6 +470,9 @@ async function main() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
+  const cursorStatus = (await Bridge.cursorHooksStatus()) ?? {
+    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
 
@@ -442,6 +487,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    cursorSection(cursorStatus),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
