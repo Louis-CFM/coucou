@@ -420,7 +420,7 @@ final class HookServer: @unchecked Sendable {
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, appBundleId: bundleId) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
-            nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
+            nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8))) [\(agentId)]")
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
 
@@ -446,7 +446,7 @@ final class HookServer: @unchecked Sendable {
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
             appendStep(id: agentId, step: step)
-            nbLog("PreToolUse \(tool)")
+            nbLog("PreToolUse \(tool) (\(sessionId.prefix(8))) [\(agentId)]")
 
         case "PostToolUse":
             state.updateTask(id: agentId, state: .working)
