@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var tab: CoucouTab = .agents
     @State private var agentsPath: [String] = []
     @State private var servicesPath: [String] = []
+    @State private var introDone = false
     @AppStorage("onboardingDone") private var onboardingDone = false
 
     var body: some View {
@@ -49,6 +50,20 @@ struct HomeView: View {
         // First launch: how to connect the Mac.
         .fullScreenCover(isPresented: Binding(get: { !onboardingDone }, set: { if !$0 { onboardingDone = true } })) {
             OnboardingView()
+        }
+        // The opening: Mochi alone while the app loads, then he flies to his tile.
+        .overlay {
+            if !introDone {
+                IntroView(ready: link.status != .starting) { introDone = true }
+                    .transition(.identity)
+            }
+        }
+        .onAppear {
+            // The first launch opens on the setup guide instead.
+            if !onboardingDone {
+                introDone = true
+                IntroLanding.shared.landed = true
+            }
         }
     }
 
@@ -382,6 +397,7 @@ struct NotchHeader: View {
         HStack(spacing: 14) {
             MochiLive(state: sessions.leadState)
                 .frame(width: 52, height: 52)
+                .introLanding(.header)
             VStack(alignment: .leading, spacing: 3) {
                 Text(headline)
                     .font(.headline)
@@ -454,7 +470,7 @@ struct SessionRow: View {
     }
 
     @ViewBuilder private var tile: some View {
-        let base = MochiLive(state: session.state, fps: 60)
+        let base = mochi
             .padding(4)
             .frame(width: 40, height: 40)
             .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
@@ -462,6 +478,15 @@ struct SessionRow: View {
             base.matchedTransitionSource(id: session.id, in: zoom)
         } else {
             base
+        }
+    }
+
+    /// VS Code's Mochi is where the intro's Mochi lands.
+    @ViewBuilder private var mochi: some View {
+        if session.id == "integration_claude" {
+            MochiLive(state: session.state, fps: 60).introLanding(.tile)
+        } else {
+            MochiLive(state: session.state, fps: 60)
         }
     }
 }
