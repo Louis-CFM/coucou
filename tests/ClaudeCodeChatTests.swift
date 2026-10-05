@@ -127,6 +127,55 @@ enum ClaudeCodeChatTests {
             checkTrue("missing CLI throws", false)
         }
 
+        // ── past chats ─────────────────────────────────────────────────────────
+        print("ClaudeCodeChat — transcripts")
+        let lines = [
+            #"{"type":"queue-operation","operation":"enqueue"}"#,
+            #"{"type":"user","message":{"role":"user","content":"Context — App: Safari, Window: Docs\n\nFile: x\n\nWhat is this?"}}"#,
+            #"{"type":"attachment","attachment":{}}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet","content":[{"type":"text","text":"Let me look."}]}}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet","content":[{"type":"tool_use","name":"WebFetch"}]}}"#,
+            #"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","content":"<html>"}]}}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet","content":[{"type":"text","text":"It is a doc."}]}}"#,
+            #"{"type":"user","isMeta":true,"message":{"role":"user","content":"caveat"}}"#,
+            #"{"type":"user","isSidechain":true,"message":{"role":"user","content":"sub agent"}}"#,
+            #"{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Thanks"}]}}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"<synthetic>","content":[{"type":"text","text":"API Error"}]}}"#,
+            #"{"type":"some-future-record","message":"x"}"#,
+            "not json",
+        ]
+        let turns = ClaudeCodeChat.transcript(Data(lines.joined(separator: "\n").utf8))
+        check("typed questions and answers, one bubble per turn",
+              turns.map { ($0.user ? "U:" : "A:") + $0.text }.joined(separator: "|"),
+              "U:What is this?|A:Let me look.\n\nIt is a doc.|U:Thanks")
+
+        let chats = dir.appendingPathComponent("transcripts")
+        try! FileManager.default.createDirectory(at: chats, withIntermediateDirectories: true)
+        let older = "11111111-1111-4111-8111-111111111111", newer = "22222222-2222-4222-8222-222222222222"
+        func save(_ name: String, _ lines: [String], age: TimeInterval) {
+            let url = chats.appendingPathComponent(name)
+            try! lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+            try! FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-age)], ofItemAtPath: url.path)
+        }
+        save(older + ".jsonl", lines, age: 3600)
+        save(newer + ".jsonl", [#"{"type":"queue-operation"}"#], age: 60)
+        save("not-a-session.jsonl", lines, age: 0)
+        save(older + ".json", lines, age: 0)
+
+        let sessions = ClaudeCodeChat.sessions(in: chats)
+        check("newest first, only session transcripts", sessions.map(\.id).joined(separator: ","), newer + "," + older)
+        check("title is the first typed question", sessions.last?.title ?? "", "What is this?")
+        check("no question yet", sessions.first?.title ?? "", "Untitled chat")
+        check("limit", "\(ClaudeCodeChat.sessions(in: chats, limit: 1).count)", "1")
+        check("messages of a session", "\(ClaudeCodeChat.messages(of: older, in: chats)?.count ?? -1)", "3")
+        checkTrue("an ID can't leave the folder", ClaudeCodeChat.messages(of: "../\(older)", in: chats) == nil)
+
+        try? ClaudeCodeChat.delete(older, in: chats)
+        check("delete removes the transcript", ClaudeCodeChat.sessions(in: chats).map(\.id).joined(), newer)
+        try? ClaudeCodeChat.delete("../not-a-session", in: chats)
+        checkTrue("delete ignores anything that isn't a session ID",
+                  FileManager.default.fileExists(atPath: chats.appendingPathComponent("not-a-session.jsonl").path))
+
         try? FileManager.default.removeItem(at: dir)
 
         // ── finish ─────────────────────────────────────────────────────────────

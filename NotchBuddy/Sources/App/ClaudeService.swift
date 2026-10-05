@@ -198,6 +198,41 @@ final class ClaudeService {
         claudeCodeSessionStarted = false
     }
 
+    var currentClaudeCodeSessionId: String { claudeCodeSessionId }
+
+    /// Continues a past Claude Code chat. Refused mid-turn: the running turn owns the session.
+    func openClaudeCodeSession(_ id: String, state: AppState) async {
+        guard !claudeCodeTurnRunning else {
+            await showError("Mohinur is still answering. Try again in a moment.", state: state)
+            return
+        }
+        guard let turns = ClaudeCodeChat.messages(of: id) else {
+            await showError("This chat is gone.", state: state)
+            return
+        }
+        state.chatHistory = turns.map { ChatMessage(role: $0.user ? .user : .assistant, content: $0.text) }
+        conversationMessages = turns.map { ["role": $0.user ? "user" : "assistant", "content": $0.text] }
+        claudeCodeSessionId = id
+        claudeCodeSessionStarted = true
+    }
+
+    func deleteClaudeCodeSession(_ id: String, state: AppState) async {
+        guard !claudeCodeTurnRunning else {
+            await showError("Mohinur is still answering. Try again in a moment.", state: state)
+            return
+        }
+        do {
+            try ClaudeCodeChat.delete(id)
+        } catch {
+            await showError("Couldn't delete the chat: \(error.localizedDescription)", state: state)
+            return
+        }
+        if id == claudeCodeSessionId {
+            state.chatHistory = []
+            clearConversation()
+        }
+    }
+
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
     private let systemPrompt = ClaudeService.makeSystemPrompt()

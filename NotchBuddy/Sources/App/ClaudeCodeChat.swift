@@ -130,3 +130,98 @@ enum ClaudeCodeChat {
         throw ClaudeCodeChatError.failed(detail ?? "Claude Code stopped (exit \(status)).")
     }
 }
+
+struct ClaudeCodeChatSession: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let updated: Date
+}
+
+// Past chats, read from the CLI's own transcripts. Their format is internal to Claude Code,
+// so parsing skips anything it doesn't know; `--resume` works even when nothing parses.
+extension ClaudeCodeChat {
+    /// One `<session id>.jsonl` per chat, in the folder the CLI names after the chat's directory.
+    static var transcriptDirectory: URL {
+        let config = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"].map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude")
+        let folder = String(workingDirectory.path.map { $0.isASCII && ($0.isLetter || $0.isNumber) ? $0 : "-" })
+        return config.appendingPathComponent("projects").appendingPathComponent(folder)
+    }
+
+    /// Newest first. Titles come from the first question, so only the head of each file is read.
+    static func sessions(in dir: URL = transcriptDirectory, limit: Int = 20) -> [ClaudeCodeChatSession] {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        return files
+            .filter { $0.pathExtension == "jsonl" && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil }
+            .map { ($0, (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast) }
+            .sorted { $0.1 > $1.1 }
+            .prefix(limit)
+            .map { url, updated in
+                let head = (try? FileHandle(forReadingFrom: url)).flatMap { try? $0.read(upToCount: 256 * 1024) } ?? Data()
+                let title = transcript(head).first { $0.user }?.text
+                    .split(separator: "\n").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+                return ClaudeCodeChatSession(id: url.deletingPathExtension().lastPathComponent,
+                                             title: title.isEmpty ? "Untitled chat" : title,
+                                             updated: updated)
+            }
+    }
+
+    /// Nil when the chat is gone, e.g. deleted or cleaned up by Claude Code.
+    static func messages(of sessionId: String, in dir: URL = transcriptDirectory) -> [(user: Bool, text: String)]? {
+        guard let url = transcriptURL(sessionId, in: dir), let data = try? Data(contentsOf: url) else { return nil }
+        return transcript(data)
+    }
+
+    static func delete(_ sessionId: String, in dir: URL = transcriptDirectory) throws {
+        guard let url = transcriptURL(sessionId, in: dir) else { return }
+        try FileManager.default.removeItem(at: url)
+    }
+
+    /// Only UUID names, so an ID can never point outside the transcript folder.
+    private static func transcriptURL(_ sessionId: String, in dir: URL) -> URL? {
+        guard UUID(uuidString: sessionId) != nil else { return nil }
+        return dir.appendingPathComponent(sessionId + ".jsonl")
+    }
+
+    /// The chat as it was shown: typed questions and Mohinur's text, one bubble per turn.
+    static func transcript(_ data: Data) -> [(user: Bool, text: String)] {
+        var turns: [(user: Bool, text: String)] = []
+        for line in data.split(separator: UInt8(ascii: "\n")) {
+            guard let record = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any],
+                  let message = record["message"] as? [String: Any],
+                  record["isSidechain"] as? Bool != true, record["isMeta"] as? Bool != true,
+                  record["isCompactSummary"] as? Bool != true, record["isApiErrorMessage"] as? Bool != true
+            else { continue }
+            let blocks = message["content"] as? [[String: Any]] ?? []
+            let blockText = blocks.filter { $0["type"] as? String == "text" }
+                .compactMap { $0["text"] as? String }.joined(separator: "\n\n")
+            switch record["type"] as? String {
+            case "user":
+                // Tool results come back as user records too; they were never typed.
+                guard !blocks.contains(where: { $0["type"] as? String == "tool_result" }) else { continue }
+                let text = typedQuestion(message["content"] as? String ?? blockText)
+                if !text.isEmpty { turns.append((true, text)) }
+            case "assistant":
+                guard !blockText.isEmpty, message["model"] as? String != "<synthetic>" else { continue }
+                if let last = turns.last, !last.user {
+                    turns[turns.count - 1].text += "\n\n" + blockText   // text resumes after a web search
+                } else {
+                    turns.append((false, blockText))
+                }
+            default:
+                continue
+            }
+        }
+        return turns
+    }
+
+    /// The first prompt carries the window or file context ahead of the question; the field is one line.
+    private static func typedQuestion(_ prompt: String) -> String {
+        guard prompt.hasPrefix("Context — ") || prompt.hasPrefix("File: "),
+              let split = prompt.range(of: "\n\n", options: .backwards) else {
+            return prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return prompt[split.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
