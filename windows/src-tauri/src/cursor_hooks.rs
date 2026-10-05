@@ -14,6 +14,8 @@ const HOOK_EVENTS: &[&str] = &[
     "stop",
 ];
 
+const MARKER: &str = "coucou-hook";
+
 pub fn settings_path() -> PathBuf {
     let home = std::env::var_os("USERPROFILE")
         .map(PathBuf::from)
@@ -62,6 +64,16 @@ fn hook_command() -> String {
     format!("\"{exe}\" --agent cursor")
 }
 
+fn entry_is_ours(entry: &Value) -> bool {
+    entry
+        .get("command")
+        .and_then(Value::as_str)
+        .map(|command| {
+            command.contains(MARKER) && command.contains("--agent cursor")
+        })
+        .unwrap_or(false)
+}
+
 fn merged(existing: &Value) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
 
@@ -79,7 +91,10 @@ fn merged(existing: &Value) -> Value {
         });
 
         match hooks.get_mut(*event) {
-            Some(Value::Array(existing)) => existing.push(entry),
+            Some(Value::Array(existing)) => {
+                existing.retain(|item| !entry_is_ours(item));
+                existing.push(entry);
+            }
             _ => {
                 hooks.insert((*event).to_string(), Value::Array(vec![entry]));
             }
@@ -87,6 +102,46 @@ fn merged(existing: &Value) -> Value {
     }
 
     root.insert("hooks".into(), Value::Object(hooks));
+
+    Value::Object(root)
+}
+
+fn without_ours(existing: &Value) -> Value {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+
+    let Some(existing_hooks) = root
+        .get("hooks")
+        .and_then(Value::as_object)
+        .cloned()
+    else {
+        return Value::Object(root);
+    };
+
+    let mut hooks = serde_json::Map::new();
+
+    for (event, value) in existing_hooks {
+        match value {
+            Value::Array(entries) => {
+                let kept: Vec<Value> = entries
+                    .into_iter()
+                    .filter(|entry| !entry_is_ours(entry))
+                    .collect();
+
+                if !kept.is_empty() {
+                    hooks.insert(event, Value::Array(kept));
+                }
+            }
+            other => {
+                hooks.insert(event, other);
+            }
+        }
+    }
+
+    if hooks.is_empty() {
+        root.remove("hooks");
+    } else {
+        root.insert("hooks".into(), Value::Object(hooks));
+    }
 
     Value::Object(root)
 }
@@ -146,5 +201,41 @@ mod tests {
         let result = parse_settings(b"{not-json", "hooks.json");
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn cursor_hooks_do_not_duplicate_coucou_entries() {
+        let once = merged(&json!({}));
+        let twice = merged(&once);
+
+        let hooks = twice["hooks"]["preToolUse"].as_array().unwrap();
+
+        assert_eq!(
+            hooks.iter().filter(|entry| entry_is_ours(entry)).count(),
+            1
+        );
+    }
+
+    #[test]
+    fn removing_cursor_hooks_preserves_other_entries() {
+        let existing = json!({
+            "version": 1,
+            "hooks": {
+                "preToolUse": [
+                    {
+                        "command": "other-tool.exe"
+                    },
+                    {
+                        "command": hook_command()
+                    }
+                ]
+            }
+        });
+
+        let config = without_ours(&existing);
+        let hooks = config["hooks"]["preToolUse"].as_array().unwrap();
+
+        assert_eq!(hooks.len(), 1);
+        assert_eq!(hooks[0]["command"], "other-tool.exe");
     }
 }
