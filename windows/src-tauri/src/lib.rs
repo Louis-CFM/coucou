@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod cursor_hooks;
 mod files;
 mod hooks;
 mod integrations;
