@@ -18,7 +18,7 @@ use std::sync::Mutex;
 
 use gtk::glib::translate::ToGlibPtr;
 use gtk::prelude::*;
-use tauri::{AppHandle, WebviewWindow};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 use super::{home_dir, LocalTime};
 
@@ -210,6 +210,23 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 /// up to the window manager.
 pub fn make_non_activating(win: &WebviewWindow) {
     let Ok(gw) = win.gtk_window() else { return };
+    // With the input region cut to the island the page gets no mouse event once
+    // the pointer is outside it, and WebKit does not always report the exit, so
+    // the island never collapsed. GDK always sends the leave: report it as a
+    // cursor far away, which is what the page-driven cursor expects.
+    gw.add_events(gtk::gdk::EventMask::LEAVE_NOTIFY_MASK);
+    let w = win.clone();
+    gw.connect_leave_notify_event(move |_, _| {
+        let _ = w.emit("cursor", crate::island::CursorPayload { x: -10_000.0, y: -10_000.0 });
+        gtk::glib::Propagation::Proceed
+    });
+    // GTK can reset the input shape whenever the window is mapped.
+    // GNOME uses Coucou as a normal window (no layer-shell), so we must
+    // re-apply the click-through region there too.
+    gw.connect_map_event(|w, _| {
+        apply_input_region(w, *INPUT_REGION.lock().unwrap());
+        gtk::glib::Propagation::Proceed
+    });
     // COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
     let wanted = std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true);
     let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
@@ -222,6 +239,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
             "compositor has no layer-shell"
         };
         crate::log::line(format!("island is a regular window ({why})"));
+        gw.set_titlebar(None::<&gtk::Widget>);
         gw.set_accept_focus(false);
         return;
     }
