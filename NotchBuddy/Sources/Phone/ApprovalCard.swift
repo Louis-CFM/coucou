@@ -64,6 +64,7 @@ struct ApprovalCard: View {
         if decision == .allow {
             guard await OwnerCheck.confirm(reason: "Allow this command on your Mac") else {
                 error = "Face ID didn't confirm. Nothing was sent."
+                Haptics.warning()
                 return
             }
         }
@@ -71,7 +72,9 @@ struct ApprovalCard: View {
         if await link.decide(decision, fingerprint: session.approvalFingerprint, pillId: session.id,
                              summary: String(summary.prefix(200))) {
             sent = decision
+            if decision == .allow { Haptics.success() } else { Haptics.impact() }
         } else {
+            Haptics.error()
             error = link.lastPong ?? "Couldn't reach iCloud."
         }
     }
@@ -91,7 +94,7 @@ struct ReviewSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if let session {
                         HStack(spacing: 12) {
-                            MochiStill(state: session.state)
+                            MochiLive(state: session.state)
                                 .padding(6)
                                 .frame(width: 52, height: 52)
                                 .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 14))
@@ -127,30 +130,66 @@ struct ReviewSheet: View {
 struct HistoryView: View {
     let link: PhoneLink
 
+    /// Newest day first, each day's decisions newest first.
+    private var days: [(day: Date, logs: [DecisionLog])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: link.history) { calendar.startOfDay(for: $0.date) }
+        return grouped.keys.sorted(by: >).map { (day: $0, logs: grouped[$0]!.sorted { $0.date > $1.date }) }
+    }
+
     var body: some View {
         List {
             if link.history.isEmpty {
-                Text("No decision yet.").foregroundStyle(.secondary)
-            }
-            ForEach(link.history) { log in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: log.decision == .allow ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundStyle(log.decision == .allow ? .green : .red)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(log.summary)
-                            .font(.callout.monospaced())
-                            .lineLimit(3)
-                        HStack(spacing: 4) {
-                            Text(PillCatalog.definition(for: log.pillId)?.name ?? log.pillId)
-                            Text("·")
-                            Text(log.date, format: .dateTime.day().month().hour().minute())
-                        }
-                        .font(.caption)
+                VStack(spacing: 10) {
+                    MochiLive(state: .sleeping).frame(width: 56, height: 56)
+                    Text("No decision yet").font(.headline)
+                    Text("Commands you allow or deny from your iPhone show up here. They stay on this iPhone.")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
-                    }
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .listRowBackground(Color.clear)
+            }
+            ForEach(days, id: \.day) { day in
+                Section(Self.dayTitle(day.day)) {
+                    ForEach(day.logs) { log in row(log) }
                 }
             }
         }
         .navigationTitle("History")
+    }
+
+    private func row(_ log: DecisionLog) -> some View {
+        let pill = PillCatalog.definition(for: log.pillId)
+        return HStack(alignment: .top, spacing: 12) {
+            MochiStill(state: log.decision == .allow ? .finished : .error, bodyHex: pill?.color ?? "#FFFFFF")
+                .padding(3)
+                .frame(width: 34, height: 34)
+                .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 9))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(log.summary)
+                    .font(.callout.monospaced())
+                    .lineLimit(3)
+                HStack(spacing: 6) {
+                    Label(log.decision == .allow ? "Allowed" : "Denied",
+                          systemImage: log.decision == .allow ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundStyle(log.decision == .allow ? .green : .red)
+                    Text(pill?.name ?? log.pillId).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Text(log.date, format: .dateTime.hour().minute()).foregroundStyle(.tertiary)
+                }
+                .font(.caption)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    static func dayTitle(_ day: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(day) { return "Today" }
+        if calendar.isDateInYesterday(day) { return "Yesterday" }
+        return day.formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
 }

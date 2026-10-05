@@ -15,20 +15,24 @@ struct InstructionComposer: View {
     @State private var dictation = Dictation()
     @FocusState private var focused: Bool
 
+    /// A bar at the bottom of the session screen, like a chat.
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Send to Claude").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
             if session.acceptsInstructions {
                 composer
                 status
             } else {
-                Text("To continue this session from your iPhone, turn on \"Let my iPhone send instructions to Claude Code\" in Coucou's Settings on your Mac (GitHub version), then start a turn in VS Code.")
-                    .font(.footnote)
+                Label("To write to Claude from here, turn on \"Let my iPhone send instructions to Claude Code\" in Coucou's Settings on your Mac (GitHub version).",
+                      systemImage: "info.circle")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
         .onChange(of: dictation.transcript) { _, words in
             if dictation.isRecording { text = dictation.prefix + words }
         }
@@ -83,9 +87,6 @@ struct InstructionComposer: View {
                 Label("Sent. Your Mac picks it up within 15 s.", systemImage: "paperplane.fill")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        } else {
-            Text("Face ID sends it. It continues this conversation on your Mac, in its folder.")
-                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -99,13 +100,16 @@ struct InstructionComposer: View {
         error = nil
         guard await OwnerCheck.confirm(reason: "Send this instruction to Claude Code on your Mac") else {
             error = "Face ID didn't confirm. Nothing was sent."
+            Haptics.warning()
             return
         }
         if await link.sendInstruction(instruction, pillId: session.id) {
             sentAt = .now
             text = ""
+            Haptics.success()
         } else {
             error = link.lastPong ?? "Couldn't reach iCloud."
+            Haptics.error()
         }
     }
 }

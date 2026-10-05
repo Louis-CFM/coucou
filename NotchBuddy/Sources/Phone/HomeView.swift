@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     let link: PhoneLink
     @State private var path: [String] = []
+    @AppStorage("onboardingDone") private var onboardingDone = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -53,12 +54,23 @@ struct HomeView: View {
                     ReviewSheet(link: link, fingerprint: fingerprint)
                 }
             }
+            // First launch: how to connect the Mac.
+            .fullScreenCover(isPresented: Binding(get: { !onboardingDone }, set: { if !$0 { onboardingDone = true } })) {
+                OnboardingView()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         HistoryView(link: link)
                     } label: {
                         Image(systemName: "clock.arrow.circlepath")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        AboutView(link: link)
+                    } label: {
+                        Image(systemName: "gearshape")
                     }
                 }
                 #if DEBUG
@@ -83,7 +95,7 @@ struct NotchHeader: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            MochiStill(state: sessions.leadState)
+            MochiLive(state: sessions.leadState)
                 .frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 3) {
                 Text(headline)
@@ -128,7 +140,7 @@ struct SessionRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            MochiStill(state: session.state)
+            MochiLive(state: session.state, fps: 20)
                 .padding(4)
                 .frame(width: 40, height: 40)
                 .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
@@ -136,7 +148,11 @@ struct SessionRow: View {
                 Text(session.title)
                     .font(.body.weight(.semibold))
                     .lineLimit(1)
-                Text(session.pillName)
+                // The agent under the project name; for a session without a project
+                // name (title is the agent already), what runs in it.
+                Text(session.title == session.pillName
+                     ? (PillCatalog.definition(for: session.id)?.sessionSubtitle ?? session.pillName)
+                     : session.pillName)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

@@ -19,9 +19,6 @@ struct SessionDetailView: View {
                         waiting(title: "Question", text: session.question, monospaced: false, color: .cyan,
                                 footnote: "Answer on your Mac for now.")
                     }
-                    if session.id == "integration_claude" || session.id == "agent_cursor" {
-                        InstructionComposer(link: link, session: session)
-                    }
                     if let turn {
                         LastTurnView(turn: turn, working: session.isWorking)
                     } else if !session.steps.isEmpty {
@@ -31,14 +28,6 @@ struct SessionDetailView: View {
                         card(title: "Last message") {
                             Text(session.finalLine)
                                 .font(.callout)
-                                .textSelection(.enabled)
-                        }
-                    }
-                    if !session.cwd.isEmpty {
-                        card(title: "Folder") {
-                            Text(session.cwd)
-                                .font(.footnote.monospaced())
-                                .foregroundStyle(.secondary)
                                 .textSelection(.enabled)
                         }
                     }
@@ -59,6 +48,13 @@ struct SessionDetailView: View {
             }
         }
         .background(Color.black)
+        // The composer stays at the bottom, like a chat.
+        .safeAreaInset(edge: .bottom) {
+            if let session, session.id == "integration_claude" || session.id == "agent_cursor" {
+                InstructionComposer(link: link, session: session)
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle(session?.title ?? "Session")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
@@ -66,12 +62,13 @@ struct SessionDetailView: View {
 
     private func header(_ session: SessionItem) -> some View {
         HStack(spacing: 16) {
-            MochiStill(state: session.state)
+            MochiLive(state: session.state)
                 .padding(10)
                 .frame(width: 84, height: 84)
                 .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 22))
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(session.pillName) · \(session.title)")
+                // "VS Code · coucou", or just "VS Code" when there's no project name.
+                Text(session.title == session.pillName ? session.pillName : "\(session.pillName) · \(session.title)")
                     .font(.headline)
                 Text(session.statusText)
                     .font(.subheadline.weight(.semibold))
@@ -85,9 +82,26 @@ struct SessionDetailView: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if !session.cwd.isEmpty {
+                    Label(Self.shortPath(session.cwd), systemImage: "folder")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                        .textSelection(.enabled)
+                }
             }
             Spacer(minLength: 0)
         }
+    }
+
+    /// "/Users/louis/Documents/hi" → "~/Documents/hi".
+    static func shortPath(_ path: String) -> String {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: true)
+        if parts.count >= 2, parts[0] == "Users" {
+            return "~/" + parts.dropFirst(2).joined(separator: "/")
+        }
+        return path
     }
 
     private func waiting(title: String, text: String, monospaced: Bool, color: Color, footnote: String) -> some View {
