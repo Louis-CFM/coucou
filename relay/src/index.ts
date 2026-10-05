@@ -90,6 +90,9 @@ function validate(body: RelayRequest): string | null {
     const value = body.state[key];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 999) return `state.${key}`;
   }
+  const since = body.state["since"];
+  if (since !== undefined && since !== null &&
+      (typeof since !== "number" || !Number.isInteger(since) || since < 1_600_000_000 || since > 4_000_000_000)) return "state.since";
   if (body.dismissAfter !== undefined &&
       (typeof body.dismissAfter !== "number" || !Number.isInteger(body.dismissAfter) ||
        body.dismissAfter < 0 || body.dismissAfter > 4 * 3600)) return "dismissAfter";
@@ -101,6 +104,8 @@ function buildPayload(body: RelayRequest) {
   // Only the known fields, so nothing else rides along.
   const state: Record<string, unknown> = {};
   for (const key of [...STATE_STRINGS, ...STATE_NUMBERS]) state[key] = body.state[key];
+  // When Mochi left for the iPhone: the activity counts the time from it.
+  if (typeof body.state["since"] === "number") state["since"] = body.state["since"];
 
   const aps: Record<string, unknown> = {
     timestamp: now,

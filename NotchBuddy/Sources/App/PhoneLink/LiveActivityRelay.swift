@@ -46,6 +46,8 @@ final class LiveActivityRelay {
     private var latest: MochiActivityState?
     /// Set while a Live Activity runs on the iPhone(s).
     private var startedAt: Date?
+    /// Sent with every push of an activity, so the iPhone shows the time since.
+    private var activitySince: Int?
     /// The startedAt whose start push actually went out.
     private var startSent: Date?
     private var sent: MochiActivityState?
@@ -145,6 +147,7 @@ final class LiveActivityRelay {
 
     private func begin(_ state: MochiActivityState) {
         let start = Date()
+        activitySince = Int(start.timeIntervalSince1970)
         startedAt = start
         sent = state
         retries = 0
@@ -248,6 +251,8 @@ final class LiveActivityRelay {
     private func post(event: String, token: String, env: String, state: MochiActivityState,
                       urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String) async -> Bool {
         guard let url = relayURL else { return false }
+        var state = state
+        if state.since == nil { state.since = activitySince }
         var body: [String: Any] = ["token": token, "env": env, "event": event, "urgent": urgent]
         if let dismissAfter { body["dismissAfter"] = dismissAfter }
         guard let stateData = try? JSONEncoder().encode(state),

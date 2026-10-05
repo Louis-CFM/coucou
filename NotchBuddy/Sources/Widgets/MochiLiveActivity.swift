@@ -40,10 +40,18 @@ struct MochiLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if state.stepCount > 0 {
-                        StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
-                            .padding(.horizontal, 4)
+                    HStack(spacing: 10) {
+                        if state.stepCount > 0 {
+                            StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
+                        }
+                        if let since = state.sinceDate, state.isActive {
+                            Text(since, style: .timer)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 52, alignment: .trailing)
+                        }
                     }
+                    .padding(.horizontal, 4)
                 }
             } compactLeading: {
                 MochiStill(state: state.botState)
@@ -79,9 +87,18 @@ struct LockScreenActivityView: View {
                         Text("+\(state.others)").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                Text(stale ? "Your Mac went quiet" : state.statusText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(stale ? Color.secondary : state.toneColor)
+                HStack(spacing: 6) {
+                    Text(stale ? "Your Mac went quiet" : state.statusText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(stale ? Color.secondary : state.toneColor)
+                    // Counts up live, without any push.
+                    if let since = state.sinceDate, state.isActive, !stale {
+                        Text("·").foregroundStyle(.secondary)
+                        Text(since, style: .timer)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if state.stepCount > 0 && !stale {
                     StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
                 }
@@ -111,6 +128,8 @@ struct StepsBar: View {
 }
 
 extension MochiActivityState {
+    var sinceDate: Date? { since.map { Date(timeIntervalSince1970: TimeInterval($0)) } }
+
     var toneColor: Color {
         switch tone {
         case "waiting": .orange
