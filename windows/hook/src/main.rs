@@ -138,6 +138,22 @@ fn normalize_cursor_event(event: &str) -> &str {
     }
 }
 
+fn normalize_cursor_stop(
+    map: &serde_json::Map<String, serde_json::Value>,
+    event: &str,
+) -> String {
+    if event == "Stop"
+        && map
+            .get("status")
+            .and_then(|value| value.as_str())
+            == Some("error")
+    {
+        "StopFailure".to_string()
+    } else {
+        event.to_string()
+    }
+}
+
 fn normalize_cursor_session(map: &mut serde_json::Map<String, serde_json::Value>) {
     let has_session_id = map
         .get("session_id")
@@ -243,6 +259,7 @@ fn read_event() -> Option<(String, String, String)> {
         normalize_cursor_session(map);
         normalize_cursor_cwd(map);
         event = normalize_cursor_event(&event).to_string();
+        event = normalize_cursor_stop(map, &event);
     }
 
     map.insert(
@@ -438,5 +455,17 @@ mod tests {
 
         assert_eq!(cursor_response_json("PostToolUse"), None);
         assert_eq!(cursor_response_json("Stop"), None);
+    }
+
+    #[test]
+    fn cursor_error_stop_becomes_stop_failure() {
+        let map = serde_json::json!({
+            "status": "error"
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        assert_eq!(normalize_cursor_stop(&map, "Stop"), "StopFailure");
     }
 }
