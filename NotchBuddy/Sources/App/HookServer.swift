@@ -45,6 +45,7 @@ final class HookServer: @unchecked Sendable {
     private var questionPillId: String = ""           // pill that owns the pending question
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
+    private var claudePills = ClaudeSessionPills()    // one pill per Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
 
     private init() {}
@@ -316,7 +317,7 @@ final class HookServer: @unchecked Sendable {
 
 
     // MARK: - Event → AppState
-    // Claude Code events route to the permanent "integration_claude" task.
+    // Claude Code events route to one pill per session (see ClaudeSessionPills).
     // Events tagged with a valid coucou_agent route to a dynamic "integration_<agent>" task.
     // View switches only happen if the Claude Code (or agent) pill is currently focused.
     // When not focused: state updates animate the mini bot in the pill; badge shown for alerts.
@@ -364,7 +365,7 @@ final class HookServer: @unchecked Sendable {
             agentId = "agent_cursor"
             isExternalAgent = false
         } else {
-            agentId = "integration_claude"
+            agentId = claudePill(for: sessionId)
             isExternalAgent = false
         }
 
@@ -510,6 +511,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionEnd":
             activeSessionId = nil
+            if ClaudeSessionPills.isSessionPill(agentId) { _ = claudePills.end(sessionId) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
@@ -523,6 +525,21 @@ final class HookServer: @unchecked Sendable {
         default:
             break
         }
+    }
+
+    /// The pill a Claude Code session shows in; drops extra pills whose session went quiet.
+    @MainActor
+    private func claudePill(for sessionId: String) -> String {
+        let state = AppState.shared
+        let isWaiting: (String) -> Bool = { id in
+            state.tasks.first { $0.id == id }.map { $0.state == .approval || $0.state == .question } ?? false
+        }
+        let pill = claudePills.pill(for: sessionId, isWaiting: isWaiting)
+        for stale in claudePills.pruneStale(isWaiting: isWaiting) where stale != pill {
+            state.clearSessionDiffs(for: stale)
+            state.removeTask(id: stale)
+        }
+        return pill
     }
 
     // MARK: - Agent validation + dynamic pill
@@ -635,7 +652,7 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            pillId = claudePill(for: sessionId)
         }
 
         let tool = payload["tool_name"] as? String ?? "Tool"
@@ -787,7 +804,7 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            pillId = claudePill(for: sessionId)
         }
         guard isCodexRequest || Self.validateAgent(rawAgent) == nil else {
             Task.detached { [weak self] in
@@ -860,8 +877,8 @@ final class HookServer: @unchecked Sendable {
         }
         // Transient: create and insert after the main pill
         let def = PillCatalog.definition(for: id)
-        let color = def?.color ?? "#C0C4CC"
-        let source = def?.source ?? .agent
+        let color = def?.color ?? IslandConst.colorForProject(projectName)
+        let source = def?.source ?? .claudeCode
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
         if !cwd.isEmpty { task.sessionCwd = cwd }

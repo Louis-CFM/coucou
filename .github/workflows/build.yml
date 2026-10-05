@@ -48,6 +48,9 @@ jobs:
       - name: Claude Code chat tests
         run: bash scripts/test-claude-code-chat.sh
 
+      - name: Claude session pill tests
+        run: bash scripts/test-claude-session-pills.sh
+
       - name: Build
         run: |
           xcodebuild \

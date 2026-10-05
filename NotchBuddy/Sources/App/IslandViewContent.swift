@@ -180,7 +180,7 @@ struct OverviewView: View {
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
         switch task.id {
-        case "integration_claude":
+        case let id where ClaudeSessionPills.isSessionPill(id):
             SessionApp.activate(bundleId: task.sessionAppBundleId)
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
@@ -1575,7 +1575,7 @@ struct IntegrationCardView: View {
 
     private var isConfigured: Bool {
         switch task.id {
-        case "integration_claude":
+        case let id where ClaudeSessionPills.isSessionPill(id):
             #if APPSTORE
             // Sandboxed: can't read ~/.claude directly — check install flag set by HookServer
             return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
@@ -1832,7 +1832,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                    Text(ClaudeSessionPills.isSessionPill(task.id) ? "Claude Code" : PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -1885,7 +1885,7 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude" {
+                    if ClaudeSessionPills.isSessionPill(task.id) {
                         Button("Open \(SessionApp.name(bundleId: task.sessionAppBundleId) ?? "terminal")") {
                             if task.sessionAppBundleId?.lowercased().contains("vscode") == true {
                                 openVSCode()
