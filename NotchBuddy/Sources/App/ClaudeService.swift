@@ -68,6 +68,7 @@ final class KeychainStore: @unchecked Sendable {
         "n8n-url", "n8n-api-key",
         "vercel-token",
         "github-token",
+        "gitlab-url", "gitlab-token",
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
