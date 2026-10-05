@@ -19,6 +19,8 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** True when the Claude Code session runs inside the Claude desktop app. */
+  sessionInDesktop?: boolean;
 }
 
 export interface ApprovalInfo {

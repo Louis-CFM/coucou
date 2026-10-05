@@ -25,6 +25,8 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** CLAUDE_CODE_ENTRYPOINT, added by the relay: "claude-desktop", "cli"… */
+  entrypoint?: string;
 }
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
@@ -120,11 +122,13 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string) {
+function upsert(projectName: string, cwd: string, entrypoint?: string) {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
+  // Older relays send no entrypoint: keep whatever we knew.
+  if (entrypoint !== undefined) t.sessionInDesktop = entrypoint === "claude-desktop";
 }
 
 function clearSession() {
@@ -178,7 +182,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, payload.entrypoint);
     }
   };
 
@@ -287,7 +291,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      upsert(projectName, cwd, payload.entrypoint);
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};

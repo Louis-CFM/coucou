@@ -55,6 +55,15 @@ export const Bridge = {
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
+  /** Brings the Claude desktop app forward. False when it is not installed. */
+  openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
+
+  /** Where the Claude Code session lives: the Claude app, or else VS Code. */
+  openSession: async (task: { sessionCwd?: string | null; sessionInDesktop?: boolean } | null) => {
+    if (task?.sessionInDesktop && (await call<boolean>("open_claude_desktop"))) return true;
+    return call<boolean>("open_in_vscode", { path: task?.sessionCwd ?? null });
+  },
+
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),

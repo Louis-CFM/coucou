@@ -85,6 +85,23 @@ pub fn reveal_folder(path: &str) {
     let _ = Command::new("explorer").arg(path).spawn();
 }
 
+/// The Claude desktop app is an MSIX package; its family name is fixed by the
+/// publisher, so it doubles as the "is it installed" check.
+const CLAUDE_PACKAGE: &str = "Claude_pzs8sxrjxfjjc";
+
+/// Opens (or brings forward) the Claude desktop app through its AppsFolder
+/// entry. False when the app is not installed, so the caller can fall back.
+pub fn open_claude_desktop() -> bool {
+    let installed = std::env::var_os("LOCALAPPDATA")
+        .map(|d| PathBuf::from(d).join("Packages").join(CLAUDE_PACKAGE).is_dir())
+        .unwrap_or(false);
+    installed
+        && Command::new("explorer.exe")
+            .arg(format!(r"shell:AppsFolder\{CLAUDE_PACKAGE}!Claude"))
+            .spawn()
+            .is_ok()
+}
+
 /// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
 /// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
 /// spawning `code.cmd` directly is safe.

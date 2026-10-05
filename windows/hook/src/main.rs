@@ -154,6 +154,9 @@ fn read_event() -> Option<(String, String)> {
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // "claude-desktop" when the session runs in the Claude app's Code tab:
+        // that is where "Open" has to go, not VS Code.
+        ("entrypoint", "CLAUDE_CODE_ENTRYPOINT"),
     ] {
         if !map.contains_key(key) {
             let value = std::env::var(var).unwrap_or_default();

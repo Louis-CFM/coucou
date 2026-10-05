@@ -165,6 +165,12 @@ fn open_in_vscode(path: Option<String>) -> bool {
     false
 }
 
+/// "Open Claude" for sessions that run in the Claude desktop app's Code tab.
+#[tauri::command]
+fn open_claude_desktop() -> bool {
+    platform::open_claude_desktop()
+}
+
 #[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
@@ -383,6 +389,7 @@ pub fn run() {
             reposition,
             open_url,
             open_in_vscode,
+            open_claude_desktop,
             quit_app,
             hooks_status,
             hooks_preview,

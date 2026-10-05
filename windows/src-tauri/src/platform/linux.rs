@@ -134,6 +134,11 @@ pub fn reveal_folder(path: &str) {
     let _ = Command::new("xdg-open").arg(path).spawn();
 }
 
+/// No Claude desktop app on Linux: the caller falls back to VS Code.
+pub fn open_claude_desktop() -> bool {
+    false
+}
+
 /// Our own `which`: the first executable file named `stem` on $PATH.
 pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     let dirs = std::env::var_os("PATH")?;
