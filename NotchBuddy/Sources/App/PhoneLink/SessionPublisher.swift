@@ -230,6 +230,12 @@ struct SessionSnapshot: Equatable {
         record["needsAnswer"] = !question.isEmpty
         record["updatedAt"] = Date()
         record["macName"] = Host.current().localizedName ?? ""
+        // Whether this Mac runs instructions sent from the iPhone (GitHub build, switch on).
+        #if APPSTORE
+        record["acceptsInstructions"] = false
+        #else
+        record["acceptsInstructions"] = InstructionRunner.isEnabled && (pillId == "integration_claude" || pillId == "agent_cursor")
+        #endif
         record.encryptedValues["name"] = name
         record.encryptedValues["steps"] = steps
         record.encryptedValues["cwd"] = cwd

@@ -243,6 +243,8 @@ targets:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: NO
         NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
         NSSupportsLiveActivities: YES
         # coucou://session/<id>: the widgets open a session in the app.
         CFBundleURLTypes:

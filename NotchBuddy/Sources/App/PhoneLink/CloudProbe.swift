@@ -73,6 +73,9 @@ final class CloudProbe {
         ApprovalRelay.shared.stop()
         ServicePublisher.shared.stop()
         TurnRecorder.shared.stop()
+        #if !APPSTORE
+        InstructionRunner.shared.stop()
+        #endif
         LiveActivityRelay.shared.stop()
         log("iPhone sync off")
     }
@@ -91,6 +94,9 @@ final class CloudProbe {
         ApprovalRelay.shared.start()
         ServicePublisher.shared.start()
         TurnRecorder.shared.start()
+        #if !APPSTORE
+        InstructionRunner.shared.startIfEnabled()
+        #endif
         LiveActivityRelay.shared.startIfEnabled()
 
         // Step 1 Ping/Pong test: off unless asked for, so the Mac stays idle at rest

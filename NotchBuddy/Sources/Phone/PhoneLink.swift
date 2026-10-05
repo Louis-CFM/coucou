@@ -27,6 +27,8 @@ struct SessionItem: Identifiable {
     let needsApproval: Bool
     let approvalCommand: String
     let approvalFingerprint: String
+    /// The Mac runs instructions sent from here for this session (GitHub build, switch on).
+    let acceptsInstructions: Bool
     let question: String
     let finalLine: String
     let cwd: String
@@ -43,6 +45,7 @@ struct SessionItem: Identifiable {
         needsApproval = record["needsApproval"] as? Bool ?? false
         approvalCommand = record.encryptedValues["approvalCommand"] as? String ?? ""
         approvalFingerprint = record["approvalFingerprint"] as? String ?? ""
+        acceptsInstructions = record["acceptsInstructions"] as? Bool ?? false
         question = record.encryptedValues["question"] as? String ?? ""
         finalLine = record.encryptedValues["finalLine"] as? String ?? ""
         cwd = record.encryptedValues["cwd"] as? String ?? ""
@@ -337,6 +340,26 @@ final class PhoneLink {
         if let fingerprint = userInfo["fingerprint"] as? String { return fingerprint }
         let note = CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKQueryNotification
         return note?.recordFields?["fingerprint"] as? String
+    }
+
+    // MARK: Instructions (step B)
+
+    /// Sends an instruction to continue a session on the Mac. The Mac takes it
+    /// within ~15 s and deletes it; it never runs twice.
+    func sendInstruction(_ text: String, pillId: String) async -> Bool {
+        let record = CKRecord(recordType: "Instruction",
+                              recordID: CKRecord.ID(recordName: "instruction-\(UUID().uuidString)", zoneID: Self.zoneID))
+        record["pillId"] = pillId
+        record["createdAt"] = Date()
+        record["deviceName"] = UIDevice.current.name
+        record.encryptedValues["text"] = text
+        do {
+            _ = try await database.save(record)
+            return true
+        } catch {
+            lastPong = "Instruction failed: \(error.localizedDescription)"
+            return false
+        }
     }
 
     // MARK: Decisions (step 7)

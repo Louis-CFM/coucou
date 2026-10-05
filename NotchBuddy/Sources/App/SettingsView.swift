@@ -98,6 +98,7 @@ struct SettingsView: View {
     #if PHONE_LINK
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
+    @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
 
     private var appVersion: String {
@@ -311,6 +312,15 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                #if !APPSTORE
+                Toggle("Let my iPhone send instructions to Claude Code", isOn: $iPhoneInstructionsEnabled)
+                    .disabled(!iPhoneSyncEnabled)
+                    .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
+                Text("An instruction sent from the iPhone (Face ID required) continues your last Claude Code session in the background, in its folder, with claude --resume. This Mac checks for one every 15 s while this is on.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                #endif
             }
             .padding(6)
         }

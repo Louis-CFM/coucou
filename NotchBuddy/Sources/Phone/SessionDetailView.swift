@@ -19,6 +19,9 @@ struct SessionDetailView: View {
                         waiting(title: "Question", text: session.question, monospaced: false, color: .cyan,
                                 footnote: "Answer on your Mac for now.")
                     }
+                    if session.id == "integration_claude" || session.id == "agent_cursor" {
+                        InstructionComposer(link: link, session: session)
+                    }
                     if let turn {
                         LastTurnView(turn: turn, working: session.isWorking)
                     } else if !session.steps.isEmpty {
