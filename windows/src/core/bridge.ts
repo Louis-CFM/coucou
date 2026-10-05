@@ -71,6 +71,15 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Cursor Agent hooks ─────────────────────────────────────────────────────
+  /** Preview the changes Coucou would make to Cursor's native hooks file. */
+  cursorHooksPreview: (install: boolean) =>
+    callOrThrow<CursorHookPreview>("cursor_hooks_preview", { install }),
+
+  /** Apply a previously previewed Cursor hooks change. */
+  cursorHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("cursor_hooks_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -129,6 +138,13 @@ export interface HookPreview {
   settingsPath: string;
   /** Hand back to hooksApply so only the reviewed diff is ever written. */
   fingerprint: string;
+}
+
+export interface CursorHookPreview {
+  settingsPath: string;
+  fingerprint: string;
+  before: string;
+  after: string;
 }
 
 /** Same as `call`, but surfaces the error so the UI can show what went wrong. */
