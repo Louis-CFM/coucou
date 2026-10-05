@@ -72,6 +72,7 @@ final class CloudProbe {
         SessionPublisher.shared.stop()
         ApprovalRelay.shared.stop()
         QuestionRelay.shared.stop()
+        ServiceDetailRunner.shared.stop()
         ServicePublisher.shared.stop()
         TurnRecorder.shared.stop()
         #if !APPSTORE
@@ -94,6 +95,7 @@ final class CloudProbe {
         SessionPublisher.shared.start()
         ApprovalRelay.shared.start()
         QuestionRelay.shared.start()
+        ServiceDetailRunner.shared.start()
         ServicePublisher.shared.start()
         TurnRecorder.shared.start()
         #if !APPSTORE

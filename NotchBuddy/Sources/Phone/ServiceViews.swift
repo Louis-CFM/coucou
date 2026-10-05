@@ -97,8 +97,22 @@ struct ServiceDetailView: View {
                 header
                 if let snapshot {
                     reasonCard(snapshot)
-                    ForEach(Array(snapshot.sections.enumerated()), id: \.offset) { _, section in
-                        sectionCard(section)
+                    // Read live from the service's API by the Mac, with actions.
+                    if let detail = link.serviceDetails[pillId] {
+                        ServiceLiveDetail(link: link, pillId: pillId, detail: detail)
+                    } else {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Asking your Mac for everything \(pill?.name ?? "it") has…")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .glassCard()
+                        ForEach(Array(snapshot.sections.enumerated()), id: \.offset) { _, section in
+                            sectionCard(section)
+                        }
                     }
                 } else {
                     notConnected
@@ -109,7 +123,8 @@ struct ServiceDetailView: View {
         .background(Color.black)
         .navigationTitle(pill?.name ?? "Service")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await link.refresh() }
+        .task { await link.requestServiceDetail(pillId) }
+        .refreshable { await link.requestServiceDetail(pillId) }
     }
 
     private var header: some View {
@@ -150,7 +165,7 @@ struct ServiceDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
         .overlay {
             if snapshot.tone == .error || snapshot.tone == .warning {
                 RoundedRectangle(cornerRadius: 22).strokeBorder(snapshot.tone.color.opacity(0.7), lineWidth: 1.5)
