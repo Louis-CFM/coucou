@@ -129,7 +129,7 @@ struct SoloView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MochiStill(state: session?.botState ?? .sleeping)
+            WidgetMochi(state: session?.botState ?? .sleeping)
                 .frame(width: 56, height: 56)
             Spacer(minLength: 0)
             if let session {
@@ -227,7 +227,7 @@ struct TeamTile: View {
     var body: some View {
         VStack(spacing: 0) {
             // In his own color, like the little Mochi in the Mac's notch.
-            MochiStill(state: session.botState, bodyHex: session.color, pose: pose)
+            WidgetMochi(state: session.botState, bodyHex: session.color, pose: pose)
                 .padding(.horizontal, 4)
                 .padding(.top, 2)
             Text(session.agent)
@@ -240,7 +240,7 @@ struct TeamTile: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(white: 0.14), in: RoundedRectangle(cornerRadius: 16))
+        .background { TileBackground(color: Color(white: 0.14)).clipShape(RoundedRectangle(cornerRadius: 16)) }
         .overlay(alignment: .topTrailing) {
             if session.tone != .idle {
                 Circle()
@@ -265,12 +265,12 @@ struct EmptyTeamTile: View {
     var slot: Int = 0
 
     var body: some View {
-        MochiStill(state: .sleeping, showBadge: false,
+        WidgetMochi(state: .sleeping, showBadge: false,
                    pose: MochiPose(tilt: (tick + slot) % 2 == 0 ? -0.06 : 0.06))
             .padding(14)
             .opacity(0.18)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
+            .background { TileBackground(color: Color.white.opacity(0.05)).clipShape(RoundedRectangle(cornerRadius: 16)) }
     }
 }
 
@@ -281,17 +281,17 @@ struct ListView: View {
         VStack(alignment: .leading, spacing: 6) {
             if sessions.isEmpty {
                 HStack(spacing: 10) {
-                    MochiStill(state: .sleeping).frame(width: 34, height: 34)
+                    WidgetMochi(state: .sleeping).frame(width: 34, height: 34)
                     Text("All quiet: no agent session").font(.subheadline).opacity(0.7)
                 }
                 .frame(maxHeight: .infinity)
             }
             ForEach(sessions) { session in
                 HStack(spacing: 8) {
-                    MochiStill(state: session.botState)
+                    WidgetMochi(state: session.botState)
                         .padding(2)
                         .frame(width: 24, height: 24)
-                        .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 7))
+                        .background { TileBackground(color: Color.mochiTile(hex: session.color)).clipShape(RoundedRectangle(cornerRadius: 7)) }
                     Text(session.title)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
@@ -373,4 +373,43 @@ extension SharedSession {
                       state: "sleeping", statusText: "asleep", tone: .idle, urgency: 5,
                       stepIndex: 0, stepCount: 0, currentStep: "", updatedAt: .now),
     ]
+}
+
+// MARK: - Tinted Home Screen
+
+/// Mochi in a widget. In the tinted (and clear) Home Screen styles iOS keeps
+/// only each pixel's opacity, so a white Mochi with black eyes turns into a
+/// blank shape. There he is drawn by brightness instead: the body shows, the
+/// eyes become holes, and you can see his face again.
+struct WidgetMochi: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    var state: BotState = .idle
+    var bodyHex: String = "#FFFFFF"
+    var showBadge: Bool = true
+    var pose: MochiPose = .neutral
+
+    var body: some View {
+        if renderingMode == .fullColor {
+            MochiStill(state: state, bodyHex: bodyHex, showBadge: showBadge, pose: pose)
+        } else {
+            MochiStill(state: state, bodyHex: "#FFFFFF", showBadge: showBadge, pose: pose)
+                .luminanceToAlpha()
+                .widgetAccentable()
+        }
+    }
+}
+
+/// A tile behind a Mochi: its color normally, a faint wash when tinted so it
+/// doesn't become a solid block that hides him.
+struct TileBackground: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    let color: Color
+
+    var body: some View {
+        if renderingMode == .fullColor {
+            color
+        } else {
+            Color.white.opacity(0.12)
+        }
+    }
 }
