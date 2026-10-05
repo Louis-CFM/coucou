@@ -16,11 +16,11 @@ final class NotificationViewController: UIViewController, @preconcurrency UNNoti
         let note = CKNotification(fromRemoteNotificationDictionary: content.userInfo) as? CKQueryNotification
         let pillId = content.userInfo["pillId"] as? String
             ?? note?.recordFields?["pillId"] as? String ?? "integration_claude"
-        let view = ApprovalNotificationView(pillId: pillId, title: content.title, message: content.body)
+        let card = ApprovalNotificationView(pillId: pillId, title: content.title, message: content.body)
         if let host {
-            host.rootView = view
+            host.rootView = card
         } else {
-            let host = UIHostingController(rootView: view)
+            let host = UIHostingController(rootView: card)
             host.view.backgroundColor = .clear
             addChild(host)
             host.view.frame = self.view.bounds
@@ -29,7 +29,7 @@ final class NotificationViewController: UIViewController, @preconcurrency UNNoti
             host.didMove(toParent: self)
             self.host = host
         }
-        preferredContentSize = CGSize(width: view.bounds.width, height: 190)
+        preferredContentSize = CGSize(width: self.view.bounds.width, height: 190)
     }
 }
 
