@@ -19,7 +19,7 @@ import CloudKit
 final class InstructionRunner {
     static let shared = InstructionRunner()
 
-    static let enabledKey = "iPhoneInstructionsEnabled"
+    nonisolated static let enabledKey = "iPhoneInstructionsEnabled"
     nonisolated static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
