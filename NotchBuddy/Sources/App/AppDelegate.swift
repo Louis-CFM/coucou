@@ -107,6 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         VercelPoller.shared.start()
         ResendPoller.shared.start()
         GithubPoller.shared.start()
+        GitLabPoller.shared.start()
         StripePoller.shared.start()
         CalcomPoller.shared.start()
         NotionPoller.shared.start()

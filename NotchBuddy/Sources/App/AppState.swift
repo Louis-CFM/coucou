@@ -290,6 +290,10 @@ final class AppState: ObservableObject {
                 githubPulse = nil
                 githubActivity = nil
             }
+            if !activeIntegrations.contains("integration_gitlab") && oldValue.contains("integration_gitlab") {
+                gitlabPulse = nil
+                gitlabError = nil
+            }
         }
     }
 
@@ -307,6 +311,10 @@ final class AppState: ObservableObject {
     @Published var githubStats: GitHubStats? = nil
     @Published var githubPulse: GitHubPulse? = nil
     @Published var githubActivity: GitHubActivity? = nil
+
+    // GitLab merge requests (populated by GitLabPoller)
+    @Published var gitlabPulse: GitHubPulse? = nil
+    @Published var gitlabError: String? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -516,8 +524,8 @@ final class AppState: ObservableObject {
         tasks[idx].pillBadge = badge
     }
 
-    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
-    func handleGitHubEvents(_ events: [GitHubEvent]) {
+    /// Called on main thread after each GitHub or GitLab pulse poll. Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent], pillId: String = "integration_github") {
         guard !events.isEmpty else { return }
         // Priority: error > question (reviewRequested) > finish (ciPassed)
         var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
@@ -534,7 +542,7 @@ final class AppState: ObservableObject {
             }
         }
         // Only set badge when the GitHub pill is not currently in focus
-        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
+        if let b = badge, focusId != pillId { setPillBadge(b, for: pillId) }
         if let s = sound { SoundEngine.shared.play(s) }
     }
 

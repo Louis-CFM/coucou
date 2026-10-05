@@ -51,6 +51,9 @@ jobs:
       - name: Claude session pill tests
         run: bash scripts/test-claude-session-pills.sh
 
+      - name: GitLab pulse tests
+        run: bash scripts/test-gitlab-pulse.sh
+
       - name: Build
         run: |
           xcodebuild \

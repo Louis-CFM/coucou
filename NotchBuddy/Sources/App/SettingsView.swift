@@ -69,6 +69,8 @@ struct SettingsView: View {
     @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
+    @State private var gitlabURL: String    = KeychainStore.shared.get("gitlab-url")      ?? ""
+    @State private var gitlabToken: String  = KeychainStore.shared.get("gitlab-token")    ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
@@ -845,6 +847,21 @@ struct SettingsView: View {
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
 
+                // GitLab
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#FC6D26")).frame(width: 8, height: 8)
+                        Text("GitLab").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField("Instance URL  (https://gitlab.com)", text: $gitlabURL)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Personal Access Token", text: $gitlabToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Token with the read_api scope. Leave the URL empty for gitlab.com.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 // Stripe
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -1163,6 +1180,13 @@ struct SettingsView: View {
                 GithubPoller.shared.triggerPulseNow()
                 GithubPoller.shared.refreshActivityIfStale()
             }
+        }
+
+        let prevGitlab = (KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token"))
+        saveKey("gitlab-url",   value: gitlabURL.trimmingCharacters(in: .whitespacesAndNewlines))
+        saveKey("gitlab-token", value: gitlabToken)
+        if (KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token")) != prevGitlab {
+            GitLabPoller.shared.restart()
         }
 
         saveKey("stripe-api-key",  value: stripeKey)

@@ -81,6 +81,8 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_github",  name: "GitHub",      color: "#F4505E",
               category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_gitlab",  name: "GitLab",      color: "#FC6D26",
+              category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_notion",  name: "Notion",      color: "#8C8C8C",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_calcom",  name: "Cal.com",     color: "#C9956A",

@@ -152,6 +152,7 @@ struct OverviewView: View {
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
+            if new == "integration_gitlab" { GitLabPoller.shared.refreshIfStale() }
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
@@ -164,6 +165,9 @@ struct OverviewView: View {
             #endif
             if m == .expanded && state.focusId == "integration_github" {
                 GithubPoller.shared.refreshIfStale()
+            }
+            if m == .expanded && state.focusId == "integration_gitlab" {
+                GitLabPoller.shared.refreshIfStale()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
@@ -188,6 +192,10 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
             NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
+        case "integration_gitlab":
+            if let url = GitLabPoller.baseURL?.appendingPathComponent("dashboard/merge_requests") {
+                NSWorkspace.shared.open(url)
+            }
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -1620,6 +1628,7 @@ struct IntegrationCardView: View {
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
         case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
+        case "integration_gitlab":  return KeychainStore.shared.get("gitlab-token")   != nil
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
@@ -1636,6 +1645,7 @@ struct IntegrationCardView: View {
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
         case "integration_github":  return URL(string: "https://github.com")
+        case "integration_gitlab":  return GitLabPoller.baseURL?.appendingPathComponent("dashboard/merge_requests")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
@@ -1676,6 +1686,10 @@ struct IntegrationCardView: View {
         task.id == "integration_github" && appState.githubPulse != nil
     }
 
+    private var gitlabHasPulse: Bool {
+        task.id == "integration_gitlab" && appState.gitlabPulse != nil
+    }
+
     // Stripe: show card as soon as first poll completes (balance OR payments)
     private var stripeHasData: Bool {
         task.id == "integration_stripe" && appState.stripeLoaded
@@ -1711,6 +1725,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_gitlab"  ? appState.gitlabError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
@@ -1727,6 +1742,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_gitlab"  ? appState.gitlabError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
@@ -1806,6 +1822,30 @@ struct IntegrationCardView: View {
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
                 .transition(.opacity)
+        } else if showingDetail && gitlabHasPulse {
+            GitHubDetailView(
+                section: githubDetailSection,
+                pulse: appState.gitlabPulse!,
+                activity: nil,
+                stats: nil,
+                forge: .gitlab,
+                onBack: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+                }
+            )
+            .transition(.opacity)
+        } else if gitlabHasPulse {
+            GitHubPulseCardView(
+                pulse: appState.gitlabPulse!,
+                stats: nil,
+                activity: nil,
+                forge: .gitlab,
+                onTapSection: { section in
+                    githubDetailSection = section
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                }
+            )
+            .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
                 .transition(.opacity)
@@ -2320,10 +2360,30 @@ private func mainCIWorst(_ repos: [GitHubRepoCI]) -> CIState {
     return .unknown
 }
 
+/// Where a pulse comes from: the GitHub and GitLab pills share the same card and list.
+enum Forge: Equatable {
+    case github, gitlab
+
+    var name: String { self == .github ? "GitHub" : "GitLab" }
+    var color: String { self == .github ? "#F4505E" : "#FC6D26" }
+    var changes: String { self == .github ? "PRs" : "MRs" }
+    var numberPrefix: String { self == .github ? "#" : "!" }
+    /// Links from the list only ever open on this host.
+    @MainActor var host: String? { self == .github ? "github.com" : GitLabPoller.baseURL?.host }
+
+    @MainActor func refreshIfStale() {
+        switch self {
+        case .github: GithubPoller.shared.refreshIfStale()
+        case .gitlab: GitLabPoller.shared.refreshIfStale()
+        }
+    }
+}
+
 struct GitHubPulseCardView: View {
     let pulse: GitHubPulse
     let stats: GitHubStats?
     let activity: GitHubActivity?
+    var forge: Forge = .github
     let onTapSection: (GitHubDetailSection) -> Void
 
     var body: some View {
@@ -2331,9 +2391,9 @@ struct GitHubPulseCardView: View {
             // Header
             HStack(spacing: 6) {
                 Circle()
-                    .fill(Color(hex: "#F4505E"))
+                    .fill(Color(hex: forge.color))
                     .frame(width: 7, height: 7)
-                Text("GitHub")
+                Text(forge.name)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 if let s = stats {
@@ -2393,7 +2453,7 @@ struct GitHubPulseCardView: View {
                 }()
                 GitHubStatRow(
                     icon: "arrow.triangle.pull", iconColor: ciColor(prWorst),
-                    label: "My PRs", value: prValue
+                    label: "My \(forge.changes)", value: prValue
                 ) { onTapSection(.myPRs) }
 
                 // To review
@@ -2405,25 +2465,27 @@ struct GitHubPulseCardView: View {
                     value: "\(reviewCount)"
                 ) { onTapSection(.toReview) }
 
-                // Default branch CI
-                let mainWorst = mainCIWorst(pulse.mainCI)
-                let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
-                    switch mainWorst {
-                    case .failure:
-                        let n = pulse.mainCI.filter { $0.ci == .failure }.count
-                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
-                    case .pending:
-                        return ("checkmark.seal.fill", "#F5A524", "running")
-                    case .success:
-                        return ("checkmark.seal.fill", "#22C55E", "all green")
-                    case .unknown:
-                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
-                    }
-                }()
-                GitHubStatRow(
-                    icon: ciIcon, iconColor: ciIconColor,
-                    label: "Default branch CI", value: ciValue
-                ) { onTapSection(.mainCI) }
+                // Default branch CI (GitHub only)
+                if forge == .github {
+                    let mainWorst = mainCIWorst(pulse.mainCI)
+                    let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                        switch mainWorst {
+                        case .failure:
+                            let n = pulse.mainCI.filter { $0.ci == .failure }.count
+                            return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                        case .pending:
+                            return ("checkmark.seal.fill", "#F5A524", "running")
+                        case .success:
+                            return ("checkmark.seal.fill", "#22C55E", "all green")
+                        case .unknown:
+                            return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                        }
+                    }()
+                    GitHubStatRow(
+                        icon: ciIcon, iconColor: ciIconColor,
+                        label: "Default branch CI", value: ciValue
+                    ) { onTapSection(.mainCI) }
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
@@ -2476,12 +2538,13 @@ struct GitHubDetailView: View {
     let pulse: GitHubPulse
     let activity: GitHubActivity?
     let stats: GitHubStats?
+    var forge: Forge = .github
     let onBack: () -> Void
     @ObservedObject private var appState = AppState.shared
 
     private var title: String {
         switch section {
-        case .myPRs:    return "My PRs"
+        case .myPRs:    return "My \(forge.changes)"
         case .toReview: return "To review"
         case .mainCI:   return "Default branch CI"
         case .activity: return "Activity"
@@ -2542,7 +2605,7 @@ struct GitHubDetailView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(items.enumerated()), id: \.element.id) { idx, pr in
                                 GitHubPRRowView(pr: pr, showCI: section == .myPRs,
-                                               selected: appState.cardSelection == idx)
+                                               selected: appState.cardSelection == idx, forge: forge)
                             }
                             ForEach(Array(repoItems.enumerated()), id: \.element.repo) { idx, repo in
                                 GitHubRepoCIRowView(repo: repo,
@@ -2576,7 +2639,7 @@ struct GitHubDetailView: View {
             .padding(.top, 4)
             .clipped()
             .onAppear {
-                GithubPoller.shared.refreshIfStale()
+                forge.refreshIfStale()
                 appState.cardItemCount = totalItems
             }
             .onDisappear { appState.cardItemCount = 0 }
@@ -2584,7 +2647,7 @@ struct GitHubDetailView: View {
                 guard let sel = appState.cardSelection else { return }
                 if sel < items.count {
                     let pr = items[sel]
-                    if let url = safeWebURL(pr.url), url.host == "github.com" {
+                    if let url = safeWebURL(pr.url), url.host == forge.host {
                         NSWorkspace.shared.open(url)
                     }
                 } else {
@@ -2747,10 +2810,11 @@ private struct GitHubPRRowView: View {
     let pr: GitHubPR
     let showCI: Bool
     var selected: Bool = false
+    var forge: Forge = .github
 
     var body: some View {
         Button(action: {
-            if let url = safeWebURL(pr.url), url.host == "github.com" {
+            if let url = safeWebURL(pr.url), url.host == forge.host {
                 NSWorkspace.shared.open(url)
             }
         }) {
@@ -2763,7 +2827,7 @@ private struct GitHubPRRowView: View {
                 } else {
                     Spacer().frame(width: 5)
                 }
-                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)#\(pr.number)")
+                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)\(forge.numberPrefix)\(pr.number)")
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#9398A1"))
                     .lineLimit(1)
