@@ -21,6 +21,7 @@ claude (terminal, VS Code, app Claude)
 - `nb-hook [--agent <nom>] <Event>` lit le JSON du hook sur stdin, ajoute le contexte du terminal (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TERM_SESSION_ID`, `__CFBundleIdentifier`, le tty trouvé en remontant les processus parents, `cwd`) et, si `--agent` est fourni, le champ `coucou_agent`, puis l'envoie à l'app.
 - **Si l'app ne répond pas en 300 ms, `nb-hook` sort en code 0 sans rien écrire** : Claude Code continue normalement. Jamais de blocage.
 - Champ optionnel `coucou_agent` : nom en minuscules, chiffres et tirets, 24 caractères au plus. Si absent ou invalide, l'événement va dans la pastille Claude. Voir `docs/AGENTS.md` pour les autres agents.
+- Sans `coucou_agent`, l'app d'origine choisit la pastille (`HookClient.swift`) : Cursor (`com.todesktop.230313mzl4w4u92`) → Cursor ; VS Code (et ses forks), app Claude (`com.anthropic.claudefordesktop`), Orca (`TERM_PROGRAM=Orca`) → pastille Claude. Les autres terminaux sont ignorés.
 
 ### Événements à brancher et état du bonhomme
 | Hook | Effet dans l'app |

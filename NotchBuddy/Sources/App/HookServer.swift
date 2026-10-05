@@ -338,19 +338,13 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-
-        // Cursor identified solely by its stable Electron bundle ID.
-        // ToDesktop builds other apps too — do not match on "todesktop" alone.
-        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+        let client = HookClient(termProgram: termProgram, bundleId: bundleId)
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
-        // • VS Code → integration_claude
+        // • VS Code, Claude app, Orca → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
         #else
@@ -364,11 +358,8 @@ final class HookServer: @unchecked Sendable {
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
-        } else if isCursorEditor {
-            agentId = "agent_cursor"
-            isExternalAgent = false
-        } else if isVSCodeEditor {
-            agentId = "integration_claude"
+        } else if let client {
+            agentId = client.pillId
             isExternalAgent = false
         } else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
@@ -618,10 +609,7 @@ final class HookServer: @unchecked Sendable {
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+        let client = HookClient(termProgram: termProgram, bundleId: bundleId)
 
         // Codex gets the same approval card as Claude Code / Cursor (GitHub build only).
         // Other external agents (any other coucou_agent) answer immediately with "ask"
@@ -643,12 +631,10 @@ final class HookServer: @unchecked Sendable {
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
-        } else if isCursorEditor {
-            pillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            pillId = client?.pillId ?? "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        guard isCodexRequest || client != nil else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -794,10 +780,7 @@ final class HookServer: @unchecked Sendable {
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
         let bundleId    = payload["bundle_id"]     as? String ?? ""
-        let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
-        let isVSCodeEditor = !isCursorEditor && (
-            termProgram.lowercased().contains("vscode") ||
-            bundleId.lowercased().contains("vscode"))
+        let client = HookClient(termProgram: termProgram, bundleId: bundleId)
         #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
         #else
@@ -806,12 +789,10 @@ final class HookServer: @unchecked Sendable {
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
-        } else if isCursorEditor {
-            pillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            pillId = client?.pillId ?? "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        guard isCodexRequest || client != nil else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
