@@ -373,6 +373,9 @@ final class AppState: ObservableObject {
     @Published var musicAutomationDenied: Bool = false
     #endif
 
+    // Open chats per pill (see AgentSessions.swift)
+    @Published var agentSessions: [AgentSession] = []
+
     // Claude plan gauge (from statusline hook)
     @Published var claudePlanUsage: PlanUsage? = nil {
         didSet {

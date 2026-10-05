@@ -181,6 +181,12 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
+            // Latest chat runs in a terminal: go there instead of VS Code
+            if let latest = state.sessions(for: task.id).first,
+               !latest.bundleId.isEmpty, !latest.bundleId.lowercased().contains("vscode") {
+                AppState.openSessionApp(latest)
+                return
+            }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -212,6 +218,12 @@ struct OverviewView: View {
             #endif
         case "agent_codex":
             #if !APPSTORE
+            // Latest chat runs in a terminal: go there instead of the Codex app
+            if let latest = state.sessions(for: task.id).first,
+               !latest.bundleId.isEmpty, latest.bundleId != "com.openai.codex" {
+                AppState.openSessionApp(latest)
+                return
+            }
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
