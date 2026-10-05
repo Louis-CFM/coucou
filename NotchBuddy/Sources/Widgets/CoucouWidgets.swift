@@ -172,12 +172,30 @@ struct TeamView: View {
         .containerBackground(for: .widget) { Color(white: 0.08) }
     }
 
+    /// The Mac's sessions first, then the team's regulars so the four spots
+    /// are always taken.
+    private var team: [(session: SharedSession, live: Bool)] {
+        var result: [(session: SharedSession, live: Bool)] = sessions.prefix(4).map { (session: $0, live: true) }
+        for id in Self.regulars where result.count < 4 && !result.contains(where: { $0.session.id == id }) {
+            if let filler = SharedSession.regular(id: id) { result.append((session: filler, live: false)) }
+        }
+        return result
+    }
+
+    /// Who fills the free spots, in this order.
+    static let regulars = ["integration_github", "integration_stripe", "integration_vercel", "agent_codex"]
+
     @ViewBuilder private func tile(_ index: Int) -> some View {
-        if sessions.indices.contains(index) {
-            let session = sessions[index]
-            // A tap opens that session in the app.
-            Link(destination: SharedSession.url(for: session.id)) {
-                TeamTile(session: session, tick: tick)
+        let team = team
+        if team.indices.contains(index) {
+            let member = team[index]
+            if member.live {
+                // A tap opens that session in the app.
+                Link(destination: SharedSession.url(for: member.session.id)) {
+                    TeamTile(session: member.session, tick: tick)
+                }
+            } else {
+                TeamTile(session: member.session, tick: tick)
             }
         } else {
             EmptyTeamTile(tick: tick, slot: index)
@@ -325,6 +343,14 @@ struct LockScreenView: View {
 // MARK: - Samples (widget gallery)
 
 extension SharedSession {
+    /// A calm Mochi from the catalog, for a free spot of the Team widget.
+    static func regular(id: String) -> SharedSession? {
+        guard let pill = PillCatalog.definition(for: id) else { return nil }
+        return SharedSession(id: pill.id, title: pill.name, agent: pill.name, color: pill.color,
+                             state: "idle", statusText: "idle", tone: .idle, urgency: 5,
+                             stepIndex: 0, stepCount: 0, currentStep: "", updatedAt: .distantPast)
+    }
+
     static let samples: [SharedSession] = [
         SharedSession(id: "integration_claude", title: "coucou", agent: "VS Code", color: "#4A86E8",
                       state: "approval", statusText: "waiting for your OK", tone: .waiting, urgency: 0,
