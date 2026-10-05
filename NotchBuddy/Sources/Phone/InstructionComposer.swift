@@ -42,6 +42,18 @@ struct InstructionComposer: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
                 .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 18))
+            Menu {
+                Picker("Dictation language", selection: $dictation.localeID) {
+                    ForEach(Dictation.languages, id: \.self) { id in
+                        Text(Locale.current.localizedString(forIdentifier: id) ?? id).tag(id)
+                    }
+                }
+            } label: {
+                Text(Dictation.shortName(dictation.localeID))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, height: 36)
+            }
             Button {
                 Task { await dictation.toggle(startingFrom: text) }
             } label: {
@@ -105,6 +117,24 @@ struct InstructionComposer: View {
 final class Dictation: @unchecked Sendable {
     var isRecording = false
     var transcript = ""
+    /// The language heard, chosen next to the mic and remembered.
+    var localeID: String = UserDefaults.standard.string(forKey: "dictationLocale")
+        ?? Locale.preferredLanguages.first ?? "en-US" {
+        didSet { UserDefaults.standard.set(localeID, forKey: "dictationLocale") }
+    }
+
+    /// The iPhone's languages first, then French and English.
+    static var languages: [String] {
+        var ids: [String] = []
+        for id in Locale.preferredLanguages + ["fr-FR", "en-US"] where !ids.contains(id) {
+            if SFSpeechRecognizer(locale: Locale(identifier: id)) != nil { ids.append(id) }
+        }
+        return ids
+    }
+
+    static func shortName(_ id: String) -> String {
+        String(Locale(identifier: id).language.languageCode?.identifier.uppercased().prefix(2) ?? "?")
+    }
     /// What was typed before dictating, kept in front of the words.
     var prefix = ""
 
@@ -123,7 +153,8 @@ final class Dictation: @unchecked Sendable {
     /// Not main-actor bound, so the audio and speech callbacks made here don't
     /// inherit the main actor (they run on their own threads).
     nonisolated private func start() {
-        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else { return }
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeID)) ?? SFSpeechRecognizer(),
+              recognizer.isAvailable else { return }
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
