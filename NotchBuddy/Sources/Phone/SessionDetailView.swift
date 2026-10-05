@@ -59,6 +59,10 @@ struct SessionDetailView: View {
                     .padding(40)
             }
         }
+        // A tap on the conversation (not on the field below) puts the keyboard away.
+        .simultaneousGesture(TapGesture().onEnded {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
         // The agent's color, moving softly behind the top of the screen.
         .background(alignment: .top) {
             ZStack {
@@ -79,11 +83,8 @@ struct SessionDetailView: View {
                 InstructionComposer(link: link, session: session)
             }
         }
-        // Scrolling or a tap on the conversation puts the keyboard away.
+        // Scrolling puts the keyboard away.
         .scrollDismissesKeyboard(.immediately)
-        .simultaneousGesture(TapGesture().onEnded {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        })
         // A conversation takes the whole screen, like Messages: no tabs below,
         // and the field stays put at the bottom.
         .toolbarVisibility(.hidden, for: .tabBar)
