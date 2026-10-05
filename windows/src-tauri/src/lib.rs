@@ -220,6 +220,19 @@ fn hooks_apply(
 }
 
 #[tauri::command]
+fn cursor_hooks_preview(install: bool) -> Result<cursor_hooks::CursorHookPreview, String> {
+    cursor_hooks::preview(install)
+}
+
+#[tauri::command]
+fn cursor_hooks_apply(
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    cursor_hooks::write(install, &fingerprint)
+}
+
+#[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
 }
@@ -394,6 +407,8 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            cursor_hooks_preview,
+            cursor_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,
