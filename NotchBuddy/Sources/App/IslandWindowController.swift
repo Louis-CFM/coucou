@@ -1014,15 +1014,7 @@ final class IslandWindowController: NSWindowController {
         let panelW = window?.frame.width  ?? 720
         let (islandW, fixedH) = islandSize(mode: s.mode, view: s.view,
                                             progress: s.uploadProgress, nw: notchW, nh: notchH)
-        // Chat view resizes dynamically — must match IslandContainer.chatPromptHeight
-        let islandH: CGFloat
-        if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            islandH = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
-        } else {
-            islandH = fixedH
-        }
+        let islandH = expandedIslandHeight(s, fixed: fixedH)
         let islandMinX = (panelW - islandW) / 2
         let (cx, cy, diameter, _) = botPosition(mode: s.mode, view: s.view,
                                                   islandW: islandW, islandH: islandH,
@@ -1080,14 +1072,7 @@ final class IslandPanel: NSPanel {
         let s = AppState.shared
         let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
                                       progress: s.uploadProgress, nw: nw, nh: nh)
-        let h: CGFloat
-        if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            h = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
-        } else {
-            h = fixedH
-        }
+        let h = expandedIslandHeight(s, fixed: fixedH)
         return CGRect(x: (frame.width - w) / 2, y: frame.height - h, width: w, height: h)
     }
 }
@@ -1138,6 +1123,18 @@ extension Notification.Name {
 }
 
 // MARK: - islandSize (takes real notch dimensions)
+
+/// The expanded island's real height: the chat and the question card grow with their content.
+@MainActor
+func expandedIslandHeight(_ s: AppState, fixed: CGFloat) -> CGFloat {
+    guard s.mode == .expanded else { return fixed }
+    switch s.view {
+    case .prompt:   return min(300, 240 + CGFloat(s.chatHistory.count) * 40)
+    // 8 + 34 header + 10 padding + 8 air; 300 keeps it inside the 320 pt panel, like the chat.
+    case .question: return min(300, max(fixed, s.questionCardHeight + 60))
+    default:        return fixed
+    }
+}
 
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,

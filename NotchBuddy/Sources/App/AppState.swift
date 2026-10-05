@@ -37,6 +37,7 @@ final class AppState: ObservableObject {
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
     var pointerInIsland = false   // no auto-close (and no countdown bar) while hovering
+    @Published var questionCardHeight: CGFloat = 0   // measured, drives the question island height
     var isPresent: Bool = true
 
     // Pinned (alerts that stay open, never auto-close)

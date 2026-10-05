@@ -349,6 +349,7 @@ struct QuestionView: View {
     @State private var otherTexts: [String] = []
     // Per-question "Other…" mode active
     @State private var showOther: [Bool] = []
+    @State private var showDetails = false
     @FocusState private var otherFieldFocused: Bool
 
     var question: AskQuestion? { state.pendingQuestion }
@@ -375,6 +376,13 @@ struct QuestionView: View {
                             Text("\(qi + 1)/\(q.questions.count)")
                                 .font(.system(size: 10))
                                 .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                        if item.options.contains(where: { !$0.description.isEmpty }) {
+                            Button(showDetails ? "Hide details" : "Details") { showDetails.toggle() }
+                                .buttonStyle(.plain)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .underline()
                         }
                         Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
                             .buttonStyle(.plain)
@@ -455,6 +463,14 @@ struct QuestionView: View {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
+                        ForEach(Array(item.options.enumerated()), id: \.offset) { _, opt in
+                            if showDetails && !opt.description.isEmpty {
+                                (Text(opt.label + ": ").foregroundColor(Color(hex: "#C5C8CD"))
+                                 + Text(opt.description).foregroundColor(Color(hex: "#8E939C")))
+                                    .font(.system(size: 11))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                     // Send/Next — only for multi-select (and not while "Other…" field is open)
                     if isMulti && !curOther {
@@ -469,6 +485,11 @@ struct QuestionView: View {
                 .padding(.trailing, 16)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // The island grows to fit the card (see expandedIslandHeight).
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: QuestionCardHeightKey.self, value: g.size.height)
+                })
+                .onPreferenceChange(QuestionCardHeightKey.self) { state.questionCardHeight = $0 }
             }
         }
         .onAppear { resetQuestionState() }
@@ -477,6 +498,7 @@ struct QuestionView: View {
     }
 
     private func resetQuestionState() {
+        showDetails = false
         questionIndex = 0
         let count = state.pendingQuestion?.questions.count ?? 0
         selections = Array(repeating: [], count: count)
@@ -522,6 +544,11 @@ struct QuestionView: View {
         let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
         HookServer.shared.sendQuestionAnswers(answers)
     }
+}
+
+private struct QuestionCardHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // MARK: - Error
