@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var autoCloseSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -156,6 +157,10 @@ final class IslandWindowController: NSWindowController {
                     self.islandPanel.makeKey()
                 }
             }
+        // The Auto-close setting drives the real collapse timer, not only the countdown bar.
+        autoCloseSubscription = state.$autoCloseInterval
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] seconds in self?.fsm.homeToPetitDelay = seconds }
     }
 
     // MARK: - FSM wiring
@@ -265,6 +270,7 @@ final class IslandWindowController: NSWindowController {
         }
         if !inIsland && wasInIsland {
             fsm.mouseLeft()
+            state.lastActivity = .now   // the countdown bar starts with the collapse timer
         }
         wasInIsland = inIsland
 
