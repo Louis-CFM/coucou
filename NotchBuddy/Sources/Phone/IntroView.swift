@@ -1,9 +1,11 @@
 import SwiftUI
+import QuartzCore
 
-// The opening: Mochi alone on black while the app loads, looking around and
-// playing with his eyes (big and round, small, a bar). When iCloud has
-// answered he flies to his spot on the home screen, the VS Code session's
-// tile (or the island at the top when there's no VS Code session).
+// The opening: Mochi alone on black while the app loads, his gaze wandering
+// and his eyes slowly growing round, shrinking, flattening to a bar, all in
+// one continuous motion (no blink, no shape that snaps into another). When
+// iCloud has answered he flies to his spot on the home screen, the VS Code
+// session's tile (or the island at the top when there's no VS Code session).
 
 /// Where the intro's Mochi lands. The tile reports its frame on screen.
 @MainActor
@@ -61,24 +63,31 @@ struct IntroView: View {
     let onFinished: () -> Void
 
     @State private var start = Date()
-    @State private var flying = false
+    @State private var flightStart: Date?
     @State private var fade = false
+    @State private var engine = IntroEngine()
     private var landing: IntroLanding { .shared }
 
     /// He plays for at least this long, even if everything is already there.
-    private let minimum: TimeInterval = 2.4
+    private let minimum: TimeInterval = 3.2
     private let size: CGFloat = 132
 
     var body: some View {
         GeometryReader { proxy in
             let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
             let target = landing.target
+            let flying = flightStart != nil
             ZStack {
                 Color.black
                     .opacity(fade ? 0 : 1)
-                TimelineView(.animation(paused: flying)) { timeline in
-                    MochiStill(state: .idle, showBadge: false,
-                               pose: flying ? .neutral : Self.pose(at: timeline.date.timeIntervalSince(start)))
+                TimelineView(.animation) { timeline in
+                    Canvas { context, size in
+                        let now = timeline.date
+                        // Over 0.45 s of the flight his face settles back to neutral.
+                        let settle = flightStart.map { min(1, now.timeIntervalSince($0) / 0.45) } ?? 0
+                        engine.draw(context: context, size: size,
+                                    pose: IntroEngine.pose(at: now.timeIntervalSince(start)), settle: settle)
+                    }
                 }
                 .frame(width: flying ? (target?.width ?? size) : size,
                        height: flying ? (target?.height ?? size) : size)
@@ -91,54 +100,85 @@ struct IntroView: View {
         .allowsHitTesting(!fade)
         .task {
             try? await Task.sleep(for: .seconds(minimum))
-            // Wait for iCloud a little longer, but never more than 4 s in all.
+            // Wait for iCloud a little longer, but never more than 5 s in all.
             var waited = minimum
-            while !ready && waited < 4 {
+            while !ready && waited < 5 {
                 try? await Task.sleep(for: .milliseconds(200))
                 waited += 0.2
             }
-            withAnimation(.spring(duration: 0.7, bounce: 0.25)) { flying = true }
-            withAnimation(.easeOut(duration: 0.5).delay(0.15)) { fade = true }
-            try? await Task.sleep(for: .milliseconds(700))
+            withAnimation(.spring(duration: 0.75, bounce: 0.22)) { flightStart = Date() }
+            withAnimation(.easeOut(duration: 0.55).delay(0.15)) { fade = true }
+            try? await Task.sleep(for: .milliseconds(750))
             landing.landed = true
             onFinished()
         }
     }
+}
 
-    // MARK: His little show
+/// Mochi's face for the opening, drawn by the same engine as everywhere else
+/// but driven by smooth curves: where he looks, how he tilts, how big and how
+/// open his eyes are. The eyes stay the same pill and only change size and
+/// height, so a round eye, a small one and a bar flow into each other.
+@MainActor
+final class IntroEngine {
+    private let bot: BotEngine = {
+        let bot = BotEngine()
+        bot.isMini = true
+        bot.bodyColor = cgColorFromHex("#FFFFFF")
+        bot.setState(.idle, force: true)
+        return bot
+    }()
 
-    private struct Key {
-        let time: Double
-        let yaw: CGFloat
-        let pitch: CGFloat
-        let eye: EyeShape?
+    struct Pose {
+        var yaw: CGFloat = 0
+        var pitch: CGFloat = 0
+        var tilt: CGFloat = 0
+        /// Eye size (1 = usual).
+        var scale: CGFloat = 1
+        /// Eye height (1 = usual pill, ~0.2 = a bar).
+        var open: CGFloat = 1
     }
 
-    /// Looks left, right, up with big round eyes, small eyes, a bar, then back at you.
-    private static let keys: [Key] = [
-        Key(time: 0.0, yaw: 0, pitch: 0, eye: nil),
-        Key(time: 0.35, yaw: -0.55, pitch: 0, eye: nil),
-        Key(time: 0.75, yaw: 0.55, pitch: 0, eye: nil),
-        Key(time: 1.1, yaw: 0.1, pitch: -0.3, eye: .wide),
-        Key(time: 1.45, yaw: 0, pitch: 0, eye: .dot),
-        Key(time: 1.8, yaw: -0.15, pitch: 0.1, eye: .line),
-        Key(time: 2.1, yaw: 0, pitch: 0, eye: nil),
+    /// One loop of his show, every 0.6 s or so: look left, look right, eyes
+    /// big and round looking up, small, a bar, back at you.
+    private static let keys: [Pose] = [
+        Pose(),
+        Pose(yaw: -0.5, pitch: -0.08, tilt: -0.06, scale: 1.05, open: 1),
+        Pose(yaw: 0.45, pitch: 0.12, tilt: 0.08, scale: 0.92, open: 0.8),
+        Pose(yaw: 0.12, pitch: -0.28, tilt: 0, scale: 1.38, open: 1.2),
+        Pose(yaw: -0.22, pitch: 0.1, tilt: -0.05, scale: 0.68, open: 0.95),
+        Pose(yaw: 0.06, pitch: 0.02, tilt: 0.06, scale: 1.1, open: 0.18),
+        Pose(),
     ]
-    private static let loop = 2.4
+    private static let step: Double = 0.6
 
-    static func pose(at elapsed: TimeInterval) -> MochiPose {
-        let t = elapsed.truncatingRemainder(dividingBy: loop)
-        let next = keys.firstIndex { $0.time > t } ?? keys.count
-        let a = keys[max(0, next - 1)]
-        let b = next < keys.count ? keys[next] : keys[0]
-        let span = (next < keys.count ? b.time : loop) - a.time
-        let p = span > 0 ? min(1, (t - a.time) / span) : 1
-        // Ease in and out, so he turns his head rather than snapping.
-        let e = CGFloat(0.5 - cos(p * .pi) / 2)
-        // Eyes change shape at the key, and blink shut for a moment in between.
-        let blink = p > 0.88 && a.eye != b.eye
-        return MochiPose(yaw: a.yaw + (b.yaw - a.yaw) * e,
-                         pitch: a.pitch + (b.pitch - a.pitch) * e,
-                         eye: blink ? .closed : a.eye)
+    /// A smooth path through the keys (Catmull-Rom), looping: he never stops dead.
+    static func pose(at elapsed: TimeInterval) -> Pose {
+        let count = keys.count - 1                // the last key is the first again
+        let position = (elapsed / step).truncatingRemainder(dividingBy: Double(count))
+        let i = Int(position)
+        let t = CGFloat(position - Double(i))
+        func key(_ n: Int) -> Pose { keys[((n % count) + count) % count] }
+        let p0 = key(i - 1), p1 = key(i), p2 = key(i + 1), p3 = key(i + 2)
+        func spline(_ v: (Pose) -> CGFloat) -> CGFloat {
+            let a = v(p0), b = v(p1), c = v(p2), d = v(p3)
+            return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t)
+        }
+        return Pose(yaw: spline(\.yaw), pitch: spline(\.pitch), tilt: spline(\.tilt),
+                    scale: spline(\.scale), open: spline(\.open))
+    }
+
+    func draw(context: GraphicsContext, size: CGSize, pose: Pose, settle: Double) {
+        let keep = CGFloat(1 - settle)
+        bot.yaw = pose.yaw * keep
+        bot.pitch = pose.pitch * keep
+        bot.tilt = pose.tilt * keep
+        bot.es = 1 + (pose.scale - 1) * keep
+        bot.open = 1 + (pose.open - 1) * keep
+        // A slow breath.
+        let breath = CGFloat(sin(CACurrentMediaTime() * 2.1)) * 0.018 * keep
+        bot.sx = 1 - breath
+        bot.sy = 1 + breath
+        bot.draw(context: context, size: size)
     }
 }
