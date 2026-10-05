@@ -333,21 +333,8 @@ final class ClaudeService {
                 if let u = url { prefix += ", URL: \(u)" }
                 userText = prefix + "\n\n" + query
             case .file(let name, let fileURL):
-                if provider.isLocal, let fileURL = fileURL {
-                    let ext = fileURL.pathExtension.lowercased()
-                    let binaryExts = ["pdf", "jpg", "jpeg", "png", "gif", "webp"]
-                    if !binaryExts.contains(ext),
-                       let text = try? String(contentsOf: fileURL, encoding: .utf8), !text.isEmpty {
-                        let truncated = text.count > 24_000
-                            ? String(text.prefix(24_000)) + "\n[truncated]"
-                            : text
-                        userText = "File: \(name)\n\n\(truncated)\n\n" + query
-                    } else {
-                        userText = "File: \(name)\n\n" + query
-                    }
-                } else {
-                    userText = "File: \(name)\n\n" + query
-                }
+                userText = (provider.isLocal ? inlineFileText(name: name, url: fileURL) : "File: \(name)")
+                    + "\n\n" + query
             }
         }
         msgs.append(["role": "user", "content": userText])
@@ -453,11 +440,21 @@ final class ClaudeService {
         }
     }
 
+    /// A text file's content for providers that only take text (PDFs and images: name only).
+    private func inlineFileText(name: String, url: URL?) -> String {
+        let binaryExts = ["pdf", "jpg", "jpeg", "png", "gif", "webp"]
+        guard let url, !binaryExts.contains(url.pathExtension.lowercased()),
+              let text = try? String(contentsOf: url, encoding: .utf8), !text.isEmpty else {
+            return "File: \(name)"
+        }
+        let truncated = text.count > 24_000 ? String(text.prefix(24_000)) + "\n[truncated]" : text
+        return "File: \(name)\n\n\(truncated)"
+    }
+
     // MARK: - Claude Code chat (the user's Claude plan, through the claude CLI)
 
     private func chatClaudeCode(query: String, context: PromptContext?, state: AppState) async {
         var prompt = query
-        var readableDirectory: String?
         if conversationMessages.isEmpty, let context {
             switch context {
             case .window(let app, let title, let url):
@@ -465,12 +462,7 @@ final class ClaudeService {
                 if let url { prefix += ", URL: \(url)" }
                 prompt = prefix + "\n\n" + query
             case .file(let name, let fileURL):
-                if let fileURL {
-                    prompt = "Attached file: \(fileURL.path)\n\n" + query
-                    readableDirectory = fileURL.deletingLastPathComponent().path
-                } else {
-                    prompt = "File: \(name)\n\n" + query
-                }
+                prompt = inlineFileText(name: name, url: fileURL) + "\n\n" + query
             }
         }
         conversationMessages.append(["role": "user", "content": prompt])
@@ -482,8 +474,7 @@ final class ClaudeService {
         do {
             let final = try await ClaudeCodeChat.send(
                 prompt: prompt, sessionId: claudeCodeSessionId, resume: claudeCodeSessionStarted,
-                model: state.claudeCodeChatModel, systemPrompt: systemPrompt,
-                readableDirectory: readableDirectory
+                model: state.claudeCodeChatModel, systemPrompt: systemPrompt
             ) { visible in
                 if state.stateOverride == .thinking { state.stateOverride = nil }
                 if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {

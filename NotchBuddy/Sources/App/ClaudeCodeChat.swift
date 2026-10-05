@@ -20,8 +20,9 @@ enum ClaudeCodeChat {
         (id: "haiku",  label: "Haiku"),
     ]
 
-    /// Web search and file reading only: the chat never edits files or runs commands.
-    private static let tools = "WebSearch,WebFetch,Read"
+    /// Web only. No file access: a fetched page could otherwise make the chat read a local
+    /// secret and send it out. Attached files go inline in the prompt instead.
+    private static let tools = "WebSearch,WebFetch"
 
     /// A GUI app doesn't get the shell's PATH, so look where the installers put `claude`.
     static func executableURL() -> URL? {
@@ -43,7 +44,7 @@ enum ClaudeCodeChat {
     /// `--safe-mode` keeps the user's hooks (Coucou's own included) out of the chat.
     @MainActor
     static func send(prompt: String, sessionId: String, resume: Bool, model: String,
-                     systemPrompt: String, readableDirectory: String?,
+                     systemPrompt: String,
                      executable: URL? = executableURL(),
                      onText: (String) -> Void) async throws -> String {
         guard let exe = executable else { throw ClaudeCodeChatError.notInstalled }
@@ -52,7 +53,6 @@ enum ClaudeCodeChat {
                     "--include-partial-messages", "--model", model, "--system-prompt", systemPrompt,
                     "--tools", tools, "--allowedTools", tools]
         args += resume ? ["--resume", sessionId] : ["--session-id", sessionId]
-        if let readableDirectory { args += ["--add-dir", readableDirectory] }
 
         let process = Process()
         process.executableURL = exe

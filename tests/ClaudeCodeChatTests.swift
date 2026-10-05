@@ -58,12 +58,12 @@ enum ClaudeCodeChatTests {
     }
 
     @MainActor
-    static func send(_ exe: URL?, resume: Bool = false, readable: String? = nil,
+    static func send(_ exe: URL?, resume: Bool = false,
                      onText: (String) -> Void = { _ in }) async -> Result<String, Error> {
         do {
             let text = try await ClaudeCodeChat.send(
                 prompt: "-x what is up?", sessionId: "abc", resume: resume, model: "haiku",
-                systemPrompt: "You are Mochi.", readableDirectory: readable,
+                systemPrompt: "You are Mochi.",
                 executable: exe, onText: onText)
             return .success(text)
         } catch {
@@ -93,19 +93,15 @@ enum ClaudeCodeChatTests {
         let args1 = read("ok.args").split(separator: "\n").map(String.init)
         checkTrue("first turn starts the session", args1.contains("--session-id") && !args1.contains("--resume"))
         checkTrue("hooks are kept out with --safe-mode", args1.contains("--safe-mode"))
-        checkTrue("only web and read tools", args1.contains("WebSearch,WebFetch,Read"))
-        checkTrue("no --add-dir without a file", !args1.contains("--add-dir"))
+        checkTrue("web tools only", args1.contains("WebSearch,WebFetch"))
+        checkTrue("no file access, so a web page can't make it leak local files",
+                  !args1.contains { $0.contains("Read") || $0 == "--add-dir" })
 
-        // ── resume + attached file folder ──────────────────────────────────────
+        // ── resume ─────────────────────────────────────────────────────────────
         print("ClaudeCodeChat.send — later turns")
-        _ = await send(ok, resume: true, readable: "/tmp/files")
+        _ = await send(ok, resume: true)
         let args2 = read("ok.args").split(separator: "\n").map(String.init)
         checkTrue("later turns resume the session", args2.contains("--resume") && !args2.contains("--session-id"))
-        if let i = args2.firstIndex(of: "--add-dir") {
-            check("file folder is readable", args2[i + 1], "/tmp/files")
-        } else {
-            checkTrue("file folder is readable", false)
-        }
 
         // ── errors ─────────────────────────────────────────────────────────────
         print("ClaudeCodeChat.send — errors")
