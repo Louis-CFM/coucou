@@ -468,4 +468,18 @@ mod tests {
 
         assert_eq!(normalize_cursor_stop(&map, "Stop"), "StopFailure");
     }
+
+    #[test]
+    fn cursor_completed_and_aborted_stops_stay_normal() {
+        for status in ["completed", "aborted"] {
+            let map = serde_json::json!({
+                "status": status
+            })
+            .as_object()
+            .unwrap()
+            .clone();
+
+            assert_eq!(normalize_cursor_stop(&map, "Stop"), "Stop");
+        }
+    }
 }
