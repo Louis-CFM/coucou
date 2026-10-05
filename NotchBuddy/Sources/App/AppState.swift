@@ -36,6 +36,7 @@ final class AppState: ObservableObject {
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
+    var pointerInIsland = false   // no auto-close (and no countdown bar) while hovering
     var isPresent: Bool = true
 
     // Pinned (alerts that stay open, never auto-close)

@@ -261,7 +261,7 @@ final class IslandWindowController: NSWindowController {
 
         // Feed FSM hover enter/leave
         if inIsland && !wasInIsland {
-            guard !inAttachDrag else { wasInIsland = inIsland; return }
+            guard !inAttachDrag else { wasInIsland = inIsland; state.pointerInIsland = inIsland; return }
             // If in coucou: tell greeting to stay open (tc → infinity)
             if fsm.state == .coucou {
                 NotificationCenter.default.post(name: .greetingHover, object: nil)
@@ -273,6 +273,7 @@ final class IslandWindowController: NSWindowController {
             state.lastActivity = .now   // the countdown bar starts with the collapse timer
         }
         wasInIsland = inIsland
+        state.pointerInIsland = inIsland
 
         // Bot-head hover (love emote)
         let overBot = state.mode == .expanded && state.stateOverride == nil && isBotHit(local)
