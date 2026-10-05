@@ -10,8 +10,8 @@ export class IslandStateMachine {
 
   /** home → petit delay, seconds. */
   homeToPetitDelay = 15;
-  /** petit → hidden delay, seconds. */
-  petitToHiddenDelay = 60;
+  /** petit → hidden delay, seconds. -1 disables automatic hiding. */
+  petitToHiddenDelay = -1;
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -106,6 +106,8 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.petitToHiddenDelay < 0) return;
+
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
