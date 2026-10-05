@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type IslandMode, type IslandViewName,
@@ -541,6 +541,11 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
         this.engine.slap();
+        return;
+      }
+      // A click on the bare top strip closes the island (not on a tab/button, not while pinned).
+      if (e.clientY < NOTCH_H && !State.isPinned && !(e.target as Element).closest("button")) {
+        this.collapse();
       }
     });
 
