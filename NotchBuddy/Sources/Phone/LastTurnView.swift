@@ -20,14 +20,29 @@ struct LastTurnView: View {
 
     // MARK: Prompt
 
+    /// A background task finishing reaches Claude as a "<task-notification>"
+    /// prompt: shown by its summary rather than as raw XML.
+    private var taskSummary: String? {
+        guard turn.prompt.hasPrefix("<task-notification>") else { return nil }
+        if let start = turn.prompt.range(of: "<summary>"), let end = turn.prompt.range(of: "</summary>"),
+           start.upperBound <= end.lowerBound {
+            return String(turn.prompt[start.upperBound..<end.lowerBound])
+        }
+        return "A background task finished"
+    }
+
     private var promptCard: some View {
         VStack(alignment: .trailing, spacing: 6) {
-            Text(turn.prompt)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(12)
-                .background(Color.accentColor.opacity(0.25), in: RoundedRectangle(cornerRadius: 16))
-            Text("You · \(turn.startedAt.formatted(date: .omitted, time: .shortened))")
+            if let summary = taskSummary {
+                ExpandableText(text: turn.prompt, collapsedLines: 0, title: summary, monospaced: true)
+                    .padding(12)
+                    .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 16))
+            } else {
+                ExpandableText(text: turn.prompt, collapsedLines: 6)
+                    .padding(12)
+                    .background(Color.accentColor.opacity(0.25), in: RoundedRectangle(cornerRadius: 16))
+            }
+            Text("\(taskSummary == nil ? "You" : "Background task") · \(turn.startedAt.formatted(date: .omitted, time: .shortened))")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -90,9 +105,7 @@ struct LastTurnView: View {
     @ViewBuilder private var answerCard: some View {
         if !turn.finalMessage.isEmpty {
             card(title: "Claude's answer") {
-                Text(LocalizedStringKey(turn.finalMessage))
-                    .font(.callout)
-                    .textSelection(.enabled)
+                ExpandableText(text: turn.finalMessage, collapsedLines: 10, markdown: true)
             }
         } else if working || turn.endedAt == nil {
             card(title: "Claude's answer") {
@@ -236,6 +249,55 @@ struct FileDiffView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(line.kind == .added ? Color.green.opacity(0.14)
                         : line.kind == .removed ? Color.red.opacity(0.14) : Color.clear)
+        }
+    }
+}
+
+/// Long text folded to a few lines, with "Show more" / "Show less".
+/// collapsedLines 0 shows only the title until opened.
+struct ExpandableText: View {
+    let text: String
+    var collapsedLines: Int
+    var title: String? = nil
+    var monospaced = false
+    var markdown = false
+    @State private var open = false
+
+    /// Short texts are shown whole, without a button.
+    private var isLong: Bool {
+        collapsedLines == 0 || text.count > collapsedLines * 60 || text.filter(\.isNewline).count >= collapsedLines
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let title {
+                Label(title, systemImage: "gearshape.2")
+                    .font(.callout.weight(.semibold))
+            }
+            if open || collapsedLines > 0 {
+                content
+                    .lineLimit(open || !isLong ? nil : collapsedLines)
+            }
+            if isLong {
+                Button(open ? "Show less" : (collapsedLines == 0 ? "Show details" : "Show more")) {
+                    withAnimation(.easeOut(duration: 0.2)) { open.toggle() }
+                }
+                .font(.footnote.weight(.semibold))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var content: some View {
+        if markdown {
+            Text(LocalizedStringKey(text))
+                .font(.callout)
+                .textSelection(.enabled)
+        } else {
+            Text(text)
+                .font(monospaced ? .caption.monospaced() : .callout)
+                .foregroundStyle(monospaced ? Color.secondary : Color.primary)
+                .textSelection(.enabled)
         }
     }
 }
