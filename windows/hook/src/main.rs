@@ -113,6 +113,19 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
+fn normalize_cursor_event(event: &str) -> &str {
+    match event {
+        "sessionStart" => "SessionStart",
+        "beforeSubmitPrompt" => "UserPromptSubmit",
+        "preToolUse" => "PreToolUse",
+        "postToolUse" => "PostToolUse",
+        "postToolUseFailure" => "PostToolUseFailure",
+        "stop" => "Stop",
+        "sessionEnd" => "SessionEnd",
+        other => other,
+    }
+}
+
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -142,18 +155,30 @@ fn read_event() -> Option<(String, String)> {
             }
         }
     }
+
+    let is_cursor = agent.eq_ignore_ascii_case("cursor");
+
     // Which agent this hook was installed for. Absent means Claude Code,
     // so existing hook commands keep working unchanged.
     if !agent.is_empty() {
         map.insert("coucou_agent".into(), serde_json::Value::String(agent));
     }
-    let event = map
+
+    let mut event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
-    map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
+
+    if is_cursor {
+        event = normalize_cursor_event(&event).to_string();
+    }
+
+    map.insert(
+        "hook_event_name".into(),
+        serde_json::Value::String(event.clone()),
+    );
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -279,5 +304,25 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn cursor_event_names_are_normalized() {
+        assert_eq!(normalize_cursor_event("sessionStart"), "SessionStart");
+        assert_eq!(
+            normalize_cursor_event("beforeSubmitPrompt"),
+            "UserPromptSubmit"
+        );
+        assert_eq!(normalize_cursor_event("preToolUse"), "PreToolUse");
+        assert_eq!(normalize_cursor_event("postToolUse"), "PostToolUse");
+        assert_eq!(
+            normalize_cursor_event("postToolUseFailure"),
+            "PostToolUseFailure"
+        );
+        assert_eq!(normalize_cursor_event("stop"), "Stop");
+        assert_eq!(normalize_cursor_event("sessionEnd"), "SessionEnd");
+
+        // Unknown events should pass through unchanged.
+        assert_eq!(normalize_cursor_event("somethingNew"), "somethingNew");
     }
 }
