@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var autoCloseSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -156,6 +157,10 @@ final class IslandWindowController: NSWindowController {
                     self.islandPanel.makeKey()
                 }
             }
+        // The Auto-close setting drives the real collapse timer, not only the countdown bar.
+        autoCloseSubscription = state.$autoCloseInterval
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] seconds in self?.fsm.homeToPetitDelay = seconds }
     }
 
     // MARK: - FSM wiring
@@ -256,7 +261,7 @@ final class IslandWindowController: NSWindowController {
 
         // Feed FSM hover enter/leave
         if inIsland && !wasInIsland {
-            guard !inAttachDrag else { wasInIsland = inIsland; return }
+            guard !inAttachDrag else { wasInIsland = inIsland; state.pointerInIsland = inIsland; return }
             // If in coucou: tell greeting to stay open (tc → infinity)
             if fsm.state == .coucou {
                 NotificationCenter.default.post(name: .greetingHover, object: nil)
@@ -265,8 +270,10 @@ final class IslandWindowController: NSWindowController {
         }
         if !inIsland && wasInIsland {
             fsm.mouseLeft()
+            state.lastActivity = .now   // the countdown bar starts with the collapse timer
         }
         wasInIsland = inIsland
+        state.pointerInIsland = inIsland
 
         // Bot-head hover (love emote)
         let overBot = state.mode == .expanded && state.stateOverride == nil && isBotHit(local)
@@ -538,20 +545,12 @@ final class IslandWindowController: NSWindowController {
 
     #if !APPSTORE
     private func performJumpToTerminal() {
-        guard state.focusTask != nil else {
+        guard let task = state.focusTask else {
             SoundEngine.shared.play("error")
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                 "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-        let activated = terminalBundleIds.compactMap { id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-        if activated == nil {
-            NSWorkspace.shared.open(
-                URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-        }
+        SessionApp.activate(bundleId: task.sessionAppBundleId)
         collapse()
     }
 
@@ -1015,15 +1014,7 @@ final class IslandWindowController: NSWindowController {
         let panelW = window?.frame.width  ?? 720
         let (islandW, fixedH) = islandSize(mode: s.mode, view: s.view,
                                             progress: s.uploadProgress, nw: notchW, nh: notchH)
-        // Chat view resizes dynamically — must match IslandContainer.chatPromptHeight
-        let islandH: CGFloat
-        if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            islandH = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
-        } else {
-            islandH = fixedH
-        }
+        let islandH = expandedIslandHeight(s, fixed: fixedH)
         let islandMinX = (panelW - islandW) / 2
         let (cx, cy, diameter, _) = botPosition(mode: s.mode, view: s.view,
                                                   islandW: islandW, islandH: islandH,
@@ -1081,14 +1072,7 @@ final class IslandPanel: NSPanel {
         let s = AppState.shared
         let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
                                       progress: s.uploadProgress, nw: nw, nh: nh)
-        let h: CGFloat
-        if s.mode == .expanded && s.view == .prompt {
-            let base: CGFloat = 240
-            let perMsg: CGFloat = 40
-            h = min(300, base + CGFloat(s.chatHistory.count) * perMsg)
-        } else {
-            h = fixedH
-        }
+        let h = expandedIslandHeight(s, fixed: fixedH)
         return CGRect(x: (frame.width - w) / 2, y: frame.height - h, width: w, height: h)
     }
 }
@@ -1139,6 +1123,18 @@ extension Notification.Name {
 }
 
 // MARK: - islandSize (takes real notch dimensions)
+
+/// The expanded island's real height: the chat and the question card grow with their content.
+@MainActor
+func expandedIslandHeight(_ s: AppState, fixed: CGFloat) -> CGFloat {
+    guard s.mode == .expanded else { return fixed }
+    switch s.view {
+    case .prompt:   return min(300, 240 + CGFloat(s.chatHistory.count) * 40)
+    // 8 + 34 header + 10 padding + 8 air; 300 keeps it inside the 320 pt panel, like the chat.
+    case .question: return min(300, max(fixed, s.questionCardHeight + 60))
+    default:        return fixed
+    }
+}
 
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,

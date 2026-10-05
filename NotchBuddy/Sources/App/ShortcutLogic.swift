@@ -46,7 +46,7 @@ enum ShortcutAction: String, CaseIterable, Sendable {
         case .nextPill:          return "Next pill"
         case .prevPill:          return "Previous pill"
         case .muteToggle:        return "Mute / unmute sounds"
-        case .desktopToggle:     return "Mochi on / off desktop"
+        case .desktopToggle:     return "Mohinur on / off desktop"
         case .wardrobeToggle:    return "Open / close wardrobe"
         }
     }

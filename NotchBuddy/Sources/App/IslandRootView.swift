@@ -32,11 +32,6 @@ struct IslandContainer: View {
     private let openSpring = Animation.spring(response: 0.5, dampingFraction: 0.72)
     private let closeEase  = Animation.timingCurve(0.45, 0, 0.2, 1, duration: 0.34)
 
-    private var chatPromptHeight: CGFloat {
-        let base: CGFloat = 240
-        let perMsg: CGFloat = 40
-        return min(300, base + CGFloat(state.chatHistory.count) * perMsg)
-    }
 
     /// Pixels the content must be pushed down to clear the concave ear transparent area.
     /// = 0 in expanded mode (no ears), = earRadius in compact/notch mode.
@@ -127,7 +122,7 @@ struct IslandContainer: View {
             let tr: CGFloat = 0
             withAnimation(anim) {
                 islandWidth      = w
-                islandHeight     = (newMode == .expanded && state.view == .prompt) ? chatPromptHeight : h
+                islandHeight     = expandedIslandHeight(state, fixed: h)
                 cornerRadius     = cr
                 islandTopRadius  = tr
             }
@@ -144,19 +139,25 @@ struct IslandContainer: View {
                                     nw: state.notchWidth, nh: state.notchHeight)
             withAnimation(openSpring) {
                 islandWidth  = w
-                islandHeight = newView == .prompt ? chatPromptHeight : h
+                islandHeight = expandedIslandHeight(state, fixed: h)
             }
         }
         .onChange(of: state.chatHistory.count) { _, _ in
             guard state.mode == .expanded, state.view == .prompt else { return }
-            withAnimation(openSpring) { islandHeight = chatPromptHeight }
+            withAnimation(openSpring) { islandHeight = expandedIslandHeight(state, fixed: islandHeight) }
+        }
+        .onChange(of: state.questionCardHeight) { _, _ in
+            guard state.mode == .expanded, state.view == .question else { return }
+            let (_, h) = islandSize(mode: .expanded, view: .question,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            withAnimation(openSpring) { islandHeight = expandedIslandHeight(state, fixed: h) }
         }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
             islandWidth      = w
-            islandHeight     = state.view == .prompt ? chatPromptHeight : h
+            islandHeight     = expandedIslandHeight(state, fixed: h)
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             islandTopRadius  = 0
         }
@@ -403,7 +404,7 @@ struct CountdownBar: View {
     }
 
     private func updateBar() {
-        guard state.mode == .expanded && !state.isPinned else {
+        guard state.mode == .expanded && !state.isPinned && !state.pointerInIsland else {
             barWidth = 0
             return
         }
@@ -435,9 +436,9 @@ struct IslandContentView: View {
                 ForEach(IslandView.allCases, id: \.self) { v in
                     let active = state.view == v
                     // Views that fill available height instead of the fixed 98pt content frame:
-                    // chat (prompt) is always flexible; mail is flexible only when active so
-                    // it doesn't push the ZStack taller when inactive.
-                    let isTall = v == .prompt || (v == .mail && active)
+                    // chat (prompt) is always flexible; mail and question only when active so
+                    // they don't push the ZStack taller when inactive.
+                    let isTall = v == .prompt || ((v == .mail || v == .question) && active)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)

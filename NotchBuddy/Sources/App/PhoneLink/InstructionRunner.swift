@@ -106,8 +106,8 @@ final class InstructionRunner {
             log("ignored: an instruction is already running for this session")
             return
         }
-        guard let claude = Self.claudeExecutable() else {
-            log("can't find the claude command (looked in ~/.claude/local, Homebrew, /usr/local/bin, ~/.npm-global/bin)")
+        guard let claude = ClaudeCodeChat.executableURL()?.path else {
+            log("can't find the claude command (looked in ~/.local/bin, ~/.claude/local, Homebrew, /usr/local/bin, ~/.npm-global/bin, ~/.bun/bin)")
             return
         }
         run(claude: claude, text: text, sessionId: session.sessionId, cwd: session.cwd, pillId: pillId)
@@ -159,20 +159,6 @@ final class InstructionRunner {
         } catch {
             log("couldn't start claude: \(error.localizedDescription)")
         }
-    }
-
-    /// Where `claude` usually lives; the app doesn't get the shell's PATH.
-    static func claudeExecutable() -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let candidates = [
-            "\(home)/.claude/local/claude",
-            "\(home)/.local/bin/claude",
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude",
-            "\(home)/.npm-global/bin/claude",
-            "\(home)/.bun/bin/claude",
-        ]
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
     private func log(_ message: String) {

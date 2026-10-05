@@ -48,7 +48,7 @@ enum PillCatalog {
     // All declared pills in display order.
     static let all: [PillDefinition] = [
         // ── Where you code ───────────────────────────────────────────────────
-        .init(id: "integration_claude",  name: "VS Code",     color: "#F5F6F8",
+        .init(id: "integration_claude",  name: "Claude Code", color: "#F5F6F8",
               category: .workspace, subtitle: "Integration",  source: .claudeCode),
         .init(id: "agent_cursor",        name: "Cursor",      color: "#C0C4CC",
               category: .workspace, subtitle: "Integration",  source: .agent),
@@ -62,6 +62,8 @@ enum PillCatalog {
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
+        .init(id: "ai_claudecode",       name: "Claude plan", color: ChatProvider.claudeCode.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n,  githubOnly: true),
         .init(id: "ai_google",           name: "Google AI",   color: ChatProvider.google.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_openai",           name: "OpenAI",      color: ChatProvider.openai.accentHex,
@@ -79,13 +81,15 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_github",  name: "GitHub",      color: "#F4505E",
               category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_gitlab",  name: "GitLab",      color: "#FC6D26",
+              category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_notion",  name: "Notion",      color: "#8C8C8C",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_calcom",  name: "Cal.com",     color: "#C9956A",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_stripe",  name: "Stripe",      color: "#0570DE",
               category: .service,   subtitle: "Integration",  source: .n8n),
-        .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
+        .init(id: "integration_music",   name: "Music",       color: "#FA2D48",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
     ]
 

@@ -69,6 +69,8 @@ struct SettingsView: View {
     @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
+    @State private var gitlabURL: String    = KeychainStore.shared.get("gitlab-url")      ?? ""
+    @State private var gitlabToken: String  = KeychainStore.shared.get("gitlab-token")    ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
@@ -305,7 +307,7 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
+                Toggle("Move Mohinur to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
                 Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
@@ -408,6 +410,11 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                 }
                 #endif
+
+                Toggle("Answer approvals and questions in the notch", isOn: $state.answerInNotch)
+                Text("Off: Claude Code asks in its terminal right away, and the notch only shows what it is doing.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
 
                 #if !APPSTORE
                 if showDiff {
@@ -598,6 +605,34 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
+        #if !APPSTORE
+        GroupBox("Claude Code — your Claude plan") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Chat with your Claude Pro or Max plan through the claude command line. No API key needed.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                if let exe = ClaudeCodeChat.executableURL() {
+                    Text(exe.path)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Claude Code not found. Install it, then log in once by running claude in a terminal.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                }
+                Picker("Model", selection: $state.claudeCodeChatModel) {
+                    ForEach(ClaudeCodeChat.models, id: \.id) { model in
+                        Text(model.label).tag(model.id)
+                    }
+                }
+                Text("Pick Claude Code above the chat box, or turn on the Claude plan pill.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+        #endif
+
         GroupBox("Anthropic API") {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField("API key (sk-ant-…)", text: $apiKey)
@@ -817,6 +852,21 @@ struct SettingsView: View {
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
 
+                // GitLab
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#FC6D26")).frame(width: 8, height: 8)
+                        Text("GitLab").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField("Instance URL  (https://gitlab.com)", text: $gitlabURL)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Personal Access Token", text: $gitlabToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Token with the read_api scope. Leave the URL empty for gitlab.com.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 // Stripe
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -905,7 +955,7 @@ struct SettingsView: View {
         do {
             try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
             hookNeedsUpdate = false
-            statusMessage = "✓ Hooks installed — restart VS Code to activate."
+            statusMessage = "✓ Hooks installed — restart Claude Code to activate."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1137,6 +1187,13 @@ struct SettingsView: View {
             }
         }
 
+        let prevGitlab = (KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token"))
+        saveKey("gitlab-url",   value: gitlabURL.trimmingCharacters(in: .whitespacesAndNewlines))
+        saveKey("gitlab-token", value: gitlabToken)
+        if (KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token")) != prevGitlab {
+            GitLabPoller.shared.restart()
+        }
+
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
@@ -1234,7 +1291,9 @@ struct SettingsView: View {
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
             if def.category == .ai {
-                if let provider = ChatProvider(pillID: def.id), provider.isLocal {
+                if def.id == "ai_claudecode" {
+                    if ClaudeCodeChat.executableURL() == nil { return "Claude Code not found" }
+                } else if let provider = ChatProvider(pillID: def.id), provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return "Not connected" }
                 } else {

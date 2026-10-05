@@ -36,6 +36,8 @@ final class AppState: ObservableObject {
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
     var lastActivity: Date = .now
+    var pointerInIsland = false   // no auto-close (and no countdown bar) while hovering
+    @Published var questionCardHeight: CGFloat = 0   // measured, drives the question island height
     var isPresent: Bool = true
 
     // Pinned (alerts that stay open, never auto-close)
@@ -104,6 +106,13 @@ final class AppState: ObservableObject {
     @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
         didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
     }
+    @Published var claudeCodeChatModel: String = ChatProvider.claudeCode.defaultModel {
+        didSet { UserDefaults.standard.set(claudeCodeChatModel, forKey: "claudeCodeChatModel") }
+    }
+    /// Off: Claude Code's approvals and questions go straight to its own terminal.
+    @Published var answerInNotch: Bool = true {
+        didSet { UserDefaults.standard.set(answerInNotch, forKey: "answerInNotch") }
+    }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
     }
@@ -111,7 +120,7 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
-    // The always-on workspace pill (default: VS Code). Persisted.
+    // The always-on workspace pill (default: Claude Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
     }
@@ -126,6 +135,10 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        if provider == .claudeCode {
+            fetchedProviderModels[provider] = ClaudeCodeChat.models
+            return
+        }
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -173,7 +186,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .ollama, .lmstudio, .claudeCode: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -193,7 +206,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .claudeCode: break
                 }
             }
         }
@@ -207,6 +220,7 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .claudeCode: return claudeCodeChatModel
         }
     }
 
@@ -282,6 +296,10 @@ final class AppState: ObservableObject {
                 githubPulse = nil
                 githubActivity = nil
             }
+            if !activeIntegrations.contains("integration_gitlab") && oldValue.contains("integration_gitlab") {
+                gitlabPulse = nil
+                gitlabError = nil
+            }
         }
     }
 
@@ -299,6 +317,10 @@ final class AppState: ObservableObject {
     @Published var githubStats: GitHubStats? = nil
     @Published var githubPulse: GitHubPulse? = nil
     @Published var githubActivity: GitHubActivity? = nil
+
+    // GitLab merge requests (populated by GitLabPoller)
+    @Published var gitlabPulse: GitHubPulse? = nil
+    @Published var gitlabError: String? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -413,6 +435,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "claudeCodeChatModel"), !v.isEmpty { claudeCodeChatModel = v }
+        if ud.object(forKey: "answerInNotch") != nil { answerInNotch = ud.bool(forKey: "answerInNotch") }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
@@ -507,8 +531,8 @@ final class AppState: ObservableObject {
         tasks[idx].pillBadge = badge
     }
 
-    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
-    func handleGitHubEvents(_ events: [GitHubEvent]) {
+    /// Called on main thread after each GitHub or GitLab pulse poll. Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent], pillId: String = "integration_github") {
         guard !events.isEmpty else { return }
         // Priority: error > question (reviewRequested) > finish (ciPassed)
         var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
@@ -525,7 +549,7 @@ final class AppState: ObservableObject {
             }
         }
         // Only set badge when the GitHub pill is not currently in focus
-        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
+        if let b = badge, focusId != pillId { setPillBadge(b, for: pillId) }
         if let s = sound { SoundEngine.shared.play(s) }
     }
 

@@ -152,6 +152,10 @@ struct OverviewView: View {
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
+            if new == "integration_gitlab" { GitLabPoller.shared.refreshIfStale() }
+            #if !APPSTORE
+            if new == "integration_music" { MusicController.shared.refreshOnOpen() }
+            #endif
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
@@ -165,6 +169,14 @@ struct OverviewView: View {
             if m == .expanded && state.focusId == "integration_github" {
                 GithubPoller.shared.refreshIfStale()
             }
+            if m == .expanded && state.focusId == "integration_gitlab" {
+                GitLabPoller.shared.refreshIfStale()
+            }
+            #if !APPSTORE
+            if m == .expanded && state.focusId == "integration_music" {
+                MusicController.shared.refreshOnOpen()
+            }
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
             if let id = activeDiffId {
@@ -180,19 +192,18 @@ struct OverviewView: View {
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
         switch task.id {
-        case "integration_claude":
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+        case let id where ClaudeSessionPills.isSessionPill(id):
+            SessionApp.activate(bundleId: task.sessionAppBundleId)
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
             NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
+        case "integration_gitlab":
+            if let url = GitLabPoller.baseURL?.appendingPathComponent("dashboard/merge_requests") {
+                NSWorkspace.shared.open(url)
+            }
         case "integration_n8n":
             if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
                 NSWorkspace.shared.open(url)
@@ -237,6 +248,8 @@ struct OverviewView: View {
             switchChatProvider(.ollama)
         case "ai_lmstudio":
             switchChatProvider(.lmstudio)
+        case "ai_claudecode":
+            switchChatProvider(.claudeCode)
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
@@ -336,6 +349,7 @@ struct QuestionView: View {
     @State private var otherTexts: [String] = []
     // Per-question "Other…" mode active
     @State private var showOther: [Bool] = []
+    @State private var showDetails = false
     @FocusState private var otherFieldFocused: Bool
 
     var question: AskQuestion? { state.pendingQuestion }
@@ -362,6 +376,13 @@ struct QuestionView: View {
                             Text("\(qi + 1)/\(q.questions.count)")
                                 .font(.system(size: 10))
                                 .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                        if item.options.contains(where: { !$0.description.isEmpty }) {
+                            Button(showDetails ? "Hide details" : "Details") { showDetails.toggle() }
+                                .buttonStyle(.plain)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .underline()
                         }
                         Button("Reply in terminal") { HookServer.shared.sendQuestionAsk() }
                             .buttonStyle(.plain)
@@ -442,6 +463,14 @@ struct QuestionView: View {
                                 if qi < showOther.count { showOther[qi] = true }
                             }
                         }
+                        ForEach(Array(item.options.enumerated()), id: \.offset) { _, opt in
+                            if showDetails && !opt.description.isEmpty {
+                                (Text(opt.label + ": ").foregroundColor(Color(hex: "#C5C8CD"))
+                                 + Text(opt.description).foregroundColor(Color(hex: "#8E939C")))
+                                    .font(.system(size: 11))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                     // Send/Next — only for multi-select (and not while "Other…" field is open)
                     if isMulti && !curOther {
@@ -456,6 +485,11 @@ struct QuestionView: View {
                 .padding(.trailing, 16)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // The island grows to fit the card (see expandedIslandHeight).
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: QuestionCardHeightKey.self, value: g.size.height)
+                })
+                .onPreferenceChange(QuestionCardHeightKey.self) { state.questionCardHeight = $0 }
             }
         }
         .onAppear { resetQuestionState() }
@@ -464,6 +498,7 @@ struct QuestionView: View {
     }
 
     private func resetQuestionState() {
+        showDetails = false
         questionIndex = 0
         let count = state.pendingQuestion?.questions.count ?? 0
         selections = Array(repeating: [], count: count)
@@ -509,6 +544,11 @@ struct QuestionView: View {
         let answers = AskQuestion.buildAnswers(questions: q.questions, selections: selections)
         HookServer.shared.sendQuestionAnswers(answers)
     }
+}
+
+private struct QuestionCardHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // MARK: - Error
@@ -559,14 +599,8 @@ struct FinishedView: View {
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
                     #if !APPSTORE
-                    PrimaryButton("Open terminal") {
-                        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                        let activated = terminalBundleIds.compactMap { id in
-                            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                        if activated == nil {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                        }
+                    PrimaryButton("Open \(SessionApp.name(bundleId: state.focusTask?.sessionAppBundleId) ?? "terminal")") {
+                        SessionApp.activate(bundleId: state.focusTask?.sessionAppBundleId)
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
                     #endif
@@ -1302,6 +1336,9 @@ struct ModelPickerView: View {
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                #if APPSTORE
+                if p == .claudeCode { return false }
+                #endif
                 return true
             }
             ChipFlowLayout(spacing: 6) {
@@ -1389,6 +1426,7 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .claudeCode: state.claudeCodeChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1580,7 +1618,7 @@ struct IntegrationCardView: View {
 
     private var isConfigured: Bool {
         switch task.id {
-        case "integration_claude":
+        case let id where ClaudeSessionPills.isSessionPill(id):
             #if APPSTORE
             // Sandboxed: can't read ~/.claude directly — check install flag set by HookServer
             return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
@@ -1611,7 +1649,7 @@ struct IntegrationCardView: View {
             return false  // coming soon
         case "integration_music":
             #if !APPSTORE
-            return true  // Apple Music is always installed on macOS
+            return true  // Apple Music is always installed on macOS; Spotify is optional
             #else
             return false
             #endif
@@ -1620,10 +1658,12 @@ struct IntegrationCardView: View {
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "ai_claudecode": return ClaudeCodeChat.executableURL() != nil
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
         case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
+        case "integration_gitlab":  return KeychainStore.shared.get("gitlab-token")   != nil
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
@@ -1640,6 +1680,7 @@ struct IntegrationCardView: View {
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
         case "integration_github":  return URL(string: "https://github.com")
+        case "integration_gitlab":  return GitLabPoller.baseURL?.appendingPathComponent("dashboard/merge_requests")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
@@ -1649,6 +1690,7 @@ struct IntegrationCardView: View {
 
     // Workspace/agent pill with active session: show ticker layout
     private var agentSessionActive: Bool {
+        if ClaudeSessionPills.isSessionPill(task.id) { return task.state != .idle || !task.steps.isEmpty }
         guard let def = PillCatalog.definition(for: task.id) else { return false }
         guard def.category == .workspace || def.category == .agent else { return false }
         return task.state != .idle || !task.steps.isEmpty
@@ -1680,6 +1722,10 @@ struct IntegrationCardView: View {
         task.id == "integration_github" && appState.githubPulse != nil
     }
 
+    private var gitlabHasPulse: Bool {
+        task.id == "integration_gitlab" && appState.gitlabPulse != nil
+    }
+
     // Stripe: show card as soon as first poll completes (balance OR payments)
     private var stripeHasData: Bool {
         task.id == "integration_stripe" && appState.stripeLoaded
@@ -1695,7 +1741,7 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
-    // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
+    // Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
         #if !APPSTORE
         guard task.id == "integration_music" else { return false }
@@ -1715,6 +1761,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_gitlab"  ? appState.gitlabError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
@@ -1731,6 +1778,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_gitlab"  ? appState.gitlabError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
@@ -1740,6 +1788,7 @@ struct IntegrationCardView: View {
             if isHooks { return "Hooks installed" }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
+                if provider == .claudeCode { return "Uses your plan · \(appState.claudeCodeChatModel)" }
                 if provider.isLocal {
                     let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
                     return "Connected · \(model)"
@@ -1758,6 +1807,7 @@ struct IntegrationCardView: View {
             if isHooks { return "Hooks not installed" }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
+                if provider == .claudeCode { return "Claude Code not found" }
                 return provider.isLocal ? "Not connected" : "Key not configured"
             }
             return "Key not configured"
@@ -1808,6 +1858,30 @@ struct IntegrationCardView: View {
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
                 .transition(.opacity)
+        } else if showingDetail && gitlabHasPulse {
+            GitHubDetailView(
+                section: githubDetailSection,
+                pulse: appState.gitlabPulse!,
+                activity: nil,
+                stats: nil,
+                forge: .gitlab,
+                onBack: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+                }
+            )
+            .transition(.opacity)
+        } else if gitlabHasPulse {
+            GitHubPulseCardView(
+                pulse: appState.gitlabPulse!,
+                stats: nil,
+                activity: nil,
+                forge: .gitlab,
+                onTapSection: { section in
+                    githubDetailSection = section
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                }
+            )
+            .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
                 .transition(.opacity)
@@ -1834,7 +1908,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                    Text(ClaudeSessionPills.isSessionPill(task.id) ? "Claude Code" : PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -1887,8 +1961,14 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude" {
-                        Button("Open Visual Studio Code") { openVSCode() }
+                    if ClaudeSessionPills.isSessionPill(task.id) {
+                        Button("Open \(SessionApp.name(bundleId: task.sessionAppBundleId) ?? "terminal")") {
+                            if SessionApp.resolve(task.sessionAppBundleId)?.lowercased().contains("vscode") == true {
+                                openVSCode()
+                            } else {
+                                SessionApp.activate(bundleId: task.sessionAppBundleId)
+                            }
+                        }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -1929,7 +2009,7 @@ struct IntegrationCardView: View {
                         }
                     } else if task.id == "integration_music" {
                         #if !APPSTORE
-                        Button("Open Music") { MusicController.shared.openMusic() }
+                        Button("Open \(MusicController.shared.player.name)") { MusicController.shared.openMusic() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
@@ -2316,10 +2396,30 @@ private func mainCIWorst(_ repos: [GitHubRepoCI]) -> CIState {
     return .unknown
 }
 
+/// Where a pulse comes from: the GitHub and GitLab pills share the same card and list.
+enum Forge: Equatable {
+    case github, gitlab
+
+    var name: String { self == .github ? "GitHub" : "GitLab" }
+    var color: String { self == .github ? "#F4505E" : "#FC6D26" }
+    var changes: String { self == .github ? "PRs" : "MRs" }
+    var numberPrefix: String { self == .github ? "#" : "!" }
+    /// Links from the list only ever open on this host.
+    @MainActor var host: String? { self == .github ? "github.com" : GitLabPoller.baseURL?.host }
+
+    @MainActor func refreshIfStale() {
+        switch self {
+        case .github: GithubPoller.shared.refreshIfStale()
+        case .gitlab: GitLabPoller.shared.refreshIfStale()
+        }
+    }
+}
+
 struct GitHubPulseCardView: View {
     let pulse: GitHubPulse
     let stats: GitHubStats?
     let activity: GitHubActivity?
+    var forge: Forge = .github
     let onTapSection: (GitHubDetailSection) -> Void
 
     var body: some View {
@@ -2327,9 +2427,9 @@ struct GitHubPulseCardView: View {
             // Header
             HStack(spacing: 6) {
                 Circle()
-                    .fill(Color(hex: "#F4505E"))
+                    .fill(Color(hex: forge.color))
                     .frame(width: 7, height: 7)
-                Text("GitHub")
+                Text(forge.name)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 if let s = stats {
@@ -2389,7 +2489,7 @@ struct GitHubPulseCardView: View {
                 }()
                 GitHubStatRow(
                     icon: "arrow.triangle.pull", iconColor: ciColor(prWorst),
-                    label: "My PRs", value: prValue
+                    label: "My \(forge.changes)", value: prValue
                 ) { onTapSection(.myPRs) }
 
                 // To review
@@ -2401,25 +2501,27 @@ struct GitHubPulseCardView: View {
                     value: "\(reviewCount)"
                 ) { onTapSection(.toReview) }
 
-                // Default branch CI
-                let mainWorst = mainCIWorst(pulse.mainCI)
-                let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
-                    switch mainWorst {
-                    case .failure:
-                        let n = pulse.mainCI.filter { $0.ci == .failure }.count
-                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
-                    case .pending:
-                        return ("checkmark.seal.fill", "#F5A524", "running")
-                    case .success:
-                        return ("checkmark.seal.fill", "#22C55E", "all green")
-                    case .unknown:
-                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
-                    }
-                }()
-                GitHubStatRow(
-                    icon: ciIcon, iconColor: ciIconColor,
-                    label: "Default branch CI", value: ciValue
-                ) { onTapSection(.mainCI) }
+                // Default branch CI (GitHub only)
+                if forge == .github {
+                    let mainWorst = mainCIWorst(pulse.mainCI)
+                    let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                        switch mainWorst {
+                        case .failure:
+                            let n = pulse.mainCI.filter { $0.ci == .failure }.count
+                            return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                        case .pending:
+                            return ("checkmark.seal.fill", "#F5A524", "running")
+                        case .success:
+                            return ("checkmark.seal.fill", "#22C55E", "all green")
+                        case .unknown:
+                            return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                        }
+                    }()
+                    GitHubStatRow(
+                        icon: ciIcon, iconColor: ciIconColor,
+                        label: "Default branch CI", value: ciValue
+                    ) { onTapSection(.mainCI) }
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
@@ -2472,12 +2574,13 @@ struct GitHubDetailView: View {
     let pulse: GitHubPulse
     let activity: GitHubActivity?
     let stats: GitHubStats?
+    var forge: Forge = .github
     let onBack: () -> Void
     @ObservedObject private var appState = AppState.shared
 
     private var title: String {
         switch section {
-        case .myPRs:    return "My PRs"
+        case .myPRs:    return "My \(forge.changes)"
         case .toReview: return "To review"
         case .mainCI:   return "Default branch CI"
         case .activity: return "Activity"
@@ -2538,7 +2641,7 @@ struct GitHubDetailView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(items.enumerated()), id: \.element.id) { idx, pr in
                                 GitHubPRRowView(pr: pr, showCI: section == .myPRs,
-                                               selected: appState.cardSelection == idx)
+                                               selected: appState.cardSelection == idx, forge: forge)
                             }
                             ForEach(Array(repoItems.enumerated()), id: \.element.repo) { idx, repo in
                                 GitHubRepoCIRowView(repo: repo,
@@ -2572,7 +2675,7 @@ struct GitHubDetailView: View {
             .padding(.top, 4)
             .clipped()
             .onAppear {
-                GithubPoller.shared.refreshIfStale()
+                forge.refreshIfStale()
                 appState.cardItemCount = totalItems
             }
             .onDisappear { appState.cardItemCount = 0 }
@@ -2580,7 +2683,7 @@ struct GitHubDetailView: View {
                 guard let sel = appState.cardSelection else { return }
                 if sel < items.count {
                     let pr = items[sel]
-                    if let url = safeWebURL(pr.url), url.host == "github.com" {
+                    if let url = safeWebURL(pr.url), url.host == forge.host {
                         NSWorkspace.shared.open(url)
                     }
                 } else {
@@ -2743,10 +2846,11 @@ private struct GitHubPRRowView: View {
     let pr: GitHubPR
     let showCI: Bool
     var selected: Bool = false
+    var forge: Forge = .github
 
     var body: some View {
         Button(action: {
-            if let url = safeWebURL(pr.url), url.host == "github.com" {
+            if let url = safeWebURL(pr.url), url.host == forge.host {
                 NSWorkspace.shared.open(url)
             }
         }) {
@@ -2759,7 +2863,7 @@ private struct GitHubPRRowView: View {
                 } else {
                     Spacer().frame(width: 5)
                 }
-                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)#\(pr.number)")
+                Text("\(pr.repo.components(separatedBy: "/").last ?? pr.repo)\(forge.numberPrefix)\(pr.number)")
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#9398A1"))
                     .lineLimit(1)
@@ -3704,9 +3808,9 @@ struct AgentPill: View {
 
     private var effectiveColor: String { task.color }
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // The Claude Code pill keeps its label regardless of the active project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? "Claude Code" : task.name
     }
 
     var body: some View {
@@ -3733,6 +3837,7 @@ struct AgentPill: View {
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .padding(.horizontal, 32)   // clear of the mini bot, still centred
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(maxWidth: .infinity)
@@ -3880,7 +3985,7 @@ struct MusicCardView: View {
                     Circle()
                         .fill(Color(hex: "#F4505E"))
                         .frame(width: 7, height: 7)
-                    Text("Apple Music")
+                    Text(controller.player.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Spacer(minLength: 2)
@@ -3889,7 +3994,7 @@ struct MusicCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                Text("Allow Coucou to control Music")
+                Text("Allow Coucou to control \(controller.player.name)")
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
                     .padding(.leading, 108)
@@ -4637,7 +4742,7 @@ struct SettingsIslandView: View {
                         .foregroundColor(Color(hex: "#C5C8CD"))
                     Spacer()
                     HStack(spacing: 6) {
-                        ForEach([10, 15, 30], id: \.self) { s in
+                        ForEach([5, 10, 15, 30], id: \.self) { s in
                             Button("\(s)s") {
                                 state.autoCloseInterval = Double(s)
                             }
