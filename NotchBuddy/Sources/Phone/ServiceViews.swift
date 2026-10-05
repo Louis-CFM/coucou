@@ -77,7 +77,7 @@ struct ServiceMochi: View {
 
     var body: some View {
         let color = PillCatalog.definition(for: pillId)?.color ?? "#C0C4CC"
-        MochiLive(state: tone?.botState ?? .sleeping, bodyHex: color, fps: 20)
+        MochiLive(state: tone?.botState ?? .sleeping, bodyHex: color, fps: 60)
             .padding(4)
             .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: corner))
     }

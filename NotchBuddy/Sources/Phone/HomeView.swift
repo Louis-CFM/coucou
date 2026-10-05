@@ -454,7 +454,7 @@ struct SessionRow: View {
     }
 
     @ViewBuilder private var tile: some View {
-        let base = MochiLive(state: session.state, fps: 20)
+        let base = MochiLive(state: session.state, fps: 60)
             .padding(4)
             .frame(width: 40, height: 40)
             .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))

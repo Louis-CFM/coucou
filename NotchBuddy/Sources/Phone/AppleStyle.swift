@@ -36,7 +36,7 @@ extension View {
 }
 
 /// The agent's color, moving slowly like the background of Apple Music. Drawn
-/// in code (MeshGradient), 10 frames a second, only while on screen.
+/// in code (MeshGradient), 30 frames a second, only while on screen.
 struct AgentBackdrop: View {
     let hex: String
 
@@ -75,7 +75,7 @@ struct AgentBackdrop: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 10)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
             MeshGradient(width: 3, height: 3,
                          points: Self.points(at: Float(timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))),
                          colors: colors)
