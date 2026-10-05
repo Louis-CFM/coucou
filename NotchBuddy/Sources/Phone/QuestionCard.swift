@@ -57,7 +57,7 @@ struct QuestionCard: View {
             }
         }
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard(tint: .cyan)
         .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.cyan.opacity(0.7), lineWidth: 1.5))
         .onAppear { reset() }
         .onChange(of: payload) { reset() }

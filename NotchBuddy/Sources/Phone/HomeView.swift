@@ -1,81 +1,148 @@
 import SwiftUI
+import UIKit
 
-/// Main screen: the notch on top, every agent session from the Mac (most
-/// urgent first), then every service Mochi.
+/// The tabs, in glass on iOS 26: the agents, the services, the decisions you
+/// took, and a search through every turn. The agent that needs you most rides
+/// above the tabs, like Music's mini player.
+enum CoucouTab: Hashable { case agents, services, history, search }
+
 struct HomeView: View {
     let link: PhoneLink
-    @State private var path: [String] = []
+    @State private var tab: CoucouTab = .agents
+    @State private var agentsPath: [String] = []
+    @State private var servicesPath: [String] = []
     @AppStorage("onboardingDone") private var onboardingDone = false
 
     var body: some View {
+        TabView(selection: $tab) {
+            Tab("Agents", systemImage: "sparkles", value: CoucouTab.agents) {
+                AgentsTab(link: link, path: $agentsPath)
+            }
+            Tab("Services", systemImage: "square.grid.2x2", value: CoucouTab.services) {
+                ServicesTab(link: link, path: $servicesPath)
+            }
+            Tab("History", systemImage: "clock.arrow.circlepath", value: CoucouTab.history) {
+                NavigationStack { HistoryView(link: link) }
+            }
+            Tab(value: CoucouTab.search, role: .search) {
+                SearchTab(link: link)
+            }
+        }
+        .leadAgentAccessory(link: link)
+        // A widget tile was tapped: open that Mochi.
+        .onOpenURL { url in
+            if let id = SharedSession.sessionId(from: url) { open(id) }
+        }
+        // A notification, Siri, Spotlight or the Control Center asked for a session.
+        .onChange(of: link.openPillId) { _, id in
+            guard let id else { return }
+            open(id)
+            link.openPillId = nil
+        }
+        .onContinueUserActivity(SpotlightIndex.activityType) { activity in
+            if let id = SpotlightIndex.pillId(from: activity) { open(id) }
+        }
+        .sheet(isPresented: Binding(get: { link.reviewFingerprint != nil },
+                                    set: { if !$0 { link.reviewFingerprint = nil } })) {
+            if let fingerprint = link.reviewFingerprint {
+                ReviewSheet(link: link, fingerprint: fingerprint)
+            }
+        }
+        // First launch: how to connect the Mac.
+        .fullScreenCover(isPresented: Binding(get: { !onboardingDone }, set: { if !$0 { onboardingDone = true } })) {
+            OnboardingView()
+        }
+    }
+
+    private func open(_ id: String) {
+        if PillCatalog.isSession(id) {
+            tab = .agents
+            agentsPath = [id]
+        } else {
+            tab = .services
+            servicesPath = [id]
+        }
+    }
+}
+
+/// Every agent session from the Mac, most urgent first. Swipe right to allow
+/// (Face ID), left to deny; press and hold for a peek at the last turn.
+struct AgentsTab: View {
+    let link: PhoneLink
+    @Binding var path: [String]
+    @Namespace private var zoom
+
+    var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    NotchHeader(sessions: link.sessions, status: link.status)
+            List {
+                Section {
+                    NotchHeader(link: link)
+                        // Shrinks and fades as the list scrolls, like Wallet.
+                        .visualEffect { content, proxy in
+                            let y = proxy.frame(in: .scrollView).minY
+                            let pull = min(0, y - 8)
+                            return content
+                                .scaleEffect(max(0.86, 1 + pull / 500), anchor: .top)
+                                .opacity(max(0, 1 + pull / 160))
+                        }
                     TodayCard(link: link)
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                .listRowSeparator(.hidden)
+
+                Section {
                     if link.sessions.isEmpty {
                         EmptySessionsView(status: link.status)
-                    } else {
-                        VStack(spacing: 0) {
-                            let sorted = link.sessions.sortedByUrgency()
-                            ForEach(sorted) { session in
-                                NavigationLink(value: session.id) {
-                                    SessionRow(session: session)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                    }
+                    ForEach(link.sessions.sortedByUrgency()) { session in
+                        NavigationLink(value: session.id) {
+                            SessionRow(session: session, zoom: zoom)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            if session.needsApproval && !session.approvalFingerprint.isEmpty {
+                                Button {
+                                    Task { _ = await QuickDecision.allow(session, link: link) }
+                                } label: {
+                                    Label("Allow", systemImage: "faceid")
                                 }
-                                .buttonStyle(.plain)
-                                if session.id != sorted.last?.id {
-                                    Divider().padding(.leading, 64)
+                                .tint(.green)
+                            }
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            if session.needsApproval && !session.approvalFingerprint.isEmpty {
+                                Button(role: .destructive) {
+                                    Task { _ = await QuickDecision.deny(session, link: link) }
+                                } label: {
+                                    Label("Deny", systemImage: "xmark")
                                 }
                             }
                         }
-                        .padding(.vertical, 6)
-                        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
-                        // Sessions move to their new place and change status smoothly.
-                        .animation(.spring(duration: 0.5, bounce: 0.2),
-                                   value: link.sessions.map { "\($0.id)|\($0.statusText)" })
+                        .contextMenu {
+                            SessionMenu(link: link, session: session)
+                        } preview: {
+                            SessionPeek(session: session, turn: link.turns[session.id])
+                        }
                     }
-                    ServicesList(services: link.services)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .background(Color.black)
+            // Sessions move to their new place and change status smoothly.
+            .animation(.spring(duration: 0.5, bounce: 0.2),
+                       value: link.sessions.map { "\($0.id)|\($0.statusText)" })
             .refreshable { await link.refresh() }
+            .navigationTitle("Coucou")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: String.self) { id in
-                if PillCatalog.isSession(id) {
-                    SessionDetailView(link: link, sessionId: id)
-                } else {
-                    ServiceDetailView(link: link, pillId: id)
-                }
-            }
-            // A widget tile was tapped: open that Mochi.
-            .onOpenURL { url in
-                if let id = SharedSession.sessionId(from: url) { path = [id] }
-            }
-            // A notification, Siri or the Control Center asked for a session.
-            .onChange(of: link.openPillId) { _, id in
-                guard let id else { return }
-                path = [id]
-                link.openPillId = nil
-            }
-            .sheet(isPresented: Binding(get: { link.reviewFingerprint != nil },
-                                        set: { if !$0 { link.reviewFingerprint = nil } })) {
-                if let fingerprint = link.reviewFingerprint {
-                    ReviewSheet(link: link, fingerprint: fingerprint)
-                }
-            }
-            // First launch: how to connect the Mac.
-            .fullScreenCover(isPresented: Binding(get: { !onboardingDone }, set: { if !$0 { onboardingDone = true } })) {
-                OnboardingView()
+                SessionDetailView(link: link, sessionId: id)
+                    // The Mochi tile grows into the session, and shrinks back.
+                    .navigationTransition(.zoom(sourceID: id, in: zoom))
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        HistoryView(link: link)
-                    } label: {
-                        Image(systemName: "clock.arrow.circlepath")
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         AboutView(link: link)
@@ -84,8 +151,8 @@ struct HomeView: View {
                     }
                 }
                 #if DEBUG
-                // Test screens, in builds run from Xcode only (the link test has its own "Kit" button).
-                ToolbarItem(placement: .topBarTrailing) {
+                // Test screens, in builds run from Xcode only.
+                ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         LinkTestView(link: link)
                     } label: {
@@ -98,12 +165,210 @@ struct HomeView: View {
     }
 }
 
-/// The black island at the top: Mochi with the most urgent state and a summary.
-struct NotchHeader: View {
-    let sessions: [SessionItem]
-    let status: PhoneLink.Status
+/// The service Mochi (GitHub, Stripe…), each with what it saw.
+struct ServicesTab: View {
+    let link: PhoneLink
+    @Binding var path: [String]
+    @Namespace private var zoom
 
     var body: some View {
+        NavigationStack(path: $path) {
+            ScrollView {
+                ServicesList(services: link.services)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
+            .background(Color.black)
+            .refreshable { await link.refresh() }
+            .navigationTitle("Services")
+            .navigationDestination(for: String.self) { id in
+                ServiceDetailView(link: link, pillId: id)
+            }
+        }
+    }
+}
+
+/// Allow (Face ID) and Deny without opening the session.
+@MainActor
+enum QuickDecision {
+    static func allow(_ session: SessionItem, link: PhoneLink) async -> Bool {
+        guard await OwnerCheck.confirm(reason: "Allow this command on your Mac") else {
+            Haptics.warning()
+            return false
+        }
+        let summary = session.approvalCommand.isEmpty ? "Permission" : session.approvalCommand
+        let sent = await link.decide(.allow, fingerprint: session.approvalFingerprint, pillId: session.id,
+                                     summary: String(summary.prefix(200)))
+        if sent { Haptics.success() } else { Haptics.error() }
+        return sent
+    }
+
+    static func deny(_ session: SessionItem, link: PhoneLink) async -> Bool {
+        let summary = session.approvalCommand.isEmpty ? "Permission" : session.approvalCommand
+        let sent = await link.decide(.deny, fingerprint: session.approvalFingerprint, pillId: session.id,
+                                     summary: String(summary.prefix(200)))
+        if sent { Haptics.impact() } else { Haptics.error() }
+        return sent
+    }
+}
+
+/// What a long press on a session offers.
+struct SessionMenu: View {
+    let link: PhoneLink
+    let session: SessionItem
+
+    var body: some View {
+        if session.needsApproval && !session.approvalFingerprint.isEmpty {
+            Button {
+                Task { _ = await QuickDecision.allow(session, link: link) }
+            } label: {
+                Label("Allow", systemImage: "faceid")
+            }
+            Button(role: .destructive) {
+                Task { _ = await QuickDecision.deny(session, link: link) }
+            } label: {
+                Label("Deny", systemImage: "xmark")
+            }
+        }
+        if !session.approvalCommand.isEmpty {
+            Button {
+                UIPasteboard.general.string = session.approvalCommand
+            } label: {
+                Label("Copy the command", systemImage: "doc.on.doc")
+            }
+        }
+        if let answer = link.turns[session.id]?.finalMessage, !answer.isEmpty {
+            Button {
+                UIPasteboard.general.string = answer
+            } label: {
+                Label("Copy Claude's answer", systemImage: "text.quote")
+            }
+        }
+        Button {
+            link.openPillId = session.id
+        } label: {
+            Label("Open", systemImage: "arrow.up.forward.app")
+        }
+    }
+}
+
+/// The peek of a long press: who, where it is, and the last turn in short.
+struct SessionPeek: View {
+    let session: SessionItem
+    let turn: TurnSnapshot?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                MochiStill(state: session.state, bodyHex: session.color)
+                    .padding(6)
+                    .frame(width: 48, height: 48)
+                    .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 13))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.title).font(.headline)
+                    Text(session.statusText).font(.subheadline.weight(.semibold)).foregroundStyle(session.statusColor)
+                }
+            }
+            if session.needsApproval, !session.approvalCommand.isEmpty {
+                Text(session.approvalCommand)
+                    .font(.callout.monospaced())
+                    .lineLimit(5)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            }
+            if let turn {
+                Text(turn.headline)
+                    .font(.callout)
+                    .lineLimit(3)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.accentColor.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
+                HStack(spacing: 14) {
+                    Label("\(turn.actions.count)", systemImage: "wrench.and.screwdriver")
+                    Label("\(turn.files.count)", systemImage: "doc.text")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                if !turn.finalMessage.isEmpty {
+                    Text(turn.finalMessage).font(.callout).foregroundStyle(.secondary).lineLimit(6)
+                }
+            }
+        }
+        .padding(18)
+        .frame(width: 340, alignment: .leading)
+        .background(Color(white: 0.09))
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+/// The black island at the top: Mochi with the most urgent state and a
+/// summary. When a command waits for your OK, Allow and Deny grow out of it
+/// (Liquid Glass morphing on iOS 26) and fold back once answered.
+struct NotchHeader: View {
+    let link: PhoneLink
+    @Namespace private var glass
+    @State private var sending = false
+    @State private var approved = false
+
+    private var sessions: [SessionItem] { link.sessions }
+
+    /// The session waiting for an OK this iPhone can give.
+    private var waiting: SessionItem? {
+        sessions.sortedByUrgency().first { $0.needsApproval && !$0.approvalFingerprint.isEmpty }
+    }
+
+    var body: some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                GlassEffectContainer(spacing: 10) {
+                    VStack(spacing: 10) {
+                        summary
+                            .glassEffect(waiting != nil ? .regular.tint(Color.orange.opacity(0.18)) : .regular,
+                                         in: RoundedRectangle(cornerRadius: 28))
+                            .glassEffectID("island", in: glass)
+                        if let waiting {
+                            HStack(spacing: 10) {
+                                denyButton(waiting)
+                                    .glassEffect(.regular.tint(Color.red.opacity(0.35)).interactive(), in: Capsule())
+                                    .glassEffectID("deny", in: glass)
+                                allowButton(waiting)
+                                    .glassEffect(.regular.tint(Color.green.opacity(0.55)).interactive(), in: Capsule())
+                                    .glassEffectID("allow", in: glass)
+                            }
+                        }
+                    }
+                }
+            } else {
+                VStack(spacing: 10) {
+                    summary
+                        .background(Color.black, in: RoundedRectangle(cornerRadius: 28))
+                        .overlay(RoundedRectangle(cornerRadius: 28)
+                            .strokeBorder(waiting != nil ? Color.orange.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1.5))
+                    if let waiting {
+                        HStack(spacing: 10) {
+                            denyButton(waiting).background(Color.red.opacity(0.3), in: Capsule())
+                            allowButton(waiting).background(Color.green.opacity(0.5), in: Capsule())
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+            }
+        }
+        .overlay {
+            if approved {
+                DrawnCheckmark(size: 64)
+                    .padding(14)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.55, bounce: 0.3), value: waiting?.approvalFingerprint)
+        .animation(.spring(duration: 0.5, bounce: 0.2), value: "\(headline)|\(detail ?? "")")
+        .sensoryFeedback(.success, trigger: approved) { _, new in new }
+    }
+
+    private var summary: some View {
         HStack(spacing: 14) {
             MochiLive(state: sessions.leadState)
                 .frame(width: 52, height: 52)
@@ -124,17 +389,52 @@ struct NotchHeader: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .background(Color.black, in: RoundedRectangle(cornerRadius: 28))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
-                .strokeBorder(sessions.contains(where: \.isWaitingForYou) ? Color.orange.opacity(0.8) : Color.white.opacity(0.12),
-                              lineWidth: 1.5)
-        )
-        .animation(.spring(duration: 0.5, bounce: 0.2), value: "\(headline)|\(detail ?? "")")
+    }
+
+    private func denyButton(_ session: SessionItem) -> some View {
+        Button {
+            Task {
+                sending = true
+                _ = await QuickDecision.deny(session, link: link)
+                sending = false
+            }
+        } label: {
+            Label("Deny", systemImage: "xmark")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .disabled(sending)
+    }
+
+    private func allowButton(_ session: SessionItem) -> some View {
+        Button {
+            Task {
+                sending = true
+                if await QuickDecision.allow(session, link: link) {
+                    approved = true
+                    try? await Task.sleep(for: .seconds(1.4))
+                    approved = false
+                }
+                sending = false
+            }
+        } label: {
+            Label("Allow", systemImage: "faceid")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .disabled(sending)
     }
 
     private var headline: String {
-        switch status {
+        switch link.status {
         case .noAccount: return "iCloud not connected"
         case .failed: return "Can't reach iCloud"
         default: break
@@ -150,13 +450,11 @@ struct NotchHeader: View {
 
 struct SessionRow: View {
     let session: SessionItem
+    var zoom: Namespace.ID? = nil
 
     var body: some View {
         HStack(spacing: 12) {
-            MochiLive(state: session.state, fps: 20)
-                .padding(4)
-                .frame(width: 40, height: 40)
-                .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
+            tile
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.title)
                     .font(.body.weight(.semibold))
@@ -171,18 +469,32 @@ struct SessionRow: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(session.statusText)
-                    .font(.subheadline.weight(session.isWaitingForYou ? .semibold : .regular))
-                    .foregroundStyle(session.statusColor)
-                    .contentTransition(.interpolate)
+                HStack(spacing: 5) {
+                    StateSymbol(session: session).font(.caption)
+                    Text(session.statusText)
+                        .font(.subheadline.weight(session.isWaitingForYou ? .semibold : .regular))
+                        .foregroundStyle(session.statusColor)
+                        .contentTransition(.interpolate)
+                }
                 Text(session.updatedAt, style: .relative)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder private var tile: some View {
+        let base = MochiLive(state: session.state, fps: 20)
+            .padding(4)
+            .frame(width: 40, height: 40)
+            .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 11))
+        if let zoom {
+            base.matchedTransitionSource(id: session.id, in: zoom)
+        } else {
+            base
+        }
     }
 }
 
@@ -198,7 +510,7 @@ struct EmptySessionsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(24)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
     }
 
     private var message: String {
@@ -241,7 +553,7 @@ struct TodayCard: View {
                 stat("\(decisionsToday)", decisionsToday == 1 ? "OK given" : "OKs given")
             }
             .padding(.vertical, 12)
-            .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+            .glassCard()
             .overlay(alignment: .topLeading) {
                 Text("TODAY")
                     .font(.caption2.weight(.bold))
@@ -259,5 +571,52 @@ struct TodayCard: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+extension View {
+    /// The agent that needs you most, above the tabs (iOS 26), like Music's mini player.
+    @ViewBuilder
+    func leadAgentAccessory(link: PhoneLink) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .tabViewBottomAccessory { LeadAgentBar(link: link) }
+                .tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            self
+        }
+    }
+}
+
+/// The mini player: Mochi, the agent and what it does. A tap opens it.
+struct LeadAgentBar: View {
+    let link: PhoneLink
+
+    var body: some View {
+        let lead = link.sessions.sortedByUrgency().first
+        Button {
+            if let lead { link.openPillId = lead.id }
+        } label: {
+            HStack(spacing: 10) {
+                MochiLive(state: link.sessions.leadState, fps: 20)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(lead.map { "\($0.pillName) · \($0.title)" } ?? "All quiet")
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Text(lead?.statusText ?? "No agent working")
+                        .font(.caption)
+                        .foregroundStyle(lead?.statusColor ?? .secondary)
+                        .lineLimit(1)
+                        .contentTransition(.interpolate)
+                }
+                Spacer(minLength: 0)
+                if let lead { StateSymbol(session: lead) }
+            }
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(duration: 0.5, bounce: 0.2), value: lead?.statusText)
     }
 }

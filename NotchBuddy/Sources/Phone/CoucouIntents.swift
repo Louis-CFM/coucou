@@ -67,3 +67,24 @@ struct CoucouShortcuts: AppShortcutsProvider {
                     systemImageName: "sparkles")
     }
 }
+
+/// A Focus filter: in a Focus (Sleep, Work…), Coucou can keep quiet about
+/// finished and failed agents and only notify what waits on you.
+struct CoucouFocusFilter: SetFocusFilterIntent {
+    static let title: LocalizedStringResource = "Coucou"
+    static var description: IntentDescription {
+        IntentDescription("Choose what Coucou notifies during this Focus.")
+    }
+
+    @Parameter(title: "Only approvals and questions", default: false)
+    var onlyWaiting: Bool
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: onlyWaiting ? "Only approvals and questions" : "Everything")
+    }
+
+    func perform() async throws -> some IntentResult {
+        UserDefaults.standard.set(onlyWaiting, forKey: PhoneSettings.focusOnlyWaitingKey)
+        return .result()
+    }
+}

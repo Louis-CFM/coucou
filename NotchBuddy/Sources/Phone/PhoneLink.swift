@@ -253,6 +253,7 @@ final class PhoneLink {
             archive.update(from: turns[turn.pillId], to: turn)
             if archive.past != before.past || archive.today != before.today { archive.save() }
             turns[turn.pillId] = turn
+            SpotlightIndex.index(turn)
             return false   // nothing for the widgets
         }
         if record.recordType == ServiceSnapshot.recordType {

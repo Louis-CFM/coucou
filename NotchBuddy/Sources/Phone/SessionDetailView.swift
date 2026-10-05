@@ -59,7 +59,20 @@ struct SessionDetailView: View {
                     .padding(40)
             }
         }
-        .background(Color.black)
+        // The agent's color, moving softly behind the top of the screen.
+        .background(alignment: .top) {
+            ZStack {
+                Color.black
+                if let session {
+                    AgentBackdrop(hex: session.color)
+                        .frame(height: 420)
+                        .mask(LinearGradient(colors: [.black, .black.opacity(0.6), .clear],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+            .ignoresSafeArea()
+        }
         // The composer stays at the bottom, like a chat.
         .safeAreaInset(edge: .bottom) {
             if let session, session.id == "integration_claude" || session.id == "agent_cursor" {
@@ -219,7 +232,7 @@ struct SessionDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
     }
 }
 
