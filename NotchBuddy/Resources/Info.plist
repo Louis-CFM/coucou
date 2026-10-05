@@ -30,7 +30,7 @@
 		<true/>
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pour sauter au terminal, envoyer des mails et piloter Musique.</string>
+	<string>Pour sauter au terminal, envoyer des mails et piloter Musique ou Spotify.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

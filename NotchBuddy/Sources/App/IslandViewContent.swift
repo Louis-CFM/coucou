@@ -1600,7 +1600,7 @@ struct IntegrationCardView: View {
             return false  // coming soon
         case "integration_music":
             #if !APPSTORE
-            return true  // Apple Music is always installed on macOS
+            return true  // Apple Music is always installed on macOS; Spotify is optional
             #else
             return false
             #endif
@@ -1684,7 +1684,7 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
-    // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
+    // Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
         #if !APPSTORE
         guard task.id == "integration_music" else { return false }
@@ -1924,7 +1924,7 @@ struct IntegrationCardView: View {
                         }
                     } else if task.id == "integration_music" {
                         #if !APPSTORE
-                        Button("Open Music") { MusicController.shared.openMusic() }
+                        Button("Open \(MusicController.shared.player.name)") { MusicController.shared.openMusic() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
@@ -3875,7 +3875,7 @@ struct MusicCardView: View {
                     Circle()
                         .fill(Color(hex: "#F4505E"))
                         .frame(width: 7, height: 7)
-                    Text("Apple Music")
+                    Text(controller.player.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Spacer(minLength: 2)
@@ -3884,7 +3884,7 @@ struct MusicCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                Text("Allow Coucou to control Music")
+                Text("Allow Coucou to control \(controller.player.name)")
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
                     .padding(.leading, 108)

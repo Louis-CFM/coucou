@@ -130,7 +130,7 @@ targets:
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
-        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique."
+        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique ou Spotify."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
