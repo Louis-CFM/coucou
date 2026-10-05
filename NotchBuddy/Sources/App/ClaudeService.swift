@@ -189,6 +189,7 @@ final class ClaudeService {
     // The Claude Code chat is one CLI session, resumed turn after turn.
     private var claudeCodeSessionId = UUID().uuidString.lowercased()
     private var claudeCodeSessionStarted = false
+    private var claudeCodeTurnRunning = false
 
     func clearConversation() {
         conversationMessages = []
@@ -454,6 +455,16 @@ final class ClaudeService {
     // MARK: - Claude Code chat (the user's Claude plan, through the claude CLI)
 
     private func chatClaudeCode(query: String, context: PromptContext?, state: AppState) async {
+        // Two turns at once would both claim the same session ID and break the conversation.
+        guard !claudeCodeTurnRunning else {
+            await showError("Mochi is still answering. Ask again in a moment.", state: state)
+            return
+        }
+        claudeCodeTurnRunning = true
+        defer { claudeCodeTurnRunning = false }
+        // A new conversation can start while this turn runs: only touch this turn's session.
+        let sessionId = claudeCodeSessionId
+        let resume = claudeCodeSessionStarted
         var prompt = query
         if conversationMessages.isEmpty, let context {
             switch context {
@@ -473,7 +484,7 @@ final class ClaudeService {
         state.stateOverride = .thinking
         do {
             let final = try await ClaudeCodeChat.send(
-                prompt: prompt, sessionId: claudeCodeSessionId, resume: claudeCodeSessionStarted,
+                prompt: prompt, sessionId: sessionId, resume: resume,
                 model: state.claudeCodeChatModel, systemPrompt: systemPrompt
             ) { visible in
                 if state.stateOverride == .thinking { state.stateOverride = nil }
@@ -481,6 +492,7 @@ final class ClaudeService {
                     state.chatHistory[idx].content = visible
                 }
             }
+            guard sessionId == claudeCodeSessionId else { state.stateOverride = nil; return }
             claudeCodeSessionStarted = true
             conversationMessages.append(["role": "assistant", "content": final])
             if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
@@ -490,11 +502,12 @@ final class ClaudeService {
             state.view = .prompt
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
         } catch {
+            guard sessionId == claudeCodeSessionId else { state.stateOverride = nil; return }
             conversationMessages.removeLast()
             state.chatHistory.removeAll { $0.id == msgId }
             state.stateOverride = nil
             // A failed first turn may have saved the session ID already; never reuse it.
-            if !claudeCodeSessionStarted { claudeCodeSessionId = UUID().uuidString.lowercased() }
+            if !resume { claudeCodeSessionId = UUID().uuidString.lowercased() }
             await showError(error.localizedDescription, state: state)
         }
     }

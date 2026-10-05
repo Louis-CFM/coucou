@@ -369,8 +369,6 @@ final class HookServer: @unchecked Sendable {
             isExternalAgent = false
         }
 
-        let focused = state.focusId == agentId
-
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
         if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
@@ -407,6 +405,14 @@ final class HookServer: @unchecked Sendable {
             if !resolved { return }
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
+
+        // A session pruned while quiet gets its pill back on any event, not only on a new prompt.
+        if ClaudeSessionPills.isSessionPill(agentId), name != "SessionEnd" {
+            upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, appBundleId: bundleId)
+        }
+
+        // Read after the approval block: dismissing the card gives focus back to the previous pill.
+        let focused = state.focusId == agentId
 
         switch name {
 
@@ -531,11 +537,17 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func claudePill(for sessionId: String) -> String {
         let state = AppState.shared
-        let isWaiting: (String) -> Bool = { id in
-            state.tasks.first { $0.id == id }.map { $0.state == .approval || $0.state == .question } ?? false
+        let activity: (String) -> ClaudeSessionPills.Activity = { id in
+            switch state.tasks.first(where: { $0.id == id })?.state {
+            case .approval?, .question?: return .waitingOnUser
+            case .working?, .thinking?:  return .working
+            default:                     return .idle
+            }
         }
-        let pill = claudePills.pill(for: sessionId, isWaiting: isWaiting)
-        for stale in claudePills.pruneStale(isWaiting: isWaiting) where stale != pill {
+        let pill = claudePills.pill(for: sessionId, activity: activity)
+        // Never pull the pill the user is looking at from under them.
+        let pruned = claudePills.pruneStale { $0 == state.focusId ? .waitingOnUser : activity($0) }
+        for stale in pruned where stale != pill {
             state.clearSessionDiffs(for: stale)
             state.removeTask(id: stale)
         }
@@ -798,6 +810,13 @@ final class HookServer: @unchecked Sendable {
         #else
         let isCodexRequest = false
         #endif
+        guard isCodexRequest || Self.validateAgent(rawAgent) == nil else {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
@@ -805,13 +824,6 @@ final class HookServer: @unchecked Sendable {
             pillId = "agent_cursor"
         } else {
             pillId = claudePill(for: sessionId)
-        }
-        guard isCodexRequest || Self.validateAgent(rawAgent) == nil else {
-            Task.detached { [weak self] in
-                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
-                close(fd)
-            }
-            return
         }
 
         // Displace any previous question waiting for an answer.
@@ -872,7 +884,7 @@ final class HookServer: @unchecked Sendable {
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if !appBundleId.isEmpty { state.tasks[idx].sessionAppBundleId = appBundleId }
+            if let app = SessionApp.remember(appBundleId) { state.tasks[idx].sessionAppBundleId = app }
             return
         }
         // Transient: create and insert after the main pill
@@ -882,7 +894,7 @@ final class HookServer: @unchecked Sendable {
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
         if !cwd.isEmpty { task.sessionCwd = cwd }
-        if !appBundleId.isEmpty { task.sessionAppBundleId = appBundleId }
+        if let app = SessionApp.remember(appBundleId) { task.sessionAppBundleId = app }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {

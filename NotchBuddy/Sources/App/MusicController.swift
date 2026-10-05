@@ -143,6 +143,7 @@ final class MusicController: ObservableObject {
             .sink { [weak self] integrations in
                 guard let self else { return }
                 if integrations.contains("integration_music") {
+                    self.syncTaskName()
                     if self.player.isRunning, self.player.automationGranted {
                         self.fetchAndApply()
                     }
@@ -198,6 +199,7 @@ final class MusicController: ObservableObject {
         if source != player {
             guard playing else { return }
             player = source
+            AppState.shared.musicAutomationDenied = false   // the denial was for the other app
         }
         let wasPlaying = AppState.shared.musicPlaying
 

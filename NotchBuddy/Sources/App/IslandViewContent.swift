@@ -1655,6 +1655,7 @@ struct IntegrationCardView: View {
 
     // Workspace/agent pill with active session: show ticker layout
     private var agentSessionActive: Bool {
+        if ClaudeSessionPills.isSessionPill(task.id) { return task.state != .idle || !task.steps.isEmpty }
         guard let def = PillCatalog.definition(for: task.id) else { return false }
         guard def.category == .workspace || def.category == .agent else { return false }
         return task.state != .idle || !task.steps.isEmpty
@@ -1927,7 +1928,7 @@ struct IntegrationCardView: View {
                 HStack(spacing: 8) {
                     if ClaudeSessionPills.isSessionPill(task.id) {
                         Button("Open \(SessionApp.name(bundleId: task.sessionAppBundleId) ?? "terminal")") {
-                            if task.sessionAppBundleId?.lowercased().contains("vscode") == true {
+                            if SessionApp.resolve(task.sessionAppBundleId)?.lowercased().contains("vscode") == true {
                                 openVSCode()
                             } else {
                                 SessionApp.activate(bundleId: task.sessionAppBundleId)

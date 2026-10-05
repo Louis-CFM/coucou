@@ -48,16 +48,29 @@ enum ClaudeSessionPillsTests {
         var waiting = ClaudeSessionPills()
         _ = waiting.pill(for: "aaaaaaaa-1", now: t0)
         check("a main pill waiting on the user is never taken over",
-              waiting.pill(for: "bbbbbbbb-2", now: later) { $0 == main }, "claude_bbbbbbbb")
+              waiting.pill(for: "bbbbbbbb-2", now: t0.addingTimeInterval(10 * ClaudeSessionPills.workingStaleAfter)) {
+                  $0 == main ? .waitingOnUser : .idle
+              }, "claude_bbbbbbbb")
+
+        var working = ClaudeSessionPills()
+        _ = working.pill(for: "aaaaaaaa-1", now: t0)
+        check("a long Bash run keeps its main pill",
+              working.pill(for: "bbbbbbbb-2", now: later) { $0 == main ? .working : .idle }, "claude_bbbbbbbb")
+        let muchLater = t0.addingTimeInterval(ClaudeSessionPills.workingStaleAfter + 1)
+        check("a session stuck working for hours gives it up",
+              working.pill(for: "cccccccc-3", now: muchLater) { $0 == main ? .working : .idle }, main)
 
         var prune = ClaudeSessionPills()
         _ = prune.pill(for: "aaaaaaaa-1", now: t0)
         _ = prune.pill(for: "bbbbbbbb-2", now: t0)
         _ = prune.pill(for: "cccccccc-3", now: later)
         check("nothing is pruned before the delay", prune.pruneStale(now: t0).first, nil)
+        check("a working extra pill is kept", prune.pruneStale(now: later) { _ in .working }.first, nil)
         check("a quiet extra pill is pruned", prune.pruneStale(now: later).sorted().joined(separator: ","), "claude_bbbbbbbb")
         check("an extra pill waiting on the user is kept",
-              prune.pruneStale(now: later.addingTimeInterval(ClaudeSessionPills.staleAfter + 1)) { $0 == "claude_cccccccc" }.first, nil)
+              prune.pruneStale(now: muchLater.addingTimeInterval(ClaudeSessionPills.workingStaleAfter)) {
+                  $0 == "claude_cccccccc" ? .waitingOnUser : .idle
+              }.first, nil)
 
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {

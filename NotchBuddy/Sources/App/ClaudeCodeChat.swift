@@ -28,7 +28,8 @@ enum ClaudeCodeChat {
     static func executableURL() -> URL? {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let candidates = ["\(home)/.local/bin/claude", "\(home)/.claude/local/claude",
-                          "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
+                          "/opt/homebrew/bin/claude", "/usr/local/bin/claude",
+                          "\(home)/.npm-global/bin/claude", "\(home)/.bun/bin/claude"]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
             .map { URL(fileURLWithPath: $0) }
     }
