@@ -4707,7 +4707,7 @@ struct SettingsIslandView: View {
                         .foregroundColor(Color(hex: "#C5C8CD"))
                     Spacer()
                     HStack(spacing: 6) {
-                        ForEach([10, 15, 30], id: \.self) { s in
+                        ForEach([5, 10, 15, 30], id: \.self) { s in
                             Button("\(s)s") {
                                 state.autoCloseInterval = Double(s)
                             }
