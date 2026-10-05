@@ -149,6 +149,28 @@ fn normalize_cursor_session(map: &mut serde_json::Map<String, serde_json::Value>
     }
 }
 
+fn normalize_cursor_cwd(map: &mut serde_json::Map<String, serde_json::Value>) {
+    let has_cwd = map
+        .get("cwd")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| !value.is_empty());
+
+    if has_cwd {
+        return;
+    }
+
+    if let Some(cwd) = map
+        .get("workspace_roots")
+        .and_then(|value| value.as_array())
+        .and_then(|roots| roots.first())
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+    {
+        map.insert("cwd".into(), serde_json::Value::String(cwd));
+    }
+}
+
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -196,6 +218,7 @@ fn read_event() -> Option<(String, String)> {
 
     if is_cursor {
         normalize_cursor_session(map);
+        normalize_cursor_cwd(map);
         event = normalize_cursor_event(&event).to_string();
     }
 
@@ -362,5 +385,19 @@ mod tests {
         normalize_cursor_session(&mut map);
 
         assert_eq!(map["session_id"], "conversation-123");
+    }
+
+    #[test]
+    fn cursor_workspace_root_becomes_cwd() {
+        let mut map = serde_json::json!({
+            "workspace_roots": ["C:\\dev\\project"]
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        normalize_cursor_cwd(&mut map);
+
+        assert_eq!(map["cwd"], "C:\\dev\\project");
     }
 }
