@@ -113,6 +113,7 @@ targets:
         excludes:
           - "Phone/**"
           - "Widgets/**"
+          - "NotificationContent/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -166,6 +167,7 @@ targets:
         excludes:
           - "Phone/**"
           - "Widgets/**"
+          - "NotificationContent/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -217,6 +219,7 @@ targets:
     deploymentTarget: "18.0"
     dependencies:
       - target: CoucouWidgets
+      - target: CoucouNotificationContent
     sources:
       - path: Sources/Phone
         type: group
@@ -314,6 +317,52 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
         CODE_SIGN_ENTITLEMENTS: Resources/CoucouWidgets.entitlements
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  # The expanded approval notification: Mochi alive, with the command.
+  CoucouNotificationContent:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/NotificationContent
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/MochiLive.swift
+      - path: Sources/Phone/MacStubs.swift
+    info:
+      path: Resources/InfoNotificationContent.plist
+      properties:
+        CFBundleName: CoucouNotificationContent
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
+        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: COUCOU_APPROVAL
+            UNNotificationExtensionInitialContentSizeRatio: 0.45
+            UNNotificationExtensionDefaultContentHidden: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationContent
+        PRODUCT_NAME: CoucouNotificationContent
+        INFOPLIST_FILE: Resources/InfoNotificationContent.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: 256AUJ9555
         CODE_SIGNING_REQUIRED: YES
         CODE_SIGNING_ALLOWED: YES
