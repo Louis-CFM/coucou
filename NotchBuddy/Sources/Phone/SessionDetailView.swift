@@ -64,9 +64,9 @@ struct SessionDetailView: View {
             ZStack {
                 Color.black
                 if let session {
-                    AgentBackdrop(hex: session.color)
-                        .frame(height: 420)
-                        .mask(LinearGradient(colors: [.black, .black.opacity(0.6), .clear],
+                    AgentBackdrop(hex: PillCatalog.definition(for: session.id)?.color ?? session.color)
+                        .frame(height: 360)
+                        .mask(LinearGradient(colors: [.black, .black.opacity(0.5), .clear],
                                              startPoint: .top, endPoint: .bottom))
                         .frame(maxHeight: .infinity, alignment: .top)
                 }

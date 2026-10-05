@@ -18,16 +18,6 @@ extension View {
             background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: cornerRadius))
         }
     }
-
-    /// A glass button (iOS 26), bordered before. Prominent buttons are filled with the tint.
-    @ViewBuilder
-    func glassButton(prominent: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            if prominent { buttonStyle(.glassProminent) } else { buttonStyle(.glass) }
-        } else {
-            if prominent { buttonStyle(.borderedProminent) } else { buttonStyle(.bordered) }
-        }
-    }
 }
 
 /// The agent's color, moving slowly like the background of Apple Music. Drawn
@@ -35,11 +25,23 @@ extension View {
 struct AgentBackdrop: View {
     let hex: String
 
+    /// A soft glow from the top, fading into black.
     private var colors: [Color] {
-        let base = Color(hex: hex)
-        return [base.opacity(0.75), base.opacity(0.45), base.opacity(0.65),
-                base.opacity(0.35), Color.black.opacity(0.6), base.opacity(0.3),
-                Color.black, Color.black, Color.black]
+        let base = Color(hex: Self.glowHex(for: hex))
+        return [base.opacity(0.42), base.opacity(0.26), base.opacity(0.36),
+                base.opacity(0.16), base.opacity(0.06), base.opacity(0.14),
+                Color.clear, Color.clear, Color.clear]
+    }
+
+    /// White and grey agents (VS Code, Cursor) would make a dull grey haze:
+    /// they glow in a deep blue instead.
+    static func glowHex(for hex: String) -> String {
+        let digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard digits.count == 6, let value = Int(digits, radix: 16) else { return "#3B5BDB" }
+        let r = Double((value >> 16) & 0xFF) / 255, g = Double((value >> 8) & 0xFF) / 255, b = Double(value & 0xFF) / 255
+        let high = max(r, g, b), low = min(r, g, b)
+        let saturation = high == 0 ? 0 : (high - low) / high
+        return saturation < 0.25 ? "#3B5BDB" : hex
     }
 
     /// The middle points drift a little; the edges stay put.
@@ -128,5 +130,79 @@ struct StateSymbol: View {
         default:
             Image(systemName: "moon.zzz.fill").foregroundStyle(.tertiary)
         }
+    }
+}
+
+/// Deny and Allow, the iOS way: a quiet Deny, a bright Allow with Face ID.
+struct ApprovalChoiceButtons: View {
+    var disabled = false
+    let deny: () -> Void
+    let allow: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: deny) {
+                Text("Deny")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.white.opacity(0.14), in: Capsule())
+            }
+            Button(action: allow) {
+                Label("Allow", systemImage: "faceid")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.white, in: Capsule())
+            }
+        }
+        .buttonStyle(PressableButtonStyle())
+        .disabled(disabled)
+        .opacity(disabled ? 0.6 : 1)
+    }
+}
+
+/// Shrinks a little under the finger, like system buttons.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
+    }
+}
+
+/// The command waiting for your OK: who asks, the exact command, Deny / Allow.
+struct ApprovalPanel: View {
+    let session: SessionItem
+    var disabled = false
+    let deny: () -> Void
+    let allow: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Circle().fill(Color.orange).frame(width: 8, height: 8)
+                    .shadow(color: .orange.opacity(0.8), radius: 4)
+                Text("\(session.pillName) asks to run")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+                Spacer(minLength: 0)
+                Text(session.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Text(session.approvalCommand.isEmpty ? "A permission" : session.approvalCommand)
+                .font(.callout.monospaced())
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+            ApprovalChoiceButtons(disabled: disabled, deny: deny, allow: allow)
+        }
+        .padding(16)
     }
 }

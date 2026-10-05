@@ -17,7 +17,7 @@ struct ApprovalCard: View {
                 .font(.callout.monospaced())
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
                 .textSelection(.enabled)
             if let sent {
                 HStack(spacing: 12) {
@@ -37,22 +37,11 @@ struct ApprovalCard: View {
                 Text("Answer on your Mac. This request can't be answered from the iPhone.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                HStack(spacing: 10) {
-                    Button(role: .destructive) { Task { await send(.deny) } } label: {
-                        Label("Deny", systemImage: "xmark")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .glassButton()
-                    .tint(.red)
-                    Button { Task { await send(.allow) } } label: {
-                        Label("Allow", systemImage: "faceid")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .glassButton(prominent: true)
-                    .tint(.green)
+                ApprovalChoiceButtons(disabled: sending != nil) {
+                    Task { await send(.deny) }
+                } allow: {
+                    Task { await send(.allow) }
                 }
-                .controlSize(.large)
-                .disabled(sending != nil)
                 Text("Allow asks for Face ID. The request expires after 2 minutes.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -61,8 +50,8 @@ struct ApprovalCard: View {
             }
         }
         .padding(16)
-        .glassCard(tint: .orange)
-        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.orange.opacity(0.7), lineWidth: 1.5))
+        .glassCard()
+        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.orange.opacity(0.35), lineWidth: 1))
         .animation(.spring(duration: 0.5, bounce: 0.3), value: sent)
         .onChange(of: session.approvalFingerprint) { sent = nil; error = nil }
     }

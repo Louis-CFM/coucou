@@ -261,6 +261,9 @@ targets:
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
         NSSupportsLiveActivities: YES
+        # Steps change often while an agent works: without this, iOS holds back
+        # updates once its budget is spent, and "waiting for your OK" came late.
+        NSSupportsLiveActivitiesFrequentUpdates: YES
         # coucou://session/<id>: the widgets open a session in the app.
         CFBundleURLTypes:
           - CFBundleURLName: fr.louisraille.Coucou

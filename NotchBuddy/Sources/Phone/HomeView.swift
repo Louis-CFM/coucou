@@ -321,36 +321,27 @@ struct NotchHeader: View {
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {
-                GlassEffectContainer(spacing: 10) {
-                    VStack(spacing: 10) {
+                GlassEffectContainer(spacing: 12) {
+                    VStack(spacing: 12) {
                         summary
-                            .glassEffect(waiting != nil ? .regular.tint(Color.orange.opacity(0.18)) : .regular,
-                                         in: RoundedRectangle(cornerRadius: 28))
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28))
                             .glassEffectID("island", in: glass)
                         if let waiting {
-                            HStack(spacing: 10) {
-                                denyButton(waiting)
-                                    .glassEffect(.regular.tint(Color.red.opacity(0.35)).interactive(), in: Capsule())
-                                    .glassEffectID("deny", in: glass)
-                                allowButton(waiting)
-                                    .glassEffect(.regular.tint(Color.green.opacity(0.55)).interactive(), in: Capsule())
-                                    .glassEffectID("allow", in: glass)
-                            }
+                            panel(waiting)
+                                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26))
+                                .glassEffectID("panel", in: glass)
                         }
                     }
                 }
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     summary
-                        .background(Color.black, in: RoundedRectangle(cornerRadius: 28))
-                        .overlay(RoundedRectangle(cornerRadius: 28)
-                            .strokeBorder(waiting != nil ? Color.orange.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1.5))
+                        .background(Color(white: 0.09), in: RoundedRectangle(cornerRadius: 28))
+                        .overlay(RoundedRectangle(cornerRadius: 28).strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
                     if let waiting {
-                        HStack(spacing: 10) {
-                            denyButton(waiting).background(Color.red.opacity(0.3), in: Capsule())
-                            allowButton(waiting).background(Color.green.opacity(0.5), in: Capsule())
-                        }
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        panel(waiting)
+                            .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 26))
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
             }
@@ -365,7 +356,28 @@ struct NotchHeader: View {
         }
         .animation(.spring(duration: 0.55, bounce: 0.3), value: waiting?.approvalFingerprint)
         .animation(.spring(duration: 0.5, bounce: 0.2), value: "\(headline)|\(detail ?? "")")
+        .animation(.spring(duration: 0.4, bounce: 0.3), value: approved)
         .sensoryFeedback(.success, trigger: approved) { _, new in new }
+    }
+
+    private func panel(_ session: SessionItem) -> some View {
+        ApprovalPanel(session: session, disabled: sending) {
+            Task {
+                sending = true
+                _ = await QuickDecision.deny(session, link: link)
+                sending = false
+            }
+        } allow: {
+            Task {
+                sending = true
+                if await QuickDecision.allow(session, link: link) {
+                    approved = true
+                    try? await Task.sleep(for: .seconds(1.4))
+                    approved = false
+                }
+                sending = false
+            }
+        }
     }
 
     private var summary: some View {
@@ -389,48 +401,6 @@ struct NotchHeader: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-    }
-
-    private func denyButton(_ session: SessionItem) -> some View {
-        Button {
-            Task {
-                sending = true
-                _ = await QuickDecision.deny(session, link: link)
-                sending = false
-            }
-        } label: {
-            Label("Deny", systemImage: "xmark")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.white)
-        .disabled(sending)
-    }
-
-    private func allowButton(_ session: SessionItem) -> some View {
-        Button {
-            Task {
-                sending = true
-                if await QuickDecision.allow(session, link: link) {
-                    approved = true
-                    try? await Task.sleep(for: .seconds(1.4))
-                    approved = false
-                }
-                sending = false
-            }
-        } label: {
-            Label("Allow", systemImage: "faceid")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.white)
-        .disabled(sending)
     }
 
     private var headline: String {
