@@ -21,6 +21,8 @@ struct CoucouWidgetBundle: WidgetBundle {
 struct SessionsEntry: TimelineEntry {
     let date: Date
     let sessions: [SharedSession]   // most urgent first
+    /// Changes every minute so idle Mochi look around (MochiPose).
+    var tick: Int = 0
 }
 
 struct SessionsProvider: TimelineProvider {
@@ -34,8 +36,16 @@ struct SessionsProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SessionsEntry>) -> Void) {
-        // No polling: the app calls WidgetCenter.reloadAllTimelines() on every change.
-        completion(Timeline(entries: [SessionsEntry(date: .now, sessions: SharedSessions.load())], policy: .never))
+        // The sessions come from the app, which calls reloadAllTimelines() on
+        // every change. The entries only give idle Mochi a new pose each
+        // minute for an hour; no network, nothing read again.
+        let sessions = SharedSessions.load()
+        let start = Date.now
+        let base = Int(start.timeIntervalSince1970 / 60)
+        let entries = (0..<60).map { minute in
+            SessionsEntry(date: start.addingTimeInterval(Double(minute) * 60), sessions: sessions, tick: base + minute)
+        }
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
@@ -55,7 +65,7 @@ struct SoloWidget: Widget {
 struct TeamWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "CoucouTeam", provider: SessionsProvider()) { entry in
-            TeamView(sessions: Array(entry.sessions.prefix(4)))
+            TeamView(sessions: Array(entry.sessions.prefix(4)), tick: entry.tick)
         }
         .configurationDisplayName("Team")
         .description("Up to four agents at a glance.")
@@ -152,6 +162,7 @@ struct SoloView: View {
 
 struct TeamView: View {
     let sessions: [SharedSession]
+    var tick: Int = 0
 
     var body: some View {
         Grid(horizontalSpacing: 8, verticalSpacing: 8) {
@@ -166,10 +177,10 @@ struct TeamView: View {
             let session = sessions[index]
             // A tap opens that session in the app.
             Link(destination: SharedSession.url(for: session.id)) {
-                TeamTile(session: session)
+                TeamTile(session: session, tick: tick)
             }
         } else {
-            EmptyTeamTile()
+            EmptyTeamTile(tick: tick, slot: index)
         }
     }
 }
@@ -177,22 +188,33 @@ struct TeamView: View {
 /// One Mochi of the team: his face, his name, and a dot for his state.
 struct TeamTile: View {
     let session: SharedSession
+    var tick: Int = 0
+
+    /// Calm Mochi look around; one who needs you keeps his state's face.
+    private var pose: MochiPose {
+        switch session.tone {
+        case .idle, .done, .working: MochiPose.idle(id: session.id, tick: tick)
+        default: .neutral
+        }
+    }
 
     var body: some View {
-        VStack(spacing: 1) {
-            MochiStill(state: session.botState)
-                .padding(.horizontal, 6)
-                .padding(.top, 5)
+        VStack(spacing: 0) {
+            // In his own color, like the little Mochi in the Mac's notch.
+            MochiStill(state: session.botState, bodyHex: session.color, pose: pose)
+                .padding(.horizontal, 4)
+                .padding(.top, 2)
             Text(session.agent)
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.85))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .padding(.horizontal, 4)
-                .padding(.bottom, 4)
+                .offset(y: -6)
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.mochiTile(hex: session.color), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(white: 0.14), in: RoundedRectangle(cornerRadius: 16))
         .overlay(alignment: .topTrailing) {
             if session.tone != .idle {
                 Circle()
@@ -213,8 +235,12 @@ struct TeamTile: View {
 
 /// A free spot: Mochi asleep, faded, instead of an empty square.
 struct EmptyTeamTile: View {
+    var tick: Int = 0
+    var slot: Int = 0
+
     var body: some View {
-        MochiStill(state: .sleeping, showBadge: false)
+        MochiStill(state: .sleeping, showBadge: false,
+                   pose: MochiPose(tilt: (tick + slot) % 2 == 0 ? -0.06 : 0.06))
             .padding(14)
             .opacity(0.18)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

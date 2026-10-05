@@ -10,6 +10,8 @@ struct MochiStill: View {
     /// Body color; white by default, like the mockups.
     var bodyHex: String = "#FFFFFF"
     var showBadge: Bool = true
+    /// Where he looks and how his eyes are, for a still that isn't always the same.
+    var pose: MochiPose = .neutral
 
     var body: some View {
         Canvas { context, size in
@@ -18,7 +20,11 @@ struct MochiStill: View {
             engine.bodyColor = cgColorFromHex(bodyHex)
             engine.state = state
             engine.cfg = BotStates[state]!
-            if let eye {
+            engine.yaw = pose.yaw
+            engine.pitch = pose.pitch
+            engine.tilt = pose.tilt
+            engine.open = pose.open
+            if let eye = eye ?? pose.eye {
                 engine.permanentEye = eye
                 engine.eyeOverride = eye
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
@@ -31,6 +37,42 @@ struct MochiStill: View {
             }
         }
         .aspectRatio(1, contentMode: .fit)
+    }
+}
+
+/// One frame of the little life the Mac's mini Mochi have: looking around,
+/// blinking, a happy squint. Widgets can't animate, so each refresh of the
+/// timeline picks a new pose per Mochi; the system cross-fades between them.
+struct MochiPose: Equatable, Sendable {
+    var yaw: CGFloat = 0
+    var pitch: CGFloat = 0
+    var tilt: CGFloat = 0
+    var open: CGFloat = 1
+    var eye: EyeShape? = nil
+
+    static let neutral = MochiPose()
+
+    static let idlePoses: [MochiPose] = [
+        MochiPose(),
+        MochiPose(yaw: -0.45),
+        MochiPose(yaw: 0.45),
+        MochiPose(yaw: -0.3, pitch: -0.25),
+        MochiPose(yaw: 0.35, pitch: 0.2, tilt: 0.08),
+        MochiPose(pitch: -0.3, tilt: -0.06),
+        MochiPose(eye: .closed),                 // blink
+        MochiPose(yaw: 0.2, eye: .happy),
+        MochiPose(yaw: -0.5, tilt: -0.1),
+        MochiPose(yaw: 0.15, pitch: 0.25),
+    ]
+
+    /// A pose that differs per Mochi and per tick, the same every time for a
+    /// given pair (so a widget redraw doesn't jump).
+    static func idle(id: String, tick: Int) -> MochiPose {
+        var hash: UInt64 = 5381
+        for byte in id.utf8 { hash = (hash &* 33) &+ UInt64(byte) }
+        hash = (hash &* 31) &+ UInt64(truncatingIfNeeded: tick &* 7919)
+        hash ^= hash >> 13
+        return idlePoses[Int(hash % UInt64(idlePoses.count))]
     }
 }
 
