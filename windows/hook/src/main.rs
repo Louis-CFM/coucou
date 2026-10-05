@@ -171,6 +171,14 @@ fn normalize_cursor_cwd(map: &mut serde_json::Map<String, serde_json::Value>) {
     }
 }
 
+fn cursor_response_json(event: &str) -> Option<&'static str> {
+    match event {
+        "PreToolUse" => Some(r#"{"permission":"allow"}"#),
+        "UserPromptSubmit" => Some(r#"{"continue":true}"#),
+        _ => None,
+    }
+}
+
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -399,5 +407,21 @@ mod tests {
         normalize_cursor_cwd(&mut map);
 
         assert_eq!(map["cwd"], "C:\\dev\\project");
+    }
+
+    #[test]
+    fn cursor_display_only_responses_allow_actions() {
+        assert_eq!(
+            cursor_response_json("PreToolUse"),
+            Some(r#"{"permission":"allow"}"#)
+        );
+
+        assert_eq!(
+            cursor_response_json("UserPromptSubmit"),
+            Some(r#"{"continue":true}"#)
+        );
+
+        assert_eq!(cursor_response_json("PostToolUse"), None);
+        assert_eq!(cursor_response_json("Stop"), None);
     }
 }
