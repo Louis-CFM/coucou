@@ -220,6 +220,11 @@ fn hooks_apply(
 }
 
 #[tauri::command]
+fn cursor_hooks_status() -> cursor_hooks::CursorHookStatus {
+    cursor_hooks::status()
+}
+
+#[tauri::command]
 fn cursor_hooks_preview(install: bool) -> Result<cursor_hooks::CursorHookPreview, String> {
     cursor_hooks::preview(install)
 }
@@ -407,6 +412,7 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            cursor_hooks_status,
             cursor_hooks_preview,
             cursor_hooks_apply,
             approval_decision,

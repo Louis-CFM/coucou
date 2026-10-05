@@ -72,6 +72,10 @@ export const Bridge = {
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
   // ── Cursor Agent hooks ─────────────────────────────────────────────────────
+  /** Inspect Cursor hook installation and relay readiness. */
+  cursorHooksStatus: () =>
+    call<CursorHookStatus>("cursor_hooks_status"),
+
   /** Preview the changes Coucou would make to Cursor's native hooks file. */
   cursorHooksPreview: (install: boolean) =>
     callOrThrow<CursorHookPreview>("cursor_hooks_preview", { install }),
@@ -138,6 +142,13 @@ export interface HookPreview {
   settingsPath: string;
   /** Hand back to hooksApply so only the reviewed diff is ever written. */
   fingerprint: string;
+}
+
+export interface CursorHookStatus {
+  installed: boolean;
+  settingsPath: string;
+  hookPath: string;
+  hookReady: boolean;
 }
 
 export interface CursorHookPreview {
