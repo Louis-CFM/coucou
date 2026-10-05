@@ -56,6 +56,11 @@ final class LiveActivityRelay {
     private var retries = 0
     /// The phase a start was sent again for, so it is only tried once each.
     private var restartedFor: String?
+    /// A start waiting to see if the Mac stays locked, and an end waiting to
+    /// see if it stays unlocked: iOS allows only so many starts an hour, so a
+    /// quick lock and unlock doesn't spend one.
+    private var lockTask: Task<Void, Never>?
+    private var unlockTask: Task<Void, Never>?
     /// Ends the activity 10 minutes after the agents are done, if nothing restarts.
     private var doneTask: Task<Void, Never>?
 
@@ -103,6 +108,8 @@ final class LiveActivityRelay {
         observers.forEach { DistributedNotificationCenter.default().removeObserver($0) }
         observers = []
         cancellable = nil
+        lockTask?.cancel(); lockTask = nil
+        unlockTask?.cancel(); unlockTask = nil
         if startedAt != nil { finish(dismissAfter: 0) }
         log("off")
     }
@@ -113,11 +120,41 @@ final class LiveActivityRelay {
         locked = isLocked
         if isLocked {
             log("Mac locked")
-            if let latest, latest.isActive { begin(latest) }
+            unlockTask?.cancel(); unlockTask = nil
+            if startedAt != nil {
+                // Locked again before the activity left: it carries on.
+                flush()
+                return
+            }
+            if let latest, latest.isActive { beginSoon(latest) }
         } else {
             log("Mac unlocked")
-            // Mochi comes back to the notch.
-            if startedAt != nil { finish(dismissAfter: 0) }
+            lockTask?.cancel(); lockTask = nil
+            guard startedAt != nil else { return }
+            // Mochi comes back to the notch, unless the Mac locks again within 30 s.
+            unlockTask = Task {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, !locked else { return }
+                unlockTask = nil
+                finish(dismissAfter: 0)
+            }
+        }
+    }
+
+    /// Starts right away when an agent needs you; otherwise once the Mac has
+    /// stayed locked for 20 s.
+    private func beginSoon(_ state: MochiActivityState) {
+        if state.tone == "waiting" || state.tone == "question" {
+            lockTask?.cancel(); lockTask = nil
+            begin(state)
+            return
+        }
+        guard lockTask == nil else { return }
+        lockTask = Task {
+            try? await Task.sleep(for: .seconds(20))
+            lockTask = nil
+            guard !Task.isCancelled, locked, startedAt == nil, let latest, latest.isActive else { return }
+            begin(latest)
         }
     }
 
@@ -126,7 +163,7 @@ final class LiveActivityRelay {
         latest = lead
         guard locked else { return }
         if startedAt == nil {
-            if let lead, lead.isActive { begin(lead) }
+            if let lead, lead.isActive { beginSoon(lead) }
             return
         }
         if let lead, lead.isActive {
