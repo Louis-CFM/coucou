@@ -72,9 +72,12 @@ fn connect() -> Option<std::fs::File> {
 }
 
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event, agent)) = read_event() else {
+        std::process::exit(0)
+    };
 
-    let waits_for_answer = event == "PermissionRequest";
+    let is_cursor = agent.eq_ignore_ascii_case("cursor");
+    let waits_for_answer = !is_cursor && event == "PermissionRequest";
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -86,14 +89,23 @@ fn main() {
         let _ = tx.send(talk(&payload, waits_for_answer));
     });
 
-    if let Ok(Some(decision)) = rx.recv_timeout(budget) {
+    let answer = rx.recv_timeout(budget).ok().flatten();
+
+    if is_cursor {
+        if let Some(json) = cursor_response_json(&event) {
+            let mut out = std::io::stdout();
+            let _ = writeln!(out, "{json}");
+            let _ = out.flush();
+        }
+    } else if let Some(decision) = answer {
         if let Some(json) = decision_json(&decision) {
             let mut out = std::io::stdout();
             let _ = writeln!(out, "{json}");
             let _ = out.flush();
         }
     }
-    // Nothing printed: Claude Code asks in the terminal, as if we were not here.
+
+    // With no response, Claude Code falls back to the terminal as if we were not here.
     std::process::exit(0);
 }
 
@@ -179,8 +191,8 @@ fn cursor_response_json(event: &str) -> Option<&'static str> {
     }
 }
 
-/// Reads stdin and returns the payload to forward plus the event name.
-fn read_event() -> Option<(String, String)> {
+/// Reads stdin and returns the payload to forward, event name, and agent.
+fn read_event() -> Option<(String, String, String)> {
     let mut raw = Vec::new();
     if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() {
         return None;
@@ -211,10 +223,13 @@ fn read_event() -> Option<(String, String)> {
 
     let is_cursor = agent.eq_ignore_ascii_case("cursor");
 
-    // Which agent this hook was installed for. Absent means Claude Code,
-    // so existing hook commands keep working unchanged.
+    // External agents identify themselves via --agent (for example, Cursor).
+    // No agent means Claude Code, preserving the existing hook behavior.
     if !agent.is_empty() {
-        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+        map.insert(
+            "coucou_agent".into(),
+            serde_json::Value::String(agent.clone()),
+        );
     }
 
     let mut event = map
@@ -272,7 +287,7 @@ fn read_event() -> Option<(String, String)> {
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some((line, event))
+    Some((line, event, agent))
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
