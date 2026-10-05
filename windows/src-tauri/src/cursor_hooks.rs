@@ -146,6 +146,24 @@ fn without_ours(existing: &Value) -> Value {
     Value::Object(root)
 }
 
+fn fingerprint(bytes: &[u8]) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+
+    for byte in bytes {
+        hash ^= *byte as u64;
+        hash = hash.wrapping_mul(0x1000_0000_01b3);
+    }
+
+    format!("{hash:016x}")
+}
+
+fn current_fingerprint() -> String {
+    match std::fs::read(settings_path()) {
+        Ok(bytes) => fingerprint(&bytes),
+        Err(_) => fingerprint(b""),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,5 +255,12 @@ mod tests {
 
         assert_eq!(hooks.len(), 1);
         assert_eq!(hooks[0]["command"], "other-tool.exe");
+    }
+
+    #[test]
+    fn cursor_hook_fingerprint_notices_changes() {
+        assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
+        assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
+        assert_ne!(fingerprint(b""), fingerprint(b"{}"));
     }
 }
