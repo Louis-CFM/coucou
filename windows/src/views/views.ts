@@ -381,9 +381,17 @@ function buildFinished(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
+      const task = State.focusTask;
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      who.append(
+        agentWho(
+          task,
+          task?.source === "agent"
+            ? `${task.name.split(" · ")[0]} finished`
+            : "Claude Code finished",
+        ),
+      );
+      title.textContent = task?.steps.at(-1) ?? "Session finished";
     },
   };
 }
