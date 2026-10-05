@@ -126,6 +126,29 @@ fn normalize_cursor_event(event: &str) -> &str {
     }
 }
 
+fn normalize_cursor_session(map: &mut serde_json::Map<String, serde_json::Value>) {
+    let has_session_id = map
+        .get("session_id")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| !value.is_empty());
+
+    if has_session_id {
+        return;
+    }
+
+    if let Some(conversation_id) = map
+        .get("conversation_id")
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+    {
+        map.insert(
+            "session_id".into(),
+            serde_json::Value::String(conversation_id),
+        );
+    }
+}
+
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -172,6 +195,7 @@ fn read_event() -> Option<(String, String)> {
         .unwrap_or(arg_event);
 
     if is_cursor {
+        normalize_cursor_session(map);
         event = normalize_cursor_event(&event).to_string();
     }
 
@@ -324,5 +348,19 @@ mod tests {
 
         // Unknown events should pass through unchanged.
         assert_eq!(normalize_cursor_event("somethingNew"), "somethingNew");
+    }
+
+    #[test]
+    fn cursor_conversation_id_becomes_session_id() {
+        let mut map = serde_json::json!({
+            "conversation_id": "conversation-123"
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        normalize_cursor_session(&mut map);
+
+        assert_eq!(map["session_id"], "conversation-123");
     }
 }
