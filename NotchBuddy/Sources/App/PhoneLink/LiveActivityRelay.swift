@@ -158,10 +158,17 @@ final class LiveActivityRelay {
                 log("no iPhone token yet: open Coucou on the iPhone once, with Live Activities allowed")
                 return
             }
+            var reached = 0
             for (id, phone) in targets {
-                await post(event: "start", token: phone.startToken, env: phone.env, state: state, phoneID: id)
+                if await post(event: "start", token: phone.startToken, env: phone.env, state: state, phoneID: id) {
+                    reached += 1
+                }
             }
-            log("Mochi left for the iPhone (\(state.agent), \(state.statusText))")
+            if reached > 0 {
+                log("Mochi left for the iPhone (\(state.agent), \(state.statusText))")
+            } else {
+                log("Mochi couldn't reach the iPhone (see the relay line above)")
+            }
         }
     }
 
@@ -236,13 +243,15 @@ final class LiveActivityRelay {
         return fresh()
     }
 
+    /// Sends one push through the relay. Returns true when Apple accepted it.
+    @discardableResult
     private func post(event: String, token: String, env: String, state: MochiActivityState,
-                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String) async {
-        guard let url = relayURL else { return }
+                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String) async -> Bool {
+        guard let url = relayURL else { return false }
         var body: [String: Any] = ["token": token, "env": env, "event": event, "urgent": urgent]
         if let dismissAfter { body["dismissAfter"] = dismissAfter }
         guard let stateData = try? JSONEncoder().encode(state),
-              let stateObject = try? JSONSerialization.jsonObject(with: stateData) else { return }
+              let stateObject = try? JSONSerialization.jsonObject(with: stateData) else { return false }
         body["state"] = stateObject
         var request = URLRequest(url: url, timeoutInterval: 10)
         request.httpMethod = "POST"
@@ -251,15 +260,29 @@ final class LiveActivityRelay {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            if status == 200 { return }
+            if status == 200 { return true }
+            let reason = String(data: data, encoding: .utf8) ?? ""
+            if reason.contains("BadDeviceToken") {
+                // A token only works on one of Apple's two push servers (sandbox for
+                // builds run from Xcode, production for TestFlight and the App Store).
+                // Try the other one once and keep it if it works.
+                let other = env == "production" ? "development" : "production"
+                if phones[phoneID]?.env == env {
+                    phones[phoneID]?.env = other
+                    log("relay \(event): token not valid on \(env), trying \(other)")
+                    return await post(event: event, token: token, env: other, state: state,
+                                      urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID)
+                }
+            }
             if status == 410 {
                 // That token is gone (activity ended on the iPhone, app deleted…).
                 if event == "start" { phones[phoneID]?.startToken = "" } else { phones[phoneID]?.updateToken = "" }
             }
-            log("relay \(event) → \(status) \(String(data: data, encoding: .utf8)?.prefix(120) ?? "")")
+            log("relay \(event) on \(env) → \(status) \(reason.prefix(120))")
         } catch {
             log("relay \(event) failed: \(error.localizedDescription)")
         }
+        return false
     }
 
     // MARK: Tokens
