@@ -186,8 +186,14 @@ final class ClaudeService {
     // Multi-turn conversation messages (for API)
     private var conversationMessages: [[String: Any]] = []
 
+    // The Claude Code chat is one CLI session, resumed turn after turn.
+    private var claudeCodeSessionId = UUID().uuidString.lowercased()
+    private var claudeCodeSessionStarted = false
+
     func clearConversation() {
         conversationMessages = []
+        claudeCodeSessionId = UUID().uuidString.lowercased()
+        claudeCodeSessionStarted = false
     }
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
@@ -217,6 +223,10 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        if state.chatProvider == .claudeCode {
+            await chatClaudeCode(query: query, context: context, state: state)
+            return
+        }
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
@@ -279,7 +289,7 @@ final class ClaudeService {
             switch provider {
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .claudeCode: baseURL = ""
             }
         }
 
@@ -440,6 +450,61 @@ final class ClaudeService {
                 conversationMessages.removeLast()
                 await showError(error.localizedDescription, state: state)
             }
+        }
+    }
+
+    // MARK: - Claude Code chat (the user's Claude plan, through the claude CLI)
+
+    private func chatClaudeCode(query: String, context: PromptContext?, state: AppState) async {
+        var prompt = query
+        var readableDirectory: String?
+        if conversationMessages.isEmpty, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                var prefix = "Context — App: \(app), Window: \(title)"
+                if let url { prefix += ", URL: \(url)" }
+                prompt = prefix + "\n\n" + query
+            case .file(let name, let fileURL):
+                if let fileURL {
+                    prompt = "Attached file: \(fileURL.path)\n\n" + query
+                    readableDirectory = fileURL.deletingLastPathComponent().path
+                } else {
+                    prompt = "File: \(name)\n\n" + query
+                }
+            }
+        }
+        conversationMessages.append(["role": "user", "content": prompt])
+
+        let placeholder = ChatMessage(role: .assistant, content: "")
+        let msgId = placeholder.id
+        state.chatHistory.append(placeholder)
+        state.stateOverride = .thinking
+        do {
+            let final = try await ClaudeCodeChat.send(
+                prompt: prompt, sessionId: claudeCodeSessionId, resume: claudeCodeSessionStarted,
+                model: state.claudeCodeChatModel, systemPrompt: systemPrompt,
+                readableDirectory: readableDirectory
+            ) { visible in
+                if state.stateOverride == .thinking { state.stateOverride = nil }
+                if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                    state.chatHistory[idx].content = visible
+                }
+            }
+            claudeCodeSessionStarted = true
+            conversationMessages.append(["role": "assistant", "content": final])
+            if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                state.chatHistory[idx].content = final
+            }
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            conversationMessages.removeLast()
+            state.chatHistory.removeAll { $0.id == msgId }
+            state.stateOverride = nil
+            // A failed first turn may have saved the session ID already; never reuse it.
+            if !claudeCodeSessionStarted { claudeCodeSessionId = UUID().uuidString.lowercased() }
+            await showError(error.localizedDescription, state: state)
         }
     }
 

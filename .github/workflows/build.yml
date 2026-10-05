@@ -45,6 +45,9 @@ jobs:
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
+      - name: Claude Code chat tests
+        run: bash scripts/test-claude-code-chat.sh
+
       - name: Build
         run: |
           xcodebuild \

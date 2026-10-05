@@ -62,6 +62,8 @@ enum PillCatalog {
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
+        .init(id: "ai_claudecode",       name: "Claude Code (plan)", color: ChatProvider.claudeCode.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n,  githubOnly: true),
         .init(id: "ai_google",           name: "Google AI",   color: ChatProvider.google.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_openai",           name: "OpenAI",      color: ChatProvider.openai.accentHex,

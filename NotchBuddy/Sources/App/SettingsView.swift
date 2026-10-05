@@ -598,6 +598,34 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
+        #if !APPSTORE
+        GroupBox("Claude Code — your Claude plan") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Chat with your Claude Pro or Max plan through the claude command line. No API key needed.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                if let exe = ClaudeCodeChat.executableURL() {
+                    Text(exe.path)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Claude Code not found. Install it, then log in once by running claude in a terminal.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                }
+                Picker("Model", selection: $state.claudeCodeChatModel) {
+                    ForEach(ClaudeCodeChat.models, id: \.id) { model in
+                        Text(model.label).tag(model.id)
+                    }
+                }
+                Text("Pick Claude Code above the chat box, or turn on the Claude Code (plan) pill.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+        #endif
+
         GroupBox("Anthropic API") {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField("API key (sk-ant-…)", text: $apiKey)
@@ -1234,7 +1262,9 @@ struct SettingsView: View {
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
             if def.category == .ai {
-                if let provider = ChatProvider(pillID: def.id), provider.isLocal {
+                if def.id == "ai_claudecode" {
+                    if ClaudeCodeChat.executableURL() == nil { return "Claude Code not found" }
+                } else if let provider = ChatProvider(pillID: def.id), provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return "Not connected" }
                 } else {
