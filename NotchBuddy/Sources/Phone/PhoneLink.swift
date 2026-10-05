@@ -222,6 +222,9 @@ final class PhoneLink {
                 for deletion in changes.deletions where deletion.recordType == TurnSnapshot.recordType {
                     if let id = TurnSnapshot.pillId(fromRecordName: deletion.recordID.recordName) { turns[id] = nil }
                 }
+                for deletion in changes.deletions where deletion.recordType == ServiceDetail.recordType {
+                    if let id = ServiceDetail.pillId(fromRecordName: deletion.recordID.recordName) { serviceDetails[id] = nil }
+                }
                 for deletion in changes.deletions where deletion.recordType == ServiceSnapshot.recordType {
                     if let id = ServiceSnapshot.pillId(fromRecordName: deletion.recordID.recordName) {
                         services[id] = nil
@@ -418,26 +421,35 @@ final class PhoneLink {
     // MARK: Services up close
 
     /// Asks the Mac to read this service's API now (it answers within ~10 s).
-    func requestServiceDetail(_ pillId: String) async {
-        _ = await sendServiceRequest(kind: ServiceDetail.refreshKind, target: "", pillId: pillId)
+    /// False when no new detail came back in time (Mac asleep, sync off, older build).
+    @discardableResult
+    func requestServiceDetail(_ pillId: String) async -> Bool {
+        let previous = serviceDetails[pillId]?.fetchedAt
+        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: "", pillId: pillId) else { return false }
         // The new detail usually comes with a push; fetch anyway in case it doesn't.
         for _ in 0..<3 {
-            try? await Task.sleep(for: .seconds(6))
+            // Screen left (task cancelled): stop rather than fetch back to back.
+            do { try await Task.sleep(for: .seconds(6)) } catch { return false }
             _ = await fetchChanges()
-            if let detail = serviceDetails[pillId], Date().timeIntervalSince(detail.fetchedAt) < 30 { return }
+            // Only the Mac's answer to this request counts, not an older detail.
+            if let detail = serviceDetails[pillId], detail.fetchedAt != previous { return true }
         }
+        return false
     }
 
     /// Asks the Mac to run an action it offered on this service. Face ID first.
+    /// True only when the Mac's result for this request came back and it worked.
     func runServiceAction(_ action: ServiceActionDef, pillId: String) async -> Bool {
         guard await OwnerCheck.confirm(reason: "\(action.title) from your Mac") else { return false }
+        // The result already shown (from an earlier action) doesn't count for this one.
+        let previous = serviceDetails[pillId]?.lastAction
         guard await sendServiceRequest(kind: action.kind, target: action.target, pillId: pillId) else { return false }
-        for _ in 0..<5 {
+        for _ in 0..<6 {
             try? await Task.sleep(for: .seconds(5))
             _ = await fetchChanges()
-            if let result = serviceDetails[pillId]?.lastAction, Date().timeIntervalSince(result.date) < 60 { break }
+            if let result = serviceDetails[pillId]?.lastAction, result != previous { return result.ok }
         }
-        return true
+        return false
     }
 
     private func sendServiceRequest(kind: String, target: String, pillId: String) async -> Bool {

@@ -90,6 +90,8 @@ struct ServiceDetailView: View {
 
     private var snapshot: ServiceSnapshot? { link.services[pillId] }
     private var pill: PillDefinition? { PillCatalog.definition(for: pillId) }
+    /// The Mac didn't answer the last request (asleep, sync off, older build).
+    @State private var macSilent = false
 
     var body: some View {
         ScrollView {
@@ -102,10 +104,17 @@ struct ServiceDetailView: View {
                         ServiceLiveDetail(link: link, pillId: pillId, detail: detail)
                     } else {
                         HStack(spacing: 10) {
-                            ProgressView()
-                            Text("Asking your Mac for everything \(pill?.name ?? "it") has…")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
+                            if macSilent {
+                                Image(systemName: "moon.zzz").foregroundStyle(.secondary)
+                                Text("Your Mac didn't answer. Is it awake, with the iPhone switch on? Pull down to try again.")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView()
+                                Text("Asking your Mac for everything \(pill?.name ?? "it") has…")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
@@ -123,8 +132,11 @@ struct ServiceDetailView: View {
         .background(Color.black)
         .navigationTitle(pill?.name ?? "Service")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await link.requestServiceDetail(pillId) }
-        .refreshable { await link.requestServiceDetail(pillId) }
+        .task { macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil }
+        .refreshable {
+            macSilent = false
+            macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil
+        }
     }
 
     private var header: some View {

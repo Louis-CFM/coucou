@@ -6,11 +6,12 @@ import CloudKit
 //
 // When a service's screen opens on the iPhone, it writes a `ServiceAction`
 // record of kind "refresh"; to act (redeploy, re-run, merge…) it writes one
-// with that action's kind and target. This Mac looks for them every 10 s
-// while the iPhone sync is on, takes each once (deleted on read), reads the
-// service's API with the key in its Keychain and writes a `ServiceDetail`
-// record, encrypted. An action runs only if it was offered on an item of the
-// last detail sent for that service, and was asked for in the last 5 minutes.
+// with that action's kind and target. The CloudKit push wakes this Mac (with
+// a check every minute in case a push is missed); it takes each request once
+// (deleted on read, and only those it could delete), reads the service's API
+// with the key in its Keychain and writes a `ServiceDetail` record,
+// encrypted. An action runs only if it was offered on an item of the last
+// detail sent for that service, and was asked for in the last 5 minutes.
 // Nothing that moves money or sends an email is ever offered.
 
 @MainActor
@@ -23,20 +24,42 @@ final class ServiceDetailRunner {
     /// The last detail sent per service: actions are checked against it.
     private var lastDetails: [String: ServiceDetail] = [:]
     private let maxAge: TimeInterval = 5 * 60
+    private var checking = false
+    private var again = false
 
     func start() {
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.check()
-                try? await Task.sleep(for: .seconds(10))
+                await self?.checkNow()
+                // In case a push is missed.
+                try? await Task.sleep(for: .seconds(60))
             }
         }
     }
 
+    /// Stops and deletes the details this Mac wrote to iCloud.
     func stop() {
         pollTask?.cancel()
         pollTask = nil
+        lastDetails = [:]
+        let ids = PillCatalog.phoneServices.map {
+            CKRecord.ID(recordName: ServiceDetail.recordName(for: $0), zoneID: SessionSnapshot.zoneID)
+        }
+        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false) }
+    }
+
+    /// From the CloudKit push and the fallback check. One check at a time: two
+    /// overlapping checks would share the change token and could run an action twice.
+    func checkNow() async {
+        guard pollTask != nil else { return }
+        guard !checking else { again = true; return }
+        checking = true
+        repeat {
+            again = false
+            await check()
+        } while again
+        checking = false
     }
 
     // MARK: Requests
@@ -46,7 +69,8 @@ final class ServiceDetailRunner {
         do {
             var more = true
             while more {
-                let changes = try await database.recordZoneChanges(inZoneWith: SessionSnapshot.zoneID, since: changeToken)
+                let changes = try await database.recordZoneChanges(inZoneWith: SessionSnapshot.zoneID, since: changeToken,
+                                                                   desiredKeys: ["pillId", "kind", "requestedAt", "target"])
                 for (_, result) in changes.modificationResultsByID {
                     if case .success(let mod) = result, mod.record.recordType == ServiceDetail.requestType {
                         found.append(mod.record)
@@ -62,11 +86,20 @@ final class ServiceDetailRunner {
             return
         }
         guard !found.isEmpty else { return }
-        _ = try? await database.modifyRecords(saving: [], deleting: found.map(\.recordID))
+        // Single use: act only on the requests this Mac actually removed from iCloud.
+        guard let removed = try? await database.modifyRecords(saving: [], deleting: found.map(\.recordID),
+                                                              savePolicy: .changedKeys, atomically: false) else {
+            log("couldn't take \(found.count) request(s) off iCloud; skipped")
+            return
+        }
+        let taken = found.filter {
+            guard case .success? = removed.deleteResults[$0.recordID] else { return false }
+            return true
+        }
 
         // Several refreshes for one service count once.
         var refreshed: Set<String> = []
-        for record in found.sorted(by: { ($0["requestedAt"] as? Date ?? .distantPast) < ($1["requestedAt"] as? Date ?? .distantPast) }) {
+        for record in taken.sorted(by: { ($0["requestedAt"] as? Date ?? .distantPast) < ($1["requestedAt"] as? Date ?? .distantPast) }) {
             let pillId = record["pillId"] as? String ?? ""
             let kind = record["kind"] as? String ?? ""
             let target = record.encryptedValues["target"] as? String ?? ""
@@ -85,6 +118,9 @@ final class ServiceDetailRunner {
         guard let action = lastDetails[pillId]?.offered(kind: kind, target: target),
               ServiceAPI.allowedKinds.contains(kind), kind.hasPrefix(ServiceAPI.prefix(of: pillId)) else {
             log("ignored an action that wasn't offered: \(kind)")
+            await publish(pillId: pillId, lastAction: ServiceActionResult(
+                title: "Not done", ok: false,
+                message: "This action isn't offered any more. The list was refreshed.", date: Date()))
             return
         }
         log("\(action.title) (\(pillId)) asked from the iPhone")
@@ -103,6 +139,8 @@ final class ServiceDetailRunner {
 
     private func publish(pillId: String, lastAction: ServiceActionResult?) async {
         var detail = await ServiceAPI.detail(for: pillId)
+        // The iPhone sync was turned off while the API was read: write nothing.
+        guard !Task.isCancelled, pollTask != nil else { return }
         detail.lastAction = lastAction
         lastDetails[pillId] = detail
         guard let json = try? JSONEncoder().encode(detail), let payload = String(data: json, encoding: .utf8) else { return }
@@ -136,7 +174,6 @@ enum ServiceAPI {
         "vercel.redeploy", "vercel.promote", "vercel.cancel",
         "github.rerun", "github.approve", "github.merge",
         "n8n.activate", "n8n.deactivate", "n8n.retry",
-        "calcom.cancel",
     ]
 
     static func prefix(of pillId: String) -> String {
@@ -146,7 +183,12 @@ enum ServiceAPI {
     static func describe(_ error: Error) -> String {
         if let failure = error as? Failure {
             switch failure.status {
-            case 401: return "The key was refused (401). Check it in Coucou's Settings on your Mac."
+            case 401:
+                if failure.message.localizedCaseInsensitiveContains("restricted") {
+                    // Resend `restricted_api_key`: a Sending-access key can't read emails or domains.
+                    return "This key can only send emails. Use a Full access key in Coucou's Settings on your Mac to see them here."
+                }
+                return "The key was refused (401). Check it in Coucou's Settings on your Mac."
             case 403: return "Not allowed with this key (403). \(failure.message)"
             case 404: return "Not found (404)."
             default: return failure.message.isEmpty ? "Error \(failure.status)" : String(failure.message.prefix(160))
@@ -204,8 +246,11 @@ enum ServiceAPI {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = currency.uppercased()
-        let zeroDecimal = ["jpy", "krw", "vnd", "clp", "xof", "xaf"].contains(currency.lowercased())
-        let amount = zeroDecimal ? Double(cents) : Double(cents) / 100
+        // Stripe zero-decimal currencies (docs.stripe.com/currencies#zero-decimal). UGX and ISK stay ×100
+        // for backward compatibility; HUF and TWD charges are two-decimal.
+        let zeroDecimal: Set<String> = ["bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf",
+                                        "vnd", "vuv", "xaf", "xof", "xpf"]
+        let amount = zeroDecimal.contains(currency.lowercased()) ? Double(cents) : Double(cents) / 100
         return formatter.string(from: NSNumber(value: amount)) ?? "\(amount) \(currency.uppercased())"
     }
 
@@ -263,10 +308,10 @@ enum ServiceAPI {
                 tone = .ok
                 actions.append(ServiceActionDef(kind: "vercel.redeploy", title: "Redeploy", symbol: "arrow.clockwise",
                                                 target: "\(uid)|\(name)|\(target ?? "")"))
-                if target != "production", let projectId = d["projectId"] as? String {
+                if target != "production" {
                     actions.append(ServiceActionDef(kind: "vercel.promote", title: "Promote to production",
-                                                    symbol: "arrow.up.circle", target: "\(projectId)|\(uid)",
-                                                    confirm: "This deployment becomes your production site."))
+                                                    symbol: "arrow.up.circle", target: "\(uid)|\(name)",
+                                                    confirm: "A new production build starts from this deployment, using your production environment variables."))
                 }
             case "ERROR":
                 failed += 1
@@ -399,56 +444,105 @@ enum ServiceAPI {
         let key = try secret("stripe-api-key", "Stripe")
         let headers = ["Authorization": "Bearer \(key)"]
         let balance = try await request("https://api.stripe.com/v1/balance", headers: headers) as? [String: Any] ?? [:]
-        func amount(_ list: Any?) -> (Int, String) {
-            let first = (list as? [[String: Any]])?.first
-            return (first?["amount"] as? Int ?? 0, first?["currency"] as? String ?? "eur")
+        // One entry per currency in each list, in no set order: pair them by currency.
+        let availableList = balance["available"] as? [[String: Any]] ?? []
+        let pendingList = balance["pending"] as? [[String: Any]] ?? []
+        let currency = ((availableList.first ?? pendingList.first)?["currency"] as? String ?? "eur").lowercased()
+        func amount(_ list: [[String: Any]]) -> Int {
+            list.first { ($0["currency"] as? String)?.lowercased() == currency }?["amount"] as? Int ?? 0
         }
-        let (available, currency) = amount(balance["available"])
-        let (pending, _) = amount(balance["pending"])
+        let available = amount(availableList)
+        let pending = amount(pendingList)
 
-        let chargesJSON = try? await request("https://api.stripe.com/v1/charges?limit=15", headers: headers)
-        let charges = (chargesJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
+        /// A list, or why it couldn't be read (shown instead of a made-up zero).
+        func list(_ path: String) async -> ([[String: Any]], [String: Any], String?) {
+            do {
+                let json = try await request("https://api.stripe.com/v1/\(path)", headers: headers) as? [String: Any] ?? [:]
+                return (json["data"] as? [[String: Any]] ?? [], json, nil)
+            } catch {
+                return ([], [:], describe(error))
+            }
+        }
+
+        let (charges, _, chargesError) = await list("charges?limit=15")
         let chargeItems = charges.map { c -> DetailItem in
             let status = c["status"] as? String ?? ""
             let refunded = c["refunded"] as? Bool ?? false
+            let partlyRefunded = !refunded && (c["amount_refunded"] as? Int ?? 0) > 0
+            let uncaptured = !refunded && status == "succeeded" && (c["captured"] as? Bool) == false
             let who = ((c["billing_details"] as? [String: Any])?["name"] as? String)
                 ?? (c["receipt_email"] as? String) ?? (c["description"] as? String) ?? ""
+            let tone: ServiceTone = refunded ? .idle
+                : (uncaptured || partlyRefunded) ? .warning
+                : status == "succeeded" ? .ok : status == "failed" ? .error : .warning
+            let badge = refunded ? "Refunded" : uncaptured ? "Uncaptured"
+                : partlyRefunded ? "Partly refunded" : status.capitalized
             return DetailItem(title: money(c["amount"] as? Int ?? 0, c["currency"] as? String ?? currency),
-                              subtitle: who, tone: refunded ? .idle : (status == "succeeded" ? .ok : status == "failed" ? .error : .warning),
-                              date: date(c["created"]), badge: refunded ? "Refunded" : status.capitalized)
+                              subtitle: who, tone: tone, date: date(c["created"]), badge: badge)
         }
-        let payoutsJSON = try? await request("https://api.stripe.com/v1/payouts?limit=5", headers: headers)
-        let payouts = (payoutsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
+        let (payouts, _, payoutsError) = await list("payouts?limit=5")
         let payoutItems = payouts.map { p in
             DetailItem(title: money(p["amount"] as? Int ?? 0, p["currency"] as? String ?? currency),
                        subtitle: "Arrives", tone: (p["status"] as? String) == "failed" ? .error : .info,
                        date: date(p["arrival_date"]), badge: (p["status"] as? String)?.replacingOccurrences(of: "_", with: " ").capitalized)
         }
-        let subsJSON = try? await request("https://api.stripe.com/v1/subscriptions?status=active&limit=100", headers: headers)
-        let subs = (subsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
-        var monthly = 0.0
+
+        // Active subscriptions, every page (up to 1 000).
+        var subs: [[String: Any]] = []
+        var moreSubs = false
+        var subsError: String?
+        var cursor: String?
+        for _ in 0..<10 {
+            let (page, json, error) = await list("subscriptions?status=active&limit=100" + (cursor.map { "&starting_after=\($0)" } ?? ""))
+            if let error { subsError = error; break }
+            subs += page
+            moreSubs = json["has_more"] as? Bool ?? false
+            guard moreSubs, let last = subs.last?["id"] as? String else { break }
+            cursor = last
+        }
+        // Estimated monthly revenue, one total per currency. Metered and tiered
+        // prices have no fixed amount per period and discounts aren't applied.
+        var monthlyByCurrency: [String: Double] = [:]
         for sub in subs {
+            let subCurrency = (sub["currency"] as? String)?.lowercased()
             let items = (sub["items"] as? [String: Any])?["data"] as? [[String: Any]] ?? []
             for item in items {
                 let price = item["price"] as? [String: Any] ?? [:]
-                let unit = Double(price["unit_amount"] as? Int ?? 0) * Double(item["quantity"] as? Int ?? 1)
                 let recurring = price["recurring"] as? [String: Any] ?? [:]
+                if recurring["usage_type"] as? String == "metered" || price["billing_scheme"] as? String == "tiered" { continue }
+                let perUnit = (price["unit_amount"] as? Int).map { Double($0) }
+                    ?? Double(price["unit_amount_decimal"] as? String ?? "") ?? 0
+                let unit = perUnit * Double(item["quantity"] as? Int ?? 1)
                 let count = Double(recurring["interval_count"] as? Int ?? 1)
+                let perMonth: Double
                 switch recurring["interval"] as? String {
-                case "year": monthly += unit / (12 * count)
-                case "week": monthly += unit * 4.345 / count
-                case "day": monthly += unit * 30.4 / count
-                default: monthly += unit / count
+                case "year": perMonth = unit / (12 * count)
+                case "week": perMonth = unit * 4.345 / count
+                case "day": perMonth = unit * 30.4 / count
+                default: perMonth = unit / count
                 }
+                let itemCurrency = subCurrency ?? (price["currency"] as? String)?.lowercased() ?? currency
+                monthlyByCurrency[itemCurrency, default: 0] += perMonth
             }
         }
-        var sections = [DetailSection(title: "Payments", items: chargeItems)]
-        if !payoutItems.isEmpty { sections.append(DetailSection(title: "Payouts", items: payoutItems)) }
+        let largest = monthlyByCurrency.max { $0.value < $1.value }
+        let mrrCurrency = monthlyByCurrency[currency] != nil ? currency : (largest?.key ?? currency)
+        let monthly = monthlyByCurrency[mrrCurrency] ?? 0
+
+        var sections = [DetailSection(title: "Payments", items: chargeItems, footer: chargesError)]
+        if !payoutItems.isEmpty || payoutsError != nil {
+            sections.append(DetailSection(title: "Payouts", items: payoutItems, footer: payoutsError))
+        }
+        if let subsError { sections.append(DetailSection(title: "Subscriptions", items: [], footer: subsError)) }
         return ServiceDetail(pillId: "integration_stripe",
                              stats: [DetailStat(label: "Available", value: money(available, currency), tone: .ok),
                                      DetailStat(label: "Pending", value: money(pending, currency)),
-                                     DetailStat(label: "Subscriptions", value: "\(subs.count)", tone: .info),
-                                     DetailStat(label: "MRR", value: money(Int(monthly.rounded()), currency), tone: .info)],
+                                     DetailStat(label: "Subscriptions",
+                                                value: subsError != nil ? "—" : (moreSubs ? "\(subs.count)+" : "\(subs.count)"),
+                                                tone: .info),
+                                     DetailStat(label: "Est. MRR",
+                                                value: subsError != nil ? "—" : money(Int(monthly.rounded()), mrrCurrency),
+                                                tone: .info)],
                              sections: sections, fetchedAt: Date())
     }
 
@@ -464,7 +558,7 @@ enum ServiceAPI {
             let tone: ServiceTone
             switch event {
             case "delivered", "opened", "clicked": tone = .ok; delivered += 1
-            case "bounced", "complained", "failed": tone = .error; bounced += 1
+            case "bounced", "complained", "failed", "suppressed": tone = .error; bounced += 1
             case "delivery_delayed": tone = .warning
             default: tone = .info
             }
@@ -478,7 +572,7 @@ enum ServiceAPI {
             let status = d["status"] as? String ?? ""
             return DetailItem(title: d["name"] as? String ?? "Domain", subtitle: d["region"] as? String ?? "",
                               tone: status == "verified" ? .ok : (status == "failed" ? .error : .warning),
-                              badge: status.capitalized)
+                              badge: status.replacingOccurrences(of: "_", with: " ").capitalized)
         }
         var sections = [DetailSection(title: "Latest emails", items: emailItems)]
         if !domainItems.isEmpty { sections.append(DetailSection(title: "Domains", items: domainItems)) }
@@ -489,7 +583,7 @@ enum ServiceAPI {
                              sections: sections, fetchedAt: Date())
     }
 
-    // Cal.com: upcoming bookings (cancel).
+    // Cal.com: upcoming bookings. Read only: cancelling emails the guest and can refund or charge them.
     private static func calcom() async throws -> ServiceDetail {
         let key = try secret("calcom-api-key", "Cal.com")
         let headers = ["Authorization": "Bearer \(key)", "cal-api-version": "2024-08-13"]
@@ -510,17 +604,11 @@ enum ServiceAPI {
             let attendee = (b["attendees"] as? [[String: Any]])?.first
             let who = attendee?["name"] as? String ?? attendee?["email"] as? String ?? ""
             let when = start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
-            var actions: [ServiceActionDef] = []
-            if let uid = b["uid"] as? String {
-                actions.append(ServiceActionDef(kind: "calcom.cancel", title: "Cancel booking", symbol: "calendar.badge.minus",
-                                                target: uid, destructive: true,
-                                                confirm: "Cancel this booking? Cal.com tells \(who.isEmpty ? "the guest" : who)."))
-            }
             return DetailItem(title: b["title"] as? String ?? "Meeting",
                               subtitle: who.isEmpty ? when : "\(when) · \(who)",
                               tone: calendar.isDateInToday(start) ? .warning : .info,
                               date: start, url: (b["meetingUrl"] as? String) ?? (b["location"] as? String).flatMap { $0.hasPrefix("https://") ? $0 : nil },
-                              badge: (b["status"] as? String)?.capitalized, actions: actions)
+                              badge: (b["status"] as? String)?.capitalized)
         }
         return ServiceDetail(pillId: "integration_calcom",
                              stats: [DetailStat(label: "Today", value: "\(today)", tone: today > 0 ? .warning : .idle),
@@ -536,14 +624,27 @@ enum ServiceAPI {
         let key = try secret("n8n-api-key", "n8n")
         let base = try secret("n8n-url", "n8n").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let headers = ["X-N8N-API-KEY": key, "Accept": "application/json"]
-        let workflowsJSON = try await request("\(base)/api/v1/workflows?limit=50", headers: headers)
-        let workflows = (workflowsJSON as? [String: Any])?["data"] as? [[String: Any]] ?? []
+        // The list comes in pages (at most 250, then `cursor` = the previous `nextCursor`): read
+        // them all so the counts are right.
+        var workflows: [[String: Any]] = []
+        var cursor: String?
+        repeat {
+            var url = "\(base)/api/v1/workflows?limit=250"
+            if let cursor, let encoded = cursor.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
+                url += "&cursor=\(encoded)"
+            }
+            let page = try await request(url, headers: headers) as? [String: Any]
+            workflows += page?["data"] as? [[String: Any]] ?? []
+            cursor = page?["nextCursor"] as? String
+        } while !(cursor ?? "").isEmpty && workflows.count < 5_000
         var names: [String: String] = [:]
         var active = 0
         let workflowItems = workflows.compactMap { w -> DetailItem? in
             guard let id = (w["id"] as? String) ?? (w["id"] as? Int).map(String.init) else { return nil }
             let name = w["name"] as? String ?? "Workflow"
             names[id] = name
+            // Archived workflows are listed but can't be turned on (n8n answers 400).
+            if w["isArchived"] as? Bool ?? false { return nil }
             let isActive = w["active"] as? Bool ?? false
             if isActive { active += 1 }
             return DetailItem(title: name, tone: isActive ? .ok : .idle, date: date(w["updatedAt"]),
@@ -569,11 +670,12 @@ enum ServiceAPI {
                               actions: isFailure ? [ServiceActionDef(kind: "n8n.retry", title: "Retry", symbol: "arrow.clockwise", target: id)] : [])
         }
         return ServiceDetail(pillId: "integration_n8n",
-                             stats: [DetailStat(label: "Workflows", value: "\(workflows.count)"),
+                             stats: [DetailStat(label: "Workflows", value: "\(workflowItems.count)"),
                                      DetailStat(label: "Active", value: "\(active)", tone: .ok),
                                      DetailStat(label: "Failed runs", value: "\(failed)", tone: failed > 0 ? .error : .idle)],
                              sections: [DetailSection(title: "Latest runs", items: executionItems),
-                                        DetailSection(title: "Workflows", items: workflowItems)],
+                                        DetailSection(title: "Workflows",
+                                                      items: Array(workflowItems.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }.prefix(50)))],
                              fetchedAt: Date())
     }
 
@@ -628,11 +730,16 @@ enum ServiceAPI {
             let url = (json as? [String: Any])?["url"] as? String
             return url.map { "Building \($0)" } ?? "New deployment started"
         case "vercel.promote":
-            let parts = target.split(separator: "|").map(String.init)
+            // Vercel only promotes production builds in place: a preview is rebuilt for
+            // production, as `vercel promote` does.
+            let parts = target.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
             guard parts.count == 2 else { throw Failure(status: 0, message: "Unknown deployment") }
-            _ = try await request("https://api.vercel.com/v10/projects/\(parts[0])/promote/\(parts[1])", method: "POST",
-                                  headers: try vercelHeaders())
-            return "Promoted to production"
+            let json = try await request("https://api.vercel.com/v13/deployments", method: "POST",
+                                         headers: try vercelHeaders(),
+                                         body: ["deploymentId": parts[0], "name": parts[1], "target": "production",
+                                                "meta": ["action": "promote"]])
+            let url = (json as? [String: Any])?["url"] as? String
+            return url.map { "Building \($0) for production" } ?? "Production build started"
         case "vercel.cancel":
             _ = try await request("https://api.vercel.com/v12/deployments/\(target)/cancel", method: "PATCH",
                                   headers: try vercelHeaders())
@@ -668,15 +775,14 @@ enum ServiceAPI {
                 _ = try await request("\(base)/api/v1/workflows/\(target)/deactivate", method: "POST", headers: headers)
                 return "Turned off"
             default:
-                _ = try await request("\(base)/api/v1/executions/\(target)/retry", method: "POST", headers: headers)
+                do {
+                    _ = try await request("\(base)/api/v1/executions/\(target)/retry", method: "POST", headers: headers)
+                } catch let failure as Failure where failure.status == 404 || failure.status == 405 {
+                    // POST /api/v1/executions/{id}/retry only exists from n8n 1.112.0.
+                    throw Failure(status: 0, message: "Couldn't retry this run. It may have been deleted, or your n8n is older than 1.112, which is needed to retry from the iPhone.")
+                }
                 return "Running again"
             }
-        case "calcom.cancel":
-            let key = try secret("calcom-api-key", "Cal.com")
-            _ = try await request("https://api.cal.com/v2/bookings/\(target)/cancel", method: "POST",
-                                  headers: ["Authorization": "Bearer \(key)", "cal-api-version": "2024-08-13"],
-                                  body: ["cancellationReason": "Canceled from Coucou"])
-            return "Booking canceled"
         default:
             throw Failure(status: 0, message: "This action isn't available")
         }
