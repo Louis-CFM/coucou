@@ -649,7 +649,7 @@ final class HookServer: @unchecked Sendable {
         #else
         let isCodexRequest = false
         #endif
-        if !isCodexRequest && Self.validateAgent(rawAgent) != nil {
+        if !isCodexRequest && (Self.validateAgent(rawAgent) != nil || !state.answerInNotch) {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -810,7 +810,7 @@ final class HookServer: @unchecked Sendable {
         #else
         let isCodexRequest = false
         #endif
-        guard isCodexRequest || Self.validateAgent(rawAgent) == nil else {
+        guard isCodexRequest || (Self.validateAgent(rawAgent) == nil && state.answerInNotch) else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)

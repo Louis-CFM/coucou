@@ -411,6 +411,11 @@ struct SettingsView: View {
                 }
                 #endif
 
+                Toggle("Answer approvals and questions in the notch", isOn: $state.answerInNotch)
+                Text("Off: Claude Code asks in its terminal right away, and the notch only shows what it is doing.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
                 #if !APPSTORE
                 if showDiff {
                     ScrollView {

@@ -108,6 +108,10 @@ final class AppState: ObservableObject {
     @Published var claudeCodeChatModel: String = ChatProvider.claudeCode.defaultModel {
         didSet { UserDefaults.standard.set(claudeCodeChatModel, forKey: "claudeCodeChatModel") }
     }
+    /// Off: Claude Code's approvals and questions go straight to its own terminal.
+    @Published var answerInNotch: Bool = true {
+        didSet { UserDefaults.standard.set(answerInNotch, forKey: "answerInNotch") }
+    }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
     }
@@ -431,6 +435,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
         if let v = ud.string(forKey: "claudeCodeChatModel"), !v.isEmpty { claudeCodeChatModel = v }
+        if ud.object(forKey: "answerInNotch") != nil { answerInNotch = ud.bool(forKey: "answerInNotch") }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
