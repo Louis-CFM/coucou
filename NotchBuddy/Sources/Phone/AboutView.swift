@@ -41,7 +41,7 @@ struct AboutView: View {
                 }
                 LabeledContent("Live Activities") {
                     Text(LiveActivityLink.shared.activitiesEnabled ? "On" : "Off")
-                        .foregroundStyle(LiveActivityLink.shared.activitiesEnabled ? .secondary : .orange)
+                        .foregroundStyle(LiveActivityLink.shared.activitiesEnabled ? Color.secondary : Color.orange)
                 }
                 if link.notificationsAllowed == false || !LiveActivityLink.shared.activitiesEnabled {
                     Button("Open iPhone Settings") {
