@@ -152,10 +152,10 @@ export interface CursorHookStatus {
 }
 
 export interface CursorHookPreview {
+  diff: string;
+  backup: string;
   settingsPath: string;
   fingerprint: string;
-  before: string;
-  after: string;
 }
 
 /** Same as `call`, but surfaces the error so the UI can show what went wrong. */
