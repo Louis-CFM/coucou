@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -36,8 +36,11 @@ pub fn settings_path() -> PathBuf {
 
 fn read_settings() -> Result<Value, String> {
     let path = settings_path();
+    read_settings_at(&path)
+}
 
-    match std::fs::read(&path) {
+fn read_settings_at(path: &Path) -> Result<Value, String> {
+    match std::fs::read(path) {
         Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
         Err(err) => Err(format!("Can't read {}: {err}", path.display())),
@@ -168,7 +171,11 @@ fn fingerprint(bytes: &[u8]) -> String {
 }
 
 fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
+    current_fingerprint_at(&settings_path())
+}
+
+fn current_fingerprint_at(path: &Path) -> String {
+    match std::fs::read(path) {
         Ok(bytes) => fingerprint(&bytes),
         Err(_) => fingerprint(b""),
     }
@@ -193,6 +200,82 @@ pub fn preview(install: bool) -> Result<CursorHookPreview, String> {
         before: pretty(&current),
         after: pretty(&next),
     })
+}
+
+fn backup_path_for(path: &Path) -> PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+
+    path.with_file_name(format!("hooks.json.bak-{stamp}"))
+}
+
+fn write_like(temp: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(temp)?;
+
+    file.write_all(bytes)
+}
+
+pub fn write(install: bool, expected_fingerprint: &str) -> Result<String, String> {
+    let path = settings_path();
+    write_at(&path, install, expected_fingerprint)
+}
+
+fn write_at(
+    path: &Path,
+    install: bool,
+    expected_fingerprint: &str,
+) -> Result<String, String> {
+    let dir = path.parent().unwrap_or(Path::new("."));
+
+    std::fs::create_dir_all(dir)
+        .map_err(|err| format!("Can't create {}: {err}", dir.display()))?;
+
+    let current = read_settings_at(path)?;
+
+    if current_fingerprint_at(path) != expected_fingerprint {
+        return Err(format!(
+            "{} changed since the preview. Nothing was written.",
+            path.display()
+        ));
+    }
+
+    let backup = backup_path_for(path);
+
+    if path.exists() {
+        std::fs::copy(path, &backup)
+            .map_err(|err| format!("Backup failed: {err}"))?;
+    }
+
+    let next = if install {
+        merged(&current)
+    } else {
+        without_ours(&current)
+    };
+
+    let mut text = pretty(&next);
+    text.push('\n');
+
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+
+    if let Err(err) = write_like(&temp, text.as_bytes()) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("Write failed: {err}"));
+    }
+
+    if let Err(err) = std::fs::rename(&temp, path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("Write failed: {err}"));
+    }
+
+    Ok(backup.to_string_lossy().to_string())
 }
 
 #[cfg(test)]
@@ -314,5 +397,80 @@ mod tests {
         assert!(before.contains("other-tool.exe"));
         assert!(after.contains("other-tool.exe"));
         assert!(after.contains("coucou-hook"));
+    }
+
+    #[test]
+    fn cursor_hook_write_preserves_existing_config_and_creates_backup() {
+        let dir = std::env::temp_dir().join(format!(
+            "coucou-cursor-hooks-{}",
+            std::process::id()
+        ));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let path = dir.join("hooks.json");
+
+        let original = json!({
+            "version": 1,
+            "hooks": {
+                "preToolUse": [
+                    {
+                        "command": "other-tool.exe"
+                    }
+                ]
+            }
+        });
+
+        let original_text = pretty(&original);
+        std::fs::write(&path, &original_text).unwrap();
+
+        let expected = current_fingerprint_at(&path);
+
+        let backup = write_at(&path, true, &expected).unwrap();
+
+        let written = read_settings_at(&path).unwrap();
+        let hooks = written["hooks"]["preToolUse"].as_array().unwrap();
+
+        assert!(hooks.iter().any(|entry| {
+            entry["command"] == "other-tool.exe"
+        }));
+
+        assert!(hooks.iter().any(entry_is_ours));
+
+        assert!(Path::new(&backup).exists());
+
+        let backup_bytes = std::fs::read(&backup).unwrap();
+        assert_eq!(backup_bytes, original_text.as_bytes());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn cursor_hook_write_rejects_stale_fingerprint() {
+        let dir = std::env::temp_dir().join(format!(
+            "coucou-cursor-hooks-stale-{}",
+            std::process::id()
+        ));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let path = dir.join("hooks.json");
+
+        std::fs::write(&path, "{}").unwrap();
+        let stale = current_fingerprint_at(&path);
+
+        // Simulate Cursor or the user changing hooks.json after preview.
+        std::fs::write(&path, "{\"version\":1}").unwrap();
+
+        let result = write_at(&path, true, &stale);
+
+        assert!(result.is_err());
+
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(contents, "{\"version\":1}");
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
