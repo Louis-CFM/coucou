@@ -181,7 +181,12 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
+      const agentName =
+        validAgent === "cursor" && payload.session_id
+          ? `Cursor · ${projectName}`
+          : validAgent!;
+
+      State.upsertExternalAgent(agentId, agentName, agentColor(validAgent!));
     } else {
       upsert(projectName, cwd);
     }
