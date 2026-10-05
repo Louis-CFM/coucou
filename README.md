@@ -58,6 +58,17 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 The Mac app does the work; the iPhone app keeps you in the loop when you step away. It goes as far into the Apple ecosystem as a dev tool can:
 
+<table>
+<tr>
+<td colspan="3" align="center"><img src="docs/media/iphone-live-activity.jpg" width="520" alt="Mochi on the Lock Screen, waiting for your OK with Deny and Allow"></td>
+</tr>
+<tr>
+<td width="33%"><img src="docs/media/iphone-approval.jpg" alt="A permission request on the iPhone, Allow with Face ID"></td>
+<td width="33%"><img src="docs/media/iphone-session.jpg" alt="A Claude Code session on the iPhone: the prompt, what it did, Claude's answer and the next instruction"></td>
+<td width="33%"><img src="docs/media/iphone-widgets.jpg" alt="Home Screen widgets with each agent's and service's Mochi"></td>
+</tr>
+</table>
+
 - 🏝️ **Live Activity and Dynamic Island** — lock your Mac while an agent works and Mochi moves to your iPhone's Lock Screen and Dynamic Island with the agent's state, then comes back to the notch when you unlock. **Allow** or **Deny** a permission right from the Lock Screen, without opening the app.
 - 🔔 **Notifications you can act on** — Allow, Review or Deny a permission, pick an answer to Claude's question, or reply to a finished agent, straight from the notification.
 - 🔐 **Face ID on every Allow** — nothing runs on your Mac without your explicit tap; your Mac only applies a decision meant for the exact request it is waiting on.

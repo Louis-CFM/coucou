@@ -6,6 +6,11 @@
 - Allow or deny a permission from the iPhone: a notification with the command, Deny right from it, Allow behind Face ID. Your Mac only applies a decision meant for the exact request it is waiting on, and the request expires after 2 minutes. The iPhone keeps a history of your decisions (#220)
 - Lock your Mac while an agent works and Mochi moves to your iPhone's Lock Screen and Dynamic Island, then comes back to the notch when you unlock. Turn it on under Settings → General → iPhone. It goes through a small relay that only sees the agent's name and state (#221)
 - Mochi, the pills and the diff engine now live in a shared package used by both apps; nothing changes in the notch (#210)
+- The iPhone sees more of what your Mac sees: every service Mochi (GitHub, Stripe, Vercel, Resend, Cal.com, n8n, Notion) with its latest items, and the last turn of each session with its commands and diffs, all encrypted with your iCloud keys. No API key ever leaves the Mac (#224)
+- Send the next instruction to Claude Code from the iPhone (GitHub build, off by default): your Mac picks it up within 15 seconds and continues the session in its own folder (#224)
+- Answer Claude's questions from the iPhone: your Mac applies an answer only if it matches the question still waiting (#241)
+- The Live Activity counts the time since Mochi left, and shows Allow and Deny while a command waits for you (#232, #241)
+- A new coucou sound for Mochi's greeting (#241)
 
 ## 0.1.7 — October 4, 2026
 
