@@ -254,6 +254,115 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Devin section ──────────────────────────────────────────────────────────────
+
+const DEVIN_ID = "agent_devin";
+
+function devinSection(hasToken: boolean): HTMLElement {
+  const dot = statusDot(hasToken);
+  const state = h("span", {
+    class: "hint",
+    text: hasToken ? "Token saved in the Windows Credential Manager." : "No token yet — your cloud Devin sessions stay invisible.",
+  });
+
+  const field = h("input", {
+    type: "password",
+    placeholder: hasToken ? "••••••••••••  (stored)" : "cog_…",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const connectBtn = h("button", { class: "primary", text: "Connect" });
+  const removeBtn = h("button", { class: "danger", text: "Remove" });
+  const feedback = h("div", {});
+
+  async function refresh() {
+    const present = (await Bridge.secretPresent("devin-api-key")) ?? false;
+    dot.style.background = present ? "#22c55e" : "#f4505e";
+    state.textContent = present
+      ? "Token saved in the Windows Credential Manager."
+      : "No token yet — your cloud Devin sessions stay invisible.";
+    field.placeholder = present ? "••••••••••••  (stored)" : "cog_…";
+    removeBtn.style.display = present ? "" : "none";
+  }
+
+  // Connect validates the token against the official API before anything is
+  // saved — a typo is told apart from a working key right here.
+  connectBtn.addEventListener("click", async () => {
+    const token = field.value.trim();
+    if (!token) return;
+    clear(feedback);
+    connectBtn.disabled = true;
+    connectBtn.textContent = "Connecting…";
+    try {
+      const name = await Bridge.devinConnect(token);
+      field.value = "";
+      feedback.append(h("div", {
+        class: "notice ok",
+        text: `Connected as ${name} — watching your sessions.`,
+      }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", {
+        class: "notice err",
+        text: String(err).replace(/^Error:\s*/, ""),
+      }));
+    } finally {
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect";
+    }
+  });
+
+  removeBtn.addEventListener("click", async () => {
+    clear(feedback);
+    try {
+      await Bridge.devinDisconnect();
+      feedback.append(h("div", { class: "notice ok", text: "Devin disconnected." }));
+      await refresh();
+    } catch (err) {
+      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+    }
+  });
+
+  // The same pill toggle as the Integrations rows, with the same 4-pill cap.
+  const pillToggle = toggle(settings.activeIntegrations.includes(DEVIN_ID), (v) => {
+    if (v) {
+      if (settings.activeIntegrations.includes(DEVIN_ID)) return;
+      if (settings.activeIntegrations.length >= 4) {
+        pillToggle.classList.remove("on");
+        return;
+      }
+      settings.activeIntegrations = [...settings.activeIntegrations, DEVIN_ID];
+    } else {
+      settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== DEVIN_ID);
+    }
+    void save();
+  });
+
+  removeBtn.style.display = hasToken ? "" : "none";
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Devin" })),
+    h("div", {
+      class: "hint",
+      text: "Watch your cloud Devin sessions — working, waiting for you, finished or failed — in the island. Sessions started on the web, in Slack or from the CLI appear on their own. Create a Personal Access Token in app.devin.ai → Settings → Devin API → PATs; it is stored in the Windows Credential Manager and never shown again.",
+    }),
+    h("div", { class: "row" },
+      h("label", { text: "Show the pill" }),
+      pillToggle,
+      h("span", { class: "hint", text: "even when nothing runs" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "API token" }),
+      field, connectBtn, removeBtn,
+    ),
+    state,
+    feedback,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -430,6 +539,7 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const hasDevin = (await Bridge.secretPresent("devin-api-key")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -443,6 +553,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    devinSection(hasDevin),
     integrationsSection(present),
     generalSection(),
     h("div", {

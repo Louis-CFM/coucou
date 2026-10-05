@@ -97,6 +97,12 @@ export const Bridge = {
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
+  // ── Devin ──────────────────────────────────────────────────────────────────
+  /** Validates the token against the API before saving it, then watches. */
+  devinConnect: (token: string) => callOrThrow<string>("devin_connect", { token }),
+  /** Removes the credential and clears every Devin session. */
+  devinDisconnect: () => callOrThrow<void>("devin_disconnect"),
+
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };

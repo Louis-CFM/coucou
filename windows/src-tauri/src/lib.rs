@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod devin;
 mod files;
 mod hooks;
 mod integrations;
@@ -399,6 +400,8 @@ pub fn run() {
             secret_clear,
             refresh_integration,
             open_n8n,
+            devin::devin_connect,
+            devin::devin_disconnect,
             open_settings_window,
             set_paused,
         ])
@@ -426,6 +429,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            devin::start(handle.clone());
             Ok(())
         })
         .run(tauri::generate_context!())

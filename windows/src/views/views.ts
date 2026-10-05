@@ -172,10 +172,12 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
+      // A live session (Claude Code or an agent pill such as Devin) keeps the
+      // ticker; every other pill shows its own card, exactly like
+      // IntegrationCardView's agentSessionActive on macOS.
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        (task?.source === "claudeCode" || task?.source === "agent") &&
+        (task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +190,17 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", {
+            class: "tool",
+            text:
+              task.source === "claudeCode"
+                ? "Claude Code"
+                : task.id === "agent_devin"
+                  ? "Devin"
+                  : task.source === "agent"
+                    ? "Agent"
+                    : "n8n",
+          }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {

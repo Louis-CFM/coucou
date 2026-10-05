@@ -16,6 +16,7 @@ const KEY_FOR: Record<string, string> = {
   integration_resend: "resend-api-key",
   integration_notion: "notion-api-key",
   integration_calcom: "calcom-api-key",
+  agent_devin: "devin-api-key",
 };
 
 const clearTimers = new Map<string, number>();

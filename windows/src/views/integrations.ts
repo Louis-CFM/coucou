@@ -60,7 +60,13 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   // The Claude Code pill is about hooks, not a key — the macOS wording would be
   // misleading here.
   const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
-  const label = error ?? (configured ? "Connected · loading…" : missing);
+  let label = error ?? (configured ? "Connected · loading…" : missing);
+  if (task.id === "agent_devin") {
+    // The poller reports the live session count; before it lands, "watching".
+    const active = Number((info?.data as { activeCount?: number } | undefined)?.activeCount ?? 0);
+    label = error
+      ?? (configured ? (active > 0 ? `Connected · ${active} active` : "Connected · watching…") : missing);
+  }
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
   const actions = h("div", { class: "int-actions" });
@@ -80,6 +86,18 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}d9`,
         text: "Open n8n",
         onclick: () => void Bridge.openN8n(),
+      }),
+    );
+  } else if (task.id === "agent_devin") {
+    // The URL the poller chose (waiting session first), never a guess.
+    const data = (info?.data as { url?: string } | undefined) ?? {};
+    const url = typeof data.url === "string" && data.url ? data.url : "https://app.devin.ai/sessions";
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open Devin",
+        onclick: () => void Bridge.openUrl(url),
       }),
     );
   } else if (OPEN_URLS[task.id]) {
@@ -110,7 +128,8 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name,
+      task.id === "agent_devin" ? "Agent" : "Integration"),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );
