@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::settings;
@@ -13,6 +14,15 @@ const HOOK_EVENTS: &[&str] = &[
     "postToolUseFailure",
     "stop",
 ];
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorHookPreview {
+    pub settings_path: String,
+    pub fingerprint: String,
+    pub before: String,
+    pub after: String,
+}
 
 const MARKER: &str = "coucou-hook";
 
@@ -164,6 +174,27 @@ fn current_fingerprint() -> String {
     }
 }
 
+fn pretty(value: &Value) -> String {
+    serde_json::to_string_pretty(value).unwrap_or_default()
+}
+
+pub fn preview(install: bool) -> Result<CursorHookPreview, String> {
+    let current = read_settings()?;
+
+    let next = if install {
+        merged(&current)
+    } else {
+        without_ours(&current)
+    };
+
+    Ok(CursorHookPreview {
+        settings_path: settings_path().to_string_lossy().to_string(),
+        fingerprint: current_fingerprint(),
+        before: pretty(&current),
+        after: pretty(&next),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,5 +293,26 @@ mod tests {
         assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
         assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
         assert_ne!(fingerprint(b""), fingerprint(b"{}"));
+    }
+
+    #[test]
+    fn cursor_hook_preview_does_not_modify_source_config() {
+        let existing = json!({
+            "version": 1,
+            "hooks": {
+                "preToolUse": [
+                    {
+                        "command": "other-tool.exe"
+                    }
+                ]
+            }
+        });
+
+        let before = pretty(&existing);
+        let after = pretty(&merged(&existing));
+
+        assert!(before.contains("other-tool.exe"));
+        assert!(after.contains("other-tool.exe"));
+        assert!(after.contains("coucou-hook"));
     }
 }
