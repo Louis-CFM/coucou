@@ -157,7 +157,12 @@ function handleHook(island: Island, payload: HookPayload) {
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
   const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
+  const agentId =
+    validAgent === "cursor" && payload.session_id
+      ? `agent_cursor_${payload.session_id}`
+      : validAgent
+        ? `agent_${validAgent}`
+        : CLAUDE_ID;
   const isExternalAgent = validAgent !== null;
 
   const focused = State.focusId === agentId;
