@@ -24,6 +24,15 @@ pub struct CursorHookPreview {
     pub after: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorHookStatus {
+    pub installed: bool,
+    pub settings_path: String,
+    pub hook_path: String,
+    pub hook_ready: bool,
+}
+
 const MARKER: &str = "coucou-hook";
 
 pub fn settings_path() -> PathBuf {
@@ -83,6 +92,20 @@ fn entry_is_ours(entry: &Value) -> bool {
         .and_then(Value::as_str)
         .map(|command| {
             command.contains(MARKER) && command.contains("--agent cursor")
+        })
+        .unwrap_or(false)
+}
+
+fn is_installed(existing: &Value) -> bool {
+    existing
+        .get("hooks")
+        .and_then(Value::as_object)
+        .map(|hooks| {
+            hooks
+                .values()
+                .filter_map(Value::as_array)
+                .flatten()
+                .any(entry_is_ours)
         })
         .unwrap_or(false)
 }
@@ -183,6 +206,18 @@ fn current_fingerprint_at(path: &Path) -> String {
 
 fn pretty(value: &Value) -> String {
     serde_json::to_string_pretty(value).unwrap_or_default()
+}
+
+pub fn status() -> CursorHookStatus {
+    let current = read_settings().unwrap_or_else(|_| json!({}));
+    let hook_path = settings::hook_exe_path();
+
+    CursorHookStatus {
+        installed: is_installed(&current),
+        settings_path: settings_path().to_string_lossy().to_string(),
+        hook_ready: hook_path.exists(),
+        hook_path: hook_path.to_string_lossy().to_string(),
+    }
 }
 
 pub fn preview(install: bool) -> Result<CursorHookPreview, String> {
@@ -472,5 +507,22 @@ mod tests {
         assert_eq!(contents, "{\"version\":1}");
 
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn cursor_hook_status_detects_coucou_entry() {
+        let config = json!({
+            "version": 1,
+            "hooks": {
+                "preToolUse": [
+                    {
+                        "command": "\"C:/Coucou/coucou-hook.exe\" --agent cursor"
+                    }
+                ]
+            }
+        });
+
+        assert!(is_installed(&config));
+        assert!(!is_installed(&json!({})));
     }
 }
