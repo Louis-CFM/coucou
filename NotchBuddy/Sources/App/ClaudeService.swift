@@ -206,9 +206,9 @@ final class ClaudeService {
     /// neutral otherwise — same wording as the Windows build.
     private nonisolated static func makeSystemPrompt() -> String {
         let opening = if let firstName = resolveUserFirstName() {
-            "You are Mochi, \(firstName)'s personal AI assistant embedded in the notch of their Mac."
+            "You are Mohinur, \(firstName)'s personal AI assistant embedded in the notch of their Mac."
         } else {
-            "You are Mochi, a personal AI assistant embedded in the notch of the user's Mac."
+            "You are Mohinur, a personal AI assistant embedded in the notch of the user's Mac."
         }
         return """
         \(opening) \
@@ -458,7 +458,7 @@ final class ClaudeService {
     private func chatClaudeCode(query: String, context: PromptContext?, state: AppState) async {
         // Two turns at once would both claim the same session ID and break the conversation.
         guard !claudeCodeTurnRunning else {
-            await showError("Mochi is still answering. Ask again in a moment.", state: state)
+            await showError("Mohinur is still answering. Ask again in a moment.", state: state)
             return
         }
         claudeCodeTurnRunning = true

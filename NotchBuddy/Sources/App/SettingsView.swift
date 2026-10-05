@@ -307,7 +307,7 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
+                Toggle("Move Mohinur to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
                 Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
