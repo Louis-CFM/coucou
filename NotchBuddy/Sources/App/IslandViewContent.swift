@@ -1153,6 +1153,7 @@ struct PromptView: View {
     @State private var text: String = ""
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
+    @State private var showSessions = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -1200,8 +1201,25 @@ struct PromptView: View {
                     Spacer()
                 }
 
-                HStack(spacing: 0) {
+                HStack(spacing: 6) {
                     Spacer()
+                    if state.chatProvider == .claudeCode {
+                        Button { showSessions.toggle() } label: {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 10.5))
+                                .foregroundColor(Color(hex: "#7B8089"))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.06))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Recent chats")
+                        .popover(isPresented: $showSessions, arrowEdge: .bottom) {
+                            ChatSessionsView(state: state, isPresented: $showSessions)
+                                .frame(width: 300)
+                        }
+                    }
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             showModelPicker.toggle()
@@ -1456,6 +1474,99 @@ struct ModelPickerView: View {
                 }
             }
         }
+    }
+}
+
+/// Past Claude plan chats: tap one to continue it, tap the trash twice to delete it.
+struct ChatSessionsView: View {
+    @ObservedObject var state: AppState
+    @Binding var isPresented: Bool
+    @State private var sessions: [ClaudeCodeChatSession] = []
+    @State private var confirmDelete: String?
+    @State private var listHeight: CGFloat = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Recent chats")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(hex: "#8A8F98"))
+            if sessions.isEmpty {
+                Text("No saved chats yet.")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "#8A8F98"))
+                    .padding(.vertical, 4)
+            } else {
+                // A ScrollView has no height of its own, so a popover shrinks it to one row.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(sessions) { row($0) }
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
+                }
+                .frame(height: min(listHeight, 260))
+            }
+        }
+        .padding(14)
+        .background(Color(hex: "#16171B"))
+        .onAppear { sessions = ClaudeCodeChat.sessions() }
+    }
+
+    private func row(_ session: ClaudeCodeChatSession) -> some View {
+        let current = session.id == ClaudeService.shared.currentClaudeCodeSessionId
+        let accent = Color(hex: ChatProvider.claudeCode.accentHex)
+        return HStack(spacing: 8) {
+            Button {
+                isPresented = false
+                guard !current else { return }
+                SoundEngine.shared.play("blip")
+                Task { await ClaudeService.shared.openClaudeCodeSession(session.id, state: state) }
+            } label: {
+                HStack {
+                    Text(session.title)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .foregroundColor(current ? accent : Color(hex: "#C8CDD4"))
+                    Spacer(minLength: 8)
+                    Text(timeAgo(session.updated))
+                        .font(.system(size: 10.5))
+                        .foregroundColor(Color(hex: "#5C6370"))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                guard confirmDelete == session.id else { confirmDelete = session.id; return }
+                confirmDelete = nil
+                Task {
+                    await ClaudeService.shared.deleteClaudeCodeSession(session.id, state: state)
+                    sessions = ClaudeCodeChat.sessions()
+                }
+            } label: {
+                if confirmDelete == session.id {
+                    Text("Delete?")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundColor(Color(hex: "#FF6B6B"))
+                } else {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#5C6370"))
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(current ? accent.opacity(0.1) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let diff = Date().timeIntervalSince(date)
+        if diff < 60    { return "just now" }
+        if diff < 3600  { return "\(Int(diff / 60))m" }
+        if diff < 86400 { return "\(Int(diff / 3600))h" }
+        return "\(Int(diff / 86400))d"
     }
 }
 
