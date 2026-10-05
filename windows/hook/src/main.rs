@@ -260,6 +260,8 @@ fn read_event() -> Option<(String, String, String)> {
         normalize_cursor_cwd(map);
         event = normalize_cursor_event(&event).to_string();
         event = normalize_cursor_stop(map, &event);
+
+        map.remove("tool_output");
     }
 
     map.insert(
