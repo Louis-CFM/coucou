@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import UserNotificationsUI
 import CloudKit
 
 // The expanded approval notification (long press): Mochi alive, waiting for
