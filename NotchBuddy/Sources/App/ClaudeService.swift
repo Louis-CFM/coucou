@@ -71,6 +71,7 @@ final class KeychainStore: @unchecked Sendable {
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
+        "devin-api-key",
     ]
 
     private init() {

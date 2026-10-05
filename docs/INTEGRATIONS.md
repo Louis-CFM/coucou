@@ -202,6 +202,68 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. Devin (sessions cloud)
+
+**Plateforme** : macOS uniquement (Windows/Linux : travail de suivi — l'app Tauri n'a pas encore l'agent)
+**Règle d'or** : vérifier https://docs.devin.ai/api-reference au moment de retoucher ce code.
+
+**Auth** : Personal Access Token (préfixe `cog_`), créé dans app.devin.ai → Settings → Devin API → PATs. Un PAT s'authentifie comme l'utilisateur lui-même — le bon modèle pour un outil de bureau personnel ; les service users (`cog_` aussi) sont pour l'automatisation partagée. Stocké dans le Trousseau (`devin-api-key`), jamais réaffiché après connexion. Réglages → Agents → Devin → Connect : le token est vérifié via `GET /v3/self` avant d'être enregistré ; Disconnect le supprime.
+
+### Architecture
+
+```
+api.devin.ai/v3 (Authorization: Bearer, PAT)
+  └─ DevinMonitor (poller, cadence adaptative) ── DevinAPI.swift (modèles purs + mapping d'états, testés)
+        └─ pastille agent_devin (PillCatalog, catégorie .agent) — une pastille, N sessions dessous
+```
+
+Devin est un agent cloud : pas de hook local, la pastille est alimentée par l'API officielle. L'organisation est découverte automatiquement (`devin_sessions_org_id` de `/v3/self`) — rien à copier à la main. Les sessions de toutes origines (web, Slack, CLI, API, automations) apparaissent d'elles-mêmes.
+
+### Requêtes
+
+- `GET /v3/self` — identité + organisation (à la connexion, et re-fetch si obsolète) ;
+- par poll, deux requêtes bornées (filtres documentés de l'API) :
+  1. **Découverte** : `GET /v3/organizations/{org}/sessions?first=200&is_archived=false&user_ids={user_id}&created_after={il y a 30 j}` — première page seulement ; `created_after` tient l'historique profond à l'écart, donc tout tri par récence met les nouvelles sessions dedans ;
+  2. **Rafraîchissement par id** (uniquement pendant qu'au moins une session est suivie) : la même liste avec `session_ids={ids suivis}` (50 max, plus urgents d'abord) — quelle que soit la pagination ou l'ordre du serveur, une session déjà suivie ne peut jamais être évincée de la page de découverte par l'historique et déclarée « suspendue » à tort. Absente des deux réponses, elle est réellement archivée ou supprimée ;
+  - les deux pages sont fusionnées (`DevinSessionPage.merge`, dédoublonnage par `session_id`) ;
+- pagination par curseur (`has_next_page` / `end_cursor`) supportée par le décodage ; l'intégralité de l'historique n'est jamais téléchargée ;
+- erreurs : corps `ProblemDetail` (RFC 9457) ; 429 avec en-tête `Retry-After` respecté ; 403 distinct (« No access to this organization's sessions »).
+
+### Mapping des états (`DevinPhase`)
+
+| status | status_detail | État Coucou | Pastille |
+|---|---|---|---|
+| `new` / `claimed` / `resuming` | — | `thinking` | en démarrage |
+| `running` | `working` / absent | `working` | travaille |
+| `running` | `waiting_for_user` | `question` | attention + son « question » |
+| `running` | `waiting_for_approval` | `question` | attention (safe mode) |
+| `running` | `finished` | `finished` | tâche finie, session encore ouverte |
+| `exit` | — | `finished` | finie (succès/échec non distingués par l'API) |
+| `error` | — | `error` | son « error », badge rouge |
+| `suspended` | `error` / `payment_declined` / `contract_expired` | `error` | — |
+| `suspended` | `usage_limit_exceeded`, `out_of_credits`, `out_of_quota`, `no_quota_allocation`, `org_usage_limit_exceeded`, `user_usage_limit_exceeded`, `total_session_limit_exceeded` | `ratelimit` | suspension quota |
+| `suspended` | `inactivity` / `user_request` / autre | `idle` | fin douce |
+| inconnu | — | `working` | dégradation gracieuse : ni succès ni échec inventés ; suivi tant que frais (voir ci-dessous) |
+
+Sessions multiples : chaque session est suivie par son `session_id` officiel dans `DevinTracker` (pur, testé) ; l'état de la pastille est l'agrégat par priorité error > question > ratelimit > working > starting > finished. Une session terminée reste affichée 60 s (`updated_at`), puis disparaît ; la pastille se vide (reset si déclarée dans Active pills, retrait sinon). Un statut non reconnu est suivi tant que frais, puis sort silencieusement après `unknownWindow` (24 h) : impossible de rester « working » pour toujours, et le poll suivant rétablit la session dès que l'API reprend un statut compris. Le titre de la session (`title`) devient le nom de la pastille et une ligne du défilé par transition ; un PR qui apparaît (`pull_requests`) affiche « PR ready ».
+
+### Cadence
+
+20 s tant qu'au moins une session vit (les deux requêtes ci-dessus), 120 s sinon (découverte seule), backoff exponentiel 60 s → 10 min sur erreur, `Retry-After` respecté sur 429. Aucun appel sans token. 0 requête réseau → 0 % CPU.
+
+### Ouvrir la session
+
+Le clic sur la pastille (et « Open Devin » sur la carte idle) ouvre l'URL `url` fournie par l'API — jamais une URL reconstruite. Règle déterministe (`DevinTracker.bestSession`) : la session en attente la plus récemment mise à jour, sinon la session vivante la plus récente, sinon la session la plus récente ; égalité d'`updated_at` départagée par l'id de session (le choix ne clignote pas entre deux polls), sinon https://app.devin.ai/sessions.
+
+### Limites
+
+- `exit` ne dit pas si la session a réussi : affichée comme finie, jamais comme échec sans preuve ;
+- pas d'approbation ni de réponse à une question depuis Coucou : l'API le permet (`POST …/messages`, envoie un message, resume si suspendu) — suivi possible, hors périmètre de ce PR ;
+- pas de webhooks côté API → polling, le mécanisme officiel documenté ;
+- l'inventaire des PATs peut être désactivé par la politique d'entreprise → l'utilisateur voit « Invalid token (401) ».
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

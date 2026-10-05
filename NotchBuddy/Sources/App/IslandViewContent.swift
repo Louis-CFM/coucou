@@ -227,6 +227,10 @@ struct OverviewView: View {
                 hit.activate(options: .activateIgnoringOtherApps)
             }
             #endif
+        case "agent_devin":
+            // Devin sessions are cloud-hosted: open the most relevant session in
+            // the browser. The URL comes from the API (session.url), never guessed.
+            NSWorkspace.shared.open(DevinMonitor.shared.bestSessionURL)
         case "ai_anthropic":
             switchChatProvider(.anthropic)
         case "ai_google":
@@ -1609,6 +1613,8 @@ struct IntegrationCardView: View {
             #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
+        case "agent_devin":
+            return KeychainStore.shared.get("devin-api-key") != nil
         case "integration_music":
             #if !APPSTORE
             return true  // Apple Music is always installed on macOS
@@ -1643,6 +1649,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "agent_devin":         return DevinMonitor.shared.bestSessionURL
         default: return nil
         }
     }
@@ -1716,6 +1723,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "agent_devin"          ? appState.devinError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1732,8 +1740,15 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "agent_devin"          ? appState.devinError
                    : nil
         if let err = svcErr { return err }
+        if task.id == "agent_devin" {
+            if !isConfigured { return "Key not configured" }
+            return appState.devinActiveCount > 0
+                ? "Connected · \(appState.devinActiveCount) active"
+                : "Connected · watching…"
+        }
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {

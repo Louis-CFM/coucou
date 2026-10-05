@@ -73,6 +73,11 @@ struct SettingsView: View {
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
 
+    // Devin (Personal Access Token — entered once, never shown again)
+    @State private var devinToken: String = ""
+    @State private var devinConnected: Bool = KeychainStore.shared.get("devin-api-key") != nil
+    @State private var connectingDevin: Bool = false
+
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
     @State private var hotkeyCode: UInt16   = AppState.shared.hotkeyCode
@@ -593,6 +598,46 @@ struct SettingsView: View {
             .padding(6)
         }
         #endif
+
+        GroupBox("Devin") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Watch your cloud Devin sessions — working, waiting for you, finished or failed — in the island. Sessions started on the web, in Slack or from the CLI appear on their own; the pill opens the session in Devin. Coucou talks only to api.devin.ai.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if devinConnected {
+                    if let err = state.devinError {
+                        Text(err)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    } else {
+                        let sessions = state.devinActiveCount > 0
+                            ? "\(state.devinActiveCount) active session\(state.devinActiveCount == 1 ? "" : "s")"
+                            : "watching…"
+                        Text("Connected as \(state.devinUserName ?? "you") · \(sessions)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 10) {
+                        Button("Disconnect") { disconnectDevin() }
+                            .buttonStyle(.bordered)
+                    }
+                } else {
+                    SecureField("API token  (cog_…)", text: $devinToken)
+                        .textFieldStyle(.roundedBorder)
+                    Button(connectingDevin ? "Connecting…" : "Connect") {
+                        Task { await connectDevin() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(connectingDevin || devinToken.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Text("Create a Personal Access Token in app.devin.ai → Settings → Devin API → PATs. It acts as you and is stored in the Keychain — Coucou never shows it again.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(6)
+        }
     }
 
     // MARK: - Chat section
@@ -1143,6 +1188,43 @@ struct SettingsView: View {
         statusMessage = "✓ Integration keys saved."
     }
 
+    // MARK: - Devin connect / disconnect
+
+    /// Checks the token against the official API before saving anything; the
+    /// raw token leaves this view only inside the Authorization header.
+    private func connectDevin() async {
+        connectingDevin = true
+        statusMessage = ""
+        let result = await DevinMonitor.testConnection(token: devinToken)
+        connectingDevin = false
+        switch result {
+        case .success(let identity):
+            guard identity.sessionsOrgId != nil else {
+                statusMessage = "❌ This account has no Devin organization to watch."
+                return
+            }
+            KeychainStore.shared.set("devin-api-key", value: devinToken)
+            devinToken = ""                       // never keep the raw token around
+            devinConnected = true
+            AppState.shared.devinUserName = identity.userName
+            statusMessage = "✓ Connected as \(identity.userName) — watching your sessions."
+            DevinMonitor.shared.pollNow()
+        case .failure(let error):
+            if case .message(let message) = error {
+                statusMessage = "❌ \(message)"
+            } else {
+                statusMessage = "❌ Cannot connect to Devin."
+            }
+        }
+    }
+
+    private func disconnectDevin() {
+        KeychainStore.shared.remove("devin-api-key")
+        devinConnected = false
+        statusMessage = "Devin disconnected."
+        DevinMonitor.shared.disconnect()
+    }
+
     private func saveKey(_ key: String, value: String) {
         if value.isEmpty {
             KeychainStore.shared.remove(key)
@@ -1233,6 +1315,7 @@ struct SettingsView: View {
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
             #endif
+            if def.id == "agent_devin"          && KeychainStore.shared.get("devin-api-key") == nil { return "Key not configured" }
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
