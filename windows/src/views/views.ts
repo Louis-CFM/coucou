@@ -361,7 +361,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : task?.source === "agent" ? task.name.split(" · ")[0] : "Claude Code"));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
