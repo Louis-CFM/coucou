@@ -120,6 +120,7 @@ final class LiveActivityRelay {
     }
 
     private func stateChanged(_ lead: MochiActivityState?) {
+        if lead?.tone != latest?.tone, let lead { log("phase: \(lead.agent) \(lead.statusText)\(locked ? "" : " (Mac unlocked, stays on the Mac)")") }
         latest = lead
         guard locked else { return }
         if startedAt == nil {
@@ -182,13 +183,20 @@ final class LiveActivityRelay {
         Task {
             let targets = await updateTargets(since: startedAt)
             guard !targets.isEmpty else {
+                log("update \(state.tone) waits: no update token from the iPhone yet")
                 sending = false
                 scheduleRetry()
                 return
             }
+            retries = 0
+            let urgent = state.tone == "waiting" || state.tone == "question"
             for (id, phone) in targets {
-                await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
-                           urgent: state.tone == "waiting" || state.tone == "question", phoneID: id)
+                let ok = await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
+                                    urgent: urgent, phoneID: id)
+                // Every change of phase is logged; step counts only when they fail.
+                if ok && (urgent || sent?.tone != state.tone) {
+                    log("update sent: \(state.agent) \(state.statusText)\(state.approval == nil ? "" : " (with Allow / Deny)")")
+                }
             }
             sent = state
             sending = false
