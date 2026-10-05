@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// What the Mac just read from a service's API: figures, lists, and the
 /// actions it offers on each item (Face ID, then the Mac does it).
@@ -10,6 +11,7 @@ struct ServiceLiveDetail: View {
     @State private var running: ServiceActionDef?
     @State private var confirming: ServiceActionDef?
     @State private var sentFeedback = 0
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -49,25 +51,32 @@ struct ServiceLiveDetail: View {
 
     // MARK: Figures
 
+    /// The figures in one strip, like the Stocks or Fitness summaries.
     private var stats: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            ForEach(Array(detail.stats.enumerated()), id: \.offset) { _, stat in
-                VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 0) {
+            ForEach(Array(detail.stats.enumerated()), id: \.offset) { index, stat in
+                VStack(spacing: 3) {
                     Text(stat.value)
-                        .font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(stat.tone == .idle ? Color.primary : stat.tone.color)
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(stat.tone == .idle || stat.tone == .ok ? Color.primary : stat.tone.color)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.5)
                         .contentTransition(.numericText())
                     Text(stat.label)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .glassCard(cornerRadius: 18)
+                .frame(maxWidth: .infinity)
+                if index < detail.stats.count - 1 {
+                    Divider().frame(height: 28)
+                }
             }
         }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 6)
+        .glassCard(cornerRadius: 20)
     }
 
     // MARK: Lists
@@ -88,82 +97,81 @@ struct ServiceLiveDetail: View {
         .glassCard()
     }
 
+    /// One line per item: a tap opens it on the web, its actions sit in the
+    /// "…" menu on the right (or a long press), like Mail and Files.
     private func itemRow(_ item: DetailItem) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Circle().fill(item.tone.color).frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: 10) {
+            Circle().fill(item.tone == .idle ? Color.secondary.opacity(0.5) : item.tone.color).frame(width: 7, height: 7)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(item.title)
                         .font(.callout.weight(.medium))
-                        .lineLimit(2)
-                    if !item.subtitle.isEmpty {
-                        Text(item.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                Spacer(minLength: 6)
-                VStack(alignment: .trailing, spacing: 3) {
+                        .lineLimit(1)
                     if let badge = item.badge, !badge.isEmpty {
                         Text(badge)
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(item.tone == .idle ? Color.secondary : item.tone.color)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background((item.tone == .idle ? Color.white : item.tone.color).opacity(0.14), in: Capsule())
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                }
+                HStack(spacing: 4) {
+                    if !item.subtitle.isEmpty {
+                        Text(item.subtitle).lineLimit(1)
                     }
                     if let date = item.date {
-                        Text(date, format: .relative(presentation: .named))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        if !item.subtitle.isEmpty { Text("·") }
+                        Text(date, format: .relative(presentation: .named)).lineLimit(1).fixedSize()
                     }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            if !item.actions.isEmpty || item.url != nil {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(item.actions, id: \.self) { action in
-                            actionButton(action)
-                        }
-                        if let url = item.url.flatMap(URL.init(string:)), url.scheme == "https" {
-                            Link(destination: url) {
-                                Label("Open", systemImage: "arrow.up.right")
-                                    .font(.footnote.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .glassPill(Capsule(), interactive: true)
-                            }
-                            .buttonStyle(PressableButtonStyle())
+            Spacer(minLength: 4)
+            if !item.actions.isEmpty {
+                Menu {
+                    ForEach(item.actions, id: \.self) { action in
+                        Button(role: action.destructive ? .destructive : nil) {
+                            if action.confirm != nil { confirming = action } else { run(action) }
+                        } label: {
+                            Label(action.title, systemImage: action.symbol)
                         }
                     }
-                    .padding(.leading, 18)
+                } label: {
+                    Group {
+                        if item.actions.contains(where: { $0 == running }) {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "ellipsis")
+                                .font(.callout.weight(.semibold))
+                        }
+                    }
+                    .frame(width: 32, height: 32)
+                    .glassPill(Circle(), interactive: true)
                 }
+                .disabled(running != nil)
+            } else if item.url != nil {
+                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 2)
-    }
-
-    private func actionButton(_ action: ServiceActionDef) -> some View {
-        Button {
-            if action.confirm != nil { confirming = action } else { run(action) }
-        } label: {
-            HStack(spacing: 6) {
-                if running == action {
-                    ProgressView().controlSize(.mini)
-                } else {
-                    Image(systemName: action.symbol)
-                }
-                Text(action.title)
-            }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(action.destructive ? Color.red : Color.primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .glassPill(Capsule(), interactive: true, tint: action.destructive ? .red : nil)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let url = item.url.flatMap(URL.init(string:)), url.scheme == "https" { openURL(url) }
         }
-        .buttonStyle(PressableButtonStyle())
-        .disabled(running != nil)
+        .contextMenu {
+            ForEach(item.actions, id: \.self) { action in
+                Button(role: action.destructive ? .destructive : nil) {
+                    if action.confirm != nil { confirming = action } else { run(action) }
+                } label: {
+                    Label(action.title, systemImage: action.symbol)
+                }
+            }
+            if let url = item.url.flatMap(URL.init(string:)), url.scheme == "https" {
+                Button { openURL(url) } label: { Label("Open", systemImage: "safari") }
+                Button { UIPasteboard.general.url = url } label: { Label("Copy link", systemImage: "link") }
+            }
+        }
     }
 
     private func run(_ action: ServiceActionDef) {

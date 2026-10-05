@@ -98,7 +98,10 @@ struct ServiceDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if let snapshot {
-                    reasonCard(snapshot)
+                    // Why the dot has its color: only worth a card when something needs a look.
+                    if snapshot.tone == .error || snapshot.tone == .warning || link.serviceDetails[pillId] == nil {
+                        reasonCard(snapshot)
+                    }
                     // Read live from the service's API by the Mac, with actions.
                     if let detail = link.serviceDetails[pillId] {
                         ServiceLiveDetail(link: link, pillId: pillId, detail: detail)
