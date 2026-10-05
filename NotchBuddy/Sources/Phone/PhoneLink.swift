@@ -79,6 +79,8 @@ final class PhoneLink {
     var sessions: [SessionItem] = []
     /// Service Mochi (GitHub, Stripe…) the Mac publishes, by pill ID.
     var services: [String: ServiceSnapshot] = [:]
+    /// The last turn of each session (prompt, actions, diffs, answer), by pill ID.
+    var turns: [String: TurnSnapshot] = [:]
     var lastPong: String?
     var pushError: String?
     var notificationsAllowed: Bool?
@@ -195,6 +197,9 @@ final class PhoneLink {
                     sessions.removeAll { "session-\($0.id)" == deletion.recordID.recordName }
                     gotNew = true
                 }
+                for deletion in changes.deletions where deletion.recordType == TurnSnapshot.recordType {
+                    if let id = TurnSnapshot.pillId(fromRecordName: deletion.recordID.recordName) { turns[id] = nil }
+                }
                 for deletion in changes.deletions where deletion.recordType == ServiceSnapshot.recordType {
                     if let id = ServiceSnapshot.pillId(fromRecordName: deletion.recordID.recordName) {
                         services[id] = nil
@@ -221,6 +226,12 @@ final class PhoneLink {
     }
 
     private func add(_ record: CKRecord) -> Bool {
+        if record.recordType == TurnSnapshot.recordType {
+            guard let payload = record.encryptedValues["payload"] as? String,
+                  let turn = try? JSONDecoder().decode(TurnSnapshot.self, from: Data(payload.utf8)) else { return false }
+            turns[turn.pillId] = turn
+            return false   // nothing for the widgets
+        }
         if record.recordType == ServiceSnapshot.recordType {
             guard let payload = record.encryptedValues["payload"] as? String,
                   let snapshot = try? JSONDecoder().decode(ServiceSnapshot.self, from: Data(payload.utf8)) else { return false }

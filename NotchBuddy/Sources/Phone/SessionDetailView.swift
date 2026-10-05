@@ -6,6 +6,7 @@ struct SessionDetailView: View {
     let sessionId: String
 
     private var session: SessionItem? { link.sessions.first { $0.id == sessionId } }
+    private var turn: TurnSnapshot? { link.turns[sessionId] }
 
     var body: some View {
         ScrollView {
@@ -18,8 +19,12 @@ struct SessionDetailView: View {
                         waiting(title: "Question", text: session.question, monospaced: false, color: .cyan,
                                 footnote: "Answer on your Mac for now.")
                     }
-                    if !session.steps.isEmpty { plan(session) }
-                    if !session.finalLine.isEmpty {
+                    if let turn {
+                        LastTurnView(turn: turn, working: session.isWorking)
+                    } else if !session.steps.isEmpty {
+                        plan(session)
+                    }
+                    if turn == nil, !session.finalLine.isEmpty {
                         card(title: "Last message") {
                             Text(session.finalLine)
                                 .font(.callout)
@@ -34,6 +39,14 @@ struct SessionDetailView: View {
                                 .textSelection(.enabled)
                         }
                     }
+                }
+                .padding(16)
+            } else if let turn {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("This session ended on your Mac. Its last turn:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    LastTurnView(turn: turn, working: false)
                 }
                 .padding(16)
             } else {
