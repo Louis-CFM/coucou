@@ -319,7 +319,7 @@ final class LiveActivityRelay {
     /// The most urgent session, as the iPhone's Live Activity shows it.
     nonisolated static func leadState(tasks: [AgentTask], approval: ApprovalInfo?) -> MochiActivityState? {
         let ranked = tasks
-            .filter { $0.source != .n8n }   // same sessions as SessionPublisher
+            .filter { $0.source != .n8n && PillCatalog.isSession($0.id) }   // same sessions as SessionPublisher
             .map { task -> (AgentTask, Int) in
                 let urgency = MochiActivityState.urgency(state: task.state,
                                                          waitingForOK: approval?.pillId == task.id,

@@ -318,6 +318,9 @@ final class AppState: ObservableObject {
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
 
+    // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
+    @Published var n8nRuns: [N8nRun] = []
+
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 
@@ -737,6 +740,13 @@ struct CalcomBooking: Identifiable, Equatable {
 }
 
 // MARK: - Notion
+
+struct N8nRun: Equatable {
+    let workflow: String
+    let detail: String?
+    let success: Bool
+    let date: Date
+}
 
 struct NotionPage: Identifiable {
     let id: String

@@ -19,19 +19,21 @@ struct SharedSession: Codable, Identifiable, Hashable, Sendable {
 
     enum Tone: String, Codable, Sendable {
         case waiting, question, error, working, done, idle
+        /// Services: something to look at (CI running, review asked), or just news.
+        case warning, info
     }
 
     var isWaitingForYou: Bool { tone == .waiting || tone == .question }
     var isWorking: Bool { tone == .working }
 
-    /// Opens one session in the app (widgets link here).
+    /// Opens one Mochi in the app, a session or a service (widgets link here).
     static func url(for id: String) -> URL {
-        URL(string: "coucou://session/\(id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id)")!
+        URL(string: "coucou://mochi/\(id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id)")!
     }
 
-    /// The session id in a coucou://session/<id> link.
+    /// The pill id in a coucou://mochi/<id> link (coucou://session/<id> from builds before).
     static func sessionId(from url: URL) -> String? {
-        guard url.scheme == "coucou", url.host == "session" else { return nil }
+        guard url.scheme == "coucou", url.host == "mochi" || url.host == "session" else { return nil }
         let id = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return id.isEmpty ? nil : id
     }

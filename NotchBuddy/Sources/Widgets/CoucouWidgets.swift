@@ -64,8 +64,8 @@ struct SoloWidget: Widget {
 
 struct TeamWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "CoucouTeam", provider: SessionsProvider()) { entry in
-            TeamView(sessions: Array(entry.sessions.prefix(4)), tick: entry.tick)
+        AppIntentConfiguration(kind: "CoucouTeam", intent: TeamConfiguration.self, provider: TeamProvider()) { entry in
+            TeamView(sessions: entry.sessions, picks: entry.picks, tick: entry.tick)
         }
         .configurationDisplayName("Team")
         .description("Up to four agents at a glance.")
@@ -106,6 +106,8 @@ extension SharedSession {
         case .question: .cyan
         case .error: .red
         case .done: .green
+        case .warning: .orange
+        case .info: Color(red: 0.4, green: 0.7, blue: 1)
         case .working, .idle: .white.opacity(0.7)
         }
     }
@@ -162,6 +164,8 @@ struct SoloView: View {
 
 struct TeamView: View {
     let sessions: [SharedSession]
+    /// The Mochi picked for each spot in the widget's settings, nil = automatic.
+    var picks: [String?] = [nil, nil, nil, nil]
     var tick: Int = 0
 
     var body: some View {
@@ -172,30 +176,34 @@ struct TeamView: View {
         .containerBackground(for: .widget) { Color(white: 0.08) }
     }
 
-    /// The Mac's sessions first, then the team's regulars so the four spots
-    /// are always taken.
-    private var team: [(session: SharedSession, live: Bool)] {
-        var result: [(session: SharedSession, live: Bool)] = sessions.prefix(4).map { (session: $0, live: true) }
-        for id in Self.regulars where result.count < 4 && !result.contains(where: { $0.session.id == id }) {
-            if let filler = SharedSession.regular(id: id) { result.append((session: filler, live: false)) }
+    /// The picked Mochi in their spots, then the most urgent ones from the
+    /// Mac, then the team's regulars, so the four spots are always taken.
+    private var team: [SharedSession] {
+        let chosen = Set(picks.compactMap { $0 })
+        var automatic = sessions.filter { !chosen.contains($0.id) }
+        for id in Self.regulars where !chosen.contains(id) && !automatic.contains(where: { $0.id == id }) {
+            if let filler = SharedSession.regular(id: id) { automatic.append(filler) }
         }
-        return result
+        var queue = automatic[...]
+        return (0..<4).compactMap { spot -> SharedSession? in
+            if spot < picks.count, let id = picks[spot] {
+                return sessions.first { $0.id == id } ?? SharedSession.regular(id: id)
+            }
+            return queue.popFirst()
+        }
     }
 
     /// Who fills the free spots, in this order.
-    static let regulars = ["integration_github", "integration_stripe", "integration_vercel", "agent_codex"]
+    static let regulars = ["integration_github", "integration_stripe", "integration_vercel", "integration_resend",
+                           "integration_calcom", "integration_n8n", "integration_notion", "agent_codex"]
 
     @ViewBuilder private func tile(_ index: Int) -> some View {
         let team = team
         if team.indices.contains(index) {
             let member = team[index]
-            if member.live {
-                // A tap opens that session in the app.
-                Link(destination: SharedSession.url(for: member.session.id)) {
-                    TeamTile(session: member.session, tick: tick)
-                }
-            } else {
-                TeamTile(session: member.session, tick: tick)
+            // A tap opens that Mochi in the app.
+            Link(destination: SharedSession.url(for: member.id)) {
+                TeamTile(session: member, tick: tick)
             }
         } else {
             EmptyTeamTile(tick: tick, slot: index)
@@ -211,7 +219,7 @@ struct TeamTile: View {
     /// Calm Mochi look around; one who needs you keeps his state's face.
     private var pose: MochiPose {
         switch session.tone {
-        case .idle, .done, .working: MochiPose.idle(id: session.id, tick: tick)
+        case .idle, .done, .working, .info, .warning: MochiPose.idle(id: session.id, tick: tick)
         default: .neutral
         }
     }

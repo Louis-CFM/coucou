@@ -174,7 +174,8 @@ struct SessionSnapshot: Equatable {
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
                     question: AskQuestion?) -> [String: SessionSnapshot] {
         var result: [String: SessionSnapshot] = [:]
-        for task in tasks where task.source != .n8n {
+        // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
+        for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
             let hasApproval = approval?.pillId == task.id
             let questionText = task.state == .question
                 ? (question?.questions.map(\.question).joined(separator: "\n") ?? "")

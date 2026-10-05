@@ -77,6 +77,8 @@ final class PhoneLink {
     var status: Status = .starting
     var pings: [PingItem] = []
     var sessions: [SessionItem] = []
+    /// Service Mochi (GitHub, Stripe…) the Mac publishes, by pill ID.
+    var services: [String: ServiceSnapshot] = [:]
     var lastPong: String?
     var pushError: String?
     var notificationsAllowed: Bool?
@@ -193,6 +195,12 @@ final class PhoneLink {
                     sessions.removeAll { "session-\($0.id)" == deletion.recordID.recordName }
                     gotNew = true
                 }
+                for deletion in changes.deletions where deletion.recordType == ServiceSnapshot.recordType {
+                    if let id = ServiceSnapshot.pillId(fromRecordName: deletion.recordID.recordName) {
+                        services[id] = nil
+                        gotNew = true
+                    }
+                }
                 changeToken = changes.changeToken
                 more = changes.moreComing
             }
@@ -213,8 +221,16 @@ final class PhoneLink {
     }
 
     private func add(_ record: CKRecord) -> Bool {
+        if record.recordType == ServiceSnapshot.recordType {
+            guard let payload = record.encryptedValues["payload"] as? String,
+                  let snapshot = try? JSONDecoder().decode(ServiceSnapshot.self, from: Data(payload.utf8)) else { return false }
+            services[snapshot.pillId] = snapshot
+            return true
+        }
         if record.recordType == "Session" {
             let item = SessionItem(record: record)
+            // Services used to come as sessions; they have their own records now.
+            guard PillCatalog.isSession(item.id) else { return false }
             sessions.removeAll { $0.id == item.id }
             sessions.append(item)
             sessions.sort { $0.updatedAt > $1.updatedAt }
@@ -344,7 +360,7 @@ final class PhoneLink {
 
     /// Hands the sessions to the widgets and asks them to redraw.
     private func updateWidgets() {
-        SharedSessions.save(sessions.map(\.shared))
+        SharedSessions.save(sessions.map(\.shared) + services.values.map(\.shared))
         WidgetCenter.shared.reloadAllTimelines()
     }
 

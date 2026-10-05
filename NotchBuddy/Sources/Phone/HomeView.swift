@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Main screen: the notch on top, then every agent session from the Mac,
-/// most urgent first.
+/// Main screen: the notch on top, every agent session from the Mac (most
+/// urgent first), then every service Mochi.
 struct HomeView: View {
     let link: PhoneLink
     @State private var path: [String] = []
@@ -29,6 +29,7 @@ struct HomeView: View {
                         .padding(.vertical, 6)
                         .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
                     }
+                    ServicesList(services: link.services)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -36,9 +37,13 @@ struct HomeView: View {
             .background(Color.black)
             .refreshable { await link.refresh() }
             .navigationDestination(for: String.self) { id in
-                SessionDetailView(link: link, sessionId: id)
+                if PillCatalog.isSession(id) {
+                    SessionDetailView(link: link, sessionId: id)
+                } else {
+                    ServiceDetailView(link: link, pillId: id)
+                }
             }
-            // A widget tile was tapped: open that session.
+            // A widget tile was tapped: open that Mochi.
             .onOpenURL { url in
                 if let id = SharedSession.sessionId(from: url) { path = [id] }
             }
