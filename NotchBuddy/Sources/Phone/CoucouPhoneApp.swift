@@ -47,15 +47,27 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     }
 
     // Approval notification actions.
+    //
+    // Completion-handler versions, with the handler always called on the main
+    // thread: with the async versions iOS finished the tap off the main thread
+    // and SwiftUI's app delegate crashed ("Call must be made on main thread").
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        nonisolated(unsafe) let done = completionHandler
         let request = response.notification.request
-        guard let fingerprint = PhoneLink.approvalFingerprint(in: request) else { return }
+        guard let fingerprint = PhoneLink.approvalFingerprint(in: request) else {
+            DispatchQueue.main.async { done() }
+            return
+        }
         let note = CKNotification(fromRemoteNotificationDictionary: request.content.userInfo) as? CKQueryNotification
         let pillId = request.content.userInfo["pillId"] as? String
             ?? note?.recordFields?["pillId"] as? String ?? ""
         let denied = response.actionIdentifier == ApprovalActions.deny
-        await Self.handleApproval(denied: denied, fingerprint: fingerprint, pillId: pillId)
+        Task { @MainActor in
+            await Self.handleApproval(denied: denied, fingerprint: fingerprint, pillId: pillId)
+            done()
+        }
     }
 
     @MainActor
@@ -69,22 +81,28 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
                                   summary: summary ?? "Denied from the notification")
         } else {
             // Review, or a tap on the notification: open the command, Allow needs Face ID there.
-            await link.refresh()
             link.reviewFingerprint = fingerprint
+            Task { await link.refresh() }
         }
     }
 
     // Show banners even when the app is open.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        nonisolated(unsafe) let done = completionHandler
         // One banner per approval: skip the iCloud alert if the local one is already there.
         let request = notification.request
-        if let fingerprint = PhoneLink.approvalFingerprint(in: request),
-           request.identifier != PhoneLink.approvalNotificationID(fingerprint) {
-            let localID = PhoneLink.approvalNotificationID(fingerprint)
-            await MainActor.run { PhoneLink.shared.noteICloudAlert(fingerprint) }
-            if await PhoneLink.shownApprovals().contains(where: { $0.id == localID }) { return [] }
+        guard let fingerprint = PhoneLink.approvalFingerprint(in: request),
+              request.identifier != PhoneLink.approvalNotificationID(fingerprint) else {
+            DispatchQueue.main.async { done([.banner, .sound]) }
+            return
         }
-        return [.banner, .sound]
+        let localID = PhoneLink.approvalNotificationID(fingerprint)
+        Task { @MainActor in
+            PhoneLink.shared.noteICloudAlert(fingerprint)
+            let shown = await PhoneLink.shownApprovals().contains { $0.id == localID }
+            done(shown ? [] : [.banner, .sound])
+        }
     }
 }
