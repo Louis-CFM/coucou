@@ -266,6 +266,13 @@ final class MusicController: ObservableObject {
         AppState.shared.tasks[idx].name = title.isEmpty ? player.name : title
     }
 
+    /// The user opened the Music pill: read what is playing now. Notifications only report
+    /// changes, so a track already playing stays unseen; any Automation prompt answers this click.
+    func refreshOnOpen() {
+        guard isPillActive, player.isRunning else { return }
+        fetchAndApply()
+    }
+
     // MARK: - Playback controls
 
     func playPause() {

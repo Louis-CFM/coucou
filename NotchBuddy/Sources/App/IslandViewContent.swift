@@ -153,6 +153,9 @@ struct OverviewView: View {
             #endif
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
             if new == "integration_gitlab" { GitLabPoller.shared.refreshIfStale() }
+            #if !APPSTORE
+            if new == "integration_music" { MusicController.shared.refreshOnOpen() }
+            #endif
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
@@ -169,6 +172,11 @@ struct OverviewView: View {
             if m == .expanded && state.focusId == "integration_gitlab" {
                 GitLabPoller.shared.refreshIfStale()
             }
+            #if !APPSTORE
+            if m == .expanded && state.focusId == "integration_music" {
+                MusicController.shared.refreshOnOpen()
+            }
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
             if let id = activeDiffId {
