@@ -905,7 +905,7 @@ struct SettingsView: View {
         do {
             try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
             hookNeedsUpdate = false
-            statusMessage = "✓ Hooks installed — restart VS Code to activate."
+            statusMessage = "✓ Hooks installed — restart Claude Code to activate."
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }

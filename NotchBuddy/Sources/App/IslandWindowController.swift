@@ -538,20 +538,12 @@ final class IslandWindowController: NSWindowController {
 
     #if !APPSTORE
     private func performJumpToTerminal() {
-        guard state.focusTask != nil else {
+        guard let task = state.focusTask else {
             SoundEngine.shared.play("error")
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                 "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-        let activated = terminalBundleIds.compactMap { id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-        if activated == nil {
-            NSWorkspace.shared.open(
-                URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-        }
+        SessionApp.activate(bundleId: task.sessionAppBundleId)
         collapse()
     }
 
