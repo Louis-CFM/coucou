@@ -54,6 +54,8 @@ final class LiveActivityRelay {
     private var sending = false
     private var retryTask: Task<Void, Never>?
     private var retries = 0
+    /// The phase a start was sent again for, so it is only tried once each.
+    private var restartedFor: String?
     /// Ends the activity 10 minutes after the agents are done, if nothing restarts.
     private var doneTask: Task<Void, Never>?
 
@@ -183,8 +185,19 @@ final class LiveActivityRelay {
         Task {
             let targets = await updateTargets(since: startedAt)
             guard !targets.isEmpty else {
-                log("update \(state.tone) waits: no update token from the iPhone yet")
                 sending = false
+                // No update token: iOS didn't bring the activity up (it can hold
+                // back starts after many in a row). When an agent needs you, start
+                // it again with that state, once per request.
+                let key = state.approval ?? "\(state.tone)|\(state.statusText)"
+                if state.tone == "waiting" || state.tone == "question", restartedFor != key,
+                   let sentAt = startSent, Date().timeIntervalSince(sentAt) > 15 {
+                    restartedFor = key
+                    log("the Live Activity isn't on the iPhone: starting it again for \(state.statusText)")
+                    begin(state)
+                    return
+                }
+                log("update \(state.tone) waits: no update token from the iPhone yet")
                 scheduleRetry()
                 return
             }

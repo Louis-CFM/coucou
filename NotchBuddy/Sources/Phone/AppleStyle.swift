@@ -18,6 +18,21 @@ extension View {
             background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: cornerRadius))
         }
     }
+
+    /// A small glass shape for pills and fields (iOS 26), a dark fill before.
+    @ViewBuilder
+    func glassPill<S: Shape>(_ shape: S, interactive: Bool = false, tint: Color? = nil) -> some View {
+        if #available(iOS 26.0, *) {
+            let base: Glass = interactive ? .regular.interactive() : .regular
+            if let tint {
+                glassEffect(base.tint(tint.opacity(0.35)), in: shape)
+            } else {
+                glassEffect(base, in: shape)
+            }
+        } else {
+            background(tint?.opacity(0.25) ?? Color(white: 0.16), in: shape)
+        }
+    }
 }
 
 /// The agent's color, moving slowly like the background of Apple Music. Drawn

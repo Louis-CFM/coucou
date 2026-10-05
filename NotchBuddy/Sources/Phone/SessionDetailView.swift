@@ -80,6 +80,8 @@ struct SessionDetailView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        // A conversation takes the whole screen, like Messages: no tabs below.
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle(session?.title ?? "Session")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
