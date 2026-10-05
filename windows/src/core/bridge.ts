@@ -82,7 +82,7 @@ export const Bridge = {
 
   /** Apply a previously previewed Cursor hooks change. */
   cursorHooksApply: (install: boolean, fingerprint: string) =>
-    callOrThrow<string>("cursor_hooks_apply", { install, fingerprint }),
+    callOrThrow<string | null>("cursor_hooks_apply", { install, fingerprint }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -153,7 +153,7 @@ export interface CursorHookStatus {
 
 export interface CursorHookPreview {
   diff: string;
-  backup: string;
+  backup: string | null;
   settingsPath: string;
   fingerprint: string;
 }

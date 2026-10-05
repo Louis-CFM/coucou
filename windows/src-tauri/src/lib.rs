@@ -233,7 +233,7 @@ fn cursor_hooks_preview(install: bool) -> Result<cursor_hooks::CursorHookPreview
 fn cursor_hooks_apply(
     install: bool,
     fingerprint: String,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     cursor_hooks::write(install, &fingerprint)
 }
 

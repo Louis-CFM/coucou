@@ -276,7 +276,6 @@ function cursorSection(status: CursorHookStatus): HTMLElement {
     if (!preview) return;
 
     clear(body);
-
     body.append(
       h("div", {
         class: "hint",
@@ -285,10 +284,15 @@ function cursorSection(status: CursorHookStatus): HTMLElement {
           : "This removes Coucou's Cursor entries only. Your own hooks are left untouched.",
       }),
       renderDiff(preview.diff),
-      h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
-      ),
     );
+
+    if (preview.backup) {
+      body.append(
+        h("div", { class: "row" },
+          h("span", { class: "path", text: `Backup → ${preview.backup}` }),
+        ),
+      );
+    }
 
     const confirm = h("button", {
       class: install ? "primary" : "danger",
@@ -304,7 +308,9 @@ function cursorSection(status: CursorHookStatus): HTMLElement {
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Cursor Agent session to pick the hooks up.`,
+          text: backup
+            ? `Done. Previous settings saved as ${backup}. Open a new Cursor Agent session to pick the hooks up.`
+            : "Done. Cursor hooks installed. Open a new Cursor Agent session to pick them up.",
         }));
 
         window.setTimeout(() => void rebuild(), 2600);

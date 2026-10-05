@@ -19,7 +19,7 @@ const HOOK_EVENTS: &[&str] = &[
 #[serde(rename_all = "camelCase")]
 pub struct CursorHookPreview {
     pub diff: String,
-    pub backup: String,
+    pub backup: Option<String>,
     pub settings_path: String,
     pub fingerprint: String,
 }
@@ -231,9 +231,9 @@ pub fn preview(install: bool) -> Result<CursorHookPreview, String> {
 
     Ok(CursorHookPreview {
         diff: crate::hooks::unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path_for(&settings_path())
-            .to_string_lossy()
-            .to_string(),
+        backup: settings_path()
+            .exists()
+            .then(|| backup_path_for(&settings_path()).to_string_lossy().to_string()),
         settings_path: settings_path().to_string_lossy().to_string(),
         fingerprint: current_fingerprint(),
     })
@@ -260,7 +260,10 @@ fn write_like(temp: &Path, bytes: &[u8]) -> std::io::Result<()> {
     file.write_all(bytes)
 }
 
-pub fn write(install: bool, expected_fingerprint: &str) -> Result<String, String> {
+pub fn write(
+    install: bool,
+    expected_fingerprint: &str,
+) -> Result<Option<String>, String> {
     let path = settings_path();
     write_at(&path, install, expected_fingerprint)
 }
@@ -269,7 +272,7 @@ fn write_at(
     path: &Path,
     install: bool,
     expected_fingerprint: &str,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     let dir = path.parent().unwrap_or(Path::new("."));
 
     std::fs::create_dir_all(dir)
@@ -284,12 +287,16 @@ fn write_at(
         ));
     }
 
-    let backup = backup_path_for(path);
+    let backup = if path.exists() {
+        let backup = backup_path_for(path);
 
-    if path.exists() {
         std::fs::copy(path, &backup)
             .map_err(|err| format!("Backup failed: {err}"))?;
-    }
+
+        Some(backup)
+    } else {
+        None
+    };
 
     let next = if install {
         merged(&current)
@@ -312,7 +319,7 @@ fn write_at(
         return Err(format!("Write failed: {err}"));
     }
 
-    Ok(backup.to_string_lossy().to_string())
+    Ok(backup.map(|path| path.to_string_lossy().to_string()))
 }
 
 #[cfg(test)]
@@ -464,7 +471,7 @@ mod tests {
 
         let expected = current_fingerprint_at(&path);
 
-        let backup = write_at(&path, true, &expected).unwrap();
+        let backup = write_at(&path, true, &expected).unwrap().unwrap();
 
         let written = read_settings_at(&path).unwrap();
         let hooks = written["hooks"]["preToolUse"].as_array().unwrap();
@@ -526,5 +533,26 @@ mod tests {
 
         assert!(is_installed(&config));
         assert!(!is_installed(&json!({})));
+    }
+
+    #[test]
+    fn cursor_hook_write_without_existing_file_has_no_backup() {
+        let dir = std::env::temp_dir().join(format!(
+            "coucou-cursor-hooks-new-{}",
+            std::process::id()
+        ));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let path = dir.join("hooks.json");
+        let expected = current_fingerprint_at(&path);
+
+        let backup = write_at(&path, true, &expected).unwrap();
+
+        assert!(backup.is_none());
+        assert!(path.exists());
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
