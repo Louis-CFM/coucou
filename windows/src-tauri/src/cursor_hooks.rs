@@ -18,10 +18,10 @@ const HOOK_EVENTS: &[&str] = &[
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorHookPreview {
+    pub diff: String,
+    pub backup: String,
     pub settings_path: String,
     pub fingerprint: String,
-    pub before: String,
-    pub after: String,
 }
 
 #[derive(Serialize)]
@@ -230,10 +230,12 @@ pub fn preview(install: bool) -> Result<CursorHookPreview, String> {
     };
 
     Ok(CursorHookPreview {
+        diff: crate::hooks::unified_diff(&pretty(&current), &pretty(&next)),
+        backup: backup_path_for(&settings_path())
+            .to_string_lossy()
+            .to_string(),
         settings_path: settings_path().to_string_lossy().to_string(),
         fingerprint: current_fingerprint(),
-        before: pretty(&current),
-        after: pretty(&next),
     })
 }
 
