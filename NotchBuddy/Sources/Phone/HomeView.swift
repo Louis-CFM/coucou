@@ -2,8 +2,7 @@ import SwiftUI
 import UIKit
 
 /// The tabs, in glass on iOS 26: the agents, the services, the decisions you
-/// took, and a search through every turn. The agent that needs you most rides
-/// above the tabs, like Music's mini player.
+/// took, and a search through every turn.
 enum CoucouTab: Hashable { case agents, services, history, search }
 
 struct HomeView: View {
@@ -28,7 +27,6 @@ struct HomeView: View {
                 SearchTab(link: link)
             }
         }
-        .leadAgentAccessory(link: link)
         // A widget tile was tapped: open that Mochi.
         .onOpenURL { url in
             if let id = SharedSession.sessionId(from: url) { open(id) }
@@ -541,52 +539,5 @@ struct TodayCard: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-extension View {
-    /// The agent that needs you most, above the tabs (iOS 26), like Music's mini player.
-    @ViewBuilder
-    func leadAgentAccessory(link: PhoneLink) -> some View {
-        if #available(iOS 26.0, *) {
-            self
-                .tabViewBottomAccessory { LeadAgentBar(link: link) }
-                .tabBarMinimizeBehavior(.onScrollDown)
-        } else {
-            self
-        }
-    }
-}
-
-/// The mini player: Mochi, the agent and what it does. A tap opens it.
-struct LeadAgentBar: View {
-    let link: PhoneLink
-
-    var body: some View {
-        let lead = link.sessions.sortedByUrgency().first
-        Button {
-            if let lead { link.openPillId = lead.id }
-        } label: {
-            HStack(spacing: 10) {
-                MochiLive(state: link.sessions.leadState, fps: 20)
-                    .frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(lead.map { "\($0.pillName) · \($0.title)" } ?? "All quiet")
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    Text(lead?.statusText ?? "No agent working")
-                        .font(.caption)
-                        .foregroundStyle(lead?.statusColor ?? .secondary)
-                        .lineLimit(1)
-                        .contentTransition(.interpolate)
-                }
-                Spacer(minLength: 0)
-                if let lead { StateSymbol(session: lead) }
-            }
-            .padding(.horizontal, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .animation(.spring(duration: 0.5, bounce: 0.2), value: lead?.statusText)
     }
 }

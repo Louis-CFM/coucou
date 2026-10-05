@@ -79,9 +79,14 @@ struct SessionDetailView: View {
                 InstructionComposer(link: link, session: session)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
-        // A conversation takes the whole screen, like Messages: no tabs below.
-        .toolbar(.hidden, for: .tabBar)
+        // Scrolling or a tap on the conversation puts the keyboard away.
+        .scrollDismissesKeyboard(.immediately)
+        .simultaneousGesture(TapGesture().onEnded {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
+        // A conversation takes the whole screen, like Messages: no tabs below,
+        // and the field stays put at the bottom.
+        .toolbarVisibility(.hidden, for: .tabBar)
         .navigationTitle(session?.title ?? "Session")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
