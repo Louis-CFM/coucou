@@ -620,7 +620,7 @@ struct SettingsView: View {
                         Text(model.label).tag(model.id)
                     }
                 }
-                Text("Pick Claude Code above the chat box, or turn on the Claude Code (plan) pill.")
+                Text("Pick Claude Code above the chat box, or turn on the Claude plan pill.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
