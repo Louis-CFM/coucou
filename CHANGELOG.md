@@ -2,12 +2,11 @@
 
 ## Unreleased
 
-- Cursor shell gate: wait up to **5 minutes** for Allow/Deny/Always; on timeout or if Coucursor is down, return `ask` (Cursor’s own prompt) instead of hard-deny. **Update hooks** if `beforeShellExecution` still has a short timeout.
-- Finished session card (and ⌃⌥T): **Open Cursor** / **Open Codex** when that agent finished, instead of always opening Terminal.
 - Coucursor fork: the GitHub macOS build is named **Coucursor** (bundle id unchanged).
 - Chat is **ClinePass only**: Settings → Chat stores a Cline API key (`cline-api-key`); models use `https://api.cline.bot/api/v1` (OpenAI-compatible). Pastille `ai_clinepass`. Other chat providers (Anthropic / Google / OpenAI / Cursor Cloud Agents / Ollama / LM Studio) are removed from this build.
 - Cursor stays as **hooks only** (Settings → Agents → Cursor Hooks → `~/.cursor/hooks.json`).
-- **Cursor shell Allow/Deny**: `beforeShellExecution` opens the notch approval card (Allow / Deny / Always). Always uses a Coucursor allowlist; timeout denies. Re-install/Update hooks if you had the observe-only install.
+- **Cursor shell Allow/Deny**: `beforeShellExecution` opens Allow / Deny / Always in the notch (Always = Coucursor allowlist). Wait up to **5 minutes**; timeout or Coucursor down → `ask` in Cursor (never auto-allow). **Update hooks** if the timeout is still short.
+- Finished session card (and ⌃⌥T): **Open Cursor** / **Open Codex** when that agent finished, instead of always opening Terminal.
 - **Focus** behavior preset + toggles: peek on music, expand on finished / programming / CI (alerts always open).
 - **Today** session memory: finished sessions saved locally; day pulse + Overview strip + end-of-day tip after 18:00; tap pulse for the list.
 - **⌃⌥E** opens the last / pinned file in the editor; programming rail shows Today files; diffs soft-retain ~1h after SessionEnd.

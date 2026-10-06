@@ -1117,6 +1117,7 @@ struct DiffCardView: View {
 }
 
 /// Minimal keyword tint (no full highlighter) for the programming editor panel.
+/// Minimal keyword tint (no full highlighter) for the programming editor panel.
 struct DiffSyntaxText: View {
     let text: String
     let base: Color

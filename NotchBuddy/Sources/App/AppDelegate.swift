@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !state.hasSeenBehaviorTips else { return }
         state.hasSeenBehaviorTips = true
         #if !APPSTORE
-        state.noteMessage = "Tip: Settings → Behavior — try Quiet, Alive or Focus. ⌃⌥P play/pause · ⌃⌥E last file."
+        state.noteMessage = "Tip: Settings → Behavior — try Quiet, Alive or Focus. ⌃⌥P play/pause · ⌃⌥F next · ⌃⌥E last file."
         #else
         state.noteMessage = "Tip: Settings → Behavior — try Quiet, Alive or Focus."
         #endif
