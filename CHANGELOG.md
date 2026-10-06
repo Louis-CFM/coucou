@@ -13,7 +13,7 @@
 - **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
 - Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
 - Compact notch: info ticker crawls now-playing, live agent edits, or a short day pulse (deploys / PRs); tap toggles play/pause when a track is showing.
-- Song change peeks the compact strip briefly when **Stay collapsed until hover** is on; Mochi does a happy emote on new tracks and on deploy / session finish.
+- Song change peeks the compact strip when **Stay collapsed until hover** is on; peek length scales with the measured song-title width so the name can scroll into view. Mochi does a happy emote on new tracks and on deploy / session finish.
 - Shared `AppLauncher`: every ↗ / Open control uses Dock-style reopen + activate so minimized apps (and browsers for web integrations) come back to the front.
 - Apple Music card: volume slider (0–100), same pattern as Spotify.
 - Global media shortcuts (GitHub build): ⌃⌥P play/pause, ⌃⌥F next track (Spotify preferred when active).

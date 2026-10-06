@@ -152,7 +152,7 @@ final class MusicController: ObservableObject {
 
         // Reveal on play-start or track change
         if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
-            NotificationCenter.default.post(name: .musicReveal, object: nil)
+            NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
             if trackTitle != lastEmoteTitle {
                 lastEmoteTitle = trackTitle
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -208,7 +208,7 @@ final class MusicController: ObservableObject {
             AppState.shared.musicPlaying = playing
             syncTaskName()
             if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
-                NotificationCenter.default.post(name: .musicReveal, object: nil)
+                NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
                 if trackTitle != lastEmoteTitle {
                     lastEmoteTitle = trackTitle
                     NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)

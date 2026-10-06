@@ -151,7 +151,7 @@ final class SpotifyController: ObservableObject {
         syncTaskName()
 
         if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
-            NotificationCenter.default.post(name: .musicReveal, object: nil)
+            NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
             if trackTitle != lastEmoteTitle {
                 lastEmoteTitle = trackTitle
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -209,7 +209,7 @@ final class SpotifyController: ObservableObject {
             AppState.shared.spotifyPlaying = playing
             syncTaskName()
             if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
-                NotificationCenter.default.post(name: .musicReveal, object: nil)
+                NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
                 if trackTitle != lastEmoteTitle {
                     lastEmoteTitle = trackTitle
                     NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)

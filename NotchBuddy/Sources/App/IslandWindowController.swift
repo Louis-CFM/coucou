@@ -650,12 +650,21 @@ final class IslandWindowController: NSWindowController {
         }
 
         // Music / track change: reveal silently (no peek sound).
-        // When "stay collapsed until hover" is on, show a brief compact peek for the ticker.
-        NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] _ in
+        // When "stay collapsed until hover" is on, show a brief compact peek sized to the title width.
+        NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] note in
             guard let self else { return }
             self.silentNextReveal = true
             if AppState.shared.stayCollapsedUntilHover {
+                #if !APPSTORE
+                let title = (note.object as? String) ?? ""
+                let compactW = islandSize(mode: .compact, view: .overview,
+                                          nw: AppState.shared.notchWidth,
+                                          nh: AppState.shared.notchHeight).0
+                let seconds = CompactInfoBanner.musicPeekDuration(title: title, islandW: compactW)
+                self.fsm.revealBriefly(seconds: seconds)
+                #else
                 self.fsm.revealBriefly(seconds: 2.2)
+                #endif
             } else {
                 self.fsm.reveal()
             }

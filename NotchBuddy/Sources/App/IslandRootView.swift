@@ -735,7 +735,7 @@ struct CompactInfoBanner: View {
             let measured = textWidth(line.text)
             let gap: CGFloat = 48
             let cycle = bandWidth + measured + gap
-            let speed: CGFloat = 28
+            let speed = Self.tickerSpeed
             let elapsed = max(0, timeline.date.timeIntervalSince(crawlStartedAt))
             let distance = CGFloat(elapsed * Double(speed)).truncatingRemainder(dividingBy: Double(cycle))
             let x = bandWidth - distance
@@ -769,9 +769,37 @@ struct CompactInfoBanner: View {
     }
 
     private func textWidth(_ text: String) -> CGFloat {
+        Self.measureTickerWidth(text)
+    }
+
+    // MARK: Shared metrics (peek duration)
+
+    /// Width of ticker label text at the compact marquee font (+ accent-dot padding).
+    static func measureTickerWidth(_ text: String) -> CGFloat {
         let font = NSFont.systemFont(ofSize: 10, weight: .semibold)
         let w = (text as NSString).size(withAttributes: [.font: font]).width
         return ceil(w) + 10
+    }
+
+    /// Crawl speed of the compact info ticker (pt/s). Kept in sync with `marquee`.
+    static let tickerSpeed: CGFloat = 28
+
+    /// How long the compact peek should stay open so at least the song title can scroll into view and be read.
+    /// - Parameter title: track title only (not artist) — what must be readable during the peek.
+    /// - Parameter islandW: compact island width (`notchWidth + 160`).
+    static func musicPeekDuration(title: String, islandW: CGFloat) -> TimeInterval {
+        let bandLeading: CGFloat = 58
+        let bandTrailing: CGFloat = 58
+        let bandWidth = max(40, islandW - bandLeading - bandTrailing)
+        let titleW = measureTickerWidth(title.isEmpty ? "…" : title)
+        let speed = Double(tickerSpeed)
+        // Time until the full title has entered from the right edge.
+        let enter = Double(titleW) / speed
+        // Extra scroll when the title is wider than the band, so the start is not cut off unreadably.
+        let overflow = titleW > bandWidth ? Double(titleW - bandWidth) / speed : 0
+        // Brief hold once the title is in view.
+        let hold: TimeInterval = 0.9
+        return min(7.5, max(2.2, enter + overflow + hold))
     }
 }
 #endif
