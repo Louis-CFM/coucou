@@ -20,6 +20,18 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// GitHub projects ("owner/name") whose news the pill keeps to itself: a
+    /// project not listed here speaks up, so a new one does by default.
+    #[serde(default)]
+    pub github_muted: Vec<String>,
+    /// The island unfolds for a moment on each new song Spotify plays. On until
+    /// switched off, and absent from a settings.json written before it existed.
+    #[serde(default = "yes")]
+    pub announce_songs: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn default_model() -> String {
@@ -43,6 +55,8 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            github_muted: Vec::new(),
+            announce_songs: true,
         }
     }
 }

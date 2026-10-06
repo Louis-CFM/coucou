@@ -58,3 +58,14 @@ export function dot(color: string, size = 7): HTMLElement {
     style: `width:${size}px;height:${size}px;background:${color}`,
   });
 }
+
+/**
+ * Plays an element's entrance again: the class that carries the animation is
+ * taken off and put back, with a look at the layout between the two so the
+ * browser sees it go.
+ */
+export function replay(el: HTMLElement, animation: string) {
+  el.classList.remove(animation);
+  void el.offsetWidth;
+  el.classList.add(animation);
+}
