@@ -36,6 +36,8 @@
 		2D7F17539756652438EF7502 /* RenderPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3538A7E3FD2FC8ED0CEDDB /* RenderPoller.swift */; };
 		CE232F51D1D7D1AB96641D49 /* AppLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3029CF01A086BB38C4024A13 /* AppLauncher.swift */; };
 		1475F7C0303ADE17D040BDC4 /* AppLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3029CF01A086BB38C4024A13 /* AppLauncher.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* SessionHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* SessionHistory.swift */; };
+		C3D4E5F60718293A4B5C6D7E /* SessionHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* SessionHistory.swift */; };
 		C1130D031C5BDAD272E39A24 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC884459AA588058FD2D28C /* SpotifyController.swift */; };
 		213FE39BC218CE0317EFBA06 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC884459AA588058FD2D28C /* SpotifyController.swift */; };
 		2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
