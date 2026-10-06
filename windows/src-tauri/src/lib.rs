@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod openai;
 mod pipe;
 mod platform;
 mod secrets;
@@ -242,12 +243,36 @@ async fn chat_send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    if model.starts_with("gpt-")
+        || model.starts_with("o1")
+        || model.starts_with("o3")
+        || secrets::present("openai-oauth-token")
+        || (secrets::present("openai-api-key") && !secrets::present("anthropic-api-key"))
+    {
+        openai::send_chat(&chat, &model, query, context).await
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
 }
 
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
+}
+
+#[tauri::command]
+fn chatgpt_status() -> openai::ChatGPTStatus {
+    openai::status()
+}
+
+#[tauri::command]
+async fn chatgpt_oauth_start(app: AppHandle) -> Result<String, String> {
+    openai::start_oauth(app).await
+}
+
+#[tauri::command]
+fn chatgpt_sign_out() -> Result<(), String> {
+    openai::sign_out()
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -393,6 +418,9 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            chatgpt_status,
+            chatgpt_oauth_start,
+            chatgpt_sign_out,
             ingest_file,
             secret_present,
             secret_set,

@@ -8,6 +8,15 @@ const SERVICE: &str = "fr.louisraille.coucou";
 /// Every key Coucou may store. Anything outside this list is refused.
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
+    "openai-api-key",
+    "openai-client-id",
+    "openai-host-id",
+    "openai-oauth-token",
+    "openai-refresh-token",
+    "openai-account-email",
+    "chatgpt-access-token",
+    "chatgpt-refresh-token",
+    "chatgpt-user-email",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",
