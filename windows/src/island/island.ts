@@ -84,6 +84,10 @@ export class Island {
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
 
+  /** Dragging the open island by its background. */
+  private movable = false;
+  private drag: { x: number; y: number; moved: boolean; busy: boolean } | null = null;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -541,7 +545,34 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
         this.engine.slap();
+        return;
       }
+      const interactive = (e.target as Element | null)?.closest(
+        "button, input, textarea, select, a, [contenteditable]",
+      );
+      if (this.movable && e.button === 0 && !interactive) {
+        this.drag = { x: e.clientX, y: e.clientY, moved: false, busy: false };
+      }
+    });
+
+    // The window moves with the pointer, so the grab point stays at the same
+    // client position: the gap to it is the whole step still to make. One
+    // step in flight at a time keeps a late move from being counted twice.
+    window.addEventListener("mousemove", (e) => {
+      const d = this.drag;
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) < 5) return;
+      d.moved = true;
+      if (d.busy) return;
+      d.busy = true;
+      void Bridge.moveIsland(dx, dy).finally(() => { d.busy = false; });
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (this.drag?.moved) void Bridge.saveIslandPosition();
+      this.drag = null;
     });
 
     window.addEventListener("keydown", (e) => {
@@ -878,6 +909,11 @@ export class Island {
 
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  /** Lets the open island be dragged by its background. */
+  setMovable(on: boolean) {
+    this.movable = on;
   }
 
   /** Applies settings coming from Rust at boot. */

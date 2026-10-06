@@ -168,6 +168,9 @@ What changes on Linux:
   top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
   and other wlroots compositors. GNOME has no layer-shell, so there the island
   is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **Moving the island**: drag the open island by its background. The spot is
+  remembered; tray → "Move island back to the top" puts it back. Not on
+  layer-shell compositors, which pin it to the top edge.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
