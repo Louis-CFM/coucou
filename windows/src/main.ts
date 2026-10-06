@@ -61,6 +61,9 @@ async function main() {
     void refreshConfigured();
   });
 
+  // A key saved or removed in the settings window.
+  await onEvent<null>("secrets-changed", () => void refreshConfigured());
+
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
 

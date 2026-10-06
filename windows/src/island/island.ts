@@ -1,22 +1,25 @@
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
-import { Tracked, Spring, clamp } from "../core/anim";
+import { Tracked, Spring, clamp, mixColor } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  type IslandMode, type IslandViewName,
+  type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
-import { BotEngine, hexToRGB } from "../mochi/engine";
+import { CLAUDE_ID, QUESTION_TOOL, State, type SessionStep } from "../core/state";
+import { BotEngine, hexToRGB, type RGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
+import { githubData } from "../views/integrations";
+import { enterSessionPanel } from "../views/session";
+import { followNews } from "./integrations";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
@@ -31,6 +34,11 @@ const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading"
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
 
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
+
+/** How fast Mochi's body goes to a new colour, per second: about 90 % of the way in 0.4 s. */
+const TINT_RATE = 5.5;
+/** Closer than this on every channel (0…1), the body has its colour: a unit of 8-bit colour. */
+const TINT_SETTLED = 0.004;
 
 export class Island {
   readonly fsm = new IslandStateMachine();
@@ -60,6 +68,16 @@ export class Island {
 
   private engine = new BotEngine();
   private greeting = new Greeting();
+
+  /**
+   * A view asking Mochi to take a colour for a moment (a day of the GitHub
+   * graph). His body only: the glow stays his own.
+   */
+  private tintRequest: RGB | null = null;
+  /** A state a view asked Mochi to wear (see ViewActions.look). */
+  private viewState: BotStateName | null = null;
+  /** The colour Mochi's body is drawn in, eased towards what it should be. */
+  private bodyRGB: RGB | null = null;
 
   private running = false;
   private lastFrame = 0;
@@ -110,11 +128,15 @@ export class Island {
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
+        // A request that came in while another pill had the front only left a
+        // badge: bringing Claude's pill forward is asking for its card.
+        if (id !== CLAUDE_ID) return;
+        if (State.pendingQuestion) this.setView("question");
+        else if (State.pendingApproval) this.setView("approval");
+        // No card for the session in front, but one behind it is waiting: its turn.
+        else if (State.waiting.length > 0) this.afterRequest(true);
       },
-      openTerminal: () => {
-        const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
-      },
+      openTerminal: () => this.openClient(),
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
         const task = State.focusTask;
@@ -127,8 +149,9 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
+        if (task.id === CLAUDE_ID) this.openClient();
         else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === "integration_github" && githubData()) void Bridge.openUrl(githubData()!.profileUrl);
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -140,13 +163,43 @@ export class Island {
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
+        this.noteOutcome(req.tool, (step) => (step.permission = d === "deny" ? "denied" : "allowed"));
+        this.settleRequest();
       },
+      answer: (answers) => {
+        const req = State.pendingQuestion;
+        if (!req) return;
+        Sound.play("approve");
+        void Bridge.approvalAnswer(req.requestId, answers);
+        this.noteOutcome(QUESTION_TOOL, (step) => (step.answers = answers));
+        this.settleRequest();
+      },
+      skipQuestion: () => {
+        const req = State.pendingQuestion;
+        if (!req) return;
+        Sound.play("blip");
+        void Bridge.approvalDecision(req.requestId, "skip");
+        this.noteOutcome(QUESTION_TOOL, (step) => (step.state = "failed"));
+        this.settleRequest();
+      },
+      passQuestion: () => {
+        const req = State.pendingQuestion;
+        if (!req) return;
+        Sound.play("blip");
+        // Declined, not denied: Claude Code asks it in its own window at once.
+        void Bridge.approvalDecline(req.requestId);
+        this.settleRequest();
+      },
+      keyboard: (on) => void Bridge.focusWindow(on),
+      openSession: (changes) => {
+        enterSessionPanel(changes ? "changes" : "journal");
+        this.setView("session");
+      },
+      openSessions: () => {
+        enterSessionPanel("sessions");
+        this.setView("session");
+      },
+      pickSession: (id) => this.pickSession(id),
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
         Sound.setEnabled(State.settings.soundEnabled);
@@ -167,6 +220,17 @@ export class Island {
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
+      emote: (e) => this.engine.triggerEmote(e),
+      tintMochi: (color) => {
+        this.tintRequest = color ? hexToRGB(color) : null;
+        this.ensureRunning();
+      },
+      look: (state) => {
+        if (this.viewState === state) return;
+        this.viewState = state;
+        State.notify();
+      },
+      followNews: () => followNews(this),
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -177,8 +241,7 @@ export class Island {
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
-    this.views = buildViews(actions, () => this.animateGeometry(false));
-    this.viewsEl = h("div", { id: "views" });
+    this.views = buildViews(actions, () => this.animateGeometry(false));    this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
 
@@ -260,6 +323,9 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
+    // Whatever asked for a tint is no longer under the mouse.
+    this.tintRequest = null;
+    this.viewState = null;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
@@ -300,6 +366,8 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.tintRequest = null;
+    this.viewState = null;
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -312,6 +380,61 @@ export class Island {
     State.lastActivity = performance.now();
     this.animateGeometry(!grew);
     State.notify();
+  }
+
+  /** Writes what was decided on the island in the journal, on the step that was waiting for it. */
+  private noteOutcome(tool: string, write: (step: SessionStep) => void) {
+    const step = [...State.session.steps].reverse().find((s) => s.tool === tool && s.state === "running");
+    if (step) write(step);
+  }
+
+  /** The request on the card got its answer: its session is back at work. */
+  private settleRequest() {
+    const session = State.session;
+    session.approval = null;
+    session.question = null;
+    session.state = "working";
+    this.afterRequest(true);
+  }
+
+  /**
+   * The request of the session in front is done with. Another session waiting
+   * for an answer comes forward with its own; with none, the island is free
+   * to close again. `show` moves the view too: to that card, or back to the
+   * overview.
+   */
+  afterRequest(show: boolean) {
+    const next = State.pendingApproval || State.pendingQuestion ? State.session : State.waiting[0];
+    if (next) State.bringForward(next.id);
+    State.isPinned = next != null;
+    this.fsm.pinned = next != null;
+    State.setPillBadge(CLAUDE_ID, next && State.focusId !== CLAUDE_ID ? "approval" : null);
+    State.present();
+    if (show) this.setView(next ? (next.question ? "question" : "approval") : State.defaultView());
+  }
+
+  /**
+   * Puts another session in front, at the user's asking: its card if it is
+   * waiting for an answer, and never the card of the one that was there.
+   */
+  private pickSession(id: string) {
+    if (id === State.frontId) return;
+    Sound.play("blip");
+    // The list of sessions is reached whatever pill is in front: picking one is asking for Claude's.
+    if (State.focusId !== CLAUDE_ID) State.setFocus(CLAUDE_ID);
+    State.bringForward(id);
+    const session = State.session;
+    const waits = session.question != null || session.approval != null;
+    State.isPinned = waits;
+    this.fsm.pinned = waits;
+    if (waits) this.setView(session.question ? "question" : "approval");
+    else if (State.view === "approval" || State.view === "question") this.setView(State.defaultView());
+  }
+
+  /** Where the session runs: the Claude app brought forward, or its folder in VS Code. */
+  private openClient() {
+    if (State.session.client === "desktop") void Bridge.openClaudeApp();
+    else void Bridge.openInVSCode(State.tasks.find((t) => t.id === CLAUDE_ID)?.sessionCwd ?? null);
   }
 
   collapse() {
@@ -332,11 +455,6 @@ export class Island {
 
   reveal() {
     this.fsm.reveal();
-  }
-
-  /** An alert stopped waiting for an answer: let the island auto-close again. */
-  dropPin() {
-    this.fsm.pinned = false;
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -450,7 +568,11 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const news = State.focusId != null && State.integrations[State.focusId]?.news != null;
+    const proposal = State.pendingApproval?.proposal != null;
+    // A view that knows how tall its content is has the last word.
+    const fitted = this.views?.get(State.view)?.height ?? null;
+    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, news, proposal, fitted);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -476,7 +598,13 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Centred on a whole pixel of the screen. `translateX(-50%)` put the island
+    // on a fraction of one for as long as its width was animating, and whatever
+    // was painted then in a layer of its own — a scrolling list, say — kept
+    // that fraction once the island had settled: its text stayed smeared until
+    // it was drawn again.
+    const dpr = window.devicePixelRatio || 1;
+    this.islandEl.style.transform = `translateX(${-Math.round((w / 2) * dpr) / dpr}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -540,7 +668,8 @@ export class Island {
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
-        this.engine.slap();
+        // A Mochi with news to tell takes you to it; any other gets his slap.
+        if (!followNews(this)) this.engine.slap();
       }
     });
 
@@ -733,7 +862,10 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || UploadSeq.isActive || this.tintSettling ||
+        // A view showing something live keeps its Mochis moving: a run's crew
+        // would otherwise freeze the moment the big one came to rest.
+        this.viewState != null;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -787,8 +919,7 @@ export class Island {
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
-    const focus = State.focusTask;
-    this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    this.engine.bodyColor = this.easeBodyColor(dt);
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -805,6 +936,37 @@ export class Island {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, hCss);
     this.engine.draw(ctx, w, hCss);
+  }
+
+  /** The colour Mochi should be: a view's request, else his pill's colour. */
+  private targetBodyColor(): RGB | null {
+    if (this.tintRequest) return this.tintRequest;
+    const focus = State.focusTask;
+    return focus?.isIntegration ? hexToRGB(focus.color) : null;
+  }
+
+  /**
+   * Eases the body towards its target rather than jumping, so sliding the mouse
+   * across the graph reads as Mochi slowly changing colour, not flickering:
+   * about 90 % of the way in 0.4 s, blended in OKLab so red to green stays
+   * bright instead of dipping through brown. Null — his own cream gradient —
+   * can't be blended into, and is simply taken.
+   */
+  private easeBodyColor(dt: number): RGB | null {
+    const target = this.targetBodyColor();
+    if (!target || !this.bodyRGB) {
+      this.bodyRGB = target;
+      return target;
+    }
+    this.bodyRGB = mixColor(this.bodyRGB, target, 1 - Math.exp(-dt * TINT_RATE));
+    return this.bodyRGB;
+  }
+
+  /** True while the body colour is still on its way — the frame loop keeps going. */
+  private get tintSettling(): boolean {
+    const target = this.targetBodyColor();
+    if (!target || !this.bodyRGB) return false;
+    return this.bodyRGB.some((v, i) => Math.abs(v - target[i]) > TINT_SETTLED);
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -837,6 +999,10 @@ export class Island {
     const greetingActive = expanded && State.view === "greeting";
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
+    // Folded or hidden, the views are out of sight but still in the page: what
+    // moves in them on its own stops (see #content.away), and picks up when the
+    // island unfolds.
+    this.contentEl.classList.toggle("away", !expanded);
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
@@ -877,7 +1043,11 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    // A view's look fills in for a Mochi with nothing of his own to say: idle,
+    // or only "working" — which the view, closer to what it shows, knows better.
+    const state = State.effectiveState;
+    const quiet = state === "idle" || state === "working";
+    this.engine.setState(this.viewState && quiet ? this.viewState : state);
   }
 
   /** Applies settings coming from Rust at boot. */

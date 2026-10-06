@@ -1,7 +1,8 @@
 // Mini Mochis (pills + compact grid) — port of MiniBotCanvasView.
 // Each canvas owns a BotEngine; the island's frame loop ticks every live one.
 
-import { BotEngine, hexToRGB } from "./engine";
+import { BOT_STATES, BotEngine, hexToRGB } from "./engine";
+import type { BotStateName } from "../core/layout";
 import type { AgentTask } from "../core/state";
 
 interface MiniBot {
@@ -23,6 +24,20 @@ const live = new Map<HTMLCanvasElement, MiniBot>();
  * whole drawing to 60 %, which is what used to happen.
  */
 export function createMiniBot(task: AgentTask, bodySize: number): HTMLElement {
+  const { slot, engine } = mount(bodySize, task.id);
+  engine.bodyColor = hexToRGB(task.color);
+  engine.setState(task.state, true);
+  if (task.emote) engine.setPermanentEmote(task.emote);
+  if (task.miniEye) {
+    engine.permanentEye = task.miniEye;
+    engine.eyeOverride = task.miniEye;
+    engine.eyeOverrideUntil = Number.POSITIVE_INFINITY;
+  }
+  return slot;
+}
+
+/** The slot, its canvas and its engine, ticked from now on by the island's loop. */
+function mount(bodySize: number, taskId: string): { slot: HTMLElement; engine: BotEngine } {
   const slot = document.createElement("span");
   slot.className = "mini";
   slot.style.width = `${bodySize}px`;
@@ -39,17 +54,39 @@ export function createMiniBot(task: AgentTask, bodySize: number): HTMLElement {
 
   const engine = new BotEngine();
   engine.isMini = true;
-  engine.bodyColor = hexToRGB(task.color);
-  engine.setState(task.state, true);
-  if (task.emote) engine.setPermanentEmote(task.emote);
-  if (task.miniEye) {
-    engine.permanentEye = task.miniEye;
-    engine.eyeOverride = task.miniEye;
-    engine.eyeOverrideUntil = Number.POSITIVE_INFINITY;
-  }
+  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId });
+  return { slot, engine };
+}
 
-  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId: task.id });
-  return slot;
+/**
+ * A mini Mochi that stands for something other than a task — a job of a CI
+ * run. Nothing in State drives it: it comes with its engine, and whoever made
+ * it changes its state.
+ *
+ * It appears already in `state`, without that state's entrance (the finished
+ * roll, the error shake): arriving on a run that passed an hour ago is not the
+ * moment it passed. `engine.setState` plays the entrance later, when the state
+ * really changes, as for any other Mochi.
+ *
+ * `eyes` scales his eyes. A mini's are drawn large so they still read at the
+ * grid's 13 px; drawn bigger than that, the same eyes fill the face and their
+ * shapes — happy, flat, closed — run into each other.
+ */
+export function createFreeBot(
+  color: string, state: BotStateName, bodySize: number, eyes = 1,
+): { el: HTMLElement; engine: BotEngine } {
+  const { slot, engine } = mount(bodySize, "");
+  const cfg = BOT_STATES[state];
+  engine.bodyColor = hexToRGB(color);
+  engine.state = state;
+  engine.cfg = cfg;
+  engine.col = cfg.color;
+  engine.colT = cfg.color;
+  engine.tint = cfg.tint;
+  engine.es = eyes;
+  engine.tgEs = eyes;
+  engine.setBadge(cfg.badge);
+  return { el: slot, engine };
 }
 
 export function releaseMiniBot(canvas: HTMLCanvasElement) {

@@ -137,6 +137,27 @@ button:disabled {
   cursor: default;
 }
 
+/* A link inside running text, e.g. the GitHub token page. */
+button.link {
+  font: inherit;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+button.link:hover:not(:disabled) {
+  background: transparent;
+  color: #fff;
+}
+
+.hint b {
+  font-weight: 500;
+  color: #c5c8cd;
+}
+
 code,
 .path {
   font: 400 11.5px var(--mono);
@@ -264,4 +285,65 @@ select option {
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
+}
+
+/* GitHub connection test: one line per permission the panel relies on. */
+.checks {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.checks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.checks .dot {
+  width: 6px;
+  height: 6px;
+}
+
+.check-note {
+  color: var(--dim);
+}
+
+/* What an integration needs beyond its fields opens under its line once it is
+   switched on, and folds back when it is switched off. */
+.drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.drawer.open {
+  grid-template-rows: 1fr;
+}
+
+.drawer > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.setup {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setup .row > label {
+  min-width: 0;
+}
+
+.setup > :empty {
+  display: none;
 }
