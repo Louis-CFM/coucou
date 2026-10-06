@@ -284,9 +284,9 @@ enum ServiceAPI {
     private static func vercel() async throws -> ServiceDetail {
         let token = try secret("vercel-token", "Vercel")
         let headers = ["Authorization": "Bearer \(token)", "Accept": "application/json"]
-        let deploymentsJSON = try await request("https://api.vercel.com/v6/deployments?limit=20", headers: headers)
+        let deploymentsJSON = try await request(VercelAPI.url("https://api.vercel.com/v6/deployments?limit=20"), headers: headers)
         let deployments = (deploymentsJSON as? [String: Any])?["deployments"] as? [[String: Any]] ?? []
-        let projectsJSON = try? await request("https://api.vercel.com/v9/projects?limit=20", headers: headers)
+        let projectsJSON = try? await request(VercelAPI.url("https://api.vercel.com/v9/projects?limit=20"), headers: headers)
         let projects = (projectsJSON as? [String: Any])?["projects"] as? [[String: Any]] ?? []
 
         var items: [DetailItem] = []
@@ -725,7 +725,7 @@ enum ServiceAPI {
             guard parts.count == 3 else { throw Failure(status: 0, message: "Unknown deployment") }
             var body: [String: Any] = ["name": parts[1], "deploymentId": parts[0]]
             if !parts[2].isEmpty { body["target"] = parts[2] }
-            let json = try await request("https://api.vercel.com/v13/deployments", method: "POST",
+            let json = try await request(VercelAPI.url("https://api.vercel.com/v13/deployments"), method: "POST",
                                          headers: try vercelHeaders(), body: body)
             let url = (json as? [String: Any])?["url"] as? String
             return url.map { "Building \($0)" } ?? "New deployment started"
@@ -734,14 +734,14 @@ enum ServiceAPI {
             // production, as `vercel promote` does.
             let parts = target.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
             guard parts.count == 2 else { throw Failure(status: 0, message: "Unknown deployment") }
-            let json = try await request("https://api.vercel.com/v13/deployments", method: "POST",
+            let json = try await request(VercelAPI.url("https://api.vercel.com/v13/deployments"), method: "POST",
                                          headers: try vercelHeaders(),
                                          body: ["deploymentId": parts[0], "name": parts[1], "target": "production",
                                                 "meta": ["action": "promote"]])
             let url = (json as? [String: Any])?["url"] as? String
             return url.map { "Building \($0) for production" } ?? "Production build started"
         case "vercel.cancel":
-            _ = try await request("https://api.vercel.com/v12/deployments/\(target)/cancel", method: "PATCH",
+            _ = try await request(VercelAPI.url("https://api.vercel.com/v12/deployments/\(target)/cancel"), method: "PATCH",
                                   headers: try vercelHeaders())
             return "Build canceled"
         case "github.rerun":

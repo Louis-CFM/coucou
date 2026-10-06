@@ -343,6 +343,51 @@ enum GitHubPulseTests {
                   GitHubPulse.isStale(fetchedAt: now.addingTimeInterval(-61), now: now, maxAge: 60))
         }
 
+        // ── GitHubPulse.parse — watched repos as aliases r0, r1… ─────────────
+        print("GitHubPulse.parse — watched repo aliases")
+        do {
+            let json = """
+            {
+              "data": {
+                "viewer": { "login": "u", "pullRequests": { "nodes": [] } },
+                "reviewRequested": { "issueCount": 0, "nodes": [] },
+                "r1": { "nameWithOwner": "org/second", "url": "u2", "isArchived": false,
+                        "defaultBranchRef": { "name": "main",
+                          "target": { "oid": "b", "statusCheckRollup": { "state": "FAILURE" } } } },
+                "r0": { "nameWithOwner": "org/first", "url": "u1", "isArchived": false,
+                        "defaultBranchRef": { "name": "dev",
+                          "target": { "oid": "a", "statusCheckRollup": { "state": "SUCCESS" } } } },
+                "r2": null
+              }
+            }
+            """.data(using: .utf8)!
+            let pulse = GitHubPulse.parse(json)
+            check("parses with aliases", pulse != nil)
+            check("aliases in r0, r1 order", pulse?.mainCI.map(\.repo) == ["org/first", "org/second"])
+            check("alias CI parsed", pulse?.mainCI.map(\.ci) == [.success, .failure])
+            check("null alias (no access) skipped", pulse?.mainCI.count == 2)
+        }
+
+        // ── GitHubPulse.filtered ──────────────────────────────────────────────
+        print("GitHubPulse.filtered")
+        do {
+            var pulse = GitHubPulse.parse(emptyJSON)!
+            pulse.myPRs = [GitHubPR(id: "a/x#1", title: "", url: "", repo: "a/x", number: 1,
+                                    isDraft: false, ci: .success, review: .unknown),
+                           GitHubPR(id: "b/y#2", title: "", url: "", repo: "b/y", number: 2,
+                                    isDraft: false, ci: .failure, review: .unknown)]
+            pulse.toReview = [GitHubPR(id: "b/y#3", title: "", url: "", repo: "b/y", number: 3,
+                                       isDraft: false, ci: .unknown, review: .pending)]
+            pulse.mainCI = [GitHubRepoCI(repo: "a/x", url: "", branch: "main", ci: .success),
+                            GitHubRepoCI(repo: "b/y", url: "", branch: "main", ci: .failure)]
+            check("empty set → unchanged", pulse.filtered(toRepos: []) == pulse)
+            let only = pulse.filtered(toRepos: ["b/y"])
+            check("PRs narrowed", only.myPRs.map(\.repo) == ["b/y"])
+            check("to-review narrowed", only.toReview.count == 1)
+            check("main CI narrowed", only.mainCI.map(\.repo) == ["b/y"])
+            check("login kept", only.login == pulse.login)
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

@@ -84,6 +84,16 @@ struct GitHubPulse: Equatable {
         mainCI.contains { $0.ci == .pending }
     }
 
+    /// Keeps only PRs and default-branch CI from the given repos (nameWithOwner). Empty set = unchanged.
+    func filtered(toRepos repos: Set<String>) -> GitHubPulse {
+        guard !repos.isEmpty else { return self }
+        var copy = self
+        copy.myPRs    = myPRs.filter    { repos.contains($0.repo) }
+        copy.toReview = toReview.filter { repos.contains($0.repo) }
+        copy.mainCI   = mainCI.filter   { repos.contains($0.repo) }
+        return copy
+    }
+
     // MARK: - Parse
 
     static func parse(_ data: Data) -> GitHubPulse? {
@@ -124,25 +134,36 @@ struct GitHubPulse: Equatable {
             }
         }
 
-        // Main CI for recently-pushed repos (client-side filter: skip archived)
-        var mainCI: [GitHubRepoCI] = []
+        // Main CI: recently-pushed repos, or the watched repos queried as aliases r0, r1…
+        // (client-side filter: skip archived)
+        var repoNodes: [[String: Any]] = []
         if let repoConn = viewer["repositories"] as? [String: Any],
            let nodes = repoConn["nodes"] as? [[String: Any]] {
-            for node in nodes {
-                let isArchived = node["isArchived"] as? Bool ?? false
-                if isArchived { continue }
-                guard let repo     = node["nameWithOwner"] as? String,
-                      let url      = node["url"] as? String,
-                      let branchRef = node["defaultBranchRef"] as? [String: Any],
-                      let branch   = branchRef["name"] as? String else { continue }
-                let (ciRaw, headSha): (String?, String?) = {
-                    guard let target = branchRef["target"] as? [String: Any] else { return (nil, nil) }
-                    let rollup = target["statusCheckRollup"] as? [String: Any]
-                    return (rollup?["state"] as? String, target["oid"] as? String)
-                }()
-                mainCI.append(GitHubRepoCI(repo: repo, url: url, branch: branch,
-                                           ci: CIState(rawGitHub: ciRaw), headSha: headSha))
+            repoNodes = nodes
+        }
+        let aliasKeys = dataNode.keys
+            .compactMap { key -> (Int, String)? in
+                guard key.hasPrefix("r"), let i = Int(key.dropFirst()) else { return nil }
+                return (i, key)
             }
+            .sorted { $0.0 < $1.0 }
+        repoNodes += aliasKeys.compactMap { dataNode[$0.1] as? [String: Any] }
+
+        var mainCI: [GitHubRepoCI] = []
+        for node in repoNodes {
+            let isArchived = node["isArchived"] as? Bool ?? false
+            if isArchived { continue }
+            guard let repo     = node["nameWithOwner"] as? String,
+                  let url      = node["url"] as? String,
+                  let branchRef = node["defaultBranchRef"] as? [String: Any],
+                  let branch   = branchRef["name"] as? String else { continue }
+            let (ciRaw, headSha): (String?, String?) = {
+                guard let target = branchRef["target"] as? [String: Any] else { return (nil, nil) }
+                let rollup = target["statusCheckRollup"] as? [String: Any]
+                return (rollup?["state"] as? String, target["oid"] as? String)
+            }()
+            mainCI.append(GitHubRepoCI(repo: repo, url: url, branch: branch,
+                                       ci: CIState(rawGitHub: ciRaw), headSha: headSha))
         }
 
         // To review
@@ -240,5 +261,68 @@ struct GitHubPulse: Equatable {
     static func isStale(fetchedAt: Date?, now: Date = Date(), maxAge: TimeInterval) -> Bool {
         guard let t = fetchedAt else { return true }
         return now.timeIntervalSince(t) > maxAge
+    }
+}
+
+// MARK: - Query
+
+extension GitHubPulse {
+    /// Pulse query. With no watched repos: the 10 most recently pushed owned repos.
+    /// With watched repos: each one fetched by name as an alias r0, r1… (parsed in GitHubPulse.parse).
+    static func query(watched: [String]) -> String {
+        let repoFields = """
+        nameWithOwner url isArchived
+              defaultBranchRef {
+                name
+                target { ... on Commit { oid statusCheckRollup { state } } }
+              }
+        """
+        let viewerRepos = watched.isEmpty ? """
+            repositories(first: 10, ownerAffiliations: [OWNER], orderBy: {field: PUSHED_AT, direction: DESC}) {
+              nodes {
+                \(repoFields)
+              }
+            }
+        """ : ""
+        let aliases = watched.compactMap(repoOwnerAndName).enumerated().map { i, pair in
+            "  r\(i): repository(owner: \"\(pair.0)\", name: \"\(pair.1)\") { \(repoFields) }"
+        }.joined(separator: "\n")
+        return """
+        query {
+          viewer {
+            login
+            pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
+              nodes {
+                number title url isDraft reviewDecision
+                repository { nameWithOwner url }
+                commits(last: 1) {
+                  nodes { commit { oid statusCheckRollup { state } } }
+                }
+              }
+            }
+        \(viewerRepos)
+          }
+          reviewRequested: search(query: "is:pr is:open review-requested:@me archived:false", type: ISSUE, first: 20) {
+            issueCount
+            nodes {
+              ... on PullRequest {
+                number title url isDraft
+                author { login }
+                repository { nameWithOwner url }
+              }
+            }
+          }
+        \(aliases)
+        }
+        """
+    }
+
+    /// "owner/name" → ("owner", "name"), only when both parts are safe to put in a GraphQL string.
+    static func repoOwnerAndName(_ nameWithOwner: String) -> (String, String)? {
+        let parts = nameWithOwner.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+        guard parts.count == 2,
+              parts.allSatisfy({ !$0.isEmpty && $0.unicodeScalars.allSatisfy(allowed.contains) }) else { return nil }
+        return (parts[0], parts[1])
     }
 }

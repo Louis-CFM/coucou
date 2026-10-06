@@ -140,14 +140,22 @@ struct OverviewView: View {
             }
             .frame(width: 322)
 
-            // Right card: agent pills
+            // Right card: agent pills, or a detail panel opened from the left card
             CardBackground(wash: nil) {
-                AgentPillsView(state: state)
+                if let panel = state.sidePanel {
+                    SidePanelView(state: state, panel: panel)
+                        .transition(.opacity)
+                } else {
+                    AgentPillsView(state: state)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.16), value: state.sidePanel)
         }
         .onChange(of: state.focusId) { _, new in
             showingN8nDetail = false
             activeDiffId = nil
+            state.sidePanel = nil
             #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             #endif
@@ -158,7 +166,12 @@ struct OverviewView: View {
             if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
         #endif
+        // Pills come back as soon as anything else needs the island (approval, question, chat…)
+        .onChange(of: state.view) { _, v in
+            if v != .overview { state.sidePanel = nil }
+        }
         .onChange(of: state.mode) { _, m in
+            if m != .expanded { state.sidePanel = nil }
             #if !APPSTORE
             if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
             #endif
@@ -1662,7 +1675,7 @@ struct IntegrationCardView: View {
 
     // Vercel with recent deployments
     private var vercelHasActivity: Bool {
-        task.id == "integration_vercel" && !appState.vercelDeployments.isEmpty
+        task.id == "integration_vercel" && !appState.vercelWatchedDeployments.isEmpty
     }
 
     // Resend with recent emails
@@ -1770,15 +1783,14 @@ struct IntegrationCardView: View {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
             }
             .transition(.opacity)
-        } else if showingDetail && vercelHasActivity {
-            VercelDetailView(deployment: appState.vercelDeployments[0]) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
-            }
-            .transition(.opacity)
         } else if vercelHasActivity {
-            VercelDeploymentListView(deployments: appState.vercelDeployments, onOpenDetail: {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
-            })
+            VercelDeploymentListView(
+                deployments: appState.vercelVisibleDeployments,
+                focusLabel: appState.effectiveVercelFocus,
+                canPickProject: appState.vercelFocusOptions.count > 1 || appState.effectiveVercelFocus != nil,
+                pickerOpen: appState.sidePanel == .vercelProjects,
+                onTapTitle: { appState.toggleSidePanel(.vercelProjects) },
+                onOpenDetail: { id in appState.toggleSidePanel(.vercelDeployment(id)) })
             .transition(.opacity)
         } else if resendHasData {
             ResendCardView(emails: appState.resendEmails, total: appState.resendTotal)
@@ -1786,7 +1798,7 @@ struct IntegrationCardView: View {
         } else if showingDetail && githubHasPulse {
             GitHubDetailView(
                 section: githubDetailSection,
-                pulse: appState.githubPulse!,
+                pulse: appState.githubVisiblePulse!,
                 activity: appState.githubActivity,
                 stats: appState.githubStats,
                 onBack: {
@@ -1796,12 +1808,21 @@ struct IntegrationCardView: View {
             .transition(.opacity)
         } else if githubHasPulse {
             GitHubPulseCardView(
-                pulse: appState.githubPulse!,
+                pulse: appState.githubVisiblePulse!,
                 stats: appState.githubStats,
                 activity: appState.githubActivity,
+                focusLabel: appState.effectiveGithubFocus.map { $0.split(separator: "/").last.map(String.init) ?? $0 },
+                canPickRepo: appState.githubFocusOptions.count > 1 || appState.effectiveGithubFocus != nil,
+                pickerOpen: appState.sidePanel == .githubRepos,
+                onTapTitle: { appState.toggleSidePanel(.githubRepos) },
                 onTapSection: { section in
-                    githubDetailSection = section
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                    if section == .activity {
+                        // The contribution calendar needs the wide left card
+                        githubDetailSection = section
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+                    } else {
+                        appState.toggleSidePanel(.github(section))
+                    }
                 }
             )
             .transition(.opacity)
@@ -2042,7 +2063,11 @@ struct IntegrationCardView: View {
 
 struct VercelDeploymentListView: View {
     let deployments: [VercelDeployment]
-    let onOpenDetail: () -> Void
+    var focusLabel: String? = nil
+    var canPickProject: Bool = false
+    var pickerOpen: Bool = false
+    var onTapTitle: () -> Void = {}
+    let onOpenDetail: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2051,12 +2076,12 @@ struct VercelDeploymentListView: View {
                 Circle()
                     .fill(Color(hex: "#7C5CFF"))
                     .frame(width: 7, height: 7)
-                Text("Vercel")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color(hex: "#F5F6F8"))
+                FocusTitleButton(title: "Vercel", selection: focusLabel,
+                                 canPick: canPickProject, isOpen: pickerOpen, action: onTapTitle)
                 Text("Deployments")
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#8E939C"))
+                    .lineLimit(1)
             }
             .padding(.top, 6)
             .padding(.leading, 108)
@@ -2077,7 +2102,7 @@ struct VercelDeploymentListView: View {
                         Text(first.timeAgo)
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#6B7079"))
-                        Button(action: onOpenDetail) {
+                        Button(action: { onOpenDetail(first.id) }) {
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 8, weight: .medium))
                                 .foregroundColor(Color(hex: "#6B7079"))
@@ -2092,22 +2117,33 @@ struct VercelDeploymentListView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                 }
 
+                if deployments.isEmpty {
+                    Text("No recent deployments")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                }
+
                 // Remaining deployments — plain rows, identical structure → perfect alignment
                 ForEach(Array(deployments.dropFirst().prefix(2))) { dep in
                     let accent = Color(hex: dep.isSuccess ? "#22C55E" : "#F4505E")
-                    HStack(spacing: 5) {
-                        Circle().fill(accent).frame(width: 5, height: 5)
-                        Text(dep.projectName)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(hex: "#9398A1"))
-                            .lineLimit(1).truncationMode(.tail)
-                            .layoutPriority(1)
-                        Text(dep.timeAgo)
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#6B7079"))
+                    Button(action: { onOpenDetail(dep.id) }) {
+                        HStack(spacing: 5) {
+                            Circle().fill(accent).frame(width: 5, height: 5)
+                            Text(dep.projectName)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: "#9398A1"))
+                                .lineLimit(1).truncationMode(.tail)
+                                .layoutPriority(1)
+                            Text(dep.timeAgo)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.top, 5)
@@ -2116,81 +2152,6 @@ struct VercelDeploymentListView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
-    }
-}
-
-// MARK: - Vercel Deployment Detail View
-
-struct VercelDetailView: View {
-    let deployment: VercelDeployment
-    let onClose: () -> Void
-
-    private var accent: Color { Color(hex: deployment.isSuccess ? "#22C55E" : "#F4505E") }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header
-            HStack(spacing: 7) {
-                Button(action: onClose) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Color(hex: "#6B7079"))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                Circle().fill(accent).frame(width: 6, height: 6)
-                Text(deployment.projectName)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(hex: "#F5F6F8"))
-                    .lineLimit(1).truncationMode(.middle)
-                    .layoutPriority(1)
-                Spacer(minLength: 2)
-                Text(deployment.statusLabel)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(accent)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(accent.opacity(0.14))
-                    .clipShape(Capsule())
-            }
-
-            // Details
-            VStack(alignment: .leading, spacing: 4) {
-                if let commit = deployment.commitMessage {
-                    Text(commit)
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(hex: "#C5C8CD"))
-                        .lineLimit(2)
-                }
-                HStack(spacing: 8) {
-                    if let branch = deployment.branch {
-                        Label(branch, systemImage: "arrow.branch")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#6B7079"))
-                    }
-                    Text(deployment.timeAgo + " ago")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#6B7079"))
-                }
-                Button(action: {
-                    if let url = URL(string: "https://\(deployment.url)") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }) {
-                    Text(deployment.url)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(Color(hex: "#7C5CFF").opacity(0.85))
-                        .lineLimit(1).truncationMode(.middle)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.top, 8)
-        .padding(.leading, 108)
-        .padding(.trailing, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .contentShape(Rectangle())
     }
 }
 
@@ -2320,6 +2281,10 @@ struct GitHubPulseCardView: View {
     let pulse: GitHubPulse
     let stats: GitHubStats?
     let activity: GitHubActivity?
+    var focusLabel: String? = nil
+    var canPickRepo: Bool = false
+    var pickerOpen: Bool = false
+    var onTapTitle: () -> Void = {}
     let onTapSection: (GitHubDetailSection) -> Void
 
     var body: some View {
@@ -2329,9 +2294,8 @@ struct GitHubPulseCardView: View {
                 Circle()
                     .fill(Color(hex: "#F4505E"))
                     .frame(width: 7, height: 7)
-                Text("GitHub")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color(hex: "#F5F6F8"))
+                FocusTitleButton(title: "GitHub", selection: focusLabel,
+                                 canPick: canPickRepo, isOpen: pickerOpen, action: onTapTitle)
                 if let s = stats {
                     // Stars + 7-day mini-row → opens Activity detail
                     Button(action: { onTapSection(.activity) }) {
@@ -2433,6 +2397,49 @@ struct GitHubPulseCardView: View {
     private func formatCount(_ n: Int) -> String {
         if n >= 1000 { return String(format: "%.1fk", Double(n) / 1000) }
         return "\(n)"
+    }
+}
+
+// MARK: - Focus title (Vercel / GitHub card headers)
+
+/// Card title that doubles as a quick switch: tap it to pick, in the right card,
+/// which repo or project the card shows. Plain title when there is nothing to choose from.
+struct FocusTitleButton: View {
+    let title: String
+    let selection: String?
+    let canPick: Bool
+    let isOpen: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    private var label: some View {
+        Text(selection ?? title)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(Color(hex: "#F5F6F8"))
+            .lineLimit(1)
+            .truncationMode(.middle)
+    }
+
+    var body: some View {
+        if canPick {
+            Button(action: action) {
+                HStack(spacing: 3) {
+                    label
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7, weight: .semibold))
+                        .foregroundColor(Color(hex: isHovered || isOpen ? "#C5C8CD" : "#6B7079"))
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                }
+                .frame(maxWidth: 110, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .layoutPriority(1)
+            .onHover { isHovered = $0 }
+            .animation(.easeInOut(duration: 0.16), value: isOpen)
+        } else {
+            label
+        }
     }
 }
 
@@ -2730,7 +2737,7 @@ private func contributionColor(_ level: Int) -> Color {
     }
 }
 
-private func ghCIDot(_ ci: CIState) -> Color {
+func ghCIDot(_ ci: CIState) -> Color {
     switch ci {
     case .failure: return Color(hex: "#F4505E")
     case .pending: return Color(hex: "#F5A524")
@@ -2739,7 +2746,7 @@ private func ghCIDot(_ ci: CIState) -> Color {
     }
 }
 
-private struct GitHubPRRowView: View {
+struct GitHubPRRowView: View {
     let pr: GitHubPR
     let showCI: Bool
     var selected: Bool = false
@@ -2786,7 +2793,7 @@ private struct GitHubPRRowView: View {
     }
 }
 
-private struct GitHubRepoCIRowView: View {
+struct GitHubRepoCIRowView: View {
     let repo: GitHubRepoCI
     var selected: Bool = false
 
