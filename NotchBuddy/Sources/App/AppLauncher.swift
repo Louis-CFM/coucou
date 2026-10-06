@@ -140,3 +140,26 @@ enum AppLauncher {
         return browsers.first(where: isRunning)
     }
 }
+
+// MARK: - Open path in editor (diff card + ⌃⌥E)
+
+enum FileOpener {
+    static func open(path: String, atLine line: Int? = nil) {
+        #if !APPSTORE
+        let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
+                         "\(NSHomeDirectory())/.nvm/current/bin/code"]
+        if let codePath = codePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: codePath)
+            if let line {
+                p.arguments = ["-g", "\(path):\(line)"]
+            } else {
+                p.arguments = [path]
+            }
+            try? p.run()
+            return
+        }
+        #endif
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+}
