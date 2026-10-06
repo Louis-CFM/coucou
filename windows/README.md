@@ -168,6 +168,9 @@ What changes on Linux:
   top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
   and other wlroots compositors. GNOME has no layer-shell, so there the island
   is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **Chat with your Cursor plan**: install the Cursor CLI, then Settings →
+  Cursor → "Sign in with Cursor" and pick "Cursor (your plan)". It runs
+  `agent -p --mode ask` (read-only) in an empty private folder.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland

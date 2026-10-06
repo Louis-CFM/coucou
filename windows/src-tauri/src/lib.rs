@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod cursor_chat;
 mod files;
 mod hooks;
 mod integrations;
@@ -21,6 +22,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
+use cursor_chat::CursorChat;
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -238,16 +240,41 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    cursor: State<'_, CursorChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (provider, model, cursor_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.chat_provider.clone(), s.model.clone(), s.cursor_model.clone())
+    };
+    if provider == "cursor" {
+        cursor_chat::send(&cursor, &cursor_model, query, context).await
+    } else {
+        claude::send(&chat, &model, query, context).await
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, cursor: State<CursorChat>) {
     chat.reset();
+    cursor.reset();
+}
+
+#[tauri::command]
+async fn cursor_status() -> cursor_chat::CursorStatus {
+    cursor_chat::status().await
+}
+
+#[tauri::command]
+async fn cursor_models() -> Vec<(String, String)> {
+    cursor_chat::models().await
+}
+
+/// Only from the "Sign in with Cursor" button: opens the browser sign-in.
+#[tauri::command]
+fn cursor_login() -> Result<(), String> {
+    cursor_chat::login()
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -374,6 +401,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(CursorChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +421,9 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            cursor_status,
+            cursor_models,
+            cursor_login,
             ingest_file,
             secret_present,
             secret_set,
