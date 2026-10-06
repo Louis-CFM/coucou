@@ -20,6 +20,31 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "anthropic" (default, unchanged behavior) or "openai-compatible".
+    #[serde(default = "default_provider")]
+    pub chat_provider: String,
+    /// Base URL for the OpenAI-compatible provider; plain (non-secret) setting.
+    #[serde(default = "default_base_url")]
+    pub openai_base_url: String,
+    /// Full endpoint URL for the Anthropic-compatible provider; default is the
+    /// official API (behavior unchanged when untouched).
+    #[serde(default = "default_anthropic_base_url")]
+    pub anthropic_base_url: String,
+    /// Opt-in web search for the OpenAI-compatible provider (spends credits).
+    #[serde(default)]
+    pub web_search: bool,
+}
+
+fn default_provider() -> String {
+    "anthropic".into()
+}
+
+fn default_base_url() -> String {
+    crate::openai::DEFAULT_BASE_URL.into()
+}
+
+fn default_anthropic_base_url() -> String {
+    "https://api.anthropic.com/v1/messages".into()
 }
 
 fn default_model() -> String {
@@ -43,6 +68,10 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: default_provider(),
+            openai_base_url: default_base_url(),
+            anthropic_base_url: default_anthropic_base_url(),
+            web_search: false,
         }
     }
 }
@@ -70,4 +99,31 @@ pub fn save(settings: &Settings) -> std::io::Result<()> {
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(settings_path(), json)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_settings_json_loads_with_anthropic_defaults() {
+        // A real file written by an older build: every old field, none of the new ones.
+        let s: Settings = serde_json::from_str(
+            r#"{"soundEnabled":true,"soundVolume":0.12,"autoCloseInterval":15.0,"absenceInterval":180.0,"activeIntegrations":[],"screen":"primary","autostart":false,"hooksInstalled":false,"model":"claude-opus-5"}"#,
+        )
+        .unwrap();
+        assert_eq!(s.model, "claude-opus-5");
+        assert_eq!(s.chat_provider, "anthropic");
+        assert_eq!(s.openai_base_url, crate::openai::DEFAULT_BASE_URL);
+        assert!(!s.web_search);
+    }
+
+    #[test]
+    fn old_settings_json_defaults_anthropic_compat_endpoint() {
+        let s: Settings = serde_json::from_str(
+            r#"{"soundEnabled":true,"soundVolume":0.12,"autoCloseInterval":15.0,"absenceInterval":180.0,"activeIntegrations":[],"screen":"primary","autostart":false,"hooksInstalled":false,"model":"claude-opus-5"}"#,
+        )
+        .unwrap();
+        assert_eq!(s.anthropic_base_url, "https://api.anthropic.com/v1/messages");
+    }
 }

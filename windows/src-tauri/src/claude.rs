@@ -16,13 +16,13 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Server-side fallback: on a policy decline the API retries the same request on
 /// a fallback model inside the same call, so the island never shows a dead end.
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
-const MAX_TOKENS: u32 = 4096;
+pub(crate) const MAX_TOKENS: u32 = 4096;
 /// Text and code files are inlined; anything larger is skipped, as on macOS.
-const MAX_INLINE_TEXT: u64 = 200_000;
+pub(crate) const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
 
-const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
+pub(crate) const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
 No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
@@ -31,6 +31,9 @@ No markdown formatting (no **, no ##, no bullet dashes). Use plain text with lin
 pub struct Chat {
     /// Full multi-turn history, including tool_use / tool_result blocks.
     messages: Mutex<Vec<Value>>,
+    /// Which provider shaped `messages` ("anthropic", "openai-compatible", …).
+    /// A switch clears the history so wire formats never mix.
+    provider: Mutex<String>,
 }
 
 impl Chat {
@@ -38,19 +41,28 @@ impl Chat {
         self.messages.lock().unwrap().clear();
     }
 
-    fn is_empty(&self) -> bool {
+    /// Clears the history when the provider changed since the last turn.
+    pub(crate) fn ensure_provider(&self, provider: &str) {
+        let mut current = self.provider.lock().unwrap();
+        if *current != provider {
+            *current = provider.to_string();
+            self.messages.lock().unwrap().clear();
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
         self.messages.lock().unwrap().is_empty()
     }
 
-    fn push(&self, message: Value) {
+    pub(crate) fn push(&self, message: Value) {
         self.messages.lock().unwrap().push(message);
     }
 
-    fn pop(&self) {
+    pub(crate) fn pop(&self) {
         self.messages.lock().unwrap().pop();
     }
 
-    fn snapshot(&self) -> Vec<Value> {
+    pub(crate) fn snapshot(&self) -> Vec<Value> {
         self.messages.lock().unwrap().clone()
     }
 }
@@ -76,6 +88,27 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
+    send_to(chat, ENDPOINT, model, query, context).await
+}
+
+/// Same contract against any Anthropic-Messages-compatible endpoint
+/// (official API, OpenRouter `/api/v1/messages`, LiteLLM passthrough…).
+/// Server-side extras (fallback beta, web search) stay official-only:
+/// custom gateways don't know them.
+pub async fn send_to(
+    chat: &Chat,
+    endpoint: &str,
+    model: &str,
+    query: String,
+    context: Option<ChatContext>,
+) -> Result<ChatReply, String> {
+    // Provider-scoped history: never let one wire format read another's.
+    chat.ensure_provider(if endpoint == ENDPOINT {
+        "anthropic"
+    } else {
+        "anthropic-compatible"
+    });
+
     let key = secrets::get("anthropic-api-key")
         .ok_or_else(|| "API key missing. Open settings.".to_string())?;
 
@@ -105,16 +138,20 @@ pub async fn send(
 
     chat.push(json!({ "role": "user", "content": content }));
 
-    let body = json!({
+    let official = endpoint == ENDPOINT;
+    let mut body = json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
-        "fallbacks": "default",
         "messages": chat.snapshot(),
     });
+    if official {
+        // Server-side extras only the official API knows.
+        body["tools"] = json!([{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }]);
+        body["fallbacks"] = json!("default");
+    }
 
-    let response = match call(&key, &body).await {
+    let response = match call(&key, endpoint, &body).await {
         Ok(v) => v,
         Err(err) => {
             chat.pop(); // keep the history consistent with what the model saw
@@ -157,19 +194,22 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
+async fn call(key: &str, endpoint: &str, body: &Value) -> Result<Value, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(90))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let response = client
-        .post(ENDPOINT)
+    let mut request = client
+        .post(endpoint)
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
         .header("content-type", "application/json")
-        .json(body)
+        .json(body);
+    if endpoint == ENDPOINT {
+        request = request.header("anthropic-beta", FALLBACK_BETA);
+    }
+    let response = request
         .send()
         .await
         .map_err(|e| format!("Network error: {e}"))?;
@@ -232,7 +272,7 @@ pub(crate) fn base64_for(bytes: &[u8]) -> String {
     base64(bytes)
 }
 
-fn base64(bytes: &[u8]) -> String {
+pub(crate) fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
@@ -249,6 +289,19 @@ fn base64(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::base64;
+    use super::Chat;
+
+    #[test]
+    fn history_resets_when_provider_changes() {
+        let chat = Chat::default();
+        chat.push(serde_json::json!({"role": "user", "content": "x"}));
+        chat.ensure_provider("openai-compatible");
+        assert!(chat.is_empty());
+        // Same provider keeps history.
+        chat.push(serde_json::json!({"role": "user", "content": "y"}));
+        chat.ensure_provider("openai-compatible");
+        assert!(!chat.is_empty());
+    }
 
     #[test]
     fn base64_matches_rfc4648_vectors() {

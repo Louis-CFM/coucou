@@ -70,9 +70,29 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 ## Chat and keys
 
-**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
-Credential Manager**, never on disk and never in the interface — the island can
-only ask whether a key exists. Same for every integration key.
+**Settings… → Chat** picks the provider. **Anthropic** is the default and
+behaves exactly as before; **OpenAI-compatible** uses one client for every
+`POST {base}/chat/completions` backend:
+
+| Preset | Base URL | Key |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `sk-…` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `sk-or-…` |
+| Ollama (local) | `http://localhost:11434/v1` | none needed |
+
+The model field is free text (`gpt-5.4-mini`, `openai/gpt-4o`, `llama3.1`, …)
+and the provider's own error message is shown when it is wrong. Switching
+providers resets the chat history, since the two wire formats never mix.
+
+On OpenRouter you also get the two features that are skipped elsewhere:
+**Web search** (opt-in checkbox, off by default — each search spends a little
+of your OpenRouter credits) and **PDF parsing** via the free `pdf-text`
+engine (scanned-PDF OCR stays off so it can never bill you silently).
+Note: OpenRouter requires at least $0.50 balance for file requests.
+
+Keys live in the **Windows Credential Manager**, never on disk and never in
+the interface — the island can only ask whether a key exists. Same for every
+integration key.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
