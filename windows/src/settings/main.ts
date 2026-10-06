@@ -254,6 +254,87 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Ollama section ────────────────────────────────────────────────────────────
+
+function ollamaSection(): HTMLElement {
+  const dot = statusDot(false);
+  const state = h("span", { class: "hint", text: "Run the chat on a local model. Nothing leaves your PC." });
+  const feedback = h("div", {});
+
+  const useIt = toggle(settings.provider === "ollama", (on) => {
+    settings.provider = on ? "ollama" : "anthropic";
+    void Bridge.chatReset();
+    void save();
+  });
+
+  const url = h("input", {
+    type: "text",
+    value: settings.ollamaUrl,
+    placeholder: "http://127.0.0.1:11434",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+
+  const model = h("select", { style: "flex:1 1 auto;min-width:0" }) as HTMLSelectElement;
+  const refreshBtn = h("button", { class: "primary", text: "Refresh" });
+
+  function fill(names: string[]) {
+    clear(model);
+    if (settings.ollamaModel && !names.includes(settings.ollamaModel)) names = [settings.ollamaModel, ...names];
+    if (names.length === 0) model.append(h("option", { value: "", text: "No models installed" }));
+    for (const n of names) model.append(h("option", { value: n, text: n }));
+    if (!settings.ollamaModel && names.length > 0) {
+      settings.ollamaModel = names[0];
+      void save();
+    }
+    model.value = settings.ollamaModel;
+  }
+
+  async function refresh() {
+    clear(feedback);
+    try {
+      const names = await Bridge.ollamaModels(url.value.trim());
+      dot.style.background = "#22c55e";
+      fill(names);
+      if (names.length === 0) {
+        feedback.append(h("div", { class: "notice err", text: "Ollama is running but has no models. Run: ollama pull llama3.2" }));
+      }
+    } catch (err) {
+      dot.style.background = "#f4505e";
+      fill([]);
+      feedback.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+    }
+  }
+
+  url.addEventListener("change", () => {
+    settings.ollamaUrl = url.value.trim();
+    void Bridge.chatReset();
+    void save();
+    void refresh();
+  });
+  model.addEventListener("change", () => {
+    settings.ollamaModel = model.value;
+    void Bridge.chatReset();
+    void save();
+  });
+  refreshBtn.addEventListener("click", () => void refresh());
+
+  fill([]);
+  if (settings.provider === "ollama") void refresh();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, dot, h("span", { text: "Ollama (local)" })),
+    state,
+    h("div", { class: "row" }, h("label", { text: "Use for chat" }), useIt),
+    h("div", { class: "row" }, h("label", { text: "Server URL" }), url),
+    h("div", { class: "row" }, h("label", { text: "Model" }), model, refreshBtn),
+    feedback,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -443,6 +524,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    ollamaSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {

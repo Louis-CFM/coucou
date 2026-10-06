@@ -92,6 +92,10 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  provider: "anthropic" | "ollama";
+  /** Empty = OLLAMA_HOST, else http://127.0.0.1:11434. */
+  ollamaUrl: string;
+  ollamaModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +110,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  provider: "anthropic",
+  ollamaUrl: "",
+  ollamaModel: "",
 };
 
 type Listener = () => void;

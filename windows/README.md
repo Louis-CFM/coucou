@@ -74,6 +74,13 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+**Settings… → Ollama (local)** runs the chat on a local model instead: turn on
+*Use for chat*, set the server URL (empty uses `OLLAMA_HOST`, else
+`http://127.0.0.1:11434`) and pick an installed model. No key is needed. Text
+files and images can be dropped on the island; PDFs are not supported by local
+models. `localhost` is pinned to `127.0.0.1` because Ollama on Windows listens
+on IPv4 only.
+
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 

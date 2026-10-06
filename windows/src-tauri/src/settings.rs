@@ -20,6 +20,18 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "anthropic" or "ollama".
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    /// Empty means "use OLLAMA_HOST, else http://127.0.0.1:11434".
+    #[serde(default)]
+    pub ollama_url: String,
+    #[serde(default)]
+    pub ollama_model: String,
+}
+
+fn default_provider() -> String {
+    "anthropic".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +55,9 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            provider: default_provider(),
+            ollama_url: String::new(),
+            ollama_model: String::new(),
         }
     }
 }

@@ -6,6 +6,7 @@ mod hooks;
 mod integrations;
 mod island;
 mod log;
+mod ollama;
 mod pipe;
 mod platform;
 mod secrets;
@@ -241,8 +242,20 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
+    let (provider, model, ollama_url, ollama_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.provider.clone(), s.model.clone(), s.ollama_url.clone(), s.ollama_model.clone())
+    };
+    if provider == "ollama" {
+        return ollama::send(&chat, &ollama_url, &ollama_model, query, context).await;
+    }
     claude::send(&chat, &model, query, context).await
+}
+
+/// Models installed on the Ollama server, for the settings dropdown.
+#[tauri::command]
+async fn ollama_models(url: String) -> Result<Vec<String>, String> {
+    ollama::models(&url).await
 }
 
 #[tauri::command]
@@ -393,6 +406,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            ollama_models,
             ingest_file,
             secret_present,
             secret_set,

@@ -31,11 +31,14 @@ No markdown formatting (no **, no ##, no bullet dashes). Use plain text with lin
 pub struct Chat {
     /// Full multi-turn history, including tool_use / tool_result blocks.
     messages: Mutex<Vec<Value>>,
+    /// Plain role/content history for local (Ollama) models.
+    pub(crate) local: Mutex<Vec<Value>>,
 }
 
 impl Chat {
     pub fn reset(&self) {
         self.messages.lock().unwrap().clear();
+        self.local.lock().unwrap().clear();
     }
 
     fn is_empty(&self) -> bool {
