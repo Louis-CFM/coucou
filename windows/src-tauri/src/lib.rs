@@ -2,6 +2,8 @@
 
 mod claude;
 mod files;
+mod github;
+mod github_detail;
 mod hooks;
 mod integrations;
 mod island;
@@ -263,13 +265,56 @@ fn secret_present(key: String) -> bool {
 }
 
 #[tauri::command]
-fn secret_set(key: String, value: String) -> Result<(), String> {
-    secrets::set(&key, &value)
+fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+    secrets::set(&key, &value)?;
+    secrets_changed(&app, &key);
+    Ok(())
 }
 
 #[tauri::command]
-fn secret_clear(key: String) -> Result<(), String> {
-    secrets::clear(&key)
+fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
+    secrets::clear(&key)?;
+    secrets_changed(&app, &key);
+    Ok(())
+}
+
+/// The island only learns which keys exist by asking, and used to ask once at
+/// launch: a key saved in the settings window left its pill saying "Key not
+/// configured" until a restart. This tells it to ask again. A new GitHub token
+/// may be another account's: what the old one fetched is forgotten first.
+fn secrets_changed(app: &AppHandle, key: &str) {
+    if key == github::TOKEN_KEY {
+        github::forget();
+    }
+    let _ = app.emit_to(island::WINDOW_LABEL, "secrets-changed", ());
+}
+
+/// Settings → GitHub → Test connection. Runs on the stored token and brings back
+/// the account and what the token can reach — never the token itself.
+#[tauri::command]
+async fn github_test() -> Result<github::Account, String> {
+    github::test().await
+}
+
+/// A click on a project in the GitHub panel: its CI, last pull request and last
+/// deployment. On demand only, cached a minute; `force` is the ↻ button.
+#[tauri::command]
+async fn github_project(full_name: String, force: bool) -> Result<github::Project, String> {
+    github::project(&full_name, force).await
+}
+
+/// A click on a day of the contribution graph: what was done that day, between
+/// the island's local midnights. On demand only, cached.
+#[tauri::command]
+async fn github_day(from: String, to: String, today: bool) -> Result<github::Day, String> {
+    github::day(&from, &to, today).await
+}
+
+/// A click on a line of GitHub activity: the pull request, issue, commits or
+/// release behind it, with the files' diffs. On demand only, cached a minute.
+#[tauri::command]
+async fn github_detail(target: github_detail::Target, force: bool) -> Result<github_detail::Detail, String> {
+    github_detail::detail(target, force).await
 }
 
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
@@ -397,6 +442,10 @@ pub fn run() {
             secret_present,
             secret_set,
             secret_clear,
+            github_test,
+            github_project,
+            github_day,
+            github_detail,
             refresh_integration,
             open_n8n,
             open_settings_window,

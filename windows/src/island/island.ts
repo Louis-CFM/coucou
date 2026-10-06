@@ -1,22 +1,24 @@
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
-import { Tracked, Spring, clamp } from "../core/anim";
+import { Tracked, Spring, clamp, mixColor } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  type IslandMode, type IslandViewName,
+  type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { BotEngine, hexToRGB } from "../mochi/engine";
+import { BotEngine, hexToRGB, type RGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
+import { githubData } from "../views/integrations";
+import { followNews } from "./integrations";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
@@ -31,6 +33,11 @@ const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading"
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
 
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
+
+/** How fast Mochi's body goes to a new colour, per second: about 90 % of the way in 0.4 s. */
+const TINT_RATE = 5.5;
+/** Closer than this on every channel (0…1), the body has its colour: a unit of 8-bit colour. */
+const TINT_SETTLED = 0.004;
 
 export class Island {
   readonly fsm = new IslandStateMachine();
@@ -60,6 +67,16 @@ export class Island {
 
   private engine = new BotEngine();
   private greeting = new Greeting();
+
+  /**
+   * A view asking Mochi to take a colour for a moment (a day of the GitHub
+   * graph). His body only: the glow stays his own.
+   */
+  private tintRequest: RGB | null = null;
+  /** A state a view asked Mochi to wear (see ViewActions.look). */
+  private viewState: BotStateName | null = null;
+  /** The colour Mochi's body is drawn in, eased towards what it should be. */
+  private bodyRGB: RGB | null = null;
 
   private running = false;
   private lastFrame = 0;
@@ -129,6 +146,7 @@ export class Island {
         };
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === "integration_github" && githubData()) void Bridge.openUrl(githubData()!.profileUrl);
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -167,6 +185,17 @@ export class Island {
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
+      emote: (e) => this.engine.triggerEmote(e),
+      tintMochi: (color) => {
+        this.tintRequest = color ? hexToRGB(color) : null;
+        this.ensureRunning();
+      },
+      look: (state) => {
+        if (this.viewState === state) return;
+        this.viewState = state;
+        State.notify();
+      },
+      followNews: () => followNews(this),
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -260,6 +289,9 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
+    // Whatever asked for a tint is no longer under the mouse.
+    this.tintRequest = null;
+    this.viewState = null;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
@@ -300,6 +332,8 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    this.tintRequest = null;
+    this.viewState = null;
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -450,7 +484,8 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const news = State.focusId != null && State.integrations[State.focusId]?.news != null;
+    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, news);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -476,7 +511,13 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Centred on a whole pixel of the screen. `translateX(-50%)` put the island
+    // on a fraction of one for as long as its width was animating, and whatever
+    // was painted then in a layer of its own — a scrolling list, say — kept
+    // that fraction once the island had settled: its text stayed smeared until
+    // it was drawn again.
+    const dpr = window.devicePixelRatio || 1;
+    this.islandEl.style.transform = `translateX(${-Math.round((w / 2) * dpr) / dpr}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -540,7 +581,8 @@ export class Island {
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
-        this.engine.slap();
+        // A Mochi with news to tell takes you to it; any other gets his slap.
+        if (!followNews(this)) this.engine.slap();
       }
     });
 
@@ -733,7 +775,10 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || UploadSeq.isActive || this.tintSettling ||
+        // A view showing something live keeps its Mochis moving: a run's crew
+        // would otherwise freeze the moment the big one came to rest.
+        this.viewState != null;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -787,8 +832,7 @@ export class Island {
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
-    const focus = State.focusTask;
-    this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    this.engine.bodyColor = this.easeBodyColor(dt);
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -805,6 +849,37 @@ export class Island {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, hCss);
     this.engine.draw(ctx, w, hCss);
+  }
+
+  /** The colour Mochi should be: a view's request, else his pill's colour. */
+  private targetBodyColor(): RGB | null {
+    if (this.tintRequest) return this.tintRequest;
+    const focus = State.focusTask;
+    return focus?.isIntegration ? hexToRGB(focus.color) : null;
+  }
+
+  /**
+   * Eases the body towards its target rather than jumping, so sliding the mouse
+   * across the graph reads as Mochi slowly changing colour, not flickering:
+   * about 90 % of the way in 0.4 s, blended in OKLab so red to green stays
+   * bright instead of dipping through brown. Null — his own cream gradient —
+   * can't be blended into, and is simply taken.
+   */
+  private easeBodyColor(dt: number): RGB | null {
+    const target = this.targetBodyColor();
+    if (!target || !this.bodyRGB) {
+      this.bodyRGB = target;
+      return target;
+    }
+    this.bodyRGB = mixColor(this.bodyRGB, target, 1 - Math.exp(-dt * TINT_RATE));
+    return this.bodyRGB;
+  }
+
+  /** True while the body colour is still on its way — the frame loop keeps going. */
+  private get tintSettling(): boolean {
+    const target = this.targetBodyColor();
+    if (!target || !this.bodyRGB) return false;
+    return this.bodyRGB.some((v, i) => Math.abs(v - target[i]) > TINT_SETTLED);
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -837,6 +912,10 @@ export class Island {
     const greetingActive = expanded && State.view === "greeting";
 
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
+    // Folded or hidden, the views are out of sight but still in the page: what
+    // moves in them on its own stops (see #content.away), and picks up when the
+    // island unfolds.
+    this.contentEl.classList.toggle("away", !expanded);
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
@@ -877,7 +956,11 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    // A view's look fills in for a Mochi with nothing of his own to say: idle,
+    // or only "working" — which the view, closer to what it shows, knows better.
+    const state = State.effectiveState;
+    const quiet = state === "idle" || state === "working";
+    this.engine.setState(this.viewState && quiet ? this.viewState : state);
   }
 
   /** Applies settings coming from Rust at boot. */

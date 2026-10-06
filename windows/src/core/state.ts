@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { IntegrationNews } from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -79,6 +80,8 @@ export interface IntegrationInfo {
   error: string | null;
   loaded: boolean;
   configured: boolean;
+  /** What just happened, for as long as the pill says it. */
+  news?: IntegrationNews | null;
 }
 
 export interface Settings {
@@ -92,6 +95,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** GitHub projects ("owner/name") whose news the pill keeps to itself. */
+  githubMuted: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +111,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  githubMuted: [],
 };
 
 type Listener = () => void;

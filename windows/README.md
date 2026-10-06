@@ -77,6 +77,90 @@ only ask whether a key exists. Same for every integration key.
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
+## GitHub
+
+<img src="screenshots/github-card.png" width="640" alt="The GitHub card in the overview: the year's contributions, the last seven days, the latest activity">
+
+With GitHub as the focused pill, the overview shows your year at a glance and
+your latest activity. Click the figure — or the arrow — and the island opens the
+**GitHub panel**, where everything is read without leaving for the browser.
+
+<img src="screenshots/github-activity.png" width="640" alt="The GitHub panel on its Activity tab: the contribution graph and the latest events">
+
+| Where | What you see |
+|---|---|
+| **Activity** | The contribution graph, the pull requests waiting for your review, and your latest events. Click a day of the graph for what was done that day; click a line for its sheet |
+| **Projects** | Your repositories, most recently pushed first, each with its latest build |
+| A project | Description, languages, its last builds, its latest pull request, its latest deployment |
+| A pull request | State, branches, labels, review, checks, the files with their diff |
+| An issue, a push, a release | The same, each as its own sheet: the discussion, the commits and their files, the notes and assets |
+| A run | Its jobs as mini Mochis, each with its steps and how long they took — followed live while it runs |
+| Comments | A pull request's conversation: the description, the reviews, and each thread on the lines it is about |
+| A file | Its diff, syntax-coloured. A thread opens the file on the line it was written on |
+
+<img src="screenshots/github-project.png" width="640" alt="A project's sheet: its build, a pull request, its deployment">
+<img src="screenshots/github-run.png" width="640" alt="A pull request whose checks are running, one mini Mochi per job">
+<img src="screenshots/github-thread.png" width="640" alt="A review thread shown on the line of the diff it is about">
+
+The trail on the left is the way back: every step you went through stays there,
+one click away. The arrow at the top right opens the same thing on github.com.
+
+### News
+
+<img src="screenshots/github-news-merge.png" width="640" alt="The island opened on a merged pull request, with Open and OK">
+
+Five things make Mochi speak up, with a sound and a card: **a build of yours
+breaks**, **the checks of a pull request of yours end**, red or green,
+**somebody asks for your review**, **a pull request of yours is merged**, and
+**somebody opens a pull request on one of your projects** — the ones the
+Projects tab lists. **Open**
+goes straight to the run or the pull request. Each project of that tab has a
+bell: click it to mute a project you do not want to hear from, and again to give
+it its voice back. **OK** folds the island and leaves the news on the pill
+for five minutes, so it isn't lost: click Mochi, or the card, to go to it.
+
+<img src="screenshots/github-review.png" width="640" alt="The Activity tab with two pull requests waiting for your review above the recent activity">
+
+A pull request your review is asked on stays at the top of the Activity tab,
+under **Waiting for your review**, for as long as it waits: the request is told
+once, when it comes in.
+
+### The token
+
+<img src="screenshots/github-settings.png" width="640" alt="Settings: GitHub switched on, its token, the permissions to grant and the connection test">
+
+**Settings… → Integrations → GitHub**: switching it on opens its setup under its
+line. Create a [fine-grained token](https://github.com/settings/personal-access-tokens/new)
+with **Repository access: All repositories** and these permissions, all
+**Read-only**:
+
+| Permission | What it is for |
+|---|---|
+| Actions | Builds, runs, jobs and steps |
+| Contents | Commits, diffs and releases |
+| Deployments | A project's latest deployment |
+| Issues | Issues and their comments |
+| Pull requests | Pull requests, reviews and threads |
+| Commit statuses (optional) | Whether the checks of your pull requests passed |
+| Events (account, optional) | Your activity in private repositories |
+
+Metadata is added by GitHub on its own. **Test connection** checks each of them
+and names the one that is missing; in the panel, a part the token cannot read
+says which permission it needs instead of showing up empty.
+
+Coucou only reads, and nothing else is ever asked of GitHub. The token is stored
+in the Windows Credential Manager like every other key: it never touches the
+disk or the log, and the interface never sees it — every request is made by the
+Rust side.
+
+### How often it asks
+
+- Every **2 minutes** for the activity, the projects and their builds. Answers
+  GitHub says are unchanged (`304`) cost nothing against the rate limit.
+- Every **20 seconds**, builds only, and only while one of your builds is running.
+- A sheet is fetched **when you open it**, and kept for a minute.
+- Nothing while Coucou is paused or GitHub is switched off.
+
 ## Build it yourself
 
 You need [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), and the
@@ -91,9 +175,14 @@ npm run pack           # builds the installer and drops it in windows/release/
 ```
 
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
-to work on the island's looks. It also serves `dev/upload-preview.html`, which
-replays the whole file-drop choreography on a loop — the one part of the UI that
-otherwise needs a real drag from Explorer to see. Neither page ships in the app.
+to work on the island's looks. It also serves two pages that never ship in the
+app:
+
+- `dev/upload-preview.html` replays the whole file-drop choreography on a loop —
+  the one part of the UI that otherwise needs a real drag from Explorer to see.
+- `dev/github-preview.html` shows the GitHub card and panel on made-up data, so
+  they can be worked on without a token. The links at the bottom of the page go
+  to each screen: a project, a run in progress, a failing build, the comments.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -165,6 +254,8 @@ OpenCode and Amp use a plugin model. The plugin installer (**Settings → OpenCo
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- GitHub goes further than the Mac's card: the [panel](#github), the news of a
+  broken build or a merged pull request, and comments are Windows-only for now.
 
 ## Linux
 
