@@ -1,10 +1,11 @@
 # Changelog
 
-## 1.0.0 Lighto Edition — 0.1.7 base
+## 1.0.0 Lighto Edition — upstream 0.1.8 base
 
-A fork of upstream 0.1.7 with Pi, Copilot CLI and Antigravity support kept on
-top, plus the permission work described below. The version tracks our own
-release line; the base is upstream 0.1.7.
+This fork keeps its own 1.0.0 version line and carries the Windows, agent-hook,
+permission and Desktop Mochi work described below. Its shared macOS source now
+includes the upstream 0.1.8 baseline; the Windows release remains the focus of
+Lighto Edition.
 
 - Everything from 0.1.6: Mochi on the desktop with the wardrobe, greetings, live file-edit tickers and diffs, and the expanded GitHub integration (pull requests, CI, review requests and the contribution grid)
 - Five agent pills now, each with its own name and colour: VS Code (Claude Code), Pi, Copilot CLI, Codex and Antigravity. Every event is routed by the agent tag the relay carries, so one agent's approval card can never land on another agent's pill
@@ -19,6 +20,11 @@ release line; the base is upstream 0.1.7.
 - Pi permissions now have exactly one asker. `pi-permission-system` asks Coucou first and falls back to Pi's dialog, and Coucou's extension no longer answers permissions too — two extensions intercepting one decision produced duplicate cards
 - Every failure while asking now falls through to Pi rather than denying: Coucou closed, relay missing, empty or unrecognised answer, timeout, or an exception in the handler
 - Fixed the Pi prompt ticker always being empty — it read a `text` field that does not exist on `before_agent_start`, so it always sent `undefined`
+
+## Upstream 0.1.8 baseline merged
+
+- Brings in upstream's iPhone companion, widgets and private iCloud session sync, plus the shared CoucouKit refactor. These Apple-platform features are source changes; the Lighto 1.0.0 published installer remains Windows-only.
+- Includes upstream changes for iPhone approval decisions, questions, Live Activities and service/session summaries. They do not change the Windows installer feature set.
 
 ## 0.1.7 — October 4, 2026
 

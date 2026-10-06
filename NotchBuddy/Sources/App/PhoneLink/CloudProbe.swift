@@ -2,9 +2,14 @@
 import AppKit
 import CloudKit
 
-// MARK: - iPhone link spike (DebugCloud only)
+// MARK: - iPhone link
 //
-// Proves that the Mac and the iPhone app share a private CloudKit database:
+// Starts and stops the iPhone sync (Settings → General → iPhone, off by
+// default): push registration and SessionPublisher. Nothing runs and nothing
+// is sent to iCloud while it is off.
+//
+// Step 1 spike, kept for testing: when the phoneLinkPing default is on, proves
+// that the Mac and the iPhone app share a private CloudKit database:
 // writes a `Ping` every 60 s, waits for the iPhone's `Pong`, and logs the
 // round trip to ~/Library/Logs/NotchBuddy/nb.log. Pongs arrive both through a
 // silent push (CKDatabaseSubscription) and a 5 s poll, so the log shows which
@@ -28,6 +33,7 @@ final class CloudProbe {
     private var seenPongs = Set<String>()
     private var fetching = false
     private var lastPushAt: Date?
+    private var started = false
     private var pingTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
 
@@ -43,8 +49,41 @@ final class CloudProbe {
         Host.current().localizedName ?? ProcessInfo.processInfo.hostName
     }
 
-    func start() {
-        guard pingTask == nil else { return }
+    static let enabledKey = "iPhoneSyncEnabled"
+
+    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
+
+    /// Called at launch: starts only if the user turned the iPhone sync on.
+    func startIfEnabled() {
+        if Self.isEnabled { start() }
+    }
+
+    func setEnabled(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: Self.enabledKey)
+        if on { start() } else { stop() }
+    }
+
+    private func stop() {
+        guard started else { return }
+        started = false
+        pingTask?.cancel(); pingTask = nil
+        pollTask?.cancel(); pollTask = nil
+        NSApplication.shared.unregisterForRemoteNotifications()
+        SessionPublisher.shared.stop()
+        ApprovalRelay.shared.stop()
+        QuestionRelay.shared.stop()
+        ServicePublisher.shared.stop()
+        TurnRecorder.shared.stop()
+        #if !APPSTORE
+        InstructionRunner.shared.stop()
+        #endif
+        LiveActivityRelay.shared.stop()
+        log("iPhone sync off")
+    }
+
+    private func start() {
+        guard !started else { return }
+        started = true
         #if DEBUG
         let build = "debug"
         #else
@@ -52,7 +91,22 @@ final class CloudProbe {
         #endif
         log("starting (\(appLabel), \(build) build, container \(Self.containerID))")
         NSApplication.shared.registerForRemoteNotifications()
+        SessionPublisher.shared.start()
+        ApprovalRelay.shared.start()
+        QuestionRelay.shared.start()
+        ServicePublisher.shared.start()
+        TurnRecorder.shared.start()
+        #if !APPSTORE
+        InstructionRunner.shared.startIfEnabled()
+        #endif
+        LiveActivityRelay.shared.startIfEnabled()
 
+        // Step 1 Ping/Pong test: off unless asked for, so the Mac stays idle at rest
+        // (defaults write fr.louisraille.NotchBuddy phoneLinkPing -bool YES).
+        guard UserDefaults.standard.bool(forKey: "phoneLinkPing") else {
+            log("ping test off (phoneLinkPing)")
+            return
+        }
         pingTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.pingTick()

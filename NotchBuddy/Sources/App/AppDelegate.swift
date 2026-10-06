@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBarItem()
         setupIsland()
         #if PHONE_LINK
-        CloudProbe.shared.start()
+        CloudProbe.shared.startIfEnabled()
         #endif
     }
 

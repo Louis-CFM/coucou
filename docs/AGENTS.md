@@ -121,7 +121,7 @@ A catalog pill that is not checked in Settings behaves like any other agent: it 
 
 The upstream macOS build has its own release-specific catalog and hook support. In the **Lighto Edition 1.0.0 Windows build**, the shipped agent integrations are Claude Code (shown as the VS Code pill), Pi (`agent_pi`, `#8B5CF6`), Copilot CLI (`agent_copilot`, `#58A6FF`), Antigravity (`agent_antigravity`) and Codex (`agent_codex`). Their enabled pills share a five-pill budget with integrations; each agent keeps its own session state and permission flow.
 
-On Windows each agent writes to its own managed file, preserving unrelated configuration: Claude Code `%USERPROFILE%\\.claude\\settings.json`, Copilot `%USERPROFILE%\\.copilot\\hooks\\coucou.json`, Antigravity `%USERPROFILE%\\.gemini\\config\\hooks.json`, Codex `%USERPROFILE%\\.codex\\hooks\\hooks.json`, and Pi `%USERPROFILE%\\.pi\\agent\\extensions\\coucou.ts`. Pi's file is an extension, not a settings merge; Coucou will not replace an extension it did not install.
+On Windows each agent writes to its own managed file, preserving unrelated configuration: Claude Code `%USERPROFILE%\.claude\settings.json`, Copilot `%USERPROFILE%\.copilot\hooks\coucou.json`, Antigravity `%USERPROFILE%\.gemini\config\hooks.json`, Codex `%USERPROFILE%\.codex\hooks\hooks.json`, and Pi `%USERPROFILE%\.pi\agent\extensions\coucou.ts`. Pi's file is an extension, not a settings merge; Coucou will not replace an extension it did not install.
 
 ## Real-world examples
 

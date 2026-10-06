@@ -11,6 +11,7 @@
 On macOS, Mochi lives in the notch. On Windows, he lives at the top of your screen—and can pop out onto the desktop.
 
 [![Lighto Edition 1.0.0](https://img.shields.io/badge/Lighto%20Edition-v1.0.0-0A84FF)](https://github.com/lighto124/coucou/releases)
+![Version](https://img.shields.io/github/v/release/Louis-CFM/coucou?filter=v*&label=version&color=0A84FF)](https://github.com/Louis-CFM/coucou/releases)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![Rust](https://img.shields.io/badge/Rust-backend-000?logo=rust)
@@ -25,7 +26,7 @@ On macOS, Mochi lives in the notch. On Windows, he lives at the top of your scre
 
 ## About this fork
 
-Coucou — Lighto Edition is a fork of [Louis Raillé's Coucou](https://github.com/Louis-CFM/coucou), based on upstream **0.1.7**. This fork's own version line starts at **1.0.0**. It keeps the island, integrations and Mochi character while focusing this release on the Windows experience and expanded coding-agent support.
+Coucou — Lighto Edition is a fork of [Louis Raillé's Coucou](https://github.com/Louis-CFM/coucou), based on upstream **0.1.8**. This fork's own version line starts at **1.0.0**. It keeps the island, integrations and Mochi character while focusing this release on the Windows experience and expanded coding-agent support.
 
 The initial Lighto Edition release is for **Windows 10/11**. The repository retains upstream-derived macOS and Linux code, but those platforms do not have a Lighto Edition 1.0.0 installer here. See [`CHANGELOG.md`](CHANGELOG.md) for this fork's changes and [`windows/README.md`](windows/README.md) for Windows-specific details.
 
@@ -116,7 +117,7 @@ The installer is written to `windows/target/release/bundle/nsis/`. Run `target/r
 
 | Lighto Edition | Based on | Highlights |
 |---|---|---|
-| **1.0.0** | Upstream 0.1.7 | Windows-focused release; Pi, Copilot CLI, Codex and Antigravity support alongside Claude Code; safer per-agent hook management and permission routing; Desktop Mochi controls and pill-state synchronization; Windows media-session Music pill. |
+| **1.0.0** | Upstream 0.1.8 | Windows-focused release; Pi, Copilot CLI, Codex and Antigravity support alongside Claude Code; safer per-agent hook management and permission routing; Desktop Mochi controls and pill-state synchronization; Windows media-session Music pill. |
 
 See [`CHANGELOG.md`](CHANGELOG.md) for detailed notes.
 

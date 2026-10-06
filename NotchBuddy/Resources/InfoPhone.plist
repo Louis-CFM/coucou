@@ -17,12 +17,33 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1</string>
+	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>fr.louisraille.Coucou</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>coucou</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
+	<key>CoucouAPNsEnvironment</key>
+	<string>$(COUCOU_APNS_ENV)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Coucou asks for Face ID before allowing a command from your iPhone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Coucou uses the microphone when you dictate an instruction for Claude Code.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Coucou turns your voice into the text of an instruction for Claude Code.</string>
+	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
@@ -35,6 +56,8 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

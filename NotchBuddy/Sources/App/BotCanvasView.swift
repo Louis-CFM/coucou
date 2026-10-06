@@ -229,20 +229,3 @@ struct MiniBotCanvasView: View {
         }
     }
 }
-
-// MARK: - CGColor from hex string
-
-func cgColorFromHex(_ hex: String) -> CGColor? {
-    let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-    guard let val = UInt64(h, radix: 16) else { return nil }
-    let r = CGFloat((val >> 16) & 0xFF) / 255
-    let g = CGFloat((val >> 8)  & 0xFF) / 255
-    let b = CGFloat( val        & 0xFF) / 255
-    return CGColor(red: r, green: g, blue: b, alpha: 1)
-}
-
-extension CGColor {
-    static func from(_ hex: String) -> CGColor {
-        cgColorFromHex(hex) ?? CGColor(gray: 0.5, alpha: 1)
-    }
-}

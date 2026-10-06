@@ -95,6 +95,11 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    #if PHONE_LINK
+    @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
+    @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
+    @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
+    #endif
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -290,6 +295,36 @@ struct SettingsView: View {
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
+
+        #if PHONE_LINK
+        GroupBox("iPhone") {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Show my agent sessions on my iPhone", isOn: $iPhoneSyncEnabled)
+                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
+                Text("Sends your sessions to your private iCloud for the Coucou iPhone app. Project names, commands and questions are encrypted with your iCloud keys. Turning it off deletes them from iCloud.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
+                    .disabled(!iPhoneSyncEnabled)
+                    .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
+                Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                #if !APPSTORE
+                Toggle("Let my iPhone send instructions to Claude Code", isOn: $iPhoneInstructionsEnabled)
+                    .disabled(!iPhoneSyncEnabled)
+                    .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
+                Text("An instruction sent from the iPhone (Face ID required) continues your last Claude Code session in the background, in its folder, with claude --resume. This Mac checks for one every 15 s while this is on.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                #endif
+            }
+            .padding(6)
+        }
+        #endif
     }
 
     // MARK: - Active pills section
