@@ -348,25 +348,27 @@ final class HookServer: @unchecked Sendable {
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
+        // • "cursor" / Cursor bundle ID → agent_cursor (native Agent hooks or Claude Code in Cursor)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
-        // • Cursor bundle ID → agent_cursor
         // • VS Code → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
+        let isCursorAgentEvent = rawAgent == "cursor"
         #else
         let isCodexEvent = false
+        let isCursorAgentEvent = false
         #endif
         let agentId: String
         let isExternalAgent: Bool
         if isCodexEvent {
             agentId = "agent_codex"
             isExternalAgent = false
+        } else if isCursorAgentEvent || isCursorEditor {
+            agentId = "agent_cursor"
+            isExternalAgent = false
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
-        } else if isCursorEditor {
-            agentId = "agent_cursor"
-            isExternalAgent = false
         } else if isVSCodeEditor {
             agentId = "integration_claude"
             isExternalAgent = false
@@ -415,8 +417,9 @@ final class HookServer: @unchecked Sendable {
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
+            if state.focusId != agentId { state.setFocus(agentId) }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
-            if state.isPresent { expandIfNeeded(to: .overview) }
+            expandIfNeeded(to: .overview)
             SoundEngine.shared.play("work")
 
         case "UserPromptSubmit":
@@ -424,10 +427,11 @@ final class HookServer: @unchecked Sendable {
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
+            if state.focusId != agentId { state.setFocus(agentId) }
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
-            if state.isPresent { expandIfNeeded(to: .overview) }
+            expandIfNeeded(to: .overview)
 
         case "PreToolUse":
             activeSessionId = sessionId
@@ -438,20 +442,40 @@ final class HookServer: @unchecked Sendable {
             guard tool != "AskUserQuestion" else { break }
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .working)
+            if state.focusId != agentId { state.setFocus(agentId) }
             let input = payload["tool_input"] as? [String: Any] ?? [:]
-            let step = frenchStep(tool: tool, input: input)
-            appendStep(id: agentId, step: step)
+            // Live diff only for Edit/MultiEdit here. Full-file Write dumps (+hundreds of
+            // green lines) kill the typewriter feel — wait for afterFileEdit / PostToolUse.
+            if (tool == "Edit" || tool == "MultiEdit"),
+               let diff = buildFileDiff(tool: tool, input: input, pillId: agentId) {
+                presentLiveDiff(diff, agentId: agentId)
+            } else {
+                let step = toolStep(tool: tool, input: input)
+                appendStep(id: agentId, step: step)
+                // Stay on the programming editor if it's already open — don't bounce to overview.
+                if state.view != .programming {
+                    expandIfNeeded(to: .overview)
+                }
+            }
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) }
+            else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
             state.updateTask(id: agentId, state: .working)
-            // Live diff for Edit / MultiEdit / Write
+            if state.focusId != agentId { state.setFocus(agentId) }
+            // Live diff: Edit / MultiEdit / afterFileEdit. Skip huge Write→fromNew dumps.
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
-                let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
-                appendStep(id: agentId, step: step)
+            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId),
+               shouldAutoOpenLiveDiff(diff) {
+                presentLiveDiff(diff, agentId: agentId)
+                nbLog("PostToolUse live-diff \(diffTool) \(diff.name) +\(diff.added)/−\(diff.removed)")
+            } else {
+                if state.view != .programming {
+                    expandIfNeeded(to: .overview)
+                }
+                nbLog("PostToolUse \(diffTool.isEmpty ? "—" : diffTool)")
             }
 
         case "PostToolUseFailure":
@@ -587,6 +611,51 @@ final class HookServer: @unchecked Sendable {
             NotificationCenter.default.post(name: .hookReveal, object: nil)
         }
         // Already compact and non-alert: Mochi state update is enough, no expand
+    }
+
+    /// True when the diff is small enough that the typewriter card is readable.
+    /// Full-file Write dumps (isNewFile with dozens of lines) stay ticker-only.
+    private func shouldAutoOpenLiveDiff(_ diff: FileDiff) -> Bool {
+        if diff.tooLarge { return false }
+        let churn = diff.added + diff.removed
+        if diff.isNewFile { return churn > 0 && churn <= 40 }
+        return churn > 0 && churn <= 200
+    }
+
+    /// Focus + force-expand the tall programming editor + auto-open the live diff.
+    @MainActor
+    private func presentLiveDiff(_ diff: FileDiff, agentId: String) {
+        let state = AppState.shared
+        if state.focusId != agentId { state.setFocus(agentId) }
+        // Skip duplicate: same path + same +/- already the latest for this pill
+        if let last = state.sessionDiffs[agentId]?.last,
+           last.path == diff.path, last.added == diff.added, last.removed == diff.removed {
+            state.pendingOpenDiff = (agentId, last.id)
+            openProgrammingEditor()
+            return
+        }
+        let idx = state.appendSessionDiff(diff, for: agentId, autoOpen: true)
+        let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
+        appendStep(id: agentId, step: step)
+        openProgrammingEditor()
+    }
+
+    /// Expand (or switch) to the tall programming editor and keep it open briefly.
+    @MainActor
+    private func openProgrammingEditor() {
+        let state = AppState.shared
+        // Hold open so click-outside / auto-close don't kill the editor mid-typewriter.
+        state.isPinned = true
+        if state.mode == .expanded {
+            state.view = .programming
+        }
+        NotificationCenter.default.post(name: .hookExpand, object: IslandView.programming)
+        // Soft unpin after the typewriter has had time to play (user can re-pin).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 18) {
+            if AppState.shared.view == .programming {
+                AppState.shared.isPinned = false
+            }
+        }
     }
 
     // MARK: - Status line (plan gauge)
@@ -925,27 +994,29 @@ final class HookServer: @unchecked Sendable {
         return aliases[name.lowercased()] ?? name
     }
 
-    // MARK: - French step labels
+    // MARK: - Step labels (English)
 
-    private func frenchStep(tool: String, input: [String: Any]) -> String {
+    private func toolStep(tool: String, input: [String: Any]) -> String {
         let labels: [String: String] = [
-            "Bash":        "Exécute",
-            "Read":        "Lit",
-            "Write":       "Écrit",
-            "Edit":        "Modifie",
-            "Glob":        "Cherche",
-            "Grep":        "Recherche",
-            "WebSearch":   "Recherche web",
-            "WebFetch":    "Récupère",
-            "TodoWrite":   "Tâches",
-            "Task":        "Agent",
-            "LS":          "Liste",
-            "MultiEdit":   "Modifie",
+            "Bash":         "Runs",
+            "Shell":        "Runs",
+            "Read":         "Reads",
+            "Write":        "Writes",
+            "Edit":         "Edits",
+            "Glob":         "Finds",
+            "Grep":         "Searches",
+            "Delete":       "Deletes",
+            "WebSearch":    "Web search",
+            "WebFetch":     "Fetches",
+            "TodoWrite":    "Tasks",
+            "Task":         "Agent",
+            "LS":           "Lists",
+            "MultiEdit":    "Edits",
             "NotebookEdit": "Notebook",
             // Codex tools
-            "apply_patch": "Modifie",
-            "update_plan": "Tâches",
-            "spawn_agent": "Agent",
+            "apply_patch":  "Edits",
+            "update_plan":  "Tasks",
+            "spawn_agent":  "Agent",
         ]
         var label = labels[tool] ?? tool
 
@@ -956,8 +1027,8 @@ final class HookServer: @unchecked Sendable {
             label = parts.count >= 2 ? "\(parts[0]) · \(parts.dropFirst().joined(separator: "__"))" : rest
         }
 
-        // Bash: infer a more precise verb from the command
-        if tool == "Bash", let cmd = input["command"] as? String {
+        // Bash / Cursor Shell: infer a more precise verb from the command
+        if tool == "Bash" || tool == "Shell", let cmd = input["command"] as? String {
             return "\(bashVerb(cmd)) · \(oneLine(cmd))"
         }
 
@@ -986,19 +1057,19 @@ final class HookServer: @unchecked Sendable {
         return label
     }
 
-    /// Infers a French verb from a shell command's first word.
+    /// Infers an English verb from a shell command's first word.
     private func bashVerb(_ command: String) -> String {
         let first = command.split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? ""
         switch first {
-        case "cat", "bat", "head", "tail", "less", "more", "nl": return "Lit"
-        case "rg", "grep", "find", "fd", "ls", "tree", "wc":    return "Cherche"
+        case "cat", "bat", "head", "tail", "less", "more", "nl": return "Reads"
+        case "rg", "grep", "find", "fd", "ls", "tree", "wc":    return "Finds"
         default: break
         }
         let testRunners = ["pytest", "vitest", "jest", "npm test", "npm run test",
                            "cargo test", "go test", "swift test", "make test",
                            "xcodebuild test", "unittest"]
-        if testRunners.contains(where: { command.contains($0) }) { return "Teste" }
-        return "Exécute"
+        if testRunners.contains(where: { command.contains($0) }) { return "Tests" }
+        return "Runs"
     }
 
     // MARK: - Live diff helpers
@@ -1007,20 +1078,24 @@ final class HookServer: @unchecked Sendable {
     private func buildFileDiff(tool: String, input: [String: Any], pillId: String) -> FileDiff? {
         switch tool {
         case "Edit":
-            guard let old = input["old_string"] as? String,
-                  let new = input["new_string"] as? String,
-                  let path = input["file_path"] as? String,
-                  !old.isEmpty || !new.isEmpty else { return nil }
+            let path = (input["file_path"] as? String) ?? (input["filePath"] as? String) ?? ""
+            let old = (input["old_string"] as? String) ?? (input["oldString"] as? String) ?? ""
+            let new = (input["new_string"] as? String) ?? (input["newString"] as? String) ?? ""
+            guard !path.isEmpty, !old.isEmpty || !new.isEmpty else { return nil }
             let d = DiffEngine.fromEdit(old: old, new: new, path: path)
             return (d.added > 0 || d.removed > 0) ? d : nil
 
         case "MultiEdit":
-            guard let path = input["file_path"] as? String,
+            let path = (input["file_path"] as? String) ?? (input["filePath"] as? String) ?? ""
+            guard !path.isEmpty,
                   let edits = input["edits"] as? [[String: Any]], !edits.isEmpty else { return nil }
             var totalAdded = 0, totalRemoved = 0, allHunks: [DiffHunk] = [], anyLarge = false
             for edit in edits {
-                guard let old = edit["old_string"] as? String,
-                      let new = edit["new_string"] as? String else { continue }
+                let old = (edit["old_string"] as? String) ?? (edit["oldString"] as? String)
+                    ?? (edit["old_line"] as? String) ?? ""
+                let new = (edit["new_string"] as? String) ?? (edit["newString"] as? String)
+                    ?? (edit["new_line"] as? String) ?? ""
+                guard !old.isEmpty || !new.isEmpty else { continue }
                 let d = DiffEngine.fromEdit(old: old, new: new, path: path)
                 totalAdded += d.added; totalRemoved += d.removed
                 allHunks.append(contentsOf: d.hunks); if d.tooLarge { anyLarge = true }
@@ -1030,8 +1105,14 @@ final class HookServer: @unchecked Sendable {
                             hunks: allHunks, tooLarge: anyLarge, isNewFile: false)
 
         case "Write":
-            guard let path = input["file_path"] as? String,
-                  let content = input["content"] as? String, !content.isEmpty else { return nil }
+            let path = (input["file_path"] as? String)
+                ?? (input["filePath"] as? String)
+                ?? (input["path"] as? String)
+                ?? ""
+            let content = (input["content"] as? String)
+                ?? (input["contents"] as? String)
+                ?? ""
+            guard !path.isEmpty, !content.isEmpty else { return nil }
             let d = DiffEngine.fromNew(content: content, path: path)
             return (d.added > 0 || d.removed > 0) ? d : nil
 
@@ -1847,6 +1928,135 @@ final class HookServer: @unchecked Sendable {
                                          options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
 
+    // MARK: - Cursor Agent hook installer  (#if !APPSTORE only)
+
+    static var cursorHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cursor/hooks.json")
+    }
+
+    /// True when ~/.cursor/hooks.json already routes Cursor Agent events to Coucou's nb-hook.
+    static func cursorHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: cursorHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let hooks = root["hooks"] as? [String: Any] else { return false }
+        for value in hooks.values {
+            guard let entries = value as? [[String: Any]] else { continue }
+            for entry in entries {
+                if let cmd = entry["command"] as? String,
+                   cmd.contains("nb-hook"), cmd.contains("--agent cursor") { return true }
+                // Nested group format (unlikely for Cursor, but tolerate it)
+                if let inner = entry["hooks"] as? [[String: Any]] {
+                    for hook in inner {
+                        if let cmd = hook["command"] as? String,
+                           cmd.contains("nb-hook"), cmd.contains("--agent cursor") { return true }
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private var _pendingCursorData: Data?
+    private var _pendingCursorFingerprint: String?
+
+    func previewCursorHooks(install: Bool) throws -> String {
+        let url = Self.cursorHooksURL
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        if !install && !exists {
+            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "No Cursor hooks to remove."
+            ])
+        }
+        let current = exists ? try Data(contentsOf: url) : Data()
+        _pendingCursorFingerprint = sha256Hex(current)
+        let newData = install ? try buildCursorHooksData() : try withoutCursorHooks()
+        _pendingCursorData = newData
+        return String(data: newData, encoding: .utf8) ?? ""
+    }
+
+    func writeCursorHooks() throws {
+        guard let data = _pendingCursorData, let fp = _pendingCursorFingerprint else {
+            throw NSError(domain: "Coucou", code: 4, userInfo: [
+                NSLocalizedDescriptionKey: "Nothing to write — click Install hooks again, then Confirm & write."
+            ])
+        }
+        let url = Self.cursorHooksURL
+        let current = (try? Data(contentsOf: url)) ?? Data()
+        guard sha256Hex(current) == fp else {
+            throw NSError(domain: "Coucou", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.cursor/hooks.json changed since preview. Refresh and try again."
+            ])
+        }
+        try writeJSONFile(data, to: url, suffix: "hooks.json")
+        _pendingCursorData = nil
+        _pendingCursorFingerprint = nil
+    }
+
+    private func buildCursorHooksData() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.cursorHooksURL, label: "~/.cursor/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.cursor/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        // Cursor requires version: 1
+        if root["version"] == nil { root["version"] = 1 }
+        let base = hookBase()
+        // MVP: observe the Agent loop (no permission gating yet).
+        // Timeouts in seconds (Cursor format). Fire-and-forget via nb-hook.
+        let events: [(String, Int)] = [
+            ("sessionStart",        10),
+            ("sessionEnd",           5),
+            ("beforeSubmitPrompt",  10),
+            ("preToolUse",          10),
+            ("postToolUse",         10),
+            ("postToolUseFailure",  10),
+            ("afterFileEdit",       10),
+            ("stop",                10),
+            ("subagentStart",       10),
+            ("subagentStop",        10),
+        ]
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for (event, timeout) in events {
+            if let raw = hooks[event], !(raw is [[String: Any]]) {
+                throw NSError(domain: "Coucou", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.cursor/hooks.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                ])
+            }
+            var entries = hooks[event] as? [[String: Any]] ?? []
+            entries = removeNbHookEntries(from: entries)
+            let hookEntry: [String: Any] = [
+                "command": "\(base) --agent cursor",
+                "timeout": timeout,
+            ]
+            entries.append(hookEntry)
+            hooks[event] = entries
+        }
+        root["hooks"] = hooks
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    private func withoutCursorHooks() throws -> Data {
+        var root = try Self.strictReadJSONObject(at: Self.cursorHooksURL, label: "~/.cursor/hooks.json")
+        if let raw = root["hooks"], !(raw is [String: Any]) {
+            throw NSError(domain: "Coucou", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.cursor/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            ])
+        }
+        if var hooks = root["hooks"] as? [String: Any] {
+            for key in hooks.keys {
+                if let entries = hooks[key] as? [[String: Any]] {
+                    let cleaned = removeNbHookEntries(from: entries)
+                    if cleaned.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = cleaned }
+                }
+            }
+            if hooks.isEmpty { root.removeValue(forKey: "hooks") } else { root["hooks"] = hooks }
+        }
+        return try JSONSerialization.data(withJSONObject: root,
+                                         options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
     // MARK: SHA-256 fingerprint
 
     private func sha256Hex(_ data: Data) -> String {
@@ -1896,10 +2106,51 @@ def normalize_event(name):
         'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
         'startup': 'SessionStart', 'exit': 'SessionEnd',
         'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
+        # Cursor Agent (hooks.json camelCase)
+        'sessionStart': 'SessionStart', 'sessionEnd': 'SessionEnd',
+        'beforeSubmitPrompt': 'UserPromptSubmit',
+        'preToolUse': 'PreToolUse', 'postToolUse': 'PostToolUse',
+        'postToolUseFailure': 'PostToolUseFailure',
+        'afterFileEdit': 'PostToolUse',
+        'subagentStart': 'SubagentStart', 'subagentStop': 'SubagentStop',
+        'stop': 'Stop',
     }
     return mapping.get(name, name)
 
-def normalize_tool_fields(payload):
+def normalize_tool_fields(payload, raw_event=''):
+    # Cursor afterFileEdit → MultiEdit shape for live diffs in the island
+    if raw_event == 'afterFileEdit':
+        path = payload.get('file_path') or payload.get('filePath') or ''
+        raw_edits = payload.get('edits') if isinstance(payload.get('edits'), list) else []
+        norm_edits = []
+        for e in raw_edits:
+            if not isinstance(e, dict):
+                continue
+            old = e.get('old_string') or e.get('oldString') or e.get('old_line') or ''
+            new = e.get('new_string') or e.get('newString') or e.get('new_line') or ''
+            if old or new:
+                norm_edits.append({'old_string': old, 'new_string': new})
+        payload['tool_name'] = 'MultiEdit'
+        payload['tool_input'] = {'file_path': path, 'edits': norm_edits}
+        payload['hook_event_name'] = 'PostToolUse'
+    # Cursor stop status → Stop / StopFailure / Interrupt
+    if raw_event == 'stop':
+        status = payload.get('status', 'completed')
+        if status == 'error':
+            payload['hook_event_name'] = 'StopFailure'
+        elif status == 'aborted':
+            payload['hook_event_name'] = 'Interrupt'
+        else:
+            payload['hook_event_name'] = 'Stop'
+    if 'session_id' not in payload:
+        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
+            if payload.get(k):
+                payload['session_id'] = payload[k]
+                break
+        if 'session_id' not in payload:
+            sid = os.environ.get('GEMINI_SESSION_ID', '')
+            if sid:
+                payload['session_id'] = sid
     if 'tool_name' in payload:
         return
     tool = payload.get('toolCall')
@@ -1915,15 +2166,6 @@ def normalize_tool_fields(payload):
             if src in flat:
                 flat[dst] = flat[src]
         payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
 
 def main():
     raw = b''
@@ -2056,12 +2298,12 @@ def main():
         else:
             payload['cwd'] = os.getcwd()
 
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
+    # Normalize event name and tool fields (Gemini / Antigravity / Cursor → canonical names)
     try:
         raw_event = payload.get('hook_event_name', '') or arg_event
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
+        normalize_tool_fields(payload, raw_event)
     except Exception:
         pass
 
@@ -2139,7 +2381,8 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
+    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision).
+    # Cursor is fail-open with no stdout — do not emit {} (beforeSubmitPrompt could treat it as block).
     if agent in ('gemini', 'antigravity'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()
@@ -2163,10 +2406,51 @@ def normalize_event(name):
         'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
         'startup': 'SessionStart', 'exit': 'SessionEnd',
         'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
+        # Cursor Agent (hooks.json camelCase)
+        'sessionStart': 'SessionStart', 'sessionEnd': 'SessionEnd',
+        'beforeSubmitPrompt': 'UserPromptSubmit',
+        'preToolUse': 'PreToolUse', 'postToolUse': 'PostToolUse',
+        'postToolUseFailure': 'PostToolUseFailure',
+        'afterFileEdit': 'PostToolUse',
+        'subagentStart': 'SubagentStart', 'subagentStop': 'SubagentStop',
+        'stop': 'Stop',
     }
     return mapping.get(name, name)
 
-def normalize_tool_fields(payload):
+def normalize_tool_fields(payload, raw_event=''):
+    # Cursor afterFileEdit → MultiEdit shape for live diffs in the island
+    if raw_event == 'afterFileEdit':
+        path = payload.get('file_path') or payload.get('filePath') or ''
+        raw_edits = payload.get('edits') if isinstance(payload.get('edits'), list) else []
+        norm_edits = []
+        for e in raw_edits:
+            if not isinstance(e, dict):
+                continue
+            old = e.get('old_string') or e.get('oldString') or e.get('old_line') or ''
+            new = e.get('new_string') or e.get('newString') or e.get('new_line') or ''
+            if old or new:
+                norm_edits.append({'old_string': old, 'new_string': new})
+        payload['tool_name'] = 'MultiEdit'
+        payload['tool_input'] = {'file_path': path, 'edits': norm_edits}
+        payload['hook_event_name'] = 'PostToolUse'
+    # Cursor stop status → Stop / StopFailure / Interrupt
+    if raw_event == 'stop':
+        status = payload.get('status', 'completed')
+        if status == 'error':
+            payload['hook_event_name'] = 'StopFailure'
+        elif status == 'aborted':
+            payload['hook_event_name'] = 'Interrupt'
+        else:
+            payload['hook_event_name'] = 'Stop'
+    if 'session_id' not in payload:
+        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
+            if payload.get(k):
+                payload['session_id'] = payload[k]
+                break
+        if 'session_id' not in payload:
+            sid = os.environ.get('GEMINI_SESSION_ID', '')
+            if sid:
+                payload['session_id'] = sid
     if 'tool_name' in payload:
         return
     tool = payload.get('toolCall')
@@ -2182,15 +2466,6 @@ def normalize_tool_fields(payload):
             if src in flat:
                 flat[dst] = flat[src]
         payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
 
 def main():
     raw = b''
@@ -2322,12 +2597,12 @@ def main():
         else:
             payload['cwd'] = os.getcwd()
 
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
+    # Normalize event name and tool fields (Gemini / Antigravity / Cursor → canonical names)
     try:
         raw_event = payload.get('hook_event_name', '') or arg_event
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
+        normalize_tool_fields(payload, raw_event)
     except Exception:
         pass
 
@@ -2403,7 +2678,8 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision)
+    # Gemini CLI and Antigravity expect a JSON response on stdout (empty = no decision).
+    # Cursor is fail-open with no stdout — do not emit {} (beforeSubmitPrompt could treat it as block).
     if agent in ('gemini', 'antigravity'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()

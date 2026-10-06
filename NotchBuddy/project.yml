@@ -119,8 +119,8 @@ targets:
     info:
       path: Resources/Info.plist
       properties:
-        CFBundleName: Coucou
-        CFBundleDisplayName: Coucou
+        CFBundleName: Coucursor
+        CFBundleDisplayName: Coucursor
         CFBundleIdentifier: fr.louisraille.NotchBuddy
         CFBundleVersion: "8"
         CFBundleShortVersionString: "0.1.7"
@@ -135,7 +135,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
-        PRODUCT_NAME: Coucou
+        PRODUCT_NAME: Coucursor
         INFOPLIST_FILE: Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"

@@ -437,7 +437,7 @@ struct IslandContentView: View {
                     // Views that fill available height instead of the fixed 98pt content frame:
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
-                    let isTall = v == .prompt || (v == .mail && active)
+                    let isTall = v == .prompt || v == .programming || (v == .mail && active)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
@@ -485,11 +485,7 @@ struct IslandHeader: View {
 
             // Right: plan pill (GitHub build, home view only) + action icons
             HStack(spacing: 8) {
-                #if !APPSTORE
-                if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
-                    ClaudePlanHeaderPill(state: state)
-                }
-                #endif
+                // Coucursor: no Claude plan pill in the header (Cursor-first fork).
                 HStack(spacing: 14) {
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -524,13 +520,16 @@ struct TabButton: View {
     @State private var isHovered = false
 
     private var isOn: Bool {
-        if view == .overview { return state.view == .overview || state.view == .empty }
+        if view == .overview {
+            return state.view == .overview || state.view == .empty || state.view == .programming
+        }
         return state.view == view
     }
 
     var body: some View {
         Button(action: {
             preAction?()
+            if view == .overview { state.pendingOpenDiff = nil }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 state.view = view
             }

@@ -105,6 +105,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HookServer.shared.start()
         N8nPoller.shared.start()
         VercelPoller.shared.start()
+        RenderPoller.shared.start()
+        // Key already in Keychain (saved last session) → show the Render pill.
+        if KeychainStore.shared.get("render-api-key") != nil {
+            AppState.shared.ensureIntegrationEnabled("integration_render")
+        }
         ResendPoller.shared.start()
         GithubPoller.shared.start()
         StripePoller.shared.start()

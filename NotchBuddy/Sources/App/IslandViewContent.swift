@@ -8,24 +8,25 @@ struct IslandViewContent: View {
 
     var body: some View {
         switch view {
-        case .overview:  OverviewView(state: state)
-        case .empty:     EmptyStateView(state: state)
-        case .approval:  ApprovalView(state: state)
-        case .question:  QuestionView(state: state)
-        case .error:     ErrorView(state: state)
-        case .finished:  FinishedView(state: state)
-        case .confused:  ConfusedView()
-        case .upload:    UploadView(state: state)
-        case .uploading: UploadingView(state: state)
-        case .choose:    ChooseView(state: state)
-        case .mail:      MailView(state: state)
-        case .prompt:    PromptView(state: state)
-        case .searching: SearchingView(state: state)
-        case .result:    ResultView(state: state)
-        case .note:      NoteView(state: state)
-        case .settings:  SettingsIslandView(state: state)
-        case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
-        case .wardrobe:  WardrobeView(state: state)
+        case .overview:     OverviewView(state: state)
+        case .programming:  ProgrammingSessionView(state: state)
+        case .empty:        EmptyStateView(state: state)
+        case .approval:     ApprovalView(state: state)
+        case .question:     QuestionView(state: state)
+        case .error:        ErrorView(state: state)
+        case .finished:     FinishedView(state: state)
+        case .confused:     ConfusedView()
+        case .upload:       UploadView(state: state)
+        case .uploading:    UploadingView(state: state)
+        case .choose:       ChooseView(state: state)
+        case .mail:         MailView(state: state)
+        case .prompt:       PromptView(state: state)
+        case .searching:    SearchingView(state: state)
+        case .result:       ResultView(state: state)
+        case .note:         NoteView(state: state)
+        case .settings:     SettingsIslandView(state: state)
+        case .greeting:     EmptyView()  // GreetingCanvasView overlaid in IslandRootView
+        case .wardrobe:     WardrobeView(state: state)
         }
     }
 }
@@ -87,7 +88,7 @@ struct OverviewView: View {
                             .padding(.trailing, 36)
 
                             TickerView(task: agent, onDiffTap: { diffIdx in
-                                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                                openProgramming(pillId: agent.id, diffId: diffIdx)
                             })
                                 .frame(height: 44)
                                 .padding(.top, 6)
@@ -108,7 +109,7 @@ struct OverviewView: View {
                 }
                 #endif
 
-                // Diff overlay — replaces ticker when a diff step is tapped
+                // Diff overlay — replaces ticker when a diff step is tapped (integrations)
                 if let diffId = activeDiffId,
                    let task = agent,
                    let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
@@ -160,20 +161,66 @@ struct OverviewView: View {
         #endif
         .onChange(of: state.mode) { _, m in
             #if !APPSTORE
-            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
+            if m != .expanded {
+                state.showingPlanDetail = false
+                activeDiffId = nil
+                if state.view == .programming { state.view = .overview }
+            }
             #endif
-            if m == .expanded && state.focusId == "integration_github" {
-                GithubPoller.shared.refreshIfStale()
+            if m == .expanded {
+                applyPendingOpenDiff()
+                if state.focusId == "integration_github" { GithubPoller.shared.refreshIfStale() }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
-            if let id = activeDiffId {
+            if state.view == .programming {
+                state.pendingOpenDiff = nil
+                withAnimation(.easeIn(duration: 0.16)) { state.view = .overview }
+            } else if let id = activeDiffId {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
                 _ = id
             } else if let task = state.focusTask,
                       let last = state.sessionDiffs[task.id]?.last {
-                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
+                openProgramming(pillId: task.id, diffId: last.id)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionDiffAppended)) { note in
+            guard let pillId = note.userInfo?["pillId"] as? String,
+                  let diffId = note.userInfo?["diffId"] as? Int else { return }
+            // Agent pills → tall programming view; integrations keep compact overlay
+            if state.focusId == nil || state.focusId == pillId {
+                if let task = state.tasks.first(where: { $0.id == pillId }), !task.isIntegration {
+                    openProgramming(pillId: pillId, diffId: diffId)
+                } else {
+                    withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffId }
+                }
+            }
+        }
+        .onAppear { applyPendingOpenDiff() }
+        .onChange(of: state.pendingOpenDiff?.diffId) { _, _ in applyPendingOpenDiff() }
+    }
+
+    private func openProgramming(pillId: String, diffId: Int) {
+        state.pendingOpenDiff = (pillId, diffId)
+        if state.focusId != pillId { state.setFocus(pillId) }
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+            state.view = .programming
+        }
+    }
+
+    private func applyPendingOpenDiff() {
+        guard state.mode == .expanded,
+              let pending = state.pendingOpenDiff else { return }
+        guard state.focusId == nil || state.focusId == pending.pillId else { return }
+        // Prefer tall programming view for workspace/agent pills
+        if let task = state.tasks.first(where: { $0.id == pending.pillId }), !task.isIntegration {
+            if state.view != .programming {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                    state.view = .programming
+                }
+            }
+        } else {
+            withAnimation(.easeIn(duration: 0.16)) { activeDiffId = pending.diffId }
         }
     }
 
@@ -191,6 +238,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
+        case "integration_render":
+            NSWorkspace.shared.open(URL(string: "https://dashboard.render.com")!)
         case "integration_github":
             NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
         case "integration_n8n":
@@ -227,16 +276,8 @@ struct OverviewView: View {
                 hit.activate(options: .activateIgnoringOtherApps)
             }
             #endif
-        case "ai_anthropic":
-            switchChatProvider(.anthropic)
-        case "ai_google":
-            switchChatProvider(.google)
-        case "ai_openai":
-            switchChatProvider(.openai)
-        case "ai_ollama":
-            switchChatProvider(.ollama)
-        case "ai_lmstudio":
-            switchChatProvider(.lmstudio)
+        case "ai_clinepass":
+            switchChatProvider(.clinepass)
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
@@ -583,17 +624,372 @@ struct FinishedView: View {
     }
 }
 
+// MARK: - Programming session (tall live-diff view)
+
+/// Tall island view: agent + steps + recent files | code editor that follows each edit.
+struct ProgrammingSessionView: View {
+    @ObservedObject var state: AppState
+
+    private var agent: AgentTask? { state.focusTask }
+
+    private var pillId: String {
+        state.pendingOpenDiff?.pillId ?? state.focusId ?? state.mainPillId
+    }
+
+    private var diffs: [FileDiff] {
+        _ = state.sessionDiffEpoch
+        return state.sessionDiffs[pillId] ?? []
+    }
+
+    private var diff: FileDiff? {
+        _ = state.sessionDiffEpoch
+        if let pending = state.pendingOpenDiff,
+           let hit = diffs.first(where: { $0.id == pending.diffId }) {
+            return hit
+        }
+        return diffs.last
+    }
+
+    /// Latest diff per file path (most recent edit wins), newest first — max 5.
+    private var recentFiles: [FileDiff] {
+        var seen = Set<String>()
+        var out: [FileDiff] = []
+        for d in diffs.reversed() {
+            if seen.insert(d.path).inserted {
+                out.append(d)
+                if out.count >= 5 { break }
+            }
+        }
+        return out
+    }
+
+    private var toolLabel: String {
+        guard let agent else { return "Agent" }
+        switch agent.source {
+        case .claudeCode: return "Claude Code"
+        case .agent:
+            if agent.id == "agent_cursor" { return "Cursor" }
+            if agent.id == "agent_codex" { return "Codex" }
+            return "Agent"
+        case .n8n: return "n8n"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Left rail — Mochi overlays the leading gutter
+            CardBackground(wash: nil) {
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(agent?.name ?? "Session")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1)
+                        Text(toolLabel)
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    ProgrammingStepsRail(agent: agent, editingLive: state.pendingOpenDiff != nil)
+                    if !recentFiles.isEmpty {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.06))
+                            .frame(height: 1)
+                            .padding(.vertical, 2)
+                        Text("Files")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(recentFiles) { file in
+                                let active = file.id == diff?.id || file.path == diff?.path
+                                Button {
+                                    state.pendingOpenDiff = (pillId, file.id)
+                                } label: {
+                                    HStack(spacing: 5) {
+                                        Circle()
+                                            .fill(active ? Color(hex: "#46E3B7") : Color(hex: "#5F646D"))
+                                            .frame(width: 4, height: 4)
+                                        Text(file.name)
+                                            .font(.system(size: 10, weight: active ? .semibold : .regular))
+                                            .foregroundColor(active ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        Spacer(minLength: 0)
+                                        Text("+\(file.added)")
+                                            .font(.system(size: 8).monospaced())
+                                            .foregroundColor(Color(hex: "#22C55E").opacity(0.85))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 100)
+                .padding(.trailing, 10)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
+            }
+            .frame(width: 200)
+
+            // Right — inset editor panel (follows pendingOpenDiff / latest file)
+            if let diff {
+                LiveCodeEditorPanel(diff: diff, onDismiss: dismiss)
+                    .id(diff.id) // remount + restart typewriter on each new file edit
+            } else {
+                CardBackground(wash: nil) {
+                    Text("No diff")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        }
+        .onExitCommand { dismiss() }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionDiffAppended)) { note in
+            // Always jump the editor to the newest file edit while this view is open.
+            guard let p = note.userInfo?["pillId"] as? String,
+                  let id = note.userInfo?["diffId"] as? Int,
+                  p == pillId else { return }
+            state.pendingOpenDiff = (p, id)
+        }
+    }
+
+    private func dismiss() {
+        state.pendingOpenDiff = nil
+        state.isPinned = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            state.view = .overview
+        }
+    }
+}
+
+/// Fixed pipeline matching the design target: Read → Edit → Bash → Done.
+struct ProgrammingStepsRail: View {
+    let agent: AgentTask?
+    /// While a live diff is open, keep Edit highlighted even if a Shell step follows.
+    var editingLive: Bool = false
+
+    private var phase: Int {
+        // 0 = Read active, 1 = Edit active, 2 = Bash active, 3 = Done
+        guard let agent else { return editingLive ? 1 : 0 }
+        if agent.state == .finished { return 3 }
+        // Live diff on screen → Edit is the starring phase (design target).
+        if editingLive { return 1 }
+
+        let steps = agent.steps
+        // Prefer the most recent *meaningful* step; don't let Shell steal Edit forever.
+        if let lastDiffIdx = steps.lastIndex(where: { $0.isDiffStep }) {
+            let after = steps.suffix(from: steps.index(after: lastDiffIdx))
+            let laterShell = after.contains {
+                let h = $0.split(separator: "·").first.map(String.init)?
+                    .trimmingCharacters(in: .whitespaces) ?? ""
+                return ["Runs", "Bash", "Shell", "Exécute"].contains(h)
+            }
+            // Shell after an edit → Bash; otherwise stay on Edit
+            return laterShell ? 2 : 1
+        }
+
+        let last = steps.last(where: { !$0.isDiffStep }) ?? steps.last ?? ""
+        let head = last.split(separator: "·").first.map(String.init)?
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        switch head {
+        case "Runs", "Bash", "Shell", "Exécute": return 2
+        case "Writes", "Edits", "Écrit", "Modifie": return 1
+        case "Reads", "Lit", "Searches", "Finds", "Grep", "Glob": return 0
+        default:
+            return agent.state == .working || agent.state == .thinking ? 1 : 0
+        }
+    }
+
+    private var rows: [(label: String, icon: String, done: Bool, active: Bool)] {
+        let p = phase
+        return [
+            ("Read", p > 0 ? "checkmark.circle.fill" : (p == 0 ? "circle.fill" : "circle"), p > 0, p == 0),
+            ("Edit", p > 1 ? "checkmark.circle.fill" : (p == 1 ? "circle" : "circle"), p > 1, p == 1),
+            ("Bash", p > 2 ? "checkmark.circle.fill" : "terminal", p > 2, p == 2),
+            ("Done", p >= 3 ? "checkmark.circle.fill" : "checkmark.circle", p >= 3, false),
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, item in
+                HStack(spacing: 8) {
+                    Group {
+                        if item.label == "Edit" && item.active {
+                            Circle()
+                                .strokeBorder(Color(hex: "#F5F6F8"), lineWidth: 1.5)
+                                .frame(width: 11, height: 11)
+                        } else if item.label == "Bash" && !item.done {
+                            Image(systemName: "terminal")
+                                .font(.system(size: 9, weight: .medium))
+                        } else {
+                            Image(systemName: item.icon)
+                                .font(.system(size: 10, weight: .semibold))
+                        }
+                    }
+                    .foregroundColor(
+                        item.done ? Color(hex: "#22C55E") :
+                        item.active ? Color(hex: "#F5F6F8") :
+                        Color(hex: "#5F646D")
+                    )
+                    .frame(width: 14, height: 14)
+
+                    Text(item.label)
+                        .font(.system(size: 12, weight: item.active ? .semibold : .regular))
+                        .foregroundColor(
+                            item.active ? Color(hex: "#F5F6F8") :
+                            item.done ? Color(hex: "#C5C8CD") :
+                            Color(hex: "#6B7079")
+                        )
+                }
+            }
+        }
+    }
+}
+
+/// Inset code editor panel (file tab + path + typed diff).
+struct LiveCodeEditorPanel: View {
+    let diff: FileDiff
+    let onDismiss: () -> Void
+
+    private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
+    private var typingLineIndex: Int? { allLines.lastIndex(where: { $0.kind == .added }) }
+
+    private var langBadge: String {
+        let ext = (diff.path as NSString).pathExtension.lowercased()
+        switch ext {
+        case "ts", "tsx": return "TS"
+        case "js", "jsx": return "JS"
+        case "swift": return "SW"
+        case "py": return "PY"
+        case "rs": return "RS"
+        case "go": return "GO"
+        case "md": return "MD"
+        default:
+            let s = String(ext.prefix(2)).uppercased()
+            return s.isEmpty ? "··" : s
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // File tab bar
+            HStack(spacing: 6) {
+                Button(action: onDismiss) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Tab chip
+                HStack(spacing: 5) {
+                    Text(langBadge)
+                        .font(.system(size: 8, weight: .bold).monospaced())
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color(hex: "#3B82F6").opacity(0.55))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                    Text(diff.name)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(1)
+                    Circle()
+                        .fill(Color(hex: "#EAB308"))
+                        .frame(width: 5, height: 5)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Spacer(minLength: 4)
+                Text(diff.path.split(separator: "/").suffix(2).joined(separator: "/"))
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5F646D"))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+
+            // Code body
+            Group {
+                if diff.tooLarge {
+                    Text("Diff too large")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(12)
+                } else if allLines.isEmpty {
+                    Text("No changes")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(12)
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(Array(allLines.enumerated()), id: \.offset) { idx, line in
+                                    DiffLineRowView(
+                                        line: line,
+                                        animateTyping: idx == typingLineIndex,
+                                        showLineNumber: true,
+                                        syntaxTint: true
+                                    )
+                                    .id(idx)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .onAppear {
+                            if let t = typingLineIndex {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    withAnimation { proxy.scrollTo(t, anchor: .center) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(hex: "#12141A"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .id(diff.id)
+    }
+}
+
 // MARK: - Diff Card
 
 struct DiffCardView: View {
     let diff: FileDiff
     let onDismiss: () -> Void
+    /// When true, skip the 108pt Mochi gutter (used in the wide programming layout).
+    var compactLeading: Bool = false
 
     private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
 
+    /// Index of the last added line — typewriter target for live Cursor/Claude edits.
+    private var typingLineIndex: Int? {
+        allLines.lastIndex(where: { $0.kind == .added })
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header — file tab style
             HStack(spacing: 6) {
                 Button(action: onDismiss) {
                     HStack(spacing: 3) {
@@ -606,7 +1002,15 @@ struct DiffCardView: View {
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 }
                 .buttonStyle(.plain)
+                Circle()
+                    .fill(Color(hex: "#EAB308"))
+                    .frame(width: 5, height: 5)
                 Spacer(minLength: 2)
+                Text(diff.path.split(separator: "/").suffix(2).joined(separator: "/"))
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5F646D"))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 if diff.added > 0 {
                     Text("+\(diff.added)")
                         .font(.system(size: 10, weight: .medium).monospaced())
@@ -640,19 +1044,34 @@ struct DiffCardView: View {
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#6B7079"))
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(allLines.enumerated()), id: \.offset) { _, line in
-                            DiffLineRowView(line: line)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(allLines.enumerated()), id: \.offset) { idx, line in
+                                DiffLineRowView(
+                                    line: line,
+                                    animateTyping: idx == typingLineIndex,
+                                    showLineNumber: true
+                                )
+                                .id(idx)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        if let t = typingLineIndex {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                withAnimation { proxy.scrollTo(t, anchor: .center) }
+                            }
                         }
                     }
                 }
             }
         }
-        .padding(.leading, 108)
+        .padding(.leading, compactLeading ? 12 : 108)
         .padding(.trailing, 10)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .id(diff.id) // restart typewriter when a new live diff opens
         .onExitCommand { onDismiss() }
     }
 
@@ -674,13 +1093,74 @@ struct DiffCardView: View {
     }
 }
 
+/// Minimal keyword tint (no full highlighter) for the programming editor panel.
+struct DiffSyntaxText: View {
+    let text: String
+    let base: Color
+
+    private static let keywords: Set<String> = [
+        "import", "export", "from", "const", "let", "var", "function", "return",
+        "if", "else", "for", "while", "switch", "case", "break", "continue",
+        "class", "struct", "enum", "protocol", "func", "guard", "defer",
+        "async", "await", "try", "catch", "throw", "new", "typeof", "in",
+        "of", "as", "is", "true", "false", "null", "undefined", "nil",
+        "public", "private", "static", "override", "mutating", "throws",
+    ]
+
+    var body: some View {
+        Text(attributed)
+            .font(.system(size: 11).monospaced())
+            .lineLimit(1)
+            .truncationMode(.tail)
+    }
+
+    private var attributed: AttributedString {
+        var result = AttributedString()
+        // Split keeping separators so spacing/punctuation stay intact
+        let pattern = #"([A-Za-z_][A-Za-z0-9_]*|[^A-Za-z_]+)"#
+        let regex = try? NSRegularExpression(pattern: pattern)
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+        let matches = regex?.matches(in: text, range: full) ?? []
+        if matches.isEmpty {
+            var plain = AttributedString(text)
+            plain.foregroundColor = base
+            return plain
+        }
+        for m in matches {
+            let token = ns.substring(with: m.range)
+            var part = AttributedString(token)
+            if Self.keywords.contains(token) {
+                part.foregroundColor = Color(hex: "#C084FC") // purple keywords
+            } else if token.first?.isNumber == true {
+                part.foregroundColor = Color(hex: "#FBBF24")
+            } else if token.hasPrefix("'") || token.hasPrefix("\"") || token.hasPrefix("`") {
+                part.foregroundColor = Color(hex: "#86EFAC")
+            } else if token.first?.isUppercase == true && token.first?.isLetter == true {
+                part.foregroundColor = Color(hex: "#FB923C") // types
+            } else {
+                part.foregroundColor = base
+            }
+            result.append(part)
+        }
+        return result
+    }
+}
+
 struct DiffLineRowView: View {
     let line: DiffLine
+    var animateTyping: Bool = false
+    var showLineNumber: Bool = false
+    /// Light keyword tint for the programming editor panel.
+    var syntaxTint: Bool = false
+
+    @State private var revealed = 0
+    @State private var cursorOn = true
 
     private var bgColor: Color {
         switch line.kind {
-        case .added:   return Color(hex: "#22C55E").opacity(0.12)
-        case .removed: return Color(hex: "#F4505E").opacity(0.12)
+        case .added:   return Color(hex: "#22C55E").opacity(0.16)
+        case .removed: return Color(hex: "#F4505E").opacity(0.16)
         case .context: return Color.clear
         }
     }
@@ -688,7 +1168,7 @@ struct DiffLineRowView: View {
         switch line.kind {
         case .added:   return Color(hex: "#86EFAC")
         case .removed: return Color(hex: "#FCA5A5")
-        case .context: return Color(hex: "#6B7079")
+        case .context: return Color(hex: "#C5C8CD")
         }
     }
     private var symbol: String {
@@ -699,23 +1179,83 @@ struct DiffLineRowView: View {
         }
     }
 
+    private var lineNo: Int {
+        switch line.kind {
+        case .removed: return line.origLine > 0 ? line.origLine : 0
+        default:       return line.newLine > 0 ? line.newLine : (line.origLine > 0 ? line.origLine : 0)
+        }
+    }
+
+    private var visibleText: String {
+        guard animateTyping, line.kind == .added else { return line.text }
+        let chars = Array(line.text)
+        let n = min(revealed, chars.count)
+        return String(chars.prefix(n))
+    }
+
     var body: some View {
         HStack(spacing: 0) {
+            if showLineNumber {
+                Text(lineNo > 0 ? "\(lineNo)" : " ")
+                    .font(.system(size: 9.5).monospaced())
+                    .foregroundColor(Color(hex: "#454850"))
+                    .frame(width: 26, alignment: .trailing)
+                    .padding(.trailing, 8)
+            }
             Text(symbol)
-                .font(.system(size: 10.5).monospaced())
+                .font(.system(size: 10.5, weight: .medium).monospaced())
                 .foregroundColor(line.kind == .added ? Color(hex: "#22C55E") :
                                  line.kind == .removed ? Color(hex: "#F4505E") :
                                  Color(hex: "#454850"))
                 .frame(width: 12, alignment: .leading)
-            Text(line.text)
-                .font(.system(size: 10.5).monospaced())
-                .foregroundColor(fgColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                if syntaxTint, line.kind != .removed {
+                    DiffSyntaxText(text: visibleText, base: fgColor)
+                        .strikethrough(false)
+                } else {
+                    Text(visibleText)
+                        .font(.system(size: 11).monospaced())
+                        .foregroundColor(fgColor)
+                        .strikethrough(line.kind == .removed, color: Color(hex: "#FCA5A5").opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if animateTyping, line.kind == .added, revealed < line.text.count || cursorOn {
+                    Rectangle()
+                        .fill(Color(hex: "#F5F6F8"))
+                        .frame(width: 1.5, height: 12)
+                        .opacity(cursorOn ? 1 : 0)
+                        .padding(.leading, 1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, showLineNumber ? 6 : 0)
         .background(bgColor)
         .frame(maxWidth: .infinity)
+        .task(id: animateTyping ? line.text : "") {
+            guard animateTyping, line.kind == .added, !line.text.isEmpty else {
+                revealed = line.text.count
+                return
+            }
+            revealed = 0
+            cursorOn = true
+            let total = line.text.count
+            let intervalNanos = UInt64(min(0.04, max(0.012, 0.55 / Double(max(total, 1)))) * 1_000_000_000)
+            let blink = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 450_000_000)
+                    cursorOn.toggle()
+                }
+            }
+            for _ in 0..<total {
+                try? await Task.sleep(nanoseconds: intervalNanos)
+                revealed += 1
+            }
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            blink.cancel()
+            cursorOn = false
+        }
     }
 }
 
@@ -1177,7 +1717,7 @@ struct PromptView: View {
                             Circle()
                                 .fill(Color(hex: state.chatProvider.accentHex))
                                 .frame(width: 6, height: 6)
-                            Text(state.activeChatModel)
+                            Text(state.activeChatModelLabel)
                                 .font(.system(size: 10.5, weight: .medium))
                                 .foregroundColor(Color(hex: "#7B8089"))
                             Image(systemName: "chevron.up.chevron.down")
@@ -1298,67 +1838,25 @@ struct ModelPickerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Provider chips — wrap; hide local providers when not connected and not already active
-            let visibleProviders = ChatProvider.allCases.filter { p in
-                if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
-                if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
-                return true
-            }
-            ChipFlowLayout(spacing: 6) {
-                ForEach(visibleProviders, id: \.self) { provider in
-                    Button {
-                        guard provider != state.chatProvider else { return }
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                            state.chatProvider = provider
-                        }
-                        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
-                        SoundEngine.shared.play("pop")
-                    } label: {
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(Color(hex: provider.accentHex))
-                                .frame(width: 7, height: 7)
-                            Text(provider.displayName)
-                                .font(.system(size: 12, weight: state.chatProvider == provider ? .semibold : .regular))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(state.chatProvider == provider
-                                    ? Color(hex: provider.accentHex).opacity(0.18)
-                                    : Color.white.opacity(0.06))
-                        .overlay(Capsule().stroke(
-                            state.chatProvider == provider
-                                ? Color(hex: provider.accentHex).opacity(0.5)
-                                : Color.white.opacity(0.1),
-                            lineWidth: 1))
-                        .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color(hex: ChatProvider.clinepass.accentHex))
+                    .frame(width: 7, height: 7)
+                Text(ChatProvider.clinepass.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#C8CDD4"))
             }
 
             Divider().opacity(0.2)
 
-            // Model list for current provider — fetched dynamically
+            // Model list for ClinePass — fetched dynamically
             modelListView
                 .frame(height: 260, alignment: .top)
         }
         .padding(14)
         .background(Color(hex: "#16171B"))
         .onAppear {
-            // Force-refresh local providers every time the picker opens
-            if state.chatProvider.isLocal {
-                state.fetchedProviderModels[state.chatProvider] = nil
-                state.providerModelFetchError[state.chatProvider] = nil
-            }
-            state.fetchModelsIfNeeded(for: state.chatProvider)
-        }
-        .onChange(of: state.chatProvider) { _, provider in
-            if provider.isLocal {
-                state.fetchedProviderModels[provider] = nil
-                state.providerModelFetchError[provider] = nil
-            }
-            state.fetchModelsIfNeeded(for: provider)
+            state.fetchModelsIfNeeded(for: .clinepass)
         }
     }
 
@@ -1383,13 +1881,7 @@ struct ModelPickerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(models, id: \.id) { model in
                         Button {
-                            switch state.chatProvider {
-                            case .anthropic: state.claudeModel = model.id
-                            case .google:    state.googleChatModel = model.id
-                            case .openai:    state.openAIChatModel = model.id
-                            case .ollama:    state.ollamaChatModel = model.id
-                            case .lmstudio:  state.lmstudioChatModel = model.id
-                            }
+                            state.clinepassChatModel = model.id
                             isPresented = false
                             SoundEngine.shared.play("blip")
                         } label: {
@@ -1607,22 +2099,29 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
-        case "agent_cursor", "agent_codex":
-            return false  // coming soon
+        case "agent_cursor":
+            #if !APPSTORE
+            return HookServer.cursorHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_codex":
+            #if !APPSTORE
+            return HookServer.codexHooksInstalled()
+            #else
+            return false
+            #endif
         case "integration_music":
             #if !APPSTORE
             return true  // Apple Music is always installed on macOS
             #else
             return false
             #endif
-        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
-        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
-        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
-        case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
-        case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "ai_clinepass":  return KeychainStore.shared.get("cline-api-key") != nil
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
+        case "integration_render":  return KeychainStore.shared.get("render-api-key") != nil
         case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
@@ -1639,6 +2138,7 @@ struct IntegrationCardView: View {
             if let s = KeychainStore.shared.get("n8n-url") { return URL(string: s) }
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
+        case "integration_render":  return URL(string: "https://dashboard.render.com")
         case "integration_github":  return URL(string: "https://github.com")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
@@ -1663,6 +2163,11 @@ struct IntegrationCardView: View {
     // Vercel with recent deployments
     private var vercelHasActivity: Bool {
         task.id == "integration_vercel" && !appState.vercelDeployments.isEmpty
+    }
+
+    // Render with recent deployments
+    private var renderHasActivity: Bool {
+        task.id == "integration_render" && !appState.renderDeployments.isEmpty
     }
 
     // Resend with recent emails
@@ -1739,19 +2244,7 @@ struct IntegrationCardView: View {
         if isConfigured {
             if isHooks { return "Hooks installed" }
             if isAI {
-                let provider = ChatProvider(pillID: task.id)!
-                if provider.isLocal {
-                    let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
-                    return "Connected · \(model)"
-                }
-                let model: String
-                switch task.id {
-                case "ai_anthropic": model = appState.claudeModel
-                case "ai_google":    model = appState.googleChatModel
-                case "ai_openai":    model = appState.openAIChatModel
-                default:             model = ""
-                }
-                return "Key configured · \(model)"
+                return "Key configured · \(appState.clinepassChatModel)"
             }
             return "Connected · loading…"
         } else {
@@ -1777,6 +2270,16 @@ struct IntegrationCardView: View {
             .transition(.opacity)
         } else if vercelHasActivity {
             VercelDeploymentListView(deployments: appState.vercelDeployments, onOpenDetail: {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
+            })
+            .transition(.opacity)
+        } else if showingDetail && renderHasActivity {
+            RenderDetailView(deployment: appState.renderDeployments[0]) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = false }
+            }
+            .transition(.opacity)
+        } else if renderHasActivity {
+            RenderDeploymentListView(deployments: appState.renderDeployments, onOpenDetail: {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { showingDetail = true }
             })
             .transition(.opacity)
@@ -2181,6 +2684,158 @@ struct VercelDetailView: View {
                     Text(deployment.url)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(Color(hex: "#7C5CFF").opacity(0.85))
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 8)
+        .padding(.leading, 108)
+        .padding(.trailing, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Render Deployment List View
+
+struct RenderDeploymentListView: View {
+    let deployments: [RenderDeployment]
+    let onOpenDetail: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color(hex: "#46E3B7"))
+                    .frame(width: 7, height: 7)
+                Text("Render")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Deploys")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if let first = deployments.first {
+                    let accent = Color(hex: first.isSuccess ? "#22C55E" : (first.isInProgress ? "#46E3B7" : "#F4505E"))
+                    HStack(spacing: 5) {
+                        Circle().fill(accent).frame(width: 5, height: 5)
+                        Text(first.serviceName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#C5C8CD"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .layoutPriority(1)
+                        Text(first.timeAgo)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                        Button(action: onOpenDetail) {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .frame(width: 18, height: 18)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(accent.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+
+                ForEach(Array(deployments.dropFirst().prefix(2))) { dep in
+                    let accent = Color(hex: dep.isSuccess ? "#22C55E" : (dep.isInProgress ? "#46E3B7" : "#F4505E"))
+                    HStack(spacing: 5) {
+                        Circle().fill(accent).frame(width: 5, height: 5)
+                        Text(dep.serviceName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#9398A1"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .layoutPriority(1)
+                        Text(dep.timeAgo)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.top, 5)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+}
+
+// MARK: - Render Deployment Detail View
+
+struct RenderDetailView: View {
+    let deployment: RenderDeployment
+    let onClose: () -> Void
+
+    private var accent: Color {
+        Color(hex: deployment.isSuccess ? "#22C55E" : (deployment.isInProgress ? "#46E3B7" : "#F4505E"))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Circle().fill(accent).frame(width: 6, height: 6)
+                Text(deployment.serviceName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                    .lineLimit(1).truncationMode(.middle)
+                    .layoutPriority(1)
+                Spacer(minLength: 2)
+                Text(deployment.statusLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(accent)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(accent.opacity(0.14))
+                    .clipShape(Capsule())
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let commit = deployment.commitMessage {
+                    Text(commit)
+                        .font(.system(size: 10.5))
+                        .foregroundColor(Color(hex: "#C5C8CD"))
+                        .lineLimit(2)
+                }
+                HStack(spacing: 8) {
+                    if let trigger = deployment.trigger, !trigger.isEmpty {
+                        Text(trigger)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#6B7079"))
+                    }
+                    Text(deployment.timeAgo + " ago")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                }
+                Button(action: {
+                    if let url = URL(string: deployment.dashboardURL) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }) {
+                    Text(deployment.dashboardURL.replacingOccurrences(of: "https://", with: ""))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(Color(hex: "#46E3B7").opacity(0.85))
                         .lineLimit(1).truncationMode(.middle)
                 }
                 .buttonStyle(.plain)
@@ -4589,24 +5244,6 @@ struct SendButtonStyle: ButtonStyle {
 struct SettingsIslandView: View {
     @ObservedObject var state: AppState
 
-    private var claudeConnected: Bool {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any],
-              let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
-        return ss.contains { matcher in
-            (matcher["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false
-        }
-    }
-
-    private var apiConnected: Bool {
-        KeychainStore.shared.get("anthropic-api-key") != nil
-    }
-
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: nil)
@@ -4653,8 +5290,14 @@ struct SettingsIslandView: View {
 
                 // Connection status
                 HStack(spacing: 14) {
-                    StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    StatusBadge(label: "Cursor hooks", ok: {
+                        #if !APPSTORE
+                        return HookServer.cursorHooksInstalled()
+                        #else
+                        return false
+                        #endif
+                    }())
+                    StatusBadge(label: "ClinePass", ok: KeychainStore.shared.get("cline-api-key") != nil)
                     Spacer()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
@@ -4700,6 +5343,7 @@ func switchChatProvider(_ provider: ChatProvider) {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             state.chatProvider = provider
         }
+        ClaudeService.shared.clearConversation()
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
         SoundEngine.shared.play("pop")
     }

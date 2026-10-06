@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Coucursor fork: the GitHub macOS build is named **Coucursor** (bundle id unchanged).
+- Chat is **ClinePass only**: Settings → Chat stores a Cline API key (`cline-api-key`); models use `https://api.cline.bot/api/v1` (OpenAI-compatible). Pastille `ai_clinepass`. Other chat providers (Anthropic / Google / OpenAI / Cursor Cloud Agents / Ollama / LM Studio) are removed from this build.
+- Cursor stays as **hooks only** (Settings → Agents → Cursor Hooks → `~/.cursor/hooks.json`).
+- Settings → General: **Click outside to close** (on by default) collapses the expanded notch when you click outside the island.
+- Cursor live diff: `afterFileEdit` / Write / Edit open the notch diff card automatically (typewriter on the new line, strikethrough on removals), same path as Claude Code Edit/Write. The island force-expands so the card is visible while programming.
+- Ticker step labels are English (Reads / Writes / Edits / Runs…) instead of French.
+- Live programming view (tall island): Edit/MultiEdit opens Read/Edit/Bash/Done rail + inset code editor (file tab, line numbers, keyword tint, typewriter on `+`, strikethrough on `−`). Huge full-file Write dumps stay ticker-only.
+- **Render** integration: API key in Settings, `integration_render` pill, deploy list/detail (polls `api.render.com`).
+
 ## 0.1.7 — October 4, 2026
 
 - Keyboard shortcuts from anywhere: ⌃⌥Space opens the chat, ⌃⌥A jumps to a waiting permission or question, ⌃⌥T brings your terminal forward, ⌃⌥] and ⌃⌥[ switch pills, ⌃⌥M mutes Mochi, ⌃⌥D sends him to the desktop and back, ⌃⌥G opens the wardrobe, and ⌃⌥W attaches the front window to the chat (GitHub build) (#205)

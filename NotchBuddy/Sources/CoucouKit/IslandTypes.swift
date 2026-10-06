@@ -12,6 +12,8 @@ enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
     case confused, upload, uploading, choose, mail, prompt
     case searching, result, note, settings, greeting, wardrobe
+    /// Tall live-diff editor (steps rail + code panel) while an agent edits a file.
+    case programming
 }
 
 // MARK: - Bot State
@@ -71,73 +73,23 @@ enum AgentSource: Equatable {
 // MARK: - Chat provider
 
 enum ChatProvider: String, CaseIterable, Codable {
-    case anthropic = "anthropic"
-    case google    = "google"
-    case openai    = "openai"
-    case ollama    = "ollama"
-    case lmstudio  = "lmstudio"
+    case clinepass = "clinepass"
 
-    var displayName: String {
-        switch self {
-        case .anthropic: "Anthropic"
-        case .google:    "Google"
-        case .openai:    "OpenAI"
-        case .ollama:    "Ollama"
-        case .lmstudio:  "LM Studio"
-        }
-    }
+    var displayName: String { "ClinePass" }
 
-    var accentHex: String {
-        switch self {
-        case .anthropic: "#E07950"
-        case .google:    "#4285F4"
-        case .openai:    "#10A37F"
-        case .ollama:    "#FACC15"
-        case .lmstudio:  "#A3E635"
-        }
-    }
+    var accentHex: String { "#7C5CFF" }
 
-    var defaultModel: String {
-        switch self {
-        case .anthropic: "claude-sonnet-4-6"
-        case .google:    "gemini-2.0-flash"
-        case .openai:    "gpt-4o"
-        case .ollama:    "llama3.2"
-        case .lmstudio:  "local-model"
-        }
-    }
+    var defaultModel: String { "cline-pass/qwen3.7-max" }
 
-    var keychainKey: String {
-        switch self {
-        case .anthropic: "anthropic-api-key"
-        case .google:    "google-api-key"
-        case .openai:    "openai-api-key"
-        case .ollama:    ""
-        case .lmstudio:  ""
-        }
-    }
+    var keychainKey: String { "cline-api-key" }
 
-    var isLocal: Bool {
-        self == .ollama || self == .lmstudio
-    }
+    var isLocal: Bool { false }
 
-    var pillID: String {
-        switch self {
-        case .anthropic: "ai_anthropic"
-        case .google:    "ai_google"
-        case .openai:    "ai_openai"
-        case .ollama:    "ai_ollama"
-        case .lmstudio:  "ai_lmstudio"
-        }
-    }
+    var pillID: String { "ai_clinepass" }
 
     init?(pillID: String) {
         switch pillID {
-        case "ai_anthropic": self = .anthropic
-        case "ai_google":    self = .google
-        case "ai_openai":    self = .openai
-        case "ai_ollama":    self = .ollama
-        case "ai_lmstudio":  self = .lmstudio
+        case "ai_clinepass": self = .clinepass
         default:             return nil
         }
     }
@@ -170,6 +122,8 @@ enum IslandConst {
     static let viewLayouts: [IslandView: ViewLayout] = [
         // Home is the reference: height 150
         .overview:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .pills),
+        // Live programming: taller editor panel (matches design target)
+        .programming: ViewLayout(height: 300, botX: 58, botY: 155, botDiameter: 52, agentMode: .none),
         // All non-chat views match home height (150) — law
         .empty:     ViewLayout(height: 160, botX: 70,  botY: nil, botDiameter: 62, agentMode: .none),
         .approval:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 56, agentMode: .column),

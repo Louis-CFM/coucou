@@ -49,6 +49,8 @@ final class IslandWindowController: NSWindowController {
 
     // Island-local key monitor (active only when island is key window)
     private var localKeyMonitor: Any?
+    /// Global click-outside → collapse (Settings: clickOutsideToClose)
+    private var clickOutsideMonitor: Any?
 
     convenience init() {
         let screen = Self.notchScreen() ?? NSScreen.main!
@@ -581,6 +583,20 @@ final class IslandWindowController: NSWindowController {
                         self.collapse()
                     }
                 }
+            }
+        }
+
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                guard self.state.clickOutsideToClose else { return }
+                guard self.state.mode == .expanded else { return }
+                guard !self.state.isPinned else { return }
+                guard self.fsm.isHeldOpen?() != true else { return }
+                let mouse = NSEvent.mouseLocation
+                // Panel frame is in screen coordinates (bottom-left origin), same as mouseLocation.
+                guard !self.islandPanel.frame.contains(mouse) else { return }
+                self.collapse()
             }
         }
 
@@ -1127,6 +1143,7 @@ extension Notification.Name {
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
+    static let sessionDiffAppended        = Notification.Name("notchBuddy.sessionDiffAppended")
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
