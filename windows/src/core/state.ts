@@ -3,7 +3,16 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n" | "agent";
+export type AgentSource = "claudeCode" | "codex" | "n8n" | "agent";
+
+export function isCodingAgent(task: AgentTask): boolean {
+  return task.source === "claudeCode" || task.source === "codex" || task.source === "agent";
+}
+
+export function agentLabel(task: AgentTask | null): string {
+  if (task?.source === "agent") return task.name;
+  return task?.source === "codex" ? "Codex" : task?.source === "n8n" ? "n8n" : "Claude Code";
+}
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -19,10 +28,12 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  sessionId?: string;
 }
 
 export interface ApprovalInfo {
   requestId: string;
+  taskId: string;
   sessionId: string;
   tool: string;
   command: string;
@@ -59,6 +70,7 @@ const task = (
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_codex", "Codex", "#A8DCCB", "codex"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -92,6 +104,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  chatProvider: "claude" | "openai";
+  openaiModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +120,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  openaiModel: "gpt-4.1-mini",
 };
 
 type Listener = () => void;
@@ -136,6 +152,7 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  chatGeneration = 0;
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
@@ -199,19 +216,20 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** Coding agents are always available; API integrations remain opt-in. */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        isCodingAgent(proto) || this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
+    // Order: integration_claude first, then dynamic agent_* pills,
     // then other integrations in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => {
+      if (a.id === b.id) return 0;
       const isAgentA = a.id.startsWith("agent_");
       const isAgentB = b.id.startsWith("agent_");
       // integration_claude always first
@@ -236,8 +254,7 @@ class AppState {
     this.notify();
   }
 
-  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
-   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  /** Creates a dynamic agent_ pill on first event, directly after Claude Code. */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
     const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
@@ -251,7 +268,7 @@ class AppState {
   }
 
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    if (id === "integration_claude" || id === "integration_codex") return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);

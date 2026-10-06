@@ -73,11 +73,17 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+Generic third-party integrations support standard Claude Code hook events,
+**except `PermissionRequest`**. These requests receive no decision, so the relay
+writes nothing and the external agent re-asks in its terminal.
+On Windows, Codex now has a dedicated opt-in integration with approval cards;
+other third-party agents still fall back to their own approval flow. See
+[Windows Codex setup](../windows/README.md#codex). Codex hook commands must use
+`coucou-hook.exe --agent codex <EventName>` with an explicit event so that the
+relay can return neutral valid JSON for `Stop` and `SubagentStop` even when
+Coucou is closed. Codex activity is filtered to metadata; its permission requests
+carry complete original tool-argument JSON. The generic payload routing described
+above does not by itself install or trust Codex hooks.
 
 The pill lifecycle:
 

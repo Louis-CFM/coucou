@@ -518,6 +518,7 @@ body {
   gap: 4px;
   align-content: center;
   padding: 0 8px;
+  overflow-y: auto;
 }
 
 .pill {
@@ -623,6 +624,26 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: text;
+}
+
+.approval-code {
+  min-height: 32px;
+  max-height: 180px;
+  white-space: pre-wrap;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  flex: 1 1 auto;
+}
+
+.stack.approval-stack {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.approval-stack > :first-child,
+.approval-stack > .actions {
+  flex-shrink: 0;
 }
 
 .stack {

@@ -20,6 +20,23 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    #[serde(default)]
+    pub chat_provider: crate::chat::Provider,
+    #[serde(default = "default_openai_model")]
+    pub openai_model: String,
+}
+
+fn default_openai_model() -> String {
+    crate::openai::DEFAULT_MODEL.to_string()
+}
+
+impl Settings {
+    pub fn chat_model(&self) -> &str {
+        match self.chat_provider {
+            crate::chat::Provider::Claude => &self.model,
+            crate::chat::Provider::Openai => &self.openai_model,
+        }
+    }
 }
 
 fn default_model() -> String {
@@ -43,7 +60,28 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: crate::chat::Provider::default(),
+            openai_model: default_openai_model(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn older_settings_keep_claude_and_existing_preferences() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value.as_object_mut().unwrap().remove("chatProvider");
+        value.as_object_mut().unwrap().remove("openaiModel");
+        value["model"] = "existing-claude-model".into();
+        value["soundVolume"] = 0.05.into();
+        let settings: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(settings.chat_provider, crate::chat::Provider::Claude);
+        assert_eq!(settings.chat_model(), "existing-claude-model");
+        assert_eq!(settings.sound_volume, 0.05);
+        assert_eq!(settings.openai_model, crate::openai::DEFAULT_MODEL);
     }
 }
 

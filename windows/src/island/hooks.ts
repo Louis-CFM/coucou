@@ -1,335 +1,342 @@
-// Claude Code hook events → island state.
-// Port of HookServer.processEvent / processPermissionRequest from the macOS app.
-// Difference from macOS: no terminal filter. On Windows the hook fires from any
-// terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
-
-import { Bridge, onEvent } from "../core/bridge";
+// Local coding-agent hook events → independent sessions and approval ownership.
+import { Bridge, onEvent, type HookAgent } from "../core/bridge";
+import type { BotStateName } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type ApprovalInfo } from "../core/state";
 import type { Island } from "./island";
 
-const CLAUDE_ID = "integration_claude";
-
-/** Clears the approval card if no decision was made before the hook gave up. */
-let pendingTimeout: number | null = null;
-
-interface HookPayload {
+export interface HookPayload {
+  coucou_agent?: string;
   hook_event_name?: string;
   request_id?: string;
   session_id?: string;
+  turn_id?: string;
   cwd?: string;
   message?: string;
-  /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
   tool_name?: string;
-  tool_input?: Record<string, unknown>;
-  /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
-  coucou_agent?: string;
+  tool_input?: unknown;
+  /** Original argument JSON preserves large numbers and every displayed byte. */
+  coucou_tool_input_json?: string;
+  permission_mode?: string;
 }
 
-/** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
-function validateAgent(raw: string | undefined): string | null {
-  if (!raw || raw.length > 24 || raw === "claude") return null;
-  if (!/^[a-z0-9-]+$/.test(raw)) return null;
-  return raw;
+const TASK_IDS = { claude: "integration_claude", codex: "integration_codex" } as const;
+const NAMES = { claude: "VS Code", codex: "Codex" } as const;
+/** Preserve the upstream tag contract; Codex has its own first-class provider. */
+function validateAgent(raw: string | undefined): string {
+  return typeof raw === "string" && /^[a-z0-9-]{1,24}$/.test(raw) ? raw : "claude";
 }
-
+function isExternalAgent(agent: string): boolean {
+  return agent !== "claude" && agent !== "codex";
+}
+function taskIdFor(agent: string): string {
+  return agent === "claude" || agent === "codex" ? TASK_IDS[agent] : `agent_${agent}`;
+}
+function nameFor(agent: string): string {
+  return agent === "claude" || agent === "codex" ? NAMES[agent] : agent;
+}
 const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
-
 function agentColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
-  }
-  return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (Math.imul(31, hash) + name.charCodeAt(i)) | 0;
+  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
 }
-
 const PROJECT_ALIASES: Record<string, string> = {
-  "notch-buddy": "Notch Buddy",
-  notchbuddy: "Notch Buddy",
-  notch_buddy: "Notch Buddy",
+  "notch-buddy": "Notch Buddy", notchbuddy: "Notch Buddy", notch_buddy: "Notch Buddy",
 };
-
-function aliasProjectName(name: string): string {
-  return PROJECT_ALIASES[name.toLowerCase()] ?? name;
+function lastPathComponent(path: string): string {
+  return path.replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) ?? "";
 }
-
-function lastPathComponent(p: string): string {
-  const cleaned = p.replace(/[\\/]+$/, "");
-  const idx = Math.max(cleaned.lastIndexOf("\\"), cleaned.lastIndexOf("/"));
-  return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
-}
-
-/** frenchStep() — same labels as the macOS app. */
 const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
-  NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+  Bash: "Exécute", Read: "Lit", Write: "Écrit", Edit: "Modifie", Glob: "Cherche",
+  Grep: "Recherche", WebSearch: "Recherche web", WebFetch: "Récupère", TodoWrite: "Tâches",
+  Task: "Agent", LS: "Liste", MultiEdit: "Modifie", NotebookEdit: "Notebook", PowerShell: "Exécute",
 };
-
-function stepLabel(tool: string, input: Record<string, unknown>): string {
+function inputRecord(input: unknown): Record<string, unknown> {
+  return input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown> : {};
+}
+function stepLabel(tool: string, input: unknown): string {
   const label = TOOL_LABELS[tool] ?? tool;
-  const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
+  const record = inputRecord(input);
+  const str = (k: string) => typeof record[k] === "string" ? record[k] as string : null;
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
-  const path = str("path");
+  const path = str("path") ?? str("file_path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
-  const file = str("file_path");
-  if (file) return `${label} · ${lastPathComponent(file)}`;
   const query = str("query");
-  if (query) return `${label} · ${query.slice(0, 40)}`;
-  return label;
+  return query ? `${label} · ${query.slice(0, 40)}` : label;
 }
-
-/**
- * What the Allow button actually authorises. Approving "Write" tells you nothing
- * — approving `Write · C:\…\.env` tells you everything, and the difference is
- * the whole point of approving from the island rather than blind.
- *
- * Ordered by how specific the field is, so an unfamiliar tool still shows
- * whatever identifying string it carries instead of falling back to its name.
- */
-const APPROVAL_FIELDS = [
-  "command", // Bash, PowerShell
-  "file_path", // Write, Edit, MultiEdit, NotebookEdit
-  "path", // Read, LS
-  "url", // WebFetch
-  "query", // WebSearch
-  "pattern", // Glob, Grep
-  "prompt", // Task
-] as const;
-
-function approvalTarget(tool: string, input: Record<string, unknown>): string {
-  for (const field of APPROVAL_FIELDS) {
+function approvalTarget(agent: HookAgent, payload: HookPayload): string {
+  const tool = payload.tool_name ?? "Tool";
+  if (agent === "codex") {
+    // Keep exact MCP scalar/array/object arguments; the card scrolls, not truncates.
+    const cwd = payload.cwd ? `\nWorking directory: ${payload.cwd}` : "";
+    const session = payload.session_id ? `\nSession: ${payload.session_id}` : "";
+    const mode = payload.permission_mode ? `\nPermission mode: ${payload.permission_mode}` : "";
+    return `${tool}${cwd}${session}${mode}\n${payload.coucou_tool_input_json}`;
+  }
+  const input = inputRecord(payload.tool_input);
+  for (const field of ["command", "file_path", "path", "url", "query", "pattern", "prompt"]) {
     const value = input[field];
-    if (typeof value === "string" && value.trim()) {
-      return `${tool} · ${value.trim()}`;
-    }
+    if (typeof value === "string" && value.trim()) return `${tool} · ${value.trim()}`;
   }
   return tool;
 }
-
-function upsert(projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
-  if (!t) return;
-  t.name = projectName;
-  if (cwd) t.sessionCwd = cwd;
+interface Session {
+  agent: string;
+  id: string;
+  name: string;
+  cwd: string | null;
+  state: BotStateName;
+  steps: string[];
+  phase: "active" | "stopped" | "ended";
+  generation: number;
+  turnId?: string;
+  closedTurns: Set<string>;
 }
+type HookIsland = Pick<Island, "alert" | "setView" | "reveal" | "dropPin">;
 
-function clearSession() {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
-  if (!t) return;
-  t.steps = [];
-  t.stepIndex = 0;
-  t.name = "VS Code";
-  t.pillBadge = null;
+/** Timers/session ownership belong to this island, rather than global hook state. */
+export function createHookHandlers(island: HookIsland) {
+  const sessions = new Map<string, Session>();
+  const selected = new Map<string, Session>();
+  let pendingTimeout: number | null = null;
+  let activeApproval: ApprovalInfo | null = null;
+  const append = (session: Session, text: string) => {
+    session.steps.push(text);
+    if (session.steps.length > 20) session.steps.shift();
+  };
+  const paint = (session: Session) => {
+    if (selected.get(session.agent) !== session) return;
+    const task = State.tasks.find((t) => t.id === taskIdFor(session.agent));
+    if (!task) return;
+    task.name = session.name;
+    task.sessionId = session.id;
+    task.sessionCwd = session.cwd;
+    task.state = session.state;
+    task.steps = [...session.steps];
+    task.stepIndex = Math.max(0, task.steps.length - 1);
+  };
+  const clearApproval = (requestId: string, decline = false) => {
+    const pending = activeApproval;
+    if (!pending || pending.requestId !== requestId) return;
+    activeApproval = null;
+    if (decline) void Bridge.approvalDecline(requestId);
+    if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+    State.pendingApproval = null;
+    State.isPinned = false;
+    island.dropPin();
+    const session = [...sessions.values()].find((s) =>
+      taskIdFor(s.agent) === pending.taskId && s.id === pending.sessionId);
+    if (session?.state === "approval") {
+      session.state = session.phase === "active" ? "working" : "idle";
+      paint(session);
+    }
+    State.setPillBadge(pending.taskId, null);
+    if (State.view === "approval") island.setView(State.defaultView());
+    State.notify();
+  };
+  const surface = (agent: string, view: Parameters<Island["alert"]>[0], alert: boolean) => {
+    if (alert && State.focusId !== taskIdFor(agent)) return;
+    if (State.pendingApproval && view !== "approval") return;
+    if (State.mode === "expanded") {
+      if (alert) island.setView(view);
+    } else if (alert) island.alert(view);
+    else if (State.mode === "hidden") island.reveal();
+  };
+  const handle = (payload: HookPayload) => {
+    // A local click clears the shared card before the backend completion event.
+    if (activeApproval && !State.pendingApproval) clearApproval(activeApproval.requestId);
+    const agent = validateAgent(payload.coucou_agent);
+    const external = isExternalAgent(agent);
+    if (State.paused || (agent === "codex" && !payload.session_id)) {
+      if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
+      return;
+    }
+    const event = payload.hook_event_name ?? "";
+    const taskId = taskIdFor(agent);
+    const sessionId = payload.session_id ?? "legacy";
+    const key = `${agent}:${sessionId}`;
+    const requestId = payload.request_id ?? "";
+    const isPermission = event === "PermissionRequest";
+    if (isPermission) {
+      // Generic tags retain activity-only support; their terminal owns approval.
+      if (external || !requestId || (agent === "codex" && !payload.coucou_tool_input_json)
+        || (State.pendingApproval && State.pendingApproval.requestId !== requestId)) {
+        if (requestId) void Bridge.approvalDecline(requestId);
+        return;
+      }
+      // A retry must not extend the lifetime or change the displayed arguments.
+      if (State.pendingApproval?.requestId === requestId) return;
+    }
+    let session = sessions.get(key);
+    const startsTurn = event === "SessionStart" || event === "UserPromptSubmit";
+    if (session && !startsTurn) {
+      const post = event === "PostToolUse" || event === "PostToolUseFailure";
+      const lateTurn = payload.turn_id && payload.turn_id === session.turnId;
+      const terminal = event === "SessionEnd" || event === "Interrupt" || event === "StopFailure";
+      const closedTurn = payload.turn_id && session.closedTurns.has(payload.turn_id);
+      const otherTurn = payload.turn_id && session.turnId && payload.turn_id !== session.turnId
+        && !["PreToolUse", "PermissionRequest", "SessionEnd"].includes(event);
+      if (session.phase === "ended" || (closedTurn && event !== "SessionEnd") || otherTurn
+        || (session.phase === "stopped" && (post || (lateTurn && !terminal)))) {
+        if (isPermission && requestId) void Bridge.approvalDecline(requestId);
+        return;
+      }
+    }
+    if (!session) {
+      session = { agent, id: sessionId, name: nameFor(agent), cwd: null,
+        state: "idle", steps: [], phase: "active", generation: 0, closedTurns: new Set() };
+      sessions.set(key, session);
+      if (sessions.size > 256) {
+        const old = [...sessions.entries()].find(([, s]) => selected.get(s.agent) !== s);
+        if (old) sessions.delete(old[0]);
+      }
+    }
+    if (payload.cwd) {
+      session.cwd = payload.cwd;
+      const raw = lastPathComponent(payload.cwd);
+      if (!external) session.name = (PROJECT_ALIASES[raw.toLowerCase()] ?? raw) || nameFor(agent);
+    }
+    const pending = State.pendingApproval;
+    const ownsApproval = pending?.taskId === taskId && pending.sessionId === sessionId;
+    const blockedByApproval = pending?.taskId === taskId && !ownsApproval;
+    const foreground = startsTurn || event === "PreToolUse" || isPermission;
+    if (external && foreground) State.upsertExternalAgent(taskId, agent, agentColor(agent));
+    if ((!selected.has(agent) || foreground) && !blockedByApproval) {
+      selected.set(agent, session);
+      if (!ownsApproval) State.setPillBadge(taskId, null);
+    }
+    if (payload.turn_id && session.turnId && payload.turn_id !== session.turnId) {
+      session.closedTurns.add(session.turnId);
+      if (session.closedTurns.size > 32) session.closedTurns.delete(session.closedTurns.values().next().value!);
+    }
+    if (startsTurn || event === "PreToolUse") {
+      session.phase = "active";
+      session.generation++;
+      session.turnId = payload.turn_id;
+    } else if (payload.turn_id && session.phase === "active") session.turnId = payload.turn_id;
+
+    switch (event) {
+      case "SessionStart":
+        if (!ownsApproval) session.state = "idle";
+        surface(agent, "overview", false);
+        Sound.play("work");
+        break;
+      case "UserPromptSubmit":
+        if (!ownsApproval) session.state = "thinking";
+        if (agent === "codex") append(session, "Working on your request");
+        else if (payload.prompt ?? payload.message) append(session, (payload.prompt ?? payload.message)!.slice(0, 60));
+        surface(agent, "overview", false);
+        break;
+      case "PreToolUse":
+        if (!ownsApproval) session.state = "working";
+        append(session, agent === "codex" ? payload.tool_name ?? "Tool" : stepLabel(payload.tool_name ?? "Tool", payload.tool_input));
+        surface(agent, "overview", false);
+        break;
+      case "PostToolUse":
+      case "PostToolUseFailure":
+        if (!ownsApproval) session.state = "working";
+        if (event === "PostToolUseFailure") append(session, "⚠ failed");
+        break;
+      case "Notification": {
+        const message = payload.message ?? "";
+        if (/rate limit|limite d/i.test(message)) {
+          if (!ownsApproval) session.state = "ratelimit";
+          Sound.play("rate");
+        } else if (message.endsWith("?")) {
+          if (!ownsApproval) session.state = "question";
+          append(session, agent === "codex" ? "Answer in Codex" : message);
+        }
+        break;
+      }
+      case "Stop": {
+        if (ownsApproval) clearApproval(pending.requestId, true);
+        session.phase = "stopped";
+        session.state = "finished";
+        const generation = ++session.generation;
+        if (agent !== "codex" && payload.message) append(session, payload.message.slice(0, 60));
+        if (selected.get(agent) === session) {
+          Sound.play("finish");
+          if (State.focusId === taskId) surface(agent, "finished", true);
+          else State.setPillBadge(taskId, "finished");
+        }
+        const stopped = session;
+        window.setTimeout(() => {
+          if (stopped.generation !== generation || stopped.state !== "finished") return;
+          stopped.state = "idle";
+          if (selected.get(agent) === stopped) {
+            if (external) {
+              State.removeTask(taskId);
+              selected.delete(agent);
+              return;
+            }
+            State.setPillBadge(taskId, null);
+            paint(stopped);
+            State.notify();
+          }
+        }, 5200);
+        break;
+      }
+      case "StopFailure":
+      case "Interrupt":
+      case "SessionEnd":
+        if (ownsApproval) clearApproval(pending.requestId, true);
+        session.generation++;
+        session.phase = event === "SessionEnd" ? "ended" : "stopped";
+        session.state = event === "StopFailure" ? "error" : "idle";
+        if (event === "Interrupt") append(session, "Interrupted");
+        if (event === "SessionEnd") {
+          session.name = nameFor(agent);
+          session.cwd = null;
+          session.steps = [];
+        }
+        if (selected.get(agent) === session) {
+          if (event === "SessionEnd" && external) {
+            State.removeTask(taskId);
+            selected.delete(agent);
+            break;
+          }
+          State.setPillBadge(taskId, event === "StopFailure" ? "error" : null);
+          if (event === "StopFailure") {
+            Sound.play("error");
+            surface(agent, "error", true);
+          }
+        }
+        break;
+      case "SubagentStart": append(session, "+ subagent"); break;
+      case "SubagentStop": append(session, "• subagent done"); break;
+      case "PermissionRequest":
+        // The generic-provider path returned above; narrowing preserves this invariant.
+        if (agent !== "claude" && agent !== "codex") return;
+        session.state = "approval";
+        State.pendingApproval = { requestId, taskId, sessionId,
+          tool: payload.tool_name ?? "Tool", command: approvalTarget(agent, payload) };
+        activeApproval = State.pendingApproval;
+        State.isPinned = true;
+        paint(session);
+        Sound.play("approval");
+        if (State.focusId === taskId) island.alert("approval");
+        else {
+          State.setPillBadge(taskId, "approval");
+          island.reveal();
+        }
+        void Bridge.approvalAck(requestId);
+        pendingTimeout = window.setTimeout(() => clearApproval(requestId, true), 110_000);
+        break;
+      default: return;
+    }
+    paint(session);
+    State.notify();
+  };
+  return { handle, approvalEnded: (requestId: string) => clearApproval(requestId) };
 }
 
 export function registerHookHandlers(island: Island) {
-  void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
-}
-
-function handleHook(island: Island, payload: HookPayload) {
-  if (State.paused) {
-    // Silence here used to cost Claude Code nearly two minutes: the relay waited
-    // for a decision from an island that had already decided not to look. Say so,
-    // and the terminal takes the question immediately.
-    if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
-    return;
-  }
-
-  const name = payload.hook_event_name ?? "";
-  const cwd = payload.cwd ?? "";
-  const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
-
-  // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
-  // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
-  const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
-  const isExternalAgent = validAgent !== null;
-
-  const focused = State.focusId === agentId;
-
-  /** Alerts force the island open; work events only reveal the compact island. */
-  const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
-    if (State.mode === "expanded") {
-      if (isAlert) island.setView(view);
-    } else if (isAlert) {
-      island.alert(view);
-    } else if (State.mode === "hidden") {
-      island.reveal();
-    }
-  };
-
-  /** Ensure the agent pill exists (no-op for Claude Code). */
-  const ensurePill = () => {
-    if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
-    } else {
-      upsert(projectName, cwd);
-    }
-  };
-
-  switch (name) {
-    case "SessionStart":
-      ensurePill();
-      surface("overview", false);
-      Sound.play("work");
-      break;
-
-    case "UserPromptSubmit": {
-      ensurePill();
-      State.updateTask(agentId, "thinking");
-      // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
-      surface("overview", false);
-      break;
-    }
-
-    case "PreToolUse": {
-      ensurePill();
-      State.updateTask(agentId, "working");
-      const tool = payload.tool_name ?? "Tool";
-      State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
-      break;
-    }
-
-    case "PostToolUse":
-      State.updateTask(agentId, "working");
-      break;
-
-    case "PostToolUseFailure":
-      State.updateTask(agentId, "working");
-      State.appendStep(agentId, "⚠ failed");
-      break;
-
-    case "Notification": {
-      const message = payload.message ?? "";
-      const lower = message.toLowerCase();
-      if (lower.includes("rate limit") || lower.includes("limite d")) {
-        State.updateTask(agentId, "ratelimit");
-        Sound.play("rate");
-      } else if (message.endsWith("?")) {
-        State.updateTask(agentId, "question");
-        State.appendStep(agentId, message);
-      }
-      break;
-    }
-
-    case "Stop":
-      State.updateTask(agentId, "finished");
-      if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
-      Sound.play("finish");
-      if (focused) surface("finished", true);
-      else State.setPillBadge(agentId, "finished");
-      window.setTimeout(() => {
-        if (isExternalAgent) {
-          State.removeTask(agentId);
-        } else {
-          State.updateTask(agentId, "idle");
-          State.setPillBadge(agentId, null);
-        }
-      }, 5200);
-      break;
-
-    case "StopFailure":
-      State.updateTask(agentId, "error");
-      Sound.play("error");
-      if (focused) surface("error", true);
-      else State.setPillBadge(agentId, "error");
-      break;
-
-    case "SessionEnd":
-      if (isExternalAgent) {
-        State.removeTask(agentId);
-      } else {
-        State.updateTask(agentId, "idle");
-        clearSession();
-      }
-      break;
-
-    case "SubagentStart":
-      State.appendStep(agentId, "+ subagent");
-      break;
-
-    case "SubagentStop":
-      State.appendStep(agentId, "• subagent done");
-      break;
-
-    case "PermissionRequest": {
-      // External agents do not get an approval card — showing one would look like
-      // a Claude Code request. Decline immediately so the agent re-asks in its
-      // terminal. Approval support for other agents will come with Codex support.
-      if (isExternalAgent) {
-        if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
-        break;
-      }
-
-      const requestId = payload.request_id ?? "";
-      // One card, one request. A second one must never quietly replace the first
-      // — that would leave a human staring at request B while request A waits for
-      // a decision nobody can give. Hand it straight back to the terminal.
-      if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
-        if (requestId) void Bridge.approvalDecline(requestId);
-        break;
-      }
-      upsert(projectName, cwd);
-      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
-      const tool = payload.tool_name ?? "Tool";
-      const input = payload.tool_input ?? {};
-      State.pendingApproval = {
-        requestId,
-        sessionId: payload.session_id ?? "",
-        tool,
-        command: approvalTarget(tool, input),
-      };
-      // The relay's short ack window closes in 800 ms; everything below this
-      // line is synchronous, so the card really is up by the time it lands.
-      if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
-      State.isPinned = true;
-      Sound.play("approval");
-      if (focused) {
-        island.alert("approval");
-      } else {
-        // Another agent holds the view, so the card would yank it away. The badge
-        // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
-        island.reveal();
-      }
-      // Coucou answers within 108 s or not at all; after that the terminal has
-      // taken over and the card would be lying.
-      pendingTimeout = window.setTimeout(() => {
-        pendingTimeout = null;
-        if (!State.pendingApproval) return;
-        State.pendingApproval = null;
-        State.isPinned = false;
-        island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval") island.setView(State.defaultView());
-        State.notify();
-      }, 110_000);
-      break;
-    }
-
-    default:
-      break;
-  }
-  State.notify();
+  const handlers = createHookHandlers(island);
+  void onEvent<HookPayload>("hook", handlers.handle);
+  void onEvent<{ request_id: string }>("approval-ended", (payload) => handlers.approvalEnded(payload.request_id));
 }

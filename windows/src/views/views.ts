@@ -5,7 +5,7 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, agentLabel, isCodingAgent, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -20,7 +20,7 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: "allow" | "deny", requestId: string): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
@@ -172,10 +172,9 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
+      // Coding agents share the session ticker, with independent owner labels.
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        task && isCodingAgent(task) && (task.source === "agent" || task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -188,7 +187,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: agentLabel(task) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -214,7 +213,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 
       jump.style.display = detailOpen ? "none" : "";
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks;
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -227,7 +226,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = task.source === "claudeCode" ? "VS Code" : task.source === "codex" ? "Codex" : task.name;
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
@@ -281,7 +280,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: "Drop a file or window, or ask me anything." }),
     ),
     h("div", { class: "grow" }),
-    btn("Ask Claude", "primary", () => actions.setView("prompt")),
+    btn("Ask Mochi", "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
@@ -290,28 +289,33 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
-  const code = h("div", { class: "code" });
+  const code = h("div", { class: "code approval-code", tabindex: 0, "aria-label": "Exact permission request" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const body = stack(116, 16, who, code, row);
+  body.classList.add("approval-stack");
+  const el = h("div", { class: "view" }, card("amber", body));
   let rowKey = "";
   return {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      const pending = State.pendingApproval;
+      const owner = State.tasks.find((task) => task.id === pending?.taskId) ?? null;
+      who.append(agentWho(owner, `${agentLabel(owner)} needs permission`));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
-      code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
+      code.textContent = pending?.command || pending?.tool || "No pending request";
+      // Bind each button to the displayed request, including across a mouse click
+      // racing with an expired card and a new request from another agent.
+      const requestId = pending?.requestId ?? "";
+      if (rowKey === requestId) return;
+      rowKey = requestId;
       clear(row);
+      if (!requestId) return;
       row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
-        btn("Allow", "primary", () => actions.decide("allow"), "Y"),
+        btn("Deny", "secondary", () => actions.decide("deny", requestId), "N"),
+        btn("Allow", "primary", () => actions.decide("allow", requestId), "Y"),
       );
     },
   };
@@ -328,9 +332,9 @@ function buildQuestion(): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
+      who.append(agentWho(State.focusTask, `${agentLabel(State.focusTask)} is asking a question`));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      title.textContent = task?.steps.at(-1) ?? `${agentLabel(task)} needs an answer.`;
       clear(row);
       row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
@@ -353,7 +357,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, agentLabel(task)));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -374,7 +378,7 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      who.append(agentWho(State.focusTask, `${agentLabel(State.focusTask)} finished`));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };
@@ -503,7 +507,7 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
-  map.set("searching", buildPlaceholder("Claude is searching…", ""));
+  map.set("searching", buildPlaceholder("Mochi is searching…", ""));
   map.set("result", buildPlaceholder("Result", ""));
   return map;
 }

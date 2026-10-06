@@ -4,7 +4,7 @@
 // Everything happens here rather than in the island: the API key never leaves
 // the Credential Manager, and file bytes never cross the IPC boundary.
 
-use std::sync::Mutex;
+use crate::chat::{Chat, Provider};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -26,34 +26,6 @@ const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at th
 You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
 No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
-
-#[derive(Default)]
-pub struct Chat {
-    /// Full multi-turn history, including tool_use / tool_result blocks.
-    messages: Mutex<Vec<Value>>,
-}
-
-impl Chat {
-    pub fn reset(&self) {
-        self.messages.lock().unwrap().clear();
-    }
-
-    fn is_empty(&self) -> bool {
-        self.messages.lock().unwrap().is_empty()
-    }
-
-    fn push(&self, message: Value) {
-        self.messages.lock().unwrap().push(message);
-    }
-
-    fn pop(&self) {
-        self.messages.lock().unwrap().pop();
-    }
-
-    fn snapshot(&self) -> Vec<Value> {
-        self.messages.lock().unwrap().clone()
-    }
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -79,11 +51,12 @@ pub async fn send(
     let key = secrets::get("anthropic-api-key")
         .ok_or_else(|| "API key missing. Open settings.".to_string())?;
 
+    let (generation, mut messages) = chat.begin(Provider::Claude, model);
     let mut content: Vec<Value> = Vec::new();
 
     // File / window context rides along with the first message only, exactly
     // like ClaudeService.chat().
-    if chat.is_empty() {
+    if messages.is_empty() {
         match &context {
             Some(ChatContext::File { name, path }) => {
                 if let Some(block) = file_block(path) {
@@ -103,7 +76,7 @@ pub async fn send(
     }
     content.push(json!({ "type": "text", "text": query }));
 
-    chat.push(json!({ "role": "user", "content": content }));
+    messages.push(json!({ "role": "user", "content": content }));
 
     let body = json!({
         "model": model,
@@ -111,20 +84,13 @@ pub async fn send(
         "system": SYSTEM_PROMPT,
         "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
         "fallbacks": "default",
-        "messages": chat.snapshot(),
+        "messages": messages,
     });
 
-    let response = match call(&key, &body).await {
-        Ok(v) => v,
-        Err(err) => {
-            chat.pop(); // keep the history consistent with what the model saw
-            return Err(err);
-        }
-    };
+    let response = call(&key, &body).await?;
 
     // A policy decline comes back as HTTP 200 with stop_reason "refusal".
     if response.get("stop_reason").and_then(Value::as_str) == Some("refusal") {
-        chat.pop();
         let why = response
             .get("stop_details")
             .and_then(|d| d.get("explanation"))
@@ -134,13 +100,12 @@ pub async fn send(
     }
 
     let Some(blocks) = response.get("content").and_then(Value::as_array).cloned() else {
-        chat.pop();
         return Err("Unexpected API response.".into());
     };
 
     // Store the whole content — tool_use / tool_result blocks included — so the
     // next turn has the right context.
-    chat.push(json!({ "role": "assistant", "content": blocks.clone() }));
+    messages.push(json!({ "role": "assistant", "content": blocks.clone() }));
 
     let text = blocks
         .iter()
@@ -154,6 +119,7 @@ pub async fn send(
     if text.is_empty() {
         return Err("No response text.".into());
     }
+    chat.commit(generation, messages)?;
     Ok(ChatReply { text })
 }
 
