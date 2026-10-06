@@ -4,6 +4,7 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { Wake } from "./core/wake";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
@@ -59,12 +60,17 @@ async function main() {
     island.applySettings();
     State.loadIntegrationTasks();
     void refreshConfigured();
+    void Wake.sync();
   });
 
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
 
   island.launch();
+
+  Wake.start(() => {
+    island.alert("prompt");
+  });
 
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.

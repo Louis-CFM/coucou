@@ -265,3 +265,22 @@ select option {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
 }
+
+.mic-meter {
+  height: 8px;
+  flex: 1 1 auto;
+  max-width: 180px;
+  min-width: 120px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mic-meter-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--green, #22c55e);
+  border-radius: 4px;
+  transition: width 50ms ease;
+}
+

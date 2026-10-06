@@ -18,6 +18,7 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  neverHide: boolean = false;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -51,6 +52,7 @@ export class IslandStateMachine {
   mouseLeft() {
     switch (this.state) {
       case "hidden":
+        if (this.neverHide) this.transition("petit");
         break;
       case "petit":
         this.schedulePetitHide();
@@ -82,7 +84,9 @@ export class IslandStateMachine {
     if (this.state !== "hidden") return;
     this.cancelTimers();
     this.transition("petit");
-    this.schedulePetitHide();
+    if (!this.neverHide) {
+      this.schedulePetitHide();
+    }
   }
 
   /** Alert or explicit request: open straight to expanded. */
@@ -106,6 +110,7 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.neverHide) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");

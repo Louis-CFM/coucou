@@ -90,6 +90,7 @@ export class Island {
 
   constructor(root: HTMLElement) {
     this.root = root;
+    this.fsm.neverHide = State.settings.alwaysShowCompact;
     this.build();
     this.wireFsm();
     this.wireInput();
@@ -885,6 +886,10 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.neverHide = State.settings.alwaysShowCompact;
+    if (this.fsm.neverHide && (State.mode === "hidden" || this.fsm.state === "hidden")) {
+      this.fsm.forcePetit();
+    }
     State.notify();
   }
 

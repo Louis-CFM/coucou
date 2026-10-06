@@ -81,6 +81,17 @@ export interface IntegrationInfo {
   configured: boolean;
 }
 
+export const ANTIGRAVITY_TASK: AgentTask = {
+  id: "agent_antigravity",
+  name: "Antigravity",
+  color: "#E879F9",
+  state: "idle",
+  stepIndex: 0,
+  steps: [],
+  source: "agent",
+  isIntegration: false,
+};
+
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
@@ -90,8 +101,27 @@ export interface Settings {
   screen: "primary" | "cursor";
   autostart: boolean;
   hooksInstalled: boolean;
+  alwaysShowCompact: boolean;
+  chatProvider: "local" | "claude";
+  localProvider: "ollama" | "lmstudio" | "unsloth" | "custom";
+  localServerUrl: string;
+  localModel: string;
+  voiceEnabled: boolean;
+  voiceWakeWord: string;
+  voiceLanguage: "id-ID" | "en-US";
+  voiceTtsVoice: string;
+  voiceSttProvider: "native" | "whisper";
+  voiceWhisperUrl: string;
+  voiceSilenceTimeout: number;
+  voiceSpeed: number;
+  voiceVolume: number;
+  voicePitch: string;
+  voiceResponseMode: "concise" | "full";
+  voiceInputDevice: string;
+  voiceMicGain: number;
   /** Claude model used by the chat. */
   model: string;
+  webAccessEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -105,7 +135,26 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
+  alwaysShowCompact: true,
+  chatProvider: "local",
+  localProvider: "ollama",
+  localServerUrl: "http://localhost:11434",
+  localModel: "",
+  voiceEnabled: true,
+  voiceWakeWord: "Hey Coucou",
+  voiceLanguage: "id-ID",
+  voiceTtsVoice: "id-ID-GadisNeural",
+  voiceSttProvider: "native",
+  voiceWhisperUrl: "http://localhost:11434",
+  voiceSilenceTimeout: 1.5,
+  voiceSpeed: 1.0,
+  voiceVolume: 1.0,
+  voicePitch: "+0Hz",
+  voiceResponseMode: "concise",
+  voiceInputDevice: "",
+  voiceMicGain: 2.0,
   model: "claude-opus-5",
+  webAccessEnabled: true,
 };
 
 type Listener = () => void;
@@ -116,6 +165,7 @@ class AppState {
 
   tasks: AgentTask[] = [];
   focusId: string | null = null;
+  mainPillId: string = "agent_antigravity";
 
   stateOverride: BotStateName | null = null;
 
@@ -126,6 +176,11 @@ class AppState {
 
   isPinned = false;
   paused = false;
+  isVoiceListening = false;
+  isVoiceTranscribing: boolean = false;
+  isVoiceSpeaking = false;
+  voiceListeningPrompt: string | null = null;
+  isWebSearching: boolean = false;
 
   uploadProgress = 0;
   uploadDuration = 2.4;
@@ -199,8 +254,11 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — Antigravity & VS Code always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
+    if (!this.tasks.some((t) => t.id === "agent_antigravity")) {
+      this.tasks.unshift({ ...ANTIGRAVITY_TASK, steps: [] });
+    }
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
         proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
@@ -208,39 +266,45 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
-    // then other integrations in declaration order.
+    // Order: mainPillId (agent_antigravity) at index 0, followed by integration_claude,
+    // then dynamic agent_* pills, then integration pills in declaration order.
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => {
-      const isAgentA = a.id.startsWith("agent_");
-      const isAgentB = b.id.startsWith("agent_");
-      // integration_claude always first
+      if (a.id === this.mainPillId) return -1;
+      if (b.id === this.mainPillId) return 1;
       if (a.id === "integration_claude") return -1;
       if (b.id === "integration_claude") return 1;
-      // agent_* before other integrations; preserve insertion order among themselves
+      const isAgentA = a.id.startsWith("agent_");
+      const isAgentB = b.id.startsWith("agent_");
       if (isAgentA && !isAgentB) return -1;
       if (isAgentB && !isAgentA) return 1;
       if (isAgentA && isAgentB) return 0;
-      // both known integrations → declaration order
       return order.indexOf(a.id) - order.indexOf(b.id);
     });
-    if (!this.focusId) this.focusId = "integration_claude";
+    if (!this.focusId) this.focusId = this.mainPillId;
     this.notify();
   }
 
   removeTask(id: string) {
+    if (id === this.mainPillId || id === "agent_antigravity") return;
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
     this.tasks.splice(idx, 1);
-    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? this.mainPillId;
     this.notify();
   }
 
-  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
-   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  /** Creates or updates dynamic agent_ pill. Inserted right after mainPillId. */
   upsertExternalAgent(id: string, name: string, color: string) {
-    if (this.tasks.some((t) => t.id === id)) return;
-    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
+    const existing = this.tasks.find((t) => t.id === id);
+    if (existing) {
+      existing.name = name;
+      existing.color = color;
+      this.notify();
+      return;
+    }
+    const mainIdx = this.tasks.findIndex((t) => t.id === this.mainPillId);
+    const at = mainIdx >= 0 ? mainIdx + 1 : 0;
     this.tasks.splice(at, 0, {
       id, name, color,
       state: "idle", stepIndex: 0, steps: [],
@@ -255,7 +319,7 @@ class AppState {
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);
-      if (this.focusId === id) this.focusId = "integration_claude";
+      if (this.focusId === id) this.focusId = this.mainPillId;
     } else {
       if (active.length >= 4) return;
       this.settings.activeIntegrations = [...active, id];

@@ -146,6 +146,22 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
         })
 }
 
+pub fn open_terminal(path: Option<&str>) -> bool {
+    if let Some(code) = find_on_path("code") {
+        let mut cmd = Command::new(code);
+        if let Some(p) = path {
+            cmd.arg(p);
+        }
+        if cmd.spawn().is_ok() {
+            return true;
+        }
+    }
+    if let Some(p) = path {
+        reveal_folder(p);
+    }
+    false
+}
+
 // ── Cursor ────────────────────────────────────────────────────────────────────
 
 /// Nothing polls the cursor here: the page reports it over the island, and the

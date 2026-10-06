@@ -328,9 +328,9 @@ function buildQuestion(): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
+      who.append(agentWho(State.focusTask, `${State.focusTask?.name ?? "Agent"} is asking a question`));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      title.textContent = task?.steps.at(-1) ?? `${task?.name ?? "Agent"} needs an answer.`;
       clear(row);
       row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
@@ -353,7 +353,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : (task?.name ?? "Agent")));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -374,7 +374,7 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      who.append(agentWho(State.focusTask, `${State.focusTask?.name ?? "Agent"} finished`));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };
@@ -417,8 +417,10 @@ function buildSettings(actions: ViewActions): ViewHost {
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
-  const claudeBadge = h("span", { class: "status-badge" });
-  const apiBadge = h("span", { class: "status-badge" });
+  const integrationBadges = h("div", {
+    class: "settings-badges",
+    style: "display:flex;gap:12px;align-items:center",
+  });
 
   const rows = h(
     "div",
@@ -434,8 +436,7 @@ function buildSettings(actions: ViewActions): ViewHost {
     h(
       "div",
       { class: "settings-row", style: "gap:14px" },
-      claudeBadge,
-      apiBadge,
+      integrationBadges,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -458,13 +459,21 @@ function buildSettings(actions: ViewActions): ViewHost {
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
       autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
-      clear(claudeBadge);
-      claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
-        h("span", { text: "Claude Code" }),
+      clear(integrationBadges);
+      integrationBadges.append(
+        h("span", { class: "status-badge" }, dot("#22C55E", 6), h("span", { text: "Antigravity" })),
       );
-      clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      if (s.localModel && s.localModel.trim()) {
+        const localName = s.localProvider ? s.localProvider.toUpperCase() : "Local LLM";
+        integrationBadges.append(
+          h("span", { class: "status-badge" }, dot("#22C55E", 6), h("span", { text: localName })),
+        );
+      }
+      if (s.hooksInstalled) {
+        integrationBadges.append(
+          h("span", { class: "status-badge" }, dot("#22C55E", 6), h("span", { text: "Claude Code" })),
+        );
+      }
     },
   };
 }

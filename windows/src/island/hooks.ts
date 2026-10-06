@@ -60,27 +60,56 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
+/** Step labels in English. */
 const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
+  Bash: "Run",
+  Read: "Read",
+  Write: "Write",
+  Edit: "Edit",
+  Glob: "Search",
+  Grep: "Search",
+  WebSearch: "Search",
+  WebFetch: "Fetch",
+  TodoWrite: "Tasks",
+  Task: "Subagent",
+  LS: "List",
+  MultiEdit: "Edit",
   NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+  PowerShell: "Run",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ?? tool;
+  const action = typeof input.tool_action === "string" ? input.tool_action : null;
+  if (action && action.trim()) return action.trim();
+
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
+
+  if (tool === "invoke_subagent") {
+    const sub = str("subagents") || "Worker";
+    return `Subagent · ${sub}`;
+  }
+  if (tool === "run_command") {
+    const cmd = str("command");
+    return cmd ? `Run · ${cmd.slice(0, 40)}` : "Run";
+  }
+  if (tool === "write_to_file" || tool === "replace_file_content") {
+    const file = str("file_path") || str("path");
+    return file ? `Edit · ${lastPathComponent(file)}` : "Edit";
+  }
+  if (tool === "view_file") {
+    const file = str("path") || str("file_path");
+    return file ? `Read · ${lastPathComponent(file)}` : "Read";
+  }
+  if (tool === "search_web") {
+    const query = str("query");
+    return query ? `Search · ${query.slice(0, 40)}` : "Search";
+  }
+  if (tool === "read_url_content") {
+    const url = str("url");
+    return url ? `Fetch · ${url.slice(0, 40)}` : "Fetch";
+  }
+
+  const label = TOOL_LABELS[tool] ?? tool;
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
   const path = str("path");
@@ -177,6 +206,8 @@ function handleHook(island: Island, payload: HookPayload) {
   const ensurePill = () => {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t && cwd) t.sessionCwd = cwd;
     } else {
       upsert(projectName, cwd);
     }
@@ -237,7 +268,10 @@ function handleHook(island: Island, payload: HookPayload) {
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       window.setTimeout(() => {
-        if (isExternalAgent) {
+        if (agentId === State.mainPillId || agentId === "agent_antigravity") {
+          State.updateTask(agentId, "idle");
+          State.setPillBadge(agentId, null);
+        } else if (isExternalAgent) {
           State.removeTask(agentId);
         } else {
           State.updateTask(agentId, "idle");
@@ -254,7 +288,10 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
-      if (isExternalAgent) {
+      if (agentId === State.mainPillId || agentId === "agent_antigravity") {
+        State.updateTask(agentId, "idle");
+        State.setPillBadge(agentId, null);
+      } else if (isExternalAgent) {
         State.removeTask(agentId);
       } else {
         State.updateTask(agentId, "idle");

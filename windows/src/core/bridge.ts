@@ -85,6 +85,13 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  localChatModels: (baseUrl: string) =>
+    callOrThrow<string[]>("local_chat_models", { baseUrl }),
+  localChatSend: (baseUrl: string, model: string, messages: { role: string; content: string }[]) =>
+    callOrThrow<{ text: string }>("local_chat_send", { baseUrl, model, messages }),
+  webSearch: (query: string) => callOrThrow<SearchResult[]>("web_search", { query }),
+  webFetch: (url: string) => callOrThrow<string>("web_fetch", { url }),
+  openApp: (name: string) => callOrThrow<string>("open_app", { name }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -99,7 +106,41 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+
+  // ── Voice ─────────────────────────────────────────────────────────────────
+  ttsSpeak: (
+    text: string,
+    voice: string,
+    lang: string,
+    rate?: string,
+    volume?: string,
+    pitch?: string,
+  ) => callOrThrow<number[]>("tts_speak", { text, voice, lang, rate, volume, pitch }),
+
+  ttsStop: () => call<void>("tts_stop"),
+
+  sttTranscribe: (audioBase64: string, lang: string, provider: string, whisperUrl: string) =>
+    callOrThrow<string>("stt_transcribe", { audioBase64, lang, provider, whisperUrl }),
+
+  wakeTranscribe: (audioBase64: string, lang: string, prompt: string) =>
+    callOrThrow<string>("wake_transcribe", { audioBase64, lang, prompt }),
+  wakeServerWarmUp: () => call<void>("wake_server_warm_up"),
+  wakeServerStop: () => call<void>("wake_server_stop"),
+
+  startWakeWordListener: (wakeWord: string) =>
+    call<void>("start_wake_word_listener", { wakeWord }),
+
+  stopWakeWordListener: () => call<void>("stop_wake_word_listener"),
+
+  listenWakeWord: (callback: () => void) =>
+    onEvent<null>("wake-word-detected", () => callback()),
 };
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
 
 export interface IntegrationUpdate {
   id: string;

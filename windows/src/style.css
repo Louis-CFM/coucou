@@ -898,6 +898,64 @@ input[type="range"]::-webkit-slider-thumb {
   transform: scale(0.94);
 }
 
+.mic-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--dim-2);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  transition: all 0.15s ease-out;
+}
+
+.mic-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--ink);
+}
+
+.mic-btn.listening {
+  background: #f43f5e;
+  color: #fff;
+  animation: voicePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(244, 63, 94, 0);
+  }
+}
+
+.web-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--dim-2);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  transition: all 0.15s ease-out;
+}
+
+.web-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--ink);
+}
+
+.web-btn.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
 /* ── Drop zone ──────────────────────────────────────────────────────────── */
 
 .drop-card {

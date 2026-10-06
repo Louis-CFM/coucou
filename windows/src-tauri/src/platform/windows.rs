@@ -15,8 +15,9 @@ use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
-    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, GetWindowTextW,
+    IsWindowVisible, SetForegroundWindow, SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, SW_RESTORE,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -100,6 +101,87 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
         }
     }
     None
+}
+
+unsafe extern "system" fn enum_antigravity_window(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    if !IsWindowVisible(hwnd).as_bool() {
+        return true.into();
+    }
+    let mut title = [0u16; 512];
+    let len = GetWindowTextW(hwnd, &mut title);
+    if len > 0 {
+        let text = String::from_utf16_lossy(&title[..len as usize]);
+        if text.contains("Antigravity") {
+            let target_ptr = lparam.0 as *mut HWND;
+            *target_ptr = hwnd;
+            return false.into();
+        }
+    }
+    true.into()
+}
+
+pub fn focus_antigravity_window() -> bool {
+    let mut target = HWND::default();
+    unsafe {
+        let _ = EnumWindows(Some(enum_antigravity_window), LPARAM(&mut target as *mut HWND as isize));
+    }
+    if !target.0.is_null() {
+        unsafe {
+            let _ = ShowWindow(target, SW_RESTORE);
+            SetForegroundWindow(target).as_bool()
+        }
+    } else {
+        false
+    }
+}
+
+pub fn open_terminal(path: Option<&str>) -> bool {
+    if focus_antigravity_window() {
+        return true;
+    }
+
+    let dir = path.filter(|p| {
+        let path_obj = std::path::Path::new(p);
+        path_obj.is_absolute() && path_obj.is_dir()
+    });
+
+    if let Some(wt) = find_on_path("wt") {
+        let mut cmd = Command::new(wt);
+        if let Some(d) = dir {
+            cmd.args(["-d", d]);
+        }
+        if cmd.spawn().is_ok() {
+            return true;
+        }
+    }
+
+    let mut ps = Command::new("powershell.exe");
+    if let Some(d) = dir {
+        let escaped = d.replace('\'', "''");
+        ps.args(["-NoExit", "-Command", &format!("Set-Location -LiteralPath '{escaped}'")]);
+    } else {
+        ps.arg("-NoExit");
+    }
+    if ps.spawn().is_ok() {
+        return true;
+    }
+
+    if let Some(code) = find_on_path("code") {
+        let mut cmd = Command::new(code);
+        if let Some(d) = dir {
+            cmd.arg(d);
+        }
+        if no_console(&mut cmd).spawn().is_ok() {
+            return true;
+        }
+    }
+
+    if let Some(d) = dir {
+        reveal_folder(d);
+        return true;
+    }
+
+    false
 }
 
 // ── Who we are ────────────────────────────────────────────────────────────────

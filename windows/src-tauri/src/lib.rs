@@ -11,8 +11,13 @@ mod platform;
 mod secrets;
 mod settings;
 mod tray;
+mod local_chat;
+mod voice_wake;
+mod tts;
+mod stt;
+mod whisper_server;
+mod web_access;
 
-use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
@@ -61,12 +66,14 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed) = {
+    let (screen_changed, autostart_changed, voice_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let voice_changed = current.voice_enabled != settings.voice_enabled
+            || current.voice_wake_word != settings.voice_wake_word;
         *current = settings.clone();
-        (screen_changed, autostart_changed)
+        (screen_changed, autostart_changed, voice_changed)
     };
     if let Err(err) = settings::save(&settings) {
         eprintln!("[coucou] could not save settings: {err}");
@@ -76,6 +83,13 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let result = if settings.autostart { manager.enable() } else { manager.disable() };
         if let Err(err) = result {
             eprintln!("[coucou] autostart: {err}");
+        }
+    }
+    if voice_changed {
+        if settings.voice_enabled {
+            whisper_server::warm_up();
+        } else {
+            whisper_server::stop();
         }
     }
     if screen_changed {
@@ -132,37 +146,10 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to the file manager otherwise.
+/// "Open terminal" focuses Antigravity or opens terminal/editor/folder.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
-    // No shell anywhere near this. The path is a project folder chosen by
-    // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
-    // or `$` in a folder name as syntax. Finding the launcher ourselves and
-    // handing the path over as a separate argument keeps it a path.
-    let path = path.filter(|p| !p.is_empty());
-    // It arrives in a hook payload: only an existing folder, given by its full
-    // path, goes any further. `code` would read `--something` as an option, and
-    // xdg-open would launch a file with whatever handles its type.
-    if let Some(p) = path.as_deref() {
-        let p = std::path::Path::new(p);
-        if !(p.is_absolute() && p.is_dir()) {
-            return false;
-        }
-    }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
-        if let Some(p) = path.as_deref() {
-            cmd.arg(p);
-        }
-        if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
-        }
-    }
-    if let Some(p) = path.as_deref() {
-        platform::reveal_folder(p);
-    }
-    false
+    platform::open_terminal(path.as_deref())
 }
 
 #[tauri::command]
@@ -250,6 +237,51 @@ fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
+#[tauri::command]
+async fn local_chat_models(base_url: String) -> Result<Vec<String>, String> {
+    local_chat::models(&base_url).await
+}
+
+#[tauri::command]
+async fn local_chat_send(
+    base_url: String,
+    model: String,
+    messages: Vec<local_chat::LocalChatMessage>,
+) -> Result<local_chat::LocalChatReply, String> {
+    local_chat::chat_send(&base_url, &model, messages).await
+}
+
+#[tauri::command]
+async fn web_search(query: String) -> Result<Vec<web_access::SearchResult>, String> {
+    web_access::search(&query).await
+}
+
+#[tauri::command]
+async fn web_fetch(url: String) -> Result<String, String> {
+    web_access::fetch(&url).await
+}
+
+#[tauri::command]
+fn open_app(name: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let output = std::process::Command::new("cmd")
+            .args(["/C", "start", "\"\"", &name])
+            .output()
+            .map_err(|e| format!("Failed to start {}: {}", name, e))?;
+        
+        if output.status.success() {
+            Ok(format!("Opened {}", name))
+        } else {
+            Err(format!("Could not find or open application '{}'", name))
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Opening apps is only supported on Windows currently.".into())
+    }
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -299,7 +331,7 @@ fn log_line(message: String) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.
@@ -344,6 +376,9 @@ fn create_settings_window(app: &AppHandle) {
 }
 
 pub fn show_settings_window(app: &AppHandle) {
+    if app.get_webview_window("settings").is_none() {
+        create_settings_window(app);
+    }
     let Some(win) = app.get_webview_window("settings") else {
         log::line("settings window missing");
         return;
@@ -401,6 +436,19 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            local_chat_models,
+            local_chat_send,
+            tts::tts_speak,
+            tts::tts_stop,
+            stt::stt_transcribe,
+            voice_wake::start_wake_word_listener,
+            voice_wake::stop_wake_word_listener,
+            whisper_server::wake_transcribe,
+            whisper_server::wake_server_warm_up,
+            whisper_server::wake_server_stop,
+            web_search,
+            web_fetch,
+            open_app,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -426,6 +474,9 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            if loaded.voice_enabled {
+                whisper_server::warm_up();
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
