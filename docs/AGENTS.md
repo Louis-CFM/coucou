@@ -119,17 +119,9 @@ A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabl
 
 A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
 
-The GitHub build exposes Gemini CLI (`agent_gemini`) and Antigravity (`agent_antigravity`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as the main pill; session support is coming in a future version.
+The upstream macOS build has its own release-specific catalog and hook support. In the **Lighto Edition 1.0.0 Windows build**, the shipped agent integrations are Claude Code (shown as the VS Code pill), Pi (`agent_pi`, `#8B5CF6`), Copilot CLI (`agent_copilot`, `#58A6FF`), Antigravity (`agent_antigravity`) and Codex (`agent_codex`). Their enabled pills share a five-pill budget with integrations; each agent keeps its own session state and permission flow.
 
-Pi (`agent_pi`, `#8B5CF6`) and Copilot CLI (`agent_copilot`, `#58A6FF`) are declared pills
-on both platforms and share the same ids and colours as `windows/src/core/state.ts`. All
-four agent pills are declared, so a session ending resets them to idle rather than making
-them disappear.
-
-On Windows each agent writes to its own file, so installing one can never clobber another's
-hooks: Claude Code `~/.claude/settings.json`, Copilot `~/.copilot/hooks/coucou.json`,
-Antigravity `~/.gemini/config/hooks.json`, and Pi `~/.pi/agent/extensions/coucou.ts` (a
-Pi *extension*, not a settings merge — install writes the file, uninstall removes it).
+On Windows each agent writes to its own managed file, preserving unrelated configuration: Claude Code `%USERPROFILE%\\.claude\\settings.json`, Copilot `%USERPROFILE%\\.copilot\\hooks\\coucou.json`, Antigravity `%USERPROFILE%\\.gemini\\config\\hooks.json`, Codex `%USERPROFILE%\\.codex\\hooks\\hooks.json`, and Pi `%USERPROFILE%\\.pi\\agent\\extensions\\coucou.ts`. Pi's file is an extension, not a settings merge; Coucou will not replace an extension it did not install.
 
 ## Real-world examples
 

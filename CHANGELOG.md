@@ -7,9 +7,10 @@ top, plus the permission work described below. The version tracks our own
 release line; the base is upstream 0.1.7.
 
 - Everything from 0.1.6: Mochi on the desktop with the wardrobe, greetings, live file-edit tickers and diffs, and the expanded GitHub integration (pull requests, CI, review requests and the contribution grid)
-- Four agent pills now, each with its own name and colour: VS Code (Claude Code), Pi, Copilot CLI and Antigravity. Every event is routed by the agent tag the relay carries, so one agent's approval card can never land on another agent's pill
+- Five agent pills now, each with its own name and colour: VS Code (Claude Code), Pi, Copilot CLI, Codex and Antigravity. Every event is routed by the agent tag the relay carries, so one agent's approval card can never land on another agent's pill
 - Pi: install writes one extension file to `~/.pi/agent/extensions/`. Pi reports its sessions, tool calls and a per-turn summary, and permission requests block until you Allow or Deny in the island
 - Copilot CLI: Coucou's entries go into `~/.copilot/hooks/coucou.json` in the flat `exec`/`args`/`timeoutSec` shape Copilot expects. Only `PermissionRequest` waits on you
+- Codex: installs its hook entries in `~/.codex/hooks/hooks.json`, preserves unrelated hooks and routes Codex activity and supported permission requests to its own pill
 - Antigravity: `~/.gemini/config/hooks.json`, wired to Antigravity's own `PreInvocation`/`PostInvocation` events plus the legacy lifecycle names so a session is never half-tracked
 - Settings has an agent picker: pick an agent, see whether its hooks are installed, read the diff, and write it — all with a backup and a fingerprint guard, exactly as Claude Code always did
 - Every agent writes to its own file, so installing one can never clobber another's hooks, and uninstalling restores the file byte for byte

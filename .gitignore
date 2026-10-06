@@ -19,3 +19,12 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+
+# Maintainer/agent notes and internal planning docs; public guides stay tracked.
+/CLAUDE.md
+/DESKTOP-MOCHI-IMPLEMENTATION-SUMMARY.md
+/DIVERGENCE-*.md
+/PARITY-PLAN-*.md
+/PI-PERMISSION-SYSTEM-NOTES.md
+/docs/INTEGRATIONS.md
+/docs/SPEC.md
