@@ -6,6 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
+import { Bridge, type CursorStatus } from "../core/bridge";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -407,6 +408,29 @@ function buildNote(): ViewHost {
 
 // ── In-island settings ────────────────────────────────────────────────────────
 
+/** Green when the CLI is signed in. Its status spawns the CLI: checked at most every 30 s. */
+function cliBadge(name: string, status: () => Promise<CursorStatus | null>) {
+  const el = h("span", { class: "status-badge" });
+  let loggedIn = false;
+  let checkedAt = 0;
+  const paint = () => {
+    clear(el);
+    el.append(dot(loggedIn ? "#22C55E" : "#F4505E", 6), h("span", { text: name }));
+  };
+  return {
+    el,
+    sync() {
+      paint();
+      if (Date.now() - checkedAt < 30_000) return;
+      checkedAt = Date.now();
+      void status().then((st) => {
+        loggedIn = st?.loggedIn ?? false;
+        paint();
+      });
+    },
+  };
+}
+
 function buildSettings(actions: ViewActions): ViewHost {
   const soundSwitch = h("button", { class: "switch", onclick: () => actions.toggleSound() });
   const volume = h("input", {
@@ -419,6 +443,8 @@ function buildSettings(actions: ViewActions): ViewHost {
   );
   const claudeBadge = h("span", { class: "status-badge" });
   const apiBadge = h("span", { class: "status-badge" });
+  const cursorBadge = cliBadge("Cursor", Bridge.cursorStatus);
+  const kiroBadge = cliBadge("Kiro", Bridge.kiroStatus);
 
   const rows = h(
     "div",
@@ -436,6 +462,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       { class: "settings-row", style: "gap:14px" },
       claudeBadge,
       apiBadge,
+      cursorBadge.el,
+      kiroBadge.el,
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
@@ -465,6 +493,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       );
       clear(apiBadge);
       apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      cursorBadge.sync();
+      kiroBadge.sync();
     },
   };
 }

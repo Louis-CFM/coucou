@@ -92,6 +92,10 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Who may answer in the chat; Rust tries Cursor, then Kiro, then the API, until one answers. */
+  chatProviders: ("anthropic" | "cursor" | "kiro")[];
+  cursorModel: string;
+  kiroModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +110,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProviders: ["anthropic"],
+  cursorModel: "auto",
+  kiroModel: "auto",
 };
 
 type Listener = () => void;

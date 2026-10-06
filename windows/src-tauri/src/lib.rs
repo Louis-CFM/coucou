@@ -1,6 +1,8 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod cursor_chat;
+mod kiro_chat;
 mod files;
 mod hooks;
 mod integrations;
@@ -21,6 +23,8 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
 use claude::{Chat, ChatContext, ChatReply};
+use cursor_chat::CursorChat;
+use kiro_chat::KiroChat;
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -238,16 +242,78 @@ fn approval_decline(app: AppHandle, request_id: String) {
 async fn chat_send(
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    cursor: State<'_, CursorChat>,
+    kiro: State<'_, KiroChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (providers, model, cursor_model, kiro_model) = {
+        let s = shared.settings.lock().unwrap();
+        (s.chat_providers.clone(), s.model.clone(), s.cursor_model.clone(), s.kiro_model.clone())
+    };
+    // Each provider keeps its own conversation: one taking over starts fresh.
+    let mut errors = Vec::new();
+    for p in CHAT_ORDER.iter().filter(|p| providers.iter().any(|q| q == *p)) {
+        let (q, c) = (query.clone(), context.clone());
+        let reply = match *p {
+            "cursor" => cursor_chat::send(&cursor, &cursor_model, q, c).await,
+            "kiro" => kiro_chat::send(&kiro, &kiro_model, q, c).await,
+            _ => claude::send(&chat, &model, q, c).await,
+        };
+        match reply {
+            Ok(r) => return Ok(r),
+            Err(e) => errors.push((*p, e)),
+        }
+    }
+    Err(match errors.len() {
+        0 => "No chat is turned on. Pick one in Settings → Chat.".into(),
+        1 => errors.remove(0).1,
+        _ => errors.iter().map(|(p, e)| format!("{}: {e}", chat_name(p))).collect::<Vec<_>>().join("\n"),
+    })
+}
+
+/// The order chat providers are tried in: the user's plans before the paid API.
+const CHAT_ORDER: [&str; 3] = ["cursor", "kiro", "anthropic"];
+
+fn chat_name(provider: &str) -> &'static str {
+    match provider {
+        "cursor" => "Cursor",
+        "kiro" => "Kiro",
+        _ => "Claude API",
+    }
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, cursor: State<CursorChat>, kiro: State<KiroChat>) {
     chat.reset();
+    cursor.reset();
+    kiro.reset();
+}
+
+#[tauri::command]
+async fn kiro_status() -> cursor_chat::CursorStatus {
+    kiro_chat::status().await
+}
+
+#[tauri::command]
+async fn kiro_models() -> Vec<(String, String)> {
+    kiro_chat::models().await
+}
+
+#[tauri::command]
+async fn cursor_status() -> cursor_chat::CursorStatus {
+    cursor_chat::status().await
+}
+
+#[tauri::command]
+async fn cursor_models() -> Vec<(String, String)> {
+    cursor_chat::models().await
+}
+
+/// Only from the "Sign in with Cursor" button: opens the browser sign-in.
+#[tauri::command]
+fn cursor_login() -> Result<(), String> {
+    cursor_chat::login()
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -374,6 +440,8 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(CursorChat::default())
+        .manage(KiroChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -393,6 +461,11 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            cursor_status,
+            cursor_models,
+            cursor_login,
+            kiro_status,
+            kiro_models,
             ingest_file,
             secret_present,
             secret_set,
