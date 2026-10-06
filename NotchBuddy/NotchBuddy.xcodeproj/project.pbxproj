@@ -34,6 +34,8 @@
 		2C798C3837A63B9BB561A1A0 /* HookServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */; };
 		2CC2E3B688B15BBEB3AE3BCE /* WindowContextCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */; };
 		2D7F17539756652438EF7502 /* RenderPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3538A7E3FD2FC8ED0CEDDB /* RenderPoller.swift */; };
+		C1130D031C5BDAD272E39A24 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC884459AA588058FD2D28C /* SpotifyController.swift */; };
+		213FE39BC218CE0317EFBA06 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC884459AA588058FD2D28C /* SpotifyController.swift */; };
 		2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
 		2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
@@ -178,6 +180,7 @@
 		B32FB972D02162720E566674 /* DiffEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffEngine.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
 		BA3538A7E3FD2FC8ED0CEDDB /* RenderPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderPoller.swift; sourceTree = "<group>"; };
+		0AC884459AA588058FD2D28C /* SpotifyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyController.swift; sourceTree = "<group>"; };
 		BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionPoller.swift; sourceTree = "<group>"; };
 		BFE88A53AEAA637F866D479D /* ChatMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMarkdownView.swift; sourceTree = "<group>"; };
 		C066E2B991AA4F56B2724263 /* sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sounds; path = Resources/sounds; sourceTree = SOURCE_ROOT; };
@@ -233,6 +236,7 @@
 				F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */,
 				BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */,
 				BA3538A7E3FD2FC8ED0CEDDB /* RenderPoller.swift */,
+				0AC884459AA588058FD2D28C /* SpotifyController.swift */,
 				61B5FDDE03F5F711146937E2 /* ResendPoller.swift */,
 				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
 				7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */,
@@ -487,6 +491,7 @@
 				2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */,
 				BDD8A210DD6D9DA2D15BC5EE /* PillCatalog.swift in Sources */,
 				FE5441D9C47663D58CB5A973 /* RenderPoller.swift in Sources */,
+				C1130D031C5BDAD272E39A24 /* SpotifyController.swift in Sources */,
 				967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */,
 				6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */,
 				9728564FCBF0334E68E9E6E7 /* SessionPublisher.swift in Sources */,
@@ -568,6 +573,7 @@
 				78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */,
 				13663D98590927AF71C17628 /* PillCatalog.swift in Sources */,
 				2D7F17539756652438EF7502 /* RenderPoller.swift in Sources */,
+				213FE39BC218CE0317EFBA06 /* SpotifyController.swift in Sources */,
 				EB23ED9F1C12EA8B54A76A91 /* ResendPoller.swift in Sources */,
 				FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */,
 				DE66BB6D18F467A7F4220CC3 /* SessionPublisher.swift in Sources */,
