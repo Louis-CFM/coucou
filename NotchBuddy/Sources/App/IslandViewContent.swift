@@ -564,9 +564,9 @@ struct FinishedView: View {
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
                     #if !APPSTORE
-                    PrimaryButton("Open terminal") {
+                    PrimaryButton(state.lastAgentBundleId == "com.anthropic.claudefordesktop" ? "Open Claude" : "Open terminal") {
                         let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                        let activated = terminalBundleIds.compactMap { id in
+                        let activated = state.activateAgentApp() ? true : terminalBundleIds.compactMap { id in
                             NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
                         }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
                         if activated == nil {
