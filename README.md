@@ -79,6 +79,8 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🫧 **Liquid Glass, native to the bone** — SwiftUI, tabs, zoom transitions, context menus, swipe actions, alternate icons, Mochi at 120 Hz.
 - 🔒 **Through your own iCloud** — sessions sync through your private CloudKit database; project names, commands and questions are encrypted with your iCloud keys. No Coucou server sees your projects, commands or keys. Turn it on in the Mac app: Settings → General → iPhone.
 
+**Get it on your iPhone in 3 steps:** install Coucou on your iPhone ([App Store or TestFlight](#iphone)), turn on **Settings → General → iPhone** in the Mac app (0.1.8 or later), and use the same Apple Account in iCloud on both. Full guide, troubleshooting and build-it-yourself: [docs/IPHONE.md](docs/IPHONE.md).
+
 <table>
 <tr>
 <td><img src="docs/media/claude-code.png" alt="Claude Code session"></td>
@@ -115,6 +117,15 @@ Windows 0.1.1 and Linux 0.1.1 (beta) are in Releases under the `windows-v*` and 
 Coucou is coming to the **Mac App Store** and the **iPhone App Store**: one click to install, automatic updates, and the iPhone app pairs with your Mac through your iCloud account, with nothing to configure. The links will be here as soon as Apple publishes them.
 
 The App Store build of the Mac app runs in Apple's sandbox, so a few features stay in the GitHub build: Claude plan usage, the Apple Music pill and attaching the front window to the chat.
+
+### iPhone
+
+1. **Install Coucou on your iPhone** (iOS 18 or later): from the App Store once it's out, or the TestFlight beta. Both links will be here.
+2. **On your Mac**, with Coucou 0.1.8 or later: **Settings… → General → iPhone**, turn on **Show my agent sessions on my iPhone**, and **Move Mochi to my iPhone's Dynamic Island when my Mac is locked** for the Lock Screen.
+3. **Same Apple Account** in iCloud on the Mac and the iPhone. That's the whole link: no account, no pairing code.
+4. Open Coucou on the iPhone, allow notifications, and start a Claude Code session on the Mac.
+
+Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md).
 
 ### Download for macOS
 
@@ -197,6 +208,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 | **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |
 | **Ollama server** *(macOS)* | chat with local models via Ollama | Settings → Chat → Local models → **Connect** |
 | **LM Studio server** *(macOS)* | chat with local models via LM Studio | Settings → Chat → Local models → **Connect** |
+| **iPhone** *(macOS)* | sessions, approvals, questions and Mochi on your iPhone | Settings → General → iPhone · your private iCloud, see [docs/IPHONE.md](docs/IPHONE.md) |
 | **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
 
