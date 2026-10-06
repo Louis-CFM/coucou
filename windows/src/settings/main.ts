@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type WslStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -39,6 +39,151 @@ function renderDiff(text: string): HTMLElement {
     box.append(h("div", { class: cls, text: line }));
   }
   return box;
+}
+
+// ── Mochi's engine ────────────────────────────────────────────────────────────
+// Mochi's chat can run on the user's own Claude Code (Windows or a WSL distro)
+// instead of the API key. One "Use for Mochi" switch per Claude Code; at most
+// one is on, and with none on the API key is used.
+
+const engineListeners: (() => void)[] = [];
+const engineSwitches: { backend: string; el: HTMLElement }[] = [];
+
+function engineLabel(backend: string): string {
+  if (backend === "windows") return "Claude Code on Windows";
+  if (backend.startsWith("wsl:")) return `Claude Code in WSL · ${backend.slice(4)}`;
+  return "the Claude API";
+}
+
+function syncEngine() {
+  for (let i = engineSwitches.length - 1; i >= 0; i--) {
+    const s = engineSwitches[i];
+    if (!s.el.isConnected) engineSwitches.splice(i, 1); // a redrawn block
+    else s.el.classList.toggle("on", settings.chatBackend === s.backend);
+  }
+  for (const fn of engineListeners) fn();
+}
+
+/** Why a found Claude Code can't answer yet, and the one command that fixes it. */
+function signInNotice(backend: string, cli: string): HTMLElement {
+  const wsl = backend.startsWith("wsl:");
+  const app = !wsl && /\\Claude\\claude-code\\/i.test(cli);
+  const why = wsl
+    ? `This Claude Code isn't signed in. Sign it in once in ${backend.slice(4)}, then reopen the settings:`
+    : app
+      ? "This is the Claude app's own copy of Claude Code. The app signs it in only when the app itself runs it, so for Mochi it needs signing in once on its own. In a terminal, run this, then reopen the settings:"
+      : "This Claude Code isn't signed in. Sign it in once in a terminal, then reopen the settings:";
+  const command = wsl ? "claude auth login" : `& "${cli}" auth login`;
+  return h("div", { class: "notice warn" },
+    h("div", { text: why }),
+    h("code", { class: "cmd", text: command }),
+  );
+}
+
+function mochiRow(backend: string, cli: string | null, missing: string): HTMLElement {
+  const sw = h("button", { class: settings.chatBackend === backend ? "switch on" : "switch" });
+  engineSwitches.push({ backend, el: sw });
+  if (!cli) {
+    sw.disabled = true;
+    sw.title = missing;
+  }
+  sw.addEventListener("click", () => {
+    settings.chatBackend = settings.chatBackend === backend ? "api" : backend;
+    void save();
+    syncEngine();
+  });
+  const row = h("div", { class: "row" },
+    h("label", { text: "Use for Mochi" }),
+    sw,
+    h("span", {
+      class: "hint",
+      text: cli
+        ? "Mochi's chat answers through this Claude Code — your subscription, no API key."
+        : missing,
+    }),
+  );
+  const box = h("div", { style: "display:flex;flex-direction:column;gap:8px" }, row);
+  // Installed is not enough: a Claude Code nobody signed in to can't answer.
+  if (cli) {
+    void Bridge.claudeLoggedIn(backend).then((loggedIn) => {
+      if (loggedIn !== false) return;
+      box.append(signInNotice(backend, cli));
+      // Leave a switch that is already on alone, so it can still be turned off.
+      if (settings.chatBackend !== backend) {
+        sw.disabled = true;
+        sw.title = "Sign this Claude Code in first";
+      }
+    });
+  }
+  return box;
+}
+
+// ── Diff → confirm → write ────────────────────────────────────────────────────
+// The one path by which hooks are ever written, for Windows and WSL alike: show
+// the exact diff and the backup, write only on the click, and refuse a file
+// that changed in between (the fingerprint).
+
+interface FlowOps {
+  preview: () => Promise<HookPreview>;
+  apply: (fingerprint: string) => Promise<string>;
+  back: () => void;
+  done: () => void;
+  /** Named in the hint: "This is exactly what will change in your …". */
+  what: string;
+  /** Extra line shown above the diff, e.g. the relay script that comes with it. */
+  extra?: string;
+}
+
+async function previewFlow(body: HTMLElement, install: boolean, ops: FlowOps) {
+  let preview: HookPreview;
+  try {
+    preview = await ops.preview();
+  } catch (err) {
+    // An unreadable or invalid settings.json stops here rather than being
+    // treated as empty and written over.
+    clear(body);
+    body.append(
+      h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+      h("div", { class: "row" }, h("button", { text: "Back", onclick: ops.back })),
+    );
+    return;
+  }
+  clear(body);
+  body.append(
+    h("div", {
+      class: "hint",
+      text: install
+        ? `This is exactly what will change in your ${ops.what}. Your own hooks are left untouched.`
+        : "This removes Coucou's entries only. Your own hooks are left untouched.",
+    }),
+  );
+  if (ops.extra) body.append(h("div", { class: "hint", text: ops.extra }));
+  body.append(
+    renderDiff(preview.diff),
+    h("div", { class: "row" },
+      h("span", { class: "path", text: `Backup → ${preview.backup}` }),
+    ),
+  );
+  const confirm = h("button", {
+    class: install ? "primary" : "danger",
+    text: install ? "Back up and write" : "Back up and remove",
+  });
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    try {
+      const backup = await ops.apply(preview.fingerprint);
+      clear(body);
+      body.append(h("div", {
+        class: "notice ok",
+        text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+      }));
+      window.setTimeout(ops.done, 2600);
+    } catch (err) {
+      confirm.disabled = false;
+      body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+    }
+  });
+  body.append(h("div", { class: "row" }, confirm, h("button", { text: "Cancel", onclick: ops.back })));
 }
 
 // ── Claude Code section ───────────────────────────────────────────────────────
@@ -79,6 +224,7 @@ function claudeSection(status: HookStatus): HTMLElement {
         h("span", { class: "path", text: status.hookPath }),
         statusDot(status.hookReady),
       ),
+      mochiRow("windows", status.claudeCli, "Claude Code isn't installed on Windows."),
     );
 
     if (!status.hookReady) {
@@ -111,64 +257,139 @@ function claudeSection(status: HookStatus): HTMLElement {
     body.append(actions);
   }
 
-  async function showPreview(install: boolean) {
-    let preview;
-    try {
-      preview = await Bridge.hooksPreview(install);
-    } catch (err) {
-      // An unreadable or invalid settings.json stops here rather than being
-      // treated as empty and written over.
-      clear(body);
-      body.append(
-        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
-        h("div", { class: "row" }, h("button", {
-          text: "Back",
-          onclick: () => { clear(body); draw(); },
-        })),
-      );
-      return;
-    }
-    if (!preview) return;
-    clear(body);
-    body.append(
-      h("div", {
-        class: "hint",
-        text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
-      }),
-      renderDiff(preview.diff),
-      h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
-      ),
-    );
-    const confirm = h("button", {
-      class: install ? "primary" : "danger",
-      text: install ? "Back up and write" : "Back up and remove",
+  function showPreview(install: boolean) {
+    void previewFlow(body, install, {
+      preview: () => Bridge.hooksPreview(install),
+      apply: (fingerprint) => Bridge.hooksApply(install, fingerprint),
+      back: () => { clear(body); draw(); },
+      done: () => void rebuild(),
+      what: "settings.json",
     });
-    confirm.addEventListener("click", async () => {
-      confirm.disabled = true;
-      try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
-        clear(body);
-        body.append(h("div", {
-          class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
-        }));
-        window.setTimeout(() => void rebuild(), 2600);
-      } catch (err) {
-        confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
-      }
-    });
-    body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
-      onclick: () => { clear(body); draw(); },
-    })));
   }
+
+  // Claude Code may have been installed (or signed in) since launch.
+  void onEvent<null>("settings-shown", () => void rebuild());
 
   draw();
   return section;
+}
+
+// ── WSL section ───────────────────────────────────────────────────────────────
+// Claude Code running inside a WSL distro. Each distro gets its own relay script
+// and its own ~/.claude/settings.json, through the same reviewed-diff path.
+// Asking a distro for its state starts it, so this only runs while the window
+// is on screen (the "settings-shown" cue), never at launch.
+
+function wslSection(hookReady: boolean): { section: HTMLElement; refresh: () => Promise<void> } {
+  const dot = statusDot(false);
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+  const section = h("section", { id: "wsl" }, h("h2", {}, dot, h("span", { text: "WSL" })), body);
+  body.append(h("div", { class: "hint", text: "Open the settings to look for WSL distributions." }));
+
+  let busy = false;
+  let statuses: WslStatus[] = [];
+
+  async function refresh() {
+    if (busy) return;
+    busy = true;
+    try {
+      clear(body);
+      body.append(h("div", { class: "hint", text: "Looking for WSL distributions…" }));
+      const names = (await Bridge.wslDistros()) ?? [];
+      statuses = [];
+      for (const name of names) {
+        try {
+          statuses.push(await Bridge.wslStatus(name));
+        } catch (err) {
+          statuses.push({
+            distro: name, installed: false, settingsPath: "", relayPath: "",
+            relayReady: false, claudeCli: null, error: String(err),
+          });
+        }
+      }
+      draw();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function draw() {
+    clear(body);
+    dot.style.background = statuses.some((s) => s.installed) ? "#22c55e" : "#f4505e";
+    body.append(h("div", {
+      class: "hint",
+      text: statuses.length
+        ? "Claude Code running inside WSL reaches Coucou through a small relay script in the distribution. Install it to see those sessions in the island and approve their permissions."
+        : "No WSL distribution found. Install one with `wsl --install`, then refresh.",
+    }));
+    for (const st of statuses) body.append(distroBlock(st));
+    body.append(h("div", { class: "row" }, h("button", { text: "Refresh", onclick: () => void refresh() })));
+  }
+
+  function distroBlock(st: WslStatus): HTMLElement {
+    const block = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
+    block.append(h("div", { class: "row" },
+      statusDot(st.installed),
+      h("span", { style: "font-weight:600", text: st.distro }),
+    ));
+    if (st.error) {
+      block.append(h("div", { class: "notice warn", text: st.error }));
+      return block;
+    }
+    block.append(
+      h("div", { class: "row" },
+        h("label", { text: "settings.json" }),
+        h("span", { class: "path", text: st.settingsPath }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Relay script" }),
+        h("span", { class: "path", text: st.relayPath }),
+        statusDot(st.relayReady),
+      ),
+      mochiRow(`wsl:${st.distro}`, st.claudeCli, "Claude Code isn't installed in this distribution."),
+    );
+    if (st.installed && !st.relayReady) {
+      block.append(h("div", {
+        class: "notice warn",
+        text: "The hooks are there but the relay script is missing or out of date. Reinstall to fix it.",
+      }));
+    }
+
+    const back = () => draw();
+    const show = (install: boolean) => {
+      clear(block);
+      block.append(h("div", { class: "row" }, h("span", { style: "font-weight:600", text: st.distro })));
+      void previewFlow(block, install, {
+        preview: () => Bridge.wslHooksPreview(st.distro, install),
+        apply: (fingerprint) => Bridge.wslHooksApply(st.distro, install, fingerprint),
+        back,
+        done: () => void refresh(),
+        what: `${st.distro} settings.json`,
+        extra: install
+          ? `The relay script is written to ${st.relayPath} along with it.`
+          : `The relay script ${st.relayPath} is removed too.`,
+      });
+    };
+
+    const install = h("button", {
+      class: "primary",
+      text: st.installed ? "Reinstall hooks…" : "Install hooks…",
+      onclick: () => show(true),
+    });
+    // Same rule as Windows: no hooks pointing at a relay that isn't there.
+    if (!hookReady) {
+      install.disabled = true;
+      install.title = "coucou-hook.exe isn't installed yet — restart Coucou.";
+    }
+    const actions = h("div", { class: "row" }, install);
+    if (st.installed) {
+      actions.append(h("button", { class: "danger", text: "Uninstall hooks…", onclick: () => show(false) }));
+    }
+    block.append(actions);
+    return block;
+  }
+
+  return { section, refresh };
 }
 
 // ── Claude API section ────────────────────────────────────────────────────────
@@ -243,10 +464,22 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  const engine = h("div", { class: "notice" });
+  const drawEngine = () => {
+    const api = settings.chatBackend === "api";
+    engine.className = api ? "hint" : "notice ok";
+    engine.textContent = api
+      ? "Mochi answers with this key. To use your Claude subscription instead, turn on \"Use for Mochi\" on a Claude Code above."
+      : `Mochi answers through ${engineLabel(settings.chatBackend)}, on your subscription — the key below isn't used. The model is Claude Code's own.`;
+  };
+  engineListeners.push(drawEngine);
+  drawEngine();
+
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
+    engine,
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
@@ -426,7 +659,7 @@ async function main() {
     version = boot.version;
   }
   const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+    installed: false, settingsPath: "", hookPath: "", hookReady: false, claudeCli: null,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
@@ -438,10 +671,15 @@ async function main() {
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
 
+  // WSL is a Windows thing: the Linux build leaves the section out. WebView2
+  // says "Windows" in its user agent, WebKitGTK says "Linux".
+  const wsl = /Windows/.test(navigator.userAgent) ? wslSection(status.hookReady) : null;
+
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    wsl?.section ?? "",
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
@@ -454,6 +692,20 @@ async function main() {
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
   });
+
+  // Every time the window comes up: refresh WSL (slow, so only while someone is
+  // looking) and scroll to the section it was opened for, if any.
+  const shown = (target: string) => {
+    if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    void wsl?.refresh();
+  };
+  void onEvent<null>("settings-shown", async () => shown((await Bridge.takeSettingsSection()) ?? ""));
+  // The first-launch offer can show the window before this page has loaded; the
+  // section it left behind says so. (The window is hidden at every other launch,
+  // and nothing here may start a distro then.)
+  const pending = (await Bridge.takeSettingsSection()) ?? "";
+  if (pending) shown(pending);
 }
+
 
 void main();
