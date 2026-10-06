@@ -172,6 +172,14 @@ xcodegen
 open NotchBuddy.xcodeproj   # then ⌘R
 ```
 
+**macOS 12–14 (legacy build)** — the default build targets macOS 15. To run Coucou on an older Mac, build it on a Mac with Xcode 26+ and copy the app over:
+
+```bash
+scripts/build-legacy.sh        # macOS 12+ by default; pass another target, e.g. 13.0
+```
+
+Unsigned (ad-hoc) and without the iPhone link. On macOS 12, "Launch at Mac startup" is unavailable and the option chips sit in a grid instead of a flowing row. First launch: right-click the app → **Open**.
+
 **Windows** — requirements: [Rust](https://rustup.rs), Node 20+, MSVC build tools.
 
 ```powershell

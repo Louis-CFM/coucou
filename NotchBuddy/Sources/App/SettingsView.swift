@@ -26,7 +26,10 @@ struct SettingsView: View {
     private var displayModels: [(id: String, label: String)] {
         fetchedModels.isEmpty ? Self.fallbackModels : fetchedModels
     }
-    @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
+    @State private var launchAtStartup: Bool = {
+        if #available(macOS 13, *) { return SMAppService.mainApp.status == .enabled }
+        return false
+    }()
     @State private var statusMessage: String = ""
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
@@ -142,7 +145,7 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
-                    .scrollContentBackground(.hidden)
+                    .scrollContentBackgroundHidden()
                 }
             }
             .frame(width: 200)
@@ -265,7 +268,7 @@ struct SettingsView: View {
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
-                    .onChange(of: state.hotkeyEnabled) { _, _ in
+                    .onChangeCompat(of: state.hotkeyEnabled) { _, _ in
                         HotKeyCenter.shared.reregister(.toggleIsland)
                     }
                 if state.hotkeyEnabled {
@@ -273,11 +276,11 @@ struct SettingsView: View {
                         Text("Shortcut")
                             .frame(width: 70, alignment: .leading)
                         ShortcutRecorderButton(flags: $hotkeyFlags, code: $hotkeyCode)
-                            .onChange(of: hotkeyFlags) { _, v in
+                            .onChangeCompat(of: hotkeyFlags) { _, v in
                                 state.hotkeyFlags = v
                                 HotKeyCenter.shared.reregister(.toggleIsland)
                             }
-                            .onChange(of: hotkeyCode) { _, v in
+                            .onChangeCompat(of: hotkeyCode) { _, v in
                                 state.hotkeyCode = v
                                 HotKeyCenter.shared.reregister(.toggleIsland)
                             }
@@ -292,7 +295,8 @@ struct SettingsView: View {
 
         GroupBox("Startup") {
             Toggle("Launch at Mac startup", isOn: $launchAtStartup)
-                .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
+                .disabled(ProcessInfo.processInfo.operatingSystemVersion.majorVersion < 13) // SMAppService: macOS 13+
+                .onChangeCompat(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
 
@@ -300,14 +304,14 @@ struct SettingsView: View {
         GroupBox("iPhone") {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Show my agent sessions on my iPhone", isOn: $iPhoneSyncEnabled)
-                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
                 Text("Sends your sessions to your private iCloud for the Coucou iPhone app. Project names, commands and questions are encrypted with your iCloud keys. Turning it off deletes them from iCloud.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
                 Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -315,7 +319,7 @@ struct SettingsView: View {
                 #if !APPSTORE
                 Toggle("Let my iPhone send instructions to Claude Code", isOn: $iPhoneInstructionsEnabled)
                     .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
                 Text("An instruction sent from the iPhone (Face ID required) continues your last Claude Code session in the background, in its folder, with claude --resume. This Mac checks for one every 15 s while this is on.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -345,7 +349,7 @@ struct SettingsView: View {
                         Text(def.name).tag(def.id)
                     }
                 }
-                .onChange(of: state.mainPillId) { _, newId in
+                .onChangeCompat(of: state.mainPillId) { _, newId in
                     state.activeIntegrations.remove(newId)
                     state.loadIntegrationTasks()
                     state.setFocus(newId)
@@ -616,7 +620,7 @@ struct SettingsView: View {
                     }
                     Text("Custom…").tag(Self.customModelTag)
                 }
-                .onChange(of: modelChoice) { _, choice in
+                .onChangeCompat(of: modelChoice) { _, choice in
                     if choice != Self.customModelTag {
                         state.claudeModel = choice
                     } else {
@@ -627,7 +631,7 @@ struct SettingsView: View {
                 if modelChoice == Self.customModelTag {
                     TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
                         .textFieldStyle(.roundedBorder)
-                        .onChange(of: customModel) { _, value in applyCustomModel(value) }
+                        .onChangeCompat(of: customModel) { _, value in applyCustomModel(value) }
                 }
 
                 Text("Used by the chat. The list comes from your Anthropic account.")
@@ -862,6 +866,7 @@ struct SettingsView: View {
     }
 
     private func toggleStartup(_ on: Bool) {
+        guard #available(macOS 13, *) else { return }
         do {
             if on { try SMAppService.mainApp.register() }
             else  { try SMAppService.mainApp.unregister() }

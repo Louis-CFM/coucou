@@ -42,7 +42,7 @@ struct ClaudePlanCardView: View {
         // Update countdown every 30s, only while visible
         .background(
             TimelineView(.periodic(from: .now, by: 30)) { ctx in
-                Color.clear.onChange(of: ctx.date) { _, d in now = d }
+                Color.clear.onChangeCompat(of: ctx.date) { _, d in now = d }
             }
         )
     }

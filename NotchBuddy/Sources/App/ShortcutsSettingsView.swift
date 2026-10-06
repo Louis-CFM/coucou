@@ -79,7 +79,7 @@ struct ShortcutsSettingsView: View {
 
             ShortcutRecorderButton(flags: specFlagsBinding(action), code: specCodeBinding(action))
                 .disabled(!isEnabled)
-                .onChange(of: specs[action]) { _, _ in specChanged(action) }
+                .onChangeCompat(of: specs[action]) { _, _ in specChanged(action) }
 
             if hasSysConf {
                 conflictTag("System conflict", color: .orange)

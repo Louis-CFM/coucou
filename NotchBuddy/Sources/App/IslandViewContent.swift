@@ -145,7 +145,7 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, new in
+        .onChangeCompat(of: state.focusId) { _, new in
             showingN8nDetail = false
             activeDiffId = nil
             #if !APPSTORE
@@ -154,11 +154,11 @@ struct OverviewView: View {
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
         }
         #if !APPSTORE
-        .onChange(of: state.view) { _, v in
+        .onChangeCompat(of: state.view) { _, v in
             if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
         #endif
-        .onChange(of: state.mode) { _, m in
+        .onChangeCompat(of: state.mode) { _, m in
             #if !APPSTORE
             if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
             #endif
@@ -367,7 +367,7 @@ struct QuestionView: View {
                             .buttonStyle(.plain)
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#6B7079"))
-                            .underline()
+                            .underlineIfAvailable()
                     }
                     // Optional short header label above question text
                     if !item.header.isEmpty {
@@ -413,7 +413,7 @@ struct QuestionView: View {
                             .foregroundColor(Color(hex: "#6B7079"))
                         }
                     } else {
-                        ChipFlowLayout(spacing: 6) {
+                        ChipFlow(spacing: 6) {
                             ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
                                 let isSelected = curSel.contains(opt.label)
                                 if isMulti {
@@ -459,7 +459,7 @@ struct QuestionView: View {
             }
         }
         .onAppear { resetQuestionState() }
-        .onChange(of: state.pendingQuestion) { _, _ in resetQuestionState() }
+        .onChangeCompat(of: state.pendingQuestion) { _, _ in resetQuestionState() }
         .onDisappear { HookServer.shared.releaseQuestionFD() }
     }
 
@@ -785,7 +785,7 @@ struct UploadView: View {
             .padding(.leading, 196)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onChange(of: state.view) { _, newView in
+        .onChangeCompat(of: state.view) { _, newView in
             newView == .upload ? startTimer() : stopTimer()
         }
         .onAppear {
@@ -957,7 +957,7 @@ struct MailView: View {
 
                 // Body — TextEditor scrolls internally when text overflows
                 TextEditor(text: $bodyText)
-                    .scrollContentBackground(.hidden)
+                    .scrollContentBackgroundHidden()
                     .font(.system(size: 12.5))
                     .foregroundColor(Color(hex: "#F5F6F8"))
                     .frame(height: 44)
@@ -1143,12 +1143,12 @@ struct PromptView: View {
                             }
                             .padding(.vertical, 2)
                         }
-                        .onChange(of: state.chatHistory) { _, _ in
+                        .onChangeCompat(of: state.chatHistory) { _, _ in
                             if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
-                        .onChange(of: state.stateOverride) { _, v in
+                        .onChangeCompat(of: state.stateOverride) { _, v in
                             if v != nil {
                                 withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
                             } else if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
@@ -1224,12 +1224,12 @@ struct PromptView: View {
         }
         .padding(.bottom, 10)
         .onAppear { focused = true }
-        .onChange(of: state.view) { _, view in
+        .onChangeCompat(of: state.view) { _, view in
             if view == .prompt {
                 state.fetchModelsIfNeeded(for: state.chatProvider)
             }
         }
-        .onChange(of: state.chatProvider) { _, provider in
+        .onChangeCompat(of: state.chatProvider) { _, provider in
             if state.view == .prompt {
                 state.fetchModelsIfNeeded(for: provider)
             }
@@ -1265,6 +1265,7 @@ struct PromptView: View {
 // MARK: - Model / provider picker
 
 /// Wrapping horizontal flow layout — used by ModelPickerView and QuestionView.
+@available(macOS 13, *)
 struct ChipFlowLayout: Layout {
     var spacing: CGFloat = 6
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
@@ -1304,7 +1305,7 @@ struct ModelPickerView: View {
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
                 return true
             }
-            ChipFlowLayout(spacing: 6) {
+            ChipFlow(spacing: 6) {
                 ForEach(visibleProviders, id: \.self) { provider in
                     Button {
                         guard provider != state.chatProvider else { return }
@@ -1353,7 +1354,7 @@ struct ModelPickerView: View {
             }
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
-        .onChange(of: state.chatProvider) { _, provider in
+        .onChangeCompat(of: state.chatProvider) { _, provider in
             if provider.isLocal {
                 state.fetchedProviderModels[provider] = nil
                 state.providerModelFetchError[provider] = nil
@@ -2937,7 +2938,7 @@ struct StripeCardView: View {
                 Text(balanceFormatted)
                     .font(.system(size: 20, weight: .bold, design: .monospaced))
                     .foregroundColor(Color(hex: "#F5F6F8"))
-                    .contentTransition(.numericText(countsDown: false))
+                    .numericTextTransition()
                     .animation(.easeOut(duration: 1.2), value: appState.stripeDisplayBalance)
                 Text(appState.stripeCurrency.uppercased())
                     .font(.system(size: 9, weight: .semibold))
@@ -3029,7 +3030,7 @@ struct CalcomCardView: View {
                 )
             }
         }
-        .onChange(of: appState.focusId) { _, _ in
+        .onChangeCompat(of: appState.focusId) { _, _ in
             selectedDate = nil; selectedBooking = nil; displayHalf = 1
         }
     }
@@ -3476,7 +3477,7 @@ struct TickerView: View {
                 rowB = steps[min(idx, steps.count - 1)]
             }
         }
-        .onChange(of: task?.steps.count) { _, _ in
+        .onChangeCompat(of: task?.steps.count) { _, _ in
             guard let task, !task.steps.isEmpty, !isTransitioning else { return }
             let newIdx = task.stepIndex
             if displayIndex < 0 {
@@ -4467,7 +4468,8 @@ struct ShimmeringText: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
-        Text(text)
+        // Group: View.foregroundStyle (macOS 12), not Text.foregroundStyle (macOS 14)
+        Group { Text(text) }
             .foregroundStyle(
                 LinearGradient(
                     stops: [

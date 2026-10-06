@@ -649,7 +649,7 @@ struct GreetingCanvasView: View {
                                                               height: state.notchHeight))
                 }
             }
-            .onChange(of: !greetFired && t >= GT.end && tc >= GT.autoLeave) { _, trigger in
+            .onChangeCompat(of: !greetFired && t >= GT.end && tc >= GT.autoLeave) { _, trigger in
                 if trigger { fireGreetComplete() }
             }
         }

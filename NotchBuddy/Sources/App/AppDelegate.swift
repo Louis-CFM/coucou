@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                            backing: .buffered, defer: false)
         win.title = "Settings — Coucou"
         let host = NSHostingView(rootView: SettingsView())
-        host.sizingOptions = [.minSize]
+        if #available(macOS 13, *) { host.sizingOptions = [.minSize] }
         win.contentView = host
         win.contentMinSize = NSSize(width: 640, height: 420)
         win.isReleasedWhenClosed = false
