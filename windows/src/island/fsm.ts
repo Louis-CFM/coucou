@@ -1,17 +1,19 @@
 // Island open/close FSM — port of IslandStateMachine.swift.
 // No DOM, no Tauri: it only reports transitions.
 
-export type FsmState = "hidden" | "petit" | "home" | "coucou";
+export type FsmState = "hidden" | "gone" | "petit" | "home" | "coucou";
 
 export class IslandStateMachine {
   state: FsmState = "hidden";
 
   onTransition: ((from: FsmState, to: FsmState) => void) | null = null;
 
-  /** home → petit delay, seconds. */
+  /** home → petit delay, seconds. 0 = never auto-close. */
   homeToPetitDelay = 15;
-  /** petit → hidden delay, seconds. */
+  /** petit → hidden delay, seconds. 0 = stay compact, never fully reduce. */
   petitToHiddenDelay = 60;
+  /** hidden → gone delay, seconds. 0 = never leave the screen. */
+  hiddenToGoneDelay = 0;
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -22,6 +24,7 @@ export class IslandStateMachine {
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
+  private goneTimer: number | null = null;
 
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -33,11 +36,17 @@ export class IslandStateMachine {
   mouseEntered() {
     switch (this.state) {
       case "hidden":
+      case "gone":
         this.cancelTimers();
         this.transition("petit");
         break;
       case "petit":
-        this.clear("petitHide");
+        // Deliberately does NOT cancel the compact timer. It used to, and the timer
+        // is only re-armed on mouseLeft, which needs an in→out cursor transition. With
+        // "wake on hover" on, the cursor is already over the bar when the panel
+        // collapses to 240, so the timer was cancelled and never re-armed: the bar
+        // sat at 240 until the pointer happened to move off it and back, which looked
+        // like the Compact timer not working at all.
         break;
       case "home":
         this.clear("homeCollapse");
@@ -51,6 +60,7 @@ export class IslandStateMachine {
   mouseLeft() {
     switch (this.state) {
       case "hidden":
+      case "gone":
         break;
       case "petit":
         this.schedulePetitHide();
@@ -66,6 +76,14 @@ export class IslandStateMachine {
   }
 
   click() {
+    // A click always opens the island, from either resting state. From the
+    // reduced stub it skips straight to open rather than stopping at compact, so
+    // one press is enough — otherwise turning off "wake on hover" would need two.
+    if (this.state === "hidden" || this.state === "gone") {
+      this.cancelTimers();
+      this.transition("home");
+      return;
+    }
     if (this.state !== "petit") return;
     this.cancelTimers();
     this.transition("home");
@@ -106,6 +124,9 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    // 0 (or anything non-positive) means "stay compact": no timer at all, so the
+    // island never fully reduces on its own.
+    if (this.petitToHiddenDelay <= 0) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
@@ -115,6 +136,8 @@ export class IslandStateMachine {
   private scheduleHomeCollapse() {
     this.clear("homeCollapse");
     if (this.pinned) return;
+    // 0 means auto-close is off: the island stays open until it is dismissed.
+    if (this.homeToPetitDelay <= 0) return;
     this.homeCollapse = window.setTimeout(() => {
       this.homeCollapse = null;
       if (this.state === "home") this.transition("petit");
@@ -129,13 +152,25 @@ export class IslandStateMachine {
     }, delay * 1000);
   }
 
-  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse") {
+  /** Fully reduced → gone. The last step, and the only one that leaves the screen. */
+  private scheduleGone() {
+    this.clear("goneTimer");
+    if (this.hiddenToGoneDelay <= 0) return;
+    this.goneTimer = window.setTimeout(() => {
+      this.goneTimer = null;
+      if (this.state === "hidden" || this.state === "petit") this.transition("gone");
+    }, this.hiddenToGoneDelay * 1000);
+  }
+
+  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse" | "goneTimer") {
     const id = this[which];
     if (id != null) window.clearTimeout(id);
     this[which] = null;
   }
 
   cancelTimers() {
+
+    this.clear("goneTimer");
     this.clear("petitHide");
     this.clear("homeCollapse");
     this.clear("greetCollapse");
@@ -145,6 +180,10 @@ export class IslandStateMachine {
     if (next === this.state) return;
     const from = this.state;
     this.state = next;
+    // Auto-hide is armed by reaching a resting state, not by the cursor leaving it.
+    // Arming it on mouse-leave meant that a cursor parked on the bar suppressed
+    // off-screen hiding indefinitely, which is the one case it most needed to work.
+    if (next === "petit" || next === "hidden") this.scheduleGone();
     this.onTransition?.(from, next);
   }
 }

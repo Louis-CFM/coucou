@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 
-export type AgentSource = "claudeCode" | "n8n" | "agent";
+export type AgentSource = "claudeCode" | "opencode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
 
 export interface AgentTask {
@@ -26,6 +26,8 @@ export interface ApprovalInfo {
   sessionId: string;
   tool: string;
   command: string;
+  /** Which pill the request belongs to — the decision card returns here. */
+  agentId: string;
 }
 
 export interface ChatMessage {
@@ -59,6 +61,7 @@ const task = (
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_opencode", "opencode", "#FF6B5B", "opencode"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -84,14 +87,34 @@ export interface IntegrationInfo {
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
+  /** Seconds from open to compact. 0 = never auto-close. */
   autoCloseInterval: number;
+  /** Seconds from compact to fully reduced. 0 = never fully reduce. */
   absenceInterval: number;
+  /** Seconds from fully reduced to off-screen. 0 = never leave the screen. */
+  autoCloseDelay: number;
+  /** Pinned: ignores outside clicks, Escape and the auto-close timer. */
+  pinIsland: boolean;
+  /** Wake the reduced island on hover. When false it waits to be clicked. */
+  wakeOnHover: boolean;
+  /** Bring back an island that auto-close took off-screen. Off-screen only. */
+  hoverRestore: boolean;
   activeIntegrations: string[];
-  screen: "primary" | "cursor";
+  screen: "primary" | "cursor" | "secondary";
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Chat backend: "claude" (Anthropic API) or "opencode" (local CLI). */
+  chatProvider: string;
+  /** Explicit opencode.exe path; empty = auto-detect. */
+  opencodeBin: string;
+  /** provider/model override for opencode chat; empty = its default. */
+  opencodeModel: string;
+  /** Keep one opencode server running while the app is, and send chat to it. */
+  chatViaServer: boolean;
+  /** Resting place of the compact island, 0 = left edge, 1 = right edge. */
+  notchPosition: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -99,13 +122,20 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   absenceInterval: 180,
-  activeIntegrations: [
-    "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  ],
+  autoCloseDelay: 0,
+  pinIsland: false,
+  wakeOnHover: true,
+  hoverRestore: true,
+  activeIntegrations: [],
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "claude",
+  opencodeBin: "",
+  opencodeModel: "",
+  chatViaServer: false,
+  notchPosition: 0.5,
 };
 
 type Listener = () => void;
@@ -118,6 +148,10 @@ class AppState {
   focusId: string | null = null;
 
   stateOverride: BotStateName | null = null;
+
+  /** Logical rect of the monitor the island lives on, from `boot`. Needed to turn a
+   *  pointer delta into a normalised position while dragging. */
+  screen: { x: number; y: number; width: number; height: number; scale: number } | null = null;
 
   /** Cursor in logical screen pixels, origin top-left (like AppState.mousePosition). */
   mouse = { x: 0, y: 0 };
@@ -134,6 +168,14 @@ class AppState {
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
+  /** `provider/model` the chat is pinned to, set from the `/models` picker. Empty
+   *  means the default from settings. */
+  modelOverride: string | null = null;
+  /** Transient line under the chat input, e.g. the Escape-cancel prompt. */
+  chatHint: string | null = null;
+  /** Escape is owned by the chat cancel while set, so the island must not collapse
+   *  the panel on the second press that arrives after the prompt unmounted the input. */
+  escapeArmed = false;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
@@ -199,11 +241,13 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — coding agents always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
+        proto.id === "integration_claude" ||
+        proto.id === "integration_opencode" ||
+        this.settings.activeIntegrations.includes(proto.id);
       const idx = this.tasks.findIndex((t) => t.id === proto.id);
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
@@ -251,7 +295,7 @@ class AppState {
   }
 
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
+    if (id === "integration_claude" || id === "integration_opencode") return;
     const active = this.settings.activeIntegrations;
     if (active.includes(id)) {
       this.settings.activeIntegrations = active.filter((x) => x !== id);

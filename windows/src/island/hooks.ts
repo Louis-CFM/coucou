@@ -1,7 +1,12 @@
-// Claude Code hook events → island state.
+// Coding-agent hook events → island state.
 // Port of HookServer.processEvent / processPermissionRequest from the macOS app.
 // Difference from macOS: no terminal filter. On Windows the hook fires from any
 // terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
+//
+// Two agents share this pipe: Claude Code (`agent` absent or "claude") and
+// opencode (`agent: "opencode"`, via windows/opencode-plugin/coucou.js).
+// Every event routes to its agent's pill; view switches only happen when that
+// pill holds the focus.
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
@@ -9,12 +14,15 @@ import { State } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
+const OPENCODE_ID = "integration_opencode";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
 
 interface HookPayload {
   hook_event_name?: string;
+  /** "opencode" for the opencode plugin; absent/"claude" for Claude Code. */
+  agent?: string;
   request_id?: string;
   session_id?: string;
   cwd?: string;
@@ -54,6 +62,11 @@ function aliasProjectName(name: string): string {
   return PROJECT_ALIASES[name.toLowerCase()] ?? name;
 }
 
+/** Display name when a session has no usable cwd. */
+function defaultName(id: string): string {
+  return id === OPENCODE_ID ? "opencode" : "VS Code";
+}
+
 function lastPathComponent(p: string): string {
   const cleaned = p.replace(/[\\/]+$/, "");
   const idx = Math.max(cleaned.lastIndexOf("\\"), cleaned.lastIndexOf("/"));
@@ -76,6 +89,18 @@ const TOOL_LABELS: Record<string, string> = {
   MultiEdit: "Modifie",
   NotebookEdit: "Notebook",
   PowerShell: "Exécute",
+  // opencode tool names (lowercase) → same French labels.
+  bash: "Exécute",
+  read: "Lit",
+  write: "Écrit",
+  edit: "Modifie",
+  glob: "Cherche",
+  grep: "Recherche",
+  webfetch: "Récupère",
+  websearch: "Recherche web",
+  todowrite: "Tâches",
+  task: "Agent",
+  question: "Question",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
@@ -85,7 +110,7 @@ function stepLabel(tool: string, input: Record<string, unknown>): string {
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
   const path = str("path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
-  const file = str("file_path");
+  const file = str("file_path") ?? str("filePath");
   if (file) return `${label} · ${lastPathComponent(file)}`;
   const query = str("query");
   if (query) return `${label} · ${query.slice(0, 40)}`;
@@ -103,6 +128,7 @@ function stepLabel(tool: string, input: Record<string, unknown>): string {
 const APPROVAL_FIELDS = [
   "command", // Bash, PowerShell
   "file_path", // Write, Edit, MultiEdit, NotebookEdit
+  "filePath", // opencode camelCase variant
   "path", // Read, LS
   "url", // WebFetch
   "query", // WebSearch
@@ -120,8 +146,8 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
   return tool;
 }
 
-function upsert(projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+function upsert(id: string, projectName: string, cwd: string) {
+  const t = State.tasks.find((x) => x.id === id);
   if (!t) return;
   t.name = projectName;
   if (cwd) t.sessionCwd = cwd;
@@ -132,7 +158,7 @@ function clearSession() {
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
-  t.name = "VS Code";
+  t.name = defaultName(CLAUDE_ID);
   t.pillBadge = null;
 }
 
@@ -142,7 +168,7 @@ export function registerHookHandlers(island: Island) {
 
 function handleHook(island: Island, payload: HookPayload) {
   if (State.paused) {
-    // Silence here used to cost Claude Code nearly two minutes: the relay waited
+    // Silence here used to cost the agent nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,
     // and the terminal takes the question immediately.
     if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
@@ -152,13 +178,17 @@ function handleHook(island: Island, payload: HookPayload) {
   const name = payload.hook_event_name ?? "";
   const cwd = payload.cwd ?? "";
   const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
-
-  // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
-  // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
+// Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
+  // "claude" is reserved; absent or invalid → Claude Code pill unchanged. opencode
+  // keeps its own integration pill rather than a dynamic one, so it is checked
+  // before falling back to Claude.
   const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
+  const agentId = validAgent
+    ? `agent_${validAgent}`
+    : payload.agent === "opencode" ? OPENCODE_ID : CLAUDE_ID;
   const isExternalAgent = validAgent !== null;
+
+  const projectName = aliasProjectName(raw || defaultName(agentId));
 
   const focused = State.focusId === agentId;
 
@@ -178,7 +208,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
-      upsert(projectName, cwd);
+      upsert(agentId, projectName, cwd);
     }
   };
 
@@ -200,7 +230,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "PreToolUse": {
-      ensurePill();
+ensurePill();
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
@@ -287,7 +317,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      ensurePill();
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
@@ -296,11 +326,12 @@ function handleHook(island: Island, payload: HookPayload) {
         sessionId: payload.session_id ?? "",
         tool,
         command: approvalTarget(tool, input),
+        agentId,
       };
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
+      State.updateTask(agentId, "approval");
       State.isPinned = true;
       Sound.play("approval");
       if (focused) {
@@ -309,7 +340,7 @@ function handleHook(island: Island, payload: HookPayload) {
         // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
         // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
+        State.setPillBadge(agentId, "approval");
         island.reveal();
       }
       // Coucou answers within 108 s or not at all; after that the terminal has
@@ -317,11 +348,12 @@ function handleHook(island: Island, payload: HookPayload) {
       pendingTimeout = window.setTimeout(() => {
         pendingTimeout = null;
         if (!State.pendingApproval) return;
+        const stale = State.pendingApproval.agentId;
         State.pendingApproval = null;
         State.isPinned = false;
         island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
+        State.updateTask(stale, "working");
+        State.setPillBadge(stale, null);
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);

@@ -53,11 +53,20 @@ export interface ViewLayout {
 export const PANEL_W = 720;
 export const PANEL_H = 320;
 
-// No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
-export const NOTCH_W = 184;
-export const NOTCH_H = 32;
-export const COMPACT_W = 288; // NOTCH_W + 104
+// A PC never has a real notch, so the resting sizes follow PR #22's no-notch
+// branch: an 80 pt fake notch that Mochi peeks out of, and a 240 pt compact bar
+// no taller than the menu bar.
+export const FALLBACK_NOTCH_W = 184; // only used when a screen really has a notch
+export const NO_NOTCH_W = 80;
+export const NO_NOTCH_H = 24;
+export const COMPACT_W = 240;
 export const EXPANDED_W = 640;
+
+/** The resting island's sizes on a notched-less screen. Mirrors PR #22's
+ *  `IslandScreenGeometry` so the mascot and pills shrink with the bar. */
+export function restingLayout() {
+    return { width: NO_NOTCH_W, height: NO_NOTCH_H };
+    }
 
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
@@ -84,7 +93,9 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   searching: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
-  settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  // Tall enough for every settings row to sit inside the card. The view height is
+  // fixed, so a row added without raising it is clipped off the bottom.
+  settings: { height: 288, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
 };
 
@@ -101,14 +112,24 @@ export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  offscreen = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
-      // No notch to hide inside on a PC: the island retracts to zero height and
-      // slides into the top edge of the screen instead of sitting there as a bar.
-      return { w: NOTCH_W, h: 0 };
+      // Two outcomes, decided by whether auto-close has a delay at all.
+      // With auto-close on Never the island is never meant to leave the screen, so
+      // fully reduced keeps the draft's small parked bar with Mochi in it. With a
+      // delay it goes off-screen instead: zero height, sliding out through the top
+      // edge as if the screen's edge were pulling it in. The cursor can still find
+      // it either way — the hit rectangle keeps its 14px margin, leaving a band
+      // along the top edge at the resting position.
+      return offscreen
+        ? { w: NO_NOTCH_W, h: 0 }
+        : { w: NO_NOTCH_W, h: NO_NOTCH_H };
     case "compact":
-      return { w: COMPACT_W, h: NOTCH_H };
+      // Regular compact: the docked bar. Wider than the fully-compact bar and the
+      // one the island opens into, and where the agent pills would sit.
+      return { w: COMPACT_W, h: NO_NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
@@ -123,18 +144,47 @@ export interface BotPlacement {
   opacity: number;
 }
 
-/** IslandRootView.botPosition — cy is measured from the island's top edge. */
+/** IslandRootView.botPosition — cy is measured from the island's top edge.
+ *
+ *  `offscreen` no longer changes Mochi's placement: the island slides up past the
+ *  top edge to hide, so the bot rides out with the rest of it. The flag still
+ *  decides the island's own height, in `islandSize`.
+ */
 export function botPosition(
   mode: IslandMode,
   view: IslandViewName,
   islandH: number,
   uploadProgress = 0,
+  _offscreen = false,
 ): BotPlacement {
   switch (mode) {
-    case "hidden":
-      return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
-    case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+    case "hidden": {
+      // Off-screen is the parked bar with the island slid up past the top edge, so
+      // Mochi is placed and drawn exactly as it is on screen and the slide is the
+      // only thing that takes it away. Fading it here instead is what made Mochi
+      // blink out on the first frame of the hide, with no motion at all.
+      // Auto-close on Never keeps it parked in the small bar, which is how the
+      // island behaved before there was anywhere to go.
+      const rest = restingLayout();
+      return {
+        cx: NO_NOTCH_W / 2,
+        cy: rest.height / 2,
+        diameter: Math.min(20, Math.max(0, NO_NOTCH_H - 6)),
+        opacity: 1,
+      };
+    }
+    case "compact": {
+      // Centre Mochi vertically and cap the diameter so a short bar never crops
+      // it. cx is the centre of the resting bar, so the single Mochi sits centred
+      // in it; the agent pills only ever appear to one side, never on top of it.
+      const rest = restingLayout();
+      return {
+        cx: NO_NOTCH_W / 2,
+        cy: rest.height / 2,
+        diameter: Math.min(20, Math.max(0, rest.height - 6)),
+        opacity: 1,
+      };
+    }
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
       if (view === "uploading") {

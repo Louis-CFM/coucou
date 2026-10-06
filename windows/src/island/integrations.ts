@@ -37,6 +37,16 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_claude = { ...claude, configured: hooks };
+  // opencode's configured flag comes from its own installer status, not settings.
+  try {
+    const oc = await Bridge.opencodeStatus();
+    const opencode = State.integrations.integration_opencode ?? {
+      data: {}, error: null, loaded: false, configured: false,
+    };
+    State.integrations.integration_opencode = { ...opencode, configured: oc?.installed ?? false };
+  } catch {
+    /* settings window owns the error surface; the idle card says it */
+  }
   State.notify();
 }
 
