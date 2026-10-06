@@ -257,16 +257,36 @@ final class SpotifyController: ObservableObject {
     }
 
     /// Launch Spotify if needed, then bring it to the front.
-    /// Uses AppleScript `activate` so it works from an LSUIElement (menu-bar) host.
+    /// `reopen` un-minimizes Dock windows; `activate` alone only works when already on-screen.
     @discardableResult
     func openSpotify() -> Bool {
         if isSpotifyRunning() {
             isRunning = true
-            Task {
-                // AppleScript activate is more reliable than NSRunningApplication.activate
-                // when Coucursor is an agent/LSUIElement app.
-                _ = await runAppleScript(#"tell application id "com.spotify.client" to activate"#)
-                if isPillActive { fetchAndApply() }
+            // Opening the app URL again mirrors a Dock click (un-minimize + focus).
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
+                NSWorkspace.shared.openApplication(at: url, configuration: config) { [weak self] _, _ in
+                    Task { @MainActor in
+                        _ = await self?.runAppleScript("""
+                            tell application id "com.spotify.client"
+                                reopen
+                                activate
+                            end tell
+                            """)
+                        if self?.isPillActive == true { self?.fetchAndApply() }
+                    }
+                }
+            } else {
+                Task {
+                    _ = await runAppleScript("""
+                        tell application id "com.spotify.client"
+                            reopen
+                            activate
+                        end tell
+                        """)
+                    if isPillActive { fetchAndApply() }
+                }
             }
             return true
         }
@@ -278,7 +298,12 @@ final class SpotifyController: ObservableObject {
                 self?.isRunning = app != nil
                 if app != nil {
                     try? await Task.sleep(nanoseconds: 600_000_000)
-                    _ = await self?.runAppleScript(#"tell application id "com.spotify.client" to activate"#)
+                    _ = await self?.runAppleScript("""
+                        tell application id "com.spotify.client"
+                            reopen
+                            activate
+                        end tell
+                        """)
                     if self?.isPillActive == true { self?.fetchAndApply() }
                 }
             }
