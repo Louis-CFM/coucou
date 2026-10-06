@@ -24,6 +24,9 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test Hindsight contracts
+        run: bash scripts/test-hindsight.sh
+
       - name: Build
         run: |
           xcodebuild \

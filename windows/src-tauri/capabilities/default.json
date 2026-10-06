@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Coucou's windows are allowed to do. Everything that touches the OS goes through Coucou's own commands.",
-  "windows": ["island", "settings"],
-  "permissions": ["core:default", "autostart:default"]
+  "description": "What Coucou's windows are allowed to do. Everything that touches the OS goes through Coucou's own commands; global hotkeys and window state are handled in Rust only.",
+  "windows": ["island", "settings", "memory", "quick-chat", "quick-task", "quick-robot"],
+  "permissions": [
+    "core:default",
+    "autostart:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "core:window:allow-start-dragging"
+  ]
 }

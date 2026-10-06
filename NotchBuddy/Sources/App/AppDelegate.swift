@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Coucou", action: #selector(openIsland), keyEquivalent: "")
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Memory Manager…", action: #selector(openMemoryManager), keyEquivalent: "m")
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -40,6 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openIsland() {
         islandController?.expand(to: .overview)
+    }
+
+    @objc private func openMemoryManager() {
+        if AppState.shared.mode == .expanded { islandController?.collapse() }
+        MemoryManagerWindowController.shared.present()
     }
 
     private var settingsWindow: NSWindow?

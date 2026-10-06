@@ -1,9 +1,9 @@
-// Island window: placement on the chosen display, the two window sizes
-// (full panel / invisible wake strip), click-through and the cursor poll.
+// Island window: placement (top centre of the chosen display, or wherever the
+// user dragged it — see placement.rs), the two window sizes (full panel /
+// invisible wake strip), click-through and the cursor poll.
 //
-// There is no notch on a PC, so the island is a black shape drawn at the top
-// centre of the main display inside a borderless, transparent, always-on-top
-// window that never takes focus.
+// There is no notch on a PC, so the island is a black shape drawn inside a
+// borderless, transparent, always-on-top window that never takes focus.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -11,6 +11,8 @@ use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
+
+use crate::placement::{self, Anchor, Display, Rect};
 
 use windows::Win32::Foundation::{HWND, POINT};
 use windows::core::BOOL;
@@ -70,6 +72,8 @@ pub struct PollGate {
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into Win32 when it changes.
     ignoring: AtomicBool,
+    /// An island drag is under way; the poll saves the spot on mouse-up.
+    pub moving: AtomicBool,
 }
 
 impl PollGate {
@@ -80,6 +84,7 @@ impl PollGate {
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
+            moving: AtomicBool::new(false),
         }
     }
 
@@ -202,26 +207,77 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
-/// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
-pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
+fn display_of(m: &Monitor) -> Display {
+    let p = m.position();
+    let s = m.size();
+    let wa = m.work_area();
+    Display {
+        bounds: Rect { x: p.x, y: p.y, w: s.width as i32, h: s.height as i32 },
+        work: Rect { x: wa.position.x, y: wa.position.y, w: wa.size.width as i32, h: wa.size.height as i32 },
+    }
+}
+
+fn physical(logical: f64, scale: f64) -> i32 {
+    (logical * scale).round().max(1.0) as i32
+}
+
+/// Where the island goes right now: the user's saved spot (brought back onto
+/// a display that exists), or the top centre of the display `pref` picks.
+/// Returns the anchor and the monitor it is on.
+fn resolve_anchor(app: &AppHandle, pref: &str, saved: Option<Anchor>) -> Option<(Anchor, Monitor)> {
+    let monitors = app.available_monitors().ok()?;
+    if let Some(saved) = saved {
+        let displays: Vec<Display> = monitors.iter().map(display_of).collect();
+        if let Some(i) = placement::display_for(&displays, saved.x, saved.y) {
+            let m = &monitors[i];
+            let scale = m.scale_factor();
+            let anchor = placement::clamp_anchor(
+                saved,
+                physical(PANEL_W, scale),
+                physical(PANEL_H, scale),
+                &[displays[i]],
+            )?;
+            return Some((anchor, m.clone()));
+        }
+    }
+    let m = target_monitor(app, pref)?;
+    Some((placement::default_anchor(&display_of(&m)), m))
+}
+
+/// Places and sizes the window. `collapsed` picks the wake strip instead of
+/// the panel; both hang from the same anchor, so the wake strip is exactly
+/// where the island was.
+pub fn apply_geometry(app: &AppHandle, pref: &str, saved: Option<Anchor>, collapsed: bool) {
     let Some(win) = window(app) else { return };
-    let Some(m) = target_monitor(app, pref) else { return };
+    let Some((anchor, m)) = resolve_anchor(app, pref, saved) else { return };
 
     let scale = m.scale_factor();
-    let mp = *m.position();
-    let ms = *m.size();
-
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
-    let pw = (lw * scale).round().max(1.0) as u32;
-    let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let pw = physical(lw, scale);
+    let ph = physical(lh, scale);
+    let (x, y) = placement::window_origin(anchor, pw, ph, display_of(&m).work);
 
-    let _ = win.set_size(PhysicalSize::new(pw, ph));
+    let _ = win.set_size(PhysicalSize::new(pw as u32, ph as u32));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Moving across displays can rescale the window: re-assert the physical size.
-    let _ = win.set_size(PhysicalSize::new(pw, ph));
+    let _ = win.set_size(PhysicalSize::new(pw as u32, ph as u32));
     let _ = win.set_always_on_top(true);
+    // Flat top against a screen edge (notch), rounded all round elsewhere.
+    let _ = app.emit_to(WINDOW_LABEL, "island-placed", y == m.position().y);
+}
+
+/// After a drag: the anchor the window now stands for, brought back inside
+/// the work area of the display it was dropped on. None when the window is
+/// not the full panel (nothing to save).
+pub fn anchor_after_drag(app: &AppHandle) -> Option<Anchor> {
+    let win = window(app)?;
+    let pos = win.outer_position().ok()?;
+    let size = win.outer_size().ok()?;
+    let monitors = app.available_monitors().ok()?;
+    let displays: Vec<Display> = monitors.iter().map(display_of).collect();
+    let dropped = placement::anchor_of(pos.x, pos.y, size.width as i32);
+    let i = placement::display_for(&displays, dropped.x, dropped.y)?;
+    placement::clamp_anchor(dropped, size.width as i32, size.height as i32, &[displays[i]])
 }
 
 fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
@@ -257,17 +313,24 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
-/// Position, size and scale of the monitor the island lives on. Any change here
-/// means the island has to be placed again.
-fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
-    let pref = app
-        .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().screen.clone())
-        .unwrap_or_else(|| "primary".into());
-    let m = target_monitor(app, &pref)?;
-    let p = m.position();
-    let size = m.size();
-    Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
+/// Every display's position, size, work area and scale. Any change here means
+/// the island has to be placed again (a saved spot is re-clamped, not reset).
+fn current_screen_key(app: &AppHandle) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let monitors = app.available_monitors().ok()?;
+    if monitors.is_empty() {
+        return None;
+    }
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for m in &monitors {
+        let d = display_of(m);
+        (d.bounds.x, d.bounds.y, d.bounds.w, d.bounds.h, d.work.x, d.work.y, d.work.w, d.work.h).hash(&mut h);
+        m.scale_factor().to_bits().hash(&mut h);
+    }
+    if let Some(s) = app.try_state::<crate::Shared>() {
+        s.settings.lock().unwrap().screen.hash(&mut h);
+    }
+    Some(h.finish())
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
@@ -277,7 +340,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         let mut was_down = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
-        let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        let mut last_screen: Option<u64> = None;
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
@@ -312,6 +375,14 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+                let down = left_button_down();
+                // The end of an island drag (unlocked): the window moved under a
+                // held button; once it is released the new spot is saved.
+                if gate.moving.load(Ordering::Relaxed) && !down {
+                    gate.moving.store(false, Ordering::Relaxed);
+                    let handle = app.clone();
+                    let _ = app.run_on_main_thread(move || crate::island_dragged(&handle));
+                }
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -336,7 +407,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
                 // A press may be the start of a drag: make sure the drop target is
                 // ours before the file arrives.
-                let down = left_button_down();
                 if down && !was_down {
                     let handle = app.clone();
                     let _ = app.run_on_main_thread(move || unblock_webview_drops(&handle));

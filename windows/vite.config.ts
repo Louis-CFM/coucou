@@ -56,6 +56,10 @@ export default defineConfig({
       input: {
         island: resolve(__dirname, "index.html"),
         settings: resolve(__dirname, "settings.html"),
+        memory: resolve(__dirname, "memory.html"),
+        quickChat: resolve(__dirname, "quick-chat.html"),
+        quickTask: resolve(__dirname, "quick-task.html"),
+        quickRobot: resolve(__dirname, "quick-robot.html"),
       },
     },
   },

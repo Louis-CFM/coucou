@@ -75,8 +75,11 @@ pub fn settings_path() -> PathBuf {
 /// we cannot parse — is reported, because the alternative is treating somebody's
 /// unreadable settings as an empty object and then writing that back over them.
 fn read_settings() -> Result<Value, String> {
-    let path = settings_path();
-    match std::fs::read(&path) {
+    read_settings_at(&settings_path())
+}
+
+fn read_settings_at(path: &Path) -> Result<Value, String> {
+    match std::fs::read(path) {
         Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
         // A lock, a permission problem, a bad drive: all of them mean we do not
@@ -111,9 +114,21 @@ fn read_settings_lossy() -> Value {
     read_settings().unwrap_or_else(|_| json!({}))
 }
 
-fn hook_command(event: &str) -> String {
-    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
-    format!("\"{exe}\" {event}")
+fn hook_command(relay: &Path, event: &str) -> String {
+    command_for(&relay.to_string_lossy(), event)
+}
+
+/// Claude Code may run hook commands through bash, cmd or PowerShell. A quoted
+/// path followed by an argument is a parse error in PowerShell (it needs `&`,
+/// which bash and cmd reject), so a path without spaces is left bare — valid
+/// in all three. Paths with spaces keep the quotes.
+fn command_for(exe: &str, event: &str) -> String {
+    let exe = exe.replace('\\', "/");
+    if exe.chars().any(|c| c.is_whitespace() || "\"'&;|<>()`$%^".contains(c)) {
+        format!("\"{exe}\" {event}")
+    } else {
+        format!("{exe} {event}")
+    }
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -132,7 +147,7 @@ fn entry_is_ours(entry: &Value) -> bool {
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched.
-fn merged(existing: &Value) -> Value {
+fn merged(existing: &Value, relay: &Path) -> Value {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = root
         .get("hooks")
@@ -150,7 +165,7 @@ fn merged(existing: &Value) -> Value {
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": hook_command(relay, event),
                 "timeout": timeout,
             }]
         }));
@@ -204,9 +219,8 @@ fn stamp() -> String {
     )
 }
 
-fn backup_path() -> PathBuf {
-    let p = settings_path();
-    p.with_file_name(format!("settings.json.bak-{}", stamp()))
+fn backup_path_for(path: &Path) -> PathBuf {
+    path.with_file_name(format!("settings.json.bak-{}", stamp()))
 }
 
 /// Identifies the exact bytes a preview was computed from. FNV-1a is plenty:
@@ -220,18 +234,15 @@ fn fingerprint(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
-fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
+fn current_fingerprint(path: &Path) -> String {
+    match std::fs::read(path) {
         Ok(bytes) => fingerprint(&bytes),
         Err(_) => fingerprint(b""),
     }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-pub fn status() -> HookStatus {
-    let current = read_settings_lossy();
-    let installed = current
+fn has_ours(current: &Value) -> bool {
+    current
         .get("hooks")
         .and_then(Value::as_object)
         .map(|hooks| {
@@ -241,7 +252,13 @@ pub fn status() -> HookStatus {
                 .flatten()
                 .any(entry_is_ours)
         })
-        .unwrap_or(false);
+        .unwrap_or(false)
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+pub fn status() -> HookStatus {
+    let installed = has_ours(&read_settings_lossy());
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,
@@ -251,14 +268,24 @@ pub fn status() -> HookStatus {
     }
 }
 
+/// Whether `path` holds any Coucou entry. Unreadable or invalid files are an
+/// error, so a caller never mistakes "can't tell" for "not installed".
+pub fn installed_at(path: &Path) -> Result<bool, String> {
+    Ok(has_ours(&read_settings_at(path)?))
+}
+
 pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_settings()?;
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    preview_at(install, &settings_path(), &settings::hook_exe_path())
+}
+
+pub fn preview_at(install: bool, path: &Path, relay: &Path) -> Result<HookPreview, String> {
+    let current = read_settings_at(path)?;
+    let next = if install { merged(&current, relay) } else { without_ours(&current) };
     Ok(HookPreview {
         diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path().to_string_lossy().to_string(),
-        settings_path: settings_path().to_string_lossy().to_string(),
-        fingerprint: current_fingerprint(),
+        backup: backup_path_for(path).to_string_lossy().to_string(),
+        settings_path: path.to_string_lossy().to_string(),
+        fingerprint: current_fingerprint(path),
     })
 }
 
@@ -269,26 +296,33 @@ pub fn preview(install: bool) -> Result<HookPreview, String> {
 /// and make them look at a fresh diff, because the only thing worse than not
 /// installing the hooks is silently reverting somebody else's edit.
 pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = settings_path();
+    write_at(install, fingerprint, &settings_path(), &settings::hook_exe_path())
+}
+
+/// `write` for an explicit settings.json and relay. Returns the backup path,
+/// or "" when there was no file to back up.
+pub fn write_at(install: bool, fingerprint: &str, path: &Path, relay: &Path) -> Result<String, String> {
     let dir = path.parent().unwrap_or(Path::new("."));
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
 
     // Read before the backup: an unreadable file must abort before we touch
     // anything at all.
-    let current = read_settings()?;
-    if current_fingerprint() != fingerprint {
+    let current = read_settings_at(path)?;
+    if current_fingerprint(path) != fingerprint {
         return Err(format!(
             "{} changed since the preview. Nothing was written — review the new diff.",
             path.display()
         ));
     }
 
-    let backup = backup_path();
+    let mut backup = String::new();
     if path.exists() {
-        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+        let target = backup_path_for(path);
+        std::fs::copy(path, &target).map_err(|e| format!("backup failed: {e}"))?;
+        backup = target.to_string_lossy().to_string();
     }
 
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    let next = if install { merged(&current, relay) } else { without_ours(&current) };
     let mut text = pretty(&next);
     text.push('\n');
 
@@ -296,16 +330,16 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     // the original settings.json intact rather than half a file.
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
-    if let Err(err) = std::fs::rename(&temp, &path) {
+    if let Err(err) = std::fs::rename(&temp, path) {
         let _ = std::fs::remove_file(&temp);
         return Err(format!("write failed: {err}"));
     }
-    Ok(backup.to_string_lossy().to_string())
+    Ok(backup)
 }
 
 /// Copies coucou-hook.exe into %LOCALAPPDATA%\Coucou\bin on launch.
-/// In a bundled install it comes from the app resources; in `tauri dev` it sits
-/// next to coucou.exe in the workspace target directory.
+/// In a bundled install it comes from the app resources; in `tauri dev` the
+/// release relay is found alongside the workspace's debug target directory.
 ///
 /// Every candidate is tried rather than just the first, because getting this
 /// wrong is silent and fatal: `resources` used to be a glob, which made NSIS
@@ -313,16 +347,17 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 /// the relay was simply never installed. It only looked healthy on a developer
 /// machine, where a leftover copy from `tauri dev` was already sitting in bin/.
 pub fn ensure_hook_exe(app: &AppHandle) {
-    let dest = settings::hook_exe_path();
-    let Some(dir) = dest.parent() else { return };
-    if std::fs::create_dir_all(dir).is_err() {
-        return;
+    let resource = app.path().resolve("coucou-hook.exe", tauri::path::BaseDirectory::Resource).ok();
+    if let Err(err) = stage_relay(&relay_candidates(resource), &settings::hook_exe_path()) {
+        crate::log::line(err);
     }
+}
 
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(p) = app.path().resolve("coucou-hook.exe", tauri::path::BaseDirectory::Resource) {
-        candidates.push(p);
-    }
+/// Where a relay to stage can come from: the Tauri resource (when there is an
+/// AppHandle), then next to the running exe — which is where the NSIS installer
+/// puts it, so `coucou.exe --setup-agents` finds it without an AppHandle.
+pub fn relay_candidates(resource: Option<PathBuf>) -> Vec<PathBuf> {
+    let mut candidates: Vec<PathBuf> = resource.into_iter().collect();
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             // Installed build, then `tauri dev` (target/debug) next to the
@@ -333,30 +368,78 @@ pub fn ensure_hook_exe(app: &AppHandle) {
             candidates.push(parent.join("_up_/target/release/coucou-hook.exe"));
         }
     }
+    candidates
+}
 
-    let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
-    let Some(src) = candidates.into_iter().find(|p| p.exists()) else {
-        crate::log::line(format!(
-            "coucou-hook.exe not found — Claude Code hooks cannot work. Looked in: {}",
+/// Copies the first existing candidate to `dest` unless an identical copy is
+/// already there. Ok when `dest` ends up present.
+pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
+    if let Some(dir) = dest.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("could not create {}: {e}", dir.display()))?;
+    }
+    let Some(src) = candidates.iter().find(|p| p.is_file() && p.as_path() != dest) else {
+        if dest.is_file() {
+            return Ok(());
+        }
+        let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
+        return Err(format!(
+            "coucou-hook.exe not found — agent hooks cannot work. Looked in: {}",
             tried.join(", ")
         ));
-        return;
     };
 
-    let same = match (std::fs::metadata(&src), std::fs::metadata(&dest)) {
+    let same = match (std::fs::metadata(src), std::fs::metadata(dest)) {
         (Ok(a), Ok(b)) => a.len() == b.len() && a.modified().ok() == b.modified().ok(),
         _ => false,
     };
     if same {
-        return;
+        return Ok(());
     }
-    // A hook may be running right now and hold the file open; keeping the old
-    // copy is fine, it is the same relay.
-    if let Err(err) = std::fs::copy(&src, &dest) {
-        if !dest.exists() {
-            crate::log::line(format!("could not install coucou-hook.exe: {err}"));
+    // A running hook may hold the destination open. An existing copy can be
+    // older than this build; a failed replacement leaves readiness uncertain.
+    // Windows refuses to overwrite a running exe but lets it be renamed, so the
+    // in-use copy is moved aside and the new one copied in its place.
+    let aside = dest.with_extension("old.exe");
+    for old in old_relays(dest) {
+        let _ = std::fs::remove_file(old);
+    }
+    match std::fs::copy(src, dest) {
+        Ok(_) => Ok(()),
+        Err(first) if dest.is_file() => {
+            let aside = if aside.exists() {
+                dest.with_extension(format!("old-{}.exe", std::process::id()))
+            } else {
+                aside
+            };
+            if std::fs::rename(dest, &aside).is_err() {
+                crate::log::line(format!("coucou-hook.exe is in use and could not be updated: {first}"));
+                return Ok(());
+            }
+            match std::fs::copy(src, dest) {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    let _ = std::fs::rename(&aside, dest);
+                    crate::log::line(format!("coucou-hook.exe could not be updated: {err}"));
+                    Ok(())
+                }
+            }
         }
+        Err(err) => Err(format!("could not install coucou-hook.exe: {err}")),
     }
+}
+
+/// Copies moved aside by an earlier update; deleted once no hook runs them.
+fn old_relays(dest: &Path) -> Vec<PathBuf> {
+    let Some(dir) = dest.parent() else { return Vec::new() };
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    entries
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("coucou-hook.old") && n.ends_with(".exe"))
+        })
+        .collect()
 }
 
 // ── Minimal unified diff (LCS) ────────────────────────────────────────────────
@@ -442,6 +525,51 @@ mod tests {
     const WHERE: &str = "settings.json";
 
     #[test]
+    fn a_running_relay_is_replaced_by_moving_it_aside() {
+        let dir = std::env::temp_dir().join(format!("coucou-stage-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("bin")).unwrap();
+        let src = dir.join("coucou-hook.exe");
+        let dest = dir.join("bin").join("coucou-hook.exe");
+        std::fs::write(&src, b"new build").unwrap();
+        let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
+        std::fs::copy(system.join("System32").join("PING.EXE"), &dest).unwrap();
+        let mut running = std::process::Command::new(&dest)
+            .args(["-n", "30", "127.0.0.1"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(std::fs::copy(&src, &dest).is_err(), "a running exe cannot be overwritten");
+        stage_relay(&[src.clone()], &dest).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), b"new build");
+        assert_eq!(old_relays(&dest).len(), 1);
+        let _ = running.kill();
+        let _ = running.wait();
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        std::fs::write(&src, b"newer build").unwrap();
+        stage_relay(&[src], &dest).unwrap();
+        assert!(old_relays(&dest).is_empty(), "moved-aside copy is cleaned up once free");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+
+    #[test]
+    fn hook_command_is_valid_in_powershell_bash_and_cmd() {
+        assert_eq!(
+            command_for(r"C:\Users\Admin\AppData\Local\Coucou\bin\coucou-hook.exe", "Stop"),
+            "C:/Users/Admin/AppData/Local/Coucou/bin/coucou-hook.exe Stop"
+        );
+        assert_eq!(
+            command_for(r"C:\Users\Jane Doe\AppData\Local\Coucou\bin\coucou-hook.exe", "Stop"),
+            "\"C:/Users/Jane Doe/AppData/Local/Coucou/bin/coucou-hook.exe\" Stop"
+        );
+        assert!(command_for(r"C:\x\coucou-hook.exe", "Stop").contains(MARKER));
+    }
+
+    #[test]
     fn a_utf8_bom_is_stripped_not_treated_as_corruption() {
         // PowerShell 5's `Set-Content -Encoding utf8` produces exactly this.
         let mut bytes = vec![0xEF, 0xBB, 0xBF];
@@ -486,7 +614,7 @@ mod tests {
             }
         });
 
-        let after = merged(&existing);
+        let after = merged(&existing, Path::new(r"C:\x\coucou-hook.exe"));
         assert_eq!(after["model"], "claude-opus-5");
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["enabledPlugins"], serde_json::json!(["a", "b"]));

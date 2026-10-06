@@ -8,6 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */; };
+		A10000000000000000000001 /* HindsightTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* HindsightTypes.swift */; };
+		A10000000000000000000002 /* HindsightService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HindsightService.swift */; };
+		A1000000000000000000000D /* MemoryExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* MemoryExport.swift */; };
+		A1000000000000000000000E /* MemoryExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* MemoryExport.swift */; };
+		A10000000000000000000007 /* ChatMemoryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* ChatMemoryCoordinator.swift */; };
+		A1000000000000000000000A /* ChatMemoryContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* ChatMemoryContracts.swift */; };
+		A10000000000000000000008 /* ChatMemoryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* ChatMemoryCoordinator.swift */; };
+		A1000000000000000000000B /* ChatMemoryContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* ChatMemoryContracts.swift */; };
+		B20000000000000000000001 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* KeychainStore.swift */; };
+		B20000000000000000000002 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* KeychainStore.swift */; };
+		B20000000000000000000003 /* HindsightUIContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000A /* HindsightUIContracts.swift */; };
+		B20000000000000000000004 /* HindsightUIContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000A /* HindsightUIContracts.swift */; };
+		B20000000000000000000005 /* MemoryManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000B /* MemoryManagerView.swift */; };
+		B20000000000000000000006 /* MemoryManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000B /* MemoryManagerView.swift */; };
+		B20000000000000000000007 /* MemoryManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000C /* MemoryManagerWindowController.swift */; };
+		B20000000000000000000008 /* MemoryManagerWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000C /* MemoryManagerWindowController.swift */; };
+		A10000000000000000000005 /* HindsightTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* HindsightTypes.swift */; };
+		A10000000000000000000006 /* HindsightService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HindsightService.swift */; };
 		065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
@@ -92,6 +110,15 @@
 		A14A61070D293AB4BBA303F7 /* NotchBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotCanvasView.swift; sourceTree = "<group>"; };
 		A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* HindsightTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HindsightTypes.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* HindsightService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HindsightService.swift; sourceTree = "<group>"; };
+		A1000000000000000000000F /* MemoryExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryExport.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* ChatMemoryCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMemoryCoordinator.swift; sourceTree = "<group>"; };
+		A1000000000000000000000C /* ChatMemoryContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMemoryContracts.swift; sourceTree = "<group>"; };
+		B20000000000000000000009 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		B2000000000000000000000A /* HindsightUIContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HindsightUIContracts.swift; sourceTree = "<group>"; };
+		B2000000000000000000000B /* MemoryManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryManagerView.swift; sourceTree = "<group>"; };
+		B2000000000000000000000C /* MemoryManagerWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryManagerWindowController.swift; sourceTree = "<group>"; };
 		B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadCanvasView.swift; sourceTree = "<group>"; };
 		B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeWebURL.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
@@ -118,6 +145,15 @@
 				D4540F630F8BA04AFFFA3979 /* BotEngine.swift */,
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
 				A83D5410BD030B243ADDCFF4 /* ClaudeService.swift */,
+				A10000000000000000000009 /* ChatMemoryCoordinator.swift */,
+				A1000000000000000000000C /* ChatMemoryContracts.swift */,
+				A10000000000000000000004 /* HindsightService.swift */,
+				A10000000000000000000003 /* HindsightTypes.swift */,
+				B2000000000000000000000A /* HindsightUIContracts.swift */,
+				B20000000000000000000009 /* KeychainStore.swift */,
+				A1000000000000000000000F /* MemoryExport.swift */,
+				B2000000000000000000000B /* MemoryManagerView.swift */,
+				B2000000000000000000000C /* MemoryManagerWindowController.swift */,
 				3232F258523DD8D09B670363 /* FileDropView.swift */,
 				8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */,
 				C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */,
@@ -289,6 +325,15 @@
 				C24D863967D8D32D828ED4B1 /* BotEngine.swift in Sources */,
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
 				2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */,
+				A10000000000000000000001 /* HindsightTypes.swift in Sources */,
+				A10000000000000000000002 /* HindsightService.swift in Sources */,
+				B20000000000000000000003 /* HindsightUIContracts.swift in Sources */,
+				B20000000000000000000001 /* KeychainStore.swift in Sources */,
+				A1000000000000000000000D /* MemoryExport.swift in Sources */,
+				B20000000000000000000005 /* MemoryManagerView.swift in Sources */,
+				B20000000000000000000007 /* MemoryManagerWindowController.swift in Sources */,
+				A10000000000000000000007 /* ChatMemoryCoordinator.swift in Sources */,
+				A1000000000000000000000A /* ChatMemoryContracts.swift in Sources */,
 				E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */,
 				C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */,
 				8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */,
@@ -325,6 +370,15 @@
 				0E9CE475EC53C67DAB00F8E5 /* BotEngine.swift in Sources */,
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
 				0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */,
+				A10000000000000000000005 /* HindsightTypes.swift in Sources */,
+				A10000000000000000000006 /* HindsightService.swift in Sources */,
+				B20000000000000000000004 /* HindsightUIContracts.swift in Sources */,
+				B20000000000000000000002 /* KeychainStore.swift in Sources */,
+				A1000000000000000000000E /* MemoryExport.swift in Sources */,
+				B20000000000000000000006 /* MemoryManagerView.swift in Sources */,
+				B20000000000000000000008 /* MemoryManagerWindowController.swift in Sources */,
+				A10000000000000000000008 /* ChatMemoryCoordinator.swift in Sources */,
+				A1000000000000000000000B /* ChatMemoryContracts.swift in Sources */,
 				2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */,
 				C18227D148D99FE6EE3CC51A /* GithubPoller.swift in Sources */,
 				C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */,

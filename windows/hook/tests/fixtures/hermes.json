@@ -1,0 +1,1 @@
+{"hook_event_name":"on_session_end","tool_name":null,"tool_input":null,"session_id":"hermes-session-1","cwd":"C:\\Work Space\\demo","profile":"default","extra":{"task_id":"test-task","turn_id":"test-turn","completed":true,"failed":false,"interrupted":false,"turn_exit_reason":"text_response(stop)","model":"gpt-4","platform":"cli"}}

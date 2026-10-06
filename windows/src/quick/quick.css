@@ -1,0 +1,75 @@
+/* The two hotkey windows: no OS frame, a slim draggable bar, the island's card. */
+
+html,
+body.quick-window {
+  background: #0b0c0e;
+}
+
+.quick-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0b0c0e;
+}
+
+.quick-bar {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  cursor: grab;
+}
+
+.quick-title {
+  flex: 1 1 auto;
+  font: 600 11.5px var(--font);
+  color: var(--dim-2);
+  letter-spacing: 0.02em;
+}
+
+.quick-close {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim);
+  display: grid;
+  place-items: center;
+}
+
+.quick-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.quick-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 8px 8px;
+}
+
+.quick-body .view {
+  inset: 0 8px 8px;
+}
+
+.quick-body .card {
+  border-radius: 14px;
+}
+
+/* The island leaves room on the left for Mochi; these windows do not. */
+.quick-body .chat-body {
+  padding: 12px 12px 12px;
+}
+
+.quick-body .task-body {
+  padding: 12px 14px;
+}
+
+.quick-body .model-menu {
+  max-height: 220px;
+}

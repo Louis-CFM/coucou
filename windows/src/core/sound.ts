@@ -2,6 +2,7 @@
 // The 28 WAVs are the macOS app's own files (see SOUNDS_DIR in vite.config.ts);
 // they are served at /sounds/<name>.wav. Default volume 0.12, slider range 0–0.2,
 // exactly like the Mac player, and several sounds may overlap.
+// Multiple-choice question cards play "question"; permission cards play "approval".
 
 export const SOUND_NAMES = [
   "peek", "open", "close", "hover", "blip", "slap", "annoyed", "dizzy", "greet",
@@ -94,11 +95,18 @@ class SoundEngine {
       window.clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
-    if (ctx.state === "suspended") void ctx.resume();
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(master);
-    src.start();
+    const start = () => {
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(master);
+      src.start();
+    };
+    // Both webviews run with `--autoplay-policy=no-user-gesture-required`, so
+    // resuming needs no click. Start only once the context runs: a source
+    // started on a context that is still suspended (idle(), or WebView2
+    // throttling a background window) can be dropped instead of delayed.
+    if (ctx.state === "running") start();
+    else ctx.resume().then(start, () => {});
   }
 }
 

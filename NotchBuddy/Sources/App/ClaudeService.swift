@@ -1,109 +1,9 @@
 import Foundation
-import Security
-
-// MARK: - Keychain helpers
-
-enum Keychain {
-    static let service = "fr.louisraille.NotchBuddy"
-
-    static func save(key: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-        // Delete existing item first (update pattern)
-        let lookup: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-        ]
-        SecItemDelete(lookup as CFDictionary)
-        // Add with strictest access control:
-        // WhenUnlockedThisDeviceOnly = accessible only while Mac is unlocked,
-        // never synced to iCloud, never migrated to another device.
-        let item: [String: Any] = [
-            kSecClass as String:            kSecClassGenericPassword,
-            kSecAttrService as String:      service,
-            kSecAttrAccount as String:      key,
-            kSecValueData as String:        data,
-            kSecAttrAccessible as String:   kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecAttrSynchronizable as String: kCFBooleanFalse!,
-        ]
-        SecItemAdd(item as CFDictionary, nil)
-    }
-
-    static func load(key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String:  true,
-            kSecMatchLimit as String:  kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    static func delete(key: String) {
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-        ]
-        SecItemDelete(query as CFDictionary)
-    }
-}
-
-// MARK: - Keychain cache (reads each key ONCE at launch; all subsequent access via dict)
-
-final class KeychainStore: @unchecked Sendable {
-    static let shared = KeychainStore()
-    private var cache: [String: String] = [:]
-    private let lock = NSLock()
-
-    private static let allKeys = [
-        "anthropic-api-key",
-        "resend-api-key", "resend-from",
-        "n8n-url", "n8n-api-key",
-        "vercel-token",
-        "github-token",
-        "stripe-api-key",
-        "calcom-api-key",
-        "notion-api-key",
-    ]
-
-    private init() {
-        // Called once, on main thread (AppDelegate triggers shared at launch).
-        for key in Self.allKeys {
-            if let v = Keychain.load(key: key) { cache[key] = v }
-        }
-    }
-
-    /// Thread-safe read — never touches the Keychain.
-    func get(_ key: String) -> String? {
-        lock.withLock { cache[key] }
-    }
-
-    /// Updates cache + persists to Keychain.
-    func set(_ key: String, value: String) {
-        lock.withLock { cache[key] = value }
-        Keychain.save(key: key, value: value)
-    }
-
-    /// Removes from cache + Keychain only if the key was previously set.
-    func remove(_ key: String) {
-        let had = lock.withLock { () -> Bool in
-            let exists = cache[key] != nil
-            cache[key] = nil
-            return exists
-        }
-        if had { Keychain.delete(key: key) }
-    }
-}
 
 // MARK: - Claude API
 
 @MainActor
-final class ClaudeService {
+final class ClaudeService: ChatProviderServing {
     static let shared = ClaudeService()
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
@@ -141,6 +41,7 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        AppState.shared.clearChatMemoryState()
     }
 
     private let systemPrompt = """
@@ -156,48 +57,24 @@ final class ClaudeService {
 
     // MARK: - Chat (multi-turn, natural text + web search)
 
-    func chat(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
-            await showError("API key missing. Open settings.", state: state)
-            return
+    func send(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
+        guard let key = apiKey, !key.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "API key missing. Open settings."]) }
+        let mapped = claudeRequestParts(request, isFirstTurn: conversationMessages.isEmpty)
+        var userContent = mapped.userContent
+        if conversationMessages.isEmpty, case .file(let name, let path, let bytes) = request.providerContext {
+            if let bytes, let block = fileBlock(data: bytes, name: name) { userContent.insert(block, at: 0) }
+            else if let path, let block = readFileAsBlock(url: URL(fileURLWithPath: path)) { userContent.insert(block, at: 0) }
         }
-
-        // Build user content for this turn
-        var userContent: [[String: Any]] = []
-
-        // Add file/window context on first message only
-        if conversationMessages.isEmpty, let context = context {
-            switch context {
-            case .window(let app, let title, let url):
-                var text = "Context — App: \(app), Window: \(title)"
-                if let url = url { text += ", URL: \(url)" }
-                userContent.append(["type": "text", "text": text])
-            case .file(let name, let fileURL):
-                if let fileURL = fileURL, let block = readFileAsBlock(url: fileURL) {
-                    userContent.append(block)
-                }
-                userContent.append(["type": "text", "text": "File: \(name)"])
-            }
-        }
-        userContent.append(["type": "text", "text": query])
-
         conversationMessages.append(["role": "user", "content": userContent])
-
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 4096,
-            "tools": webSearchTools,
-            "system": systemPrompt,
-            "messages": conversationMessages,
-        ]
-
+        let body = anthropicChatBody(model: model, trustedSystem: systemPrompt, memoryContext: mapped.memoryContext, tools: webSearchTools, messages: conversationMessages)
         do {
             let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
-            await handleChatResult(data, state: state)
-        } catch {
-            conversationMessages.removeLast()
-            await showError(error.localizedDescription, state: state)
-        }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let content = json["content"] as? [[String: Any]],
+                  let text = content.compactMap({ $0["type"] as? String == "text" ? $0["text"] as? String : nil }).joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines) as String?, !text.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected API response."]) }
+            conversationMessages.append(["role": "assistant", "content": content])
+            let hasToolMaterial = content.contains { block in let type = block["type"] as? String; return type == "tool_use" || type == "tool_result" || type == "server_tool_use" || type == "web_search_tool_result" }
+            return .init(text: text, completed: true, cancelled: false, hasToolMaterial: hasToolMaterial)
+        } catch { conversationMessages.removeLast(); throw error }
     }
 
     // MARK: - Structured search (M8 — window attach + web search)
@@ -373,7 +250,11 @@ final class ClaudeService {
 
     private func readFileAsBlock(url: URL) -> [String: Any]? {
         guard let data = try? Data(contentsOf: url) else { return nil }
-        let ext = url.pathExtension.lowercased()
+        return fileBlock(data: data, name: url.lastPathComponent)
+    }
+
+    private func fileBlock(data: Data, name: String) -> [String: Any]? {
+        let ext = URL(fileURLWithPath: name).pathExtension.lowercased()
         let base64 = data.base64EncodedString()
 
         if ext == "pdf" {

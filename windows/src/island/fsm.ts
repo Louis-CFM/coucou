@@ -18,6 +18,11 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /**
+   * True while something is still unacknowledged (a pinned card, a badge on a
+   * pill): the compact island then never times out to hidden.
+   */
+  keepVisible: () => boolean = () => false;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -108,7 +113,9 @@ export class IslandStateMachine {
     this.clear("petitHide");
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
-      if (this.state === "petit") this.transition("hidden");
+      if (this.state !== "petit") return;
+      if (this.keepVisible()) this.schedulePetitHide();
+      else this.transition("hidden");
     }, this.petitToHiddenDelay * 1000);
   }
 
@@ -117,7 +124,7 @@ export class IslandStateMachine {
     if (this.pinned) return;
     this.homeCollapse = window.setTimeout(() => {
       this.homeCollapse = null;
-      if (this.state === "home") this.transition("petit");
+      if (this.state === "home" && !this.pinned) this.transition("petit");
     }, this.homeToPetitDelay * 1000);
   }
 

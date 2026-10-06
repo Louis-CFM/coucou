@@ -761,7 +761,16 @@ struct PromptView: View {
                 }
 
                 HStack(spacing: 8) {
-                    TextField(state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…", text: $text)
+                    Button(action: {
+                        state.privateChat.toggle()
+                        state.memoryStatus = state.privateChat ? "Private mode · session only · memory off" : nil
+                    }) {
+                        Label(state.privateChat ? "Private on" : "Private off", systemImage: state.privateChat ? "eye.slash.fill" : "eye")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(state.privateChat ? Color(hex: "#F5F6F8") : Color(hex: "#6B7079"))
+                    }.buttonStyle(.plain)
+                        .help("Private mode lasts for this app session and disables recall and saving")
+                    TextField(state.memoryStatus ?? (state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…"), text: $text)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                         .focused($focused)
@@ -797,8 +806,20 @@ struct PromptView: View {
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
-            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
-            await MainActor.run { focused = true }
+            do {
+                let providerContext: ChatProviderContext? = { switch state.promptContext { case .window(let app, let title, let url): return .window(appName: app, title: title, url: url); case .file(let name, let fileURL): return .file(name: name, path: fileURL?.path, bytes: fileURL.flatMap { try? Data(contentsOf: $0) }); case nil: return nil } }()
+                let result = try await state.chatMemoryCoordinator.send(query: query, contextKind: providerContext?.kind ?? .none, providerContext: providerContext, provider: "anthropic", model: state.claudeModel)
+                state.insertCompletedChatTurn(turnId: result.turnId, assistantText: result.result.text)
+                state.memoryStatus = state.privateChat ? "Private chat — memory off" : state.memoryStatus ?? state.chatMemoryCoordinator.memoryStatus
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            } catch {
+                state.stateOverride = .error
+                state.noteMessage = error.localizedDescription
+                state.view = .note
+            }
+            focused = true
         }
     }
 }
@@ -811,22 +832,149 @@ struct ChatBubble: View {
         HStack(alignment: .top) {
             if message.role == .user {
                 Spacer(minLength: 32)
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#F1F2F4"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.13))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .trailing, spacing: 3) {
+                    if let turnId = message.turnId {
+                        ControlledSelectableText(turnId: turnId, text: message.content, role: .user) { selection in
+                            Task { await AppState.shared.chatMemoryCoordinator.rememberSelection(turnId: turnId, selection: selection) }
+                        }
+                        Button("Remember selection") {
+                            NotificationCenter.default.post(name: .rememberControlledSelection, object: turnId)
+                        }.buttonStyle(.plain).font(.system(size: 9)).foregroundColor(Color(hex: "#6B7079"))
+                    } else {
+                        Text(message.content).font(.system(size: 12.5)).foregroundColor(Color(hex: "#F1F2F4"))
+                    }
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Color.white.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#B0B5BE"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 3) {
+                    if let turnId = message.turnId {
+                        ControlledSelectableText(turnId: turnId, text: message.content, role: .assistant) { selection in
+                            Task { await AppState.shared.chatMemoryCoordinator.rememberSelection(turnId: turnId, selection: selection) }
+                        }
+                        HStack(spacing: 8) {
+                            Button("Remember turn") { Task { await AppState.shared.chatMemoryCoordinator.rememberTurn(turnId: turnId) } }
+                                .buttonStyle(.plain)
+                            Button("Remember selection") {
+                                NotificationCenter.default.post(name: .rememberControlledSelection, object: turnId)
+                            }.buttonStyle(.plain)
+                            Button("Forget") { confirmForget(turnId: turnId) }
+                                .buttonStyle(.plain)
+                            if let summary = message.artifactSummary { Text(summary.label) }
+                            else if let status = message.memoryStatus { Text(status.label) }
+                        }
+                        .font(.system(size: 9))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                    } else {
+                        Text(message.content)
+                            .font(.system(size: 12.5))
+                            .foregroundColor(Color(hex: "#B0B5BE"))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Spacer(minLength: 8)
             }
+        }
+    }
+
+    @MainActor private func confirmForget(turnId: String) {
+        guard let confirmation = try? AppState.shared.chatMemoryCoordinator.prepareForgetTurn(turnId: turnId) else { AppState.shared.memoryStatus = "Could not prepare memory retirement."; return }
+        let alert = NSAlert()
+        alert.messageText = "Retire memories from this turn?"
+        alert.informativeText = "Endpoint: \(confirmation.endpoint)\nTenant: \(confirmation.tenant)\nBank: \(confirmation.bank)\n\(confirmation.knownIds.count) known memories across \(confirmation.documentIds.count) document scopes. Retirement is reversible."
+        alert.addButton(withTitle: "Retire")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        AppState.shared.memoryStatus = "Retiring turn memories…"
+        Task { @MainActor in
+            do {
+                let result = try await AppState.shared.chatMemoryCoordinator.forgetTurn(confirmation: confirmation)
+                if result.fallback == .document { AppState.shared.memoryStatus = "No IDs found; opening document scope."; MemoryManagerWindowController.shared.present(documentIds: result.documentIds) }
+                else if result.fallback == .text { AppState.shared.memoryStatus = "No IDs found; opening text search."; MemoryManagerWindowController.shared.present(query: String(message.content.prefix(120))) }
+                else if forgetResultIsPartial(result) { AppState.shared.memoryStatus = "Retired \(result.succeeded.count); \(result.failed.count) retirements and \(result.discoveryFailures.count) discoveries failed." }
+                else { AppState.shared.memoryStatus = "Retired \(result.succeeded.count) memories." }
+            } catch { AppState.shared.memoryStatus = error.localizedDescription }
+        }
+    }
+}
+
+extension Notification.Name {
+    static let rememberControlledSelection = Notification.Name("CoucouRememberControlledSelection")
+}
+
+struct ControlledSelectableText: NSViewRepresentable {
+    let turnId: String
+    let text: String
+    let role: ControlledTextRole
+    let onRemember: (ControlledTextSelection) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(turnId: turnId, text: text, role: role, onRemember: onRemember) }
+
+    func makeNSView(context: Context) -> NSTextView {
+        let view = NSTextView()
+        view.isEditable = false
+        view.isSelectable = true
+        view.drawsBackground = false
+        view.textContainerInset = .zero
+        view.textContainer?.lineFragmentPadding = 0
+        view.font = .systemFont(ofSize: 12.5)
+        view.textColor = NSColor(Color(hex: "#B0B5BE"))
+        view.string = text
+        view.delegate = context.coordinator
+        context.coordinator.textView = view
+        NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinator.rememberSelection), name: .rememberControlledSelection, object: nil)
+        return view
+    }
+
+    func updateNSView(_ view: NSTextView, context: Context) {
+        if view.string != text { view.string = text }
+        context.coordinator.turnId = turnId
+        context.coordinator.text = text
+        context.coordinator.role = role
+        context.coordinator.onRemember = onRemember
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? nsView.bounds.width
+        guard width > 0 else { return nil }
+        nsView.textContainer?.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        nsView.textContainer?.widthTracksTextView = true
+        nsView.layoutManager?.ensureLayout(for: nsView.textContainer!)
+        let height = nsView.layoutManager?.usedRect(for: nsView.textContainer!).height ?? nsView.intrinsicContentSize.height
+        return CGSize(width: width, height: max(18, ceil(height)))
+    }
+
+    static func dismantleNSView(_ view: NSTextView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(coordinator)
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var turnId: String
+        var text: String
+        var role: ControlledTextRole
+        var onRemember: (ControlledTextSelection) -> Void
+        weak var textView: NSTextView?
+
+        init(turnId: String, text: String, role: ControlledTextRole, onRemember: @escaping (ControlledTextSelection) -> Void) {
+            self.turnId = turnId
+            self.text = text
+            self.role = role
+            self.onRemember = onRemember
+        }
+
+        @objc func rememberSelection(_ notification: Notification) {
+            guard notification.object as? String == turnId,
+                  let view = textView,
+                  view.string == text else { return }
+            let range = view.selectedRange()
+            guard range.location != NSNotFound, range.length > 0,
+                  let swiftRange = Range(range, in: text) else { return }
+            let selectionText = String(text[swiftRange])
+            let start = text.utf8.distance(from: text.utf8.startIndex, to: swiftRange.lowerBound)
+            let end = text.utf8.distance(from: text.utf8.startIndex, to: swiftRange.upperBound)
+            onRemember(.init(text: selectionText, utf8Start: start, utf8End: end, role: role))
         }
     }
 }

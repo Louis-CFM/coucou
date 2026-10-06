@@ -5,6 +5,10 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+    @State private var hindsightCredential = HindsightCredentialPresentation(
+        isStored: KeychainStore.shared.get(hindsightBearerTokenKey) != nil)
+    @State private var hindsightStatus = ""
+    @State private var testingHindsight = false
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
     private static let fallbackModels: [(id: String, label: String)] = [
@@ -73,8 +77,10 @@ struct SettingsView: View {
                         SecureField("API key (sk-ant-…)", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
                         Button("Save") {
-                            KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                            statusMessage = "✓ Key saved."
+                            switch KeychainStore.shared.set("anthropic-api-key", value: apiKey) {
+                            case .success: statusMessage = "✓ Key saved."
+                            case .failure(let error): statusMessage = "❌ \(error.localizedDescription)"
+                            }
                         }
                         .buttonStyle(.borderedProminent)
 
@@ -105,6 +111,37 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(6)
+                }
+
+                GroupBox("Hindsight Memory") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Enable Hindsight memory", isOn: $state.hindsightEnabled)
+                        TextField("Base URL", text: $state.hindsightBaseUrl).textFieldStyle(.roundedBorder)
+                        HStack {
+                            TextField("Tenant", text: $state.hindsightTenant).textFieldStyle(.roundedBorder)
+                            TextField("Bank", text: $state.hindsightBank).textFieldStyle(.roundedBorder)
+                        }
+                        Toggle("Automatically recall relevant memory", isOn: $state.hindsightAutomaticRecall)
+                        Toggle("Automatically save eligible completed turns", isOn: $state.hindsightInferredRetention)
+                        Toggle("Allow HTTP for development", isOn: $state.hindsightAllowDevelopmentHttp)
+                        SecureField("Bearer token (always blank)", text: $hindsightCredential.replacement)
+                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Text(hindsightCredential.isStored ? "Token stored" : "Token not stored")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button(hindsightCredential.isStored ? "Replace" : "Save") { saveHindsightCredential() }
+                                .disabled(hindsightCredential.replacement.isEmpty)
+                            Button("Remove", role: .destructive) { removeHindsightCredential() }
+                                .disabled(!hindsightCredential.isStored)
+                        }
+                        HStack {
+                            Button(testingHindsight ? "Testing…" : "Test Connection") { testHindsightConnection() }
+                                .disabled(testingHindsight || !hindsightCredential.isStored)
+                            Button("Open Memory Manager") { MemoryManagerWindowController.shared.present() }
+                        }
+                        if !hindsightStatus.isEmpty { Text(hindsightStatus).font(.caption).textSelection(.enabled) }
+                    }.padding(6)
                 }
 
                 // MARK: Hooks
@@ -415,6 +452,40 @@ struct SettingsView: View {
         if !id.isEmpty { state.claudeModel = id }
     }
 
+    private func saveHindsightCredential() {
+        let token = hindsightCredential.replacement.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return }
+        switch HindsightCredentialReplacement.store(token) {
+        case .success:
+            hindsightCredential.didStoreReplacement()
+            hindsightStatus = "Token stored."
+        case .failure(let error):
+            hindsightStatus = error.localizedDescription
+        }
+    }
+
+    private func removeHindsightCredential() {
+        switch KeychainStore.shared.remove(hindsightBearerTokenKey) {
+        case .success:
+            hindsightCredential.didRemove()
+            hindsightStatus = "Token removed."
+        case .failure(let error):
+            hindsightStatus = error.localizedDescription
+        }
+    }
+
+    private func testHindsightConnection() {
+        testingHindsight = true
+        hindsightStatus = ""
+        Task {
+            do {
+                try await HindsightService(config: state.hindsightConfig).testConnection()
+                hindsightStatus = "Connection succeeded."
+            } catch { hindsightStatus = error.localizedDescription }
+            testingHindsight = false
+        }
+    }
+
     private func toggleStartup(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() }
@@ -511,25 +582,22 @@ struct SettingsView: View {
     }
 
     private func saveIntegrations() {
-        saveKey("resend-api-key",  value: resendKey)
-        saveKey("resend-from",     value: resendFrom)
-        saveKey("n8n-url",         value: n8nUrl)
-        saveKey("n8n-api-key",     value: n8nKey)
-        saveKey("vercel-token",    value: vercelToken)
-        saveKey("github-token",    value: githubToken)
-        saveKey("stripe-api-key",  value: stripeKey)
-        saveKey("calcom-api-key",  value: calcomKey)
-        saveKey("notion-api-key",  value: notionKey)
+        let updates = [
+            ("resend-api-key", resendKey), ("resend-from", resendFrom), ("n8n-url", n8nUrl),
+            ("n8n-api-key", n8nKey), ("vercel-token", vercelToken), ("github-token", githubToken),
+            ("stripe-api-key", stripeKey), ("calcom-api-key", calcomKey), ("notion-api-key", notionKey),
+        ]
+        for (key, value) in updates {
+            if case .failure(let error) = saveKey(key, value: value) {
+                statusMessage = "❌ \(error.localizedDescription)"
+                return
+            }
+        }
         statusMessage = "✓ Integration keys saved."
     }
 
-    /// Saves non-empty value; removes only if key was previously set (explicit user clear).
-    private func saveKey(_ key: String, value: String) {
-        if value.isEmpty {
-            KeychainStore.shared.remove(key)
-        } else {
-            KeychainStore.shared.set(key, value: value)
-        }
+    private func saveKey(_ key: String, value: String) -> Result<Void, KeychainStoreError> {
+        value.isEmpty ? KeychainStore.shared.remove(key) : KeychainStore.shared.set(key, value: value)
     }
 
     // MARK: - Vercel project list

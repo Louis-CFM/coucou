@@ -41,6 +41,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
 - 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
+- 🧠 **Optional Hindsight memory** — recall useful context before chat, explicitly remember a turn or selection, and optionally retain eligible completed turns. A session-only private mode bypasses both recall and saving.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
 
 <table>
@@ -102,9 +103,33 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) �
 |---|---|---|
 | **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
 | **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
+| **Hindsight bearer token** | optional cross-chat memory | Keychain / Windows Credential Manager; the endpoint, tenant and bank are ordinary settings, but the token is never stored there or read back into the UI |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
+
+### Optional Hindsight memory
+
+In **Settings… → Hindsight Memory**, set the deployment base URL (including
+its path prefix), tenant and bank, then save the bearer token to the operating
+system credential store. Coucou appends `/v1/{tenant}/banks/{bank}` to the base
+URL. Enable memory and use **Test Connection** before relying on it. Never put a
+bearer value in a URL, settings file, issue or log.
+
+Automatic recall adds bounded, explicitly untrusted context before chat. If
+Hindsight is offline or rejects a request, chat continues without memory and no
+retry queue is written. Explicit **Remember turn/selection** saves are separate
+from optional inferred retention of eligible successful turns. Attachments,
+tool material, credentials/hidden prompts, cancelled or failed turns are not
+inferred. **Private mode** lasts for the app session and bypasses recall plus all
+explicit and inferred saves; it does not make the chat provider itself offline.
+
+The Memory Manager can browse/search and inspect records, edit supported memory
+types, export the loaded page to JSON or Markdown, retire records, show retired
+records and restore them. There is no hard delete. Use a dedicated disposable
+bank for lifecycle tests or bulk retirement; never run mutation tests against a
+personal or production bank. See the detailed setup, offline behavior and
+platform differences in [`windows/README.md#hindsight-memory`](windows/README.md#hindsight-memory).
 
 ## Things to try
 
