@@ -35,6 +35,9 @@ export interface ViewHost {
   focus?(): void;
   /** Called every frame while the view is on screen. */
   tick?(nowMs: number): void;
+  /** True while the view has a transition of its own in flight, which keeps
+   *  the frame loop alive until it lands. */
+  readonly animating?: boolean;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -162,6 +165,9 @@ function buildOverview(actions: ViewActions): ViewHost {
     el,
     tick(nowMs: number) {
       if (mode === "ticker") ticker.tick(nowMs);
+    },
+    get animating() {
+      return mode === "ticker" && ticker.animating;
     },
     sync() {
       const task = State.focusTask;

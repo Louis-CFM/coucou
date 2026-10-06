@@ -38,13 +38,13 @@ function makeRow(): Row {
   const shimmer = h("span", { class: "tick-text shimmer" });
   const dim = h("span", {
     class: "tick-text",
-    style: "position:absolute;left:0;right:0;color:#6b7079",
+    style: "position:absolute;top:0;left:0;right:0;color:#6b7079",
   });
   const el = h(
     "div",
     { class: "ticker-row" },
     h("span", { class: "tick-icon", style: "position:relative" }, chevron, check),
-    h("span", { style: "position:relative;flex:1 1 auto;min-width:0" }, shimmer, dim),
+    h("span", { style: "position:relative;display:block;flex:1 1 auto;min-width:0" }, shimmer, dim),
   );
   return { el, chevron, check, shimmer, dim, text: "" };
 }
