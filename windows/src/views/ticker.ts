@@ -36,9 +36,12 @@ function makeRow(): Row {
   check.style.position = "absolute";
   chevron.style.position = "absolute";
   const shimmer = h("span", { class: "tick-text shimmer" });
+  // `top:0` pins the dim copy onto the shimmer one. Left to its static position,
+  // WebKitGTK drops it a full line (16 px) whenever the text overflows the row,
+  // and the completed step lands on top of the current one.
   const dim = h("span", {
     class: "tick-text",
-    style: "position:absolute;left:0;right:0;color:#6b7079",
+    style: "position:absolute;left:0;right:0;top:0;color:#6b7079",
   });
   const el = h(
     "div",
