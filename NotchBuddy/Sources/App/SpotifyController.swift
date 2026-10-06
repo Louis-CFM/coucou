@@ -257,40 +257,39 @@ final class SpotifyController: ObservableObject {
     }
 
     /// Launch Spotify if needed, then bring it to the front.
+    /// Uses AppleScript `activate` so it works from an LSUIElement (menu-bar) host.
     @discardableResult
     func openSpotify() -> Bool {
-        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.spotify.client" }) {
-            app.activate(options: .activateIgnoringOtherApps)
+        if isSpotifyRunning() {
             isRunning = true
-            if isPillActive { fetchAndApply() }
+            Task {
+                // AppleScript activate is more reliable than NSRunningApplication.activate
+                // when Coucursor is an agent/LSUIElement app.
+                _ = await runAppleScript(#"tell application id "com.spotify.client" to activate"#)
+                if isPillActive { fetchAndApply() }
+            }
             return true
         }
+        guard isInstalled else { return false }
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
-            NSWorkspace.shared.openApplication(at: url, configuration: config) { [weak self] app, _ in
-                Task { @MainActor in
-                    self?.isRunning = app != nil
-                    if app != nil, self?.isPillActive == true {
-                        // Give Spotify a moment to accept Apple Events.
-                        try? await Task.sleep(nanoseconds: 800_000_000)
-                        self?.fetchAndApply()
-                    }
+        let opened: (NSRunningApplication?, (any Error)?) -> Void = { [weak self] app, _ in
+            Task { @MainActor in
+                self?.isRunning = app != nil
+                if app != nil {
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    _ = await self?.runAppleScript(#"tell application id "com.spotify.client" to activate"#)
+                    if self?.isPillActive == true { self?.fetchAndApply() }
                 }
             }
+        }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
+            NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: opened)
             return true
         }
         let path = URL(fileURLWithPath: "/Applications/Spotify.app")
         guard FileManager.default.fileExists(atPath: path.path) else { return false }
-        NSWorkspace.shared.openApplication(at: path, configuration: config) { [weak self] app, _ in
-            Task { @MainActor in
-                self?.isRunning = app != nil
-                if app != nil, self?.isPillActive == true {
-                    try? await Task.sleep(nanoseconds: 800_000_000)
-                    self?.fetchAndApply()
-                }
-            }
-        }
+        NSWorkspace.shared.openApplication(at: path, configuration: config, completionHandler: opened)
         return true
     }
 

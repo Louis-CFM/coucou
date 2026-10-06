@@ -134,6 +134,7 @@ struct OverviewView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .help(jumpButtonHelp(for: agent))
                     .padding(.top, 8)
                     .padding(.trailing, 10)
                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -221,6 +222,15 @@ struct OverviewView: View {
             }
         } else {
             withAnimation(.easeIn(duration: 0.16)) { activeDiffId = pending.diffId }
+        }
+    }
+
+    private func jumpButtonHelp(for task: AgentTask?) -> String {
+        guard let task else { return "Open" }
+        switch task.id {
+        case "integration_spotify": return "Open Spotify"
+        case "integration_music":   return "Open Music"
+        default: return "Open \(task.name)"
         }
     }
 
@@ -4805,17 +4815,10 @@ struct SpotifyCardView: View {
                             .frame(maxWidth: 150, alignment: .leading)
                     }
                     Spacer(minLength: 2)
-                    Button(action: { SpotifyController.shared.openSpotify() }) {
-                        Image(systemName: "arrow.up.forward.app")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(Color(hex: "#1DB954").opacity(0.9))
-                    }
-                    .buttonStyle(.plain)
-                    .help(controller.isRunning ? "Open Spotify" : "Launch Spotify")
-                    .padding(.trailing, 36)
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
+                .padding(.trailing, 36)
 
                 if let artist = controller.artist {
                     Text(artist)
