@@ -14,13 +14,22 @@ final class SpotifyController: ObservableObject {
     @Published var trackTitle: String?
     @Published var artist: String?
     @Published var album: String?
+    /// Spotify sound volume, 0…100.
+    @Published var volume: Int = 50
+    @Published var isRunning: Bool = false
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.spotify")
+    private let volumeStep = 10
 
     private var isPillActive: Bool {
         AppState.shared.activeIntegrations.contains("integration_spotify")
+    }
+
+    var isInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil
+            || FileManager.default.fileExists(atPath: "/Applications/Spotify.app")
     }
 
     private init() {
@@ -51,6 +60,7 @@ final class SpotifyController: ObservableObject {
             guard bundleId == "com.spotify.client" else { return }
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                self.isRunning = true
                 guard self.isPillActive,
                       UserDefaults.standard.bool(forKey: "coucou.spotifyAutomationGranted") else { return }
                 self.fetchAndApply()
@@ -70,11 +80,14 @@ final class SpotifyController: ObservableObject {
         }
         notifTokens.append(tok3)
 
+        isRunning = isSpotifyRunning()
+
         AppState.shared.$activeIntegrations
             .sink { [weak self] integrations in
                 guard let self else { return }
+                self.isRunning = self.isSpotifyRunning()
                 if integrations.contains("integration_spotify") {
-                    if self.isSpotifyRunning(),
+                    if self.isRunning,
                        UserDefaults.standard.bool(forKey: "coucou.spotifyAutomationGranted") {
                         self.fetchAndApply()
                     }
@@ -145,12 +158,13 @@ final class SpotifyController: ObservableObject {
             let result = await runAppleScript("""
                 tell application id "com.spotify.client"
                     set ps to player state as string
-                    if ps is "stopped" then return {ps, "", "", ""}
+                    set vol to sound volume as string
+                    if ps is "stopped" then return {ps, "", "", "", vol}
                     try
                         set tr to current track
                         set n to name of tr
                     on error
-                        return {ps, "", "", ""}
+                        return {ps, "", "", "", vol}
                     end try
                     set ar to ""
                     set al to ""
@@ -160,15 +174,19 @@ final class SpotifyController: ObservableObject {
                     try
                         set al to album of tr
                     end try
-                    return {ps, n, ar, al}
+                    return {ps, n, ar, al, vol}
                 end tell
             """)
             guard case .success(let values) = result, values.count >= 4 else { return }
+            isRunning = true
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.spotifyPlaying
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
             artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
             album      = values[3].isEmpty ? nil : values[3]
+            if values.count >= 5, let v = Int(values[4]) {
+                volume = min(100, max(0, v))
+            }
             AppState.shared.spotifyPlaying = playing
             syncTaskName()
             if playing && !wasPlaying {
@@ -180,6 +198,7 @@ final class SpotifyController: ObservableObject {
     private func clearState() {
         trackTitle = nil; artist = nil; album = nil
         AppState.shared.spotifyPlaying = false
+        isRunning = false
         syncTaskName()
     }
 
@@ -194,28 +213,83 @@ final class SpotifyController: ObservableObject {
     // MARK: - Playback controls
 
     func playPause() {
-        guard isSpotifyRunning() else { return }
+        guard ensureRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.spotify.client" to playpause"#) }
     }
 
     func nextTrack() {
-        guard isSpotifyRunning() else { return }
+        guard ensureRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.spotify.client" to next track"#) }
     }
 
     func previousTrack() {
-        guard isSpotifyRunning() else { return }
+        guard ensureRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.spotify.client" to previous track"#) }
     }
 
-    func openSpotify() {
+    func volumeUp() {
+        setVolume(volume + volumeStep)
+    }
+
+    func volumeDown() {
+        setVolume(volume - volumeStep)
+    }
+
+    func setVolume(_ value: Int) {
+        guard ensureRunning() else { return }
+        let clamped = min(100, max(0, value))
+        volume = clamped
+        Task {
+            await runAppleScript("tell application id \"com.spotify.client\" to set sound volume to \(clamped)")
+        }
+    }
+
+    /// Launch Spotify if needed, then bring it to the front.
+    @discardableResult
+    func openSpotify() -> Bool {
         if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.spotify.client" }) {
             app.activate(options: .activateIgnoringOtherApps)
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
-            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-        } else {
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Spotify.app"))
+            isRunning = true
+            if isPillActive { fetchAndApply() }
+            return true
         }
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
+            NSWorkspace.shared.openApplication(at: url, configuration: config) { [weak self] app, _ in
+                Task { @MainActor in
+                    self?.isRunning = app != nil
+                    if app != nil, self?.isPillActive == true {
+                        // Give Spotify a moment to accept Apple Events.
+                        try? await Task.sleep(nanoseconds: 800_000_000)
+                        self?.fetchAndApply()
+                    }
+                }
+            }
+            return true
+        }
+        let path = URL(fileURLWithPath: "/Applications/Spotify.app")
+        guard FileManager.default.fileExists(atPath: path.path) else { return false }
+        NSWorkspace.shared.openApplication(at: path, configuration: config) { [weak self] app, _ in
+            Task { @MainActor in
+                self?.isRunning = app != nil
+                if app != nil, self?.isPillActive == true {
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    self?.fetchAndApply()
+                }
+            }
+        }
+        return true
+    }
+
+    /// Launch Spotify when a control needs it; returns false if not installed.
+    @discardableResult
+    private func ensureRunning() -> Bool {
+        if isSpotifyRunning() {
+            isRunning = true
+            return true
+        }
+        return openSpotify()
     }
 
     func openAutomationSettings() {

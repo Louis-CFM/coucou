@@ -172,6 +172,8 @@ Détail des événements : `docs/AGENTS.md` § Cursor Agent.
 ## 1quater-ter. Spotify *(build GitHub, macOS)*
 
 - Pastille `integration_spotify` (`#1DB954`) : même UX qu'Apple Music (carte now-playing + contrôles play/pause/prev/next dans la pastille au survol).
+- Carte : volume Spotify (`sound volume` 0–100, ±/− par pas de 10) + bouton pour lancer / ouvrir l'app desktop.
+- Idle : « Launch Spotify » si l'app n'est pas ouverte, sinon « Open Spotify ». Les contrôles transport lancent Spotify s'il n'est pas déjà lancé.
 - État via notification distribuée `com.spotify.client.PlaybackStateChanged` + lecture AppleScript (`application id "com.spotify.client"`).
 - Pas d'OAuth Web API : contrôle local du client desktop Spotify uniquement.
 - Permission Automatisation → Spotify (macOS). Si refusée (`-1743`), la carte propose d'ouvrir Réglages Système.

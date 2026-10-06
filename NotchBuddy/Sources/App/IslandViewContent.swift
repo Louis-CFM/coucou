@@ -2481,7 +2481,9 @@ struct IntegrationCardView: View {
                         #endif
                     } else if task.id == "integration_spotify" {
                         #if !APPSTORE
-                        Button("Open Spotify") { SpotifyController.shared.openSpotify() }
+                        Button(SpotifyController.shared.isRunning ? "Open Spotify" : "Launch Spotify") {
+                            SpotifyController.shared.openSpotify()
+                        }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
@@ -4750,6 +4752,13 @@ struct SpotifyCardView: View {
     @ObservedObject private var controller = SpotifyController.shared
     @ObservedObject private var appState = AppState.shared
 
+    private var volumeIcon: String {
+        if controller.volume == 0 { return "speaker.slash.fill" }
+        if controller.volume < 40 { return "speaker.wave.1.fill" }
+        if controller.volume < 75 { return "speaker.wave.2.fill" }
+        return "speaker.wave.3.fill"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if appState.spotifyAutomationDenied {
@@ -4772,12 +4781,18 @@ struct SpotifyCardView: View {
                     .padding(.leading, 108)
                     .padding(.trailing, 12)
 
-                Button("Open Settings…") { SpotifyController.shared.openAutomationSettings() }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "#1DB954").opacity(0.85))
-                    .buttonStyle(.plain)
-                    .padding(.leading, 108)
-                    .padding(.top, 2)
+                HStack(spacing: 10) {
+                    Button("Open Settings…") { SpotifyController.shared.openAutomationSettings() }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: "#1DB954").opacity(0.85))
+                        .buttonStyle(.plain)
+                    Button("Launch Spotify") { SpotifyController.shared.openSpotify() }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .buttonStyle(.plain)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 2)
             } else {
                 HStack(spacing: 6) {
                     Circle()
@@ -4790,6 +4805,15 @@ struct SpotifyCardView: View {
                             .lineLimit(1).truncationMode(.tail)
                             .frame(maxWidth: 150, alignment: .leading)
                     }
+                    Spacer(minLength: 2)
+                    Button(action: { SpotifyController.shared.openSpotify() }) {
+                        Image(systemName: "arrow.up.forward.app")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Color(hex: "#1DB954").opacity(0.9))
+                    }
+                    .buttonStyle(.plain)
+                    .help(controller.isRunning ? "Open Spotify" : "Launch Spotify")
+                    .padding(.trailing, 36)
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
@@ -4819,6 +4843,28 @@ struct SpotifyCardView: View {
                     Button(action: { SpotifyController.shared.nextTrack() }) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+
+                    // Volume
+                    Image(systemName: volumeIcon)
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.leading, 4)
+                    Button(action: { SpotifyController.shared.volumeDown() }) {
+                        Image(systemName: "minus")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Text("\(controller.volume)")
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(minWidth: 18, alignment: .center)
+                    Button(action: { SpotifyController.shared.volumeUp() }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
