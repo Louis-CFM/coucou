@@ -498,13 +498,20 @@ final class HookServer: @unchecked Sendable {
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
-            if !finalText.isEmpty {
-                appendStep(id: agentId, step: finalText)
+            let summary = state.sessionDiffSummary(for: agentId)
+            let display: String = {
+                if let summary, !finalText.isEmpty { return "\(summary) · \(finalText)" }
+                if let summary { return summary }
+                return finalText
+            }()
+            if !display.isEmpty {
+                appendStep(id: agentId, step: display)
                 if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                    state.tasks[idx].finalLine = finalText
+                    state.tasks[idx].finalLine = display
                 }
             }
             SoundEngine.shared.play("finish")
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             if focused {
                 expandIfNeeded(to: .finished)
             } else {

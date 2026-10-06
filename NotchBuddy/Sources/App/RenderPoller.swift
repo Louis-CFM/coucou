@@ -160,6 +160,10 @@ final class RenderPoller: @unchecked Sendable {
             appState.tasks[idx].pillBadge = latest.isSuccess ? .finished : .error
         }
         SoundEngine.shared.play(latest.isSuccess ? "finish" : "error")
+        NotificationCenter.default.post(
+            name: .triggerEmote,
+            object: latest.isSuccess ? BotEmote.happy : BotEmote.annoyed
+        )
         NotificationCenter.default.post(name: .hookReveal, object: nil)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) {

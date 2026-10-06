@@ -112,6 +112,47 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(stayCollapsedUntilHover, forKey: "stayCollapsedUntilHover") }
     }
 
+    /// Soft idle breathing in the smallest strip when eye-tracking is off.
+    @Published var idleBreathing: Bool = true {
+        didSet { UserDefaults.standard.set(idleBreathing, forKey: "idleBreathing") }
+    }
+
+    /// Path pinned from the programming view (re-opened on next edit of that file).
+    @Published var pinnedDiffPath: String? = nil {
+        didSet { UserDefaults.standard.set(pinnedDiffPath, forKey: "pinnedDiffPath") }
+    }
+
+    /// First-run behavior tips shown once.
+    @Published var hasSeenBehaviorTips: Bool = false {
+        didSet { UserDefaults.standard.set(hasSeenBehaviorTips, forKey: "hasSeenBehaviorTips") }
+    }
+
+    func applyBehaviorPreset(_ preset: BehaviorPreset) {
+        switch preset {
+        case .quiet:
+            idleEyeTracking = false
+            stayCollapsedUntilHover = true
+            idleBreathing = false
+        case .alive:
+            idleEyeTracking = true
+            stayCollapsedUntilHover = false
+            idleBreathing = true
+        }
+    }
+
+    enum BehaviorPreset { case quiet, alive }
+
+    /// Summarize session diffs for a pill: "+42 −11 in 3 files".
+    func sessionDiffSummary(for pillId: String) -> String? {
+        guard let diffs = sessionDiffs[pillId], !diffs.isEmpty else { return nil }
+        let added = diffs.reduce(0) { $0 + $1.added }
+        let removed = diffs.reduce(0) { $0 + $1.removed }
+        var files = Set<String>()
+        for d in diffs { files.insert(d.path) }
+        let n = files.count
+        return "+\(added) −\(removed) in \(n) file\(n == 1 ? "" : "s")"
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -394,6 +435,13 @@ final class AppState: ObservableObject {
         }
         if let v = ud.object(forKey: "stayCollapsedUntilHover") as? Bool {
             stayCollapsedUntilHover = v
+        }
+        if let v = ud.object(forKey: "idleBreathing") as? Bool {
+            idleBreathing = v
+        }
+        pinnedDiffPath = ud.string(forKey: "pinnedDiffPath")
+        if let v = ud.object(forKey: "hasSeenBehaviorTips") as? Bool {
+            hasSeenBehaviorTips = v
         }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {

@@ -443,8 +443,44 @@ final class IslandWindowController: NSWindowController {
                 islandPanel.makeKey()
                 expand(to: .wardrobe)
             }
+
+        case .mediaPlayPause:
+            #if !APPSTORE
+            Self.toggleMediaPlayback()
+            #endif
+
+        case .mediaNext:
+            #if !APPSTORE
+            Self.skipMediaTrack()
+            #endif
         }
     }
+
+    #if !APPSTORE
+    private static func toggleMediaPlayback() {
+        if AppState.shared.spotifyPlaying
+            || (AppState.shared.activeIntegrations.contains("integration_spotify")
+                && SpotifyController.shared.trackTitle != nil) {
+            SpotifyController.shared.playPause()
+            return
+        }
+        if AppState.shared.activeIntegrations.contains("integration_music") {
+            MusicController.shared.playPause()
+        }
+    }
+
+    private static func skipMediaTrack() {
+        if AppState.shared.spotifyPlaying
+            || (AppState.shared.activeIntegrations.contains("integration_spotify")
+                && SpotifyController.shared.trackTitle != nil) {
+            SpotifyController.shared.nextTrack()
+            return
+        }
+        if AppState.shared.activeIntegrations.contains("integration_music") {
+            MusicController.shared.nextTrack()
+        }
+    }
+    #endif
 
     // MARK: - Island-local shortcuts
 
@@ -613,11 +649,16 @@ final class IslandWindowController: NSWindowController {
             self.fsm.reveal()
         }
 
-        // Music started playing: reveal silently (no peek sound)
+        // Music / track change: reveal silently (no peek sound).
+        // When "stay collapsed until hover" is on, show a brief compact peek for the ticker.
         NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.silentNextReveal = true
-            self.fsm.reveal()
+            if AppState.shared.stayCollapsedUntilHover {
+                self.fsm.revealBriefly(seconds: 2.2)
+            } else {
+                self.fsm.reveal()
+            }
             self.silentNextReveal = false
         }
 

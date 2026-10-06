@@ -257,6 +257,21 @@ struct SettingsView: View {
                 Text("Keep the island in its smallest state until you hover or click. Alerts still open on their own.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+                Toggle("Idle breathing", isOn: $state.idleBreathing)
+                Text("Subtle breath animation in the resting strip when eye-tracking is off.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Text("Presets")
+                        .foregroundColor(.secondary)
+                    Button("Quiet") { state.applyBehaviorPreset(.quiet) }
+                        .buttonStyle(.bordered)
+                    Button("Alive") { state.applyBehaviorPreset(.alive) }
+                        .buttonStyle(.bordered)
+                }
+                Text("Quiet = collapsed + no eyes. Alive = eyes on + compact rest.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
             .padding(6)
         }
@@ -520,7 +535,7 @@ struct SettingsView: View {
                      : "~/.cursor/hooks.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
-                Text("Shows Cursor Agent sessions live on the Cursor pill (thinking, tools, edits, finished). Shell Allow/Deny from the notch comes in a later version.")
+                Text("Shows Cursor Agent sessions live on the Cursor pill (thinking, tools, edits, finished). Session end shows a +/− summary. Shell Allow/Deny from the notch is next — Cursor hooks don’t expose a stable permission card yet.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

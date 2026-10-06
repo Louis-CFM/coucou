@@ -166,6 +166,22 @@ final class IslandStateMachine {
         schedulePetitHide()
     }
 
+    /// Brief compact peek (e.g. new song) even when preferring hidden rest, then hide again.
+    func revealBriefly(seconds: TimeInterval = 2.0) {
+        guard state == .hidden || state == .petit else { return }
+        cancelTimers()
+        if state == .hidden {
+            transition(to: .petit)
+        }
+        petitHideWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.state == .petit, !(self.isHeldOpen?() ?? false) else { return }
+            self.transition(to: .hidden)
+        }
+        petitHideWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: item)
+    }
+
     // MARK: – Timers
 
     private func schedulePetitHide() {

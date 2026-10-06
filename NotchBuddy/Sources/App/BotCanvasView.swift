@@ -13,13 +13,21 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden && !state.idleEyeTracking)) { timeline in
+        TimelineView(.animation(paused: state.mode == .hidden
+                                        && !state.idleEyeTracking
+                                        && !state.idleBreathing)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dtRaw = min(0.05, now - engine.lastTime)
                 let dt = dtRaw
-                engine.lookX = lookX(state: state, size: size)
-                engine.lookY = lookY(state: state, size: size)
+                if state.mode == .hidden && !state.idleEyeTracking {
+                    // Soft idle breath — eyes stay centered
+                    engine.lookX = 0
+                    engine.lookY = 0
+                } else {
+                    engine.lookX = lookX(state: state, size: size)
+                    engine.lookY = lookY(state: state, size: size)
+                }
                 engine.particleOverhang = particleOverhang
                 // Widen slot when file is hovering over the mailbox (morph > 0.5)
                 // Open mouth (hover=0.20R) when file dragged over box; close when not
@@ -69,11 +77,25 @@ struct BotCanvasView: View {
                 let isWardrobe = state.mode == .expanded && state.view == .wardrobe
                 let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
                 let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
-                                 animated: state.view != .wardrobe)
+                // Sunglasses while music plays — “listening” cue without a new wardrobe item
+                let listeningLook = dancing && (state.resolvedOutfit == .none || state.resolvedOutfit == .auto)
+                let outfit: Outfit = {
+                    guard showOutfit else { return .none }
+                    if listeningLook { return .sunglasses }
+                    return state.resolvedOutfit
+                }()
+                engine.setOutfit(outfit, animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
                 var ctx = context
+                // Quiet idle breath in the smallest strip (no eye tracking)
+                if state.mode == .hidden && state.idleBreathing && !state.idleEyeTracking {
+                    let breath = 1 + 0.035 * sin(now * 2.1)
+                    let c = CGPoint(x: size.width / 2, y: size.height / 2)
+                    ctx.translateBy(x: c.x, y: c.y)
+                    ctx.scaleBy(x: breath, y: breath)
+                    ctx.translateBy(x: -c.x, y: -c.y)
+                }
                 engine.applyDance(&ctx, size: size)
                 // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
                 // rotate the entire body+accessories context around the body center so the

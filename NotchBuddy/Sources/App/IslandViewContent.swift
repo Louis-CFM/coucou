@@ -688,25 +688,37 @@ struct ProgrammingSessionView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(recentFiles) { file in
                                 let active = file.id == diff?.id || file.path == diff?.path
-                                Button {
-                                    state.pendingOpenDiff = (pillId, file.id)
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Circle()
-                                            .fill(active ? Color(hex: "#46E3B7") : Color(hex: "#5F646D"))
-                                            .frame(width: 4, height: 4)
-                                        Text(file.name)
-                                            .font(.system(size: 10, weight: active ? .semibold : .regular))
-                                            .foregroundColor(active ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                        Spacer(minLength: 0)
-                                        Text("+\(file.added)")
-                                            .font(.system(size: 8).monospaced())
-                                            .foregroundColor(Color(hex: "#22C55E").opacity(0.85))
+                                let pinned = state.pinnedDiffPath == file.path
+                                HStack(spacing: 4) {
+                                    Button {
+                                        state.pendingOpenDiff = (pillId, file.id)
+                                    } label: {
+                                        HStack(spacing: 5) {
+                                            Circle()
+                                                .fill(active ? Color(hex: "#46E3B7") : Color(hex: "#5F646D"))
+                                                .frame(width: 4, height: 4)
+                                            Text(file.name)
+                                                .font(.system(size: 10, weight: active ? .semibold : .regular))
+                                                .foregroundColor(active ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                                                .lineLimit(1)
+                                                .truncationMode(.middle)
+                                            Spacer(minLength: 0)
+                                            Text("+\(file.added)")
+                                                .font(.system(size: 8).monospaced())
+                                                .foregroundColor(Color(hex: "#22C55E").opacity(0.85))
+                                        }
                                     }
+                                    .buttonStyle(.plain)
+                                    Button {
+                                        state.pinnedDiffPath = pinned ? nil : file.path
+                                    } label: {
+                                        Image(systemName: pinned ? "pin.fill" : "pin")
+                                            .font(.system(size: 8))
+                                            .foregroundColor(pinned ? Color(hex: "#46E3B7") : Color(hex: "#5F646D"))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(pinned ? "Unpin file" : "Pin file")
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -734,11 +746,16 @@ struct ProgrammingSessionView: View {
         }
         .onExitCommand { dismiss() }
         .onReceive(NotificationCenter.default.publisher(for: .sessionDiffAppended)) { note in
-            // Always jump the editor to the newest file edit while this view is open.
+            // Prefer the pinned file when it just got an edit; otherwise jump to newest.
             guard let p = note.userInfo?["pillId"] as? String,
                   let id = note.userInfo?["diffId"] as? Int,
                   p == pillId else { return }
-            state.pendingOpenDiff = (p, id)
+            if let pinned = state.pinnedDiffPath,
+               let hit = (state.sessionDiffs[p] ?? []).first(where: { $0.path == pinned }) {
+                state.pendingOpenDiff = (p, hit.id)
+            } else {
+                state.pendingOpenDiff = (p, id)
+            }
         }
     }
 
@@ -4620,8 +4637,8 @@ struct MusicCardView: View {
                         .padding(.leading, 108)
                 }
 
-                // Line 3: controls
-                HStack(spacing: 8) {
+                // Line 3: transport
+                HStack(spacing: 10) {
                     Button(action: { MusicController.shared.previousTrack() }) {
                         Image(systemName: "backward.fill")
                             .font(.system(size: 11))
@@ -4640,9 +4657,56 @@ struct MusicCardView: View {
                             .foregroundColor(Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    Spacer(minLength: 0)
                 }
                 .padding(.leading, 108)
-                .padding(.top, 6)
+                .padding(.trailing, 12)
+                .padding(.top, 4)
+
+                // Volume row (same pattern as Spotify)
+                HStack(spacing: 6) {
+                    Image(systemName: controller.volume == 0 ? "speaker.slash.fill"
+                                      : controller.volume < 40 ? "speaker.wave.1.fill"
+                                      : controller.volume < 75 ? "speaker.wave.2.fill"
+                                      : "speaker.wave.3.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#FA2D48").opacity(0.85))
+                        .frame(width: 14)
+                    Button(action: { MusicController.shared.volumeDown() }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color(hex: "#2A2C31")).frame(height: 4)
+                            Capsule()
+                                .fill(Color(hex: "#FA2D48"))
+                                .frame(width: max(4, geo.size.width * CGFloat(controller.volume) / 100), height: 4)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .center)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                            let pct = Int((value.location.x / max(geo.size.width, 1)) * 100)
+                            MusicController.shared.setVolume(pct)
+                        })
+                    }
+                    .frame(height: 16)
+                    Button(action: { MusicController.shared.volumeUp() }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Text("\(controller.volume)")
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .frame(minWidth: 20, alignment: .trailing)
+                }
+                .padding(.leading, 108)
+                .padding(.trailing, 12)
+                .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

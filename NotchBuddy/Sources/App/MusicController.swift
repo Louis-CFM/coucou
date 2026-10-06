@@ -14,10 +14,14 @@ final class MusicController: ObservableObject {
     @Published var trackTitle: String?
     @Published var artist: String?
     @Published var album: String?
+    /// Music sound volume, 0…100.
+    @Published var volume: Int = 50
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.music")
+    private let volumeStep = 10
+    private var lastEmoteTitle: String?
 
     private var isPillActive: Bool {
         AppState.shared.activeIntegrations.contains("integration_music")
@@ -138,6 +142,7 @@ final class MusicController: ObservableObject {
         let playing = playerState == "Playing"
         let wasPlaying = AppState.shared.musicPlaying
 
+        let prevTitle = trackTitle
         trackTitle = name.map { Self.shortTitle($0) }.flatMap { $0.isEmpty ? nil : $0 }
         artist     = inputArtist.map { Self.shortArtist($0) }.flatMap { $0.isEmpty ? nil : $0 }
         album      = inputAlbum
@@ -145,9 +150,24 @@ final class MusicController: ObservableObject {
         AppState.shared.musicPlaying = playing
         syncTaskName()
 
-        // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
+        // Reveal on play-start or track change
+        if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
+            if trackTitle != lastEmoteTitle {
+                lastEmoteTitle = trackTitle
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+        }
+        refreshVolume()
+    }
+
+    private func refreshVolume() {
+        Task {
+            let result = await runAppleScript(
+                #"tell application id "com.apple.Music" to get sound volume as string"#
+            )
+            guard case .success(let values) = result, let raw = values.first, let v = Int(raw) else { return }
+            volume = min(100, max(0, v))
         }
     }
 
@@ -156,12 +176,13 @@ final class MusicController: ObservableObject {
             let result = await runAppleScript("""
                 tell application id "com.apple.Music"
                     set ps to player state as string
-                    if ps is "stopped" then return {ps, "", "", ""}
+                    set vol to sound volume as string
+                    if ps is "stopped" then return {ps, "", "", "", vol}
                     try
                         set tr to current track
                         set n to name of tr
                     on error
-                        return {ps, "", "", ""}
+                        return {ps, "", "", "", vol}
                     end try
                     set ar to ""
                     set al to ""
@@ -171,19 +192,27 @@ final class MusicController: ObservableObject {
                     try
                         set al to album of tr
                     end try
-                    return {ps, n, ar, al}
+                    return {ps, n, ar, al, vol}
                 end tell
             """)
             guard case .success(let values) = result, values.count >= 4 else { return }
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.musicPlaying
+            let prevTitle  = trackTitle
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
             artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
             album      = values[3].isEmpty ? nil : values[3]
+            if values.count >= 5, let v = Int(values[4]) {
+                volume = min(100, max(0, v))
+            }
             AppState.shared.musicPlaying = playing
             syncTaskName()
-            if playing && !wasPlaying {
+            if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
                 NotificationCenter.default.post(name: .musicReveal, object: nil)
+                if trackTitle != lastEmoteTitle {
+                    lastEmoteTitle = trackTitle
+                    NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                }
             }
         }
     }
@@ -217,6 +246,18 @@ final class MusicController: ObservableObject {
     func previousTrack() {
         guard isMusicRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
+    }
+
+    func volumeUp() { setVolume(volume + volumeStep) }
+    func volumeDown() { setVolume(volume - volumeStep) }
+
+    func setVolume(_ value: Int) {
+        guard isMusicRunning() else { return }
+        let clamped = min(100, max(0, value))
+        volume = clamped
+        Task {
+            await runAppleScript("tell application id \"com.apple.Music\" to set sound volume to \(clamped)")
+        }
     }
 
     func openMusic() {

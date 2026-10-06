@@ -108,15 +108,25 @@ struct IslandContainer: View {
             CountdownBar(state: state, islandW: islandWidth)
 
             Group {
-                if state.mode == .compact {
+                if state.mode == .compact || state.mode == .hidden {
                     #if !APPSTORE
-                    CompactNowPlayingBanner(state: state, islandW: islandWidth, islandH: islandHeight)
+                    CompactInfoBanner(state: state, islandW: islandWidth, islandH: islandHeight)
                         .transition(.opacity)
                     #endif
+                }
+                if state.mode == .compact {
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                }
+                // Alert / CI / deploy badge on Mochi in the resting strip
+                if state.mode == .compact || state.mode == .hidden,
+                   let badge = CompactAlertBadge.leadingBadge(in: state) {
+                    CompactAlertBadge(badge: badge)
+                        .position(x: 52, y: max(8, islandHeight * 0.22))
+                        .transition(.opacity)
+                        .zIndex(2)
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
@@ -612,97 +622,130 @@ struct ClaudePlanHeaderPill: View {
 }
 #endif
 
-// MARK: - Compact now-playing marquee (middle of the resting strip)
+// MARK: - Compact info ticker (music / agent / pulse)
 
 #if !APPSTORE
-/// Scrolls the current Spotify / Apple Music track through the empty compact
-/// band between Mochi and the mini-grid — like a short info ticker.
-struct CompactNowPlayingBanner: View {
+/// Scrolls now-playing, live agent edits, or a short day pulse through the resting strip.
+/// Tap toggles Spotify / Music playback when a track is showing.
+struct CompactInfoBanner: View {
     @ObservedObject var state: AppState
     @ObservedObject private var spotify = SpotifyController.shared
     @ObservedObject private var music = MusicController.shared
     let islandW: CGFloat
     let islandH: CGFloat
 
-    private struct NowPlaying: Equatable {
+    private struct Line: Equatable {
         let text: String
         let accent: Color
+        let kind: Kind
+        enum Kind: Equatable { case spotify, music, agent, pulse }
     }
 
-    private var nowPlaying: NowPlaying? {
+    private var line: Line? {
+        // 1) Music first when playing
         if state.spotifyPlaying,
            state.activeIntegrations.contains("integration_spotify"),
            let title = spotify.trackTitle, !title.isEmpty {
-            let line: String
-            if let artist = spotify.artist, !artist.isEmpty {
-                line = "\(title)  ·  \(artist)"
-            } else {
-                line = title
-            }
-            return NowPlaying(text: line, accent: Color(hex: "#1DB954"))
+            let t = (spotify.artist?.isEmpty == false) ? "\(title)  ·  \(spotify.artist!)" : title
+            return Line(text: t, accent: Color(hex: "#1DB954"), kind: .spotify)
         }
         if state.musicPlaying,
            state.activeIntegrations.contains("integration_music"),
            let title = music.trackTitle, !title.isEmpty {
-            let line: String
-            if let artist = music.artist, !artist.isEmpty {
-                line = "\(title)  ·  \(artist)"
-            } else {
-                line = title
-            }
-            return NowPlaying(text: line, accent: Color(hex: "#FA2D48"))
+            let t = (music.artist?.isEmpty == false) ? "\(title)  ·  \(music.artist!)" : title
+            return Line(text: t, accent: Color(hex: "#FA2D48"), kind: .music)
         }
+        // 2) Live agent edit
+        if let agent = state.focusTask ?? state.tasks.first(where: {
+            ($0.id == "agent_cursor" || $0.source == .claudeCode)
+                && ($0.state == .working || $0.state == .thinking)
+        }) {
+            if let step = agent.steps.last, !step.isEmpty {
+                let label = agent.id == "agent_cursor" ? "Cursor" : agent.name
+                return Line(text: "\(label) · \(step)", accent: Color(hex: agent.color), kind: .agent)
+            }
+            if let diff = state.sessionDiffs[agent.id]?.last {
+                let label = agent.id == "agent_cursor" ? "Cursor" : agent.name
+                return Line(text: "\(label) · Editing \(diff.name)", accent: Color(hex: agent.color), kind: .agent)
+            }
+        }
+        // 3) Day pulse (deploys / PRs waiting)
+        if let pulse = dayPulseLine() { return pulse }
         return nil
     }
 
-    /// Leave room for Mochi (left) and the 2×2 mini grid (right).
-    private var bandLeading: CGFloat { 58 }
-    private var bandTrailing: CGFloat { 58 }
+    private func dayPulseLine() -> Line? {
+        var bits: [String] = []
+        let renderFailed = state.renderDeployments.filter { !$0.isSuccess && $0.isTerminal }.count
+        let vercelFailed = state.vercelDeployments.filter { !$0.isSuccess }.count
+        let failedDeploys = renderFailed + vercelFailed
+        let liveDeploys = state.renderDeployments.filter { $0.isSuccess }.count
+            + state.vercelDeployments.filter { $0.isSuccess }.count
+        if failedDeploys > 0 { bits.append("\(failedDeploys) failed deploy\(failedDeploys == 1 ? "" : "s")") }
+        else if liveDeploys > 0 { bits.append("\(liveDeploys) live") }
+        if let pulse = state.githubPulse {
+            let open = pulse.myPRs.count
+            let review = pulse.toReview.count
+            if open > 0 { bits.append("\(open) PR\(open == 1 ? "" : "s")") }
+            if review > 0 { bits.append("\(review) to review") }
+        }
+        guard !bits.isEmpty else { return nil }
+        return Line(text: bits.joined(separator: " · "), accent: Color(hex: "#8E939C"), kind: .pulse)
+    }
+
+    private var bandLeading: CGFloat { state.mode == .hidden ? 52 : 58 }
+    private var bandTrailing: CGFloat { state.mode == .hidden ? 16 : 58 }
     private var bandWidth: CGFloat { max(0, islandW - bandLeading - bandTrailing) }
 
-    /// Restart the crawl from the right when the track changes.
     @State private var crawlStartedAt: Date = .now
 
     var body: some View {
         Group {
-            if let np = nowPlaying, bandWidth > 40 {
-                marquee(np)
+            if let line, bandWidth > 40 {
+                marquee(line)
                     .frame(width: bandWidth, height: islandH)
                     .clipped()
+                    .contentShape(Rectangle())
+                    .onTapGesture { handleTap(line) }
                     .position(x: bandLeading + bandWidth / 2, y: islandH / 2)
-                    .allowsHitTesting(false)
-                    .accessibilityLabel("Now playing \(np.text)")
+                    .accessibilityLabel(line.text)
                     .onAppear { crawlStartedAt = .now }
-                    .onChange(of: np.text) { _, _ in crawlStartedAt = .now }
+                    .onChange(of: line.text) { _, _ in crawlStartedAt = .now }
             }
         }
     }
 
+    private func handleTap(_ line: Line) {
+        switch line.kind {
+        case .spotify: SpotifyController.shared.playPause()
+        case .music:   MusicController.shared.playPause()
+        case .agent:
+            if let id = state.focusTask?.id ?? state.tasks.first(where: { $0.id == "agent_cursor" })?.id {
+                state.setFocus(id)
+            }
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+        case .pulse:
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+        }
+    }
+
     @ViewBuilder
-    private func marquee(_ np: NowPlaying) -> some View {
+    private func marquee(_ line: Line) -> some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
-            let measured = textWidth(np.text)
-            // One full pass: enter from the right edge → exit past the left edge,
-            // then a short gap before the next copy enters from the right.
-            // cycle = band + text + gap  ⇒  when copy1 finishes exiting left,
-            // copy2 is exactly at the right edge (no hard reset).
+            let measured = textWidth(line.text)
             let gap: CGFloat = 48
             let cycle = bandWidth + measured + gap
-            let speed: CGFloat = 28 // pt/s
+            let speed: CGFloat = 28
             let elapsed = max(0, timeline.date.timeIntervalSince(crawlStartedAt))
             let distance = CGFloat(elapsed * Double(speed)).truncatingRemainder(dividingBy: Double(cycle))
             let x = bandWidth - distance
 
             ZStack(alignment: .leading) {
-                tickerLabel(np)
-                    .offset(x: x)
-                // Always a second copy — seamless handoff at the wrap point.
-                tickerLabel(np)
-                    .offset(x: x + cycle)
+                tickerLabel(line).offset(x: x)
+                tickerLabel(line).offset(x: x + cycle)
             }
             .frame(width: bandWidth, height: islandH, alignment: .leading)
         }
-        // Soft edge fade so text doesn’t hard-clip against Mochi / mini-grid
         .mask(
             HStack(spacing: 0) {
                 LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
@@ -714,12 +757,10 @@ struct CompactNowPlayingBanner: View {
         )
     }
 
-    private func tickerLabel(_ np: NowPlaying) -> some View {
+    private func tickerLabel(_ line: Line) -> some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(np.accent)
-                .frame(width: 5, height: 5)
-            Text(np.text)
+            Circle().fill(line.accent).frame(width: 5, height: 5)
+            Text(line.text)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(Color(hex: "#C5C8CD"))
                 .lineLimit(1)
@@ -729,12 +770,48 @@ struct CompactNowPlayingBanner: View {
 
     private func textWidth(_ text: String) -> CGFloat {
         let font = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        let attrs: [NSAttributedString.Key: Any] = [.font: font]
-        let w = (text as NSString).size(withAttributes: attrs).width
-        return ceil(w) + 5 + 5 // dot + spacing
+        let w = (text as NSString).size(withAttributes: [.font: font]).width
+        return ceil(w) + 10
     }
 }
 #endif
+
+// MARK: - Compact alert badge (resting strip)
+
+/// Small status dot over Mochi for pending approval / CI-deploy error / finished.
+struct CompactAlertBadge: View {
+    let badge: PillBadge
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Circle()
+                .stroke(Color.black.opacity(0.35), lineWidth: 1)
+                .frame(width: 8, height: 8)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var color: Color {
+        switch badge {
+        case .approval: return Color(hex: "#F5A524")
+        case .finished: return Color(hex: "#22C55E")
+        case .error:    return Color(hex: "#F4505E")
+        }
+    }
+
+    static func leadingBadge(in state: AppState) -> PillBadge? {
+        if state.pendingApproval != nil { return .approval }
+        if state.pendingQuestion != nil { return .approval }
+        if state.tasks.contains(where: { $0.pillBadge == .error || $0.state == .error }) { return .error }
+        if state.tasks.contains(where: { $0.pillBadge == .approval }) { return .approval }
+        if state.tasks.contains(where: { $0.pillBadge == .finished }) { return .finished }
+        return nil
+    }
+}
 
 // MARK: - Compact mini mochi grid (2×2 to the right of the notch)
 

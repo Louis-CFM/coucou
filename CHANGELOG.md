@@ -12,8 +12,14 @@
 - **Render** integration: API key in Settings, `integration_render` pill, deploy list/detail (polls `api.render.com`).
 - **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
 - Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
-- Compact notch: now-playing ticker crawls the current Spotify / Apple Music track through the middle band (between Mochi and the mini-grid).
+- Compact notch: info ticker crawls now-playing, live agent edits, or a short day pulse (deploys / PRs); tap toggles play/pause when a track is showing.
+- Song change peeks the compact strip briefly when **Stay collapsed until hover** is on; Mochi does a happy emote on new tracks and on deploy / session finish.
 - Shared `AppLauncher`: every ↗ / Open control uses Dock-style reopen + activate so minimized apps (and browsers for web integrations) come back to the front.
+- Apple Music card: volume slider (0–100), same pattern as Spotify.
+- Global media shortcuts (GitHub build): ⌃⌥P play/pause, ⌃⌥F next track (Spotify preferred when active).
+- Compact alert badge on Mochi for pending approval / CI-deploy error / finished.
+- Session end step includes a +/− file summary (`+42 −11 in 3 files`); pin a file in the programming view so edits keep that tab open.
+- Mochi wears sunglasses while music plays (when wardrobe is Auto/None); Settings → Behavior: idle breathing + Quiet / Alive presets; one-shot tip after first greeting.
 - Settings → General: **Follow cursor when idle** (eyes in the smallest strip) and **Stay collapsed until hover** (rest hidden; expand on hover; alerts still force-open).
 
 ## 0.1.7 — October 4, 2026

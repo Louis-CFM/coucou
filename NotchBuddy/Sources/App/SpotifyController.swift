@@ -22,6 +22,7 @@ final class SpotifyController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.spotify")
     private let volumeStep = 10
+    private var lastEmoteTitle: String?
 
     private var isPillActive: Bool {
         AppState.shared.activeIntegrations.contains("integration_spotify")
@@ -140,6 +141,7 @@ final class SpotifyController: ObservableObject {
 
         let playing = playerState == "Playing"
         let wasPlaying = AppState.shared.spotifyPlaying
+        let prevTitle = trackTitle
 
         trackTitle = name.map { Self.shortTitle($0) }.flatMap { $0.isEmpty ? nil : $0 }
         artist     = inputArtist.map { Self.shortArtist($0) }.flatMap { $0.isEmpty ? nil : $0 }
@@ -148,8 +150,12 @@ final class SpotifyController: ObservableObject {
         AppState.shared.spotifyPlaying = playing
         syncTaskName()
 
-        if playing && !wasPlaying {
+        if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
+            if trackTitle != lastEmoteTitle {
+                lastEmoteTitle = trackTitle
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
         }
         // Refresh volume — PlaybackStateChanged does not always include it.
         refreshVolume()
@@ -193,6 +199,7 @@ final class SpotifyController: ObservableObject {
             isRunning = true
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.spotifyPlaying
+            let prevTitle  = trackTitle
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
             artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
             album      = values[3].isEmpty ? nil : values[3]
@@ -201,8 +208,12 @@ final class SpotifyController: ObservableObject {
             }
             AppState.shared.spotifyPlaying = playing
             syncTaskName()
-            if playing && !wasPlaying {
+            if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
                 NotificationCenter.default.post(name: .musicReveal, object: nil)
+                if trackTitle != lastEmoteTitle {
+                    lastEmoteTitle = trackTitle
+                    NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                }
             }
         }
     }
