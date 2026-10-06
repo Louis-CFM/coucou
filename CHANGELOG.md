@@ -12,6 +12,7 @@
 - **Render** integration: API key in Settings, `integration_render` pill, deploy list/detail (polls `api.render.com`).
 - **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
 - Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
+- Compact notch: now-playing ticker crawls the current Spotify / Apple Music track through the middle band (between Mochi and the mini-grid).
 
 ## 0.1.7 — October 4, 2026
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Top-level SwiftUI view rendered inside the 720×320 transparent panel.
 /// The island is drawn at the top-center; everything else is transparent and click-through.
@@ -108,6 +109,10 @@ struct IslandContainer: View {
 
             Group {
                 if state.mode == .compact {
+                    #if !APPSTORE
+                    CompactNowPlayingBanner(state: state, islandW: islandWidth, islandH: islandHeight)
+                        .transition(.opacity)
+                    #endif
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
@@ -603,6 +608,134 @@ struct ClaudePlanHeaderPill: View {
         .onHover { h in
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
+    }
+}
+#endif
+
+// MARK: - Compact now-playing marquee (middle of the resting strip)
+
+#if !APPSTORE
+/// Scrolls the current Spotify / Apple Music track through the empty compact
+/// band between Mochi and the mini-grid — like a short info ticker.
+struct CompactNowPlayingBanner: View {
+    @ObservedObject var state: AppState
+    @ObservedObject private var spotify = SpotifyController.shared
+    @ObservedObject private var music = MusicController.shared
+    let islandW: CGFloat
+    let islandH: CGFloat
+
+    private struct NowPlaying: Equatable {
+        let text: String
+        let accent: Color
+    }
+
+    private var nowPlaying: NowPlaying? {
+        if state.spotifyPlaying,
+           state.activeIntegrations.contains("integration_spotify"),
+           let title = spotify.trackTitle, !title.isEmpty {
+            let line: String
+            if let artist = spotify.artist, !artist.isEmpty {
+                line = "\(title)  ·  \(artist)"
+            } else {
+                line = title
+            }
+            return NowPlaying(text: line, accent: Color(hex: "#1DB954"))
+        }
+        if state.musicPlaying,
+           state.activeIntegrations.contains("integration_music"),
+           let title = music.trackTitle, !title.isEmpty {
+            let line: String
+            if let artist = music.artist, !artist.isEmpty {
+                line = "\(title)  ·  \(artist)"
+            } else {
+                line = title
+            }
+            return NowPlaying(text: line, accent: Color(hex: "#FA2D48"))
+        }
+        return nil
+    }
+
+    /// Leave room for Mochi (left) and the 2×2 mini grid (right).
+    private var bandLeading: CGFloat { 58 }
+    private var bandTrailing: CGFloat { 58 }
+    private var bandWidth: CGFloat { max(0, islandW - bandLeading - bandTrailing) }
+
+    var body: some View {
+        Group {
+            if let np = nowPlaying, bandWidth > 40 {
+                marquee(np)
+                    .frame(width: bandWidth, height: islandH)
+                    .clipped()
+                    .position(x: bandLeading + bandWidth / 2, y: islandH / 2)
+                    .allowsHitTesting(false)
+                    .accessibilityLabel("Now playing \(np.text)")
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: nowPlaying?.text)
+    }
+
+    @ViewBuilder
+    private func marquee(_ np: NowPlaying) -> some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
+            let measured = textWidth(np.text)
+            let gap: CGFloat = 36
+            let cycle = max(measured + gap, bandWidth + gap)
+            // ~28 pt/s — readable “info message” crawl
+            let speed: CGFloat = 28
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            // Seed offset from the track string so a new song restarts from the right.
+            let seed = Double(np.text.hashValue & 0xFFFF) / 1000.0
+            let distance = CGFloat((t + seed) * Double(speed)).truncatingRemainder(dividingBy: Double(cycle))
+            // Start just past the right edge, crawl left.
+            let x = bandWidth - distance
+
+            ZStack(alignment: .leading) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(np.accent)
+                        .frame(width: 5, height: 5)
+                    Text(np.text)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color(hex: "#C5C8CD"))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .offset(x: x)
+
+                // Second copy so the loop feels continuous when the text is long.
+                if measured + gap > bandWidth * 0.6 {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(np.accent)
+                            .frame(width: 5, height: 5)
+                        Text(np.text)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Color(hex: "#C5C8CD"))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .offset(x: x + cycle)
+                }
+            }
+            .frame(width: bandWidth, height: islandH, alignment: .leading)
+        }
+        // Soft edge fade so text doesn’t hard-clip against Mochi / mini-grid
+        .mask(
+            HStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 10)
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 10)
+            }
+        )
+    }
+
+    private func textWidth(_ text: String) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let w = (text as NSString).size(withAttributes: attrs).width
+        return ceil(w) + 5 + 5 // dot + spacing
     }
 }
 #endif
