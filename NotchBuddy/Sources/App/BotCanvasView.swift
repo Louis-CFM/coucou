@@ -92,10 +92,10 @@ struct BotCanvasView: View {
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
-        .onChange(of: state.effectiveState) { _, newState in
+        .onChangeCompat(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
-        .onChange(of: state.view) { _, newView in
+        .onChangeCompat(of: state.view) { _, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
                 engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
@@ -104,7 +104,7 @@ struct BotCanvasView: View {
                 engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
             }
         }
-        .onChange(of: state.mode) { _, newMode in
+        .onChangeCompat(of: state.mode) { _, newMode in
             // Hard-reset morph when island collapses
             if newMode != .expanded {
                 engine.tweens.removeValue(forKey: "morph")
@@ -212,7 +212,7 @@ struct MiniBotCanvasView: View {
                 engine.draw(context: ctx, size: size)
             }
         }
-        .onChange(of: task.state) { _, newState in
+        .onChangeCompat(of: task.state) { _, newState in
             engine.setState(newState)
         }
         .onAppear {

@@ -79,7 +79,7 @@ struct DesktopBotView: View {
                 engine.drawHandsAndExtras(context: c, size: size)
             }
         }
-        .onChange(of: appState.effectiveState) { _, newState in
+        .onChangeCompat(of: appState.effectiveState) { _, newState in
             engine.setState(newState)
         }
         .onAppear {
