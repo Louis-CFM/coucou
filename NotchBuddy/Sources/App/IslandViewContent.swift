@@ -4712,7 +4712,7 @@ struct SpotifyPill: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(.leading, 34)
-                .padding(.trailing, showControls ? 72 : 10)
+                .padding(.trailing, showControls ? 52 : 10)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
                 .allowsHitTesting(false)
@@ -4721,9 +4721,6 @@ struct SpotifyPill: View {
                 HStack(spacing: 0) {
                     Spacer()
                     HStack(spacing: 2) {
-                        MusicControlButton(icon: "speaker.wave.2.fill", color: task.color) {
-                            SpotifyController.shared.volumeDown()
-                        }
                         MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
                             SpotifyController.shared.playPause()
                         }
