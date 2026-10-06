@@ -321,6 +321,11 @@ final class AppState: ObservableObject {
     // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
     @Published var n8nRuns: [N8nRun] = []
 
+    // Devin (populated by DevinMonitor; sessions live in the agent_devin task)
+    @Published var devinError: String? = nil
+    @Published var devinActiveCount: Int = 0
+    @Published var devinUserName: String? = nil
+
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 

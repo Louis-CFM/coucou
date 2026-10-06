@@ -35,6 +35,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 ## Features
 
 - 🤖 **Claude Code, Cursor, Codex, Gemini CLI, Antigravity and other agents, live** — see every session in your notch: what it reads, edits and runs, step by step. Tag a hook payload with `coucou_agent` to give any agent its own pill (see [`docs/AGENTS.md`](docs/AGENTS.md)). Finished? Mochi does a happy little jump.
+- ☁️ **Devin sessions in the notch** *(macOS)* — connect a Personal Access Token in Settings → Agents → Devin and your cloud Devins appear live: working, waiting for you, finished or failed, several at once. Click the pill to open the session in your browser.
 - See what Claude is editing, live in the notch: each file modification shows the file name and +N −M counts in the ticker, tap to read the full diff
 - ✅ **Approve and answer from the notch** — Claude Code permission requests show up with **Allow / Deny / Always**; `AskUserQuestion` prompts show the choices right in the notch (single or multi-select, up to 4 questions). One click, or "Reply in terminal" to fall back to the CLI. Codex also gets Allow / Deny.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
@@ -205,6 +206,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 | **Claude plan** *(macOS, GitHub build)* | Plan usage gauge in the notch header | **Install relay** in Settings → Agents → Plan usage, then enable "Show in the notch" |
 | **Gemini CLI hooks** *(macOS)* | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
 | **Antigravity (agy) hooks** *(macOS)* | agy sessions in the island | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json` |
+| **Devin token** *(macOS)* | cloud Devin sessions in the island | Settings → Agents → Devin · Keychain |
 | **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
 | **Google AI API key** *(macOS)* | chat with Google AI (Gemini) | Settings → Chat — other providers · Keychain |
 | **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |
