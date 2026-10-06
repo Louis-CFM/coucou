@@ -109,6 +109,8 @@ const appDelegate = read("NotchBuddy/Sources/App/AppDelegate.swift");
 assert.match(appDelegate, /@objc private func openMemoryManager\(\) \{[\s\S]*?MemoryManagerWindowController\.shared\.present\(\)\s*\}/);
 assert.equal((appDelegate.match(/@objc private func openMemoryManager\(\)/g) ?? []).length, 1);
 assert.equal((appDelegate.match(/#selector\(openMemoryManager\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/@objc private func openSettings\(\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/#selector\(openSettings\)/g) ?? []).length, 1);
 assert.equal((appDelegate.match(/@objc private func openWeeklyRecap\(\)/g) ?? []).length, 1);
 
 const appState = read("NotchBuddy/Sources/App/AppState.swift");
@@ -170,6 +172,13 @@ assert.equal((chat.match(/struct ChatBubble: View/g) ?? []).length, 1);
 assert.ok(!/struct ChatBubble: View[\s\S]*?if !message\.content\.isEmpty[\s\S]*?ChatMarkdownView\(markdown: message\.content\)/.test(chat));
 assert.ok(chat.includes("confirmForget(turnId:"));
 assert.ok(chat.includes("present(documentIds: result.documentIds)"));
+const sendStart = promptView.indexOf("private func sendMessage()");
+const sendBody = sendStart >= 0 ? promptView.slice(sendStart) : "";
+const demoBranch = sendBody.indexOf("if DemoEngine.shared.isActive");
+const coordinatorCall = sendBody.indexOf("state.chatMemoryCoordinator.send(");
+assert.ok(demoBranch >= 0, "PromptView.sendMessage must handle demo mode");
+assert.ok(coordinatorCall > demoBranch, "demo mode must bypass the memory coordinator and provider");
+assert.match(sendBody.slice(demoBranch, coordinatorCall), /await DemoEngine\.shared\.streamChatResponse\(for: query\)[\s\S]*?return/);
 
 const windowController = read("NotchBuddy/Sources/App/MemoryManagerWindowController.swift");
 assert.ok(windowController.includes("memoryManagerWindowConfiguration()"));
@@ -189,6 +198,13 @@ const hooks = read("windows/src-tauri/src/hooks.rs");
 for (const contract of ["platform::home_dir()", "platform::local_time()", "platform::HOOK_EXE", "write_like(", "platform::ensure_private_dir", "rewriting_settings_never_widens_its_permissions", "platform::HOME_VAR"]) {
   assert.ok(hooks.includes(contract), `hooks must preserve ${contract}`);
 }
+assert.match(hooks, /#\[cfg\(windows\)\]\s*pub fn stage_relay/);
+assert.match(hooks, /#\[cfg\(unix\)\]\s*pub fn stage_relay/);
+assert.match(hooks, /#\[cfg\(unix\)\][\s\S]*?from_mode\(0o755\)[\s\S]*?std::fs::rename\(&temp, dest\)/);
+assert.match(hooks, /#\[cfg\(windows\)\]\s*#\[test\]\s*fn a_running_relay_is_replaced_by_moving_it_aside/);
+assert.ok(hooks.includes("fn sh_quote("));
+assert.ok(hooks.includes("the_hook_path_is_one_shell_word_whatever_it_contains"));
+assert.ok(hooks.includes("could not install {}"));
 const rustSettings = read("windows/src-tauri/src/settings.rs");
 assert.ok(rustSettings.includes("crate::platform::HOOK_EXE"));
 assert.ok(rustSettings.includes("crate::platform::ensure_private_dir"));

@@ -110,10 +110,7 @@ fn hook_command(relay: &Path, event: &str) -> String {
     command_for(&relay.to_string_lossy(), event)
 }
 
-/// Claude Code may run hook commands through bash, cmd or PowerShell. A quoted
-/// path followed by an argument is a parse error in PowerShell (it needs `&`,
-/// which bash and cmd reject), so a path without spaces is left bare — valid
-/// in all three. Paths with spaces keep the quotes.
+#[cfg(windows)]
 fn command_for(exe: &str, event: &str) -> String {
     let exe = exe.replace('\\', "/");
     if exe.chars().any(|c| c.is_whitespace() || "\"'&;|<>()`$%^".contains(c)) {
@@ -121,6 +118,16 @@ fn command_for(exe: &str, event: &str) -> String {
     } else {
         format!("{exe} {event}")
     }
+}
+
+#[cfg(unix)]
+fn command_for(exe: &str, event: &str) -> String {
+    format!("{} {event}", sh_quote(exe))
+}
+
+#[cfg(unix)]
+fn sh_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', r"'\''"))
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -386,24 +393,28 @@ pub fn relay_candidates(resource: Option<PathBuf>) -> Vec<PathBuf> {
     candidates
 }
 
-/// Copies the first existing candidate to `dest` unless an identical copy is
-/// already there. Ok when `dest` ends up present.
-pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
+fn relay_source<'a>(candidates: &'a [PathBuf], dest: &Path) -> Result<Option<&'a Path>, String> {
     if let Some(dir) = dest.parent() {
         platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
         std::fs::create_dir_all(dir).map_err(|e| format!("could not create {}: {e}", dir.display()))?;
     }
-    let Some(src) = candidates.iter().find(|p| p.is_file() && p.as_path() != dest) else {
-        if dest.is_file() {
-            return Ok(());
-        }
-        let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
-        return Err(format!(
-            "coucou-hook.exe not found — agent hooks cannot work. Looked in: {}",
-            tried.join(", ")
-        ));
-    };
+    if let Some(src) = candidates.iter().find(|path| path.is_file() && path.as_path() != dest) {
+        return Ok(Some(src));
+    }
+    if dest.is_file() {
+        return Ok(None);
+    }
+    let tried: Vec<String> = candidates.iter().map(|path| path.display().to_string()).collect();
+    Err(format!(
+        "{} not found — agent hooks cannot work. Looked in: {}",
+        platform::HOOK_EXE,
+        tried.join(", ")
+    ))
+}
 
+#[cfg(windows)]
+pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
+    let Some(src) = relay_source(candidates, dest)? else { return Ok(()) };
     let same = match (std::fs::metadata(src), std::fs::metadata(dest)) {
         (Ok(a), Ok(b)) => a.len() == b.len() && a.modified().ok() == b.modified().ok(),
         _ => false,
@@ -411,10 +422,6 @@ pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
     if same {
         return Ok(());
     }
-    // A running hook may hold the destination open. An existing copy can be
-    // older than this build; a failed replacement leaves readiness uncertain.
-    // Windows refuses to overwrite a running exe but lets it be renamed, so the
-    // in-use copy is moved aside and the new one copied in its place.
     let aside = dest.with_extension("old.exe");
     for old in old_relays(dest) {
         let _ = std::fs::remove_file(old);
@@ -428,32 +435,54 @@ pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
                 aside
             };
             if std::fs::rename(dest, &aside).is_err() {
-                crate::log::line(format!("coucou-hook.exe is in use and could not be updated: {first}"));
+                crate::log::line(format!("{} is in use and could not be updated: {first}", platform::HOOK_EXE));
                 return Ok(());
             }
             match std::fs::copy(src, dest) {
                 Ok(_) => Ok(()),
                 Err(err) => {
                     let _ = std::fs::rename(&aside, dest);
-                    crate::log::line(format!("coucou-hook.exe could not be updated: {err}"));
+                    crate::log::line(format!("{} could not be updated: {err}", platform::HOOK_EXE));
                     Ok(())
                 }
             }
         }
-        Err(err) => Err(format!("could not install coucou-hook.exe: {err}")),
+        Err(err) => Err(format!("could not install {}: {err}", platform::HOOK_EXE)),
     }
+}
+
+#[cfg(unix)]
+pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    let Some(src) = relay_source(candidates, dest)? else { return Ok(()) };
+    if matches!((std::fs::read(src), std::fs::read(dest)), (Ok(a), Ok(b)) if a == b) {
+        return Ok(());
+    }
+    let temp = dest.with_extension(format!("new-{}", std::process::id()));
+    let result = std::fs::copy(src, &temp)
+        .and_then(|_| std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)))
+        .and_then(|_| std::fs::rename(&temp, dest));
+    if let Err(err) = result {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("could not install {}: {err}", platform::HOOK_EXE));
+    }
+    Ok(())
 }
 
 /// Copies moved aside by an earlier update; deleted once no hook runs them.
 fn old_relays(dest: &Path) -> Vec<PathBuf> {
     let Some(dir) = dest.parent() else { return Vec::new() };
+    let stem = dest.file_stem().and_then(|value| value.to_str()).unwrap_or(platform::HOOK_EXE);
+    let extension = dest.extension().and_then(|value| value.to_str());
+    let prefix = format!("{stem}.old");
     let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
     entries
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| {
-            p.file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with("coucou-hook.old") && n.ends_with(".exe"))
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| {
+            path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
+                name.starts_with(&prefix)
+                    && extension.map(|value| name.ends_with(&format!(".{value}"))).unwrap_or(true)
+            })
         })
         .collect()
 }
@@ -540,6 +569,7 @@ mod tests {
 
     const WHERE: &str = "settings.json";
 
+    #[cfg(windows)]
     #[test]
     fn a_running_relay_is_replaced_by_moving_it_aside() {
         let dir = std::env::temp_dir().join(format!("coucou-stage-{}", std::process::id()));
@@ -572,6 +602,7 @@ mod tests {
     }
 
 
+    #[cfg(windows)]
     #[test]
     fn hook_command_is_valid_in_powershell_bash_and_cmd() {
         assert_eq!(
@@ -583,6 +614,15 @@ mod tests {
             "\"C:/Users/Jane Doe/AppData/Local/Coucou/bin/coucou-hook.exe\" Stop"
         );
         assert!(command_for(r"C:\x\coucou-hook.exe", "Stop").contains(MARKER));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_hook_path_is_one_shell_word_whatever_it_contains() {
+        assert_eq!(sh_quote("/home/a b/x"), "'/home/a b/x'");
+        assert_eq!(sh_quote(r#"/h/$(id)`x`\"y"#), r#"'/h/$(id)`x`\"y'"#);
+        assert_eq!(sh_quote("/h/it's"), r"'/h/it'\''s'");
+        assert_eq!(command_for("/h/it's $HOME`id`\\hook", "Stop"), r"'/h/it'\''s $HOME`id`\hook' Stop");
     }
 
     #[test]

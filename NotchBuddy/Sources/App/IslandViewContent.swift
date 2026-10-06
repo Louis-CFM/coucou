@@ -1273,6 +1273,13 @@ struct PromptView: View {
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
+            if DemoEngine.shared.isActive {
+                await DemoEngine.shared.streamChatResponse(for: query)
+                state.stateOverride = nil
+                state.view = .prompt
+                focused = true
+                return
+            }
             do {
                 let providerContext: ChatProviderContext? = {
                     switch state.promptContext {
