@@ -163,10 +163,14 @@ final class IslandWindowController: NSWindowController {
     // MARK: - FSM wiring
 
     private func wireFSM() {
+        fsm.prefersHiddenRest = { AppState.shared.stayCollapsedUntilHover }
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
             switch to {
             case .hidden:
+                if from == .coucou {
+                    NotificationCenter.default.post(name: .greetingInterrupt, object: nil)
+                }
                 self.setMode(.hidden)
 
             case .petit:
@@ -366,9 +370,9 @@ final class IslandWindowController: NSWindowController {
         guard fsm.isHeldOpen?() != true else { return }
         state.isPinned = false
         finishedPinTimer?.cancel()
-        // Keep the FSM in step with what is on screen (home/coucou → petit now).
+        // Keep the FSM in step with what is on screen (home/coucou → petit or hidden).
+        // Mode is applied by onTransition — don't force .compact when preferring hidden rest.
         fsm.collapse()
-        setMode(.compact)
         window?.resignKey()
     }
 

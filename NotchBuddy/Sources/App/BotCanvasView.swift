@@ -13,7 +13,7 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden)) { timeline in
+        TimelineView(.animation(paused: state.mode == .hidden && !state.idleEyeTracking)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dtRaw = min(0.05, now - engine.lastTime)

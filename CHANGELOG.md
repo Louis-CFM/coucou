@@ -14,6 +14,7 @@
 - Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
 - Compact notch: now-playing ticker crawls the current Spotify / Apple Music track through the middle band (between Mochi and the mini-grid).
 - Shared `AppLauncher`: every ↗ / Open control uses Dock-style reopen + activate so minimized apps (and browsers for web integrations) come back to the front.
+- Settings → General: **Follow cursor when idle** (eyes in the smallest strip) and **Stay collapsed until hover** (rest hidden; expand on hover; alerts still force-open).
 
 ## 0.1.7 — October 4, 2026
 

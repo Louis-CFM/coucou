@@ -249,6 +249,14 @@ struct SettingsView: View {
                 Text("When the notch is open, a click outside the island collapses it.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+                Toggle("Follow cursor when idle", isOn: $state.idleEyeTracking)
+                Text("Mochi keeps looking at the mouse in the smallest resting strip. Uses a little CPU while idle.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Stay collapsed until hover", isOn: $state.stayCollapsedUntilHover)
+                Text("Keep the island in its smallest state until you hover or click. Alerts still open on their own.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
             .padding(6)
         }

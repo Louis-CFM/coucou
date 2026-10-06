@@ -20,6 +20,10 @@ final class IslandStateMachine {
     /// When non-nil and returns true, timers and mouse-leave never auto-collapse or hide the island.
     var isHeldOpen: (() -> Bool)?
 
+    /// When true, rest in `.hidden` (smallest strip) and expand to `.home` on hover;
+    /// non-alert `reveal()` stays silent. Wired from Settings → Stay collapsed until hover.
+    var prefersHiddenRest: (() -> Bool)?
+
     /// home → petit delay (seconds). Override for debug.
     var homeToPetitDelay: TimeInterval = 15
     /// petit → hidden delay (seconds). Override for debug.
@@ -48,6 +52,10 @@ final class IslandStateMachine {
             if isHeldOpen?() == true {
                 // Island already expanded by an external call — sync FSM state without transition
                 state = .home
+            } else if prefersHiddenRest?() == true {
+                // Settings: expand on hover from the smallest strip
+                cancelTimers()
+                transition(to: .home)
             } else {
                 cancelTimers()
                 transition(to: .petit)
@@ -55,6 +63,11 @@ final class IslandStateMachine {
         case .petit:
             petitHideWork?.cancel()
             petitHideWork = nil
+            if prefersHiddenRest?() == true {
+                // Expand immediately on hover when preferring the collapsed rest state
+                cancelTimers()
+                transition(to: .home)
+            }
         case .home:
             homeCollapseWork?.cancel()
             homeCollapseWork = nil
@@ -75,9 +88,9 @@ final class IslandStateMachine {
             if isHeldOpen?() != true { scheduleHomeCollapse() }
         case .coucou:
             if isHeldOpen?() != true {
-                // Interrupt greeting immediately → compact (overrides 10s auto-collapse)
+                // Interrupt greeting immediately → rest state (overrides 10s auto-collapse)
                 greetCollapseWork?.cancel(); greetCollapseWork = nil
-                transition(to: .petit)
+                transition(to: restState())
             }
         }
     }
@@ -110,12 +123,17 @@ final class IslandStateMachine {
     }
 
     /// The app folded the island itself (Escape, Settings, OK button, auto-close).
-    /// Move to `.petit` right away so hover and click keep working; waiting for the
-    /// 15 s home timer left the island compact on screen while the FSM still said `.home`.
+    /// Move to `.petit` (or `.hidden` when preferring collapsed rest) right away so hover
+    /// and click keep working; waiting for the 15 s home timer left the island compact
+    /// on screen while the FSM still said `.home`.
     func collapse() {
         guard state == .home || state == .coucou else { return }
         cancelTimers()
-        transition(to: .petit)
+        transition(to: restState())
+    }
+
+    private func restState() -> State {
+        prefersHiddenRest?() == true ? .hidden : .petit
     }
 
     /// Greeting animation finished (called at T.end ≈ 4.60 s).
@@ -132,15 +150,17 @@ final class IslandStateMachine {
         greetCollapseWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.state == .coucou else { return }
-            self.transition(to: .petit)
+            self.transition(to: self.restState())
         }
         greetCollapseWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
-    /// Non-alert work event: show compact from hidden (HookServer reveal)
+    /// Non-alert work event: show compact from hidden (HookServer reveal).
+    /// No-op when the user prefers the island to stay collapsed until hover.
     func reveal() {
         guard state == .hidden else { return }
+        if prefersHiddenRest?() == true { return }
         cancelTimers()
         transition(to: .petit)
         schedulePetitHide()
@@ -162,7 +182,7 @@ final class IslandStateMachine {
         homeCollapseWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.state == .home, !(self.isHeldOpen?() ?? false) else { return }
-            self.transition(to: .petit)
+            self.transition(to: self.restState())
         }
         homeCollapseWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + homeToPetitDelay, execute: item)

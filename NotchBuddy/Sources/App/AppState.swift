@@ -101,6 +101,17 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(clickOutsideToClose, forKey: "clickOutsideToClose") }
     }
 
+    /// When true, Mochi keeps animating (eyes follow the cursor) in the smallest idle strip.
+    @Published var idleEyeTracking: Bool = false {
+        didSet { UserDefaults.standard.set(idleEyeTracking, forKey: "idleEyeTracking") }
+    }
+
+    /// When true, the island stays in the smallest resting state until hover/click;
+    /// alerts still force-expand. Non-alert reveals (hooks, music) stay silent.
+    @Published var stayCollapsedUntilHover: Bool = false {
+        didSet { UserDefaults.standard.set(stayCollapsedUntilHover, forKey: "stayCollapsedUntilHover") }
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -378,6 +389,12 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "clickOutsideToClose") as? Bool {
             clickOutsideToClose = v
         }
+        if let v = ud.object(forKey: "idleEyeTracking") as? Bool {
+            idleEyeTracking = v
+        }
+        if let v = ud.object(forKey: "stayCollapsedUntilHover") as? Bool {
+            stayCollapsedUntilHover = v
+        }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
@@ -503,7 +520,10 @@ final class AppState: ObservableObject {
         if tasks.isEmpty && mode == .compact {
             mode = .hidden
         } else if !tasks.isEmpty && mode == .hidden && isPresent {
-            mode = .compact
+            // Stay in the smallest strip when the user asked for collapsed-until-hover
+            if !stayCollapsedUntilHover {
+                mode = .compact
+            }
         }
     }
 
