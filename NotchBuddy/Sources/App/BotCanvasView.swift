@@ -13,13 +13,21 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden)) { timeline in
+        TimelineView(.animation(paused: state.mode == .hidden
+                                        && !state.idleEyeTracking
+                                        && !state.idleBreathing)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dtRaw = min(0.05, now - engine.lastTime)
                 let dt = dtRaw
-                engine.lookX = lookX(state: state, size: size)
-                engine.lookY = lookY(state: state, size: size)
+                if state.mode == .hidden && !state.idleEyeTracking {
+                    // Soft idle breath — eyes stay centered
+                    engine.lookX = 0
+                    engine.lookY = 0
+                } else {
+                    engine.lookX = lookX(state: state, size: size)
+                    engine.lookY = lookY(state: state, size: size)
+                }
                 engine.particleOverhang = particleOverhang
                 // Widen slot when file is hovering over the mailbox (morph > 0.5)
                 // Open mouth (hover=0.20R) when file dragged over box; close when not
@@ -47,14 +55,28 @@ struct BotCanvasView: View {
                 #endif
 
                 // Compute shouldDance per-frame (no observer lag)
+                #if !APPSTORE
+                let musicOn = AppState.shared.musicPlaying
+                    && AppState.shared.activeIntegrations.contains("integration_music")
+                let spotifyOn = AppState.shared.spotifyPlaying
+                    && AppState.shared.activeIntegrations.contains("integration_spotify")
+                let listening = musicOn || spotifyOn
+                #else
+                let musicOn = false
+                let spotifyOn = false
+                let listening = false
+                #endif
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard AppState.shared.musicPlaying else { return false }
-                    guard AppState.shared.activeIntegrations.contains("integration_music") else { return false }
+                    guard listening else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     guard allowed.contains(state.effectiveState) else { return false }
-                    if state.mode == .compact { return true }
-                    return state.mode == .expanded && state.view == .overview && state.focusId == "integration_music"
+                    if state.mode == .compact || state.mode == .hidden { return true }
+                    guard state.mode == .expanded && state.view == .overview else { return false }
+                    if musicOn && state.focusId == "integration_music" { return true }
+                    if spotifyOn && state.focusId == "integration_spotify" { return true }
+                    // Keep dancing on the main Mochi whenever music plays in overview
+                    return state.focusId == state.mainPillId || state.focusId == nil
                     #else
                     return false
                     #endif
@@ -63,11 +85,28 @@ struct BotCanvasView: View {
                 let isWardrobe = state.mode == .expanded && state.view == .wardrobe
                 let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
                 let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
-                                 animated: state.view != .wardrobe)
+                // Sunglasses while music plays. Check wardrobe *selection* (not resolved seasonal
+                // outfit — Auto in October resolves to witch hat and would block the cue).
+                let wardrobeAllowsCue = state.mochiOutfitSelection == .auto
+                    || state.mochiOutfitSelection == .none
+                let listeningLook = listening && wardrobeAllowsCue
+                let outfit: Outfit = {
+                    if listeningLook { return .sunglasses }
+                    guard showOutfit else { return .none }
+                    return state.resolvedOutfit
+                }()
+                engine.setOutfit(outfit, animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
                 var ctx = context
+                // Quiet idle breath in the smallest strip (no eye tracking)
+                if state.mode == .hidden && state.idleBreathing && !state.idleEyeTracking {
+                    let breath = 1 + 0.035 * sin(now * 2.1)
+                    let c = CGPoint(x: size.width / 2, y: size.height / 2)
+                    ctx.translateBy(x: c.x, y: c.y)
+                    ctx.scaleBy(x: breath, y: breath)
+                    ctx.translateBy(x: -c.x, y: -c.y)
+                }
                 engine.applyDance(&ctx, size: size)
                 // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
                 // rotate the entire body+accessories context around the body center so the
@@ -145,7 +184,19 @@ struct BotCanvasView: View {
             let isWardrobe = state.mode == .expanded && state.view == .wardrobe
             let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
             let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
+            #if !APPSTORE
+            let listening = (state.musicPlaying
+                             && state.activeIntegrations.contains("integration_music"))
+                || (state.spotifyPlaying
+                    && state.activeIntegrations.contains("integration_spotify"))
+            let cue = listening
+                && (state.mochiOutfitSelection == .auto || state.mochiOutfitSelection == .none)
+            #else
+            let cue = false
+            #endif
+            let outfit: Outfit = cue ? .sunglasses
+                : (showOutfit ? state.resolvedOutfit : .none)
+            engine.setOutfit(outfit, animated: false)
         }
     }
 
@@ -206,10 +257,14 @@ struct MiniBotCanvasView: View {
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dt = min(0.05, now - engine.lastTime)
                 engine.setDancing(isDancing)
+                // Listening cue on music/Spotify pills: tiny sunglasses while dancing
+                engine.setOutfit(isDancing ? .sunglasses : .none, animated: true)
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
+                engine.drawOutfitBehind(context: ctx, size: size)
                 engine.draw(context: ctx, size: size)
+                engine.drawOutfitFront(context: ctx, size: size)
             }
         }
         .onChange(of: task.state) { _, newState in
@@ -226,6 +281,7 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverride = eye
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
+            if isDancing { engine.setOutfit(.sunglasses, animated: false) }
         }
     }
 }

@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- Coucursor fork: the GitHub macOS build is named **Coucursor** (bundle id unchanged).
+- Chat is **ClinePass only**: Settings → Chat stores a Cline API key (`cline-api-key`); models use `https://api.cline.bot/api/v1` (OpenAI-compatible). Pastille `ai_clinepass`. Other chat providers (Anthropic / Google / OpenAI / Cursor Cloud Agents / Ollama / LM Studio) are removed from this build.
+- Cursor stays as **hooks only** (Settings → Agents → Cursor Hooks → `~/.cursor/hooks.json`).
+- Settings → General: **Click outside to close** (on by default) collapses the expanded notch when you click outside the island.
+- Cursor live diff: `afterFileEdit` / Write / Edit open the notch diff card automatically (typewriter on the new line, strikethrough on removals), same path as Claude Code Edit/Write. The island force-expands so the card is visible while programming.
+- Ticker step labels are English (Reads / Writes / Edits / Runs…) instead of French.
+- Live programming view (tall island): Edit/MultiEdit opens Read/Edit/Bash/Done rail + inset code editor (file tab, line numbers, keyword tint, typewriter on `+`, strikethrough on `−`). Huge full-file Write dumps stay ticker-only.
+- **Render** integration: API key in Settings, `integration_render` pill, deploy list/detail (polls `api.render.com`).
+- **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
+- Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
+- Compact notch: info ticker crawls now-playing, live agent edits, or a short day pulse (deploys / PRs); tap toggles play/pause when a track is showing.
+- Song change peeks the compact strip when **Stay collapsed until hover** is on; peek length scales with the measured song-title width so the name can scroll into view. Mochi does a happy emote on new tracks and on deploy / session finish.
+- Shared `AppLauncher`: every ↗ / Open control uses Dock-style reopen + activate so minimized apps (and browsers for web integrations) come back to the front.
+- Apple Music card: volume slider (0–100), same pattern as Spotify.
+- Global media shortcuts (GitHub build): ⌃⌥P play/pause, ⌃⌥F next track (Spotify preferred when active).
+- Compact alert badge on Mochi for pending approval / CI-deploy error / finished.
+- Session end step includes a +/− file summary (`+42 −11 in 3 files`); pin a file in the programming view so edits keep that tab open.
+- Mochi wears sunglasses while music plays (overrides seasonal Auto; also on the Spotify/Music pill); Settings → General → Mochi: pick an outfit (or open the notch wardrobe); idle breathing + Quiet / Alive presets; one-shot tip after first greeting.
+- Settings → General: **Follow cursor when idle** (eyes in the smallest strip) and **Stay collapsed until hover** (rest hidden; expand on hover; alerts still force-open).
+
 ## 0.1.7 — October 4, 2026
 
 - Keyboard shortcuts from anywhere: ⌃⌥Space opens the chat, ⌃⌥A jumps to a waiting permission or question, ⌃⌥T brings your terminal forward, ⌃⌥] and ⌃⌥[ switch pills, ⌃⌥M mutes Mochi, ⌃⌥D sends him to the desktop and back, ⌃⌥G opens the wardrobe, and ⌃⌥W attaches the front window to the chat (GitHub build) (#205)

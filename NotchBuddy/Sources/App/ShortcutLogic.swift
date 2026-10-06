@@ -18,6 +18,8 @@ enum ShortcutAction: String, CaseIterable, Sendable {
     case muteToggle        = "muteToggle"         // ⌃⌥M — mute / unmute sounds
     case desktopToggle     = "desktopToggle"      // ⌃⌥D — send Mochi to desktop / bring back
     case wardrobeToggle    = "wardrobeToggle"     // ⌃⌥G — open / close wardrobe
+    case mediaPlayPause    = "mediaPlayPause"     // ⌃⌥P — Spotify / Music play-pause (GitHub)
+    case mediaNext         = "mediaNext"          // ⌃⌥F — Spotify / Music next track (GitHub)
 
     // MARK: UserDefaults keys
 
@@ -48,12 +50,16 @@ enum ShortcutAction: String, CaseIterable, Sendable {
         case .muteToggle:        return "Mute / unmute sounds"
         case .desktopToggle:     return "Mochi on / off desktop"
         case .wardrobeToggle:    return "Open / close wardrobe"
+        case .mediaPlayPause:    return "Play / pause music"
+        case .mediaNext:         return "Next track"
         }
     }
 
     /// Whether this action should be omitted from App Store builds.
     var isAppStoreOnly: Bool { false }
-    var isNonAppStore: Bool  { self == .attachFrontWindow }
+    var isNonAppStore: Bool  {
+        self == .attachFrontWindow || self == .mediaPlayPause || self == .mediaNext
+    }
 
     /// Whether the shortcut is enabled by default (all new global shortcuts are on by default;
     /// `toggleIsland` is off by default to match the pre-existing behaviour).
@@ -104,6 +110,8 @@ enum ShortcutLogic {
         .muteToggle:        ShortcutSpec(keyCode: 46, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥M
         .desktopToggle:     ShortcutSpec(keyCode: 2,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥D
         .wardrobeToggle:    ShortcutSpec(keyCode: 5,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥G
+        .mediaPlayPause:    ShortcutSpec(keyCode: 35, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥P
+        .mediaNext:         ShortcutSpec(keyCode: 3,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥F
     ]
 
     // MARK: - Load / save (UserDefaults)

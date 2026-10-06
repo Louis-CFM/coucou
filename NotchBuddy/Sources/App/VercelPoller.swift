@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - VercelPoller
-// Polls Vercel API for latest deployments every 30s.
+// Polls Vercel API for latest deployments every 30 seconds.
 // On new terminal deployment: updates integration_vercel task state + AppState.vercelDeployments.
 
 final class VercelPoller: @unchecked Sendable {

@@ -2,6 +2,7 @@
 
 Règle d'or : **vérifier la doc officielle au moment d'implémenter**. Les formats ci-dessous sont le plan, pas une garantie. Sources à relire :
 - Hooks Claude Code : https://code.claude.com/docs/en/hooks
+- Hooks Cursor : https://cursor.com/docs/hooks
 - API Claude (Messages, outil de recherche web, modèles) : https://docs.claude.com/en/api/overview
 - API publique n8n : `{URL de l'instance}/api/v1/docs` (playground de l'instance de Louis)
 
@@ -137,7 +138,51 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 ---
 
-## 1quater. GitHub (pulse)
+## 1quater. Cursor Agent *(build GitHub, macOS)*
+
+**Doc officielle** : https://cursor.com/docs/hooks — à revérifier avant toute évolution.
+
+### Architecture
+```
+Cursor Agent (Composer)
+  └─ hooks.json (~/.cursor/hooks.json)
+       └─ /bin/sh "…/nb-hook" --agent cursor
+            └─ socket Unix → Coucou (pastille agent_cursor)
+```
+
+- Installateur : Settings → Agents → Cursor Hooks (même flux backup + preview + confirm que Gemini/Codex).
+- Format Cursor : `{ "version": 1, "hooks": { "<event>": [ { "command": "…", "timeout": N } ] } }` (tableau plat, pas de groupes `matcher`).
+- Le relais traduit les noms camelCase et mappe `afterFileEdit` vers un `PostToolUse`/`MultiEdit` pour le live diff (clés `old_string` / `oldString` / `old_line` acceptées).
+- À chaque Edit/MultiEdit (et `afterFileEdit`) : focus sur `agent_cursor`, île force-expand, layout **programming** (rail d'étapes à gauche + éditeur diff large à droite) avec typewriter sur `+` et strikethrough sur `−`. Les Write full-file trop gros restent ticker-only. `pendingOpenDiff` couvre la course expand ↔ montage de OverviewView.
+
+---
+
+## 1quater-bis. Render *(build GitHub, macOS)*
+
+- Réglages → Integrations → Render : clé API (`render-api-key`, Trousseau) + filtre de services.
+- Polling 30 s : `GET /v1/services` puis dernier deploy par service (`GET /v1/services/{id}/deploys?limit=1`).
+- Pastille `integration_render` (`#46E3B7`) : liste des deploys + détail (statut live/failed/building, commit, lien dashboard).
+- MVP : observation seule (thinking / working / finished). Pas de `beforeShellExecution` ni carte Allow/Deny (prévu en MVP+).
+- Claude Code lancé dans le terminal de Cursor continue d'être routé vers la même pastille via le bundle ID Electron.
+
+Détail des événements : `docs/AGENTS.md` § Cursor Agent.
+
+---
+
+## 1quater-ter. Spotify *(build GitHub, macOS)*
+
+- Pastille `integration_spotify` (`#1DB954`) : même UX qu'Apple Music (carte now-playing + contrôles play/pause/prev/next dans la pastille au survol).
+- Carte : volume Spotify (`sound volume` 0–100, ±/− par pas de 10). Lancer / ouvrir Spotify via le bouton ↗ de la carte overview (AppleScript `activate`).
+- Mode compact : ticker « now playing » (titre · artiste) qui défile dans la bande centrale entre Mochi et la mini-grille.
+- Idle : « Launch Spotify » si l'app n'est pas ouverte, sinon « Open Spotify ». Les contrôles transport lancent Spotify s'il n'est pas déjà lancé.
+- État via notification distribuée `com.spotify.client.PlaybackStateChanged` + lecture AppleScript (`application id "com.spotify.client"`).
+- Pas d'OAuth Web API : contrôle local du client desktop Spotify uniquement.
+- Permission Automatisation → Spotify (macOS). Si refusée (`-1743`), la carte propose d'ouvrir Réglages Système.
+- Mochi danse quand Spotify joue et que la pastille est active (même règles que Music).
+
+---
+
+## 1quinquies. GitHub (pulse)
 
 **Plateforme** : macOS uniquement (build GitHub)
 
@@ -262,42 +307,19 @@ Permissions : Enregistrement de l'écran (capture) et Automatisation (navigateur
 
 ---
 
-## 5bis. Autres fournisseurs du chat (Google AI, OpenAI)
+## 5bis. Chat Coucursor — ClinePass
 
-Clés dans Settings → Chat — other providers (Trousseau : `google-api-key`, `openai-api-key`). La liste des modèles est récupérée à l'ouverture du chat selon le fournisseur :
-
-- **Google AI (Gemini)** : `GET https://generativelanguage.googleapis.com/v1beta/openai/models` (en-tête `Authorization: Bearer <clé>`) — on retire le préfixe `models/`, on filtre les modèles dont l'identifiant contient `embed`, `imagen`, `veo`, `aqa`, `tts`, `audio` ou `live`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « flash », sinon le premier de la liste. Endpoint du chat : `POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
-- **OpenAI** : `GET https://api.openai.com/v1/models` (en-tête `Authorization: Bearer <clé>`) — triés par champ `created` décroissant, on filtre les modèles dont l'identifiant contient `embed`, `tts`, `whisper`, `dall-e`, `audio`, `realtime`, `moderat`, `codex`, `computer-use`, `transcribe`, `image`, `sora`, `babbage`, `davinci` ou `instruct`. Dans le chat, si le modèle enregistré n'est pas dans la liste reçue, le premier dont l'identifiant contient « mini », sinon le premier de la liste. Endpoint du chat : `POST https://api.openai.com/v1/chat/completions`.
-
-Ce qui est envoyé au fournisseur lors d'un échange : le texte saisi et la conversation en cours. Si une fenêtre est attachée : nom de l'app, titre et URL. Si un fichier est attaché : son nom seulement (le contenu d'un fichier ne part que chez Anthropic).
-
-Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de pastilles ») pour les pastilles `ai_google` et `ai_openai`.
-
----
-
-## 5ter. Modèles locaux (Ollama / LM Studio)
-
-**IDs de pastilles** : `ai_ollama` (jaune `#FACC15`), `ai_lmstudio` (vert citron `#A3E635`)  
+**ID de pastille** : `ai_clinepass` (violet `#7C5CFF`)  
 **Catégorie** : AI for the chat  
-**Plateforme** : macOS uniquement
+**Plateforme** : Coucursor (target GitHub macOS)
 
-Connexion à un serveur local compatible OpenAI. Aucune clé d'API requise.
+Clé dans Settings → Chat (Trousseau : `cline-api-key`, créée sur app.cline.bot → Settings → API Keys).
 
-### Connexion
+- Catalogue : `GET https://api.cline.bot/api/v1/models` (Bearer) ; si l'appel échoue, liste fixe des slugs `cline-pass/*` (Qwen, Kimi, GLM, DeepSeek, etc.).
+- Chat : `POST https://api.cline.bot/api/v1/chat/completions` (format OpenAI-compatible). Modèle par défaut `cline-pass/qwen3.7-max`.
+- Contexte envoyé : texte + historique ; fenêtre attachée → app/titre/URL ; fichier attaché → nom seulement.
 
-Réglages → Chat → Local models → **Connect**. Coucou envoie une requête `GET /v1/models` au serveur. Si le serveur répond avec des modèles, l'URL est sauvegardée et le fournisseur apparaît dans le sélecteur de modèle. Les modèles d'embedding (`nomic-embed-text`, `bge-*`, etc.) sont filtrés automatiquement.
-
-### Streaming
-
-Les messages sont diffusés token par token via `POST /v1/chat/completions` avec `"stream": true`. Les blocs de raisonnement (`<think>…</think>`, utilisés par des modèles comme DeepSeek-R1) sont masqués dans la bulle de chat tant que le bloc est ouvert, puis retirés de la réponse finale.
-
-### Pièces jointes
-
-Les fichiers texte sont envoyés en ligne, tronqués à 24 000 caractères. Images et PDF : seul le nom du fichier est envoyé.
-
-### Déconnexion
-
-Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardée et le cache des modèles. Si un fournisseur local était actif dans le chat, le chat revient sur Anthropic.
+Les autres fournisseurs de chat (Anthropic chat, Google, OpenAI, Cursor Cloud Agents, Ollama, LM Studio) ne sont pas exposés dans Coucursor. Cursor reste disponible via les **hooks** Agent (`agent_cursor`).
 
 ---
 
@@ -328,6 +350,7 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 | Automatisation → Mail | envoyer les mails | premier envoi |
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
 | Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
+| Automatisation → Spotify *(GitHub only)* | contrôler la lecture Spotify | première commande depuis le notch |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 

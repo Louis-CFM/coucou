@@ -105,6 +105,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HookServer.shared.start()
         N8nPoller.shared.start()
         VercelPoller.shared.start()
+        RenderPoller.shared.start()
+        // Key already in Keychain (saved last session) → show the Render pill.
+        if KeychainStore.shared.get("render-api-key") != nil {
+            AppState.shared.ensureIntegrationEnabled("integration_render")
+        }
         ResendPoller.shared.start()
         GithubPoller.shared.start()
         StripePoller.shared.start()
@@ -115,9 +120,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
         NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
             DesktopMochiController.shared.launchFlyIfNeeded()
+            Self.showBehaviorTipsIfNeeded()
         }
         #if !APPSTORE
         _ = MusicController.shared
+        _ = SpotifyController.shared
         #endif
+    }
+
+    /// One-shot tip after first launch greeting (Settings → Behavior presets).
+    private static func showBehaviorTipsIfNeeded() {
+        let state = AppState.shared
+        guard !state.hasSeenBehaviorTips else { return }
+        state.hasSeenBehaviorTips = true
+        #if !APPSTORE
+        state.noteMessage = "Tip: Settings → Behavior — try Quiet (collapsed until hover) or Alive (eyes follow). ⌃⌥P play/pause · ⌃⌥F next track."
+        #else
+        state.noteMessage = "Tip: Settings → Behavior — try Quiet (collapsed until hover) or Alive (eyes follow)."
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.note)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+            if state.view == .note { NotificationCenter.default.post(name: .islandCollapse, object: nil) }
+        }
     }
 }

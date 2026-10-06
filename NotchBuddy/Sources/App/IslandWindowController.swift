@@ -49,6 +49,8 @@ final class IslandWindowController: NSWindowController {
 
     // Island-local key monitor (active only when island is key window)
     private var localKeyMonitor: Any?
+    /// Global click-outside → collapse (Settings: clickOutsideToClose)
+    private var clickOutsideMonitor: Any?
 
     convenience init() {
         let screen = Self.notchScreen() ?? NSScreen.main!
@@ -161,10 +163,14 @@ final class IslandWindowController: NSWindowController {
     // MARK: - FSM wiring
 
     private func wireFSM() {
+        fsm.prefersHiddenRest = { AppState.shared.stayCollapsedUntilHover }
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
             switch to {
             case .hidden:
+                if from == .coucou {
+                    NotificationCenter.default.post(name: .greetingInterrupt, object: nil)
+                }
                 self.setMode(.hidden)
 
             case .petit:
@@ -364,9 +370,9 @@ final class IslandWindowController: NSWindowController {
         guard fsm.isHeldOpen?() != true else { return }
         state.isPinned = false
         finishedPinTimer?.cancel()
-        // Keep the FSM in step with what is on screen (home/coucou → petit now).
+        // Keep the FSM in step with what is on screen (home/coucou → petit or hidden).
+        // Mode is applied by onTransition — don't force .compact when preferring hidden rest.
         fsm.collapse()
-        setMode(.compact)
         window?.resignKey()
     }
 
@@ -437,8 +443,44 @@ final class IslandWindowController: NSWindowController {
                 islandPanel.makeKey()
                 expand(to: .wardrobe)
             }
+
+        case .mediaPlayPause:
+            #if !APPSTORE
+            Self.toggleMediaPlayback()
+            #endif
+
+        case .mediaNext:
+            #if !APPSTORE
+            Self.skipMediaTrack()
+            #endif
         }
     }
+
+    #if !APPSTORE
+    private static func toggleMediaPlayback() {
+        if AppState.shared.spotifyPlaying
+            || (AppState.shared.activeIntegrations.contains("integration_spotify")
+                && SpotifyController.shared.trackTitle != nil) {
+            SpotifyController.shared.playPause()
+            return
+        }
+        if AppState.shared.activeIntegrations.contains("integration_music") {
+            MusicController.shared.playPause()
+        }
+    }
+
+    private static func skipMediaTrack() {
+        if AppState.shared.spotifyPlaying
+            || (AppState.shared.activeIntegrations.contains("integration_spotify")
+                && SpotifyController.shared.trackTitle != nil) {
+            SpotifyController.shared.nextTrack()
+            return
+        }
+        if AppState.shared.activeIntegrations.contains("integration_music") {
+            MusicController.shared.nextTrack()
+        }
+    }
+    #endif
 
     // MARK: - Island-local shortcuts
 
@@ -543,14 +585,10 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                 "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-        let activated = terminalBundleIds.compactMap { id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-        if activated == nil {
-            NSWorkspace.shared.open(
-                URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+        if !AppLauncher.openTerminal() {
+            SoundEngine.shared.play("error")
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
+            return
         }
         collapse()
     }
@@ -584,6 +622,20 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                guard self.state.clickOutsideToClose else { return }
+                guard self.state.mode == .expanded else { return }
+                guard !self.state.isPinned else { return }
+                guard self.fsm.isHeldOpen?() != true else { return }
+                let mouse = NSEvent.mouseLocation
+                // Panel frame is in screen coordinates (bottom-left origin), same as mouseLocation.
+                guard !self.islandPanel.frame.contains(mouse) else { return }
+                self.collapse()
+            }
+        }
+
         // Hook server expand requests (alerts only)
         NotificationCenter.default.addObserver(forName: .hookExpand, object: nil, queue: .main) { [weak self] note in
             guard let self, let view = note.object as? IslandView else { return }
@@ -597,11 +649,25 @@ final class IslandWindowController: NSWindowController {
             self.fsm.reveal()
         }
 
-        // Music started playing: reveal silently (no peek sound)
-        NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] _ in
+        // Music / track change: reveal silently (no peek sound).
+        // When "stay collapsed until hover" is on, show a brief compact peek sized to the title width.
+        NotificationCenter.default.addObserver(forName: .musicReveal, object: nil, queue: .main) { [weak self] note in
             guard let self else { return }
             self.silentNextReveal = true
-            self.fsm.reveal()
+            if AppState.shared.stayCollapsedUntilHover {
+                #if !APPSTORE
+                let title = (note.object as? String) ?? ""
+                let compactW = islandSize(mode: .compact, view: .overview,
+                                          nw: AppState.shared.notchWidth,
+                                          nh: AppState.shared.notchHeight).0
+                let seconds = CompactInfoBanner.musicPeekDuration(title: title, islandW: compactW)
+                self.fsm.revealBriefly(seconds: seconds)
+                #else
+                self.fsm.revealBriefly(seconds: 2.2)
+                #endif
+            } else {
+                self.fsm.reveal()
+            }
             self.silentNextReveal = false
         }
 
@@ -1127,6 +1193,7 @@ extension Notification.Name {
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
+    static let sessionDiffAppended        = Notification.Name("notchBuddy.sessionDiffAppended")
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")

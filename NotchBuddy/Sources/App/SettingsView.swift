@@ -52,15 +52,15 @@ struct SettingsView: View {
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
+
+    @State private var cursorHooksInstalled: Bool = HookServer.cursorHooksInstalled()
+    @State private var showCursorDiff: Bool = false
+    @State private var pendingCursorJSON: String = ""
+    @State private var cursorPendingInstall: Bool = true
     #endif
 
-    // Multi-provider chat keys
-    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
-    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
-    @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
-    @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
-    @State private var connectingOllama:    Bool = false
-    @State private var connectingLMStudio:  Bool = false
+    // ClinePass chat key
+    @State private var clineKey: String = KeychainStore.shared.get("cline-api-key") ?? ""
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -68,6 +68,7 @@ struct SettingsView: View {
     @State private var n8nUrl: String       = KeychainStore.shared.get("n8n-url")         ?? ""
     @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
+    @State private var renderKey: String    = KeychainStore.shared.get("render-api-key")  ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
@@ -80,6 +81,10 @@ struct SettingsView: View {
     // Vercel project filter
     @State private var vercelProjects: [String] = []
     @State private var loadingVercel: Bool = false
+
+    // Render service filter
+    @State private var renderServices: [String] = []
+    @State private var loadingRender: Bool = false
 
     // n8n workflow filter
     @State private var n8nWorkflows: [String] = []
@@ -114,7 +119,7 @@ struct SettingsView: View {
                             .resizable()
                             .frame(width: 32, height: 32)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Coucou")
+                            Text("Coucursor")
                                 .font(.system(size: 13, weight: .semibold))
                             Text(appVersion)
                                 .font(.system(size: 11))
@@ -172,24 +177,11 @@ struct SettingsView: View {
         .onAppear {
             #if !APPSTORE
             state.refreshPlanRelayState()
+            geminiHooksInstalled = HookServer.geminiHooksInstalled()
+            agyHooksInstalled = HookServer.agyHooksInstalled()
+            codexHooksInstalled = HookServer.codexHooksInstalled()
+            cursorHooksInstalled = HookServer.cursorHooksInstalled()
             #endif
-            guard fetchedModels.isEmpty,
-                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
-            Task {
-                let models = await ClaudeService.fetchModels(apiKey: key)
-                guard !models.isEmpty else { return }
-                await MainActor.run {
-                    fetchedModels = models
-                    let m = state.claudeModel
-                    if models.contains(where: { $0.id == m }) {
-                        modelChoice = m
-                        customModel = ""
-                    } else if modelChoice != Self.customModelTag {
-                        modelChoice = Self.customModelTag
-                        customModel = m
-                    }
-                }
-            }
         }
     }
 
@@ -219,6 +211,15 @@ struct SettingsView: View {
     }
 
     // MARK: - General section
+
+    private var mochiOutfitCaption: String {
+        if state.mochiOutfitSelection == .auto {
+            let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
+            let name = seasonal == .none ? "None" : seasonal.displayName
+            return "Auto follows the seasons (now: \(name)). While music plays, Mochi puts on sunglasses. You can also right-click him or press ⌃⌥G."
+        }
+        return "Pick a look for Mochi. While music plays, sunglasses only override Auto or None. You can also right-click him or press ⌃⌥G."
+    }
 
     @ViewBuilder private var generalSection: some View {
         GroupBox("Sound") {
@@ -253,6 +254,58 @@ struct SettingsView: View {
                         .frame(width: 48)
                     Text("min without movement")
                 }
+                Toggle("Click outside to close", isOn: $state.clickOutsideToClose)
+                Text("When the notch is open, a click outside the island collapses it.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Follow cursor when idle", isOn: $state.idleEyeTracking)
+                Text("Mochi keeps looking at the mouse in the smallest resting strip. Uses a little CPU while idle.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Stay collapsed until hover", isOn: $state.stayCollapsedUntilHover)
+                Text("Keep the island in its smallest state until you hover or click. Alerts still open on their own.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Idle breathing", isOn: $state.idleBreathing)
+                Text("Subtle breath animation in the resting strip when eye-tracking is off.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Text("Presets")
+                        .foregroundColor(.secondary)
+                    Button("Quiet") { state.applyBehaviorPreset(.quiet) }
+                        .buttonStyle(.bordered)
+                    Button("Alive") { state.applyBehaviorPreset(.alive) }
+                        .buttonStyle(.bordered)
+                }
+                Text("Quiet = collapsed + no eyes. Alive = eyes on + compact rest.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+
+        GroupBox("Mochi") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Text("Outfit")
+                        .frame(width: 70, alignment: .leading)
+                    Picker("Outfit", selection: $state.mochiOutfitSelection) {
+                        ForEach(Outfit.allCases, id: \.self) { outfit in
+                            Text(outfit.displayName).tag(outfit)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 220)
+                }
+                Text(mochiOutfitCaption)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open wardrobe in notch") {
+                    NotificationCenter.default.post(name: .openWardrobeFromDesktop, object: nil)
+                }
+                .buttonStyle(.bordered)
             }
             .padding(6)
         }
@@ -297,7 +350,7 @@ struct SettingsView: View {
     @ViewBuilder private var activePillsSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Choose the tools you use. Coucou only shows what you declare here.")
+                Text("Choose the tools you use. Coucursor only shows what you declare here.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
@@ -406,10 +459,14 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerGeminiPreview(install: true) }
-                        .buttonStyle(.borderedProminent)
+                    Button(geminiHooksInstalled ? "Installed" : "Install hooks") {
+                        triggerGeminiPreview(install: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(geminiHooksInstalled || showGeminiDiff)
                     Button("Uninstall") { triggerGeminiPreview(install: false) }
                         .buttonStyle(.bordered)
+                        .disabled(!geminiHooksInstalled || showGeminiDiff)
                 }
                 if showGeminiDiff {
                     ScrollView {
@@ -439,10 +496,14 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerAgyPreview(install: true) }
-                        .buttonStyle(.borderedProminent)
+                    Button(agyHooksInstalled ? "Installed" : "Install hooks") {
+                        triggerAgyPreview(install: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(agyHooksInstalled || showAgyDiff)
                     Button("Uninstall") { triggerAgyPreview(install: false) }
                         .buttonStyle(.bordered)
+                        .disabled(!agyHooksInstalled || showAgyDiff)
                 }
                 if showAgyDiff {
                     ScrollView {
@@ -472,10 +533,14 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerCodexPreview(install: true) }
-                        .buttonStyle(.borderedProminent)
+                    Button(codexHooksInstalled ? "Installed" : "Install hooks") {
+                        triggerCodexPreview(install: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(codexHooksInstalled || showCodexDiff)
                     Button("Uninstall") { triggerCodexPreview(install: false) }
                         .buttonStyle(.bordered)
+                        .disabled(!codexHooksInstalled || showCodexDiff)
                 }
                 if showCodexDiff {
                     ScrollView {
@@ -497,221 +562,74 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        GroupBox("Plan usage") {
+        GroupBox("Cursor Hooks") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay to ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.")
+                Text(cursorHooksInstalled
+                     ? "Hooks installed — Cursor reloads hooks.json automatically (or restart Cursor)"
+                     : "~/.cursor/hooks.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                Text("Shows Cursor Agent sessions live on the Cursor pill (thinking, tools, edits, finished). Session end shows a +/− summary. Shell Allow/Deny from the notch is next — Cursor hooks don’t expose a stable permission card yet.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Toggle("Show in the notch", isOn: Binding(
-                    get: { state.showPlanInNotch || planTogglePending },
-                    set: { on in
-                        if on {
-                            if state.planRelayInstalled {
-                                state.showPlanInNotch = true
-                            } else {
-                                planTogglePending = true
-                                installStatusLine()
-                            }
-                        } else {
-                            state.showPlanInNotch = false
-                            planTogglePending = false
-                        }
-                    }
-                ))
                 HStack(spacing: 10) {
-                    if state.planRelayInstalled {
-                        Text("Relay: installed")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        Button("Uninstall relay") { uninstallStatusLine() }
-                            .buttonStyle(.bordered)
-                    } else {
-                        Text("Relay: not installed")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        Button("Install relay") { installStatusLine() }
-                            .buttonStyle(.borderedProminent)
+                    Button(cursorHooksInstalled ? "Installed" : "Install hooks") {
+                        triggerCursorPreview(install: true)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(cursorHooksInstalled || showCursorDiff)
+                    Button("Uninstall") { triggerCursorPreview(install: false) }
+                        .buttonStyle(.bordered)
+                        .disabled(!cursorHooksInstalled || showCursorDiff)
                 }
-                if showStatusLineDiff {
+                if showCursorDiff {
                     ScrollView {
-                        Text(pendingStatusLineJSON)
+                        Text(pendingCursorJSON)
                             .font(.system(size: 10, design: .monospaced))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(height: 100)
+                    .frame(height: 140)
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
                     HStack {
-                        Button("Confirm & write") { confirmStatusLine() }
+                        Button("Confirm & write") { confirmCursorOp() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") {
-                            showStatusLineDiff = false
-                            pendingStatusLineJSON = ""
-                            planTogglePending = false
-                        }
-                        .buttonStyle(.bordered)
+                        Button("Cancel") { showCursorDiff = false; pendingCursorJSON = "" }
+                            .buttonStyle(.bordered)
                     }
                 }
             }
             .padding(6)
         }
+
+        // Coucursor: Claude plan usage UI removed (Cursor-first).
         #endif
     }
 
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
-        GroupBox("Anthropic API") {
+        GroupBox("ClinePass") {
             VStack(alignment: .leading, spacing: 8) {
-                SecureField("API key (sk-ant-…)", text: $apiKey)
+                Text("API key from app.cline.bot → Settings → API Keys. Coucursor chat uses the OpenAI-compatible Cline API.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                SecureField("API key", text: $clineKey)
                     .textFieldStyle(.roundedBorder)
                 Button("Save") {
-                    KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                    statusMessage = "✓ Key saved."
+                    KeychainStore.shared.set("cline-api-key", value: clineKey)
+                    AppState.shared.fetchedProviderModels[.clinepass] = nil
+                    AppState.shared.providerModelFetchError[.clinepass] = nil
+                    statusMessage = "✓ ClinePass key saved."
                 }
                 .buttonStyle(.borderedProminent)
-
-                Divider().padding(.vertical, 2)
-
-                Picker("Model", selection: $modelChoice) {
-                    ForEach(displayModels, id: \.id) { preset in
-                        Text(preset.label).tag(preset.id)
-                    }
-                    Text("Custom…").tag(Self.customModelTag)
-                }
-                .onChange(of: modelChoice) { _, choice in
-                    if choice != Self.customModelTag {
-                        state.claudeModel = choice
-                    } else {
-                        applyCustomModel(customModel)
-                    }
-                }
-
-                if modelChoice == Self.customModelTag {
-                    TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: customModel) { _, value in applyCustomModel(value) }
-                }
-
-                Text("Used by the chat. The list comes from your Anthropic account.")
+                Text("Pick the model in the notch chat (ClinePass catalog).")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
             .padding(6)
-        }
-
-        GroupBox("Chat — other providers") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 8) {
-                    Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
-                    Text("Google AI").font(.system(size: 12, weight: .semibold))
-                }
-                SecureField("API key (AI Studio)", text: $googleKey)
-                    .textFieldStyle(.roundedBorder)
-                Button("Save") {
-                    KeychainStore.shared.set("google-api-key", value: googleKey)
-                    statusMessage = "✓ Google key saved."
-                }
-                .buttonStyle(.borderedProminent)
-
-                Divider()
-
-                HStack(spacing: 8) {
-                    Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
-                    Text("OpenAI").font(.system(size: 12, weight: .semibold))
-                }
-                SecureField("API key (sk-…)", text: $openAIKey)
-                    .textFieldStyle(.roundedBorder)
-                Button("Save") {
-                    KeychainStore.shared.set("openai-api-key", value: openAIKey)
-                    statusMessage = "✓ OpenAI key saved."
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .padding(.vertical, 4)
-        }
-
-        GroupBox("Local models") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Connect to a local model server. No API key needed.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-
-                // ── Ollama ──────────────────────────────────────────────────────
-                HStack(spacing: 8) {
-                    Circle().fill(Color(hex: "#FACC15")).frame(width: 8, height: 8)
-                    Text("Ollama").font(.system(size: 12, weight: .semibold))
-                    if !state.ollamaServerURL.isEmpty {
-                        Text("Connected")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#22C55E"))
-                    }
-                }
-                if state.ollamaServerURL.isEmpty {
-                    TextField("http://127.0.0.1:11434", text: $ollamaURL)
-                        .textFieldStyle(.roundedBorder)
-                    Button(connectingOllama ? "Connecting…" : "Connect") {
-                        Task { await connectLocal(provider: .ollama) }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(connectingOllama)
-                } else {
-                    Text(state.ollamaServerURL)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.secondary)
-                    Button("Disconnect") {
-                        state.ollamaServerURL = ""
-                        ollamaURL = ""
-                        state.fetchedProviderModels[.ollama] = nil
-                        state.providerModelFetchError[.ollama] = nil
-                        if state.chatProvider == .ollama { state.chatProvider = .anthropic }
-                        statusMessage = "Ollama disconnected."
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                Divider()
-
-                // ── LM Studio ───────────────────────────────────────────────────
-                HStack(spacing: 8) {
-                    Circle().fill(Color(hex: "#A3E635")).frame(width: 8, height: 8)
-                    Text("LM Studio").font(.system(size: 12, weight: .semibold))
-                    if !state.lmstudioServerURL.isEmpty {
-                        Text("Connected")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#22C55E"))
-                    }
-                }
-                if state.lmstudioServerURL.isEmpty {
-                    TextField("http://127.0.0.1:1234", text: $lmstudioURL)
-                        .textFieldStyle(.roundedBorder)
-                    Button(connectingLMStudio ? "Connecting…" : "Connect") {
-                        Task { await connectLocal(provider: .lmstudio) }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(connectingLMStudio)
-                } else {
-                    Text(state.lmstudioServerURL)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.secondary)
-                    Button("Disconnect") {
-                        state.lmstudioServerURL = ""
-                        lmstudioURL = ""
-                        state.fetchedProviderModels[.lmstudio] = nil
-                        state.providerModelFetchError[.lmstudio] = nil
-                        if state.chatProvider == .lmstudio { state.chatProvider = .anthropic }
-                        statusMessage = "LM Studio disconnected."
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            .padding(.vertical, 4)
         }
     }
 
@@ -766,6 +684,26 @@ struct SettingsView: View {
                         filter: $state.vercelProjectFilter,
                         loading: loadingVercel,
                         onLoad: loadVercelProjects
+                    )
+                }
+
+                // Render
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#46E3B7")).frame(width: 8, height: 8)
+                        Text("Render").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("API key", text: $renderKey)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Create one at dashboard.render.com → Account Settings → API Keys.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                    IntegrationFilterRow(
+                        label: "Services",
+                        items: renderServices,
+                        filter: $state.renderServiceFilter,
+                        loading: loadingRender,
+                        onLoad: loadRenderServices
                     )
                 }
 
@@ -887,41 +825,6 @@ struct SettingsView: View {
     }
     #endif
 
-    private func connectLocal(provider: ChatProvider) async {
-        let rawURL = provider == .ollama ? ollamaURL : lmstudioURL
-        let candidate = rawURL.isEmpty
-            ? (provider == .ollama ? "http://127.0.0.1:11434" : "http://127.0.0.1:1234")
-            : rawURL
-        let normalised = LocalChat.normaliseURL(candidate)
-        guard normalised.hasPrefix("http://") || normalised.hasPrefix("https://") else {
-            statusMessage = "Only http:// and https:// URLs are supported."
-            return
-        }
-        if provider == .ollama { connectingOllama = true } else { connectingLMStudio = true }
-        statusMessage = ""
-        let result = await LocalChat.fetchModelsResult(baseURL: normalised)
-        if provider == .ollama { connectingOllama = false } else { connectingLMStudio = false }
-        let name = provider == .ollama ? "Ollama" : "LM Studio"
-        switch result {
-        case .success(let models) where models.isEmpty:
-            statusMessage = "No models yet — download one in \(name) first."
-        case .success(let models):
-            if provider == .ollama {
-                state.ollamaServerURL = normalised
-                ollamaURL = normalised
-                state.fetchedProviderModels[.ollama] = nil
-                state.providerModelFetchError[.ollama] = nil
-            } else {
-                state.lmstudioServerURL = normalised
-                lmstudioURL = normalised
-                state.fetchedProviderModels[.lmstudio] = nil
-                state.providerModelFetchError[.lmstudio] = nil
-            }
-            statusMessage = "✓ Connected · \(models.count) model\(models.count == 1 ? "" : "s")"
-        case .failure:
-            statusMessage = "Couldn't reach \(name) at \(normalised). Is it running?"
-        }
-    }
 
     private func installHooks() {
         do {
@@ -1036,6 +939,33 @@ struct SettingsView: View {
         }
     }
 
+    private func triggerCursorPreview(install: Bool) {
+        do {
+            cursorPendingInstall = install
+            pendingCursorJSON = try HookServer.shared.previewCursorHooks(install: install)
+            showCursorDiff = true
+            statusMessage = "Review the JSON below before confirming."
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmCursorOp() {
+        do {
+            try HookServer.shared.writeCursorHooks()
+            showCursorDiff = false
+            pendingCursorJSON = ""
+            cursorHooksInstalled = cursorPendingInstall
+            statusMessage = cursorPendingInstall
+                ? "✓ Cursor hooks installed in ~/.cursor/hooks.json — Cursor reloads them automatically."
+                : "✓ Cursor hooks removed."
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
     private func installStatusLine() {
         do {
             pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: true)
@@ -1087,6 +1017,7 @@ struct SettingsView: View {
         saveKey("n8n-url",         value: n8nUrl)
         saveKey("n8n-api-key",     value: n8nKey)
         saveKey("vercel-token",    value: vercelToken)
+        saveKey("render-api-key",  value: renderKey)
 
         // Detect GitHub token changes before writing
         let prevGithubToken = KeychainStore.shared.get("github-token")
@@ -1105,7 +1036,17 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
-        statusMessage = "✓ Integration keys saved."
+
+        // Saving a Render key also turns on the Render pill (frees a keyless slot if at 4/4).
+        if !renderKey.isEmpty {
+            let on = AppState.shared.ensureIntegrationEnabled("integration_render")
+            RenderPoller.shared.pollNow()
+            statusMessage = on
+                ? "✓ Render key saved — pill enabled."
+                : "✓ Render key saved — free a slot in Active pills (4/4)."
+        } else {
+            statusMessage = "✓ Integration keys saved."
+        }
     }
 
     private func saveKey(_ key: String, value: String) {
@@ -1140,6 +1081,37 @@ struct SettingsView: View {
                 self.vercelProjects = names
                 self.loadingVercel = false
                 if names.isEmpty { self.statusMessage = "❌ No Vercel projects found." }
+            }
+        }.resume()
+    }
+
+    // MARK: - Render service list
+
+    private func loadRenderServices() {
+        guard let token = KeychainStore.shared.get("render-api-key") else {
+            statusMessage = "❌ Save Render API key first."
+            return
+        }
+        loadingRender = true
+        guard let url = URL(string: "https://api.render.com/v1/services?limit=50") else { return }
+        var req = URLRequest(url: url, timeoutInterval: 12)
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        URLSession.shared.dataTask(with: req) { data, response, _ in
+            let names: [String]
+            if let data,
+               let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                names = list.compactMap { row -> String? in
+                    let svc = (row["service"] as? [String: Any]) ?? row
+                    return svc["name"] as? String
+                }.sorted()
+            } else {
+                names = []
+            }
+            DispatchQueue.main.async {
+                self.renderServices = names
+                self.loadingRender = false
+                if names.isEmpty { self.statusMessage = "❌ No Render services found." }
             }
         }.resume()
     }
@@ -1197,16 +1169,10 @@ struct SettingsView: View {
             if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
+            if def.id == "agent_cursor"        && !HookServer.cursorHooksInstalled() { return "Hooks not installed" }
             #endif
             if def.category == .ai {
-                if let provider = ChatProvider(pillID: def.id), provider.isLocal {
-                    let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
-                    if url.isEmpty { return "Not connected" }
-                } else {
-                    let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                               : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
-                    if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
-                }
+                if KeychainStore.shared.get("cline-api-key") == nil { return "Key not configured" }
             }
             return nil
         }()

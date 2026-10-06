@@ -39,14 +39,19 @@ struct DesktopBotView: View {
                 engine.lookX = tanh((appState.mousePosition.x - viewState.lookOrigin.x) / 260)
                 engine.lookY = -tanh((appState.mousePosition.y - viewState.lookOrigin.y) / 200)
 
-                // Desktop Mochi is always the "main" Mochi — always dressed
-                engine.setOutfit(appState.resolvedOutfit, animated: true)
-
-                // Dance when music plays (same rules as compact mode)
+                // Dance when Apple Music or Spotify plays (same rules as compact mode)
+                #if !APPSTORE
+                let musicOn = appState.musicPlaying
+                    && appState.activeIntegrations.contains("integration_music")
+                let spotifyOn = appState.spotifyPlaying
+                    && appState.activeIntegrations.contains("integration_spotify")
+                let listening = musicOn || spotifyOn
+                #else
+                let listening = false
+                #endif
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard appState.musicPlaying else { return false }
-                    guard appState.activeIntegrations.contains("integration_music") else { return false }
+                    guard listening else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     return allowed.contains(appState.effectiveState)
                     #else
@@ -54,6 +59,12 @@ struct DesktopBotView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
+                // Sunglasses listening cue (override seasonal Auto, same as notch Mochi)
+                let wardrobeAllowsCue = appState.mochiOutfitSelection == .auto
+                    || appState.mochiOutfitSelection == .none
+                let outfit: Outfit = (listening && wardrobeAllowsCue)
+                    ? .sunglasses : appState.resolvedOutfit
+                engine.setOutfit(outfit, animated: true)
                 engine.update(dt: dt)
 
                 var c = ctx

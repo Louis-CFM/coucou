@@ -3,35 +3,40 @@ import Foundation
 import AppKit
 import Combine
 
-// MARK: - Music Controller
+// MARK: - Spotify Controller
 
-/// Observes Apple Music state via distributed notifications and provides playback controls.
-/// Singleton, @MainActor, GitHub build only.
+/// Observes Spotify state via distributed notifications and provides playback controls.
+/// Singleton, @MainActor, GitHub build only. Mirrors MusicController.
 @MainActor
-final class MusicController: ObservableObject {
-    static let shared = MusicController()
+final class SpotifyController: ObservableObject {
+    static let shared = SpotifyController()
 
     @Published var trackTitle: String?
     @Published var artist: String?
     @Published var album: String?
-    /// Music sound volume, 0…100.
+    /// Spotify sound volume, 0…100.
     @Published var volume: Int = 50
+    @Published var isRunning: Bool = false
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
-    private let queue = DispatchQueue(label: "fr.louisraille.coucou.music")
+    private let queue = DispatchQueue(label: "fr.louisraille.coucou.spotify")
     private let volumeStep = 10
     private var lastEmoteTitle: String?
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains("integration_music")
+        AppState.shared.activeIntegrations.contains("integration_spotify")
+    }
+
+    var isInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil
+            || FileManager.default.fileExists(atPath: "/Applications/Spotify.app")
     }
 
     private init() {
-        // playerInfo fires whenever Music state changes (play/pause/track change).
-        // Extract Sendable String? values before crossing into @MainActor.
+        // PlaybackStateChanged fires on play/pause/track change.
         let tok1 = DistributedNotificationCenter.default().addObserver(
-            forName: NSNotification.Name("com.apple.Music.playerInfo"),
+            forName: NSNotification.Name("com.spotify.client.PlaybackStateChanged"),
             object: nil,
             queue: .main
         ) { [weak self] notif in
@@ -46,7 +51,6 @@ final class MusicController: ObservableObject {
         }
         notifTokens.append(tok1)
 
-        // Track Music launch — read current state only if granted and pill active
         let tok2 = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
             object: nil,
@@ -54,17 +58,17 @@ final class MusicController: ObservableObject {
         ) { [weak self] notif in
             let bundleId = (notif.userInfo?[NSWorkspace.applicationUserInfoKey]
                 as? NSRunningApplication)?.bundleIdentifier
-            guard bundleId == "com.apple.Music" else { return }
+            guard bundleId == "com.spotify.client" else { return }
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                self.isRunning = true
                 guard self.isPillActive,
-                      UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted") else { return }
+                      UserDefaults.standard.bool(forKey: "coucou.spotifyAutomationGranted") else { return }
                 self.fetchAndApply()
             }
         }
         notifTokens.append(tok2)
 
-        // Clear state when Music quits
         let tok3 = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
             object: nil,
@@ -72,18 +76,20 @@ final class MusicController: ObservableObject {
         ) { [weak self] notif in
             let bundleId = (notif.userInfo?[NSWorkspace.applicationUserInfoKey]
                 as? NSRunningApplication)?.bundleIdentifier
-            guard bundleId == "com.apple.Music" else { return }
+            guard bundleId == "com.spotify.client" else { return }
             Task { @MainActor [weak self] in self?.clearState() }
         }
         notifTokens.append(tok3)
 
-        // Observe activeIntegrations — pill activated → initial read; deactivated → clear
+        isRunning = isSpotifyRunning()
+
         AppState.shared.$activeIntegrations
             .sink { [weak self] integrations in
                 guard let self else { return }
-                if integrations.contains("integration_music") {
-                    if self.isMusicRunning(),
-                       UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted") {
+                self.isRunning = self.isSpotifyRunning()
+                if integrations.contains("integration_spotify") {
+                    if self.isRunning,
+                       UserDefaults.standard.bool(forKey: "coucou.spotifyAutomationGranted") {
                         self.fetchAndApply()
                     }
                 } else {
@@ -93,22 +99,16 @@ final class MusicController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // MARK: - Private helpers
-
-    private func isMusicRunning() -> Bool {
-        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.apple.Music" }
+    private func isSpotifyRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.spotify.client" }
     }
-
-    // MARK: - Metadata cleaners
 
     private static func shortTitle(_ raw: String) -> String {
         guard !raw.isEmpty else { return raw }
         var s = raw
-        // Cut at first " - "
         if let r = s.range(of: " - ") {
             s = String(s[..<r.lowerBound])
         }
-        // Strip trailing (...) or [...] groups repeatedly
         var changed = true
         while changed {
             changed = false
@@ -140,17 +140,16 @@ final class MusicController: ObservableObject {
         guard isPillActive else { return }
 
         let playing = playerState == "Playing"
-        let wasPlaying = AppState.shared.musicPlaying
-
+        let wasPlaying = AppState.shared.spotifyPlaying
         let prevTitle = trackTitle
+
         trackTitle = name.map { Self.shortTitle($0) }.flatMap { $0.isEmpty ? nil : $0 }
         artist     = inputArtist.map { Self.shortArtist($0) }.flatMap { $0.isEmpty ? nil : $0 }
         album      = inputAlbum
 
-        AppState.shared.musicPlaying = playing
+        AppState.shared.spotifyPlaying = playing
         syncTaskName()
 
-        // Reveal on play-start or track change
         if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
             NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
             if trackTitle != lastEmoteTitle {
@@ -158,13 +157,14 @@ final class MusicController: ObservableObject {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             }
         }
+        // Refresh volume — PlaybackStateChanged does not always include it.
         refreshVolume()
     }
 
     private func refreshVolume() {
         Task {
             let result = await runAppleScript(
-                #"tell application id "com.apple.Music" to get sound volume as string"#
+                #"tell application id "com.spotify.client" to get sound volume as string"#
             )
             guard case .success(let values) = result, let raw = values.first, let v = Int(raw) else { return }
             volume = min(100, max(0, v))
@@ -174,7 +174,7 @@ final class MusicController: ObservableObject {
     private func fetchAndApply() {
         Task {
             let result = await runAppleScript("""
-                tell application id "com.apple.Music"
+                tell application id "com.spotify.client"
                     set ps to player state as string
                     set vol to sound volume as string
                     if ps is "stopped" then return {ps, "", "", "", vol}
@@ -196,8 +196,9 @@ final class MusicController: ObservableObject {
                 end tell
             """)
             guard case .success(let values) = result, values.count >= 4 else { return }
+            isRunning = true
             let playing    = values[0] == "playing"
-            let wasPlaying = AppState.shared.musicPlaying
+            let wasPlaying = AppState.shared.spotifyPlaying
             let prevTitle  = trackTitle
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
             artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
@@ -205,7 +206,7 @@ final class MusicController: ObservableObject {
             if values.count >= 5, let v = Int(values[4]) {
                 volume = min(100, max(0, v))
             }
-            AppState.shared.musicPlaying = playing
+            AppState.shared.spotifyPlaying = playing
             syncTaskName()
             if playing && (!wasPlaying || (trackTitle != nil && trackTitle != prevTitle)) {
                 NotificationCenter.default.post(name: .musicReveal, object: trackTitle)
@@ -219,52 +220,77 @@ final class MusicController: ObservableObject {
 
     private func clearState() {
         trackTitle = nil; artist = nil; album = nil
-        AppState.shared.musicPlaying = false
+        AppState.shared.spotifyPlaying = false
+        isRunning = false
         syncTaskName()
     }
 
     private func syncTaskName() {
-        guard let idx = AppState.shared.tasks.firstIndex(where: { $0.id == "integration_music" }) else { return }
+        guard let idx = AppState.shared.tasks.firstIndex(where: { $0.id == "integration_spotify" }) else { return }
         let title = trackTitle ?? ""
         AppState.shared.tasks[idx].name = title.isEmpty
-            ? (PillCatalog.definition(for: "integration_music")?.name ?? "Apple Music")
+            ? (PillCatalog.definition(for: "integration_spotify")?.name ?? "Spotify")
             : title
     }
 
     // MARK: - Playback controls
 
     func playPause() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to playpause"#) }
+        guard ensureRunning() else { return }
+        Task { await runAppleScript(#"tell application id "com.spotify.client" to playpause"#) }
     }
 
     func nextTrack() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to next track"#) }
+        guard ensureRunning() else { return }
+        Task { await runAppleScript(#"tell application id "com.spotify.client" to next track"#) }
     }
 
     func previousTrack() {
-        guard isMusicRunning() else { return }
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
+        guard ensureRunning() else { return }
+        Task { await runAppleScript(#"tell application id "com.spotify.client" to previous track"#) }
     }
 
-    func volumeUp() { setVolume(volume + volumeStep) }
-    func volumeDown() { setVolume(volume - volumeStep) }
+    func volumeUp() {
+        setVolume(volume + volumeStep)
+    }
+
+    func volumeDown() {
+        setVolume(volume - volumeStep)
+    }
 
     func setVolume(_ value: Int) {
-        guard isMusicRunning() else { return }
+        guard ensureRunning() else { return }
         let clamped = min(100, max(0, value))
         volume = clamped
         Task {
-            await runAppleScript("tell application id \"com.apple.Music\" to set sound volume to \(clamped)")
+            await runAppleScript("tell application id \"com.spotify.client\" to set sound volume to \(clamped)")
         }
     }
 
-    func openMusic() {
-        _ = AppLauncher.open(
-            bundleId: "com.apple.Music",
-            fallbackPath: "/System/Applications/Music.app"
+    /// Launch Spotify if needed, then bring it to the front (un-minimizes from Dock).
+    @discardableResult
+    func openSpotify() -> Bool {
+        let ok = AppLauncher.open(
+            bundleId: "com.spotify.client",
+            fallbackPath: "/Applications/Spotify.app"
         )
+        guard ok else { return false }
+        isRunning = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            if isPillActive { fetchAndApply() }
+        }
+        return true
+    }
+
+    /// Launch Spotify when a control needs it; returns false if not installed.
+    @discardableResult
+    private func ensureRunning() -> Bool {
+        if isSpotifyRunning() {
+            isRunning = true
+            return true
+        }
+        return openSpotify()
     }
 
     func openAutomationSettings() {
@@ -286,8 +312,8 @@ final class MusicController: ObservableObject {
                     let code = (errDict[NSAppleScript.errorNumber] as? Int) ?? 0
                     if code == -1743 {
                         Task { @MainActor in
-                            AppState.shared.musicAutomationDenied = true
-                            UserDefaults.standard.set(false, forKey: "coucou.musicAutomationGranted")
+                            AppState.shared.spotifyAutomationDenied = true
+                            UserDefaults.standard.set(false, forKey: "coucou.spotifyAutomationGranted")
                         }
                         cont.resume(returning: .denied)
                     } else {
@@ -296,10 +322,9 @@ final class MusicController: ObservableObject {
                     return
                 }
                 Task { @MainActor in
-                    UserDefaults.standard.set(true, forKey: "coucou.musicAutomationGranted")
-                    AppState.shared.musicAutomationDenied = false
+                    UserDefaults.standard.set(true, forKey: "coucou.spotifyAutomationGranted")
+                    AppState.shared.spotifyAutomationDenied = false
                 }
-                // Extract values on this queue before resuming (avoids NSAppleEventDescriptor Sendable issues)
                 var values: [String] = []
                 let count = desc.numberOfItems
                 if count > 0 {

@@ -60,15 +60,7 @@ enum PillCatalog {
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // ── AI for the chat ──────────────────────────────────────────────────
-        .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
-              category: .ai,        subtitle: "Chat",         source: .n8n),
-        .init(id: "ai_google",           name: "Google AI",   color: ChatProvider.google.accentHex,
-              category: .ai,        subtitle: "Chat",         source: .n8n),
-        .init(id: "ai_openai",           name: "OpenAI",      color: ChatProvider.openai.accentHex,
-              category: .ai,        subtitle: "Chat",         source: .n8n),
-        .init(id: "ai_ollama",           name: "Ollama",      color: ChatProvider.ollama.accentHex,
-              category: .ai,        subtitle: "Chat",         source: .n8n),
-        .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
+        .init(id: "ai_clinepass",        name: "ClinePass",   color: ChatProvider.clinepass.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",
@@ -76,6 +68,8 @@ enum PillCatalog {
         .init(id: "integration_n8n",     name: "n8n",         color: "#F29B38",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_vercel",  name: "Vercel",      color: "#7C5CFF",
+              category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_render",  name: "Render",      color: "#46E3B7",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_github",  name: "GitHub",      color: "#F4505E",
               category: .service,   subtitle: "Integration",  source: .n8n),
@@ -86,6 +80,8 @@ enum PillCatalog {
         .init(id: "integration_stripe",  name: "Stripe",      color: "#0570DE",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
+              category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
+        .init(id: "integration_spotify", name: "Spotify",     color: "#1DB954",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
     ]
 
@@ -98,8 +94,8 @@ enum PillCatalog {
         #endif
     }
 
-    /// Default ID for the always-on main workspace pill.
-    static let defaultMainPillId = "integration_claude"
+    /// Default ID for the always-on main workspace pill (Coucursor → Cursor).
+    static let defaultMainPillId = "agent_cursor"
 
     /// Looks up a definition by task ID (nil if not in catalog).
     static func definition(for id: String) -> PillDefinition? {

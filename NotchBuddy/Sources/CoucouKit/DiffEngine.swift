@@ -16,7 +16,7 @@ struct DiffHunk: Equatable {
     var lines: [DiffLine]
 }
 
-struct FileDiff: Equatable {
+struct FileDiff: Equatable, Identifiable {
     var id: Int = 0         // stable identifier assigned by AppState.appendSessionDiff
     var path: String
     var added: Int
