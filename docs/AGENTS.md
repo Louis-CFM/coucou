@@ -162,3 +162,20 @@ echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","
 ```
 
 A "demo" pill should appear in the island.
+
+## Approval cards for third-party agents (opt-in)
+
+Any agent that sends `coucou_agent` gets its own pill. By default those pills are
+fire-and-forget: a `PermissionRequest` is answered with `"ask"` so the agent re-asks in its
+own terminal.
+
+An agent that can wait for a blocking answer opts in by adding `"coucou_approval": true` to
+its `PermissionRequest` payload. Coucou then shows the same Allow / Deny / Always card as
+Claude Code and Codex, and returns the decision on the same socket as
+`{"permissionDecision": "allow" | "always" | "deny"}`. The hook should keep the connection
+open while the user decides (Coucou waits up to ~120 s, like Claude Code does).
+
+```json
+{"hook_event_name": "PermissionRequest", "coucou_agent": "my-agent", "coucou_approval": true,
+ "tool_name": "Bash", "tool_input": {"command": "rm -rf ./build"}}
+```
