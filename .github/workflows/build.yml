@@ -26,6 +26,26 @@ jobs:
 
       - name: Test Hindsight contracts
         run: bash scripts/test-hindsight.sh
+      - name: Test chat parsing
+        run: bash scripts/test-chat-parsing.sh
+
+      - name: Test plan gauge
+        run: bash scripts/test-plan-gauge.sh
+
+      - name: Test ask question
+        run: bash scripts/test-ask-question.sh
+
+      - name: Diff engine tests
+        run: bash scripts/test-diff-engine.sh
+
+      - name: GitHub pulse tests
+        run: bash scripts/test-github-pulse.sh
+
+      - name: GitHub activity tests
+        run: bash scripts/test-github-activity.sh
+
+      - name: Wardrobe tests
+        run: bash scripts/test-wardrobe.sh
 
       - name: Build
         run: |
@@ -36,3 +56,42 @@ jobs:
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Build App Store target (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouAppStore \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, DebugCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddyCloud \
+            -configuration DebugCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, ReleaseCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddy \
+            -configuration ReleaseCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone app (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouPhone \
+            -destination 'generic/platform=iOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO

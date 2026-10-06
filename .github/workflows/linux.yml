@@ -1,0 +1,197 @@
+name: Linux
+
+# Builds the Linux app (AppImage, .deb, .rpm) from the same Tauri project as
+# Windows. Triggered by tags like `linux-v0.1.0`, by hand, and by pull requests
+# that touch windows/ or this file (build and test only); the macOS and Windows
+# workflows are untouched.
+#
+# Two jobs on purpose. `build` runs npm, cargo and the AppImage tooling (which
+# downloads its own helpers) with a read-only token that is not even kept on
+# disk. Only `publish`, which runs none of that code, may write to the repo.
+
+on:
+  push:
+    tags:
+      - 'linux-v*'
+  workflow_dispatch:
+  # Build and test only. A pull request never uploads artifacts and never
+  # reaches the publish job (see the two gates below), and a fork's token is
+  # read-only anyway.
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/linux.yml'
+
+permissions:
+  contents: read
+
+# Off until a first build has been checked by hand: run this workflow manually,
+# download the Coucou-Linux artifact, try it, then set this to 'true' and push a
+# linux-v* tag.
+env:
+  PUBLISH: 'false'
+
+jobs:
+  build:
+    # The oldest supported Ubuntu: an AppImage only runs on systems whose glibc
+    # is at least as new as the one it was built against.
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+      publish: ${{ steps.gate.outputs.publish }}
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # webkit2gtk, gtk-layer-shell and appindicator to build against; patchelf
+      # and the GStreamer plugins for the AppImage, which carries its own
+      # GStreamer so the sounds play (WAV needs wavparse, in -good).
+      - name: Install system libraries
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: linux-cargo-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same check as the Windows workflow: three files carry the version.
+      - name: Check the tag and every version agree
+        if: startsWith(github.ref, 'refs/tags/linux-v')
+        run: |
+          tag="${GITHUB_REF_NAME#linux-v}"
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          cargo=$(sed -nE 's/^version\s*=\s*"(.+)"/\1/p' Cargo.toml | head -1)
+          echo "tag=$tag tauri.conf=$conf package.json=$pkg Cargo.toml=$cargo"
+          bad=""
+          [ "$tag" = "$conf" ]  || bad="$bad tauri.conf.json says $conf;"
+          [ "$tag" = "$pkg" ]   || bad="$bad package.json says $pkg;"
+          [ "$tag" = "$cargo" ] || bad="$bad Cargo.toml says $cargo;"
+          if [ -n "$bad" ]; then echo "tag says $tag but$bad"; exit 1; fi
+
+      # The app bundles target/release/coucou-hook as a resource, and its build
+      # script refuses to run until that file exists.
+      - name: Test
+        run: |
+          cargo build --release -p coucou-hook
+          cargo test --workspace
+
+      # linuxdeploy is itself an AppImage; runners have no FUSE, so it unpacks
+      # itself instead of mounting.
+      - name: Build and pack
+        id: pack
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          npm run pack
+          echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+          cd release
+          sha256sum Coucou-Linux-* > SHA256SUMS
+          ls -la
+          cat SHA256SUMS
+
+      - name: Decide whether to publish
+        id: gate
+        run: echo "publish=${{ github.event_name == 'push' && env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/linux-v') }}" >> "$GITHUB_OUTPUT"
+
+      # Upload only on a manual run or when publishing a release, as on Windows.
+      # The repo is public, so artifacts are downloadable by any signed-in GitHub
+      # user; retention-days: 3 limits exposure.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
+        with:
+          name: Coucou-Linux
+          path: |
+            windows/release/Coucou-Linux-*
+            windows/release/SHA256SUMS
+          retention-days: 3
+
+  publish:
+    needs: build
+    # Checked again here, so a pull request can never get this far whatever
+    # the build job reports.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/linux-v') && needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      # Only for the linux-latest tag below; nothing from the repo is run.
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Coucou-Linux
+          path: release
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          v="$VERSION"
+          notes="Coucou for Linux $v — Mochi at the top of your screen.
+
+          - **AppImage** (any distribution): \`chmod +x Coucou-Linux-$v-x86_64.AppImage\` and run it.
+          - **Debian / Ubuntu**: \`sudo apt install ./Coucou-Linux-$v-amd64.deb\`
+          - **Fedora / openSUSE**: \`sudo dnf install ./Coucou-Linux-$v-x86_64.rpm\`
+
+          Check a download with \`sha256sum -c SHA256SUMS --ignore-missing\`.
+
+          The island sits on the top edge on compositors with layer-shell (COSMIC,
+          KDE Plasma, Hyprland, Sway…). On GNOME it opens as a regular window."
+          # --latest=false: the macOS \`v*\` releases own the Latest slot, which
+          # the site's Download for Mac button points at.
+          gh release create "$GITHUB_REF_NAME" \
+            "release/Coucou-Linux-$v-x86_64.AppImage" \
+            "release/Coucou-Linux-$v-amd64.deb" \
+            "release/Coucou-Linux-$v-x86_64.rpm" \
+            "release/SHA256SUMS" \
+            --title "Coucou for Linux $v" \
+            --notes "$notes" \
+            --latest=false
+
+      - name: Update the rolling linux-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          v="$VERSION"
+          if gh release view linux-latest >/dev/null 2>&1; then
+            # The tag has to follow the release, as for windows-latest.
+            git tag -f linux-latest "$GITHUB_SHA"
+            git push -f origin linux-latest
+            gh release edit linux-latest --title "Coucou for Linux (latest)" --notes "Always the newest Linux build — currently $v."
+            gh release upload linux-latest "release/Coucou-Linux-x86_64.AppImage" --clobber
+          else
+            gh release create linux-latest \
+              "release/Coucou-Linux-x86_64.AppImage" \
+              --title "Coucou for Linux (latest)" \
+              --notes "Always the newest Linux build — currently $v." \
+              --latest=false
+          fi

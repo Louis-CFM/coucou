@@ -11,7 +11,7 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![Rust](https://img.shields.io/badge/Rust-backend-000?logo=rust)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Code: MIT](https://img.shields.io/badge/code-MIT-green)
 
 </div>
 
@@ -597,6 +597,23 @@ windows/
 problems, task launches (agent, target, folder, outcome; no prompt text). It
 stays on your machine.
 
+## Supported agents
+
+The relay (`coucou-hook.exe`) works with any tool that can run a command on hook events. Pass `--agent <name>` to create a named pill.
+
+| Agent | How to connect | Config file |
+|---|---|---|
+| Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
+| Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
+| Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
+| Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
+| Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
+| Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |
+| Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
+| Any other | `--agent <name>` positional arg | your tool's hook config |
+
+OpenCode and Amp are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
+
 ## What's different from the Mac version
 
 - No notch, so the island lives at the top centre of the screen and retracts into
@@ -633,3 +650,38 @@ stays on your machine.
   hidden when no window is known. The window is the session's window, not a
   specific terminal tab or VS Code terminal panel.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+
+## Linux
+
+The same app builds for Linux: everything that differs lives in
+`src-tauri/src/platform/`, and the relay's transport in `hook/src/unix.rs`.
+
+```bash
+sudo apt install build-essential pkg-config \
+  libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
+  librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+npm install
+npm run tauri dev      # live-reloading development build
+npm run pack           # AppImage, .deb and .rpm in windows/release/
+```
+
+What changes on Linux:
+
+- **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
+  top panel, on compositors that support it: COSMIC, KDE Plasma, Hyprland, Sway
+  and other wlroots compositors. GNOME has no layer-shell, so there the island
+  is a regular window. `COUCOU_LAYER_SHELL=0` forces that mode anywhere.
+- **Click-through** is the window's input region, kept equal to the island
+  shape, so the compositor sends every other click to what is underneath.
+- **Mochi's eyes** follow the pointer only while it is over the island: Wayland
+  gives no app the cursor position anywhere else.
+- **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
+  Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
+  runs as the same user.
+- **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Files**: preferences in `~/.config/coucou/`, the log at
+  `~/.local/share/coucou/coucou.log`.
+- What the Windows build leaves out, this one does too: sending a file by
+  email, dragging Mochi onto a window, and jumping to a specific terminal
+  window — "Open terminal" opens the folder in VS Code.

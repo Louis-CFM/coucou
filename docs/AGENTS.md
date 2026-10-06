@@ -1,6 +1,6 @@
 # Coucou — third-party agent integration
 
-Any tool that can write to a Unix domain socket (macOS) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
+Any tool that can write to a Unix domain socket (macOS, Linux) or a named pipe (Windows) can send events to Coucou and have its own pill next to Claude Code.
 
 ## The `coucou_agent` field
 
@@ -44,6 +44,20 @@ Global hotkeys (Windows, `settings.json` → `hotkeys: {chat, task, voice}`, def
 
 The island chat is not a CLI agent and does not go through hooks. On Windows it talks either to the Anthropic API or to a user-configured OpenAI-compatible **9router** (`chatProvider: "router"`, `routerBaseUrl` in `%APPDATA%\Coucou\settings.json`, key `router-api-key` in the Credential Manager). Optional Hindsight recall runs before either provider and retention runs after eligible completed turns; memory failure never replaces the provider response. Private chat bypasses all memory operations for the app session. The Hindsight bearer token stays in the OS credential store, not chat/settings payloads, and the separate Memory Manager retires/restores rather than hard-deleting. See [Chat and keys](../windows/README.md#chat-and-keys) and [Hindsight memory](../windows/README.md#hindsight-memory).
 
+## Hook command (Linux)
+
+Same pattern with the Linux relay. Coucou copies the relay to `~/.local/share/coucou/bin/coucou-hook` at startup.
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "type": "command", "command": "/path/to/coucou-hook --agent my-tool" }
+    ]
+  }
+}
+```
+
 ## Payload format
 
 The relay adds `coucou_agent` to the JSON it forwards. You can also add it yourself if you talk to the socket directly:
@@ -61,6 +75,7 @@ Send newline-terminated JSON to the socket:
 - **macOS (GitHub build):** `~/Library/Application Support/NotchBuddy/nb.sock`
 - **macOS (App Store build):** `~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock`
 - **Windows:** `\\.\pipe\coucou-<user-SID>`
+- **Linux:** `$XDG_RUNTIME_DIR/coucou.sock` (usually `/run/user/<uid>/coucou.sock`). Only your own user account can connect.
 
 On Windows, the built-in Kimi, Codex and Hermes translators forward session identity, working directory, generic prompt labels, and allowlisted tool names, **not** raw prompts, tool arguments, responses or histories. There are two exceptions. (1) Questions: a `PreToolUse` for Kimi `AskUserQuestion`, Codex `request_user_input` or Hermes `clarify` forwards only `tool_input.questions`. It is reduced to question text, header, `multiSelect` and option `label`/`description`, each ≤ 300 characters, with ≤ 8 questions and ≤ 12 options. Hermes `choices`/`multi_select` are mapped to options, and Hermes questions without choices are dropped. The island shows them read-only with **Open**. (2) Approvals: a Codex `PermissionRequest`, Kimi `PermissionRequest` or Hermes `pre_approval_request` forwards only a display tool name and one target line (≤ 300 characters) in `tool_input.command`. That line is the command, or else the agent's own approval description. A custom directly tagged payload is not automatically sanitized the same way; send only data you intend Coucou to display. Native adapters and their completion sounds/indicators still need real provider-session verification; a successful build or hook configuration alone does not prove an alert fired.
 
@@ -117,6 +132,144 @@ On Windows the relay also adds `origin_hwnd` and `origin_pid` to every event (Cl
 - **Codex CLI.** Its hooks run in a detached `codex app-server` daemon with no window ancestry. The relay uses the terminal window of a running `codex` TUI: one whose title names the session folder first, else the newest one, else the top Windows Terminal window.
 
 Clicking **Open** on a finished, question or notice card, clicking the finished card itself, or the ↗ button brings that window to the front, showing a hidden tray window again. It does so only if the handle still exists and belongs to the same process. When the window is Windows Terminal and `origin_console_pid` is known, the session's tab is selected afterwards: the console title is briefly set to a unique marker, the tab showing it is selected through UI Automation, and the title is restored (fallback: the only tab named like the title; nothing when titles are duplicated). Without a window, a Claude Code session opens its folder in VS Code; Codex, Kimi and Hermes sessions open nothing, and the Open button is hidden.
+| `SessionStart` | Creates the pill (if absent), sets state to idle |
+| `UserPromptSubmit` | State → thinking; prompt shown in ticker |
+| `PreToolUse` | State → working; tool label shown in ticker |
+| `PostToolUse` / `PostToolUseFailure` | State → working |
+| `Notification` | Rate-limit or question state if applicable |
+| `Stop` | State → finished for 5 s; active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
+| `StopFailure` | State → error |
+| `SessionEnd` | Active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
+| `SubagentStart` / `SubagentStop` | Step added to ticker |
+
+## Declared pills
+
+A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabled in **Settings → Active pills**. When a session ends for a declared pill, the pill stays visible and resets to idle instead of disappearing.
+
+A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
+
+The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`),
+GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`)
+and Amp (`agent_amp`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
+(`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
+the main pill; session support is coming in a future version.
+
+## Real-world examples
+
+### Gemini CLI (macOS)
+
+Coucou supports Gemini CLI out of the box via **Settings → Gemini CLI → Install hooks**.
+The installer writes to `~/.gemini/settings.json` and uses `--agent gemini` so
+Gemini sessions get their own pill. The relay translates Gemini event names to canonical
+Coucou events automatically.
+
+| Gemini CLI event | Canonical event |
+|---|---|
+| `BeforeTool` | `PreToolUse` |
+| `AfterTool` | `PostToolUse` |
+| `BeforeAgent` | `UserPromptSubmit` |
+| `AfterAgent` | `Stop` |
+
+`AfterModel` is not installed — it fires on every response chunk and would flood the island.
+
+### Antigravity — `agy` (macOS)
+
+Coucou supports Antigravity out of the box via **Settings → Antigravity → Install hooks**.
+The installer writes to `~/.gemini/config/hooks.json` (timeouts in seconds) and uses
+`--agent antigravity`. The relay translates `toolCall.name` / `conversationId` to the
+island's `tool_name` / `session_id`.
+
+| Antigravity event | Canonical event |
+|---|---|
+| `PreInvocation` | `UserPromptSubmit` |
+| `PreToolUse` | `PreToolUse` |
+| `PostToolUse` | `PostToolUse` |
+| `PostInvocation` | `PostToolUse` |
+| `Stop` | `Stop` |
+
+### GitHub Copilot CLI (macOS)
+
+Coucou supports Copilot CLI out of the box via **Settings → GitHub Copilot CLI Hooks → Install hooks**.
+The installer writes to `~/.copilot/hooks/coucou.json` and uses `--agent copilot`.
+Copilot CLI uses camelCase event names and `{"bash":"…","timeoutSec":N}` entries.
+Copilot CLI is fail-closed on `permissionRequest`: the relay always outputs valid JSON
+and returns `{"permissionDecision":"ask"}` on timeout so Copilot re-prompts in the terminal.
+Coucou shows a real Allow / Deny card for Copilot approval requests.
+
+| Copilot CLI event | Canonical event |
+|---|---|
+| `sessionStart` | `SessionStart` |
+| `userPromptSubmitted` | `UserPromptSubmit` |
+| `preToolUse` | `PreToolUse` |
+| `permissionRequest` | `PermissionRequest` |
+| `postToolUse` | `PostToolUse` |
+| `agentStop` | `Stop` |
+| `sessionEnd` | `SessionEnd` |
+| `notification` | `Notification` |
+
+### Muse Code (macOS)
+
+Coucou supports Muse Code out of the box via **Settings → Muse Code Hooks → Install hooks**.
+The installer merges into `~/.config/muse/settings.json` and uses `--agent muse`.
+Muse uses PascalCase event names. Coucou shows a real Allow / Deny card for Muse approval requests.
+
+| Muse Code event | Canonical event |
+|---|---|
+| `SessionStart` | `SessionStart` |
+| `UserPromptSubmit` | `UserPromptSubmit` |
+| `PreToolUse` | `PreToolUse` |
+| `PermissionRequest` | `PermissionRequest` |
+| `PostToolUse` | `PostToolUse` |
+| `Stop` | `Stop` |
+| `SessionEnd` | `SessionEnd` |
+
+### OpenCode (macOS)
+
+Coucou supports OpenCode via **Settings → OpenCode Plugin → Install plugin**.
+The installer writes a JS plugin to `~/.config/opencode/plugins/coucou.js`.
+The plugin maps OpenCode event types to canonical Coucou names and forwards them fire-and-forget; OpenCode is never blocked.
+
+| OpenCode event | Canonical event |
+|---|---|
+| `session.created` | `SessionStart` |
+| `session.idle` | `Stop` |
+| `session.error` | `StopFailure` |
+| `session.deleted` | `SessionEnd` |
+| `tool.execute.before` | `PreToolUse` |
+| `tool.execute.after` | `PostToolUse` |
+| `permission.asked` | `PermissionRequest` |
+
+### Amp (macOS)
+
+Coucou supports Amp via **Settings → Amp Plugin → Install plugin**.
+The installer writes a TypeScript plugin to `~/.config/amp/plugins/coucou.ts`.
+The `tool.call` handler returns `{ action: 'allow' }` so Amp always proceeds; all events are forwarded display-only.
+
+| Amp event | Canonical event |
+|---|---|
+| `session.start` | `SessionStart` |
+| `agent.start` | `UserPromptSubmit` |
+| `tool.call` | `PreToolUse` |
+| `tool.result` | `PostToolUse` |
+| `agent.end` | `Stop` |
+
+### Any other tool
+
+Follow the generic pattern: call `nb-hook --agent <your-name> <EventName>` (macOS),
+`coucou-hook.exe --agent <your-name> <EventName>` (Windows)
+or `~/.local/share/coucou/bin/coucou-hook --agent <your-name> <EventName>` (Linux)
+and let the relay forward the event.
+
+## Quick test (Linux)
+
+With Coucou running:
+
+```sh
+echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","coucou_agent":"demo"}' \
+  | ~/.local/share/coucou/bin/coucou-hook --agent demo
+```
+
+A "demo" pill should appear in the island.
 
 ## Quick test (macOS)
 

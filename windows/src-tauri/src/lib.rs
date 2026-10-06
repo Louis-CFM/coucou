@@ -20,6 +20,7 @@ mod log;
 mod memory_export;
 mod pipe;
 mod placement;
+mod platform;
 mod quick;
 mod robot;
 mod router;
@@ -30,7 +31,6 @@ mod tab;
 mod tools;
 mod tray;
 mod voice;
-mod win_user;
 
 use std::os::windows::process::CommandExt;
 use std::process::Command;

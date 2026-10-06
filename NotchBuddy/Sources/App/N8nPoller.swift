@@ -24,6 +24,7 @@ final class N8nPoller: @unchecked Sendable {
     // MARK: - Poll list endpoint
 
     private func poll() {
+        guard !DemoEngine.isPollerPaused else { return }
         guard let apiKey  = KeychainStore.shared.get("n8n-api-key"),
               let rawBase = KeychainStore.shared.get("n8n-url") else {
             n8nLog("No API key or URL configured")
@@ -226,6 +227,9 @@ final class N8nPoller: @unchecked Sendable {
 
         // Apply workflow filter (empty = all workflows)
         if !state.n8nWorkflowFilter.isEmpty && !state.n8nWorkflowFilter.contains(name) { return }
+
+        state.n8nRuns = Array(([N8nRun(workflow: name, detail: detail, success: success, date: Date())]
+                               + state.n8nRuns).prefix(10))
 
         guard let idx = state.tasks.firstIndex(where: { $0.id == "integration_n8n" }) else { return }
         let focused = state.focusId == "integration_n8n"

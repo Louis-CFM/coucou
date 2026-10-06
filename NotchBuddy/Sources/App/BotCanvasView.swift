@@ -5,6 +5,9 @@ import SwiftUI
 struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
+    /// When set, overrides island-based eye-tracking (used by desktop Mochi).
+    /// CGPoint in the same coord space as state.mousePosition (y-down from screen top).
+    var lookOriginOverride: CGPoint? = nil
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
@@ -28,13 +31,65 @@ struct BotCanvasView: View {
                 }
                 // Integration pills have a fixed brand color → use it as bodyColor.
                 // Claude Code tasks use state-based gradient (working=blue, thinking=purple, etc.).
+                #if !APPSTORE
+                if state.showingPlanDetail {
+                    let hex = ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+                    engine.bodyColor = cgColorFromHex(hex)
+                } else {
+                    engine.bodyColor = (state.focusTask?.isIntegration == true)
+                        ? cgColorFromHex(state.focusTask!.color)
+                        : nil
+                }
+                #else
                 engine.bodyColor = (state.focusTask?.isIntegration == true)
                     ? cgColorFromHex(state.focusTask!.color)
                     : nil
+                #endif
+
+                // Compute shouldDance per-frame (no observer lag)
+                let dancing: Bool = {
+                    #if !APPSTORE
+                    guard AppState.shared.musicPlaying else { return false }
+                    guard AppState.shared.activeIntegrations.contains("integration_music") else { return false }
+                    let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
+                    guard allowed.contains(state.effectiveState) else { return false }
+                    if state.mode == .compact { return true }
+                    return state.mode == .expanded && state.view == .overview && state.focusId == "integration_music"
+                    #else
+                    return false
+                    #endif
+                }()
+                engine.setDancing(dancing)
+                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                                 animated: state.view != .wardrobe)
+
                 engine.update(dt: dt)
-                engine.drawHandsBehind(context: context, size: size)
-                engine.draw(context: context, size: size)
-                engine.drawHandsAndExtras(context: context, size: size)
+                var ctx = context
+                engine.applyDance(&ctx, size: size)
+                // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
+                // rotate the entire body+accessories context around the body center so the
+                // whole character genuinely turns. Particles/badge (drawHandsAndExtras) are
+                // drawn outside the rotated context and do not spin.
+                if engine.outfit != .none && engine.outfitPresence > 0.05 && abs(engine.roll) > 0.001 {
+                    let center = engine.bodyCenter(size: size)
+                    var rigidCtx = ctx
+                    rigidCtx.translateBy(x: center.x, y: center.y)
+                    rigidCtx.rotate(by: .radians(engine.roll))
+                    rigidCtx.translateBy(x: -center.x, y: -center.y)
+                    engine.drawHandsBehind(context: rigidCtx, size: size)
+                    engine.drawOutfitBehind(context: rigidCtx, size: size)
+                    engine.draw(context: rigidCtx, size: size)
+                    engine.drawOutfitFront(context: rigidCtx, size: size)
+                } else {
+                    engine.drawHandsBehind(context: ctx, size: size)
+                    engine.drawOutfitBehind(context: ctx, size: size)
+                    engine.draw(context: ctx, size: size)
+                    engine.drawOutfitFront(context: ctx, size: size)
+                }
+                engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
         .onChange(of: state.effectiveState) { _, newState in
@@ -87,10 +142,17 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 
     private func lookX(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return tanh((state.mousePosition.x - origin.x) / 260)
+        }
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
@@ -104,6 +166,9 @@ struct BotCanvasView: View {
     }
 
     private func lookY(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return -tanh((state.mousePosition.y - origin.y) / 200)
+        }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
@@ -121,10 +186,12 @@ struct BotCanvasView: View {
 /// Mini bot canvas (for agent pills/column)
 struct MiniBotCanvasView: View {
     let task: AgentTask
+    var isDancing: Bool = false
     @StateObject private var engine: BotEngine
 
-    init(task: AgentTask) {
+    init(task: AgentTask, isDancing: Bool = false) {
         self.task = task
+        self.isDancing = isDancing
         _engine = StateObject(wrappedValue: {
             let e = BotEngine()
             e.isMini = true
@@ -138,8 +205,11 @@ struct MiniBotCanvasView: View {
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dt = min(0.05, now - engine.lastTime)
+                engine.setDancing(isDancing)
                 engine.update(dt: dt)
-                engine.draw(context: context, size: size)
+                var ctx = context
+                engine.applyDance(&ctx, size: size)
+                engine.draw(context: ctx, size: size)
             }
         }
         .onChange(of: task.state) { _, newState in
@@ -157,22 +227,5 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
         }
-    }
-}
-
-// MARK: - CGColor from hex string
-
-func cgColorFromHex(_ hex: String) -> CGColor? {
-    let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-    guard let val = UInt64(h, radix: 16) else { return nil }
-    let r = CGFloat((val >> 16) & 0xFF) / 255
-    let g = CGFloat((val >> 8)  & 0xFF) / 255
-    let b = CGFloat( val        & 0xFF) / 255
-    return CGColor(red: r, green: g, blue: b, alpha: 1)
-}
-
-extension CGColor {
-    static func from(_ hex: String) -> CGColor {
-        cgColorFromHex(hex) ?? CGColor(gray: 0.5, alpha: 1)
     }
 }

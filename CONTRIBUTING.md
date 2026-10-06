@@ -19,7 +19,8 @@ bash scripts/test-screen-geometry.sh
 
 ## Good first contributions
 
-- A new integration (a poller + a pill + a detail card). Look at `StripePoller.swift` for a compact example.
+- A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.
+- A new agent: any agent already gets its own automatic pill by sending `coucou_agent` in its hook payload (see `docs/AGENTS.md`). Add an entry in `PillCatalog.swift` in the `.agent` or `.workspace` category only if you want it to be declarable in Settings → Active pills.
 - A new emote or sound for Mochi.
 - Bug fixes — please describe how to reproduce.
 

@@ -212,21 +212,7 @@ impl Settings {
     }
 }
 
-/// %APPDATA%\Coucou
-pub fn config_dir() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
-}
-
-/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe and the log live.
-pub fn local_dir() -> PathBuf {
-    let base = std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("Coucou")
-}
+pub use crate::platform::{config_dir, local_dir};
 
 pub fn hook_exe_path() -> PathBuf {
     local_dir().join("bin").join("coucou-hook.exe")

@@ -2,27 +2,6 @@ import Foundation
 import SwiftUI
 import Combine
 
-// Integration pills — always-present, never purged
-extension AgentTask {
-    /// All available integration pills. Claude is always active; others are opt-in (max 4).
-    static let integrationAgents: [AgentTask] = [
-        AgentTask(id: "integration_claude",  name: "VS Code",   color: "#F5F6F8", state: .idle, steps: [], source: .claudeCode, isIntegration: true),
-        AgentTask(id: "integration_resend",  name: "Resend",    color: "#22C55E", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_n8n",     name: "n8n",       color: "#F29B38", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_vercel",  name: "Vercel",    color: "#7C5CFF", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_github",  name: "GitHub",    color: "#F4505E", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_notion",  name: "Notion",    color: "#8C8C8C", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_calcom",  name: "Cal.com",   color: "#C9956A", state: .idle, steps: [], source: .n8n, isIntegration: true),
-        AgentTask(id: "integration_stripe",  name: "Stripe",    color: "#0570DE", state: .idle, steps: [], source: .n8n, isIntegration: true),
-    ]
-
-    /// IDs that can be toggled (VS Code is always on and excluded from this list)
-    static let toggleableIntegrationIds: [String] = [
-        "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-        "integration_notion", "integration_calcom", "integration_stripe",
-    ]
-
-}
 
 @MainActor
 final class AppState: ObservableObject {
@@ -50,6 +29,9 @@ final class AppState: ObservableObject {
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
 
+    // Desktop Mochi: true while Mochi lives on the desktop instead of the notch
+    @Published var mochiOnDesktop: Bool = false
+
     // Mouse tracking
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
@@ -58,6 +40,11 @@ final class AppState: ObservableObject {
 
     // Pinned (alerts that stay open, never auto-close)
     var isPinned: Bool = false
+
+    // Keyboard navigation — index of the selected item within the current card's list (nil = none)
+    @Published var cardSelection: Int? = nil
+    // Number of navigable items in the card currently on screen (0 = no list)
+    @Published var cardItemCount: Int = 0
 
     // Upload progress (0-1) — set to 1.0 only at completion; animation is time-based
     @Published var uploadProgress: Double = 0
@@ -72,6 +59,35 @@ final class AppState: ObservableObject {
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
+    }
+
+    // Weekly recap — persisted
+    @Published var recapEnabled: Bool = (UserDefaults.standard.object(forKey: "recapEnabled") as? Bool) ?? true {
+        didSet { UserDefaults.standard.set(recapEnabled, forKey: "recapEnabled") }
+    }
+    @Published var recapHideProjects: Bool = UserDefaults.standard.bool(forKey: "recapHideProjects") {
+        didSet { UserDefaults.standard.set(recapHideProjects, forKey: "recapHideProjects") }
+    }
+
+    // Mochi outfit selection — persisted
+    @Published var mochiOutfitSelection: Outfit = .auto {
+        didSet { Outfit.stored = mochiOutfitSelection }
+    }
+    // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
+    var wardrobePreviewOutfit: Outfit? = nil
+    // Per-day seasonal cache — avoids recomputing Easter and date math on every frame
+    private var _seasonalCache: (dayOfYear: Int, year: Int, outfit: Outfit)?
+    var resolvedOutfit: Outfit {
+        if let preview = wardrobePreviewOutfit { return preview }
+        guard mochiOutfitSelection == .auto else { return mochiOutfitSelection }
+        let cal = Calendar.current
+        let now = Date()
+        let day  = cal.ordinality(of: .day, in: .year, for: now) ?? 0
+        let year = cal.component(.year, from: now)
+        if let c = _seasonalCache, c.dayOfYear == day && c.year == year { return c.outfit }
+        let outfit = Outfit.seasonal(for: now, calendar: cal)
+        _seasonalCache = (dayOfYear: day, year: year, outfit: outfit)
+        return outfit
     }
 
     // Claude model used by the chat and the search — persisted
@@ -112,6 +128,126 @@ final class AppState: ObservableObject {
             inferredRetention: hindsightInferredRetention,
             allowDevelopmentHttp: hindsightAllowDevelopmentHttp
         )
+    // In-chat provider + model — picked via the model selector in the prompt view
+    @Published var chatProvider: ChatProvider = .anthropic {
+        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+    }
+    @Published var googleChatModel: String = ChatProvider.google.defaultModel {
+        didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
+    }
+    @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
+        didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
+    }
+    @Published var ollamaChatModel: String = ChatProvider.ollama.defaultModel {
+        didSet { UserDefaults.standard.set(ollamaChatModel, forKey: "ollamaChatModel") }
+    }
+    @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
+        didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
+    }
+    @Published var ollamaServerURL: String = "" {
+        didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
+    }
+    @Published var lmstudioServerURL: String = "" {
+        didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
+    }
+
+    // The always-on workspace pill (default: VS Code). Persisted.
+    @Published var mainPillId: String = PillCatalog.defaultMainPillId {
+        didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
+    }
+
+    // Dynamically fetched model lists for the in-chat picker (keyed by provider)
+    @Published var fetchedProviderModels: [ChatProvider: [(id: String, label: String)]] = [:]
+    @Published var providerModelFetchError: [ChatProvider: String] = [:]
+    @Published var loadingProviderModels: Set<ChatProvider> = []
+
+    /// Fetches models for `provider` if not already loaded or loading.
+    /// Sets `providerModelFetchError` if the key is absent or the request fails.
+    func fetchModelsIfNeeded(for provider: ChatProvider) {
+        guard !loadingProviderModels.contains(provider),
+              fetchedProviderModels[provider] == nil else { return }
+        // Local providers: fetch from server URL (no API key needed)
+        if provider.isLocal {
+            let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
+            let normalised = LocalChat.normaliseURL(baseURL)
+            guard !normalised.isEmpty else {
+                providerModelFetchError[provider] = provider == .ollama
+                    ? "Connect Ollama in Settings → Chat first."
+                    : "Connect LM Studio in Settings → Chat first."
+                return
+            }
+            loadingProviderModels.insert(provider)
+            providerModelFetchError.removeValue(forKey: provider)
+            Task {
+                let result = await LocalChat.fetchModelsResult(baseURL: normalised)
+                loadingProviderModels.remove(provider)
+                switch result {
+                case .success(let models) where models.isEmpty:
+                    providerModelFetchError[provider] = provider == .ollama
+                        ? "No models yet. Download one in Ollama first."
+                        : "No models yet. Download one in LM Studio first."
+                case .success(let models):
+                    fetchedProviderModels[provider] = models
+                    let current = provider == .ollama ? ollamaChatModel : lmstudioChatModel
+                    if !models.contains(where: { $0.id == current }) {
+                        let first = models.first!.id
+                        if provider == .ollama { ollamaChatModel = first }
+                        else                   { lmstudioChatModel = first }
+                    }
+                case .failure:
+                    providerModelFetchError[provider] = "Cannot reach \(normalised). Is the server running?"
+                }
+            }
+            return
+        }
+        // Remote providers: require API key
+        guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
+            providerModelFetchError[provider] = "No API key — add it in Settings."
+            return
+        }
+        loadingProviderModels.insert(provider)
+        providerModelFetchError.removeValue(forKey: provider)
+        Task {
+            let models: [(id: String, label: String)]
+            switch provider {
+            case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
+            case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
+            case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .ollama, .lmstudio: models = []  // handled above
+            }
+            loadingProviderModels.remove(provider)
+            if models.isEmpty {
+                providerModelFetchError[provider] = "Failed to load models. Check your API key."
+            } else {
+                fetchedProviderModels[provider] = models
+                switch provider {
+                case .anthropic:
+                    if !models.contains(where: { $0.id == claudeModel }) {
+                        claudeModel = models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
+                    }
+                case .google:
+                    if !models.contains(where: { $0.id == googleChatModel }) {
+                        googleChatModel = models.first(where: { $0.id.contains("flash") })?.id ?? models.first!.id
+                    }
+                case .openai:
+                    if !models.contains(where: { $0.id == openAIChatModel }) {
+                        openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
+                    }
+                case .ollama, .lmstudio: break
+                }
+            }
+        }
+    }
+
+    /// The model currently active for chat (provider-aware).
+    var activeChatModel: String {
+        switch chatProvider {
+        case .anthropic: return claudeModel
+        case .google:    return googleChatModel
+        case .openai:    return openAIChatModel
+        case .ollama:    return ollamaChatModel
+        case .lmstudio:  return lmstudioChatModel
+        }
     }
 
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
@@ -121,6 +257,13 @@ final class AppState: ObservableObject {
             SoundEngine.shared.volume = Float(soundVolume)
         }
     }
+
+    // Selected app language ("" = System, else BCP-47 code e.g. "fr")
+    @Published var appLanguage: String = {
+        let bundleId = Bundle.main.bundleIdentifier ?? "fr.louisraille.NotchBuddy"
+        let langs = UserDefaults.standard.persistentDomain(forName: bundleId)?["AppleLanguages"] as? [String]
+        return langs?.first ?? ""
+    }()
 
     // Context for prompt (window attach / file)
     @Published var promptContext: PromptContext? = nil
@@ -175,11 +318,16 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Active integration pills (VS Code excluded — always on). Max 4.
+    // Active integration pills (main workspace pill excluded). Max 4.
     @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
         didSet {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
                 UserDefaults.standard.set(data, forKey: "activeIntegrations")
+            }
+            // Clear stale GitHub data when the integration is disabled
+            if !activeIntegrations.contains("integration_github") && oldValue.contains("integration_github") {
+                githubPulse = nil
+                githubActivity = nil
             }
         }
     }
@@ -194,8 +342,10 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats (populated by GithubPoller)
+    // GitHub stats + pulse + activity (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
+    @Published var githubPulse: GitHubPulse? = nil
+    @Published var githubActivity: GitHubActivity? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -214,6 +364,9 @@ final class AppState: ObservableObject {
     @Published var notionPages: [NotionPage] = []
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
+
+    // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
+    @Published var n8nRuns: [N8nRun] = []
 
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
@@ -270,6 +423,79 @@ final class AppState: ObservableObject {
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
+    // Pending AskUserQuestion from Claude Code hook
+    @Published var pendingQuestion: AskQuestion? = nil
+
+    // Per-pill flat list of FileDiffs, in order of reception.
+    // Not @Published — steps[] changes already trigger redraws.
+    var sessionDiffs: [String: [FileDiff]] = [:]
+    private var sessionDiffTimers: [String: DispatchWorkItem] = [:]
+    // Monotonically increasing — never reset, not even in clearSessionDiffs.
+    private var nextDiffId: Int = 0
+
+    @discardableResult
+    func appendSessionDiff(_ diff: FileDiff, for pillId: String) -> Int {
+        var d = diff
+        d.id = nextDiffId
+        nextDiffId += 1
+        if sessionDiffs[pillId] == nil { sessionDiffs[pillId] = [] }
+        sessionDiffs[pillId]!.append(d)
+        // Keep at most 50 diffs per pill; drop oldest first
+        while sessionDiffs[pillId]!.count > 50 {
+            sessionDiffs[pillId]!.removeFirst()
+        }
+        resetSessionDiffTimer(for: pillId)
+        return d.id
+    }
+
+    func clearSessionDiffs(for pillId: String) {
+        sessionDiffTimers[pillId]?.cancel()
+        sessionDiffTimers.removeValue(forKey: pillId)
+        sessionDiffs.removeValue(forKey: pillId)
+        // nextDiffId intentionally NOT reset — ids remain unique across sessions
+    }
+
+    private func resetSessionDiffTimer(for pillId: String) {
+        sessionDiffTimers[pillId]?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            DispatchQueue.main.async { self?.clearSessionDiffs(for: pillId) }
+        }
+        sessionDiffTimers[pillId] = work
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3600, execute: work)
+    }
+
+    #if !APPSTORE
+    @Published var musicPlaying: Bool = false
+    @Published var musicAutomationDenied: Bool = false
+    #endif
+
+    // Claude plan gauge (from statusline hook)
+    @Published var claudePlanUsage: PlanUsage? = nil {
+        didSet {
+            if let u = claudePlanUsage,
+               let data = try? JSONEncoder().encode(u) {
+                UserDefaults.standard.set(data, forKey: "claudePlanUsage")
+            }
+        }
+    }
+
+    // Plan gauge: show pill in notch header — persisted
+    #if !APPSTORE
+    @Published var showPlanInNotch: Bool = false {
+        didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
+    }
+    // In-memory plan usage override for demo mode. Never persisted. Set by DemoEngine.
+    @Published var demoPlanUsageOverride: PlanUsage? = nil
+    // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
+    @Published var planRelayInstalled: Bool = false
+    // Transient — reset when island closes or view changes
+    @Published var showingPlanDetail: Bool = false
+
+    func refreshPlanRelayState() {
+        planRelayInstalled = HookServer.statusLineInstalled()
+    }
+    #endif
+
     // MARK: - Init (loads persisted settings)
 
     private init() {
@@ -277,6 +503,7 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
+        mochiOutfitSelection = Outfit.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.object(forKey: "hindsightEnabled") as? Bool { hindsightEnabled = v }
@@ -292,6 +519,13 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hindsightAutomaticRecall") as? Bool { hindsightAutomaticRecall = v }
         if let v = ud.object(forKey: "hindsightInferredRetention") as? Bool { hindsightInferredRetention = v }
         if let v = ud.object(forKey: "hindsightAllowDevelopmentHttp") as? Bool { hindsightAllowDevelopmentHttp = v }
+        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
+        if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
+        if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
+        if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
+        if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
@@ -307,6 +541,16 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
+        if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
+           PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
+            mainPillId = v
+        }
+        if let d = ud.data(forKey: "claudePlanUsage"),
+           let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
+        #if !APPSTORE
+        if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
+        planRelayInstalled = HookServer.statusLineInstalled()
+        #endif
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
@@ -336,8 +580,24 @@ final class AppState: ObservableObject {
     }
 
     func removeTask(id: String) {
+        // mainPillId: always reset, never remove (the active workspace tool)
+        // activeIntegrations: also reset (user declared it active, keep it as idle)
+        let isProtected = id == mainPillId
+        let isActiveDecl = PillCatalog.definition(for: id) != nil && activeIntegrations.contains(id)
+        if isProtected || isActiveDecl {
+            if let idx = tasks.firstIndex(where: { $0.id == id }) {
+                let catalogName = PillCatalog.definition(for: id)?.name
+                tasks[idx].state      = .idle
+                tasks[idx].steps      = []
+                tasks[idx].stepIndex  = 0
+                tasks[idx].pillBadge  = nil
+                if let n = catalogName { tasks[idx].name = n }
+            }
+            return
+        }
+        // Undeclared or declared-but-not-active: remove
         tasks.removeAll { $0.id == id }
-        if focusId == id { focusId = tasks.first?.id }
+        if focusId == id { focusId = mainPillId }
         syncMode()
         syncView()
     }
@@ -351,6 +611,33 @@ final class AppState: ObservableObject {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         focusId = id
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
+    }
+
+    func setPillBadge(_ badge: PillBadge, for id: String) {
+        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[idx].pillBadge = badge
+    }
+
+    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent]) {
+        guard !events.isEmpty else { return }
+        // Priority: error > question (reviewRequested) > finish (ciPassed)
+        var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
+        var badge: PillBadge?
+        var sound: String?
+        for event in events {
+            switch event {
+            case .ciFailed, .mainFailed:
+                if level < 3 { level = 3; badge = .error;    sound = "error"    }
+            case .reviewRequested:
+                if level < 2 { level = 2; badge = .finished; sound = "question" }
+            case .ciPassed:
+                if level < 1 { level = 1; badge = .finished; sound = "finish"   }
+            }
+        }
+        // Only set badge when the GitHub pill is not currently in focus
+        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
+        if let s = sound { SoundEngine.shared.play(s) }
     }
 
     func syncMode() {
@@ -368,34 +655,78 @@ final class AppState: ObservableObject {
         else if view == .overview && tasks.isEmpty { view = .empty }
     }
 
-    /// Load integration pills respecting activeIntegrations. VS Code always loads. Safe to call multiple times.
+    /// Load catalog pills into tasks, respecting activeIntegrations. Safe to call multiple times.
     func loadIntegrationTasks() {
-        for task in AgentTask.integrationAgents {
-            let shouldLoad = task.id == "integration_claude" || activeIntegrations.contains(task.id)
-            let loaded = tasks.contains(where: { $0.id == task.id })
-            if shouldLoad && !loaded { tasks.append(task) }
-            if !shouldLoad && loaded { tasks.removeAll { $0.id == task.id } }
+        let catalog = PillCatalog.available
+        // Sanitize: remove saved IDs not in catalog
+        let catalogIds = Set(catalog.map { $0.id })
+        activeIntegrations = activeIntegrations.filter { catalogIds.contains($0) }
+        // Validate mainPillId: must be a non-comingSoon workspace pill in the catalog
+        if !PillCatalog.available.contains(where: { $0.id == mainPillId && $0.category == .workspace && !$0.comingSoon }) {
+            mainPillId = PillCatalog.defaultMainPillId
         }
-        if focusId == nil { focusId = "integration_claude" }
+        // mainPillId must never be in activeIntegrations (migration + invariant)
+        activeIntegrations.remove(mainPillId)
+        for def in catalog {
+            // mainPillId always loads; activeIntegrations load
+            let shouldLoad = def.id == mainPillId || activeIntegrations.contains(def.id)
+            let loaded = tasks.contains(where: { $0.id == def.id })
+            if shouldLoad && !loaded {
+                let task = AgentTask(id: def.id, name: def.name, color: def.color,
+                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                tasks.append(task)
+            }
+            if !shouldLoad && loaded {
+                tasks.removeAll { $0.id == def.id }
+            }
+        }
+        sortTasksByCatalog()
+        if focusId == nil { focusId = mainPillId }
         syncMode()
     }
 
-    /// Toggle an integration pill on/off. VS Code cannot be toggled. Max 4 active at once.
+    /// Toggle a catalog pill on/off.
+    /// mainPillId: never toggleable (change via the Main picker first).
+    /// Max 4 non-main pills active at once.
     func toggleIntegration(_ id: String) {
-        guard id != "integration_claude" else { return }
+        guard id != mainPillId else { return }
+        guard PillCatalog.available.contains(where: { $0.id == id }) else { return }
         if activeIntegrations.contains(id) {
             activeIntegrations.remove(id)
             tasks.removeAll { $0.id == id }
-            if focusId == id { focusId = "integration_claude" }
+            if focusId == id { focusId = mainPillId }
         } else {
             guard activeIntegrations.count < 4 else { return }
             activeIntegrations.insert(id)
-            if let task = AgentTask.integrationAgents.first(where: { $0.id == id }),
+            if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
+                let task = AgentTask(id: def.id, name: def.name, color: def.color,
+                                     state: .idle, steps: [], source: def.source, isIntegration: true)
                 tasks.append(task)
+                sortTasksByCatalog()
             }
         }
         syncMode()
+    }
+
+    /// Sort tasks so catalog pills are in catalog order, undeclared pills sit right after
+    /// integration_claude (matching HookServer insertion behaviour), and the rest follows.
+    private func sortTasksByCatalog() {
+        let order = PillCatalog.available.enumerated()
+            .reduce(into: [String: Int]()) { $0[$1.element.id] = $1.offset }
+        let catalogPills    = tasks.filter { order[$0.id] != nil }
+        let undeclaredPills = tasks.filter { order[$0.id] == nil }
+        let sortedCatalog   = catalogPills.sorted { (order[$0.id] ?? 0) < (order[$1.id] ?? 0) }
+        if let claudeIdx = sortedCatalog.firstIndex(where: { $0.id == "integration_claude" }) {
+            var result: [AgentTask] = Array(sortedCatalog[...claudeIdx])
+            result.append(contentsOf: undeclaredPills)
+            if claudeIdx + 1 < sortedCatalog.count {
+                result.append(contentsOf: sortedCatalog[(claudeIdx + 1)...])
+            }
+            tasks = result
+        } else {
+            tasks = undeclaredPills + sortedCatalog
+        }
     }
 
 }
@@ -521,6 +852,13 @@ struct CalcomBooking: Identifiable, Equatable {
 
 // MARK: - Notion
 
+struct N8nRun: Equatable {
+    let workflow: String
+    let detail: String?
+    let success: Bool
+    let date: Date
+}
+
 struct NotionPage: Identifiable {
     let id: String
     let title: String
@@ -541,7 +879,7 @@ struct NotionPage: Identifiable {
 
 enum ChatRole { case user, assistant }
 
-struct ChatMessage: Identifiable {
+struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: ChatRole
     let content: String
@@ -569,4 +907,5 @@ extension ChatMemorySaveStatus {
         case .notSaved: return "Memory not saved"
         }
     }
+    var content: String   // var for streaming updates
 }

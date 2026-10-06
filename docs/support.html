@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Support — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
 <header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
-<nav><a href="index.html">Home</a><a href="support.html" class="on">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
+<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="support.html" class="on">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
 <div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
 <section id="en">
 <h1>Support</h1>
@@ -11,25 +11,48 @@
 <b>Email:</b> <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>
 </div>
 <h2>FAQ</h2>
+<h3>How do I get Coucou on my iPhone?</h3>
+<p>Install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> from the App Store, then <a href="https://testflight.apple.com/join/3GpeHv2b">join the TestFlight beta</a>. The beta is free; Apple limits it to 10,000 testers. Then turn on <b>Settings → General → iPhone</b> in the Mac app (0.1.9 or later) and use the same Apple Account in iCloud on both. Step by step and troubleshooting: <a href="iphone.html">Coucou on iPhone</a>.</p>
+<h3>My sessions don’t show up on the iPhone</h3>
+<p>Check that the Mac and the iPhone use the same Apple Account in iCloud and that <b>Show my agent sessions on my iPhone</b> is on in the Mac app, then pull down on the Agents tab to refresh. More in <a href="iphone.html">Coucou on iPhone</a>.</p>
 <h3>macOS says it can’t verify the app</h3>
-<p>The current Mac build isn’t notarized by Apple yet. The first time, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. You only need to do it once.</p>
+<p>Coucou 0.1.1 and later are notarized by Apple: macOS only asks you to confirm the first launch. If you still have 0.1.0, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>, or update to the latest version.</p>
+<h3>After updating, macOS asks to let Coucou use my keys</h3>
+<p>That’s expected once after updating from 0.1.0, which was signed differently. Enter your Mac password and click <b>Always Allow</b>, once for each key you saved.</p>
 <h3>Where is the Windows download?</h3>
 <p>It is paused for now. Microsoft Defender wrongly flags the unsigned Windows installer as malware; a false-positive report is under review at Microsoft, and the installer will come back once it’s cleared and signed. Until then you can <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">build it from source</a>.</p>
+<h3>Is there a Linux version?</h3>
+<p>Yes, in beta: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it opens as a regular window. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi doesn’t show my Claude Code sessions</h3>
 <p>Open Settings → Claude Code → <b>Install hooks</b>, review the changes, confirm, then start a new Claude Code session.</p>
+<h3>Can I use Coucou with Gemini CLI or Antigravity (agy)? (macOS)</h3>
+<p>Yes. Open <b>Settings → Gemini CLI → Install hooks</b> or <b>Settings → Antigravity → Install hooks</b>. The same backup-and-diff flow as Claude Code applies. Once installed, each <code>gemini</code> or <code>agy</code> session gets its own pill in the island.</p>
 <h3>The chat doesn’t answer</h3>
-<p>Add your Anthropic API key in Settings. API usage is billed by Anthropic, separately from a Claude subscription.</p>
+<p>Add your API key in Settings: <b>Settings → Anthropic API</b> for Claude, or <b>Settings → Chat — other providers</b> <i>(macOS)</i> for Google AI (Gemini) or OpenAI. API usage is billed by the provider, separately from any subscription.</p>
 <h3>An integration pill stays grey</h3>
-<p>Check its key in Settings → Integrations. Up to 4 integrations can be shown at once.</p>
+<p>Check its key in Settings. Up to 4 pills can be active at once in addition to the main workspace tool — see <b>Settings → Active pills</b>.</p>
+<h3>What are Active pills? (macOS)</h3>
+<p>Active pills are the coding tools, agents and AI providers you declare in <b>Settings → Active pills</b>. The <b>Main</b> picker at the top lets you choose your primary workspace tool (VS Code, Cursor, Codex or Antigravity — GitHub build only). You can then add up to 4 more pills: Gemini CLI, Anthropic, Google AI, OpenAI and service integrations. An agent that sends <code>coucou_agent</code> in its hook payload still gets its own automatic pill regardless.</p>
+<h3>Can I use Coucou with Cursor? (macOS)</h3>
+<p>Yes. Install the Claude Code hooks (<b>Settings → Claude Code → Install hooks</b>). Claude Code started in Cursor's terminal then shows up on the Cursor pill, and its permission requests can be answered from the notch, like in VS Code. Cursor's own agent shows up too when Cursor loads Claude Code's hooks; its requests are still answered in Cursor. Pick Cursor as your Main tool if that's where you code.</p>
+<h3>Can I use Coucou with Codex? (macOS, GitHub build)</h3>
+<p>Yes. Open <b>Settings → Codex Hooks → Install hooks</b>. Coucou shows you the changes to <code>~/.codex/hooks.json</code> before writing anything. Once installed, open Codex and run <code>/hooks</code>, or open <b>Hooks</b> in Codex's settings, to review and trust the hooks — Codex asks for this once. After that, your Codex sessions show up on the Codex pill, and permission requests show up with <b>Allow</b> and <b>Deny</b> in the notch.</p>
+<h3>Can I use Coucou with Apple Music? (macOS, GitHub build)</h3>
+<p>Yes. Open <b>Settings → Active pills</b> and toggle <b>Apple Music</b> on. The first time you use a playback control from the notch, macOS may ask you to allow Automation for Coucou — click <b>OK</b>. Once granted, the pill shows the current track and lets you play, pause and skip from the notch. Mochi dances while music plays.</p>
+<h3>Apple Music automation was denied</h3>
+<p>Open <b>System Settings → Privacy &amp; Security → Automation</b>, find Coucou and enable the Music checkbox. You can also click <b>Open Settings…</b> in the Apple Music card in the notch, which takes you directly to that setting.</p>
 <h3>No sound</h3>
 <p>Check the speaker icon in the notch header and the volume in Settings.</p>
-<h3>Which Claude model does the chat use?</h3>
-<p>On Mac, Claude Sonnet 4.6 by default. You can pick another one in <b>Settings → Anthropic API</b>. The list comes from your Anthropic account, and each model is billed at its own price.</p>
+<h3>Which model does the chat use?</h3>
+<p>On Mac, Claude Sonnet 4.6 by default (Anthropic). Switch provider and model by clicking the model name above the chat box. For Anthropic, the model can also be set in <b>Settings → Anthropic API</b>. Each model is billed at its own price by the provider.</p>
+<h3>Can I use Ollama or LM Studio instead of a cloud API?</h3>
+<p>Yes <i>(macOS)</i>. Open <b>Settings → Chat → Local models</b>, type the server address (or leave blank for the default), and click <b>Connect</b>. Coucou checks that the server is reachable and lists available models. To stop using it, click <b>Disconnect</b>. No API key is needed; it is free: the model runs on your Mac.</p>
 <h3>Does it work without a notch?</h3>
 <p>Yes. On an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the main screen. With the lid open, it stays in the notch.</p>
 <h3>How do I uninstall?</h3>
-<p>Settings → Claude Code → <b>Uninstall</b> (removes only Coucou’s hooks), then quit the app and move it to the Trash. Optionally delete <code>~/Library/Application Support/NotchBuddy</code>.</p>
+<p>Remove hooks first: <b>Settings → Claude Code → Uninstall</b>, and if you installed them, also <b>Settings → Gemini CLI → Uninstall</b> and <b>Settings → Antigravity → Uninstall</b>. If you installed the Plan usage status line (Settings → Agents → Plan usage), click Uninstall there first to restore your previous status line. Then quit the app and move it to the Trash. Optionally delete <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>On Windows: same <b>Uninstall</b> button for the hooks, then Windows Settings → Apps → <b>Coucou</b> → Uninstall. Optionally delete <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>On Linux: same <b>Uninstall</b> button for the hooks, then <code>sudo apt remove coucou</code> or <code>sudo dnf remove coucou</code>, or delete the AppImage. Optionally delete <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> and <code>~/.cache/coucou</code>.</p>
 </section>
 <hr>
 <section id="fr" lang="fr">
@@ -39,24 +62,47 @@
 <b>E-mail :</b> <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>
 </div>
 <h2>Questions fréquentes</h2>
+<h3>Comment avoir Coucou sur mon iPhone ?</h3>
+<p>Installe <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> depuis l’App Store, puis <a href="https://testflight.apple.com/join/3GpeHv2b">rejoins la bêta TestFlight</a>. La bêta est gratuite ; Apple la limite à 10 000 testeurs. Ensuite, active <b>Settings → General → iPhone</b> dans l’app Mac (0.1.9 ou plus récent) et utilise le même compte Apple dans iCloud sur les deux. Étape par étape et dépannage : <a href="iphone.html#fr">Coucou sur iPhone</a>.</p>
+<h3>Mes sessions n’apparaissent pas sur l’iPhone</h3>
+<p>Vérifie que le Mac et l’iPhone utilisent le même compte Apple dans iCloud et que <b>Show my agent sessions on my iPhone</b> est activé dans l’app Mac, puis tire vers le bas sur l’onglet Agents pour actualiser. Plus de détails dans <a href="iphone.html#fr">Coucou sur iPhone</a>.</p>
 <h3>macOS dit qu’il ne peut pas vérifier l’app</h3>
-<p>La version Mac actuelle n’est pas encore notarisée par Apple. La première fois, ouvre <b>Réglages Système → Confidentialité et sécurité</b>, descends et clique sur <b>Ouvrir quand même</b>. Une seule fois suffit.</p>
+<p>Coucou 0.1.1 et les versions suivantes sont notarisées par Apple : macOS te demande seulement de confirmer le premier lancement. Si tu as encore la 0.1.0, ouvre <b>Réglages Système → Confidentialité et sécurité</b>, descends et clique sur <b>Ouvrir quand même</b>, ou installe la dernière version.</p>
+<h3>Après la mise à jour, macOS demande d’autoriser Coucou à utiliser mes clés</h3>
+<p>C’est normal une fois après la mise à jour depuis la 0.1.0, qui était signée autrement. Tape le mot de passe de ton Mac et clique sur <b>Toujours autoriser</b>, une fois par clé enregistrée.</p>
 <h3>Où est le téléchargement Windows ?</h3>
 <p>Il est en pause pour le moment. Microsoft Defender détecte à tort l’installeur Windows (non signé) comme un malware ; un signalement de faux positif est en cours d’analyse chez Microsoft, et l’installeur reviendra dès que ce sera réglé et signé. En attendant, tu peux <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">le compiler depuis le code source</a>.</p>
+<h3>Y a-t-il une version Linux ?</h3>
+<p>Oui, en bêta : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle s’ouvre dans une fenêtre normale. Gemini CLI, Antigravity et le chat avec Google AI et OpenAI sont pour l’instant réservés au Mac. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi n’affiche pas mes sessions Claude Code</h3>
 <p>Réglages → Claude Code → <b>Install hooks</b>, vérifie les changements, confirme, puis lance une nouvelle session Claude Code.</p>
+<h3>Puis-je utiliser Coucou avec Gemini CLI ou Antigravity (agy) ? (macOS)</h3>
+<p>Oui. Ouvre <b>Réglages → Gemini CLI → Install hooks</b> ou <b>Réglages → Antigravity → Install hooks</b>. Le même flux sauvegarde + diff qu’avec Claude Code s’applique. Une fois installé, chaque session <code>gemini</code> ou <code>agy</code> obtient sa propre pastille dans l’island.</p>
 <h3>Le chat ne répond pas</h3>
-<p>Ajoute ta clé d’API Anthropic dans les Réglages. L’API est facturée par Anthropic, à part d’un abonnement Claude.</p>
-<h3>Une pastille d’intégration reste grise</h3>
-<p>Vérifie sa clé dans Réglages → Intégrations. Jusqu’à 4 intégrations s’affichent en même temps.</p>
+<p>Ajoute ta clé d’API dans les Réglages : <b>Réglages → Anthropic API</b> pour Claude, ou <b>Réglages → Chat — other providers</b> <i>(macOS)</i> pour Google AI (Gemini) ou OpenAI. L’API est facturée par le fournisseur, à part de tout abonnement.</p>
+<h3>Une pastille reste grise</h3>
+<p>Vérifie sa clé dans les Réglages. Jusqu’à 4 pastilles peuvent être actives en même temps, en plus de l’outil de code principal — voir <b>Réglages → Active pills</b>.</p>
+<h3>Qu’est-ce que les Active pills ? (macOS)</h3>
+<p>Les Active pills sont les outils de code, agents et fournisseurs IA que tu déclares dans <b>Réglages → Active pills</b>. Le sélecteur <b>Main</b> en haut te permet de choisir ton outil principal (VS Code, Cursor, Codex ou Antigravity — version GitHub uniquement). Tu peux ensuite ajouter jusqu’à 4 pastilles supplémentaires : Gemini CLI, Anthropic, Google AI, OpenAI et des intégrations de services. Un agent qui envoie <code>coucou_agent</code> dans son payload obtient quand même sa pastille automatique.</p>
+<h3>Puis-je utiliser Coucou avec Cursor ? (macOS)</h3>
+<p>Oui. Installe les hooks Claude Code (<b>Réglages → Claude Code → Install hooks</b>). Claude Code lancé dans le terminal de Cursor apparaît alors sur la pastille Cursor, et tu peux répondre à ses demandes d’autorisation depuis le notch, comme dans VS Code. L’agent de Cursor apparaît aussi quand Cursor charge les hooks de Claude Code ; ses demandes se règlent encore dans Cursor. Choisis Cursor comme outil principal si c’est là que tu codes.</p>
+<h3>Puis-je utiliser Coucou avec Codex ? (macOS, version GitHub)</h3>
+<p>Oui. Ouvre <b>Réglages → Codex Hooks → Install hooks</b>. Coucou te montre les changements apportés à <code>~/.codex/hooks.json</code> avant d’écrire quoi que ce soit. Une fois les hooks installés, ouvre Codex et tape <code>/hooks</code>, ou ouvre <b>Hooks</b> dans les réglages de l’app, pour les passer en revue et leur faire confiance — Codex ne te le demande qu’une fois. Ensuite, tes sessions Codex apparaissent sur la pastille Codex, et les demandes d’autorisation apparaissent avec <b>Allow</b> et <b>Deny</b> dans le notch.</p>
+<h3>Puis-je utiliser Coucou avec Apple Music ? (macOS, version GitHub)</h3>
+<p>Oui. Ouvre <b>Réglages → Active pills</b> et active <b>Apple Music</b>. La première fois que tu utilises un contrôle de lecture depuis le notch, macOS peut te demander d’autoriser l’Automatisation pour Coucou — clique sur <b>OK</b>. Une fois accordé, la pastille affiche le morceau en cours et te permet de lancer, mettre en pause et passer à la suite depuis le notch. Mochi danse pendant que la musique joue.</p>
+<h3>L’automatisation Apple Music a été refusée</h3>
+<p>Ouvre <b>Réglages Système → Confidentialité et sécurité → Automatisation</b>, trouve Coucou et coche la case Musique. Tu peux aussi cliquer sur <b>Open Settings…</b> dans la carte Apple Music du notch, qui t’y amène directement.</p>
 <h3>Pas de son</h3>
 <p>Vérifie l’icône haut-parleur dans l’en-tête du notch et le volume dans les Réglages.</p>
-<h3>Quel modèle Claude utilise le chat ?</h3>
-<p>Sur Mac, Claude Sonnet 4.6 par défaut. Tu peux en choisir un autre dans <b>Réglages → Anthropic API</b>. La liste vient de ton compte Anthropic, et chaque modèle est facturé à son propre tarif.</p>
+<h3>Quel modèle utilise le chat ?</h3>
+<p>Sur Mac, Claude Sonnet 4.6 par défaut (Anthropic). Change de fournisseur et de modèle en cliquant sur le nom du modèle au-dessus du champ de chat. Pour Anthropic, le modèle peut aussi être défini dans <b>Réglages → Anthropic API</b>. Chaque modèle est facturé à son propre tarif par le fournisseur.</p>
+<h3>Puis-je utiliser Ollama ou LM Studio à la place d'une API cloud ?</h3>
+<p>Oui <i>(macOS)</i>. Ouvre <b>Réglages → Chat → Local models</b>, entre l’adresse du serveur (ou laisse vide pour le défaut) et clique sur <b>Connect</b>. Coucou vérifie que le serveur est accessible et liste les modèles disponibles. Pour arrêter, clique sur <b>Disconnect</b>. Pas de clé d’API — c’est gratuit : le modèle tourne sur ton Mac.</p>
 <h3>Ça marche sans notch ?</h3>
 <p>Oui. Sur un iMac, un Mac mini ou un MacBook capot fermé branché à un écran externe, Mochi s’affiche dans une petite barre en haut de l’écran principal. Capot ouvert, il reste dans le notch.</p>
 <h3>Comment désinstaller ?</h3>
-<p>Réglages → Claude Code → <b>Uninstall</b> (retire seulement les hooks de Coucou), puis quitte l’app et mets-la à la corbeille. Tu peux aussi supprimer <code>~/Library/Application Support/NotchBuddy</code>.</p>
+<p>Retire d’abord les hooks : <b>Réglages → Claude Code → Uninstall</b>, et si tu les as installés, aussi <b>Réglages → Gemini CLI → Uninstall</b> et <b>Réglages → Antigravity → Uninstall</b>. Si tu as installé le relais Plan usage (Réglages → Agents → Plan usage), clique sur Uninstall d’abord pour retrouver ta status line d’avant. Puis quitte l’app et mets-la à la corbeille. Tu peux aussi supprimer <code>~/Library/Application Support/NotchBuddy</code>.</p>
 <p>Sous Windows : le même bouton <b>Uninstall</b> pour les hooks, puis Paramètres Windows → Applications → <b>Coucou</b> → Désinstaller. Tu peux aussi supprimer <code>%LOCALAPPDATA%\Coucou</code>.</p>
+<p>Sous Linux : le même bouton <b>Uninstall</b> pour les hooks, puis <code>sudo apt remove coucou</code> ou <code>sudo dnf remove coucou</code>, ou supprime l’AppImage. Tu peux aussi supprimer <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> et <code>~/.cache/coucou</code>.</p>
 </section>
-<footer>© 2026 Louis Raillé · Coucou is free and open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
+<footer>© 2026 Louis Raillé · Coucou’s code is open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
