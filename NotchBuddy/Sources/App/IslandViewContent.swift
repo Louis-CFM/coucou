@@ -2123,8 +2123,7 @@ struct IntegrationCardView: View {
             #endif
         case "integration_spotify":
             #if !APPSTORE
-            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil
-                || FileManager.default.fileExists(atPath: "/Applications/Spotify.app")
+            return SpotifyController.shared.isInstalled
             #else
             return false
             #endif
