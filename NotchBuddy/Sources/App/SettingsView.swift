@@ -581,12 +581,12 @@ struct SettingsView: View {
                      : "~/.cursor/hooks.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
-                Text("Shows Cursor Agent sessions live on the Cursor pill. Shell commands open Allow / Deny / Always in the notch (Always is Coucursor’s allowlist). Timeout denies the command — never auto-approves.")
+                Text("Shows Cursor Agent sessions live on the Cursor pill. Shell commands open Allow / Deny / Always in the notch (Always is Coucursor’s allowlist). Waits up to 5 minutes; if you miss it, Cursor asks — never auto-approves.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if cursorHooksInstalled && !HookServer.cursorShellHooksInstalled() {
-                    Text("Update hooks to enable shell Allow/Deny (beforeShellExecution).")
+                    Text("Update hooks for a longer shell wait (beforeShellExecution, 5 min) and Allow/Deny in the notch.")
                         .font(.system(size: 11))
                         .foregroundColor(.orange)
                 }

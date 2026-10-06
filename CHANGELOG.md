@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Cursor shell gate: wait up to **5 minutes** for Allow/Deny/Always; on timeout or if Coucursor is down, return `ask` (Cursor’s own prompt) instead of hard-deny. **Update hooks** if `beforeShellExecution` still has a short timeout.
 - Finished session card (and ⌃⌥T): **Open Cursor** / **Open Codex** when that agent finished, instead of always opening Terminal.
 - Coucursor fork: the GitHub macOS build is named **Coucursor** (bundle id unchanged).
 - Chat is **ClinePass only**: Settings → Chat stores a Cline API key (`cline-api-key`); models use `https://api.cline.bot/api/v1` (OpenAI-compatible). Pastille `ai_clinepass`. Other chat providers (Anthropic / Google / OpenAI / Cursor Cloud Agents / Ollama / LM Studio) are removed from this build.

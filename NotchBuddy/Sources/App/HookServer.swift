@@ -969,12 +969,13 @@ final class HookServer: @unchecked Sendable {
         source.resume()
         approvalFDSource = source
 
-        // Timeout → deny (plan: never auto-allow without a click; Cursor `ask` is flaky).
+        // Timeout → ask (Cursor’s own shell prompt), never silent deny / never auto-allow.
         let captured = fd
-        DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
+        let wait = TimeInterval(Self.cursorShellHookTimeoutSeconds - 10)
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
             guard let self, self.pendingApprovalFD == captured else { return }
-            self.sendApprovalDecision("deny")
-            AppState.shared.noteMessage = "Shell timed out in Coucursor — retry in Cursor."
+            self.sendApprovalDecision("ask")
+            AppState.shared.noteMessage = "Shell wait timed out — approve in Cursor if it asks."
             AppState.shared.view = .note
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -2116,7 +2117,12 @@ final class HookServer: @unchecked Sendable {
         return false
     }
 
-    /// True when beforeShellExecution is wired (Allow/Deny). Older installs only observe.
+    /// Seconds Cursor waits on beforeShellExecution while the notch card is open.
+    /// Must stay in sync with nb-hook.py socket timeout and the Swift safety timer.
+    static let cursorShellHookTimeoutSeconds = 300
+
+    /// True when beforeShellExecution is wired with a long enough wait (Allow/Deny).
+    /// Older observe-only installs, or shell gates with a short timeout, need Update hooks.
     static func cursorShellHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: cursorHooksURL),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -2124,7 +2130,10 @@ final class HookServer: @unchecked Sendable {
               let entries = hooks["beforeShellExecution"] as? [[String: Any]] else { return false }
         for entry in entries {
             if let cmd = entry["command"] as? String,
-               cmd.contains("nb-hook"), cmd.contains("--agent cursor") { return true }
+               cmd.contains("nb-hook"), cmd.contains("--agent cursor") {
+                let timeout = entry["timeout"] as? Int ?? 0
+                return timeout >= cursorShellHookTimeoutSeconds
+            }
         }
         return false
     }
@@ -2176,7 +2185,8 @@ final class HookServer: @unchecked Sendable {
         if root["version"] == nil { root["version"] = 1 }
         let base = hookBase()
         // Observe the Agent loop + blocking beforeShellExecution for notch Allow/Deny.
-        // Timeouts in seconds (Cursor format). Shell gate needs ~120s while the card is open.
+        // Timeouts in seconds (Cursor format). Shell gate needs several minutes while the card is open.
+        let shellWait = Self.cursorShellHookTimeoutSeconds
         let events: [(String, Int)] = [
             ("sessionStart",          10),
             ("sessionEnd",             5),
@@ -2188,7 +2198,7 @@ final class HookServer: @unchecked Sendable {
             ("stop",                  10),
             ("subagentStart",         10),
             ("subagentStop",          10),
-            ("beforeShellExecution", 120),
+            ("beforeShellExecution", shellWait),
         ]
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout) in events {
@@ -2554,17 +2564,20 @@ def main():
         sys.exit(0)
 
     if event == 'beforeShellExecution' and agent == 'cursor':
-        # Block until Coucursor Allow/Deny. Emit Cursor permission JSON (never bare "ask").
+        # Block until Coucursor Allow/Deny/Always. Emit Cursor permission JSON.
+        # On timeout / app down → permission "ask" (Cursor UI), never hard-deny.
         def _cursor_shell_out(perm, msg=None):
             out = {'permission': perm}
             if msg:
                 out['agentMessage'] = msg
+                out['userMessage'] = msg
             sys.stdout.write(json.dumps(out) + '\\n')
             sys.stdout.flush()
             sys.exit(0)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
+            # Keep under hooks.json beforeShellExecution timeout (300s).
+            s.settimeout(290)
             s.connect(socket_path)
             s.sendall((json.dumps(payload) + '\\n').encode())
             chunks = []
@@ -2587,9 +2600,11 @@ def main():
                 _cursor_shell_out('allow')
             if decision == 'deny':
                 _cursor_shell_out('deny', 'Denied from Coucursor')
-            _cursor_shell_out('deny', 'Coucursor timed out — retry the command')
+            if decision == 'ask':
+                _cursor_shell_out('ask')
+            _cursor_shell_out('ask')
         except Exception:
-            _cursor_shell_out('deny', 'Coucursor unavailable')
+            _cursor_shell_out('ask')
 
     # All other events: fire-and-forget (0.3s timeout, never blocks)
     try:
