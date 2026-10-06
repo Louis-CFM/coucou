@@ -73,6 +73,8 @@ export class Island {
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
   private homeCollapseAt: number | null = null;
+  private clock!: HTMLElement;
+  private clockTimer: number | null = null;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
   private botHovering = false;
@@ -175,6 +177,7 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.clock = h("div", { id: "clock" });
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -209,6 +212,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      this.clock,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -861,6 +865,8 @@ export class Island {
     }
 
     // Compact mini grid
+    this.syncClock();
+
     const showGrid = State.mode === "compact";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
@@ -880,11 +886,37 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
+  /** Time and date in the compact island, refreshed only while it is shown. */
+  private syncClock() {
+    const on = State.settings.showClock && State.mode === "compact";
+    this.clock.style.opacity = on ? "1" : "0";
+    if (on && this.clockTimer == null) {
+      const tick = () => {
+        const now = new Date();
+        const time = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        const date = now.toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+        this.clock.textContent = `${time}  ·  ${date}`;
+      };
+      tick();
+      // Re-arm on the minute boundary, then every minute: cheap and never late.
+      const toNextMinute = 60_000 - (Date.now() % 60_000) + 50;
+      this.clockTimer = window.setTimeout(() => {
+        tick();
+        this.clockTimer = window.setInterval(tick, 60_000);
+      }, toNextMinute);
+    } else if (!on && this.clockTimer != null) {
+      window.clearTimeout(this.clockTimer);
+      window.clearInterval(this.clockTimer);
+      this.clockTimer = null;
+    }
+  }
+
   /** Applies settings coming from Rust at boot. */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.setKeepPetit(State.settings.showClock, this.wasInIsland);
     State.notify();
   }
 

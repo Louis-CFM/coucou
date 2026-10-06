@@ -18,6 +18,8 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /** The clock is on: the compact island stays up instead of hiding. */
+  private keepPetit = false;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -102,10 +104,24 @@ export class IslandStateMachine {
     this.transition("hidden");
   }
 
+  /** Clock on → the island rests compact (it shows the time) and never hides by
+   *  itself; clock off → back to hiding after the usual delay. */
+  setKeepPetit(on: boolean, mouseInside: boolean) {
+    if (this.keepPetit === on) return;
+    this.keepPetit = on;
+    if (on) {
+      this.clear("petitHide");
+      if (this.state === "hidden") this.transition("petit");
+    } else if (this.state === "petit" && !mouseInside) {
+      this.schedulePetitHide();
+    }
+  }
+
   // ── Timers ──────────────────────────────────────────────────────────────────
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.keepPetit) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
