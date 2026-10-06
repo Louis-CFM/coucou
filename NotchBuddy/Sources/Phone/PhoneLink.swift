@@ -83,10 +83,14 @@ final class PhoneLink {
     private static let oldSubscriptionID = "coucou-zone-phone"
 
     var status: Status = .starting
+    /// The first look at iCloud is over (whatever came of it): the intro can end.
+    var firstSyncDone = false
     var pings: [PingItem] = []
     var sessions: [SessionItem] = []
     /// Service Mochi (GitHub, Stripe…) the Mac publishes, by pill ID.
     var services: [String: ServiceSnapshot] = [:]
+    /// A service up close (figures, lists, actions), fetched by the Mac when its screen opens.
+    var serviceDetails: [String: ServiceDetail] = [:]
     /// The last turn of each session (prompt, actions, diffs, answer), by pill ID.
     var turns: [String: TurnSnapshot] = [:]
     /// Turns seen before the latest one, and today's tally (this iPhone only).
@@ -108,9 +112,13 @@ final class PhoneLink {
     @ObservationIgnored private var events: [AgentNotifier.Event] = []
 
     func start() async {
-        let center = UNUserNotificationCenter.current()
-        notificationsAllowed = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        // The fetch starts right away, not after the notification prompt: the
+        // intro hides it and should end as soon as everything is there.
+        let authorization = Task {
+            (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        }
         await refresh()
+        notificationsAllowed = await authorization.value
     }
 
     /// Checks the account, makes sure the subscription exists, then fetches new records.
@@ -119,10 +127,12 @@ final class PhoneLink {
             let accountStatus = try await container.accountStatus()
             guard accountStatus == .available else {
                 status = .noAccount(describe(accountStatus))
+                firstSyncDone = true
                 return
             }
         } catch {
             status = .noAccount(error.localizedDescription)
+            firstSyncDone = true
             return
         }
         if !subscribed { await subscribe() }
@@ -220,6 +230,9 @@ final class PhoneLink {
                 for deletion in changes.deletions where deletion.recordType == TurnSnapshot.recordType {
                     if let id = TurnSnapshot.pillId(fromRecordName: deletion.recordID.recordName) { turns[id] = nil }
                 }
+                for deletion in changes.deletions where deletion.recordType == ServiceDetail.recordType {
+                    if let id = ServiceDetail.pillId(fromRecordName: deletion.recordID.recordName) { serviceDetails[id] = nil }
+                }
                 for deletion in changes.deletions where deletion.recordType == ServiceSnapshot.recordType {
                     if let id = ServiceSnapshot.pillId(fromRecordName: deletion.recordID.recordName) {
                         services[id] = nil
@@ -242,6 +255,7 @@ final class PhoneLink {
             status = .failed(error.localizedDescription)
         }
         pings.sort { $0.sentAt > $1.sentAt }
+        firstSyncDone = true
         return gotNew
     }
 
@@ -253,7 +267,14 @@ final class PhoneLink {
             archive.update(from: turns[turn.pillId], to: turn)
             if archive.past != before.past || archive.today != before.today { archive.save() }
             turns[turn.pillId] = turn
+            SpotlightIndex.index(turn)
             return false   // nothing for the widgets
+        }
+        if record.recordType == ServiceDetail.recordType {
+            guard let payload = record.encryptedValues["payload"] as? String,
+                  let detail = try? JSONDecoder().decode(ServiceDetail.self, from: Data(payload.utf8)) else { return false }
+            serviceDetails[detail.pillId] = detail
+            return false
         }
         if record.recordType == ServiceSnapshot.recordType {
             guard let payload = record.encryptedValues["payload"] as? String,
@@ -402,6 +423,56 @@ final class PhoneLink {
             return true
         } catch {
             lastPong = "Answer failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    // MARK: Services up close
+
+    /// Asks the Mac to read this service's API now (it answers within ~10 s).
+    /// False when no new detail came back in time (Mac asleep, sync off, older build).
+    @discardableResult
+    func requestServiceDetail(_ pillId: String) async -> Bool {
+        let previous = serviceDetails[pillId]?.fetchedAt
+        guard await sendServiceRequest(kind: ServiceDetail.refreshKind, target: "", pillId: pillId) else { return false }
+        // The new detail usually comes with a push; fetch anyway in case it doesn't.
+        for _ in 0..<3 {
+            // Screen left (task cancelled): stop rather than fetch back to back.
+            do { try await Task.sleep(for: .seconds(6)) } catch { return false }
+            _ = await fetchChanges()
+            // Only the Mac's answer to this request counts, not an older detail.
+            if let detail = serviceDetails[pillId], detail.fetchedAt != previous { return true }
+        }
+        return false
+    }
+
+    /// Asks the Mac to run an action it offered on this service. Face ID first.
+    /// True only when the Mac's result for this request came back and it worked.
+    func runServiceAction(_ action: ServiceActionDef, pillId: String) async -> Bool {
+        guard await OwnerCheck.confirm(reason: "\(action.title) from your Mac") else { return false }
+        // The result already shown (from an earlier action) doesn't count for this one.
+        let previous = serviceDetails[pillId]?.lastAction
+        guard await sendServiceRequest(kind: action.kind, target: action.target, pillId: pillId) else { return false }
+        for _ in 0..<6 {
+            try? await Task.sleep(for: .seconds(5))
+            _ = await fetchChanges()
+            if let result = serviceDetails[pillId]?.lastAction, result != previous { return result.ok }
+        }
+        return false
+    }
+
+    private func sendServiceRequest(kind: String, target: String, pillId: String) async -> Bool {
+        let record = CKRecord(recordType: ServiceDetail.requestType,
+                              recordID: CKRecord.ID(recordName: "service-request-\(UUID().uuidString)", zoneID: Self.zoneID))
+        record["pillId"] = pillId
+        record["kind"] = kind
+        record["requestedAt"] = Date()
+        record.encryptedValues["target"] = target
+        do {
+            _ = try await database.save(record)
+            return true
+        } catch {
+            lastPong = "Request failed: \(error.localizedDescription)"
             return false
         }
     }

@@ -54,6 +54,13 @@ final class LiveActivityRelay {
     private var sending = false
     private var retryTask: Task<Void, Never>?
     private var retries = 0
+    /// The phase a start was sent again for, so it is only tried once each.
+    private var restartedFor: String?
+    /// A start waiting to see if the Mac stays locked, and an end waiting to
+    /// see if it stays unlocked: iOS allows only so many starts an hour, so a
+    /// quick lock and unlock doesn't spend one.
+    private var lockTask: Task<Void, Never>?
+    private var unlockTask: Task<Void, Never>?
     /// Ends the activity 10 minutes after the agents are done, if nothing restarts.
     private var doneTask: Task<Void, Never>?
 
@@ -101,6 +108,8 @@ final class LiveActivityRelay {
         observers.forEach { DistributedNotificationCenter.default().removeObserver($0) }
         observers = []
         cancellable = nil
+        lockTask?.cancel(); lockTask = nil
+        unlockTask?.cancel(); unlockTask = nil
         if startedAt != nil { finish(dismissAfter: 0) }
         log("off")
     }
@@ -111,19 +120,50 @@ final class LiveActivityRelay {
         locked = isLocked
         if isLocked {
             log("Mac locked")
-            if let latest, latest.isActive { begin(latest) }
+            unlockTask?.cancel(); unlockTask = nil
+            if startedAt != nil {
+                // Locked again before the activity left: it carries on.
+                flush()
+                return
+            }
+            if let latest, latest.isActive { beginSoon(latest) }
         } else {
             log("Mac unlocked")
-            // Mochi comes back to the notch.
-            if startedAt != nil { finish(dismissAfter: 0) }
+            lockTask?.cancel(); lockTask = nil
+            guard startedAt != nil else { return }
+            // Mochi comes back to the notch, unless the Mac locks again within 30 s.
+            unlockTask = Task {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, !locked else { return }
+                unlockTask = nil
+                finish(dismissAfter: 0)
+            }
+        }
+    }
+
+    /// Starts right away when an agent needs you; otherwise once the Mac has
+    /// stayed locked for 20 s.
+    private func beginSoon(_ state: MochiActivityState) {
+        if state.tone == "waiting" || state.tone == "question" {
+            lockTask?.cancel(); lockTask = nil
+            begin(state)
+            return
+        }
+        guard lockTask == nil else { return }
+        lockTask = Task {
+            try? await Task.sleep(for: .seconds(20))
+            lockTask = nil
+            guard !Task.isCancelled, locked, startedAt == nil, let latest, latest.isActive else { return }
+            begin(latest)
         }
     }
 
     private func stateChanged(_ lead: MochiActivityState?) {
+        if lead?.tone != latest?.tone, let lead { log("phase: \(lead.agent) \(lead.statusText)\(locked ? "" : " (Mac unlocked, stays on the Mac)")") }
         latest = lead
         guard locked else { return }
         if startedAt == nil {
-            if let lead, lead.isActive { begin(lead) }
+            if let lead, lead.isActive { beginSoon(lead) }
             return
         }
         if let lead, lead.isActive {
@@ -183,12 +223,30 @@ final class LiveActivityRelay {
             let targets = await updateTargets(since: startedAt)
             guard !targets.isEmpty else {
                 sending = false
+                // No update token: iOS didn't bring the activity up (it can hold
+                // back starts after many in a row). When an agent needs you, start
+                // it again with that state, once per request.
+                let key = state.approval ?? "\(state.tone)|\(state.statusText)"
+                if state.tone == "waiting" || state.tone == "question", restartedFor != key,
+                   let sentAt = startSent, Date().timeIntervalSince(sentAt) > 15 {
+                    restartedFor = key
+                    log("the Live Activity isn't on the iPhone: starting it again for \(state.statusText)")
+                    begin(state)
+                    return
+                }
+                log("update \(state.tone) waits: no update token from the iPhone yet")
                 scheduleRetry()
                 return
             }
+            retries = 0
+            let urgent = state.tone == "waiting" || state.tone == "question"
             for (id, phone) in targets {
-                await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
-                           urgent: state.tone == "waiting" || state.tone == "question", phoneID: id)
+                let ok = await post(event: "update", token: phone.updateToken, env: phone.env, state: state,
+                                    urgent: urgent, phoneID: id)
+                // Every change of phase is logged; step counts only when they fail.
+                if ok && (urgent || sent?.tone != state.tone) {
+                    log("update sent: \(state.agent) \(state.statusText)\(state.approval == nil ? "" : " (with Allow / Deny)")")
+                }
             }
             sent = state
             sending = false

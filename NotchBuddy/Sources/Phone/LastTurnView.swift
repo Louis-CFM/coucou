@@ -125,7 +125,7 @@ struct LastTurnView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
     }
 }
 

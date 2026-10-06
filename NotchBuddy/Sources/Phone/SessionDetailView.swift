@@ -59,14 +59,35 @@ struct SessionDetailView: View {
                     .padding(40)
             }
         }
-        .background(Color.black)
+        // A tap on the conversation (not on the field below) puts the keyboard away.
+        .simultaneousGesture(TapGesture().onEnded {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
+        // The agent's color, moving softly behind the top of the screen.
+        .background(alignment: .top) {
+            ZStack {
+                Color.black
+                if let session {
+                    AgentBackdrop(hex: PillCatalog.definition(for: session.id)?.color ?? session.color)
+                        .frame(height: 360)
+                        .mask(LinearGradient(colors: [.black, .black.opacity(0.5), .clear],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+            .ignoresSafeArea()
+        }
         // The composer stays at the bottom, like a chat.
         .safeAreaInset(edge: .bottom) {
             if let session, session.id == "integration_claude" || session.id == "agent_cursor" {
                 InstructionComposer(link: link, session: session)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        // Scrolling puts the keyboard away.
+        .scrollDismissesKeyboard(.immediately)
+        // A conversation takes the whole screen, like Messages: no tabs below,
+        // and the field stays put at the bottom.
+        .toolbarVisibility(.hidden, for: .tabBar)
         .navigationTitle(session?.title ?? "Session")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
@@ -219,7 +240,7 @@ struct SessionDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
     }
 }
 

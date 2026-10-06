@@ -1,11 +1,11 @@
 # Changelog
 
-## 1.0.0 Lighto Edition — upstream 0.1.8 base
+## 1.0.0 Lighto Edition — upstream 0.1.9 base
 
 This fork keeps its own 1.0.0 version line and carries the Windows, agent-hook,
 permission and Desktop Mochi work described below. Its shared macOS source now
-includes the upstream 0.1.8 baseline; the Windows release remains the focus of
-Lighto Edition.
+includes upstream 0.1.8 and 0.1.9 changes; the published Lighto Edition installer
+remains Windows-focused.
 
 - Everything from 0.1.6: Mochi on the desktop with the wardrobe, greetings, live file-edit tickers and diffs, and the expanded GitHub integration (pull requests, CI, review requests and the contribution grid)
 - Five agent pills now, each with its own name and colour: VS Code (Claude Code), Pi, Copilot CLI, Codex and Antigravity. Every event is routed by the agent tag the relay carries, so one agent's approval card can never land on another agent's pill
@@ -20,6 +20,10 @@ Lighto Edition.
 - Pi permissions now have exactly one asker. `pi-permission-system` asks Coucou first and falls back to Pi's dialog, and Coucou's extension no longer answers permissions too — two extensions intercepting one decision produced duplicate cards
 - Every failure while asking now falls through to Pi rather than denying: Coucou closed, relay missing, empty or unrecognised answer, timeout, or an exception in the handler
 - Fixed the Pi prompt ticker always being empty — it read a `text` field that does not exist on `before_agent_start`, so it always sent `undefined`
+
+## Upstream 0.1.9 baseline merged
+
+- Adds upstream iPhone service-detail actions and Live Activity timing/recovery improvements, plus a Cal.com API v2 fix. These Apple-platform changes do not change the Windows 1.0.0 installer feature set.
 
 ## Upstream 0.1.8 baseline merged
 

@@ -25,7 +25,14 @@ final class CalcomPoller: @unchecked Sendable {
         let startStr = iso.string(from: today)
         let endStr   = iso.string(from: future)
 
-        guard let url = URL(string: "https://api.cal.com/v2/bookings?status=upcoming&start=\(startStr)&end=\(endStr)") else { return }
+        // API v2 (2024-08-13) filters on afterStart / beforeEnd; `start` and `end` aren't
+        // query parameters there, so they returned nothing.
+        var components = URLComponents(string: "https://api.cal.com/v2/bookings")!
+        components.queryItems = [URLQueryItem(name: "status", value: "upcoming"),
+                                 URLQueryItem(name: "afterStart", value: startStr),
+                                 URLQueryItem(name: "beforeEnd", value: endStr),
+                                 URLQueryItem(name: "take", value: "50")]
+        guard let url = components.url else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("2024-08-13", forHTTPHeaderField: "cal-api-version")

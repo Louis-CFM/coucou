@@ -77,7 +77,7 @@ struct ServiceMochi: View {
 
     var body: some View {
         let color = PillCatalog.definition(for: pillId)?.color ?? "#C0C4CC"
-        MochiLive(state: tone?.botState ?? .sleeping, bodyHex: color, fps: 20)
+        MochiLive(state: tone?.botState ?? .sleeping, bodyHex: color, fps: 60)
             .padding(4)
             .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: corner))
     }
@@ -90,15 +90,41 @@ struct ServiceDetailView: View {
 
     private var snapshot: ServiceSnapshot? { link.services[pillId] }
     private var pill: PillDefinition? { PillCatalog.definition(for: pillId) }
+    /// The Mac didn't answer the last request (asleep, sync off, older build).
+    @State private var macSilent = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if let snapshot {
-                    reasonCard(snapshot)
-                    ForEach(Array(snapshot.sections.enumerated()), id: \.offset) { _, section in
-                        sectionCard(section)
+                    // Why the dot has its color: only worth a card when something needs a look.
+                    if snapshot.tone == .error || snapshot.tone == .warning || link.serviceDetails[pillId] == nil {
+                        reasonCard(snapshot)
+                    }
+                    // Read live from the service's API by the Mac, with actions.
+                    if let detail = link.serviceDetails[pillId] {
+                        ServiceLiveDetail(link: link, pillId: pillId, detail: detail)
+                    } else {
+                        HStack(spacing: 10) {
+                            if macSilent {
+                                Image(systemName: "moon.zzz").foregroundStyle(.secondary)
+                                Text("Your Mac didn't answer. Is it awake, with the iPhone switch on? Pull down to try again.")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView()
+                                Text("Asking your Mac for everything \(pill?.name ?? "it") has…")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .glassCard()
+                        ForEach(Array(snapshot.sections.enumerated()), id: \.offset) { _, section in
+                            sectionCard(section)
+                        }
                     }
                 } else {
                     notConnected
@@ -109,7 +135,11 @@ struct ServiceDetailView: View {
         .background(Color.black)
         .navigationTitle(pill?.name ?? "Service")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await link.refresh() }
+        .task { macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil }
+        .refreshable {
+            macSilent = false
+            macSilent = !(await link.requestServiceDetail(pillId)) && link.serviceDetails[pillId] == nil
+        }
     }
 
     private var header: some View {
@@ -150,7 +180,7 @@ struct ServiceDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
         .overlay {
             if snapshot.tone == .error || snapshot.tone == .warning {
                 RoundedRectangle(cornerRadius: 22).strokeBorder(snapshot.tone.color.opacity(0.7), lineWidth: 1.5)

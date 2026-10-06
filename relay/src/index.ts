@@ -125,6 +125,12 @@ function buildPayload(body: RelayRequest) {
     // iOS requires an alert to start a Live Activity from a push.
     aps["alert"] = { title: "Coucou", body: `${state.agent} · ${state.statusText}` };
   }
+  if (body.event === "update" && body.urgent) {
+    // Waiting for your OK or a question: the Dynamic Island opens and the
+    // Lock Screen lights up, with Allow / Deny right there. No sound: the
+    // approval notification already makes one.
+    aps["alert"] = { title: String(state.agent), body: String(state.statusText) };
+  }
   if (body.event === "end") {
     aps["dismissal-date"] = now + (body.dismissAfter ?? 0);
   }

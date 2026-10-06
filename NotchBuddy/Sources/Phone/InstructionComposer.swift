@@ -30,11 +30,16 @@ struct InstructionComposer: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+        // Floating, like Messages on iOS 26: no bar behind it, the screen
+        // fades out underneath.
+        .padding(.horizontal, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 6)
+        .background(alignment: .bottom) {
+            LinearGradient(colors: [.clear, .black.opacity(0.85), .black], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        }
         .onChange(of: dictation.transcript) { _, words in
             if dictation.isRecording { text = dictation.prefix + words }
         }
@@ -52,13 +57,13 @@ struct InstructionComposer: View {
                         Haptics.impact()
                     } label: {
                         Text(reply)
-                            .font(.footnote)
+                            .font(.footnote.weight(.medium))
                             .lineLimit(1)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color(white: 0.16), in: Capsule())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .glassPill(Capsule(), interactive: true)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableButtonStyle())
                     .contextMenu {
                         Button(role: .destructive) {
                             quickReplies.removeAll { $0 == reply }
@@ -77,51 +82,64 @@ struct InstructionComposer: View {
                     } label: {
                         Label("Keep", systemImage: "plus")
                             .font(.footnote.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.accentColor.opacity(0.25), in: Capsule())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .glassPill(Capsule(), interactive: true, tint: .accentColor)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableButtonStyle())
                 }
             }
         }
     }
 
+    /// One glass capsule with the field, the language and the mic inside,
+    /// and the send button next to it, like Messages.
     private var composer: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            TextField("Tell Claude what to do next…", text: $text, axis: .vertical)
-                .lineLimit(1...8)
-                .focused($focused)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 18))
-            Menu {
-                Picker("Dictation language", selection: $dictation.localeID) {
-                    ForEach(Dictation.languages, id: \.self) { id in
-                        Text(Locale.current.localizedString(forIdentifier: id) ?? id).tag(id)
+        let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 2) {
+                TextField("Tell Claude what to do next…", text: $text, axis: .vertical)
+                    .lineLimit(1...8)
+                    .focused($focused)
+                    .padding(.leading, 16)
+                    .padding(.vertical, 11)
+                Menu {
+                    Picker("Dictation language", selection: $dictation.localeID) {
+                        ForEach(Dictation.languages, id: \.self) { id in
+                            Text(Locale.current.localizedString(forIdentifier: id) ?? id).tag(id)
+                        }
                     }
+                } label: {
+                    Text(Dictation.shortName(dictation.localeID))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 42)
                 }
-            } label: {
-                Text(Dictation.shortName(dictation.localeID))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 36)
+                Button {
+                    Task { await dictation.toggle(startingFrom: text) }
+                } label: {
+                    Image(systemName: dictation.isRecording ? "waveform" : "mic.fill")
+                        .font(.body)
+                        .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
+                        .symbolEffect(.variableColor.iterative, isActive: dictation.isRecording)
+                        .frame(width: 38, height: 42)
+                }
+                .padding(.trailing, 4)
             }
-            Button {
-                Task { await dictation.toggle(startingFrom: text) }
-            } label: {
-                Image(systemName: dictation.isRecording ? "stop.circle.fill" : "mic.fill")
-                    .font(.title3)
-                    .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
-                    .frame(width: 36, height: 36)
-            }
+            .glassPill(RoundedRectangle(cornerRadius: 22, style: .continuous))
             Button {
                 Task { await send() }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
+                Image(systemName: "arrow.up")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(empty ? Color.secondary : Color.black)
+                    .frame(width: 44, height: 44)
+                    .background(empty ? Color.white.opacity(0.12) : Color.white, in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
             }
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
+            .buttonStyle(PressableButtonStyle())
+            .disabled(empty || sending)
+            .animation(.spring(duration: 0.3), value: empty)
         }
     }
 

@@ -17,33 +17,31 @@ struct ApprovalCard: View {
                 .font(.callout.monospaced())
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
                 .textSelection(.enabled)
             if let sent {
-                Label(sent == .allow ? "Allowed, sent to your Mac" : "Denied, sent to your Mac",
-                      systemImage: sent == .allow ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(sent == .allow ? .green : .red)
+                HStack(spacing: 12) {
+                    if sent == .allow {
+                        // Apple Pay's "Done": the ring, then the check, draw themselves.
+                        DrawnCheckmark(size: 34)
+                    } else {
+                        Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.red)
+                            .symbolEffect(.bounce, value: sent)
+                    }
+                    Text(sent == .allow ? "Allowed, sent to your Mac" : "Denied, sent to your Mac")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(sent == .allow ? .green : .red)
+                }
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
             } else if session.approvalFingerprint.isEmpty {
                 Text("Answer on your Mac. This request can't be answered from the iPhone.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                HStack(spacing: 10) {
-                    Button(role: .destructive) { Task { await send(.deny) } } label: {
-                        Label("Deny", systemImage: "xmark")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-                    Button { Task { await send(.allow) } } label: {
-                        Label("Allow", systemImage: "faceid")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                ApprovalChoiceButtons(disabled: sending != nil) {
+                    Task { await send(.deny) }
+                } allow: {
+                    Task { await send(.allow) }
                 }
-                .controlSize(.large)
-                .disabled(sending != nil)
                 Text("Allow asks for Face ID. The request expires after 2 minutes.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -52,8 +50,9 @@ struct ApprovalCard: View {
             }
         }
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
-        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.orange.opacity(0.7), lineWidth: 1.5))
+        .glassCard()
+        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color.orange.opacity(0.35), lineWidth: 1))
+        .animation(.spring(duration: 0.5, bounce: 0.3), value: sent)
         .onChange(of: session.approvalFingerprint) { sent = nil; error = nil }
     }
 

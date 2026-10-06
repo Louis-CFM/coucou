@@ -9,6 +9,9 @@ enum PhoneSettings {
     static let quietHoursKey = "quietHours"
     static let quietFromKey = "quietFrom"   // minutes after midnight
     static let quietToKey = "quietTo"
+    /// Set by the Coucou Focus filter: only what waits on you notifies.
+    static let focusOnlyWaitingKey = "focusOnlyWaiting"
+    static var focusOnlyWaiting: Bool { defaults.bool(forKey: focusOnlyWaitingKey) }
 
     private static var defaults: UserDefaults { .standard }
 
@@ -142,7 +145,7 @@ enum AgentNotifier {
         let quiet = PhoneSettings.isQuiet()
         switch event {
         case .finished(let session):
-            guard PhoneSettings.notifyDone else { return }
+            guard PhoneSettings.notifyDone, !PhoneSettings.focusOnlyWaiting else { return }
             content.title = "\(session.pillName) · \(session.title)"
             let answer = turn.map(\.finalMessage).flatMap { $0.isEmpty ? nil : $0 } ?? session.finalLine
             content.body = answer.isEmpty ? "Done. What's next?" : "✓ " + String(answer.prefix(220))
@@ -152,7 +155,7 @@ enum AgentNotifier {
             content.userInfo = ["pillId": session.id, "kind": "done"]
             if quiet { content.interruptionLevel = .passive }
         case .failed(let session):
-            guard PhoneSettings.notifyDone else { return }
+            guard PhoneSettings.notifyDone, !PhoneSettings.focusOnlyWaiting else { return }
             content.title = "\(session.pillName) · \(session.title)"
             content.body = session.finalLine.isEmpty ? "Something went wrong." : String(session.finalLine.prefix(220))
             content.sound = quiet ? nil : PhoneSettings.sound("error")

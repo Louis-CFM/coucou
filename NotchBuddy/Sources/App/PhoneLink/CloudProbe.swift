@@ -72,6 +72,7 @@ final class CloudProbe {
         SessionPublisher.shared.stop()
         ApprovalRelay.shared.stop()
         QuestionRelay.shared.stop()
+        ServiceDetailRunner.shared.stop()
         ServicePublisher.shared.stop()
         TurnRecorder.shared.stop()
         #if !APPSTORE
@@ -94,12 +95,15 @@ final class CloudProbe {
         SessionPublisher.shared.start()
         ApprovalRelay.shared.start()
         QuestionRelay.shared.start()
+        ServiceDetailRunner.shared.start()
         ServicePublisher.shared.start()
         TurnRecorder.shared.start()
         #if !APPSTORE
         InstructionRunner.shared.startIfEnabled()
         #endif
         LiveActivityRelay.shared.startIfEnabled()
+        // The silent database subscription, so the iPhone's requests (services) wake this Mac.
+        Task { _ = await prepare() }
 
         // Step 1 Ping/Pong test: off unless asked for, so the Mac stays idle at rest
         // (defaults write fr.louisraille.NotchBuddy phoneLinkPing -bool YES).
@@ -180,6 +184,9 @@ final class CloudProbe {
             return
         }
         lastPushAt = Date()
+        // A request from the iPhone (a service to read, an action) may be waiting.
+        Task { await ServiceDetailRunner.shared.checkNow() }
+        guard pingTask != nil else { return }   // the Pong fetch is only for the ping test
         log("push received")
         Task { await fetchChanges(source: "push") }
     }
