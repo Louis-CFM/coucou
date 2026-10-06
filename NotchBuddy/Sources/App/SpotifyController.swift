@@ -256,66 +256,20 @@ final class SpotifyController: ObservableObject {
         }
     }
 
-    /// Launch Spotify if needed, then bring it to the front.
-    /// `reopen` un-minimizes Dock windows; `activate` alone only works when already on-screen.
+    /// Launch Spotify if needed, then bring it to the front (un-minimizes from Dock).
     @discardableResult
     func openSpotify() -> Bool {
-        if isSpotifyRunning() {
-            isRunning = true
-            // Opening the app URL again mirrors a Dock click (un-minimize + focus).
-            let config = NSWorkspace.OpenConfiguration()
-            config.activates = true
-            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
-                NSWorkspace.shared.openApplication(at: url, configuration: config) { [weak self] _, _ in
-                    Task { @MainActor in
-                        _ = await self?.runAppleScript("""
-                            tell application id "com.spotify.client"
-                                reopen
-                                activate
-                            end tell
-                            """)
-                        if self?.isPillActive == true { self?.fetchAndApply() }
-                    }
-                }
-            } else {
-                Task {
-                    _ = await runAppleScript("""
-                        tell application id "com.spotify.client"
-                            reopen
-                            activate
-                        end tell
-                        """)
-                    if isPillActive { fetchAndApply() }
-                }
-            }
-            return true
-        }
-        guard isInstalled else { return false }
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = true
-        let opened: (NSRunningApplication?, (any Error)?) -> Void = { [weak self] app, _ in
+        let ok = AppLauncher.open(
+            bundleId: "com.spotify.client",
+            fallbackPath: "/Applications/Spotify.app"
+        ) { [weak self] in
             Task { @MainActor in
-                self?.isRunning = app != nil
-                if app != nil {
-                    try? await Task.sleep(nanoseconds: 600_000_000)
-                    _ = await self?.runAppleScript("""
-                        tell application id "com.spotify.client"
-                            reopen
-                            activate
-                        end tell
-                        """)
-                    if self?.isPillActive == true { self?.fetchAndApply() }
-                }
+                self?.isRunning = true
+                if self?.isPillActive == true { self?.fetchAndApply() }
             }
         }
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") {
-            NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: opened)
-            return true
-        }
-        let path = URL(fileURLWithPath: "/Applications/Spotify.app")
-        guard FileManager.default.fileExists(atPath: path.path) else { return false }
-        NSWorkspace.shared.openApplication(at: path, configuration: config, completionHandler: opened)
-        return true
+        if ok { isRunning = true }
+        return ok
     }
 
     /// Launch Spotify when a control needs it; returns false if not installed.
@@ -329,9 +283,7 @@ final class SpotifyController: ObservableObject {
     }
 
     func openAutomationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
-            NSWorkspace.shared.open(url)
-        }
+        _ = AppLauncher.openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
     }
 
     // MARK: - AppleScript runner

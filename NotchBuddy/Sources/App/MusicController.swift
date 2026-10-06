@@ -220,17 +220,14 @@ final class MusicController: ObservableObject {
     }
 
     func openMusic() {
-        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.Music" }) {
-            app.activate(options: .activateIgnoringOtherApps)
-        } else {
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Music.app"))
-        }
+        _ = AppLauncher.open(
+            bundleId: "com.apple.Music",
+            fallbackPath: "/System/Applications/Music.app"
+        )
     }
 
     func openAutomationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
-            NSWorkspace.shared.open(url)
-        }
+        _ = AppLauncher.openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
     }
 
     // MARK: - AppleScript runner

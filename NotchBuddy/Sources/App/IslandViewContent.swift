@@ -238,53 +238,39 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+            _ = AppLauncher.openFirst(
+                of: ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium.codium"],
+                fallbackPath: "/Applications/Visual Studio Code.app"
+            )
         case "integration_resend":
-            NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
+            _ = AppLauncher.openURL("https://resend.com/emails")
         case "integration_vercel":
-            NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
+            _ = AppLauncher.openURL("https://vercel.com/dashboard")
         case "integration_render":
-            NSWorkspace.shared.open(URL(string: "https://dashboard.render.com")!)
+            _ = AppLauncher.openURL("https://dashboard.render.com")
         case "integration_github":
-            NSWorkspace.shared.open(URL(string: "https://github.com/pulls")!)
+            _ = AppLauncher.openURL("https://github.com/pulls")
         case "integration_n8n":
-            if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
-                NSWorkspace.shared.open(url)
+            if let urlStr = KeychainStore.shared.get("n8n-url") {
+                _ = AppLauncher.openURL(urlStr)
             }
         case "integration_stripe":
-            NSWorkspace.shared.open(URL(string: "https://dashboard.stripe.com/payments")!)
+            _ = AppLauncher.openURL("https://dashboard.stripe.com/payments")
         case "integration_notion":
-            NSWorkspace.shared.open(URL(string: "https://notion.so")!)
+            _ = AppLauncher.openURL("https://notion.so")
         case "integration_calcom":
-            NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+            _ = AppLauncher.openURL("https://app.cal.com/bookings")
         case "agent_cursor":
             #if !APPSTORE
-            if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
-                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-            }
+            _ = AppLauncher.open(bundleId: "com.todesktop.230313mzl4w4u92")
             #endif
         case "agent_codex":
             #if !APPSTORE
-            if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.openai.codex") {
-                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-            }
+            _ = AppLauncher.open(bundleId: "com.openai.codex")
             #endif
         case "agent_gemini", "agent_antigravity":
             #if !APPSTORE
-            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-            if let hit = terminalBundleIds.compactMap({ id in
-                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-            }).first {
-                hit.activate(options: .activateIgnoringOtherApps)
-            }
+            _ = AppLauncher.openTerminal()
             #endif
         case "ai_clinepass":
             switchChatProvider(.clinepass)
@@ -294,23 +280,16 @@ struct OverviewView: View {
             #endif
         case "integration_spotify":
             #if !APPSTORE
-            SpotifyController.shared.openSpotify()
+            _ = SpotifyController.shared.openSpotify()
             #endif
         default:
-            // Non-integration real tasks
             if task.source == .n8n {
-                if let urlStr = KeychainStore.shared.get("n8n-url"), let url = URL(string: urlStr) {
-                    NSWorkspace.shared.open(url)
+                if let urlStr = KeychainStore.shared.get("n8n-url") {
+                    _ = AppLauncher.openURL(urlStr)
                 }
             } else {
                 #if !APPSTORE
-                let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                         "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                if let hit = terminalBundleIds.compactMap({ id in
-                    NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                }).first {
-                    hit.activate(options: .activateIgnoringOtherApps)
-                }
+                _ = AppLauncher.openTerminal()
                 #endif
             }
         }
@@ -615,13 +594,7 @@ struct FinishedView: View {
                 HStack(spacing: 8) {
                     #if !APPSTORE
                     PrimaryButton("Open terminal") {
-                        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                        let activated = terminalBundleIds.compactMap { id in
-                            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                        if activated == nil {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                        }
+                        _ = AppLauncher.openTerminal()
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
                     #endif
@@ -2039,7 +2012,7 @@ struct ResultView: View {
                         // files or pages: only plain web links may leave the app.
                         let openURL = safeWebURL(result.items.first?.url)
                         PrimaryButton("Open") {
-                            if let openURL { NSWorkspace.shared.open(openURL) }
+                            if let openURL { _ = AppLauncher.openURL(openURL) }
                         }
                         .disabled(openURL == nil)
                         .help(openURL?.absoluteString ?? "")
@@ -2442,11 +2415,10 @@ struct IntegrationCardView: View {
                             .buttonStyle(.plain)
                     } else if task.id == "agent_cursor" {
                         #if !APPSTORE
-                        if let url = NSWorkspace.shared.urlForApplication(
-                            withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                        if NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.todesktop.230313mzl4w4u92") != nil {
                             Button("Open Cursor") {
-                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
-                                                                   completionHandler: nil)
+                                _ = AppLauncher.open(bundleId: "com.todesktop.230313mzl4w4u92")
                             }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
@@ -2455,11 +2427,10 @@ struct IntegrationCardView: View {
                         #endif
                     } else if task.id == "agent_codex" {
                         #if !APPSTORE
-                        if let url = NSWorkspace.shared.urlForApplication(
-                            withBundleIdentifier: "com.openai.codex") {
+                        if NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.openai.codex") != nil {
                             Button("Open Codex") {
-                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
-                                                                   completionHandler: nil)
+                                _ = AppLauncher.open(bundleId: "com.openai.codex")
                             }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
@@ -2527,7 +2498,7 @@ struct IntegrationCardView: View {
                         }
                         .buttonStyle(.plain)
                     } else if let url = openURL {
-                        Button("Open \(task.name)") { NSWorkspace.shared.open(url) }
+                        Button("Open \(task.name)") { _ = AppLauncher.openURL(url) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
@@ -2576,28 +2547,26 @@ struct IntegrationCardView: View {
     private func openVSCode() {
         let ids = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium.codium"]
         let appURL = ids.compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
+        let bundleId = ids.first(where: {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
+        }) ?? ids[0]
 
         // If we have a project folder, open it directly in VS Code
         if let cwd = task.sessionCwd, !cwd.isEmpty, let appURL = appURL {
             NSWorkspace.shared.open(
                 [URL(fileURLWithPath: cwd)],
                 withApplicationAt: appURL,
-                configuration: .init(),
-                completionHandler: nil
-            )
+                configuration: .init()
+            ) { _, _ in
+                AppLauncher.open(bundleId: bundleId)
+            }
             return
         }
 
-        // No cwd: activate running instance or launch fresh
-        if let running = ids.compactMap({ id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }).first {
-            running.activate(options: .activateIgnoringOtherApps)
-            return
-        }
-        if let appURL = appURL {
-            NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
-        }
+        _ = AppLauncher.openFirst(
+            of: ids,
+            fallbackPath: "/Applications/Visual Studio Code.app"
+        )
     }
 
 }
@@ -2739,7 +2708,7 @@ struct VercelDetailView: View {
                 }
                 Button(action: {
                     if let url = URL(string: "https://\(deployment.url)") {
-                        NSWorkspace.shared.open(url)
+                        _ = AppLauncher.openURL(url)
                     }
                 }) {
                     Text(deployment.url)
@@ -2891,7 +2860,7 @@ struct RenderDetailView: View {
                 }
                 Button(action: {
                     if let url = URL(string: deployment.dashboardURL) {
-                        NSWorkspace.shared.open(url)
+                        _ = AppLauncher.openURL(url)
                     }
                 }) {
                     Text(deployment.dashboardURL.replacingOccurrences(of: "https://", with: ""))
@@ -3297,7 +3266,7 @@ struct GitHubDetailView: View {
                 if sel < items.count {
                     let pr = items[sel]
                     if let url = safeWebURL(pr.url), url.host == "github.com" {
-                        NSWorkspace.shared.open(url)
+                        _ = AppLauncher.openURL(url)
                     }
                 } else {
                     let repoIdx = sel - items.count
@@ -3305,7 +3274,7 @@ struct GitHubDetailView: View {
                     let repo = repoItems[repoIdx]
                     let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
                     if let url = safeWebURL(actionsURL), url.host == "github.com" {
-                        NSWorkspace.shared.open(url)
+                        _ = AppLauncher.openURL(url)
                     }
                 }
             }
@@ -3364,7 +3333,7 @@ private struct GitHubActivityDetailContent: View {
                     Button(action: {
                         let urlStr = "https://github.com/\(login)"
                         if let url = safeWebURL(urlStr), url.host == "github.com" {
-                            NSWorkspace.shared.open(url)
+                            _ = AppLauncher.openURL(url)
                         }
                     }) {
                         Text(headerRight)
@@ -3463,7 +3432,7 @@ private struct GitHubPRRowView: View {
     var body: some View {
         Button(action: {
             if let url = safeWebURL(pr.url), url.host == "github.com" {
-                NSWorkspace.shared.open(url)
+                _ = AppLauncher.openURL(url)
             }
         }) {
             HStack(spacing: 5) {
@@ -3519,7 +3488,7 @@ private struct GitHubRepoCIRowView: View {
         Button(action: {
             let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
             if let url = safeWebURL(actionsURL), url.host == "github.com" {
-                NSWorkspace.shared.open(url)
+                _ = AppLauncher.openURL(url)
             }
         }) {
             HStack(spacing: 5) {
@@ -4025,7 +3994,7 @@ struct NotionCardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(appState.notionPages.prefix(3)) { page in
                     Button {
-                        if let url = safeWebURL(page.url) { NSWorkspace.shared.open(url) }
+                        if let url = safeWebURL(page.url) { _ = AppLauncher.openURL(url) }
                     } label: {
                         HStack(spacing: 6) {
                             if let emoji = page.emoji {

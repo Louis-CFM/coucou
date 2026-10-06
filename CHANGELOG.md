@@ -13,6 +13,7 @@
 - **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
 - Spotify card: volume up/down (0–100) and Launch/Open Spotify from the notch; transport controls launch the desktop app if it isn’t running.
 - Compact notch: now-playing ticker crawls the current Spotify / Apple Music track through the middle band (between Mochi and the mini-grid).
+- Shared `AppLauncher`: every ↗ / Open control uses Dock-style reopen + activate so minimized apps (and browsers for web integrations) come back to the front.
 
 ## 0.1.7 — October 4, 2026
 
