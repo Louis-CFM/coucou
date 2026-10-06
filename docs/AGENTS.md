@@ -120,8 +120,9 @@ The relay maps Cursor camelCase events to Coucou's canonical names:
 | `afterFileEdit` | `PostToolUse` (as `MultiEdit` for live diffs) |
 | `stop` (`completed` / `error` / `aborted`) | `Stop` / `StopFailure` / `Interrupt` |
 | `subagentStart` / `subagentStop` | `SubagentStart` / `SubagentStop` |
+| `beforeShellExecution` | Blocking shell Allow / Deny / Always in the notch |
 
-MVP shows the session live on the Cursor pill (thinking → working → finished). Shell Allow/Deny from the notch is not installed yet (`beforeShellExecution` is left out on purpose).
+Sessions show live on the Cursor pill (thinking → working → finished). Shell commands open the same approval card as Claude Code; Coucursor holds the hook until you click (timeout → deny). **Always** stores a Coucursor allowlist (cwd + command). Re-run **Update hooks** if you installed before shell gating existed.
 
 Claude Code started inside Cursor's terminal still routes to the same pill via Cursor's Electron bundle ID.
 

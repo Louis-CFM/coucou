@@ -141,7 +141,9 @@ final class RenderPoller: @unchecked Sendable {
             appState.tasks[idx].state = .working
             appState.tasks[idx].steps = [inProgress.serviceName]
             appState.tasks[idx].pillBadge = nil
-            NotificationCenter.default.post(name: .hookReveal, object: nil)
+            if AppState.shared.autoExpandCI {
+                NotificationCenter.default.post(name: .hookReveal, object: nil)
+            }
             return
         }
 
@@ -164,7 +166,9 @@ final class RenderPoller: @unchecked Sendable {
             name: .triggerEmote,
             object: latest.isSuccess ? BotEmote.happy : BotEmote.annoyed
         )
-        NotificationCenter.default.post(name: .hookReveal, object: nil)
+        if AppState.shared.autoExpandCI {
+            NotificationCenter.default.post(name: .hookReveal, object: nil)
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
             guard let i = appState.tasks.firstIndex(where: { $0.id == "integration_render" }) else { return }

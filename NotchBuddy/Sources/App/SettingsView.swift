@@ -270,6 +270,16 @@ struct SettingsView: View {
                 Text("Subtle breath animation in the resting strip when eye-tracking is off.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+                Toggle("Peek on music track change", isOn: $state.peekOnMusic)
+                Text("Brief compact peek when Spotify / Music changes track.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Expand when a session finishes", isOn: $state.autoExpandFinished)
+                Toggle("Expand live programming / diffs", isOn: $state.autoExpandProgramming)
+                Toggle("Reveal on CI / deploy events", isOn: $state.autoExpandCI)
+                Text("Approvals and questions always open the notch.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
                 HStack(spacing: 8) {
                     Text("Presets")
                         .foregroundColor(.secondary)
@@ -277,8 +287,10 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                     Button("Alive") { state.applyBehaviorPreset(.alive) }
                         .buttonStyle(.bordered)
+                    Button("Focus") { state.applyBehaviorPreset(.focus) }
+                        .buttonStyle(.bordered)
                 }
-                Text("Quiet = collapsed + no eyes. Alive = eyes on + compact rest.")
+                Text("Quiet / Focus = collapsed + peeks off (alerts still open). Alive = eyes on + peeks on.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -569,19 +581,36 @@ struct SettingsView: View {
                      : "~/.cursor/hooks.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
-                Text("Shows Cursor Agent sessions live on the Cursor pill (thinking, tools, edits, finished). Session end shows a +/− summary. Shell Allow/Deny from the notch is next — Cursor hooks don’t expose a stable permission card yet.")
+                Text("Shows Cursor Agent sessions live on the Cursor pill. Shell commands open Allow / Deny / Always in the notch (Always is Coucursor’s allowlist). Timeout denies the command — never auto-approves.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if cursorHooksInstalled && !HookServer.cursorShellHooksInstalled() {
+                    Text("Update hooks to enable shell Allow/Deny (beforeShellExecution).")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                }
                 HStack(spacing: 10) {
-                    Button(cursorHooksInstalled ? "Installed" : "Install hooks") {
+                    Button(cursorHooksInstalled
+                           ? (HookServer.cursorShellHooksInstalled() ? "Installed" : "Update hooks")
+                           : "Install hooks") {
                         triggerCursorPreview(install: true)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(cursorHooksInstalled || showCursorDiff)
+                    .disabled((cursorHooksInstalled && HookServer.cursorShellHooksInstalled()) || showCursorDiff)
                     Button("Uninstall") { triggerCursorPreview(install: false) }
                         .buttonStyle(.bordered)
                         .disabled(!cursorHooksInstalled || showCursorDiff)
+                }
+                let allowCount = CursorShellAllowlist.load().count
+                if allowCount > 0 {
+                    HStack(spacing: 8) {
+                        Text("Always allowlist: \(allowCount) command\(allowCount == 1 ? "" : "s")")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button("Clear") { CursorShellAllowlist.clear(); statusMessage = "Cursor Always allowlist cleared." }
+                            .buttonStyle(.bordered)
+                    }
                 }
                 if showCursorDiff {
                     ScrollView {

@@ -631,6 +631,7 @@ struct CompactInfoBanner: View {
     @ObservedObject var state: AppState
     @ObservedObject private var spotify = SpotifyController.shared
     @ObservedObject private var music = MusicController.shared
+    @ObservedObject private var history = SessionHistoryStore.shared
     let islandW: CGFloat
     let islandH: CGFloat
 
@@ -676,6 +677,9 @@ struct CompactInfoBanner: View {
 
     private func dayPulseLine() -> Line? {
         var bits: [String] = []
+        if let today = history.todayPulseText {
+            bits.append(today)
+        }
         let renderFailed = state.renderDeployments.filter { !$0.isSuccess && $0.isTerminal }.count
         let vercelFailed = state.vercelDeployments.filter { !$0.isSuccess }.count
         let failedDeploys = renderFailed + vercelFailed
@@ -725,7 +729,18 @@ struct CompactInfoBanner: View {
             }
             NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
         case .pulse:
-            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+            let today = SessionHistoryStore.shared.todaySessions
+            if !today.isEmpty {
+                let lines = today.prefix(6).map { s -> String in
+                    let mark = s.outcome == "error" ? "✗" : "✓"
+                    let tail = s.summary ?? s.finalLine ?? ""
+                    return tail.isEmpty ? "\(mark) \(s.name)" : "\(mark) \(s.name) · \(tail)"
+                }
+                state.noteMessage = "Today\n" + lines.joined(separator: "\n")
+                NotificationCenter.default.post(name: .hookExpand, object: IslandView.note)
+            } else {
+                NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+            }
         }
     }
 

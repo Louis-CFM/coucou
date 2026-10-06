@@ -117,6 +117,23 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(idleBreathing, forKey: "idleBreathing") }
     }
 
+    /// Peek compact strip on Spotify / Music track change.
+    @Published var peekOnMusic: Bool = true {
+        didSet { UserDefaults.standard.set(peekOnMusic, forKey: "peekOnMusic") }
+    }
+    /// Force-expand finished agent view (vs badge-only when unfocused).
+    @Published var autoExpandFinished: Bool = true {
+        didSet { UserDefaults.standard.set(autoExpandFinished, forKey: "autoExpandFinished") }
+    }
+    /// Force-expand live programming / diff editor.
+    @Published var autoExpandProgramming: Bool = true {
+        didSet { UserDefaults.standard.set(autoExpandProgramming, forKey: "autoExpandProgramming") }
+    }
+    /// Reveal / badge pulse for CI and deploy events.
+    @Published var autoExpandCI: Bool = true {
+        didSet { UserDefaults.standard.set(autoExpandCI, forKey: "autoExpandCI") }
+    }
+
     /// Path pinned from the programming view (re-opened on next edit of that file).
     @Published var pinnedDiffPath: String? = nil {
         didSet { UserDefaults.standard.set(pinnedDiffPath, forKey: "pinnedDiffPath") }
@@ -127,20 +144,41 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(hasSeenBehaviorTips, forKey: "hasSeenBehaviorTips") }
     }
 
+    /// End-of-day tip shown once per calendar day (yyyy-MM-dd).
+    @Published var lastEODTipDay: String = "" {
+        didSet { UserDefaults.standard.set(lastEODTipDay, forKey: "lastEODTipDay") }
+    }
+
     func applyBehaviorPreset(_ preset: BehaviorPreset) {
         switch preset {
         case .quiet:
             idleEyeTracking = false
             stayCollapsedUntilHover = true
             idleBreathing = false
+            peekOnMusic = false
+            autoExpandFinished = false
+            autoExpandProgramming = false
+            autoExpandCI = false
         case .alive:
             idleEyeTracking = true
             stayCollapsedUntilHover = false
             idleBreathing = true
+            peekOnMusic = true
+            autoExpandFinished = true
+            autoExpandProgramming = true
+            autoExpandCI = true
+        case .focus:
+            idleEyeTracking = false
+            stayCollapsedUntilHover = true
+            idleBreathing = false
+            peekOnMusic = false
+            autoExpandFinished = false
+            autoExpandProgramming = false
+            autoExpandCI = false
         }
     }
 
-    enum BehaviorPreset { case quiet, alive }
+    enum BehaviorPreset { case quiet, alive, focus }
 
     /// Summarize session diffs for a pill: "+42 −11 in 3 files".
     func sessionDiffSummary(for pillId: String) -> String? {
@@ -371,6 +409,26 @@ final class AppState: ObservableObject {
         // nextDiffId intentionally NOT reset — ids remain unique across sessions
     }
 
+    /// Keep diffs around after SessionEnd so jump-to-file / recent files still work for ~1h.
+    func scheduleSoftClearSessionDiffs(for pillId: String) {
+        resetSessionDiffTimer(for: pillId)
+    }
+
+    /// Last known file path for ⌃⌥E: pinned → latest session diff → Today history.
+    func lastOpenableFilePath() -> String? {
+        if let pinned = pinnedDiffPath, FileManager.default.fileExists(atPath: pinned) {
+            return pinned
+        }
+        for diffs in sessionDiffs.values {
+            if let last = diffs.last, FileManager.default.fileExists(atPath: last.path) {
+                return last.path
+            }
+        }
+        return SessionHistoryStore.shared.recentFilePaths.first {
+            FileManager.default.fileExists(atPath: $0)
+        }
+    }
+
     private func resetSessionDiffTimer(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -439,10 +497,15 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "idleBreathing") as? Bool {
             idleBreathing = v
         }
+        if let v = ud.object(forKey: "peekOnMusic") as? Bool { peekOnMusic = v }
+        if let v = ud.object(forKey: "autoExpandFinished") as? Bool { autoExpandFinished = v }
+        if let v = ud.object(forKey: "autoExpandProgramming") as? Bool { autoExpandProgramming = v }
+        if let v = ud.object(forKey: "autoExpandCI") as? Bool { autoExpandCI = v }
         pinnedDiffPath = ud.string(forKey: "pinnedDiffPath")
         if let v = ud.object(forKey: "hasSeenBehaviorTips") as? Bool {
             hasSeenBehaviorTips = v
         }
+        lastEODTipDay = ud.string(forKey: "lastEODTipDay") ?? ""
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v

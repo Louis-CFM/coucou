@@ -307,6 +307,9 @@ final class HookServer: @unchecked Sendable {
         if eventName == "PermissionRequest" {
             // Hold fd open — Claude Code waits for our decision (up to 120s)
             Task { @MainActor in self.processPermissionRequest(fd: fd, payload: payload) }
+        } else if eventName == "beforeShellExecution" {
+            // Cursor Agent shell gate — hold fd until Allow / Deny / Always (or timeout deny)
+            Task { @MainActor in self.processCursorShellPermission(fd: fd, payload: payload) }
         } else {
             Task { @MainActor in self.processEvent(name: eventName, payload: payload) }
             sendLine(fd: fd, text: #"{"ok":true}"#)
@@ -448,7 +451,15 @@ final class HookServer: @unchecked Sendable {
             // green lines) kill the typewriter feel — wait for afterFileEdit / PostToolUse.
             if (tool == "Edit" || tool == "MultiEdit"),
                let diff = buildFileDiff(tool: tool, input: input, pillId: agentId) {
-                presentLiveDiff(diff, agentId: agentId)
+                if state.autoExpandProgramming {
+                    presentLiveDiff(diff, agentId: agentId)
+                } else {
+                    let idx = state.appendSessionDiff(diff, for: agentId, autoOpen: false)
+                    let step = String.makeDiffStep(filename: diff.name, added: diff.added,
+                                                   removed: diff.removed, diffId: idx)
+                    appendStep(id: agentId, step: step)
+                    if state.view != .programming { expandIfNeeded(to: .overview) }
+                }
             } else {
                 let step = toolStep(tool: tool, input: input)
                 appendStep(id: agentId, step: step)
@@ -469,7 +480,16 @@ final class HookServer: @unchecked Sendable {
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
             if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId),
                shouldAutoOpenLiveDiff(diff) {
-                presentLiveDiff(diff, agentId: agentId)
+                if state.autoExpandProgramming {
+                    presentLiveDiff(diff, agentId: agentId)
+                } else {
+                    let idx = state.appendSessionDiff(diff, for: agentId, autoOpen: false)
+                    let step = String.makeDiffStep(filename: diff.name, added: diff.added,
+                                                   removed: diff.removed, diffId: idx)
+                    appendStep(id: agentId, step: step)
+                    if state.focusId != agentId { setPillBadge(id: agentId, badge: .finished) }
+                    expandIfNeeded(to: .overview)
+                }
                 nbLog("PostToolUse live-diff \(diffTool) \(diff.name) +\(diff.added)/−\(diff.removed)")
             } else {
                 if state.view != .programming {
@@ -510,9 +530,12 @@ final class HookServer: @unchecked Sendable {
                     state.tasks[idx].finalLine = display
                 }
             }
+            Self.recordFinishedSession(agentId: agentId, outcome: "ok",
+                                       finalLine: display.isEmpty ? nil : display,
+                                       summary: summary)
             SoundEngine.shared.play("finish")
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
-            if focused {
+            if focused && state.autoExpandFinished {
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
@@ -528,8 +551,11 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             state.updateTask(id: agentId, state: .error)
+            let summary = state.sessionDiffSummary(for: agentId)
+            Self.recordFinishedSession(agentId: agentId, outcome: "error",
+                                       finalLine: nil, summary: summary)
             SoundEngine.shared.play("error")
-            if focused {
+            if focused && state.autoExpandFinished {
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
@@ -544,7 +570,8 @@ final class HookServer: @unchecked Sendable {
         case "SessionEnd":
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
-            state.clearSessionDiffs(for: agentId)
+            // Soft-retain diffs ~1h so open-last-file / recent files still work after the session ends.
+            state.scheduleSoftClearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
 
         case "SubagentStart":
@@ -809,6 +836,15 @@ final class HookServer: @unchecked Sendable {
     /// Called by ApprovalView buttons. Writes the decision to the waiting nb-hook and cleans up.
     @MainActor
     func sendApprovalDecision(_ decision: String) {
+        let state = AppState.shared
+        let approval = state.pendingApproval
+        let pillId = approval?.pillId ?? "integration_claude"
+
+        // Cursor Always → Coucursor allowlist (Cursor has no updatedPermissions).
+        if decision == "always", approval?.isCursorShell == true {
+            CursorShellAllowlist.add(cwd: approval?.inputKey ?? "", command: approval?.command ?? "")
+        }
+
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
         // Capture source before nulling — we send the decision first, then cancel the source.
@@ -816,6 +852,7 @@ final class HookServer: @unchecked Sendable {
         let source = approvalFDSource
         approvalFDSource = nil
 
+        // For Cursor shell Always, the relay maps "always" → permission allow.
         let json: String
         switch decision {
         case "allow":  json = #"{"permissionDecision":"allow"}"#
@@ -834,8 +871,6 @@ final class HookServer: @unchecked Sendable {
             source?.cancel()
         }
 
-        let state = AppState.shared
-        let pillId = state.pendingApproval?.pillId ?? "integration_claude"
         state.pendingApproval = nil
         state.isPinned = false
         state.updateTask(id: pillId, state: .working)
@@ -848,6 +883,124 @@ final class HookServer: @unchecked Sendable {
             }
         }
         state.view = state.tasks.isEmpty ? .empty : .overview
+    }
+
+    // MARK: - Cursor shell permission (beforeShellExecution)
+
+    /// Blocking gate for Cursor Agent shell commands. Reuses ApprovalView; Always uses Coucursor allowlist.
+    @MainActor
+    private func processCursorShellPermission(fd: Int32, payload: [String: Any]) {
+        let state = AppState.shared
+        let rawAgent = payload["coucou_agent"] as? String ?? ""
+        guard rawAgent == "cursor" else {
+            // Not our Cursor agent hook — deny closed so Cursor doesn't run blind.
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"deny"}"#)
+                close(fd)
+            }
+            return
+        }
+
+        let sessionId = payload["session_id"] as? String
+                     ?? payload["conversation_id"] as? String
+                     ?? "unknown"
+        var cwd = payload["cwd"] as? String ?? ""
+        if cwd.isEmpty {
+            let roots = payload["workspace_roots"] as? [String]
+                     ?? payload["workspaceRoots"] as? [String]
+            cwd = roots?.first ?? ""
+        }
+        let command = (payload["command"] as? String)
+            ?? (payload["tool_input"] as? [String: Any])?["command"] as? String
+            ?? "shell"
+        let projectName = aliasProjectName(
+            URL(fileURLWithPath: cwd).lastPathComponent.isEmpty
+                ? "Cursor" : URL(fileURLWithPath: cwd).lastPathComponent
+        )
+        let pillId = "agent_cursor"
+        nbLog("beforeShellExecution \(command.prefix(80)) [\(pillId)]")
+
+        // Always allowlist hit — approve without a card.
+        if CursorShellAllowlist.contains(cwd: cwd, command: command) {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"allow"}"#)
+                close(fd)
+            }
+            return
+        }
+
+        if pendingApprovalFD >= 0 {
+            let old = pendingApprovalFD
+            let oldSource = approvalFDSource
+            approvalFDSource = nil
+            let wasCursor = state.pendingApproval?.isCursorShell == true
+            Task.detached { [weak self] in
+                // Displace prior: Cursor shell → deny; Claude → ask (re-prompt in terminal).
+                let json = wasCursor
+                    ? #"{"permissionDecision":"deny"}"#
+                    : #"{"permissionDecision":"ask"}"#
+                self?.sendLine(fd: old, text: json)
+                DispatchQueue.main.async { oldSource?.cancel() }
+            }
+        }
+        pendingApprovalFD = fd
+        activeSessionId = sessionId
+
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        state.updateTask(id: pillId, state: .approval)
+        // Store cwd in inputKey for Always allowlist fingerprint.
+        state.pendingApproval = ApprovalInfo(
+            sessionId: sessionId, tool: "Shell", command: command,
+            inputKey: cwd, pillId: pillId, isCursorShell: true
+        )
+        state.isPinned = true
+        SoundEngine.shared.play("approval")
+
+        if focusBeforeApproval == nil { focusBeforeApproval = state.focusId }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pillId }
+        expandIfNeeded(to: .approval)
+
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.pendingApprovalFD == fd else { return }
+            self.dismissApprovalCard(note: "Handled in Cursor.")
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        approvalFDSource = source
+
+        // Timeout → deny (plan: never auto-allow without a click; Cursor `ask` is flaky).
+        let captured = fd
+        DispatchQueue.main.asyncAfter(deadline: .now() + 115) { [weak self] in
+            guard let self, self.pendingApprovalFD == captured else { return }
+            self.sendApprovalDecision("deny")
+            AppState.shared.noteMessage = "Shell timed out in Coucursor — retry in Cursor."
+            AppState.shared.view = .note
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+            }
+        }
+    }
+
+    @MainActor
+    private static func recordFinishedSession(agentId: String, outcome: String,
+                                              finalLine: String?, summary: String?) {
+        let state = AppState.shared
+        let name = state.tasks.first(where: { $0.id == agentId })?.name ?? agentId
+        let paths = (state.sessionDiffs[agentId] ?? []).reversed().compactMap { d -> String? in
+            d.path.isEmpty ? nil : d.path
+        }
+        var unique: [String] = []
+        var seen = Set<String>()
+        for p in paths where !seen.contains(p) {
+            seen.insert(p)
+            unique.append(p)
+            if unique.count >= 5 { break }
+        }
+        SessionHistoryStore.shared.record(
+            pillId: agentId, name: name, finalLine: finalLine,
+            summary: summary, filePaths: unique, outcome: outcome
+        )
     }
 
     // MARK: - Question request
@@ -1963,6 +2116,19 @@ final class HookServer: @unchecked Sendable {
         return false
     }
 
+    /// True when beforeShellExecution is wired (Allow/Deny). Older installs only observe.
+    static func cursorShellHooksInstalled() -> Bool {
+        guard let data = try? Data(contentsOf: cursorHooksURL),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let hooks = root["hooks"] as? [String: Any],
+              let entries = hooks["beforeShellExecution"] as? [[String: Any]] else { return false }
+        for entry in entries {
+            if let cmd = entry["command"] as? String,
+               cmd.contains("nb-hook"), cmd.contains("--agent cursor") { return true }
+        }
+        return false
+    }
+
     private var _pendingCursorData: Data?
     private var _pendingCursorFingerprint: String?
 
@@ -2009,19 +2175,20 @@ final class HookServer: @unchecked Sendable {
         // Cursor requires version: 1
         if root["version"] == nil { root["version"] = 1 }
         let base = hookBase()
-        // MVP: observe the Agent loop (no permission gating yet).
-        // Timeouts in seconds (Cursor format). Fire-and-forget via nb-hook.
+        // Observe the Agent loop + blocking beforeShellExecution for notch Allow/Deny.
+        // Timeouts in seconds (Cursor format). Shell gate needs ~120s while the card is open.
         let events: [(String, Int)] = [
-            ("sessionStart",        10),
-            ("sessionEnd",           5),
-            ("beforeSubmitPrompt",  10),
-            ("preToolUse",          10),
-            ("postToolUse",         10),
-            ("postToolUseFailure",  10),
-            ("afterFileEdit",       10),
-            ("stop",                10),
-            ("subagentStart",       10),
-            ("subagentStop",        10),
+            ("sessionStart",          10),
+            ("sessionEnd",             5),
+            ("beforeSubmitPrompt",    10),
+            ("preToolUse",            10),
+            ("postToolUse",           10),
+            ("postToolUseFailure",    10),
+            ("afterFileEdit",         10),
+            ("stop",                  10),
+            ("subagentStart",         10),
+            ("subagentStop",          10),
+            ("beforeShellExecution", 120),
         ]
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout) in events {
@@ -2121,6 +2288,8 @@ def normalize_event(name):
         'afterFileEdit': 'PostToolUse',
         'subagentStart': 'SubagentStart', 'subagentStop': 'SubagentStop',
         'stop': 'Stop',
+        # beforeShellExecution kept as-is (blocking Cursor shell gate)
+        'beforeShellExecution': 'beforeShellExecution',
     }
     return mapping.get(name, name)
 
@@ -2140,6 +2309,12 @@ def normalize_tool_fields(payload, raw_event=''):
         payload['tool_name'] = 'MultiEdit'
         payload['tool_input'] = {'file_path': path, 'edits': norm_edits}
         payload['hook_event_name'] = 'PostToolUse'
+    # Cursor beforeShellExecution → Shell tool shape for the notch card
+    if raw_event == 'beforeShellExecution':
+        cmd = payload.get('command', '') or ''
+        payload['tool_name'] = 'Shell'
+        payload['tool_input'] = {'command': cmd}
+        payload['hook_event_name'] = 'beforeShellExecution'
     # Cursor stop status → Stop / StopFailure / Interrupt
     if raw_event == 'stop':
         status = payload.get('status', 'completed')
@@ -2377,6 +2552,44 @@ def main():
         # App unreachable, timed out, or no explicit decision — print nothing
         # Claude Code / Codex will handle the absence of output (re-ask or default behaviour)
         sys.exit(0)
+
+    if event == 'beforeShellExecution' and agent == 'cursor':
+        # Block until Coucursor Allow/Deny. Emit Cursor permission JSON (never bare "ask").
+        def _cursor_shell_out(perm, msg=None):
+            out = {'permission': perm}
+            if msg:
+                out['agentMessage'] = msg
+            sys.stdout.write(json.dumps(out) + '\\n')
+            sys.stdout.flush()
+            sys.exit(0)
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(118)
+            s.connect(socket_path)
+            s.sendall((json.dumps(payload) + '\\n').encode())
+            chunks = []
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                if b'\\n' in chunk:
+                    break
+            s.close()
+            response = b''.join(chunks).decode().strip()
+            decision = ''
+            if response:
+                try:
+                    decision = json.loads(response).get('permissionDecision', '')
+                except Exception:
+                    decision = ''
+            if decision in ('allow', 'always'):
+                _cursor_shell_out('allow')
+            if decision == 'deny':
+                _cursor_shell_out('deny', 'Denied from Coucursor')
+            _cursor_shell_out('deny', 'Coucursor timed out — retry the command')
+        except Exception:
+            _cursor_shell_out('deny', 'Coucursor unavailable')
 
     # All other events: fire-and-forget (0.3s timeout, never blocks)
     try:

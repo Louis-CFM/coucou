@@ -122,6 +122,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DesktopMochiController.shared.launchFlyIfNeeded()
             Self.showBehaviorTipsIfNeeded()
         }
+        // End-of-day tip check every 10 minutes after local 18:00
+        Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { _ in
+            DispatchQueue.main.async { Self.showEODTipIfNeeded() }
+        }
+        _ = SessionHistoryStore.shared
         #if !APPSTORE
         _ = MusicController.shared
         _ = SpotifyController.shared
@@ -134,11 +139,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !state.hasSeenBehaviorTips else { return }
         state.hasSeenBehaviorTips = true
         #if !APPSTORE
-        state.noteMessage = "Tip: Settings → Behavior — try Quiet (collapsed until hover) or Alive (eyes follow). ⌃⌥P play/pause · ⌃⌥F next track."
+        state.noteMessage = "Tip: Settings → Behavior — try Quiet, Alive or Focus. ⌃⌥P play/pause · ⌃⌥E last file."
         #else
-        state.noteMessage = "Tip: Settings → Behavior — try Quiet (collapsed until hover) or Alive (eyes follow)."
+        state.noteMessage = "Tip: Settings → Behavior — try Quiet, Alive or Focus."
         #endif
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.note)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+            if state.view == .note { NotificationCenter.default.post(name: .islandCollapse, object: nil) }
+        }
+    }
+
+    /// Once per day after 18:00 when there was at least one finished session.
+    private static func showEODTipIfNeeded() {
+        let state = AppState.shared
+        guard state.pendingApproval == nil, state.pendingQuestion == nil else { return }
+        let hour = Calendar.current.component(.hour, from: Date())
+        guard hour >= 18 else { return }
+        let fmt = DateFormatter()
+        fmt.calendar = .current
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.dateFormat = "yyyy-MM-dd"
+        let key = fmt.string(from: Date())
+        guard state.lastEODTipDay != key else { return }
+        guard let pulse = SessionHistoryStore.shared.todayPulseText else { return }
+        state.lastEODTipDay = key
+        state.noteMessage = "End of day · \(pulse). ⌃⌥E opens your last file."
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             NotificationCenter.default.post(name: .hookExpand, object: IslandView.note)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) {

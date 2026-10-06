@@ -20,6 +20,7 @@ enum ShortcutAction: String, CaseIterable, Sendable {
     case wardrobeToggle    = "wardrobeToggle"     // ⌃⌥G — open / close wardrobe
     case mediaPlayPause    = "mediaPlayPause"     // ⌃⌥P — Spotify / Music play-pause (GitHub)
     case mediaNext         = "mediaNext"          // ⌃⌥F — Spotify / Music next track (GitHub)
+    case openLastFile      = "openLastFile"       // ⌃⌥E — open last / pinned file in editor
 
     // MARK: UserDefaults keys
 
@@ -52,6 +53,7 @@ enum ShortcutAction: String, CaseIterable, Sendable {
         case .wardrobeToggle:    return "Open / close wardrobe"
         case .mediaPlayPause:    return "Play / pause music"
         case .mediaNext:         return "Next track"
+        case .openLastFile:      return "Open last file"
         }
     }
 
@@ -112,6 +114,7 @@ enum ShortcutLogic {
         .wardrobeToggle:    ShortcutSpec(keyCode: 5,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥G
         .mediaPlayPause:    ShortcutSpec(keyCode: 35, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥P
         .mediaNext:         ShortcutSpec(keyCode: 3,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥F
+        .openLastFile:      ShortcutSpec(keyCode: 14, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥E
     ]
 
     // MARK: - Load / save (UserDefaults)

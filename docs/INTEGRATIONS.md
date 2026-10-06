@@ -154,6 +154,10 @@ Cursor Agent (Composer)
 - Format Cursor : `{ "version": 1, "hooks": { "<event>": [ { "command": "…", "timeout": N } ] } }` (tableau plat, pas de groupes `matcher`).
 - Le relais traduit les noms camelCase et mappe `afterFileEdit` vers un `PostToolUse`/`MultiEdit` pour le live diff (clés `old_string` / `oldString` / `old_line` acceptées).
 - À chaque Edit/MultiEdit (et `afterFileEdit`) : focus sur `agent_cursor`, île force-expand, layout **programming** (rail d'étapes à gauche + éditeur diff large à droite) avec typewriter sur `+` et strikethrough sur `−`. Les Write full-file trop gros restent ticker-only. `pendingOpenDiff` couvre la course expand ↔ montage de OverviewView.
+- Shell Allow/Deny : `beforeShellExecution` bloque jusqu’à Allow / Deny / Always dans le notch (Always = allowlist Coucursor). Timeout ≈ 115 s → `permission: deny`. Les installs d’observation seules doivent **Update hooks**.
+- Claude Code lancé dans le terminal de Cursor continue d'être routé vers la même pastille via le bundle ID Electron.
+
+Détail des événements : `docs/AGENTS.md` § Cursor Agent.
 
 ---
 
@@ -162,10 +166,6 @@ Cursor Agent (Composer)
 - Réglages → Integrations → Render : clé API (`render-api-key`, Trousseau) + filtre de services.
 - Polling 30 s : `GET /v1/services` puis dernier deploy par service (`GET /v1/services/{id}/deploys?limit=1`).
 - Pastille `integration_render` (`#46E3B7`) : liste des deploys + détail (statut live/failed/building, commit, lien dashboard).
-- MVP : observation seule (thinking / working / finished). Pas de `beforeShellExecution` ni carte Allow/Deny (prévu en MVP+).
-- Claude Code lancé dans le terminal de Cursor continue d'être routé vers la même pastille via le bundle ID Electron.
-
-Détail des événements : `docs/AGENTS.md` § Cursor Agent.
 
 ---
 

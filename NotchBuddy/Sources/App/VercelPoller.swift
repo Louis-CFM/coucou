@@ -93,8 +93,10 @@ final class VercelPoller: @unchecked Sendable {
         }
         SoundEngine.shared.play(latest.isSuccess ? "finish" : "error")
 
-        // Reveal compact island so user sees the badge
-        NotificationCenter.default.post(name: .hookReveal, object: nil)
+        // Reveal compact island so user sees the badge (unless Focus / peeks off)
+        if AppState.shared.autoExpandCI {
+            NotificationCenter.default.post(name: .hookReveal, object: nil)
+        }
 
         // Auto-clear task state after 60s (deployments list stays)
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) {

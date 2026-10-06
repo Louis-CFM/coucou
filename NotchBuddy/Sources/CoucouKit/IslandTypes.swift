@@ -40,6 +40,8 @@ struct ApprovalInfo: Sendable {
     var inputKey: String
     /// Pill that owns this approval: "integration_claude", "agent_cursor", or "agent_codex".
     var pillId: String
+    /// Cursor Agent `beforeShellExecution` — Coucursor holds the hook and replies allow/deny.
+    var isCursorShell: Bool = false
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
