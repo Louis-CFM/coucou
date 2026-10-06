@@ -6,10 +6,6 @@ struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @ObservedObject private var demoEngine = DemoEngine.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
-    @State private var hindsightCredential = HindsightCredentialPresentation(
-        isStored: KeychainStore.shared.get(hindsightBearerTokenKey) != nil)
-    @State private var hindsightStatus = ""
-    @State private var testingHindsight = false
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
     private static let fallbackModels: [(id: String, label: String)] = [
@@ -86,6 +82,9 @@ struct SettingsView: View {
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
     @State private var connectingLMStudio:  Bool = false
+    @State private var hindsightToken: String = ""
+    @State private var hindsightCredentialPresent = KeychainStore.shared.contains(hindsightBearerTokenKey)
+    @State private var hindsightConnectionStatus: String = ""
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -133,19 +132,6 @@ struct SettingsView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-
-                // MARK: API
-                GroupBox("Anthropic API") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        SecureField("API key (sk-ant-…)", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Save") {
-                            switch KeychainStore.shared.set("anthropic-api-key", value: apiKey) {
-                            case .success: statusMessage = "✓ Key saved."
-                            case .failure(let error): statusMessage = "❌ \(error.localizedDescription)"
-                            }
         HStack(spacing: 0) {
             // Sidebar — 200 pt, sidebar visual effect background
             ZStack(alignment: .topLeading) {
@@ -343,95 +329,6 @@ struct SettingsView: View {
             .padding(6)
         }
 
-                GroupBox("Hindsight Memory") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Enable Hindsight memory", isOn: $state.hindsightEnabled)
-                        TextField("Base URL", text: $state.hindsightBaseUrl).textFieldStyle(.roundedBorder)
-                        HStack {
-                            TextField("Tenant", text: $state.hindsightTenant).textFieldStyle(.roundedBorder)
-                            TextField("Bank", text: $state.hindsightBank).textFieldStyle(.roundedBorder)
-                        }
-                        Toggle("Automatically recall relevant memory", isOn: $state.hindsightAutomaticRecall)
-                        Toggle("Automatically save eligible completed turns", isOn: $state.hindsightInferredRetention)
-                        Toggle("Allow HTTP for development", isOn: $state.hindsightAllowDevelopmentHttp)
-                        SecureField("Bearer token (always blank)", text: $hindsightCredential.replacement)
-                            .textFieldStyle(.roundedBorder)
-                        HStack {
-                            Text(hindsightCredential.isStored ? "Token stored" : "Token not stored")
-                                .font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Button(hindsightCredential.isStored ? "Replace" : "Save") { saveHindsightCredential() }
-                                .disabled(hindsightCredential.replacement.isEmpty)
-                            Button("Remove", role: .destructive) { removeHindsightCredential() }
-                                .disabled(!hindsightCredential.isStored)
-                        }
-                        HStack {
-                            Button(testingHindsight ? "Testing…" : "Test Connection") { testHindsightConnection() }
-                                .disabled(testingHindsight || !hindsightCredential.isStored)
-                            Button("Open Memory Manager") { MemoryManagerWindowController.shared.present() }
-                        }
-                        if !hindsightStatus.isEmpty { Text(hindsightStatus).font(.caption).textSelection(.enabled) }
-                    }.padding(6)
-                }
-
-                // MARK: Hooks
-                GroupBox("Claude Code Hooks") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if hookNeedsUpdate {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                Text("Hook timeout outdated — update to fix approvals")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.orange)
-                            }
-                            #if APPSTORE
-                            Button("Update hooks") { installHooksAppStore() }
-                            #else
-                            Button("Update hooks") { installHooks() }
-                            #endif
-                        }
-                        #if APPSTORE
-                        Text("~/.claude/coucou/nb-hook")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { installHooksAppStore() }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { uninstallHooksAppStore() }
-                                .buttonStyle(.bordered)
-                        }
-                        #else
-                        Text("nb-hook : \(HookServer.hookScriptPath)")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 10) {
-                            Button("Install hooks") { installHooks() }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uninstall") { uninstallHooks() }
-                                .buttonStyle(.bordered)
-                        }
-                        #endif
-
-                        #if !APPSTORE
-                        if showDiff {
-                            ScrollView {
-                                Text(pendingHookJSON)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(height: 140)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .cornerRadius(6)
-
-                            HStack {
-                                Button("Confirm & write") { confirmInstall() }
-                                    .buttonStyle(.borderedProminent)
-                                Button("Cancel") { showDiff = false; pendingHookJSON = "" }
-                                    .buttonStyle(.bordered)
-                            }
-                        }
-                        #endif
         GroupBox("Startup") {
             Toggle("Launch at Mac startup", isOn: $launchAtStartup)
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
@@ -1004,6 +901,53 @@ struct SettingsView: View {
             .padding(.vertical, 4)
         }
 
+        GroupBox("Hindsight Memory") {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Enable Hindsight memory", isOn: $state.hindsightEnabled)
+                TextField("Base URL", text: $state.hindsightBaseUrl).textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("Tenant", text: $state.hindsightTenant).textFieldStyle(.roundedBorder)
+                    TextField("Bank", text: $state.hindsightBank).textFieldStyle(.roundedBorder)
+                }
+                Toggle("Recall before chat", isOn: $state.hindsightAutomaticRecall)
+                Toggle("Retain durable completed turns", isOn: $state.hindsightInferredRetention)
+                #if DEBUG
+                Toggle("Allow development HTTP", isOn: $state.hindsightAllowDevelopmentHttp)
+                #endif
+                SecureField("Bearer token", text: $hindsightToken).textFieldStyle(.roundedBorder)
+                Text(hindsightCredentialPresent ? "Credential stored" : "Credential not stored")
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                HStack {
+                    Button("Save / replace token") {
+                        switch HindsightCredentialReplacement.store(hindsightToken) {
+                        case .success:
+                            hindsightToken = ""
+                            hindsightCredentialPresent = true
+                            hindsightConnectionStatus = "Credential stored"
+                        case .failure(let error):
+                            hindsightConnectionStatus = error.localizedDescription
+                        }
+                    }.disabled(hindsightToken.isEmpty)
+                    Button("Remove token") {
+                        switch KeychainStore.shared.delete(hindsightBearerTokenKey) {
+                        case .success:
+                            hindsightToken = ""
+                            hindsightCredentialPresent = false
+                            hindsightConnectionStatus = "Credential removed"
+                        case .failure(let error):
+                            hindsightConnectionStatus = error.localizedDescription
+                        }
+                    }.disabled(!hindsightCredentialPresent)
+                    Button("Test connection") { Task { await testHindsightConnection() } }
+                    Button("Open Memory Manager") { MemoryManagerWindowController.shared.present() }
+                }
+                if !hindsightConnectionStatus.isEmpty {
+                    Text(hindsightConnectionStatus).font(.system(size: 11)).foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(localized: "chat.local.description"))
@@ -1188,43 +1132,20 @@ struct SettingsView: View {
 
     // MARK: - Actions
 
+    @MainActor
+    private func testHindsightConnection() async {
+        do {
+            let service = try HindsightService(config: state.hindsightConfig)
+            try await service.testConnection()
+            hindsightConnectionStatus = "Connection successful"
+        } catch {
+            hindsightConnectionStatus = error.localizedDescription
+        }
+    }
+
     private func applyCustomModel(_ value: String) {
         let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if !id.isEmpty { state.claudeModel = id }
-    }
-
-    private func saveHindsightCredential() {
-        let token = hindsightCredential.replacement.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !token.isEmpty else { return }
-        switch HindsightCredentialReplacement.store(token) {
-        case .success:
-            hindsightCredential.didStoreReplacement()
-            hindsightStatus = "Token stored."
-        case .failure(let error):
-            hindsightStatus = error.localizedDescription
-        }
-    }
-
-    private func removeHindsightCredential() {
-        switch KeychainStore.shared.remove(hindsightBearerTokenKey) {
-        case .success:
-            hindsightCredential.didRemove()
-            hindsightStatus = "Token removed."
-        case .failure(let error):
-            hindsightStatus = error.localizedDescription
-        }
-    }
-
-    private func testHindsightConnection() {
-        testingHindsight = true
-        hindsightStatus = ""
-        Task {
-            do {
-                try await HindsightService(config: state.hindsightConfig).testConnection()
-                hindsightStatus = "Connection succeeded."
-            } catch { hindsightStatus = error.localizedDescription }
-            testingHindsight = false
-        }
     }
 
     private func toggleStartup(_ on: Bool) {
@@ -1599,22 +1520,6 @@ struct SettingsView: View {
     #endif
 
     private func saveIntegrations() {
-        let updates = [
-            ("resend-api-key", resendKey), ("resend-from", resendFrom), ("n8n-url", n8nUrl),
-            ("n8n-api-key", n8nKey), ("vercel-token", vercelToken), ("github-token", githubToken),
-            ("stripe-api-key", stripeKey), ("calcom-api-key", calcomKey), ("notion-api-key", notionKey),
-        ]
-        for (key, value) in updates {
-            if case .failure(let error) = saveKey(key, value: value) {
-                statusMessage = "❌ \(error.localizedDescription)"
-                return
-            }
-        }
-        statusMessage = "✓ Integration keys saved."
-    }
-
-    private func saveKey(_ key: String, value: String) -> Result<Void, KeychainStoreError> {
-        value.isEmpty ? KeychainStore.shared.remove(key) : KeychainStore.shared.set(key, value: value)
         saveKey("resend-api-key",  value: resendKey)
         saveKey("resend-from",     value: resendFrom)
         saveKey("n8n-url",         value: n8nUrl)

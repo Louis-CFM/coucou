@@ -41,12 +41,18 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 const MAX_FIELD_LEN: usize = 2_000;
 const MAX_PAYLOAD: usize = (1 << 20) - 1;
 
+#[cfg(windows)]
 mod origin;
+#[cfg(windows)]
 mod win;
+
+#[cfg(target_os = "linux")]
+mod unix;
 
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
+#[cfg(windows)]
 fn pipe_path() -> String {
     let key = win::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
@@ -55,6 +61,7 @@ fn pipe_path() -> String {
 
 /// Opens the pipe. Retries only while the server is busy: any other error means
 /// there is nothing to talk to, and waiting would only delay Claude Code.
+#[cfg(windows)]
 fn connect() -> Option<std::fs::File> {
     use std::os::windows::io::AsRawHandle;
     let path = pipe_path();
@@ -225,6 +232,7 @@ fn ask_user_question_input(raw: &[u8], agent: Option<&str>) -> Option<serde_json
 
 /// Reads stdin and returns the payload to forward, the event name, and the
 /// original question input of a Claude `AskUserQuestion` request.
+#[cfg(windows)]
 fn read_event() -> Option<(String, String, Option<serde_json::Value>)> {
     let mut raw = Vec::new();
     let stdin = std::io::stdin();
@@ -262,6 +270,23 @@ fn read_event() -> Option<(String, String, Option<serde_json::Value>)> {
     let questions = (event == "PermissionRequest")
         .then(|| ask_user_question_input(&raw, agent.as_deref()))
         .flatten();
+    Some((line, event, questions))
+}
+
+#[cfg(target_os = "linux")]
+fn read_event() -> Option<(String, String, Option<serde_json::Value>)> {
+    let mut raw = Vec::new();
+    if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() { return None; }
+    if raw.starts_with(&[0xEF, 0xBB, 0xBF]) { raw.drain(..3); }
+    let mut agent = None;
+    let mut arg_event = String::new();
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--agent" { agent = Some(args.next().unwrap_or_default()); }
+        else if arg_event.is_empty() { arg_event = arg; }
+    }
+    let (line, event) = canonical_event_with(&raw, agent.as_deref(), &arg_event, |_| None)?;
+    let questions = (event == "PermissionRequest").then(|| ask_user_question_input(&raw, agent.as_deref())).flatten();
     Some((line, event, questions))
 }
 

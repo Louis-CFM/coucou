@@ -25,7 +25,8 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+#[cfg(windows)]
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::sync::mpsc;
 
@@ -111,12 +112,14 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
+#[cfg(windows)]
 pub fn pipe_name() -> String {
     let key = crate::platform::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
     format!(r"\\.\pipe\coucou-{key}")
 }
 
+#[cfg(windows)]
 pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let name = pipe_name();
@@ -149,7 +152,57 @@ pub fn start(app: AppHandle) {
     });
 }
 
-async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
+#[cfg(target_os = "linux")]
+pub fn start(app: AppHandle) {
+    use std::os::unix::fs::PermissionsExt;
+    use tokio::net::UnixListener;
+
+    tauri::async_runtime::spawn(async move {
+        let Some(path) = crate::platform::relay_socket_path() else {
+            log::line("no private runtime directory — agent hooks are inactive");
+            return;
+        };
+        if path.exists() {
+            if std::os::unix::net::UnixStream::connect(&path).is_ok() {
+                log::line("another Coucou already serves the relay socket");
+                return;
+            }
+            let _ = std::fs::remove_file(&path);
+        }
+        let listener = match UnixListener::bind(&path) {
+            Ok(listener) => listener,
+            Err(error) => { log::line(format!("cannot open the relay socket: {error}")); return; }
+        };
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+        let uid = unsafe { libc::getuid() };
+        loop {
+            let stream = match listener.accept().await {
+                Ok((stream, _)) => stream,
+                Err(_) => { tokio::time::sleep(Duration::from_millis(200)).await; continue; }
+            };
+            if !matches!(stream.peer_cred(), Ok(credentials) if credentials.uid() == uid) {
+                log::line("refused a relay connection from another user");
+                continue;
+            }
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move { handle(app, stream).await });
+        }
+    });
+}
+
+trait Relay: AsyncRead + AsyncWrite + Unpin {
+    fn finish(&mut self) {}
+}
+
+#[cfg(windows)]
+impl Relay for NamedPipeServer {
+    fn finish(&mut self) { let _ = self.disconnect(); }
+}
+
+#[cfg(target_os = "linux")]
+impl Relay for tokio::net::UnixStream {}
+
+async fn handle(app: AppHandle, mut pipe: impl Relay) {
     let Ok(mut payload) = read_hook_frame(&mut pipe).await else { return };
     let event = payload["hook_event_name"].as_str().unwrap().to_string();
 
@@ -159,7 +212,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         }
         log::line("hook event received");
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
-        let _ = pipe.disconnect();
+        pipe.finish();
         return;
     }
 
@@ -185,7 +238,7 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
         let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
         let _ = pipe.flush().await;
     }
-    let _ = pipe.disconnect();
+    pipe.finish();
 }
 
 /// The log names the kind of reply, never the picked labels.

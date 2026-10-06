@@ -1208,13 +1208,14 @@ struct PromptView: View {
                         state.privateChat.toggle()
                         state.memoryStatus = state.privateChat ? "Private mode · session only · memory off" : nil
                     }) {
-                        Label(state.privateChat ? "Private on" : "Private off", systemImage: state.privateChat ? "eye.slash.fill" : "eye")
-                            .font(.system(size: 9, weight: .medium))
+                        Image(systemName: state.privateChat ? "eye.slash.fill" : "eye")
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(state.privateChat ? Color(hex: "#F5F6F8") : Color(hex: "#6B7079"))
-                    }.buttonStyle(.plain)
-                        .help("Private mode lasts for this app session and disables recall and saving")
-                    TextField(state.memoryStatus ?? (state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…"), text: $text)
-                    TextField(state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"), text: $text)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Private mode lasts for this app session and disables recall and saving")
+
+                    TextField(state.memoryStatus ?? (state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…")), text: $text)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                         .focused($focused)
@@ -1272,8 +1273,20 @@ struct PromptView: View {
         state.stateOverride = .thinking
         Task {
             do {
-                let providerContext: ChatProviderContext? = { switch state.promptContext { case .window(let app, let title, let url): return .window(appName: app, title: title, url: url); case .file(let name, let fileURL): return .file(name: name, path: fileURL?.path, bytes: fileURL.flatMap { try? Data(contentsOf: $0) }); case nil: return nil } }()
-                let result = try await state.chatMemoryCoordinator.send(query: query, contextKind: providerContext?.kind ?? .none, providerContext: providerContext, provider: "anthropic", model: state.claudeModel)
+                let providerContext: ChatProviderContext? = {
+                    switch state.promptContext {
+                    case .window(let app, let title, let url): return .window(appName: app, title: title, url: url)
+                    case .file(let name, let fileURL): return .file(name: name, path: fileURL?.path, bytes: fileURL.flatMap { try? Data(contentsOf: $0) })
+                    case nil: return nil
+                    }
+                }()
+                let result = try await state.chatMemoryCoordinator.send(
+                    query: query,
+                    contextKind: providerContext?.kind ?? .none,
+                    providerContext: providerContext,
+                    provider: state.chatProvider.rawValue,
+                    model: state.activeChatModel
+                )
                 state.insertCompletedChatTurn(turnId: result.turnId, assistantText: result.result.text)
                 state.memoryStatus = state.privateChat ? "Private chat — memory off" : state.memoryStatus ?? state.chatMemoryCoordinator.memoryStatus
                 state.stateOverride = nil
@@ -1498,22 +1511,6 @@ struct ChatBubble: View {
                     }
                 }
                 Spacer(minLength: 8)
-        if !message.content.isEmpty {
-            HStack(alignment: .top) {
-                if message.role == .user {
-                    Spacer(minLength: 32)
-                    Text(message.content)
-                        .font(.system(size: 12.5))
-                        .foregroundColor(Color(hex: "#F1F2F4"))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(Color.white.opacity(0.13))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    ChatMarkdownView(markdown: message.content)
-                    Spacer(minLength: 8)
-                }
             }
         }
     }

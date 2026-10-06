@@ -156,6 +156,8 @@ struct ChatProviderRequest: Equatable {
     var contextKind: ChatContextKind
     var providerContext: ChatProviderContext?
     var memoryContext: String?
+    var provider: ChatProvider
+    var model: String
 }
 
 struct ChatProviderResult: Equatable {

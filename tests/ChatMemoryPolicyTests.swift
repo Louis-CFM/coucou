@@ -125,7 +125,7 @@ enum ChatMemoryPolicyTests {
         let trusted = "trusted Mochi instructions"
         let tools: [[String: Any]] = [["name": "web_search", "max_uses": 5]]
         let messages: [[String: Any]] = [["role": "user", "content": [["type": "text", "text": "hello"]]]]
-        let providerRequest = ChatProviderRequest(query: "find this", contextKind: .window, providerContext: .window(appName: "Safari", title: "Docs", url: "https://example.test"), memoryContext: block)
+        let providerRequest = ChatProviderRequest(query: "find this", contextKind: .window, providerContext: .window(appName: "Safari", title: "Docs", url: "https://example.test"), memoryContext: block, provider: .anthropic, model: "test-model")
         let mapped = claudeRequestParts(providerRequest, isFirstTurn: true)
         precondition((mapped.userContent.last?["text"] as? String) == "find this")
         precondition((mapped.userContent.first?["text"] as? String)?.contains("Safari") == true)

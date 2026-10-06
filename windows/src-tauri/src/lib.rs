@@ -32,7 +32,6 @@ mod tools;
 mod tray;
 mod voice;
 
-use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -53,7 +52,6 @@ use pipe::Pending;
 use settings::Settings;
 
 /// Keeps spawned helpers from flashing a console window.
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub struct Shared {
     pub settings: Mutex<Settings>,
@@ -195,7 +193,7 @@ fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f6
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
-    island::set_activating(&win, focused);
+    platform::set_activating(&win, focused);
     if focused {
         let _ = win.set_focus();
     }
@@ -284,10 +282,7 @@ fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return;
     }
-    let _ = Command::new("rundll32.exe")
-        .args(["url.dll,FileProtocolHandler", &url])
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn();
+    platform::open_url(&url);
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
@@ -298,17 +293,17 @@ fn open_in_vscode(path: Option<String>) -> bool {
     // whoever is using Claude Code, and cmd would happily read `&`, `^` and `%`
     // in a folder name as syntax. Finding the launcher ourselves and handing the
     // path over as a separate argument keeps it a path.
-    if let Some(code) = find_on_path("code") {
+    if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
             cmd.arg(p);
         }
-        if cmd.creation_flags(CREATE_NO_WINDOW).spawn().is_ok() {
+        if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
         }
     }
     if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
-        let _ = Command::new("explorer").arg(p).spawn();
+        platform::reveal_folder(p);
     }
     false
 }
@@ -353,14 +348,9 @@ fn open_desktop_session(pid: u32, session_id: String) {
     });
 }
 
-/// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
-/// Rust quotes arguments correctly for `.cmd`/`.bat` targets since 1.77, so
-/// spawning `code.cmd` directly is safe.
-fn find_on_path(stem: &str) -> Option<std::path::PathBuf> {
-    find_in(stem, &std::env::var_os("PATH")?)
-}
-
 /// `find_on_path` over an explicit PATH value.
+pub(crate) fn find_on_path(stem: &str) -> Option<std::path::PathBuf> { platform::find_on_path(stem) }
+
 pub(crate) fn find_in(stem: &str, dirs: &std::ffi::OsStr) -> Option<std::path::PathBuf> {
     let exts = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into());
     for dir in std::env::split_paths(dirs) {
@@ -1261,6 +1251,7 @@ pub fn run_cli<I: IntoIterator<Item = String>>(args: I) -> Option<i32> {
 }
 
 pub fn run() {
+    platform::prepare_environment();
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
 
@@ -1385,7 +1376,7 @@ pub fn run() {
             hotkeys::apply(&handle, &loaded.hotkeys);
 
             if let Some(win) = island::window(&handle) {
-                island::make_non_activating(&win);
+                platform::make_non_activating(&win);
                 island::apply_geometry(&handle, &loaded.screen, loaded.island_position, false);
                 let _ = win.show();
             }

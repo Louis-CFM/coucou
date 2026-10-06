@@ -105,7 +105,13 @@ expectInvalid(fixture({ reuseFirstBuildInSecondPhase: true }), "same build ID in
 const pbx = read("NotchBuddy/NotchBuddy.xcodeproj/project.pbxproj");
 validateRequiredSources(pbx, ["ClaudeService.swift", "ChatMemoryContracts.swift", "KeychainStore.swift", "HindsightUIContracts.swift", "MemoryManagerView.swift", "MemoryManagerWindowController.swift"]);
 
+const appDelegate = read("NotchBuddy/Sources/App/AppDelegate.swift");
+assert.match(appDelegate, /@objc private func openMemoryManager\(\) \{[\s\S]*?MemoryManagerWindowController\.shared\.present\(\)\s*\}/);
+assert.equal((appDelegate.match(/@objc private func openWeeklyRecap\(\)/g) ?? []).length, 1);
+
 const appState = read("NotchBuddy/Sources/App/AppState.swift");
+assert.match(appState, /var hindsightConfig: HindsightConfig \{[\s\S]*?allowDevelopmentHttp: hindsightAllowDevelopmentHttp\s*\)\s*\}/);
+assert.ok(!/extension ChatMessage[\s\S]*?\n\s*let content: String/.test(appState));
 assert.ok(appState.includes("@Published var privateChat = AppSessionDefaults.privateChat"));
 assert.ok(!appState.includes('forKey: "privateChat"'));
 assert.ok(!appState.includes('object(forKey: "privateChat")'));
@@ -130,6 +136,9 @@ assert.ok(claudeService.includes("claudeRequestParts(request"));
 assert.ok(providerContracts.includes('"system": anthropicSystemContent'));
 
 const coordinator = read("NotchBuddy/Sources/App/ChatMemoryCoordinator.swift");
+assert.ok(coordinator.includes("AppState.shared.chatProvider"));
+assert.ok(coordinator.includes("AppState.shared.activeChatModel"));
+assert.ok(!coordinator.includes("model: state.claudeModel"));
 assert.ok(coordinator.includes("discoverRetainedArtifact(maxAttempts: 4"));
 assert.ok(coordinator.includes("func prepareForgetTurn(turnId: String)"));
 assert.ok(coordinator.includes("func forgetTurn(confirmation: PreparedForgetTurn)"));
@@ -140,8 +149,12 @@ assert.ok(!coordinator.includes("String(describing: value)"));
 const settings = read("NotchBuddy/Sources/App/SettingsView.swift");
 assert.ok(settings.includes("HindsightCredentialReplacement.store"));
 assert.ok(!settings.includes("KeychainStore.shared.set(hindsightBearerTokenKey"));
+assert.equal((settings.match(/ShortcutRecorderButton\(flags:/g) ?? []).length, 1);
+assert.ok(!/ScrollView \{\s*VStack\(alignment: \.leading, spacing: 18\)[\s\S]*?HStack\(spacing: 0\) \{\s*\/\/ Sidebar/.test(settings));
 
 const chat = read("NotchBuddy/Sources/App/IslandViewContent.swift");
+assert.equal((chat.match(/struct ChatBubble: View/g) ?? []).length, 1);
+assert.equal((chat.match(/TextField\(state\.memoryStatus \?\?/g) ?? []).length, 1);
 assert.ok(chat.includes("confirmForget(turnId:"));
 assert.ok(chat.includes("present(documentIds: result.documentIds)"));
 

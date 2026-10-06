@@ -218,12 +218,115 @@ final class ClaudeService: ChatProviderServing {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func send(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
-        guard let key = apiKey, !key.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "API key missing. Open settings."]) }
+        switch request.provider {
+        case .anthropic:
+            return try await sendAnthropic(request)
+        case .google, .openai, .ollama, .lmstudio:
+            return try await sendOpenAICompatible(request)
+        }
+    }
+
+    private func sendAnthropic(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
+        guard let key = apiKey, !key.isEmpty else {
+            throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "API key missing. Open settings."])
+        }
         let mapped = claudeRequestParts(request, isFirstTurn: conversationMessages.isEmpty)
         var userContent = mapped.userContent
         if conversationMessages.isEmpty, case .file(let name, let path, let bytes) = request.providerContext {
             if let bytes, let block = fileBlock(data: bytes, name: name) { userContent.insert(block, at: 0) }
             else if let path, let block = readFileAsBlock(url: URL(fileURLWithPath: path)) { userContent.insert(block, at: 0) }
+        }
+        conversationMessages.append(["role": "user", "content": userContent])
+        let body = anthropicChatBody(model: request.model, trustedSystem: systemPrompt, memoryContext: mapped.memoryContext, tools: webSearchTools, messages: conversationMessages)
+        do {
+            let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let content = json["content"] as? [[String: Any]] else {
+                throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected API response."])
+            }
+            let text = content.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }
+                .joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "No response text."]) }
+            conversationMessages.append(["role": "assistant", "content": content])
+            let hasToolMaterial = content.contains { block in
+                let type = block["type"] as? String
+                return type == "tool_use" || type == "tool_result" || type == "server_tool_use" || type == "web_search_tool_result"
+            }
+            return .init(text: text, completed: true, cancelled: false, hasToolMaterial: hasToolMaterial)
+        } catch {
+            conversationMessages.removeLast()
+            throw error
+        }
+    }
+
+    private func sendOpenAICompatible(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
+        let provider = request.provider
+        let baseURL: String
+        switch provider {
+        case .google: baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+        case .openai: baseURL = "https://api.openai.com/v1"
+        case .ollama: baseURL = LocalChat.normaliseURL(AppState.shared.ollamaServerURL)
+        case .lmstudio: baseURL = LocalChat.normaliseURL(AppState.shared.lmstudioServerURL)
+        case .anthropic: throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid provider"])
+        }
+        guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/chat/completions") else {
+            throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Connect \(provider.displayName) in Settings first."])
+        }
+        let authHeader: String
+        if provider.isLocal { authHeader = "Bearer ollama" }
+        else {
+            guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
+                throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "\(provider.displayName) API key missing. Configure it in Settings."])
+            }
+            authHeader = "Bearer \(key)"
+        }
+        var messages: [[String: Any]] = [["role": "system", "content": anthropicSystemContent(trusted: systemPrompt, memoryContext: request.memoryContext)]]
+        for message in conversationMessages {
+            if let content = message["content"] as? [[String: Any]],
+               let text = content.first(where: { ($0["type"] as? String) == "text" })?["text"] as? String {
+                messages.append(["role": message["role"] ?? "user", "content": text])
+            } else { messages.append(message) }
+        }
+        var userText = request.query
+        if conversationMessages.isEmpty, let context = request.providerContext {
+            switch context {
+            case .window(let app, let title, let url):
+                userText = "Context — App: \(app), Window: \(title)" + (url.map { ", URL: \($0)" } ?? "") + "\n\n" + request.query
+            case .file(let name, _, let bytes):
+                if provider.isLocal, let bytes, let text = String(data: bytes, encoding: .utf8) {
+                    userText = "File: \(name)\n\n\(String(text.prefix(24_000)))\n\n\(request.query)"
+                } else { userText = "File: \(name)\n\n\(request.query)" }
+            }
+        }
+        messages.append(["role": "user", "content": userText])
+        conversationMessages.append(["role": "user", "content": userText])
+        var body: [String: Any] = ["model": request.model, "max_tokens": 4096, "messages": messages]
+        if provider.isLocal { body["stream"] = false }
+        var urlRequest = URLRequest(url: url, timeoutInterval: provider.isLocal ? 120 : 30)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+        do {
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"])
+            }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let message = choices.first?["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
+            }
+            let text = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            conversationMessages.append(["role": "assistant", "content": text])
+            return .init(text: text, completed: true, cancelled: false, hasToolMaterial: false)
+        } catch {
+            conversationMessages.removeLast()
+            throw error
+        }
+    }
+
     func chat(query: String, context: PromptContext?, state: AppState) async {
         if DemoEngine.shared.isActive {
             state.stateOverride = .thinking
@@ -257,16 +360,25 @@ final class ClaudeService: ChatProviderServing {
                 userContent.append(["type": "text", "text": "File: \(name)"])
             }
         }
+        userContent.append(["type": "text", "text": query])
+
         conversationMessages.append(["role": "user", "content": userContent])
-        let body = anthropicChatBody(model: model, trustedSystem: systemPrompt, memoryContext: mapped.memoryContext, tools: webSearchTools, messages: conversationMessages)
+
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 4096,
+            "tools": webSearchTools,
+            "system": systemPrompt,
+            "messages": conversationMessages,
+        ]
+
         do {
             let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let content = json["content"] as? [[String: Any]],
-                  let text = content.compactMap({ $0["type"] as? String == "text" ? $0["text"] as? String : nil }).joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines) as String?, !text.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected API response."]) }
-            conversationMessages.append(["role": "assistant", "content": content])
-            let hasToolMaterial = content.contains { block in let type = block["type"] as? String; return type == "tool_use" || type == "tool_result" || type == "server_tool_use" || type == "web_search_tool_result" }
-            return .init(text: text, completed: true, cancelled: false, hasToolMaterial: hasToolMaterial)
-        } catch { conversationMessages.removeLast(); throw error }
+            await handleChatResult(data, state: state)
+        } catch {
+            conversationMessages.removeLast()
+            await showError(error.localizedDescription, state: state)
+        }
     }
 
     // MARK: - OpenAI-compatible chat (Google Gemini / OpenAI / Ollama / LM Studio)
@@ -621,11 +733,7 @@ final class ClaudeService: ChatProviderServing {
 
     private func readFileAsBlock(url: URL) -> [String: Any]? {
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return fileBlock(data: data, name: url.lastPathComponent)
-    }
-
-    private func fileBlock(data: Data, name: String) -> [String: Any]? {
-        let ext = URL(fileURLWithPath: name).pathExtension.lowercased()
+        let ext = url.pathExtension.lowercased()
         let base64 = data.base64EncodedString()
 
         if ext == "pdf" {

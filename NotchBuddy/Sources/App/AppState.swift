@@ -96,38 +96,6 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
     }
 
-    @Published var hindsightEnabled = HindsightConfig.defaults.enabled {
-        didSet { UserDefaults.standard.set(hindsightEnabled, forKey: "hindsightEnabled") }
-    }
-    @Published var hindsightBaseUrl = HindsightConfig.defaults.baseUrl {
-        didSet { UserDefaults.standard.set(hindsightBaseUrl, forKey: "hindsightBaseUrl") }
-    }
-    @Published var hindsightTenant = HindsightConfig.defaults.tenant {
-        didSet { UserDefaults.standard.set(hindsightTenant, forKey: "hindsightTenant") }
-    }
-    @Published var hindsightBank = HindsightConfig.defaults.bank {
-        didSet { UserDefaults.standard.set(hindsightBank, forKey: "hindsightBank") }
-    }
-    @Published var hindsightAutomaticRecall = HindsightConfig.defaults.automaticRecall {
-        didSet { UserDefaults.standard.set(hindsightAutomaticRecall, forKey: "hindsightAutomaticRecall") }
-    }
-    @Published var hindsightInferredRetention = HindsightConfig.defaults.inferredRetention {
-        didSet { UserDefaults.standard.set(hindsightInferredRetention, forKey: "hindsightInferredRetention") }
-    }
-    @Published var hindsightAllowDevelopmentHttp = HindsightConfig.defaults.allowDevelopmentHttp {
-        didSet { UserDefaults.standard.set(hindsightAllowDevelopmentHttp, forKey: "hindsightAllowDevelopmentHttp") }
-    }
-
-    var hindsightConfig: HindsightConfig {
-        HindsightConfig(
-            enabled: hindsightEnabled,
-            baseUrl: hindsightBaseUrl,
-            tenant: hindsightTenant,
-            bank: hindsightBank,
-            automaticRecall: hindsightAutomaticRecall,
-            inferredRetention: hindsightInferredRetention,
-            allowDevelopmentHttp: hindsightAllowDevelopmentHttp
-        )
     // In-chat provider + model — picked via the model selector in the prompt view
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
@@ -248,6 +216,40 @@ final class AppState: ObservableObject {
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
         }
+    }
+
+    @Published var hindsightEnabled = HindsightConfig.defaults.enabled {
+        didSet { UserDefaults.standard.set(hindsightEnabled, forKey: "hindsightEnabled") }
+    }
+    @Published var hindsightBaseUrl = HindsightConfig.defaults.baseUrl {
+        didSet { UserDefaults.standard.set(hindsightBaseUrl, forKey: "hindsightBaseUrl") }
+    }
+    @Published var hindsightTenant = HindsightConfig.defaults.tenant {
+        didSet { UserDefaults.standard.set(hindsightTenant, forKey: "hindsightTenant") }
+    }
+    @Published var hindsightBank = HindsightConfig.defaults.bank {
+        didSet { UserDefaults.standard.set(hindsightBank, forKey: "hindsightBank") }
+    }
+    @Published var hindsightAutomaticRecall = HindsightConfig.defaults.automaticRecall {
+        didSet { UserDefaults.standard.set(hindsightAutomaticRecall, forKey: "hindsightAutomaticRecall") }
+    }
+    @Published var hindsightInferredRetention = HindsightConfig.defaults.inferredRetention {
+        didSet { UserDefaults.standard.set(hindsightInferredRetention, forKey: "hindsightInferredRetention") }
+    }
+    @Published var hindsightAllowDevelopmentHttp = HindsightConfig.defaults.allowDevelopmentHttp {
+        didSet { UserDefaults.standard.set(hindsightAllowDevelopmentHttp, forKey: "hindsightAllowDevelopmentHttp") }
+    }
+
+    var hindsightConfig: HindsightConfig {
+        HindsightConfig(
+            enabled: hindsightEnabled,
+            baseUrl: hindsightBaseUrl,
+            tenant: hindsightTenant,
+            bank: hindsightBank,
+            automaticRecall: hindsightAutomaticRecall,
+            inferredRetention: hindsightInferredRetention,
+            allowDevelopmentHttp: hindsightAllowDevelopmentHttp
+        )
     }
 
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
@@ -506,6 +508,13 @@ final class AppState: ObservableObject {
         mochiOutfitSelection = Outfit.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
+        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
+        if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
+        if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
+        if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
+        if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         if let v = ud.object(forKey: "hindsightEnabled") as? Bool { hindsightEnabled = v }
         if let v = ud.string(forKey: "hindsightBaseUrl"), !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             hindsightBaseUrl = v.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -519,13 +528,6 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hindsightAutomaticRecall") as? Bool { hindsightAutomaticRecall = v }
         if let v = ud.object(forKey: "hindsightInferredRetention") as? Bool { hindsightInferredRetention = v }
         if let v = ud.object(forKey: "hindsightAllowDevelopmentHttp") as? Bool { hindsightAllowDevelopmentHttp = v }
-        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
-        if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
-        if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
-        if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
-        if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
-        if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
-        if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
@@ -882,7 +884,7 @@ enum ChatRole { case user, assistant }
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: ChatRole
-    let content: String
+    var content: String
     var turnId: String? = nil
     var memoryStatus: ChatMemorySaveStatus? = nil
     var artifactSummary: ArtifactSummary? = nil
@@ -907,5 +909,4 @@ extension ChatMemorySaveStatus {
         case .notSaved: return "Memory not saved"
         }
     }
-    var content: String   // var for streaming updates
 }

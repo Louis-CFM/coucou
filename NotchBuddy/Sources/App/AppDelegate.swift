@@ -48,11 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         demoMenuItem = demoItem
         menu.addItem(demoItem)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Memory Manager…", action: #selector(openMemoryManager), keyEquivalent: "m")
-        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(withTitle: NSLocalizedString("Open Coucou", comment: ""), action: #selector(openIsland), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Weekly recap", comment: ""), action: #selector(openWeeklyRecap), keyEquivalent: "")
+        menu.addItem(withTitle: "Memory Manager…", action: #selector(openMemoryManager), keyEquivalent: "m")
         menu.addItem(withTitle: NSLocalizedString("Settings…", comment: ""), action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -71,11 +70,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.expand(to: .overview)
     }
 
+    @objc private func openWeeklyRecap() {
+        islandController?.expand(to: .recap)
+    }
+
     @objc private func openMemoryManager() {
         if AppState.shared.mode == .expanded { islandController?.collapse() }
         MemoryManagerWindowController.shared.present()
-    @objc private func openWeeklyRecap() {
-        islandController?.expand(to: .recap)
     }
 
     private var settingsWindow: NSWindow?

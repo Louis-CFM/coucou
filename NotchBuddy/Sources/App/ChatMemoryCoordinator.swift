@@ -170,7 +170,9 @@ final class ChatMemoryCoordinator {
                 if generation == turnGeneration { memoryStatus = "Memory recall unavailable" }
             }
         }
-        let result = try await provider.send(.init(query: query, contextKind: contextKind, providerContext: providerContext, memoryContext: recalled))
+        let selectedProvider = AppState.shared.chatProvider
+        let selectedModel = AppState.shared.activeChatModel
+        let result = try await provider.send(.init(query: query, contextKind: contextKind, providerContext: providerContext, memoryContext: recalled, provider: selectedProvider, model: selectedModel))
         guard generation == turnGeneration else { return .init(turnId: turnId, result: result) }
         let current = state()
         let safety = ChatTurnSafety.classify(query: query, result: result, contextKind: contextKind)
