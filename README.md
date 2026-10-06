@@ -278,6 +278,12 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 - Claude Code hooks go through the same `coucou-hook`, over a Unix socket in
   `$XDG_RUNTIME_DIR`; keys live in the Secret Service.
 
+## Support
+
+Coucou is free and open source; if it saves you time, you can [sponsor it on GitHub](https://github.com/sponsors/Louis-CFM).
+
+I build custom tools for teams (agents, dashboards, automations, native Mac and iPhone apps). Want one? Get in touch at [louisraille.fr](https://louisraille.fr).
+
 ## Contributing
 
 Issues and PRs are very welcome — new integrations, new emotes, new sounds, bug fixes. See [CONTRIBUTING.md](CONTRIBUTING.md).
