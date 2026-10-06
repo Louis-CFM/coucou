@@ -72,6 +72,28 @@ enum AppLauncher {
         )
     }
 
+    /// Bring back the app where the focused agent lives (Cursor / Codex / terminal).
+    @discardableResult
+    static func openAgentHome(pillId: String?) -> Bool {
+        switch pillId {
+        case "agent_cursor":
+            return open(bundleId: "com.todesktop.230313mzl4w4u92")
+        case "agent_codex":
+            return open(bundleId: "com.openai.codex")
+        default:
+            return openTerminal()
+        }
+    }
+
+    /// Primary-button label for returning to the agent after a session ends.
+    static func openAgentHomeTitle(pillId: String?) -> String {
+        switch pillId {
+        case "agent_cursor": return "Open Cursor"
+        case "agent_codex":  return "Open Codex"
+        default:             return "Open terminal"
+        }
+    }
+
     /// Open a https dashboard (or any URL) in the default handler.
     @discardableResult
     static func openURL(_ string: String) -> Bool {

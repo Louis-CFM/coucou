@@ -581,11 +581,13 @@ struct ErrorView: View {
 struct FinishedView: View {
     @ObservedObject var state: AppState
 
+    private var pillId: String? { state.focusTask?.id ?? state.focusId }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(task: state.focusTask, label: "finished")
                 Text({
                     if let fl = state.focusTask?.finalLine { return fl }
                     if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
@@ -596,8 +598,8 @@ struct FinishedView: View {
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
                     #if !APPSTORE
-                    PrimaryButton("Open terminal") {
-                        _ = AppLauncher.openTerminal()
+                    PrimaryButton(AppLauncher.openAgentHomeTitle(pillId: pillId)) {
+                        _ = AppLauncher.openAgentHome(pillId: pillId)
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
                     }
                     #endif

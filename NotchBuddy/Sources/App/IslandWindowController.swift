@@ -588,12 +588,13 @@ final class IslandWindowController: NSWindowController {
 
     #if !APPSTORE
     private func performJumpToTerminal() {
-        guard state.focusTask != nil else {
+        guard let task = state.focusTask else {
             SoundEngine.shared.play("error")
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        if !AppLauncher.openTerminal() {
+        // Cursor / Codex → editor; Claude / Gemini / others → terminal.
+        if !AppLauncher.openAgentHome(pillId: task.id) {
             SoundEngine.shared.play("error")
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
