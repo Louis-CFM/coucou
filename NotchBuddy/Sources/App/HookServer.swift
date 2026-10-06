@@ -631,7 +631,14 @@ final class HookServer: @unchecked Sendable {
         #else
         let isCodexRequest = false
         #endif
-        if !isCodexRequest && Self.validateAgent(rawAgent) != nil {
+        // Opt-in approval card for third-party agents. An agent may send
+        // `"coucou_approval": true` in its hook payload to receive the same blocking
+        // Allow / Deny card as Claude Code and Codex. Off by default: agents that do not
+        // expect a blocking answer keep re-asking in their own terminal, as before.
+        let externalAgent = Self.validateAgent(rawAgent)
+        let wantsApprovalCard = isCodexRequest
+            || (externalAgent != nil && (payload["coucou_approval"] as? Bool ?? false))
+        if !wantsApprovalCard && externalAgent != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -643,12 +650,14 @@ final class HookServer: @unchecked Sendable {
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
+        } else if let agent = externalAgent, wantsApprovalCard {
+            pillId = "agent_\(agent)"
         } else if isCursorEditor {
             pillId = "agent_cursor"
         } else {
             pillId = "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        guard wantsApprovalCard || isCursorEditor || isVSCodeEditor else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
