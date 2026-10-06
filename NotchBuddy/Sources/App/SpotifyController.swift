@@ -151,6 +151,18 @@ final class SpotifyController: ObservableObject {
         if playing && !wasPlaying {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
         }
+        // Refresh volume — PlaybackStateChanged does not always include it.
+        refreshVolume()
+    }
+
+    private func refreshVolume() {
+        Task {
+            let result = await runAppleScript(
+                #"tell application id "com.spotify.client" to get sound volume as string"#
+            )
+            guard case .success(let values) = result, let raw = values.first, let v = Int(raw) else { return }
+            volume = min(100, max(0, v))
+        }
     }
 
     private func fetchAndApply() {

@@ -4712,7 +4712,7 @@ struct SpotifyPill: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(.leading, 34)
-                .padding(.trailing, showControls ? 52 : 10)
+                .padding(.trailing, showControls ? 72 : 10)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
                 .allowsHitTesting(false)
@@ -4721,6 +4721,9 @@ struct SpotifyPill: View {
                 HStack(spacing: 0) {
                     Spacer()
                     HStack(spacing: 2) {
+                        MusicControlButton(icon: "speaker.wave.2.fill", color: task.color) {
+                            SpotifyController.shared.volumeDown()
+                        }
                         MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
                             SpotifyController.shared.playPause()
                         }
@@ -4826,7 +4829,8 @@ struct SpotifyCardView: View {
                         .padding(.leading, 108)
                 }
 
-                HStack(spacing: 8) {
+                // Transport — kept short so it fits the left card
+                HStack(spacing: 10) {
                     Button(action: { SpotifyController.shared.previousTrack() }) {
                         Image(systemName: "backward.fill")
                             .font(.system(size: 11))
@@ -4845,31 +4849,58 @@ struct SpotifyCardView: View {
                             .foregroundColor(Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 108)
+                .padding(.trailing, 12)
+                .padding(.top, 4)
 
-                    // Volume
+                // Volume on its own row (same-line controls were clipped by the narrow card)
+                HStack(spacing: 6) {
                     Image(systemName: volumeIcon)
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#6B7079"))
-                        .padding(.leading, 4)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#1DB954").opacity(0.85))
+                        .frame(width: 14)
                     Button(action: { SpotifyController.shared.volumeDown() }) {
-                        Image(systemName: "minus")
-                            .font(.system(size: 10, weight: .bold))
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 14))
                             .foregroundColor(Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    .help("Volume down")
+                    // Compact bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color(hex: "#2A2C31"))
+                                .frame(height: 4)
+                            Capsule()
+                                .fill(Color(hex: "#1DB954"))
+                                .frame(width: max(4, geo.size.width * CGFloat(controller.volume) / 100), height: 4)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .center)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                            let pct = Int((value.location.x / max(geo.size.width, 1)) * 100)
+                            SpotifyController.shared.setVolume(pct)
+                        })
+                    }
+                    .frame(height: 16)
+                    Button(action: { SpotifyController.shared.volumeUp() }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Volume up")
                     Text("\(controller.volume)")
                         .font(.system(size: 10, weight: .medium).monospacedDigit())
                         .foregroundColor(Color(hex: "#6B7079"))
-                        .frame(minWidth: 18, alignment: .center)
-                    Button(action: { SpotifyController.shared.volumeUp() }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                    }
-                    .buttonStyle(.plain)
+                        .frame(minWidth: 20, alignment: .trailing)
                 }
                 .padding(.leading, 108)
-                .padding(.top, 6)
+                .padding(.trailing, 12)
+                .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
