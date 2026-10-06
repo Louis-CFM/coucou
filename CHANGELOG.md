@@ -19,7 +19,7 @@
 - Global media shortcuts (GitHub build): ⌃⌥P play/pause, ⌃⌥F next track (Spotify preferred when active).
 - Compact alert badge on Mochi for pending approval / CI-deploy error / finished.
 - Session end step includes a +/− file summary (`+42 −11 in 3 files`); pin a file in the programming view so edits keep that tab open.
-- Mochi wears sunglasses while music plays (overrides seasonal Auto; also on the Spotify/Music pill); Settings → Behavior: idle breathing + Quiet / Alive presets; one-shot tip after first greeting.
+- Mochi wears sunglasses while music plays (overrides seasonal Auto; also on the Spotify/Music pill); Settings → General → Mochi: pick an outfit (or open the notch wardrobe); idle breathing + Quiet / Alive presets; one-shot tip after first greeting.
 - Settings → General: **Follow cursor when idle** (eyes in the smallest strip) and **Stay collapsed until hover** (rest hidden; expand on hover; alerts still force-open).
 
 ## 0.1.7 — October 4, 2026

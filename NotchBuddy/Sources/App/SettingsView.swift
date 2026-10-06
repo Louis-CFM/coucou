@@ -212,6 +212,15 @@ struct SettingsView: View {
 
     // MARK: - General section
 
+    private var mochiOutfitCaption: String {
+        if state.mochiOutfitSelection == .auto {
+            let seasonal = Outfit.seasonal(for: Date(), calendar: .current)
+            let name = seasonal == .none ? "None" : seasonal.displayName
+            return "Auto follows the seasons (now: \(name)). While music plays, Mochi puts on sunglasses. You can also right-click him or press ⌃⌥G."
+        }
+        return "Pick a look for Mochi. While music plays, sunglasses only override Auto or None. You can also right-click him or press ⌃⌥G."
+    }
+
     @ViewBuilder private var generalSection: some View {
         GroupBox("Sound") {
             VStack(alignment: .leading, spacing: 10) {
@@ -272,6 +281,31 @@ struct SettingsView: View {
                 Text("Quiet = collapsed + no eyes. Alive = eyes on + compact rest.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+
+        GroupBox("Mochi") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Text("Outfit")
+                        .frame(width: 70, alignment: .leading)
+                    Picker("Outfit", selection: $state.mochiOutfitSelection) {
+                        ForEach(Outfit.allCases, id: \.self) { outfit in
+                            Text(outfit.displayName).tag(outfit)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 220)
+                }
+                Text(mochiOutfitCaption)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open wardrobe in notch") {
+                    NotificationCenter.default.post(name: .openWardrobeFromDesktop, object: nil)
+                }
+                .buttonStyle(.bordered)
             }
             .padding(6)
         }
