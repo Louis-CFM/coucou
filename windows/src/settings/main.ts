@@ -386,9 +386,28 @@ function generalSection(): HTMLElement {
     h("option", { value: "primary", text: "Main display" }),
     h("option", { value: "cursor", text: "Display under the cursor" }),
   );
+  const language = h("select", {}) as HTMLSelectElement;
+  language.append(
+    h("option", { value: "auto", text: "System language" }),
+    h("option", { value: "en", text: "English" }),
+    h("option", { value: "de", text: "Deutsch" }),
+    h("option", { value: "fr", text: "Français" }),
+  );
+  language.value = settings.language;
+  language.addEventListener("change", () => {
+    settings.language = language.value;
+    void save();
+  });
+
+  void Bridge.monitors().then((list) => {
+    for (const m of list ?? []) {
+      screen.append(h("option", { value: m.name, text: `${m.name} (${m.width}×${m.height})` }));
+    }
+    screen.value = settings.screen;
+  });
   screen.value = settings.screen;
   screen.addEventListener("change", () => {
-    settings.screen = screen.value as Settings["screen"];
+    settings.screen = screen.value;
     void save();
   });
 
@@ -409,6 +428,11 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
       screen,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Language" }),
+      language,
+      h("span", { class: "hint", text: "for Mochi's answers and the activity labels" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),

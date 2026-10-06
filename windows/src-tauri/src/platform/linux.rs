@@ -12,13 +12,13 @@
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use gtk::glib::translate::ToGlibPtr;
 use gtk::prelude::*;
-use tauri::{AppHandle, WebviewWindow};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 use super::{home_dir, LocalTime};
 
@@ -51,15 +51,32 @@ pub fn local_dir() -> PathBuf {
     xdg("XDG_DATA_HOME", ".local/share").join("coucou")
 }
 
-/// Environment the webview must inherit, set before any thread or process
-/// starts.
-///
+/// Environment the webview must inherit. Set before any thread or process starts.
+pub fn prepare_environment() {
+    work_around_nvidia_explicit_sync();
+    isolate_appimage_gstreamer_registry();
+}
+
+/// With NVIDIA's proprietary driver, WebKitGTK's DMABUF renderer commits frames
+/// to a Wayland surface after announcing explicit sync without an acquire point.
+/// The compositor answers with a protocol error and the app dies on its first
+/// frame ("explicit sync is used, but no acquire point is set", seen on KDE with
+/// an RTX 2080 Ti). Software frames avoid it, and an island this small does not
+/// need the fast path. A value the user set themselves stays.
+fn work_around_nvidia_explicit_sync() {
+    if Path::new("/proc/driver/nvidia/version").exists()
+        && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+}
+
 /// Inside an AppImage, WebKit uses the GStreamer bundled with it, and GStreamer
 /// keeps its plugin registry in ~/.cache/gstreamer-1.0 by default — the same
 /// file the system's GStreamer uses. The AppImage is mounted somewhere new on
 /// every launch, so each launch would rewrite the system's registry with
 /// plugin paths that vanish once Coucou quits. Give ours its own file.
-pub fn prepare_environment() {
+fn isolate_appimage_gstreamer_registry() {
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
@@ -181,6 +198,10 @@ mod layer {
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
+        pub fn gtk_layer_set_monitor(
+            window: *mut GtkWindow,
+            monitor: *mut gtk::gdk::ffi::GdkMonitor,
+        );
     }
 }
 
@@ -201,6 +222,22 @@ fn gtk_window_ptr(win: &gtk::ApplicationWindow) -> *mut gtk::ffi::GtkWindow {
 /// WebKitGTK has no competing drop target to remove.
 pub fn unblock_webview_drops(_app: &AppHandle) {}
 
+/// WebKitGTK sends the page no mouseleave when the pointer leaves the surface
+/// (and Wayland has no global cursor either), so the island would never learn
+/// the mouse is gone and never auto-close. GTK does get the compositor's leave:
+/// report it as the cursor being far away, which is what the Windows poll says.
+fn report_pointer_leaving(win: &WebviewWindow, gw: &gtk::ApplicationWindow) {
+    gw.add_events(gtk::gdk::EventMask::LEAVE_NOTIFY_MASK);
+    let win = win.clone();
+    gw.connect_leave_notify_event(move |_, ev| {
+        // Moving onto the webview inside the window is not leaving.
+        if ev.detail() != gtk::gdk::NotifyType::Inferior {
+            let _ = win.emit("cursor", crate::island::CursorPayload { x: -10_000.0, y: -10_000.0 });
+        }
+        gtk::glib::Propagation::Proceed
+    });
+}
+
 /// Turns the island into an overlay surface on the top edge that never takes
 /// the keyboard. Must run before the window is first shown: a layer surface
 /// cannot be made out of a window the compositor already knows.
@@ -210,6 +247,7 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 /// up to the window manager.
 pub fn make_non_activating(win: &WebviewWindow) {
     let Ok(gw) = win.gtk_window() else { return };
+    report_pointer_leaving(win, &gw);
     // COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
     let wanted = std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true);
     let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
@@ -300,9 +338,193 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
     }
 }
 
+// ── Terminal ──────────────────────────────────────────────────────────────────
+
+/// `:1.42` or `org.kde.konsole-1234`: a D-Bus service name, nothing else.
+fn is_dbus_service(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() < 64
+        && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b':' | b'.' | b'-' | b'_'))
+}
+
+/// `/Sessions/3` → `3`.
+fn object_index<'a>(path: &'a str, kind: &str) -> Option<&'a str> {
+    let n = path.strip_prefix(kind)?;
+    (!n.is_empty() && n.len() < 10 && n.bytes().all(|b| b.is_ascii_digit())).then_some(n)
+}
+
+/// One `gdbus call` on the session bus; its stdout on success.
+fn gdbus(dest: &str, path: &str, method: &str, args: &[&str]) -> Option<String> {
+    let out = Command::new("gdbus")
+        .args(["call", "--session", "--dest", dest, "--object-path", path, "--method", method])
+        .args(args)
+        .output()
+        .ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Switches Konsole to the tab the session runs in and raises its window.
+///
+/// Wayland lets no app raise a window, but KWin runs scripts that can: the
+/// window is picked by Konsole's process id and, when one Konsole owns several
+/// windows, by the tab's title. Without KWin (or `gdbus`) the tab still
+/// switches and false is returned only if Konsole itself did not answer.
+pub fn focus_terminal(service: &str, session: &str, window: &str) -> bool {
+    let (Some(id), Some(_)) =
+        (object_index(session, "/Sessions/"), object_index(window, "/Windows/"))
+    else {
+        return false;
+    };
+    if !is_dbus_service(service) {
+        return false;
+    }
+    let title = gdbus(service, session, "org.kde.konsole.Session.title", &["1"])
+        .and_then(|t| t.trim().strip_prefix("('")?.strip_suffix("',)").map(str::to_string))
+        .unwrap_or_default();
+    if gdbus(service, window, "org.kde.konsole.Window.setCurrentSession", &[id]).is_none() {
+        return false;
+    }
+    let pid = gdbus(
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        "org.freedesktop.DBus.GetConnectionUnixProcessID",
+        &[service],
+    )
+    .and_then(|o| o.split_whitespace().nth(1)?.trim_end_matches(',').parse::<u32>().ok());
+    if let Some(pid) = pid {
+        raise_window_of(pid, &title);
+    }
+    true
+}
+
+/// Asks KWin to activate the window of process `pid` whose caption starts with
+/// `title` (any window of the process if none does). The title goes in as a JSON
+/// string, which is also a valid JS one.
+fn raise_window_of(pid: u32, title: &str) {
+    let script = format!(
+        "const ws = workspace.windowList().filter(w => w.pid === {pid});\n\
+         const w = ws.find(w => w.caption.startsWith({title})) || ws[0];\n\
+         if (w) workspace.activeWindow = w;\n",
+        title = serde_json::to_string(title).unwrap_or_else(|_| "\"\"".into()),
+    );
+    let path = std::env::temp_dir().join(format!("coucou-focus-{}.js", std::process::id()));
+    if std::fs::write(&path, script).is_err() {
+        return;
+    }
+    let name = format!("coucou-focus-{}", std::process::id());
+    let path_str = path.to_string_lossy();
+    if let Some(id) = gdbus(
+        "org.kde.KWin",
+        "/Scripting",
+        "org.kde.kwin.Scripting.loadScript",
+        &[&path_str, &name],
+    )
+    .and_then(|o| {
+        o.split(|c: char| !c.is_ascii_digit()).find(|n| !n.is_empty()).map(str::to_string)
+    }) {
+        gdbus("org.kde.KWin", &format!("/Scripting/Script{id}"), "org.kde.kwin.Script.run", &[]);
+        gdbus("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.unloadScript", &[&name]);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+// ── Displays ──────────────────────────────────────────────────────────────────
+
+/// Top-left corner of the primary display, in pixels.
+///
+/// Wayland has no primary display and GDK just lists the first one, which is
+/// rarely the one the user calls the main screen. Compositors do tell XWayland
+/// though (KWin from its "primary" priority, Mutter likewise), so ask RandR.
+/// `None` where there is no `xrandr` or no X server: the caller falls back to
+/// GDK's order. Cached for a few seconds, the display poll asks twice a second.
+// Known limit: positions are compared 1:1 with tao's, so a fractional-scale primary may not match.
+pub fn primary_monitor_origin() -> Option<(i32, i32)> {
+    use std::time::{Duration, Instant};
+    static CACHE: Mutex<Option<(Instant, Option<(i32, i32)>)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    if let Some((at, found)) = *cache {
+        if at.elapsed() < Duration::from_secs(5) {
+            return found;
+        }
+    }
+    let found = Command::new("xrandr")
+        .arg("--listmonitors")
+        .stderr(Stdio::null())
+        .output()
+        .ok()
+        .and_then(|o| parse_primary_origin(&String::from_utf8_lossy(&o.stdout)));
+    *cache = Some((Instant::now(), found));
+    found
+}
+
+/// `" 0: +*DP-1 2560/597x1440/336+1920+0  DP-1"` → `(1920, 0)`.
+fn parse_primary_origin(listing: &str) -> Option<(i32, i32)> {
+    let line = listing.lines().find(|l| l.contains("+*"))?;
+    let mut at = line.split_whitespace().nth(2)?.split('+').skip(1);
+    Some((at.next()?.parse().ok()?, at.next()?.parse().ok()?))
+}
+
+/// Index of the monitor the layer surface was last pinned to (none yet).
+static PINNED_MONITOR: AtomicUsize = AtomicUsize::new(usize::MAX);
+
+/// Pins the layer surface to the monitor with this index. tao lists monitors in
+/// GDK's order, so the index means the same thing on both sides. Without this
+/// the compositor picks the output, and it is rarely the one the user wants.
+/// A no-op for an ordinary window, which `set_position` already places.
+pub fn place_on_monitor(win: &WebviewWindow, index: usize) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed)
+        || PINNED_MONITOR.swap(index, Ordering::Relaxed) == index
+    {
+        return;
+    }
+    let Ok(gw) = win.gtk_window() else { return };
+    let Some(monitor) = gtk::gdk::Display::default().and_then(|d| d.monitor(index as i32)) else {
+        return;
+    };
+    unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), monitor.to_glib_none().0) };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Needs a running Konsole with this test started inside it:
+    /// `cargo test --lib -- --ignored focus_own_konsole_tab`.
+    #[test]
+    #[ignore]
+    fn focus_own_konsole_tab() {
+        let get = |k| std::env::var(k).expect(k);
+        assert!(focus_terminal(
+            &get("KONSOLE_DBUS_SERVICE"),
+            &get("KONSOLE_DBUS_SESSION"),
+            &get("KONSOLE_DBUS_WINDOW"),
+        ));
+    }
+
+    #[test]
+    fn only_konsole_shaped_names_reach_the_bus() {
+        assert!(is_dbus_service(":1.42") && is_dbus_service("org.kde.konsole-1234"));
+        assert!(
+            !is_dbus_service("")
+                && !is_dbus_service("a b")
+                && !is_dbus_service("x;y")
+                && !is_dbus_service("--help ")
+        );
+        assert_eq!(object_index("/Sessions/3", "/Sessions/"), Some("3"));
+        assert_eq!(object_index("/Windows/12", "/Windows/"), Some("12"));
+        assert_eq!(object_index("/Sessions/3/x", "/Sessions/"), None);
+        assert_eq!(object_index("/Windows/1", "/Sessions/"), None);
+        assert_eq!(object_index("/Sessions/", "/Sessions/"), None);
+    }
+
+    #[test]
+    fn the_primary_display_is_the_one_marked_with_a_star() {
+        let out = "Monitors: 2\n 0: +*DP-1 2560/597x1440/336+1920+0  DP-1\n 1: +HDMI-A-1 1920/521x1080/293+0+360  HDMI-A-1\n";
+        assert_eq!(parse_primary_origin(out), Some((1920, 0)));
+        assert_eq!(parse_primary_origin(" 0: +DP-1 1920/1x1080/1+0+0  DP-1\n"), None);
+        let left = " 0: +*DP-2 1920/1x1080/1+-1920+0  DP-2\n";
+        assert_eq!(parse_primary_origin(left), Some((-1920, 0)));
+    }
 
     #[test]
     fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {

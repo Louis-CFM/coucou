@@ -33,6 +33,9 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 /// Longest string forwarded for any single field; the island truncates to far
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
+/// How much of what a command printed goes on: its last lines, each cut short.
+const TAIL_LINES: usize = 3;
+const TAIL_WIDTH: usize = 160;
 
 #[cfg(windows)]
 mod win;
@@ -128,6 +131,17 @@ fn read_event() -> Option<(String, String)> {
         .unwrap_or(arg_event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
 
+    // What a finished command printed is dropped with the rest of `tool_response`,
+    // except its last lines: the island shows them under the command, like a
+    // terminal pane. Never the whole output — it may hold anything.
+    if event == "PostToolUse"
+        && matches!(map.get("tool_name").and_then(|v| v.as_str()), Some("Bash" | "PowerShell"))
+    {
+        if let Some(lines) = map.get("tool_response").and_then(output_tail) {
+            map.insert("tool_tail".into(), serde_json::json!(lines));
+        }
+    }
+
     for field in DROPPED_FIELDS {
         map.remove(*field);
     }
@@ -154,6 +168,10 @@ fn read_event() -> Option<(String, String)> {
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // Konsole: where "Open terminal" can jump to (its D-Bus tab and window).
+        ("konsole_service", "KONSOLE_DBUS_SERVICE"),
+        ("konsole_session", "KONSOLE_DBUS_SESSION"),
+        ("konsole_window", "KONSOLE_DBUS_WINDOW"),
     ] {
         if !map.contains_key(key) {
             let value = std::env::var(var).unwrap_or_default();
@@ -166,6 +184,49 @@ fn read_event() -> Option<(String, String)> {
     let mut line = payload.to_string();
     line.push('\n');
     Some((line, event))
+}
+
+/// The last few non-empty lines a command printed (stdout, else stderr), without
+/// colour codes and cut to a width the island can show.
+fn output_tail(response: &serde_json::Value) -> Option<Vec<String>> {
+    let text = match response {
+        serde_json::Value::String(s) => s.as_str(),
+        serde_json::Value::Object(o) => ["stdout", "stderr"]
+            .iter()
+            .filter_map(|k| o.get(*k)?.as_str())
+            .find(|s| !s.trim().is_empty())?,
+        _ => return None,
+    };
+    let mut lines: Vec<String> = text
+        .lines()
+        .map(|l| strip_ansi(l).trim_end().to_string())
+        .filter(|l| !l.trim().is_empty())
+        .rev()
+        .take(TAIL_LINES)
+        .map(|l| l.chars().take(TAIL_WIDTH).collect())
+        .collect();
+    lines.reverse();
+    (!lines.is_empty()).then_some(lines)
+}
+
+/// Drops `ESC [ … letter` colour and cursor sequences.
+fn strip_ansi(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' && chars.peek() == Some(&'[') {
+            chars.next();
+            while let Some(&n) = chars.peek() {
+                chars.next();
+                if n.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
@@ -243,6 +304,22 @@ mod tests {
         assert!(decision_json("maybe").is_none());
         // The shape the app used to send must not be mistaken for a decision.
         assert!(decision_json(r#"{"permissionDecision":"allow"}"#).is_none());
+    }
+
+    #[test]
+    fn only_the_last_lines_of_a_command_survive_and_without_colours() {
+        let out = serde_json::json!({ "stdout": "a\n\n\u{1b}[32mPASS\u{1b}[0m tests/x.ts\n  ✓ works (3 ms)\nTests: 1 passed\n" });
+        assert_eq!(
+            output_tail(&out).unwrap(),
+            vec!["PASS tests/x.ts", "  ✓ works (3 ms)", "Tests: 1 passed"]
+        );
+        // stderr is the fallback; nothing printed means nothing to show.
+        assert_eq!(
+            output_tail(&serde_json::json!({ "stdout": "", "stderr": "boom" })).unwrap(),
+            vec!["boom"]
+        );
+        assert!(output_tail(&serde_json::json!({ "stdout": " \n" })).is_none());
+        assert!(output_tail(&serde_json::json!(42)).is_none());
     }
 
     #[test]

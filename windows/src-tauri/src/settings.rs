@@ -20,6 +20,14 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// "auto" follows the system language; otherwise "en", "de" or "fr". Drives the
+    /// chat's answer language and the island's step labels.
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "auto".to_string()
 }
 
 fn default_model() -> String {
@@ -43,6 +51,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            language: default_language(),
         }
     }
 }
