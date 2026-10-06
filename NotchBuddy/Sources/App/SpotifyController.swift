@@ -262,14 +262,14 @@ final class SpotifyController: ObservableObject {
         let ok = AppLauncher.open(
             bundleId: "com.spotify.client",
             fallbackPath: "/Applications/Spotify.app"
-        ) { [weak self] in
-            Task { @MainActor in
-                self?.isRunning = true
-                if self?.isPillActive == true { self?.fetchAndApply() }
-            }
+        )
+        guard ok else { return false }
+        isRunning = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            if isPillActive { fetchAndApply() }
         }
-        if ok { isRunning = true }
-        return ok
+        return true
     }
 
     /// Launch Spotify when a control needs it; returns false if not installed.

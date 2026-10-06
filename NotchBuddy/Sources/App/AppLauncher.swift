@@ -18,19 +18,17 @@ enum AppLauncher {
 
     /// Open (or un-minimize + focus) an app by bundle id.
     @discardableResult
-    static func open(bundleId: String,
-                     fallbackPath: String? = nil,
-                     then: (() -> Void)? = nil) -> Bool {
+    static func open(bundleId: String, fallbackPath: String? = nil) -> Bool {
         if isRunning(bundleId) {
-            frontMost(bundleId: bundleId, then: then)
+            frontMost(bundleId: bundleId)
             return true
         }
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
-        let finish: (NSRunningApplication?, (any Error)?) -> Void = { app, _ in
+        let finish: @Sendable (NSRunningApplication?, (any Error)?) -> Void = { app, _ in
             guard app != nil else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                frontMost(bundleId: bundleId, then: then)
+                frontMost(bundleId: bundleId)
             }
         }
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
@@ -51,29 +49,26 @@ enum AppLauncher {
 
     /// Open the first installed app among `bundleIds` (prefer one already running).
     @discardableResult
-    static func openFirst(of bundleIds: [String],
-                          fallbackPath: String? = nil,
-                          then: (() -> Void)? = nil) -> Bool {
+    static func openFirst(of bundleIds: [String], fallbackPath: String? = nil) -> Bool {
         if let running = bundleIds.first(where: isRunning) {
-            return open(bundleId: running, then: then)
+            return open(bundleId: running)
         }
         if let installed = bundleIds.first(where: {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
         }) {
-            return open(bundleId: installed, fallbackPath: fallbackPath, then: then)
+            return open(bundleId: installed, fallbackPath: fallbackPath)
         }
-        if let fallbackPath {
-            return open(bundleId: bundleIds[0], fallbackPath: fallbackPath, then: then)
+        if let fallbackPath, !bundleIds.isEmpty {
+            return open(bundleId: bundleIds[0], fallbackPath: fallbackPath)
         }
         return false
     }
 
     @discardableResult
-    static func openTerminal(then: (() -> Void)? = nil) -> Bool {
+    static func openTerminal() -> Bool {
         openFirst(
             of: terminalBundleIds,
-            fallbackPath: "/System/Applications/Utilities/Terminal.app",
-            then: then
+            fallbackPath: "/System/Applications/Utilities/Terminal.app"
         )
     }
 
@@ -105,23 +100,20 @@ enum AppLauncher {
         NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == bundleId }
     }
 
-    private static func frontMost(bundleId: String, then: (() -> Void)? = nil) {
+    private static func frontMost(bundleId: String) {
         // Dock-style reopen: openApplication on an already-running app un-minimizes.
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
             NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in
                 runReopenActivate(bundleId: bundleId)
-                DispatchQueue.main.async { then?() }
             }
         } else {
             runReopenActivate(bundleId: bundleId)
-            DispatchQueue.main.async { then?() }
         }
     }
 
     private static func runReopenActivate(bundleId: String) {
-        // Escape for AppleScript string literal.
         let escaped = bundleId.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         let source = """
