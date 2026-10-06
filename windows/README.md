@@ -77,6 +77,49 @@ only ask whether a key exists. Same for every integration key.
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
+## GitHub
+
+A classic token with the `repo` scope. The card shows, most pressing first:
+
+- **CI of the branch you're on**: the branch of your last Claude Code session,
+  read from the project's `.git` folder (worktrees included). Passing, failing
+  (with the failing check), running, or not pushed yet. Click it to open the
+  failing job.
+- **Reviews asked of you**.
+- **Your open pull requests** and where their review stands. Pull requests idle
+  for more than 30 days are left out.
+
+Mochi speaks up when a CI run it watched finishes, when someone reviews one of
+your pull requests, and when a review is asked of you. It checks once a minute,
+with a single GraphQL query.
+
+## Google Calendar
+
+Coucou has no server, so there is no shared "Sign in with Google": it signs in
+with your own OAuth client.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials),
+   create a project and enable the **Google Calendar API**.
+2. Set up the OAuth consent screen and publish it **In production**. Left in
+   *Testing*, Google signs you out every 7 days.
+3. Create an **OAuth client ID** of type **Desktop app**.
+4. In **Settings… → Google Calendar**, paste the client ID and secret, then click
+   **Connect Google account…** and approve in the browser.
+
+Coucou asks for read-only access to your events and your calendar list. It reads
+every calendar you show in Google Calendar, shared and subscribed ones included,
+and colours each row like its calendar. It keeps only the refresh token,
+in the Credential Manager. The pill shows your next events with a **Join** button
+for the meeting that's on.
+
+Mochi reminds you when Google Calendar would: at each event's own reminders, or
+its calendar's defaults, or your main calendar's defaults for calendars that have
+none (imported ones), or five minutes before as a last resort. The island opens
+on a card with the event, its time and place, and **Join** / **Open** / **OK**. If
+you are in the middle of a chat or an approval, it waits as a badge on the
+Calendar pill instead. All-day events don't ring.
+**Disconnect** revokes the access at Google.
+
 ## Build it yourself
 
 You need [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), and the
@@ -93,7 +136,9 @@ npm run pack           # builds the installer and drops it in windows/release/
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
 to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
-otherwise needs a real drag from Explorer to see. Neither page ships in the app.
+otherwise needs a real drag from Explorer to see — and
+`dev/integrations-preview.html`, which feeds the GitHub and Calendar cards fake
+data. None of these pages ship in the app.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -163,6 +208,8 @@ OpenCode and Amp are not yet supported on Windows or Linux. Their integration us
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Windows only, for now: GitHub CI and pull requests (the Mac card shows stars
+  and repositories), and Google Calendar.
 
 ## Linux
 

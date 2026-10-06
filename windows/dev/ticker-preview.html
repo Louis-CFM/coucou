@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou — ticker preview</title>
+    <style>
+      body { margin: 0; background: #000; font: 12px system-ui; color: #ddd; }
+      #stage { position: relative; width: 322px; height: 108px; margin: 32px auto 12px; }
+      #bot { position: absolute; left: 22px; top: 26px; width: 70px; height: 52px; border-radius: 18px; background: #f2f3f5; z-index: 2; }
+      #controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+      #controls button { background: #222; color: #ddd; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="controls">
+      <button id="one">+1 step</button>
+      <button id="burst">+5 burst</button>
+      <button id="reset">reset</button>
+      <button id="stall">stall loop after 1 frame</button>
+    </div>
+    <script type="module" src="./ticker-preview.ts"></script>
+  </body>
+</html>

@@ -35,16 +35,17 @@ function makeRow(): Row {
   check.style.color = "#454850"; // the completed tick is dimmer than the chevron
   check.style.position = "absolute";
   chevron.style.position = "absolute";
+  // Both text layers are stacked absolutely on the same 22 px line. The dim one
+  // used to sit at its static position after the shimmer text, so any label
+  // wider than the row wrapped it onto a second line: once the step completed,
+  // its text dropped right on top of the current one.
   const shimmer = h("span", { class: "tick-text shimmer" });
-  const dim = h("span", {
-    class: "tick-text",
-    style: "position:absolute;left:0;right:0;color:#6b7079",
-  });
+  const dim = h("span", { class: "tick-text done" });
   const el = h(
     "div",
     { class: "ticker-row" },
-    h("span", { class: "tick-icon", style: "position:relative" }, chevron, check),
-    h("span", { style: "position:relative;flex:1 1 auto;min-width:0" }, shimmer, dim),
+    h("span", { class: "tick-icon" }, chevron, check),
+    h("span", { class: "tick-texts" }, shimmer, dim),
   );
   return { el, chevron, check, shimmer, dim, text: "" };
 }
@@ -54,6 +55,7 @@ function setText(row: Row, text: string) {
   row.text = text;
   row.shimmer.textContent = text;
   row.dim.textContent = text;
+  row.el.title = text; // the full command, since the row ellipsizes it
 }
 
 /**

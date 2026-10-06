@@ -105,11 +105,18 @@ pub async fn send(
 
     chat.push(json!({ "role": "user", "content": content }));
 
+    let mut web_search = json!({ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 });
+    // Haiku has no programmatic tool calling, which this web_search version
+    // asks for by default: the API rejects the request unless it is direct-only.
+    if model.starts_with("claude-haiku") {
+        web_search["allowed_callers"] = json!(["direct"]);
+    }
+
     let body = json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
+        "tools": [web_search],
         "fallbacks": "default",
         "messages": chat.snapshot(),
     });

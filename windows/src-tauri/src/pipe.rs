@@ -195,6 +195,11 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
+    // The GitHub card follows the branch of whichever session spoke last.
+    if let Some(cwd) = payload.get("cwd").and_then(Value::as_str) {
+        crate::github::note_cwd(cwd);
+    }
+
     if event != "PermissionRequest" {
         log::line(format!("hook {event}"));
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);

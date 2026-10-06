@@ -236,6 +236,21 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
+                // Checked before the "cursor hasn't moved" skip: a drag abandoned
+                // elsewhere usually ends with the mouse standing still, and the
+                // island needs to hear about the release to close behind it.
+                let down = left_button_down();
+                if down != was_down {
+                    was_down = down;
+                    if down {
+                        // A press may be the start of a drag: make sure the drop
+                        // target is ours before the file arrives.
+                        let handle = app.clone();
+                        let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                    }
+                    let _ = win.emit("mouse-button", down);
+                }
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -258,15 +273,6 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
-                }
-                was_down = down;
-
                 let dragging = down
                     && x >= 0.0
                     && x <= size.0
@@ -281,6 +287,16 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
+
+            // Parked: the window is (or is about to be) the wake strip, which must
+            // take the mouse. The tick that was running when the island collapsed
+            // may just have made it click-through, and setters from this thread are
+            // queued to the event loop — so clear the flag from here, behind it.
+            // Otherwise the hidden island can only be woken by Claude Code events.
+            if let Some(win) = window(&app) {
+                let _ = win.set_ignore_cursor_events(false);
+            }
+            gate.forget_ignore_state();
         }
     });
 }

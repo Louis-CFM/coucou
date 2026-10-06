@@ -16,6 +16,8 @@ const KEY_FOR: Record<string, string> = {
   integration_resend: "resend-api-key",
   integration_notion: "notion-api-key",
   integration_calcom: "calcom-api-key",
+  // Connected once Google has handed back a refresh token.
+  integration_gcal: "gcal-refresh-token",
 };
 
 const clearTimers = new Map<string, number>();
@@ -48,23 +50,51 @@ function handle(island: Island, update: IntegrationUpdate) {
     data: update.error ? (previous?.data ?? {}) : update.data,
     error: update.error,
     loaded: update.error ? (previous?.loaded ?? false) : true,
-    configured: previous?.configured ?? true,
+    // Google is connected and disconnected from the settings window, which the
+    // key check at boot doesn't see: the poller's own answer says which it is
+    // (events, or an error such as an expired sign-in, versus the `{}` that
+    // disconnecting sends).
+    configured:
+      update.id === "integration_gcal"
+        ? update.error != null || Array.isArray(update.data.events)
+        : (previous?.configured ?? true),
   };
 
   const event = update.event;
   if (event) {
     const task = State.tasks.find((t) => t.id === update.id);
     if (task) {
-      task.state = event.success ? "finished" : "error";
+      // Something waiting on you (a review asked of you, a meeting about to
+      // start) reads as a question with the amber badge, not as done or broken.
+      const attention = event.attention === true;
+      task.state = attention ? "question" : event.success ? "finished" : "error";
       task.steps = event.detail ? [event.label, event.detail] : [event.label];
       task.stepIndex = task.steps.length - 1;
       if (State.focusId !== update.id) {
-        task.pillBadge = event.success ? "finished" : "error";
+        task.pillBadge = attention ? "approval" : event.success ? "finished" : "error";
       }
-      Sound.play(event.success ? "finish" : "error");
-      // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+
+      if (event.item && update.id === "integration_gcal") {
+        // A reminder is a message, not a badge: open a card that says what,
+        // when and where, with Join / Open. Unless you are in the middle of
+        // something — the chat, an approval, a file drop — then it waits as
+        // the amber badge on the Calendar pill.
+        Sound.play("approval");
+        const busy: string[] = ["prompt", "approval", "question", "upload", "uploading", "choose", "mail"];
+        if (State.mode === "expanded" && busy.includes(State.view)) {
+          island.reveal();
+        } else {
+          State.reminder = event.item;
+          State.setFocus(update.id);
+          if (State.mode === "expanded") island.setView("reminder");
+          else island.alert("reminder");
+        }
+      } else {
+        Sound.play(attention ? "question" : event.success ? "finish" : "error");
+        // Same as the Swift pollers: show the compact island so the badge is seen,
+        // but never steal the screen for a successful deploy.
+        island.reveal();
+      }
 
       const existing = clearTimers.get(update.id);
       if (existing != null) window.clearTimeout(existing);
@@ -73,7 +103,7 @@ function handle(island: Island, update: IntegrationUpdate) {
         window.setTimeout(() => {
           clearTimers.delete(update.id);
           const t = State.tasks.find((x) => x.id === update.id);
-          if (!t || (t.state !== "finished" && t.state !== "error")) return;
+          if (!t || (t.state !== "finished" && t.state !== "error" && t.state !== "question")) return;
           t.state = "idle";
           t.steps = [];
           t.stepIndex = 0;

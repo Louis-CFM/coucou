@@ -2,6 +2,8 @@
 
 mod claude;
 mod files;
+mod gcal;
+mod github;
 mod hooks;
 mod integrations;
 mod island;
@@ -10,6 +12,7 @@ mod pipe;
 mod platform;
 mod secrets;
 mod settings;
+mod time;
 mod tray;
 
 use std::process::Command;
@@ -286,6 +289,23 @@ async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
 }
 
+/// Settings → Google Calendar → Connect: opens Google's consent page and waits
+/// for it to come back. Resolves once the refresh token is stored.
+#[tauri::command]
+async fn gcal_connect(app: AppHandle) -> Result<(), String> {
+    gcal::connect(app).await
+}
+
+#[tauri::command]
+fn gcal_cancel() {
+    gcal::cancel();
+}
+
+#[tauri::command]
+async fn gcal_disconnect(app: AppHandle) -> Result<(), String> {
+    gcal::disconnect(app).await
+}
+
 /// Lets the island write to the same log as the Rust side.
 #[tauri::command]
 fn log_line(message: String) {
@@ -398,6 +418,9 @@ pub fn run() {
             secret_set,
             secret_clear,
             refresh_integration,
+            gcal_connect,
+            gcal_cancel,
+            gcal_disconnect,
             open_n8n,
             open_settings_window,
             set_paused,

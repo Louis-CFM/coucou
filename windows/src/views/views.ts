@@ -35,6 +35,8 @@ export interface ViewHost {
   focus?(): void;
   /** Called every frame while the view is on screen. */
   tick?(nowMs: number): void;
+  /** True while `tick` still has motion to finish; keeps the frame loop alive. */
+  readonly animating?: boolean;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -163,6 +165,9 @@ function buildOverview(actions: ViewActions): ViewHost {
     tick(nowMs: number) {
       if (mode === "ticker") ticker.tick(nowMs);
     },
+    get animating() {
+      return mode === "ticker" && ticker.animating;
+    },
     sync() {
       const task = State.focusTask;
       if (task?.id !== lastFocus) {
@@ -203,6 +208,9 @@ function buildOverview(actions: ViewActions): ViewHost {
           task.id, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
+          // The calendar says "now" and "in 12m": let it move with the clock
+          // even when a poll brings back the same events.
+          task.id === "integration_gcal" ? Math.floor(Date.now() / 60_000) : "",
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
@@ -380,6 +388,75 @@ function buildFinished(actions: ViewActions): ViewHost {
   };
 }
 
+// ── Calendar reminder ─────────────────────────────────────────────────────────
+
+/** "in 30 min", "in 1 h 15 min", "now" — from the live clock, not the poll's. */
+function startsIn(startMs: number): string {
+  const minutes = Math.ceil((startMs - Date.now()) / 60_000);
+  if (minutes <= 0) return "starting now";
+  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 1440) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m ? `in ${h} h ${m} min` : `in ${h} h`;
+  }
+  const d = Math.floor(minutes / 1440);
+  return d === 1 ? "tomorrow" : `in ${d} days`;
+}
+
+function buildReminder(actions: ViewActions): ViewHost {
+  const who = h("div");
+  const title = h("div", { class: "title" });
+  const detail = h("div", { class: "sub reminder-detail" });
+  const row = h("div", { class: "actions" });
+  const el = h("div", { class: "view" }, card("indigo", stack(116, 16, who, title, detail, row)));
+  let rowKey = "";
+  return {
+    el,
+    sync() {
+      const r = State.reminder;
+      if (!r) return;
+      const startMs = typeof r.startMs === "number" ? r.startMs : Date.now();
+      const endMs = typeof r.endMs === "number" ? r.endMs : null;
+      const color = typeof r.color === "string" && /^#[0-9a-f]{6}$/i.test(r.color) ? r.color : "#4285F4";
+
+      clear(who);
+      who.append(
+        h("div", { class: "who-row" },
+          dot(color, 8),
+          // Google names your primary calendar after your address: say Calendar.
+          h("span", {
+            class: "n",
+            text: typeof r.calendar === "string" && r.calendar && !r.calendar.includes("@") ? r.calendar : "Calendar",
+          }),
+          h("span", { text: startsIn(startMs) }),
+        ),
+      );
+      title.textContent = String(r.title ?? "");
+
+      const time = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      const when = endMs ? `${time(startMs)} – ${time(endMs)}` : time(startMs);
+      // The place, up to its first comma: "Casino Zaragoza", not the postcode.
+      const place = typeof r.location === "string" && !r.location.startsWith("https://")
+        ? r.location.split(",")[0]
+        : "";
+      detail.textContent = place ? `${when} · ${place}` : when;
+
+      // Built once per event: rebuilding between mouse-down and mouse-up
+      // would swallow the click.
+      const key = `${r.id}@${r.start}`;
+      if (key === rowKey) return;
+      rowKey = key;
+      clear(row);
+      const meet = typeof r.meetUrl === "string" ? r.meetUrl : "";
+      const url = typeof r.url === "string" ? r.url : "";
+      if (meet) row.append(btn("Join", "primary", () => { actions.openUrl(meet); actions.collapse(); }));
+      if (url) row.append(btn("Open", meet ? "secondary" : "primary", () => { actions.openUrl(url); actions.collapse(); }));
+      row.append(btn("OK", "secondary", () => actions.collapse()));
+    },
+  };
+}
+
 // ── Confused ──────────────────────────────────────────────────────────────────
 
 function buildConfused(): ViewHost {
@@ -494,6 +571,7 @@ export function buildViews(
   map.set("question", buildQuestion());
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
+  map.set("reminder", buildReminder(actions));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));

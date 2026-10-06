@@ -56,7 +56,10 @@ const task = (
   id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
 });
 
-/** AgentTask.integrationAgents — same ids, names and colours as macOS. */
+/**
+ * AgentTask.integrationAgents — same ids, names and colours as macOS, plus
+ * Google Calendar, which only exists on Windows for now.
+ */
 export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
@@ -65,12 +68,13 @@ export const INTEGRATION_AGENTS: AgentTask[] = [
   task("integration_github", "GitHub", "#F4505E", "n8n"),
   task("integration_notion", "Notion", "#8C8C8C", "n8n"),
   task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
+  task("integration_gcal", "Calendar", "#4285F4", "n8n"),
   task("integration_stripe", "Stripe", "#0570DE", "n8n"),
 ];
 
 export const TOGGLEABLE_INTEGRATION_IDS = [
   "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
+  "integration_notion", "integration_calcom", "integration_gcal", "integration_stripe",
 ];
 
 /** What an integration poller last reported. */
@@ -137,6 +141,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** The calendar event the reminder card is about (gcal.rs Event::to_json). */
+  reminder: Record<string, unknown> | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 

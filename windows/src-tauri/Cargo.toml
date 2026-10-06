@@ -28,6 +28,7 @@ windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
+  "Win32_Security_Cryptography",
   "Win32_System_Ole",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
@@ -42,3 +43,6 @@ libc = "0.2"
 # The GTK that Tauri already runs on, to reach its window for layer-shell and
 # the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
 gtk = "0.18"
+# SHA-256 for the Google Calendar PKCE challenge (Windows uses CNG). Already in
+# the dependency tree through Tauri.
+sha2 = "0.10"
