@@ -197,6 +197,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     if event != "PermissionRequest" {
         log::line(format!("hook {event}"));
+        crate::island::before_news(&app);
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
         return;
@@ -210,6 +211,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     }
     payload["request_id"] = json!(id);
     log::line(format!("hook PermissionRequest id={id}"));
+    crate::island::before_news(&app);
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
     let decision = wait_for_decision(&id, &mut rx).await;

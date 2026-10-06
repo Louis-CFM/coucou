@@ -204,7 +204,9 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
+      // Nothing surfaces here: a turn shows itself when it starts and when it
+      // ends. Coming out again at each step would put the island back as fast
+      // as it leaves.
       break;
     }
 

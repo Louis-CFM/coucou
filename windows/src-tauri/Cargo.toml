@@ -26,6 +26,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
   "Win32_Foundation",
+  "Win32_Graphics_Gdi",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Ole",
