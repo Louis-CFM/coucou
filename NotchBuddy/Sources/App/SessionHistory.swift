@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Combine
 
 /// One finished agent session persisted for the Today pulse / history strip.
 struct FinishedSession: Codable, Equatable, Identifiable {
