@@ -169,6 +169,16 @@ Détail des événements : `docs/AGENTS.md` § Cursor Agent.
 
 ---
 
+## 1quater-ter. Spotify *(build GitHub, macOS)*
+
+- Pastille `integration_spotify` (`#1DB954`) : même UX qu'Apple Music (carte now-playing + contrôles play/pause/prev/next dans la pastille au survol).
+- État via notification distribuée `com.spotify.client.PlaybackStateChanged` + lecture AppleScript (`application id "com.spotify.client"`).
+- Pas d'OAuth Web API : contrôle local du client desktop Spotify uniquement.
+- Permission Automatisation → Spotify (macOS). Si refusée (`-1743`), la carte propose d'ouvrir Réglages Système.
+- Mochi danse quand Spotify joue et que la pastille est active (même règles que Music).
+
+---
+
 ## 1quinquies. GitHub (pulse)
 
 **Plateforme** : macOS uniquement (build GitHub)
@@ -337,6 +347,7 @@ Les autres fournisseurs de chat (Anthropic chat, Google, OpenAI, Cursor Cloud Ag
 | Automatisation → Mail | envoyer les mails | premier envoi |
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
 | Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
+| Automatisation → Spotify *(GitHub only)* | contrôler la lecture Spotify | première commande depuis le notch |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 

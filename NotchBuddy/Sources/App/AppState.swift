@@ -331,6 +331,8 @@ final class AppState: ObservableObject {
     #if !APPSTORE
     @Published var musicPlaying: Bool = false
     @Published var musicAutomationDenied: Bool = false
+    @Published var spotifyPlaying: Bool = false
+    @Published var spotifyAutomationDenied: Bool = false
     #endif
 
     // Claude plan gauge (from statusline hook)

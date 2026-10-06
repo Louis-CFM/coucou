@@ -42,11 +42,14 @@ struct DesktopBotView: View {
                 // Desktop Mochi is always the "main" Mochi — always dressed
                 engine.setOutfit(appState.resolvedOutfit, animated: true)
 
-                // Dance when music plays (same rules as compact mode)
+                // Dance when Apple Music or Spotify plays (same rules as compact mode)
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard appState.musicPlaying else { return false }
-                    guard appState.activeIntegrations.contains("integration_music") else { return false }
+                    let musicOn = appState.musicPlaying
+                        && appState.activeIntegrations.contains("integration_music")
+                    let spotifyOn = appState.spotifyPlaying
+                        && appState.activeIntegrations.contains("integration_spotify")
+                    guard musicOn || spotifyOn else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     return allowed.contains(appState.effectiveState)
                     #else

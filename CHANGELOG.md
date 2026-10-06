@@ -10,6 +10,7 @@
 - Ticker step labels are English (Reads / Writes / Edits / Runs…) instead of French.
 - Live programming view (tall island): Edit/MultiEdit opens Read/Edit/Bash/Done rail + inset code editor (file tab, line numbers, keyword tint, typewriter on `+`, strikethrough on `−`). Huge full-file Write dumps stay ticker-only.
 - **Render** integration: API key in Settings, `integration_render` pill, deploy list/detail (polls `api.render.com`).
+- **Spotify** integration (GitHub build): `integration_spotify` pill (`#1DB954`), now-playing card + play/pause/prev/next via AppleScript and `PlaybackStateChanged`; Mochi dances while Spotify plays.
 
 ## 0.1.7 — October 4, 2026
 

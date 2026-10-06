@@ -282,6 +282,10 @@ struct OverviewView: View {
             #if !APPSTORE
             MusicController.shared.openMusic()
             #endif
+        case "integration_spotify":
+            #if !APPSTORE
+            SpotifyController.shared.openSpotify()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -2117,6 +2121,13 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_spotify":
+            #if !APPSTORE
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil
+                || FileManager.default.fileExists(atPath: "/Applications/Spotify.app")
+            #else
+            return false
+            #endif
         case "ai_clinepass":  return KeychainStore.shared.get("cline-api-key") != nil
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
@@ -2211,11 +2222,26 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    // Spotify: same card rules as Apple Music
+    private var spotifyIsActive: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_spotify" else { return false }
+        if appState.spotifyAutomationDenied { return true }
+        return SpotifyController.shared.trackTitle != nil
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
         #if !APPSTORE
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return Color(hex: "#F4505E") }
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
+        }
+        if task.id == "integration_spotify" {
+            if appState.spotifyAutomationDenied { return Color(hex: "#F4505E") }
+            return appState.spotifyPlaying ? Color(hex: "#1DB954") : Color(hex: "#22C55E")
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
@@ -2232,6 +2258,11 @@ struct IntegrationCardView: View {
             if appState.musicAutomationDenied { return "Automation not allowed" }
             if appState.musicPlaying { return "Playing · \(MusicController.shared.trackTitle ?? "Unknown")" }
             return "Not playing"
+        }
+        if task.id == "integration_spotify" {
+            if appState.spotifyAutomationDenied { return "Automation not allowed" }
+            if appState.spotifyPlaying { return "Playing · \(SpotifyController.shared.trackTitle ?? "Unknown")" }
+            return isConfigured ? "Not playing" : "Spotify not installed"
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
@@ -2323,6 +2354,11 @@ struct IntegrationCardView: View {
         } else if musicIsActive {
             #if !APPSTORE
             MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if spotifyIsActive {
+            #if !APPSTORE
+            SpotifyCardView()
                 .transition(.opacity)
             #endif
         } else if agentSessionActive {
@@ -2443,6 +2479,19 @@ struct IntegrationCardView: View {
                                 .buttonStyle(.plain)
                         }
                         #endif
+                    } else if task.id == "integration_spotify" {
+                        #if !APPSTORE
+                        Button("Open Spotify") { SpotifyController.shared.openSpotify() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if appState.spotifyAutomationDenied {
+                            Button("Open Settings…") { SpotifyController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -2484,11 +2533,12 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    // Settings button: shown when not configured, except cursor/codex and music
+                    // Settings button: shown when not configured, except cursor/codex and music/spotify
                     if !isConfigured
                        && task.id != "agent_cursor"
                        && task.id != "agent_codex"
-                       && task.id != "integration_music" {
+                       && task.id != "integration_music"
+                       && task.id != "integration_spotify" {
                         Button("Settings…") {
                             let section: String
                             switch PillCatalog.definition(for: task.id)?.category {
@@ -4325,6 +4375,13 @@ struct AgentPillsView: View {
                             SoundEngine.shared.play("blip")
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                         }
+                    } else if task.id == "integration_spotify" {
+                        SpotifyPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
                     } else {
                         AgentPill(task: task, state: state, swapping: $swapping) {
                             swapping = true
@@ -4598,6 +4655,168 @@ struct MusicCardView: View {
                     }
                     .buttonStyle(.plain)
                     Button(action: { MusicController.shared.nextTrack() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+}
+
+// MARK: - Spotify Pill
+
+struct SpotifyPill: View {
+    let task: AgentTask
+    @ObservedObject var state: AppState
+    @Binding var swapping: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    private var isPlaying: Bool { AppState.shared.spotifyPlaying }
+    private var showControls: Bool { isHovered && SpotifyController.shared.trackTitle != nil }
+
+    var body: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.clear)
+                .contentShape(Capsule())
+                .onTapGesture { onTap() }
+
+            Capsule()
+                .fill(isHovered ? Color(hex: task.color).opacity(0.18) : Color(hex: "#0E0F11"))
+                .allowsHitTesting(false)
+            Capsule()
+                .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+
+            HStack(spacing: 0) {
+                MiniBotCanvasView(task: task, isDancing: isPlaying)
+                    .frame(width: 22 / 0.6, height: 22 / 0.6)
+                    .frame(width: 22, height: 22, alignment: .center)
+                    .padding(.leading, 8)
+                Spacer()
+            }
+            .allowsHitTesting(false)
+
+            Text(task.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isHovered ? Color(hex: task.color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 34)
+                .padding(.trailing, showControls ? 52 : 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
+                .allowsHitTesting(false)
+
+            if showControls {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: 2) {
+                        MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
+                            SpotifyController.shared.playPause()
+                        }
+                        MusicControlButton(icon: "forward.fill", color: task.color) {
+                            SpotifyController.shared.nextTrack()
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .brightness(isHovered ? 0.06 : 0)
+        .onHover { newHover in
+            guard !swapping else { return }
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+
+// MARK: - Spotify Card View
+
+struct SpotifyCardView: View {
+    @ObservedObject private var controller = SpotifyController.shared
+    @ObservedObject private var appState = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if appState.spotifyAutomationDenied {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#F4505E"))
+                        .frame(width: 7, height: 7)
+                    Text("Spotify")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    Spacer(minLength: 2)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 36)
+
+                Text("Allow Coucursor to control Spotify")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .padding(.leading, 108)
+                    .padding(.trailing, 12)
+
+                Button("Open Settings…") { SpotifyController.shared.openAutomationSettings() }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "#1DB954").opacity(0.85))
+                    .buttonStyle(.plain)
+                    .padding(.leading, 108)
+                    .padding(.top, 2)
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#1DB954"))
+                        .frame(width: 7, height: 7)
+                    if let title = controller.trackTitle {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .frame(maxWidth: 150, alignment: .leading)
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+
+                if let artist = controller.artist {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .padding(.leading, 108)
+                }
+
+                HStack(spacing: 8) {
+                    Button(action: { SpotifyController.shared.previousTrack() }) {
+                        Image(systemName: "backward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { SpotifyController.shared.playPause() }) {
+                        Image(systemName: appState.spotifyPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#1DB954"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { SpotifyController.shared.nextTrack() }) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#8E939C"))

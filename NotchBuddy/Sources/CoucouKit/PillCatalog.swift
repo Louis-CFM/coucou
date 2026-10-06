@@ -81,6 +81,8 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
+        .init(id: "integration_spotify", name: "Spotify",     color: "#1DB954",
+              category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
     ]
 
     /// Pills available in the current build target.
