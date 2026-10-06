@@ -1,11 +1,11 @@
 // Settings window — the place where anything that writes to disk is confirmed.
-// Stage 2 covers the Claude Code hooks and the general preferences; API keys and
-// integrations land here too in a later stage.
+// Agent hooks (Pi, Copilot CLI, Antigravity, Claude Code), the API key, the
+// integrations and the general preferences all live here.
 
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
-import { h, clear } from "../views/dom";
+import { DEFAULT_SETTINGS, MAX_PILLS, type Settings } from "../core/state";
+import { h, clear, dot } from "../views/dom";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
@@ -41,38 +41,118 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
-// ── Claude Code section ───────────────────────────────────────────────────────
+// ── Agents section ────────────────────────────────────────────────────────────
 
-function claudeSection(status: HookStatus): HTMLElement {
+interface AgentDef {
+  id: Settings["activeAgent"];
+  name: string;
+  /** What installing actually writes, and why it is safe. */
+  hint: string;
+  /** What the user has to restart for the hooks to take effect. */
+  restart: string;
+}
+
+const AGENTS: AgentDef[] = [
+  {
+    id: "pi",
+    name: "Pi",
+    hint: "Installs a single extension file in ~/.pi/agent/extensions/. Pi then reports its sessions, tool calls and permission requests to the island, and waits for your Allow or Deny.",
+    restart: "Restart Pi to load the extension.",
+  },
+  {
+    id: "copilot",
+    name: "Copilot CLI",
+    hint: "Adds Coucou's entries to ~/.copilot/hooks/coucou.json. Your own Copilot hooks are left exactly as they are.",
+    restart: "Open a new Copilot CLI session to pick the hooks up.",
+  },
+  {
+    id: "antigravity",
+    name: "Antigravity",
+    hint: "Adds Coucou's entries to ~/.gemini/config/hooks.json, using Antigravity's own invocation events plus the legacy lifecycle names so a session is never half-tracked.",
+    restart: "Restart Antigravity to pick the hooks up.",
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    hint: "Adds Coucou's entries to ~/.codex/hooks/hooks.json, using the same matcher shape and event set the macOS app installs. Your own Codex hooks are left alone.",
+    restart: "Restart Codex to pick the hooks up.",
+  },
+  {
+    id: "claudeCode",
+    name: "Claude Code",
+    hint: "Adds Coucou's entries to ~/.claude/settings.json. Tool calls, questions and permission requests show up in the island, and you can answer them there.",
+    restart: "Open a new Claude Code session to pick the hooks up.",
+  },
+];
+
+const agentDef = (id: Settings["activeAgent"]): AgentDef =>
+  AGENTS.find((a) => a.id === id) ?? AGENTS[0];
+
+/** Whether the user has switched an agent off in settings. */
+const isDisabled = (id: string): boolean => (settings.disabledAgents ?? []).includes(id);
+
+async function agentsSection(initial: HookStatus): Promise<HTMLElement> {
+  const statuses: Record<string, HookStatus> = { [settings.activeAgent]: initial };
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
-  const section = h(
-    "section",
-    {},
-    h("h2", {}, statusDot(status.installed), h("span", { text: "Claude Code" })),
-    body,
-  );
+  const picker = h("div", { class: "row" });
+  const head = h("h2", {}, h("span", { text: "Agents" }));
+  const toggles = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  const section = h("section", {}, head, picker, toggles, body);
+
+  const statusFor = (def: AgentDef): HookStatus =>
+    statuses[def.id] ?? {
+      installed: false, managed: false, settingsPath: "", hookPath: "", hookReady: false,
+    };
+
+  const drawPicker = () => {
+    clear(picker);
+    for (const def of AGENTS) {
+      const active = def.id === settings.activeAgent;
+      picker.append(
+        h("button", {
+          class: active ? "seg on" : "seg",
+          text: def.name,
+          onclick: async () => {
+            if (settings.activeAgent === def.id) return;
+            settings.activeAgent = def.id;
+            void save();
+            drawPicker();
+            await rebuild();
+          },
+        }),
+      );
+    }
+  };
 
   const rebuild = async () => {
-    const fresh = await Bridge.hooksStatus();
-    if (fresh) Object.assign(status, fresh);
+    const def = agentDef(settings.activeAgent);
+    const fresh = await Bridge.hooksStatus(def.id);
+    if (fresh) statuses[def.id] = fresh;
     clear(body);
     draw();
-    const head = section.querySelector("h2")!;
+    drawHead();
+  };
+
+  const drawHead = () => {
+    const def = agentDef(settings.activeAgent);
     clear(head);
-    head.append(statusDot(status.installed), h("span", { text: "Claude Code" }));
+    head.append(statusDot(statusFor(def).installed), h("span", { text: "Agents" }));
   };
 
   function draw() {
+    const def = agentDef(settings.activeAgent);
+    const status = statusFor(def);
+
     body.append(
       h("div", {
         class: "hint",
         text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+          ? `Coucou is hooked into your ${def.name} sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.`
+          : def.hint,
       }),
       h("div", { class: "row" },
-        h("label", { text: "settings.json" }),
-        h("span", { class: "path", text: status.settingsPath }),
+        h("label", { text: def.id === "pi" ? "extension" : "config" }),
+        h("span", { class: "path", text: status.settingsPath || "…" }),
       ),
       h("div", { class: "row" },
         h("label", { text: "Relay" }),
@@ -88,36 +168,57 @@ function claudeSection(status: HookStatus): HTMLElement {
       }));
     }
 
+    // Something is there that Coucou did not write — for Pi, almost always an
+    // extension you have edited yourself. Coucou will not overwrite or delete it,
+    // so it does not offer buttons that would: the only honest action left is to
+    // tell you where the file is and let you decide.
+    const yours = status.installed && !status.managed;
+    if (yours) {
+      body.append(
+        h("div", {
+          class: "notice",
+          text: `There is already a ${def.name} extension at ${status.settingsPath} that Coucou did not write. `
+            + "Coucou has left it exactly as it is — reinstalling would replace it and uninstalling would "
+            + "delete it, and neither is something Coucou can undo, so neither button is offered. "
+            + "Your agent keeps reporting to the island; the file on disk is the one that gets loaded.",
+        }),
+      );
+    }
+
     const actions = h("div", { class: "row" });
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
-      onclick: () => showPreview(true),
+      text: status.installed ? `Reinstall ${def.name} hooks…` : `Install ${def.name} hooks…`,
+      onclick: () => showPreview(def, true),
     });
     // Writing hook commands that point at a relay which isn't there would give
-    // every Claude Code session a broken hook and nothing to show for it.
+    // every session a broken hook and nothing to show for it.
     if (!status.hookReady) {
       install.disabled = true;
       install.title = "The relay isn't installed yet.";
     }
+    if (yours) {
+      install.disabled = true;
+      install.title = "That file is yours. Coucou will not overwrite it.";
+    }
     actions.append(install);
-    if (status.installed) {
+    if (status.installed && !yours) {
       actions.append(h("button", {
         class: "danger",
         text: "Uninstall hooks…",
-        onclick: () => showPreview(false),
+        onclick: () => showPreview(def, false),
       }));
     }
     body.append(actions);
   }
 
-  async function showPreview(install: boolean) {
+  async function showPreview(def: AgentDef, install: boolean) {
     let preview;
     try {
-      preview = await Bridge.hooksPreview(install);
+      preview = await Bridge.hooksPreview(install, def.id);
     } catch (err) {
-      // An unreadable or invalid settings.json stops here rather than being
-      // treated as empty and written over.
+      // An unreadable or invalid config stops here rather than being treated as
+      // empty and written over.
       clear(body);
       body.append(
         h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
@@ -134,14 +235,16 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: install
-          ? "This is exactly what will change in your settings.json. Your own hooks are left untouched."
+          ? `This is exactly what will change in ${preview.settingsPath}. Your own hooks are left untouched.`
           : "This removes Coucou's entries only. Your own hooks are left untouched.",
       }),
       renderDiff(preview.diff),
-      h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
-      ),
     );
+    if (preview.backup) {
+      body.append(h("div", { class: "row" },
+        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
+      ));
+    }
     const confirm = h("button", {
       class: install ? "primary" : "danger",
       text: install ? "Back up and write" : "Back up and remove",
@@ -149,11 +252,11 @@ function claudeSection(status: HookStatus): HTMLElement {
     confirm.addEventListener("click", async () => {
       confirm.disabled = true;
       try {
-        const backup = await Bridge.hooksApply(install, preview.fingerprint);
+        const backup = await Bridge.hooksApply(install, preview.fingerprint, def.id);
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          text: `Done. Previous settings saved as ${backup}. ${def.restart}`,
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
@@ -167,10 +270,85 @@ function claudeSection(status: HookStatus): HTMLElement {
     })));
   }
 
+  /**
+   * Per-agent on/off switches.
+   *
+   * Switching an agent off is not just a UI hiding. The hooks are removed, so the
+   * agent genuinely stops calling Coucou and sees it as off, and the pill stops
+   * appearing, which frees a slot in the island. Anything less would leave an
+   * agent still wired up to a Coucou the user believes they have turned off —
+   * which is worse than not offering the switch at all.
+   */
+  const drawToggles = () => {
+    clear(toggles);
+    // Claude Code is still pickable as the active agent above, but it is a pill
+    // like any other, so its switch lives in the Integrations section beside
+    // the rest of them rather than buried among the agent hook toggles.
+    for (const def of AGENTS.filter((a) => a.id !== "claudeCode")) {
+      const off = isDisabled(def.id);
+      const btn = h("button", {
+        class: "link-btn",
+        style: "color:#8e939c;font-size:11.5px",
+        text: off ? "Enable" : "Turn off",
+      });
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        const list = settings.disabledAgents ?? [];
+        if (off) {
+          // Enabling an agent spends a pill slot, same as an integration.
+          // Refused before anything is written, so the button never ends up
+          // saying "on" for an agent the island had no room to show.
+          if (pillBudgetFull()) {
+            btn.disabled = false;
+            body.append(h("div", {
+              class: "notice err",
+              text: `That is ${MAX_ACTIVE} pills already. Turn one off before enabling ${def.name}.`,
+            }));
+            return;
+          }
+          settings.disabledAgents = list.filter((a) => a !== def.id);
+          await save();
+        } else {
+          // Removing the hooks is the part that matters. If it fails the switch
+          // is not flipped, so the list can never claim an agent is off while it
+          // is still wired up.
+          try {
+            const status = await Bridge.hooksStatus(def.id);
+            if (status?.installed) {
+              const preview = await Bridge.hooksPreview(false, def.id);
+              if (preview) await Bridge.hooksApply(false, preview.fingerprint, def.id);
+            }
+            settings.disabledAgents = [...list, def.id];
+            await save();
+          } catch (err) {
+            btn.disabled = false;
+            body.append(h("div", {
+              class: "notice err",
+              text: `Could not turn ${def.name} off: ${String(err)}`,
+            }));
+            return;
+          }
+        }
+        const fresh = await Bridge.hooksStatus(def.id);
+        if (fresh) statuses[def.id] = fresh;
+        drawToggles();
+        drawPicker();
+        drawHead();
+      });
+      toggles.append(h("div", { class: "row" },
+        h("span", { class: off ? "hint" : "", text: `${def.name} — ${off ? "off" : "on"}` }),
+        h("div", { class: "grow" }),
+        btn,
+      ));
+    }
+  };
+
+  drawToggles();
+  drawPicker();
+  drawHead();
   draw();
   return section;
 }
-
 // ── Claude API section ────────────────────────────────────────────────────────
 
 const MODELS: [string, string][] = [
@@ -243,13 +421,70 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  // ── Provider ───────────────────────────────────────────────────────────
+  //
+  // Provider is not a model. Pi is a whole agent with its own authentication,
+  // so picking it must not present an API key field: there is no key to enter,
+  // and offering an empty one implies Pi is configured the way Claude is. The
+  // Claude-only rows are removed from the tree rather than hidden, so they are
+  // genuinely gone from the accessibility tree too.
+  const providerSeg = h("div", { class: "seg" });
+  const claudeRows = h("div", {});
+  const piNote = h("div", { class: "row" });
+
+  const claudeBtn = h("button", {
+    text: "Claude",
+    onclick: () => {
+      if (settings.chatProvider === "claude") return;
+      settings.chatProvider = "claude";
+      void save();
+      applyProvider();
+    },
+  });
+  const piBtn = h("button", {
+    text: "Pi",
+    onclick: () => {
+      if (settings.chatProvider === "pi") return;
+      settings.chatProvider = "pi";
+      void save();
+      applyProvider();
+    },
+  });
+  providerSeg.append(claudeBtn, piBtn);
+
+  function applyProvider() {
+    const isPi = settings.chatProvider === "pi";
+    claudeBtn.classList.toggle("on", !isPi);
+    piBtn.classList.toggle("on", isPi);
+    clear(claudeRows);
+    if (!isPi) {
+      claudeRows.append(
+        h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
+        h("div", { class: "row" }, h("label", { text: "Model" }), model),
+      );
+    } else {
+      clear(piNote);
+      piNote.append(
+        h("div", {
+          class: "notice",
+          text:
+            "The island will ask Pi directly, using your own Pi install and its own " +
+            "settings. No API key is needed — Pi is already signed in. Coucou runs it as " +
+            "a separate process, so this never touches a Pi session an agent is using.",
+        }),
+      );
+    }
+  }
+  applyProvider();
+
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Chat" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: "Provider" }), providerSeg),
+    claudeRows,
+    piNote,
     feedback,
   );
 }
@@ -260,11 +495,20 @@ interface IntegrationDef {
   id: string;
   name: string;
   color: string;
-  /** Credential Manager keys, in the order they are shown. */
+  /** Credential Manager keys, in the order they are shown. Empty when there is
+   *  nothing to store - see `hint`. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
+  /** Shown when there are no fields. An integration that needs no API key says
+   *  why it is always available rather than rendering an empty form. */
+  hint?: string;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
+  // No fields: Global Media Control needs no key and asks for no permission, so
+  // it is ready as soon as anything is playing. Listed first because it is the
+  // one integration that is basically always available.
+  { id: "integration_music", name: "Music", color: "#FA2D48", fields: [],
+    hint: "Reads whatever is playing on this PC - Spotify, Chrome, VLC, anything publishing a media session. No keys, no permissions." },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
@@ -284,15 +528,95 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
 ];
 
-const MAX_ACTIVE = 4;
+/**
+ * Pill budget, shared with the island (core/state.ts).
+ *
+ * Defined here too because this window edits the settings object directly and
+ * never touches State. Both numbers have to agree, or a switch in this window
+ * can enable something the island has no room to show.
+ */
+const MAX_ACTIVE = MAX_PILLS;
+
+/** Enabled agents plus enabled integrations: what the pill budget actually counts. */
+function budgetUsed(): number {
+  const disabled = new Set(settings.disabledAgents ?? []);
+  const agents = AGENTS.filter((a) => !disabled.has(a.id)).length;
+  // Older builds recorded enabled agents in activeIntegrations; those entries
+  // would otherwise be counted a second time and put the window over its cap.
+  const integrations = settings.activeIntegrations.filter((id) => !id.startsWith("agent_")).length;
+  return agents + integrations;
+}
+
+/** Whether one more pill would exceed the budget. */
+function pillBudgetFull(): boolean {
+  return budgetUsed() >= MAX_ACTIVE;
+}
+
+/**
+ * Whether turning the last remaining pill off must be refused.
+ *
+ * An island with nothing in it is not a valid state: no card, no focus, and no
+ * way back except by reopening this window. So the last pill stays on.
+ */
+function refuseLastPill(note: HTMLElement) {
+  note.style.color = "#F4505E";
+  note.textContent = "At least one pill has to stay on.";
+}
+
+/** Shown when a switch is refused. A control that silently ignores a click is
+ *  indistinguishable from a broken one. */
+function refuseFullBudget(sw: HTMLElement, note: HTMLElement) {
+  sw.classList.remove("shake");
+  void sw.offsetWidth;
+  sw.classList.add("shake");
+  note.textContent = `That is ${MAX_ACTIVE} pills already. Switch one off to add another.`;
+  note.style.color = "#F4505E";
+}
 
 function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
 
   function updateNote() {
-    const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    const used = budgetUsed();
+    note.style.color = "";
+    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Enabled agents count toward this too. Keys are stored in the Windows Credential Manager, never on disk.`;
+  }
+
+  // VS Code leads the Integrations section: it is the pill the island opens on,
+  // and it is governed by `disabledAgents` like the agents are, not by
+  // activeIntegrations. Its own switch sits with the other pill switches so that
+  // every choice that costs a slot is made in the same place.
+  {
+    const off = isDisabled("claudeCode");
+    const sw = h("button", { class: off ? "switch" : "switch on" });
+    sw.addEventListener("click", () => {
+      const list = settings.disabledAgents ?? [];
+      const isOff = (settings.disabledAgents ?? []).includes("claudeCode");
+      if (!isOff) {
+        if (budgetUsed() <= 1) {
+          refuseLastPill(note);
+          return;
+        }
+        settings.disabledAgents = [...list, "claudeCode"];
+      } else {
+        if (pillBudgetFull()) {
+          refuseFullBudget(sw, note);
+          return;
+        }
+        settings.disabledAgents = list.filter((a) => a !== "claudeCode");
+      }
+      sw.classList.toggle("on", isOff);
+      updateNote();
+      void save();
+    });
+    list.append(h("div", { class: "int-row" },
+      h("div", { class: "int-head" },
+        sw,
+        dot("#F5F6F8", 8),
+        h("span", { text: "VS Code (Claude Code)" }),
+      ),
+    ));
   }
 
   for (const def of INTEGRATIONS) {
@@ -301,9 +625,18 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     sw.addEventListener("click", () => {
       const on = settings.activeIntegrations.includes(def.id);
       if (on) {
+        if (budgetUsed() <= 1) {
+          refuseLastPill(note);
+          return;
+        }
         settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
       } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+        // Shared budget: enabled agents spend slots too, so a full agent row
+        // stops this switch rather than pushing the island past its width.
+        if (budgetUsed() >= MAX_ACTIVE) {
+          refuseFullBudget(sw, note);
+          return;
+        }
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
@@ -312,6 +645,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    if (def.hint) rows.append(h("div", { class: "hint", text: def.hint }));
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -414,6 +748,16 @@ function generalSection(): HTMLElement {
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: "Desktop Mochi" }),
+      toggle(settings.desktopMochi, (v) => {
+        settings.desktopMochi = v;
+        void Bridge.desktopMochiSetEnabled(v);
+      }),
+    ),
+    h("div", { class: "row" },
+      h("span", { class: "hint", text: "Mochi lives on your desktop as a floating pet. Drag it anywhere, hover to make it love you, click to pat, double-click to send it home." }),
+    ),
   );
 }
 
@@ -425,8 +769,8 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
-  const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+  const status = (await Bridge.hooksStatus(settings.activeAgent)) ?? {
+    installed: false, managed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
@@ -441,7 +785,7 @@ async function main() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
+    await agentsSection(status),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),

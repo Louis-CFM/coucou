@@ -19,12 +19,19 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "process"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
+  # Global Media Control — the music pill. System-wide, unlike the
+  # AppleScript-only Apple Music integration on macOS, and with no
+  # permission prompt to get in the way.
+  "Media_Control",
+  # CoInitializeEx: WinRT activation needs a COM apartment, and Tauri's
+  # async runtime does not initialise one for us.
+  "Win32_System_Com",
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",

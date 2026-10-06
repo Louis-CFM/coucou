@@ -41,8 +41,14 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
 
     let mut dest = dir.join(&name);
     if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = src
+            .extension()
+            .map(|s| format!(".{}", s.to_string_lossy()))
+            .unwrap_or_default();
         for i in 2..1000 {
             let candidate = dir.join(format!("{stem} ({i}){ext}"));
             if !candidate.exists() {
@@ -72,12 +78,20 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
 /// with the time it landed, so this really is the age of the copy and not the
 /// age of whatever the user happened to drag in.
 fn sweep(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     let now = SystemTime::now();
     for entry in entries.flatten() {
         let Ok(meta) = entry.metadata() else { continue };
-        let Ok(copied) = meta.modified() else { continue };
-        if now.duration_since(copied).map(|age| age > KEEP_FOR).unwrap_or(false) {
+        let Ok(copied) = meta.modified() else {
+            continue;
+        };
+        if now
+            .duration_since(copied)
+            .map(|age| age > KEEP_FOR)
+            .unwrap_or(false)
+        {
             let _ = std::fs::remove_file(entry.path());
         }
     }

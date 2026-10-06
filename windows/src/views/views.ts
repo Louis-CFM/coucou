@@ -5,9 +5,10 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, type AgentTask, MAX_PILLS } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
+import { DESKTOP_PANEL_SIZE, DESKTOP_PANEL_SIZE_MAX, DESKTOP_PANEL_SIZE_MIN } from "../mochi/desktop";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
@@ -17,14 +18,14 @@ export interface ViewActions {
   collapse(): void;
   setFocus(id: string): void;
   openTerminal(): void;
-  /** The ↗ button: opens whatever the focused pill points at. */
-  openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: "allow" | "deny" | "always", note?: string): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
+  toggleDesktopMochi(): void;
+  setDesktopMochiSize(size: number): void;
   blip(): void;
 }
 
@@ -35,6 +36,31 @@ export interface ViewHost {
   focus?(): void;
   /** Called every frame while the view is on screen. */
   tick?(nowMs: number): void;
+  /**
+   * Called for a key press while this view is active. Return true if it was
+   * handled, so the caller knows not to also apply a global shortcut.
+   *
+   * Views own their own shortcuts rather than the island holding one big key
+   * map: which keys mean something is a property of what is on screen. An
+   * approval card offering N/Y is a fact about the approval card, and it stops
+   * being true the moment the view is not the approval card.
+   */
+  onKey?(key: string): boolean;
+}
+
+/**
+ * Whether a key press came from somewhere the user is typing.
+ *
+ * The approval card has a free-text "Why not?" box, and a reason for refusing a
+ * tool call is exactly the sort of thing that contains the letters Y and N. A
+ * shortcut that fired on those would answer the permission request while the
+ * human was still typing the explanation for it.
+ */
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -62,10 +88,17 @@ function btn(
 /** AgentWho — coloured dot + task name + grey label. */
 function agentWho(task: AgentTask | null, label: string): HTMLElement {
   const row = h("div", { class: "who-row" });
+  let text = label;
   if (task) {
     row.append(dot(task.color, 8), h("span", { class: "n", text: task.name }));
+    // The name is already on screen, so a label that repeats it reads as a
+    // stutter — "Pi Pi finished" — rather than a sentence. Stripped here rather
+    // than at each call site, because every call site passing `${agentName} …` is
+    // the natural thing to write and forgetting it once is easy.
+    if (text.startsWith(task.name)) text = text.slice(task.name.length).trim();
   }
-  row.append(h("span", { text: label }));
+  // Nothing left to say: the name alone is a complete line.
+  if (text) row.append(h("span", { text }));
   return row;
 }
 
@@ -84,6 +117,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const minimizeBtn = h(
+    "button",
+    { title: "Minimize", "aria-label": "Minimize", onclick: () => actions.collapse() },
+    svg(ICONS.chevronUp, 14, { stroke: 2.4 }),
+  );
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,7 +132,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, gearBtn, soundBtn, minimizeBtn),
   );
 
   return {
@@ -108,7 +146,13 @@ export function buildHeader(actions: ViewActions): ViewHost {
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
-      soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      const on = State.settings.soundEnabled;
+      soundBtn.append(svg(on ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      // The tooltip follows the state. Left as a static "Mute", the button still
+      // claimed it would mute you while you were already muted — the icon
+      // changed, the label did not.
+      soundBtn.title = on ? "Mute" : "Unmute";
+      soundBtn.setAttribute("aria-label", soundBtn.title);
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -123,7 +167,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
-    { class: "icon-btn jump", title: "Open", onclick: () => actions.openTarget() },
+    { class: "icon-btn jump", title: "Let Mochi out", onclick: () => actions.toggleDesktopMochi() },
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
@@ -185,11 +229,20 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         clear(who);
+        // `tool` names the *source*, and only when it differs from the name
+        // already on screen. For an agent task the source is the agent, so
+        // printing it here would render "Pi  Pi".
+        const source =
+          task.source === "claudeCode" ? "Claude Code"
+          : task.source === "n8n" ? "n8n"
+          : "";
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
         );
+        if (source && source !== task.name) {
+          who.append(h("span", { class: "tool", text: source }));
+        }
         if (task.steps.length > 1) {
           who.append(h("span", {
             class: "count",
@@ -213,8 +266,11 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen ? "none" : "";
+      jump.title = State.settings.desktopMochi ? "Bring Mochi home" : "Let Mochi out";
+      jump.setAttribute("aria-label", jump.title);
 
-      const others = State.otherTasks.slice(0, 4);
+      // One pill is the focused card, so the row beside it holds the rest.
+  const others = State.otherTasks.slice(0, MAX_PILLS - 1);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -281,7 +337,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: "Drop a file or window, or ask me anything." }),
     ),
     h("div", { class: "grow" }),
-    btn("Ask Claude", "primary", () => actions.setView("prompt")),
+    btn("Ask AI", "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
@@ -292,8 +348,48 @@ function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const noteRow = h("div", { class: "note-row" });
+  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, noteRow, row)));
   let rowKey = "";
+  // Set while the human is typing a reason for a denial. Kept outside `sync`
+  // so that rebuilding the row cannot wipe what they have typed halfway.
+  let note = "";
+  // Built once and kept outside `sync`, like `note`: the keyboard shortcut for
+  // "Why not?" has to reach the same input the button opens, and a closure that
+  // only exists during a rebuild cannot be reached from a key press.
+  const noteInput = h("input", {
+    class: "note-input",
+    type: "text",
+    placeholder: "Why not? Pi is told.",
+    maxLength: "280",
+    oninput: (e: Event) => {
+      note = (e.target as HTMLInputElement).value;
+    },
+    onkeydown: (e: Event) => {
+      const key = (e as KeyboardEvent).key;
+      if (key === "Enter") {
+        e.preventDefault();
+        // An empty reason is the same as pressing Deny: never answer with a
+        // blank string, which would read as a denial with no explanation.
+        if (note.trim()) actions.decide("deny", note.trim());
+      } else if (key === "Escape") {
+        e.preventDefault();
+        noteInput.value = "";
+        note = "";
+      }
+    },
+  }) as HTMLInputElement;
+
+  const showNote = h("div", { class: "note-wrap" }, noteInput);
+
+  const toggleNote = () => {
+    if (noteRow.contains(showNote)) clear(noteRow);
+    else {
+      noteRow.append(showNote);
+      noteInput.focus();
+    }
+  };
+
   return {
     el,
     sync() {
@@ -303,16 +399,59 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
+      // Built once. Rebuilding them between a mouse-down and a mouse-up would
+      // swallow the click.
       if (rowKey === "built") return;
       rowKey = "built";
+
+
       clear(row);
       row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
+        btn("Deny", "secondary", () => {
+          note = note.trim();
+          actions.decide("deny", note || undefined);
+        }, "N"),
+        btn("Why not?", "secondary", toggleNote, "D"),
         btn("Allow", "primary", () => actions.decide("allow"), "Y"),
+        // "Always" only means something where the caller can remember it. Pi
+        // persists it for the session; Claude Code reads `behavior` and ignores
+        // the scope, so for Claude this is simply an Allow.
+        btn("Always", "primary", () => actions.decide("always"), "A"),
       );
+    },
+    /**
+     * The keys the badges on the buttons advertise.
+     *
+     * These used to be decoration: `btn()` rendered the letter into a span and
+     * nothing listened for it, so the card claimed N and Y would answer it and
+     * pressing either did nothing. An affordance that lies is worse than no
+     * affordance, because it teaches the keyboard shortcut does not exist.
+     */
+    onKey(key: string): boolean {
+      // While the reason box is open, or focus is anywhere else that takes
+      // typing, the letters belong to the human.
+      if (isTyping(document.activeElement)) return false;
+      const k = key.toLowerCase();
+      const deny = () => {
+        note = note.trim();
+        actions.decide("deny", note || undefined);
+      };
+      switch (k) {
+        case "n":
+          deny();
+          return true;
+        case "d":
+          toggleNote();
+          return true;
+        case "y":
+          actions.decide("allow");
+          return true;
+        case "a":
+          actions.decide("always");
+          return true;
+        default:
+          return false;
+      }
     },
   };
 }
@@ -327,10 +466,11 @@ function buildQuestion(): ViewHost {
   return {
     el,
     sync() {
-      clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      const agentName = task?.name ?? "Agent";
+      clear(who);
+      who.append(agentWho(task, "is asking a question"));
+      title.textContent = task?.steps.at(-1) ?? `${agentName} needs an answer.`;
       clear(row);
       row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
@@ -353,7 +493,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : ""));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -373,9 +513,10 @@ function buildFinished(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
+      const task = State.focusTask;
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      who.append(agentWho(task, "finished"));
+      title.textContent = task?.steps.at(-1) ?? "Session finished";
     },
   };
 }
@@ -407,6 +548,33 @@ function buildNote(): ViewHost {
 
 // ── In-island settings ────────────────────────────────────────────────────────
 
+/**
+ * Which agent each pill belongs to, for the hook status dot.
+ *
+ * Module scope because it is read on every sync of the settings view and never
+ * changes: rebuilding it per frame allocated a fresh object to look up three
+ * constant keys.
+ */
+const AGENT_PILL: Record<string, string> = {
+  integration_claude: "claudeCode",
+  agent_pi: "pi",
+  agent_copilot: "copilot",
+  agent_antigravity: "antigravity",
+  agent_codex: "codex",
+};
+
+/**
+ * The status colour for one agent.
+ *
+ * Green only when something is really listening. An agent whose hooks have never
+ * been installed is red, not green — otherwise the dot is a decoration that
+ * lies. Amber while the answer is not known yet, which is different from "no".
+ */
+function agentStatusColor(agent: string): string {
+  const hooked = State.isAgentHooked(agent);
+  return hooked === null ? "#f5a524" : hooked ? "#22C55E" : "#F4505E";
+}
+
 function buildSettings(actions: ViewActions): ViewHost {
   const soundSwitch = h("button", { class: "switch", onclick: () => actions.toggleSound() });
   const volume = h("input", {
@@ -414,16 +582,48 @@ function buildSettings(actions: ViewActions): ViewHost {
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
   const autoLabel = h("span", {});
+  const mochiSizeLabel = h("span", { class: "mochi-size-value" });
+  const mochiSize = h("input", {
+    class: "mochi-size-slider",
+    type: "range",
+    min: String(DESKTOP_PANEL_SIZE_MIN),
+    max: String(DESKTOP_PANEL_SIZE_MAX),
+    step: "6",
+    oninput: (e: Event) => {
+      mochiSizeLabel.textContent = `${(e.target as HTMLInputElement).value} px`;
+    },
+    onchange: (e: Event) => actions.setDesktopMochiSize(Number((e.target as HTMLInputElement).value)),
+  }) as HTMLInputElement;
+  const resetMochiSize = h("button", {
+    class: "btn secondary settings-open-btn",
+    title: `Reset to ${DESKTOP_PANEL_SIZE} px`,
+    text: "Reset",
+    onclick: () => actions.setDesktopMochiSize(DESKTOP_PANEL_SIZE),
+  });
+  const mochiSizeControls = h(
+    "div",
+    { class: "mochi-size-controls" },
+    h("span", { class: "mochi-size-label", text: "Desktop Mochi" }),
+    mochiSize,
+    mochiSizeLabel,
+    resetMochiSize,
+  );
   const segButtons = [10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
-  const claudeBadge = h("span", { class: "status-badge" });
+  // `min-width:0` is load-bearing: a flex item refuses to shrink below its
+  // content width unless told otherwise, so without it five agents would push
+  // the Settings button off the card instead of wrapping.
+  const pillBadges = h("div", {
+    style: "display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0",
+  });
   const apiBadge = h("span", { class: "status-badge" });
 
   const rows = h(
     "div",
     { class: "settings-rows" },
-    h("div", { class: "settings-row" }, soundSwitch, h("span", { text: "Sound" }), volume),
+    h("div", { class: "settings-row sound-mochi-size-row" },
+      soundSwitch, h("span", { text: "Sound" }), volume, mochiSizeControls),
     h(
       "div",
       { class: "settings-row" },
@@ -434,13 +634,12 @@ function buildSettings(actions: ViewActions): ViewHost {
     h(
       "div",
       { class: "settings-row", style: "gap:14px" },
-      claudeBadge,
+      pillBadges,
       apiBadge,
       h("div", { class: "grow" }),
       h("button", {
-        class: "link-btn",
-        style: "color:#8e939c;font-size:11.5px",
-        text: "Settings…",
+        class: "btn secondary settings-open-btn",
+        text: "Settings",
         onclick: () => actions.openSettingsWindow(),
       }),
     ),
@@ -456,15 +655,50 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
+      mochiSize.value = String(s.desktopMochiSize ?? DESKTOP_PANEL_SIZE);
+      mochiSizeLabel.textContent = `${mochiSize.value} px`;
       autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
-      clear(claudeBadge);
-      claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
-        h("span", { text: "Claude Code" }),
-      );
+      clear(pillBadges);
+      // Every agent pill that is actually present, not just the one in front of
+      // you. The settings panel is where you go to find out what is wired up, and
+      // answering that question required first clicking each pill in turn — which
+      // is exactly the thing you cannot do for an agent that is not working.
+      //
+      // Driven off the pills themselves so the list cannot drift from what the
+      // island is showing: a pill hidden because its agent was switched off is
+      // absent here too.
+      const shown = State.tasks.filter((task) => AGENT_PILL[task.id] && !(State.settings.disabledAgents ?? []).includes(AGENT_PILL[task.id]));
+      for (const task of shown) {
+        const focused = task.id === State.focusId;
+        pillBadges.append(
+          h(
+            "span",
+            { class: `status-badge${focused ? " on" : ""}`, title: focused ? `${task.name} — in front` : task.name },
+            dot(agentStatusColor(AGENT_PILL[task.id]), 6),
+            h("span", { text: task.name }),
+          ),
+        );
+      }
+      if (shown.length === 0) {
+        pillBadges.append(h("span", { class: "hint", text: "No agents wired up." }));
+      }
       clear(apiBadge);
-      apiBadge.append(dot("#F4505E", 6), h("span", { text: "API" }));
+      // The dot used to be a fixed red, so it said "the chat is broken" even with
+      // a key saved. It is now the real answer.
+      //
+      // With Pi as the chat provider the badge disappears entirely rather than
+      // showing a green tick. Two reasons: there is no key to warn about, and the
+      // agent badge beside it already says "Pi" — so a second one reads as the
+      // same word printed twice. Silence is the honest answer when there is
+      // nothing wrong and nothing to add.
+      const provider = State.settings.chatProvider ?? "claude";
+      if (provider !== "pi") {
+        apiBadge.append(
+          dot(State.anthropicKeyPresent ? "#22C55E" : "#F4505E", 6),
+          h("span", { text: "API" }),
+        );
+      }
     },
   };
 }
@@ -503,7 +737,7 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
-  map.set("searching", buildPlaceholder("Claude is searching…", ""));
+  map.set("searching", buildPlaceholder("AI is searching…", ""));
   map.set("result", buildPlaceholder("Result", ""));
   return map;
 }

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.0 Lighto Edition — 0.1.7 base
+
+A fork of upstream 0.1.7 with Pi, Copilot CLI and Antigravity support kept on
+top, plus the permission work described below. The version tracks our own
+release line; the base is upstream 0.1.7.
+
+- Everything from 0.1.6: Mochi on the desktop with the wardrobe, greetings, live file-edit tickers and diffs, and the expanded GitHub integration (pull requests, CI, review requests and the contribution grid)
+- Four agent pills now, each with its own name and colour: VS Code (Claude Code), Pi, Copilot CLI and Antigravity. Every event is routed by the agent tag the relay carries, so one agent's approval card can never land on another agent's pill
+- Pi: install writes one extension file to `~/.pi/agent/extensions/`. Pi reports its sessions, tool calls and a per-turn summary, and permission requests block until you Allow or Deny in the island
+- Copilot CLI: Coucou's entries go into `~/.copilot/hooks/coucou.json` in the flat `exec`/`args`/`timeoutSec` shape Copilot expects. Only `PermissionRequest` waits on you
+- Antigravity: `~/.gemini/config/hooks.json`, wired to Antigravity's own `PreInvocation`/`PostInvocation` events plus the legacy lifecycle names so a session is never half-tracked
+- Settings has an agent picker: pick an agent, see whether its hooks are installed, read the diff, and write it — all with a backup and a fingerprint guard, exactly as Claude Code always did
+- Every agent writes to its own file, so installing one can never clobber another's hooks, and uninstalling restores the file byte for byte
+- Coucou never overwrites or deletes a Pi extension it did not write. If your own extension is already at that path, it is left exactly as it is, the Settings window says so, and there is no Install or Uninstall button to press by mistake — reinstalling your hook cannot replace it with Coucou's built-in one
+- Fixed Pi permission prompts being abandoned: the request waited 800ms for a human to click Allow, so the island card was discarded while still on screen and Pi fell back to its own dialog. The wait is now long enough for a person, and "Coucou is not running" is detected immediately instead of by timeout
+- Pi permissions now have exactly one asker. `pi-permission-system` asks Coucou first and falls back to Pi's dialog, and Coucou's extension no longer answers permissions too — two extensions intercepting one decision produced duplicate cards
+- Every failure while asking now falls through to Pi rather than denying: Coucou closed, relay missing, empty or unrecognised answer, timeout, or an exception in the handler
+- Fixed the Pi prompt ticker always being empty — it read a `text` field that does not exist on `before_agent_start`, so it always sent `undefined`
+
 ## 0.1.7 — October 4, 2026
 
 - Keyboard shortcuts from anywhere: ⌃⌥Space opens the chat, ⌃⌥A jumps to a waiting permission or question, ⌃⌥T brings your terminal forward, ⌃⌥] and ⌃⌥[ switch pills, ⌃⌥M mutes Mochi, ⌃⌥D sends him to the desktop and back, ⌃⌥G opens the wardrobe, and ⌃⌥W attaches the front window to the chat (GitHub build) (#205)

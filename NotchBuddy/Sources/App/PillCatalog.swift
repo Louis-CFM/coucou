@@ -37,6 +37,9 @@ struct PillDefinition {
         case "integration_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
+        case "agent_pi":           return "Pi"
+        case "agent_copilot":      return "Copilot CLI"
+        case "agent_antigravity":  return "Antigravity"
         default:                   return "Agent"
         }
     }
@@ -57,6 +60,14 @@ enum PillCatalog {
         .init(id: "agent_codex",         name: "Codex",       color: "#2DD4BF",
               category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
         // ── Agents ───────────────────────────────────────────────────────────
+        // Ids and colours match windows/src/core/state.ts, so the same three
+        // agents look the same on both sides of the project.
+        .init(id: "agent_pi",            name: "Pi",          color: "#8B5CF6",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_copilot",       name: "Copilot CLI", color: "#58A6FF",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_antigravity",   name: "Antigravity", color: "#E879F9",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // ── AI for the chat ──────────────────────────────────────────────────

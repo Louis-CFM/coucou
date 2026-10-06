@@ -74,6 +74,21 @@ section > h2 {
   color: var(--dim);
 }
 
+.int-row {
+  min-width: 0;
+}
+
+.int-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.int-head > span {
+  min-width: 0;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -264,4 +279,33 @@ select option {
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
+}
+
+/* Agent picker — one button per agent, the active one filled. */
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg button {
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--line, #2a2d33);
+  background: transparent;
+  color: #9398a1;
+  font: 500 12px var(--font, inherit);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.seg button:hover {
+  color: #c5c8cd;
+  border-color: #3a3e46;
+}
+
+.seg button.on {
+  background: #ffffff14;
+  border-color: #ffffff2e;
+  color: #e8eaed;
 }

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coucou Mochi</title>
+    <style>
+      /* The window is transparent and only the bot's body should ever be
+         painted. A body background here would fill the whole 120px square and
+         put an opaque rectangle on the desktop. */
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
+      }
+      body.dragging { cursor: grabbing; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <canvas id="mochi"></canvas>
+    <script type="module" src="/src/mochi/desktop-main.ts"></script>
+  </body>
+</html>

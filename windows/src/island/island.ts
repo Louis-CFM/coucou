@@ -10,7 +10,7 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, MAX_PILLS } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -62,6 +62,7 @@ export class Island {
   private greeting = new Greeting();
 
   private running = false;
+  private idleBlinkTimer: number | null = null;
   private lastFrame = 0;
   private dirty = true;
   private canvasPx = 0;
@@ -80,6 +81,7 @@ export class Island {
   private lastLoveTime = 0;
   private botHoverStart = { x: 0, y: 0 };
 
+  private mochiTransitioning = false;
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
@@ -111,40 +113,31 @@ export class Island {
         State.setFocus(id);
         Sound.play("blip");
       },
-      openTerminal: () => {
+      openTerminal: async () => {
         const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
-      },
-      // The ↗ button — same targets as openAgentTarget() on macOS.
-      openTarget: () => {
-        const task = State.focusTask;
-        if (!task) return;
-        const urls: Record<string, string> = {
-          integration_resend: "https://resend.com/emails",
-          integration_vercel: "https://vercel.com/dashboard",
-          integration_github: "https://github.com",
-          integration_stripe: "https://dashboard.stripe.com/payments",
-          integration_notion: "https://notion.so",
-          integration_calcom: "https://app.cal.com/bookings",
-        };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
-        else if (task.id === "integration_n8n") void Bridge.openN8n();
-        else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        // The session the agent is already running in is the thing worth looking
+        // at, so that is tried first. VS Code is the fallback for when there is no
+        // terminal window to switch to, not the first thing tried.
+        const switched = await Bridge.focusAgentTerminal(cwd);
+        if (!switched) void Bridge.openInVSCode(cwd);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
-      decide: (d) => {
+      decide: (d, note) => {
         const req = State.pendingApproval;
-        void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
+        void Bridge.log(`decide ${d}${note ? " (with note)" : ""} req=${req?.requestId ?? "none"}`);
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
-        void Bridge.approvalDecision(req.requestId, d);
+        void Bridge.approvalDecision(req.requestId, d, note);
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        // Pi, Copilot and Antigravity raise permission requests on their own
+        // pills, so the badge and the state have to be cleared on the pill that
+        // asked — hardcoding Claude Code would leave Pi stuck on "approval".
+        State.updateTask(req.agentId, "working");
+        State.setPillBadge(req.agentId, null);
         this.setView(State.defaultView());
       },
       toggleSound: () => {
@@ -166,6 +159,33 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      setDesktopMochiSize: (size) => {
+        State.settings.desktopMochiSize = size;
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      toggleDesktopMochi: () => {
+        Sound.play("blip");
+        if (State.settings.desktopMochi) {
+          this.engine.teleportIn();
+          this.ensureRunning();
+          State.settings.desktopMochi = false;
+          void Bridge.desktopMochiSetEnabled(false);
+          State.notify();
+          return;
+        }
+        if (this.mochiTransitioning) return;
+        this.mochiTransitioning = true;
+        this.engine.teleportOut(() => {
+          window.setTimeout(() => {
+            this.mochiTransitioning = false;
+            State.settings.desktopMochi = true;
+            void Bridge.desktopMochiSetEnabled(true);
+            State.notify();
+          }, 220);
+        });
+        this.ensureRunning();
+      },
       blip: () => Sound.play("blip"),
     };
 
@@ -545,6 +565,10 @@ export class Island {
     });
 
     window.addEventListener("keydown", (e) => {
+      // The active view gets first refusal, so its own shortcuts win over
+      // anything global. Escape stays with the island because collapsing is
+      // meaningful from any view.
+      if (e.key !== "Escape" && this.views.get(State.view)?.onKey?.(e.key)) return;
       if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
       State.lastActivity = performance.now();
     });
@@ -673,9 +697,22 @@ export class Island {
 
   ensureRunning() {
     if (this.running) return;
+    if (this.idleBlinkTimer != null) {
+      window.clearTimeout(this.idleBlinkTimer);
+      this.idleBlinkTimer = null;
+    }
     this.running = true;
     this.lastFrame = performance.now();
     requestAnimationFrame(this.frame);
+  }
+
+  private scheduleIdleBlink() {
+    if (State.mode === "hidden" || State.settings.desktopMochi || this.idleBlinkTimer != null) return;
+    const delay = Math.max(16, (this.engine.nextBlinkAt - performance.now() / 1000) * 1000);
+    this.idleBlinkTimer = window.setTimeout(() => {
+      this.idleBlinkTimer = null;
+      this.ensureRunning();
+    }, delay);
   }
 
   private frame = (nowMs: number) => {
@@ -729,17 +766,22 @@ export class Island {
     // spends most of its life in. Geometry still has to finish retracting.
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
+    const musicAnimating =
+      State.mode !== "hidden" && State.integrations.integration_music?.data.playing === true;
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive;
+        greetingActive || this.engine.busy || musicAnimating || UploadSeq.isActive;
 
     if (busy) {
       requestAnimationFrame(this.frame);
     } else {
       this.running = false;
       Sound.idle();
+      // Keep Mochi alive without burning frames: wake the renderer only when
+      // BotEngine's next natural blink is due.
+      this.scheduleIdleBlink();
     }
   };
 
@@ -751,10 +793,10 @@ export class Island {
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     // The drop canvas draws its own Mochi; two of them would overlap.
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !State.settings.desktopMochi;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
-    if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
+    if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive && !State.settings.desktopMochi) {
       const d = p.diameter;
       const color = botGlowColor(State.effectiveState);
       this.botGlow.style.display = "block";
@@ -788,7 +830,9 @@ export class Island {
     if (!ctx) return;
 
     const focus = State.focusTask;
-    this.engine.bodyColor = focus?.isIntegration ? hexToRGB(focus.color) : null;
+    this.engine.bodyColor = focus ? hexToRGB(focus.color) : null;
+    this.engine.singing =
+      focus?.id === "integration_music" && State.integrations.integration_music?.data.playing === true;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
     this.engine.lookY = this.lookY();
@@ -864,7 +908,8 @@ export class Island {
     const showGrid = State.mode === "compact";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
-      const others = State.otherTasks.slice(0, 4);
+      // One pill is the focused card, so the row beside it holds the rest.
+  const others = State.otherTasks.slice(0, MAX_PILLS - 1);
       const key = others.map((t) => t.id).join("|");
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
@@ -876,8 +921,20 @@ export class Island {
       }
     }
 
-    syncMiniBotStates(State.tasks);
+    syncMiniBotStates(
+      State.tasks,
+      State.integrations.integration_music?.data.playing === true,
+    );
     this.engine.setState(State.effectiveState);
+  }
+
+  /** Reforms Mochi in the island after the desktop pet returns home. */
+  playMochiTeleportIn() {
+    if (State.mode === "hidden") this.reveal();
+    void Bridge.desktopMochiProbe(`island teleport-in mode=${State.mode} view=${State.view}`);
+    this.engine.teleportIn();
+    this.dirty = true;
+    this.ensureRunning();
   }
 
   /** Applies settings coming from Rust at boot. */

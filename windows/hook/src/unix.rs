@@ -61,7 +61,11 @@ pub fn connect() -> Option<UnixStream> {
 /// the main thread's budget bounds every read and write.
 fn try_connect(path: &Path) -> io::Result<UnixStream> {
     let fd = unsafe {
-        libc::socket(libc::AF_UNIX, libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK, 0)
+        libc::socket(
+            libc::AF_UNIX,
+            libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK,
+            0,
+        )
     };
     if fd < 0 {
         return Err(io::Error::last_os_error());

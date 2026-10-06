@@ -106,7 +106,9 @@ pub fn start(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         let Some(path) = crate::platform::relay_socket_path() else {
-            log::line("no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive");
+            log::line(
+                "no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive",
+            );
             return;
         };
         // A socket file left behind by a crash answers nothing and can go. One
@@ -184,7 +186,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
+    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else {
+        return;
+    };
     if !payload.is_object() {
         return;
     }
@@ -202,7 +206,11 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         return;
     }
 
-    let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+    let id = format!(
+        "{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
     let (tx, mut rx) = mpsc::channel::<Reply>(4);
     {
         let pending = app.state::<Pending>();
@@ -239,7 +247,9 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
         Ok(None) => return None,
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
+            log::line(format!(
+                "hook id={id} island never acknowledged — terminal takes over"
+            ));
             return None;
         }
     }
@@ -264,7 +274,11 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
     let sender = {
         let pending = app.state::<Pending>();
         let mut map = pending.0.lock().unwrap();
-        if keep { map.get(request_id).cloned() } else { map.remove(request_id) }
+        if keep {
+            map.get(request_id).cloned()
+        } else {
+            map.remove(request_id)
+        }
     };
     match sender {
         Some(tx) => {
@@ -285,13 +299,36 @@ pub fn decline(app: &AppHandle, request_id: &str) {
     send(app, request_id, Reply::Decline, false);
 }
 
-/// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
-/// it into Claude Code's JSON is coucou-hook's job.
-pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
+/// Called by the island's Allow / Deny / Always buttons, and by Deny-with-note.
+///
+/// `note` is the human's reason when they deny with one; it is ignored for the
+/// approvals. The reply is JSON rather than a bare word so the note survives the
+/// trip, but coucou-hook still accepts a bare word, so an older relay paired with
+/// a newer island keeps working.
+///
+/// "always" stays distinct here instead of being folded into "allow". Folding it
+/// was correct while the island had no remembered-rules list to write to; now
+/// that callers like Pi can persist it, collapsing it would throw away the only
+/// signal that distinguishes the two.
+pub fn answer(app: &AppHandle, request_id: &str, decision: &str, note: Option<&str>) {
     let word = match decision {
-        "allow" | "always" => "allow",
+        "allow" => "allow",
+        "always" => "always",
         _ => "deny",
     };
     log::line(format!("decision id={request_id} {word}"));
-    send(app, request_id, Reply::Decision(word.to_string()), false);
+
+    let note = note.map(str::trim).filter(|n| !n.is_empty());
+    let payload = match word {
+        "deny" => match note {
+            Some(n) => format!(
+                r#"{{"behavior":"deny","message":{}}}"#,
+                serde_json::to_string(n).unwrap_or_else(|_| "\"Denied from Coucou\"".into())
+            ),
+            None => r#"{"behavior":"deny"}"#.to_string(),
+        },
+        "always" => r#"{"behavior":"allow","always":true}"#.to_string(),
+        _ => r#"{"behavior":"allow"}"#.to_string(),
+    };
+    send(app, request_id, Reply::Decision(payload), false);
 }

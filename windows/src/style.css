@@ -367,6 +367,14 @@ body {
   cursor: default;
 }
 
+.settings-open-btn {
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .icon-btn {
   width: 16px;
   height: 16px;
@@ -640,12 +648,133 @@ body {
   gap: 8px;
 }
 
+/* Reason field for "Why not?" — the human's words, handed back to the model so
+   it can course-correct instead of only being stopped. Sits above the buttons
+   and stays collapsed until asked for, so the default card is unchanged. */
+.note-row:empty {
+  display: none;
+}
+
+.note-wrap {
+  display: flex;
+}
+
+.note-input {
+  flex: 1;
+  min-width: 0;
+  font: 400 12px var(--font);
+  color: #e8e9ec;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+.note-input:focus {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.note-input::placeholder {
+  color: var(--dim-2);
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font: 400 11px var(--font);
   color: var(--dim-2);
+}
+
+/* The pill currently in front of you. It is marked rather than left to be
+   inferred, because every badge here now looks alike and the focused one is the
+   one whose status you came to read. */
+.status-badge.on {
+  color: #f2f3f5;
+}
+
+/* ── Music card ────────────────────────────────────────────────────────── */
+
+/* Playback state rides along in the header, beside the name, rather than
+   taking a row of its own between the name and the track. */
+.music-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px var(--font);
+  color: var(--dim-2);
+}
+
+.music-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 10px;
+  min-width: 0;
+}
+
+.music-title {
+  font: 500 13px var(--font);
+  color: #f2f3f5;
+  /* Track titles run long and without this they push the card wider than the
+     island, which is fixed width. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-artist {
+  font: 400 11.5px var(--font);
+  color: var(--dim-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-album {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.music-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: #ffffff0f;
+  color: #d7dae0;
+  cursor: pointer;
+}
+
+.music-btn:hover {
+  background: #ffffff1c;
+  color: #f2f3f5;
+}
+
+/* Refused because the pill budget is full. Shaking the switch that would not
+   move says "no" without needing a modal. */
+.shake {
+  animation: shake 0.28s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 
 /* ── Settings view (in-island) ──────────────────────────────────────────── */
@@ -711,6 +840,35 @@ input[type="range"]::-webkit-slider-thumb {
   height: 11px;
   border-radius: 50%;
   background: #fff;
+}
+
+.sound-mochi-size-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.mochi-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.mochi-size-label {
+  white-space: nowrap;
+}
+
+.mochi-size-controls input.mochi-size-slider {
+  width: 88px;
+  flex: 0 0 88px;
+}
+
+.mochi-size-value {
+  min-width: 38px;
+  color: var(--dim-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .seg {
@@ -1125,6 +1283,22 @@ input[type="range"]::-webkit-slider-thumb {
 .int-rows.tight {
   gap: 2px;
   padding-top: 4px;
+}
+
+/* The agent card's step log: bounded and scrollable, so a long session scrolls
+   back to the newest step instead of pushing the card off the island. */
+.int-rows.agent-rows {
+  max-height: 86px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.int-rows.agent-rows::-webkit-scrollbar {
+  display: none;
+}
+
+.int-rows.agent-rows .int-row {
+  align-items: flex-start;
 }
 
 .int-row {

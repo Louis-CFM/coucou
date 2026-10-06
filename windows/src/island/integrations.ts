@@ -27,16 +27,52 @@ export function registerIntegrationHandlers(island: Island) {
 
 /** Asks Rust which keys exist so the idle cards can say so. */
 export async function refreshConfigured() {
+  // The island's API dot reflects this, and it is asked separately from the
+  // integration cards: a saved Anthropic key says nothing about whether Pi is
+  // reachable, and Pi needs no key at all.
+  State.anthropicKeyPresent = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
   for (const [id, key] of Object.entries(KEY_FOR)) {
     const present = (await Bridge.secretPresent(key)) ?? false;
     const info = State.integrations[id] ?? { data: {}, error: null, loaded: false, configured: false };
     State.integrations[id] = { ...info, configured: present };
   }
-  const hooks = State.settings.hooksInstalled;
-  const claude = State.integrations.integration_claude ?? {
-    data: {}, error: null, loaded: false, configured: false,
-  };
-  State.integrations.integration_claude = { ...claude, configured: hooks };
+  State.notify();
+}
+
+/**
+ * Which agent each declared pill belongs to. These pills are wired to hooks, not
+ * to an API key, so their configured state comes from whether that agent's hooks
+ * are actually installed — reporting "true" unconditionally would paint a green
+ * pill for an agent nothing is listening to.
+ */
+const AGENT_FOR_PILL: Record<string, string> = {
+  integration_claude: "claudeCode",
+  agent_pi: "pi",
+  agent_copilot: "copilot",
+  agent_antigravity: "antigravity",
+  // Without this, `hooksInstalledByAgent.codex` is never written, so
+  // `isAgentHooked("codex")` stays null and the island dot is stuck on amber
+  // forever — which reads as "still checking" rather than "not installed".
+  agent_codex: "codex",
+};
+
+/**
+ * Asks Rust which agents are hooked up. Runs at boot and whenever the settings
+ * window reports a change, so installing or removing hooks is reflected without
+ * a restart.
+ */
+export async function refreshHookStatus() {
+  await Promise.all(
+    Object.entries(AGENT_FOR_PILL).map(async ([pillId, agent]) => {
+      const status = await Bridge.hooksStatus(agent);
+      if (!status) return;
+      State.hooksInstalledByAgent[agent] = status.installed && status.managed;
+      const info = State.integrations[pillId] ?? {
+        data: {}, error: null, loaded: false, configured: false,
+      };
+      State.integrations[pillId] = { ...info, configured: status.installed };
+    }),
+  );
   State.notify();
 }
 

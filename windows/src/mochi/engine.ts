@@ -53,7 +53,7 @@ interface BotStateCfg {
 }
 
 interface Particle {
-  type: "heart" | "star" | "spark" | "sweat" | "z";
+  type: "heart" | "star" | "spark" | "sweat" | "z" | "note";
   x: number; y: number; vx: number; vy: number;
   age: number; life: number; rot: number; size: number;
 }
@@ -166,7 +166,7 @@ const FONT = `system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif`;
 
 export class BotEngine {
   isMini = false;
-  /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
+  /** Focused pill colour (null = Mochi gradient). */
   bodyColor: RGB | null = null;
 
   // Animated state (BotEngine `s`)
@@ -179,6 +179,10 @@ export class BotEngine {
 
   /** Extra canvas height above the body so hearts can fly out without clipping. */
   particleOverhang = 0;
+  /** Music integrations let Mochi sing without changing its agent state. */
+  singing = false;
+  private singingWasOn = false;
+  private nextNoteAt = 0;
 
   // Mouth spring (fraction of R)
   slotH = 0; slotHTarget = 0; slotHVel = 0; isChewing = false;
@@ -276,6 +280,29 @@ export class BotEngine {
   blink() {
     if (this.locks.has("open")) return;
     this.anim("open", [[0.06, 70, Ease.inOut], [1, 130, Ease.out]]);
+  }
+
+  /** A little spiral of sparks as Mochi vanishes from one canvas. */
+  teleportOut(onComplete?: () => void) {
+    this.emit("spark", 10);
+    this.emit("star", 4);
+    this.blink();
+    this.anim("roll", [[Math.PI * 2, 380, Ease.inOut]]);
+    this.anim("sy", [[0.82, 90, Ease.out], [0, 290, Ease.easeIn]]);
+    this.anim("sx", [[1.16, 90, Ease.out], [0, 290, Ease.easeIn]], onComplete);
+  }
+
+  /** Reforms Mochi from a small sparkle at the destination. */
+  teleportIn() {
+    this.sx = 0;
+    this.sy = 0;
+    this.roll = -Math.PI * 2;
+    this.emit("spark", 10);
+    this.emit("star", 4);
+    this.anim("sx", [[1.12, 420, Ease.back], [1, 110, Ease.out]]);
+    this.anim("sy", [[0.82, 120, Ease.out], [1.08, 180, Ease.back], [1, 220, Ease.out]]);
+    this.anim("roll", [[0, 520, Ease.out]]);
+    this.blink();
   }
 
   squash() {
@@ -429,14 +456,14 @@ export class BotEngine {
       const isZ = type === "z";
       this.particles.push({
         type,
-        x: (Math.random() - 0.5) * 0.9 + (isZ ? 0.55 : 0),
+        x: (Math.random() - 0.5) * (type === "note" ? 1.25 : 0.9) + (isZ ? 0.55 : 0),
         y: -0.7 - Math.random() * 0.2,
-        vx: (Math.random() - 0.5) * 0.35 + (isZ ? 0.18 : 0),
+        vx: (Math.random() - 0.5) * (type === "note" ? 0.55 : 0.35) + (isZ ? 0.18 : 0),
         vy: -(0.45 + Math.random() * 0.35),
         age: -i * 0.14,
         life: 1.3 + Math.random() * 0.5,
         rot: Math.random() * Math.PI * 2,
-        size: 0.15 + Math.random() * 0.08,
+        size: type === "note" ? 0.27 + Math.random() * 0.1 : 0.15 + Math.random() * 0.08,
       });
     }
   }
@@ -452,13 +479,18 @@ export class BotEngine {
     this.morph = 0;
   }
 
+  /** Next ambient blink deadline, in performance.now() seconds. */
+  get nextBlinkAt(): number {
+    return this.nextBlink;
+  }
+
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
     return (
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
-      this.isMini ||
+      this.singing || this.isMini ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
       Math.abs(this.tgTilt - this.tilt) > 0.002 ||
@@ -587,6 +619,18 @@ export class BotEngine {
       if (!this.isMini && this.cfg.sweat && Math.random() < 0.5) this.emit("sweat", 1);
     }
 
+    if (this.singing) {
+      this.singingWasOn = true;
+      this.slotHTarget = Math.sin(n * 10) > 0.25 ? 0.12 : 0;
+      if (n >= this.nextNoteAt) {
+        this.emit("note", 1);
+        this.nextNoteAt = n + 0.55 + Math.random() * 0.35;
+      }
+    } else if (this.singingWasOn) {
+      this.singingWasOn = false;
+      this.slotHTarget = 0;
+    }
+
     for (const p of this.particles) p.age += dt;
     this.particles = this.particles.filter((p) => p.age < p.life);
 
@@ -712,7 +756,7 @@ export class BotEngine {
 
   private drawBody(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     if (this.bodyColor) {
-      // Mini bots: flat solid fill — no gradient, no reflection, no highlight
+      // Pill-matched bots: flat solid fill, just like the mini pill Mochis.
       x.fillStyle = rgba(this.bodyColor, 1);
       x.fill(body);
       return;
@@ -1113,6 +1157,14 @@ export class BotEngine {
           x.textAlign = "center";
           x.textBaseline = "middle";
           x.fillText("z", 0, 0);
+          break;
+        case "note":
+          x.rotate(Math.sin(p.age * 5) * 0.18);
+          x.fillStyle = "#FA2D48";
+          x.font = `700 ${sz * 3.2}px ${FONT}`;
+          x.textAlign = "center";
+          x.textBaseline = "middle";
+          x.fillText(p.rot > Math.PI ? "♫" : "♪", 0, 0);
           break;
       }
       x.restore();

@@ -1,0 +1,2 @@
+Coucou permission check file.
+Created to verify Coucou write-permission prompts.

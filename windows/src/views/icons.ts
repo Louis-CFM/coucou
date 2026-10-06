@@ -20,12 +20,21 @@ export const ICONS = {
   // chevron.right
   chevronRight: "M9 5.5 15.5 12 9 18.5",
   chevronLeft: "M15 5.5 8.5 12 15 18.5",
+  // chevron.up
+  chevronUp: "M5.5 15 12 8.5 18.5 15",
   // checkmark
   check: "M5 12.5 9.5 17 19 7.5",
   // arrow.up (send)
   arrowUp: "M12 4.5 5.5 11l1.5 1.5 4-4V19.5h2V8.5l4 4L18.5 11 12 4.5z",
   // exclamationmark
   bang: "M11 4h2v10h-2V4zm0 12.2h2v2.2h-2v-2.2z",
+  // ── Music transport ────────────────────────────────────────────────────
+  // Filled rather than stroked: a 1.4px hairline triangle reads as a smudge at
+  // 10px, which is the size these appear at in the card's control row.
+  play: "M7 4.4v15.2L19.2 12z",
+  pause: "M6.2 4.4h4.1v15.2H6.2zM13.7 4.4h4.1v15.2h-4.1z",
+  skipBack: "M5.2 4.6h2.8v14.8H5.2zM19.4 4.6v14.8L9.3 12z",
+  skipNext: "M16 4.6h2.8v14.8H16zM4.6 4.6v14.8L14.7 12z",
   // xmark
   xmark: "M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z",
   // timer

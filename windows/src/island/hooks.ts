@@ -10,6 +10,55 @@ import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
 
+/** Claude Code's agent name in settings — not the same as its pill id. */
+const CLAUDE_ID_AGENT = "claudeCode";
+
+/**
+ * The agent pills this build ships with. Unlike a third-party `coucou_agent`
+ * pill — which is created on the first event and removed when the session ends —
+ * these are declared up front with a name and a colour, so they survive the end
+ * of every session and simply go back to idle.
+ */
+const DECLARED_AGENTS: Record<string, { name: string; color: string }> = {
+  pi: { name: "Pi", color: "#8B5CF6" },
+  copilot: { name: "Copilot CLI", color: "#58A6FF" },
+  antigravity: { name: "Antigravity", color: "#E879F9" },
+  codex: { name: "Codex", color: "#2DD4BF" },
+};
+
+/**
+ * The pill id for an agent name.
+ *
+ * Claude Code is the odd one out: it is named "claudeCode" in settings but its
+ * pill is `integration_claude`, not `agent_claudeCode`. Building the id by
+ * concatenation produced a task that never existed, so switching Claude Code
+ * off removed nothing and the pill stayed put.
+ */
+const declaredAgentId = (valid: string | null): string | null => {
+  if (!valid) return null;
+  if (valid === CLAUDE_ID_AGENT) return CLAUDE_ID;
+  return valid in DECLARED_AGENTS ? `agent_${valid}` : null;
+};
+
+/**
+ * Whether an agent has been switched off in settings.
+ *
+ * Disabled means disabled in both directions: the pill is not created, and any
+ * pill already on screen is torn down. That matters because a pill is permanent
+ * for a declared agent — it is never cleaned up when its session ends — so
+ * "hidden when disabled" would otherwise only apply to the next session and the
+ * pill would sit there indefinitely, still taking up room.
+ */
+const isAgentDisabled = (agent: string | null): boolean =>
+  agent !== null && (State.settings.disabledAgents ?? []).includes(agent);
+
+/** Drops a declared agent's pill if the user has since switched it off. */
+function hideDisabledPill(agent: string | null): void {
+  if (!isAgentDisabled(agent)) return;
+  const id = declaredAgentId(agent);
+  if (id) State.removeTask(id);
+}
+
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
 
@@ -81,6 +130,9 @@ const TOOL_LABELS: Record<string, string> = {
 function stepLabel(tool: string, input: Record<string, unknown>): string {
   const label = TOOL_LABELS[tool] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
+  // Pi's end-of-turn beat is a summary, not a tool: the text is in `note`, and a
+  // row reading just "summary" would tell the user nothing at all.
+  if (tool === "summary") return str("note") ?? label;
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
   const path = str("path");
@@ -157,8 +209,14 @@ function handleHook(island: Island, payload: HookPayload) {
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
   const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
-  const isExternalAgent = validAgent !== null;
+  const declaredId = declaredAgentId(validAgent);
+  const agentId = declaredId ?? (validAgent ? `agent_${validAgent}` : CLAUDE_ID);
+  // A declared agent (Pi, Copilot, Antigravity) is a first-class pill; any other
+  // `coucou_agent` is a third-party pill created on demand.
+  const declared = DECLARED_AGENTS[validAgent ?? ""] ?? null;
+  const isExternalAgent = validAgent !== null && declared === null;
+  // Only an undeclared third-party pill is torn down when its session ends.
+  const isTransient = validAgent !== null && declared === null;
 
   const focused = State.focusId === agentId;
 
@@ -175,7 +233,20 @@ function handleHook(island: Island, payload: HookPayload) {
 
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
-    if (isExternalAgent) {
+    // A disabled agent gets no pill at all. If one is already up from before it
+    // was switched off, it goes now rather than lingering — declared pills are
+    // permanent, so it would never clean itself up.
+    if (isAgentDisabled(validAgent)) {
+      hideDisabledPill(validAgent);
+      return;
+    }
+    if (declared) {
+      // Already declared in INTEGRATION_AGENTS, so this only has to attach the
+      // session's cwd — upsertExternalAgent is a no-op for a pill that exists.
+      State.upsertExternalAgent(agentId, declared.name, declared.color);
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t && cwd) t.sessionCwd = cwd;
+    } else if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
     } else {
       upsert(projectName, cwd);
@@ -237,7 +308,7 @@ function handleHook(island: Island, payload: HookPayload) {
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       window.setTimeout(() => {
-        if (isExternalAgent) {
+        if (isTransient) {
           State.removeTask(agentId);
         } else {
           State.updateTask(agentId, "idle");
@@ -254,8 +325,12 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
-      if (isExternalAgent) {
+      if (isTransient) {
         State.removeTask(agentId);
+      } else if (declared) {
+        // Keep the pill: it is a declared agent, not a session that went away.
+        State.updateTask(agentId, "idle");
+        State.setPillBadge(agentId, null);
       } else {
         State.updateTask(agentId, "idle");
         clearSession();
@@ -271,10 +346,11 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "PermissionRequest": {
-      // External agents do not get an approval card — showing one would look like
-      // a Claude Code request. Decline immediately so the agent re-asks in its
-      // terminal. Approval support for other agents will come with Codex support.
-      if (isExternalAgent) {
+      // Only an agent whose relay blocks for an answer gets a card. Pi waits for
+      // Coucou's stdout, so it is answered here; an arbitrary third-party
+      // `coucou_agent` does not block, so showing a card for it would hang the
+      // agent forever — those are declined straight back to their terminal.
+      if (validAgent !== null && declared === null) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
@@ -287,20 +363,21 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      ensurePill();
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
       State.pendingApproval = {
         requestId,
         sessionId: payload.session_id ?? "",
+        agentId,
         tool,
         command: approvalTarget(tool, input),
       };
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
+      State.updateTask(agentId, "approval");
       State.isPinned = true;
       Sound.play("approval");
       if (focused) {
@@ -309,7 +386,7 @@ function handleHook(island: Island, payload: HookPayload) {
         // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
         // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
+        State.setPillBadge(agentId, "approval");
         island.reveal();
       }
       // Coucou answers within 108 s or not at all; after that the terminal has
@@ -320,8 +397,8 @@ function handleHook(island: Island, payload: HookPayload) {
         State.pendingApproval = null;
         State.isPinned = false;
         island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
+        State.updateTask(agentId, "working");
+        State.setPillBadge(agentId, null);
         if (State.view === "approval") island.setView(State.defaultView());
         State.notify();
       }, 110_000);

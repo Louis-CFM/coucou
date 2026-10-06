@@ -7,16 +7,20 @@ use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use ::windows::core::{BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
+use ::windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL, HWND, LPARAM, POINT};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
-use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+use ::windows::Win32::System::Threading::{
+    AttachThreadInput, GetCurrentProcess, GetCurrentThreadId, OpenProcessToken,
+};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
-    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetForegroundWindow,
+    GetWindowLongPtrW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible,
+    SetForegroundWindow, SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, SW_RESTORE, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -76,9 +80,19 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd.creation_flags(CREATE_NO_WINDOW)
 }
 
+/// The same thing for a `tokio::process::Command`.
+///
+/// The two `Command` types carry the same Windows creation flags but are
+/// separate types with separate trait impls, so the helper cannot be shared.
+/// Spawning a `.cmd` shim without this flashes a console window in front of the
+/// island — brief, but it steals focus, and it happens on every island chat turn.
+pub fn no_console_tokio(cmd: &mut tokio::process::Command) -> &mut tokio::process::Command {
+    cmd.creation_flags(CREATE_NO_WINDOW)
+}
+
 pub fn open_url(url: &str) {
-    let _ = no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url]))
-        .spawn();
+    let _ =
+        no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url])).spawn();
 }
 
 pub fn reveal_folder(path: &str) {
@@ -186,7 +200,9 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 /// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
 pub fn unblock_webview_drops(app: &AppHandle) {
     for label in [WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
+        let Some(win) = app.get_webview_window(label) else {
+            continue;
+        };
         let Some(hwnd) = hwnd_of(&win) else { continue };
         unsafe {
             let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
@@ -233,3 +249,126 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+// ── Bringing an agent's terminal window forward ──────────────────────────────
+//
+// The island's "open terminal" button used to open VS Code, which is the wrong
+// answer when what you want to look at is the session the agent is already
+// running in.
+//
+// The obvious implementation — find pi.exe, walk up to whatever owns a window —
+// does not work here, and it is worth saying why. `pi` on Windows is an npm shim,
+// so there is no pi.exe to find: it is cmd.exe, then node.exe. And the API that
+// would identify it by its command line (the one that mentions pi-coding-agent)
+// returns the *image path* instead, which for node.exe is just "node.exe". Going
+// further means reading the process PEB, which is a great deal of unsafe pointer
+// walking to answer a question a window title already answers.
+//
+// So this looks for the window directly. Windows Terminal registers a class name
+// like no other terminal does, and its title carries the folder it is sitting in,
+// which is enough to pick the right one when there is more than one.
+
+/// Windows Terminal's top-level window class.
+const TERMINAL_CLASS: &str = "CASCADIA_HOSTING_WINDOW_CLASS";
+
+/// Brings a terminal window forward, preferring one showing `cwd`.
+///
+/// Returns false when no terminal window exists, so the caller can fall back to
+/// opening an editor rather than silently doing nothing.
+///
+/// This cannot choose a *tab*. Windows Terminal is tabbed and offers no way to
+/// focus a specific tab from another process, so the window comes forward and the
+/// tab stays where it was. With one terminal open that is the right tab anyway.
+pub fn focus_terminal(cwd: Option<&str>) -> bool {
+    let wanted: Vec<String> = cwd
+        .and_then(|path| {
+            std::path::Path::new(path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_ascii_lowercase())
+        })
+        .into_iter()
+        .collect();
+
+    struct Ctx {
+        wanted: Vec<String>,
+        best: Option<(i32, HWND)>,
+    }
+    unsafe extern "system" fn visit(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let ctx = &mut *(lparam.0 as *mut Ctx);
+        if IsWindowVisible(hwnd).as_bool() {
+            let mut class_buf = [0u16; 256];
+            let len = GetClassNameW(hwnd, &mut class_buf);
+            let class: String =
+                String::from_utf16_lossy(&class_buf[..len as usize]).to_ascii_lowercase();
+
+            // The class check is the reliable signal; the process name covers
+            // conhost and older terminals that do not register a class.
+            let is_terminal =
+                class == TERMINAL_CLASS.to_ascii_lowercase() || class.contains("consolewindow");
+            if is_terminal {
+                let mut title_buf = [0u16; 512];
+                let tlen = GetWindowTextW(hwnd, &mut title_buf);
+                let title =
+                    String::from_utf16_lossy(&title_buf[..tlen as usize]).to_ascii_lowercase();
+
+                // A title matching the session folder beats one that does not, and
+                // a title at all beats an untitled window, so a bare match is
+                // enough to break ties sensibly.
+                let score = if !ctx.wanted.is_empty()
+                    && ctx
+                        .wanted
+                        .iter()
+                        .any(|w| !w.is_empty() && title.contains(w))
+                {
+                    2
+                } else if !title.trim().is_empty() {
+                    1
+                } else {
+                    0
+                };
+                if ctx.best.map(|(s, _)| score > s).unwrap_or(true) {
+                    ctx.best = Some((score, hwnd));
+                }
+            }
+        }
+        BOOL(1)
+    }
+
+    let mut ctx = Ctx { wanted, best: None };
+    unsafe {
+        let _ = EnumWindows(Some(visit), LPARAM(&mut ctx as *mut Ctx as isize));
+    }
+    match ctx.best {
+        Some((_, hwnd)) => bring_to_front(hwnd),
+        None => false,
+    }
+}
+
+/// Puts a window in front of the user.
+///
+/// Windows refuses this from a process that does not already own the foreground,
+/// and Coucou generally does not: the island is a non-activating window, so
+/// clicking its buttons does not make Coucou the foreground application. The way
+/// through is to borrow the foreground thread's input queue, set the foreground
+/// while attached, then detach. Without that the call fails silently, which looks
+/// exactly like a button that does nothing.
+fn bring_to_front(hwnd: HWND) -> bool {
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let foreground = GetForegroundWindow();
+        let foreground_thread = GetWindowThreadProcessId(foreground, None);
+        let our_thread = GetCurrentThreadId();
+
+        let attached = foreground_thread != 0 && our_thread != 0 && foreground_thread != our_thread;
+        if attached {
+            let _ = AttachThreadInput(our_thread, foreground_thread, true);
+        }
+        let ok = SetForegroundWindow(hwnd).as_bool();
+        if attached {
+            let _ = AttachThreadInput(our_thread, foreground_thread, false);
+        }
+        ok || GetForegroundWindow() == hwnd
+    }
+}

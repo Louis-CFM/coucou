@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "coucou"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "gtk",
  "keyring",
@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "coucou-hook"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "libc",
  "serde_json",
@@ -4282,6 +4282,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "windows-sys 0.61.2",
 ]

@@ -1,7 +1,7 @@
 {
   "name": "coucou-windows",
   "private": true,
-  "version": "0.1.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,10 @@
     "tauri": "tauri",
     "predev": "cargo build --release -p coucou-hook",
     "prebuild": "cargo build --release -p coucou-hook",
-    "pack": "tauri build && node scripts/pack.mjs"
+    "pack": "tauri build && node scripts/pack.mjs",
+    "pack:exe": "tauri build --bundles nsis && node scripts/pack.mjs",
+    "test:pills": "esbuild tests/pill-budget.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/pill-budget.mjs --log-level=error && node node_modules/.cache/pill-budget.mjs",
+    "test:mochi": "esbuild tests/desktop-mochi.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/desktop-mochi.mjs --log-level=error && node node_modules/.cache/desktop-mochi.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

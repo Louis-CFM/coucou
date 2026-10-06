@@ -20,6 +20,21 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T |
   }
 }
 
+export interface DesktopMochiSnapshot {
+  state: string;
+  body_color: string | null;
+  focused_id: string | null;
+  music_playing: boolean;
+  permission_pending: boolean;
+}
+
+export interface DesktopMochiRuntime {
+  snapshot: DesktopMochiSnapshot | null;
+  cursor: { dx: number; dy: number } | null;
+  visible: boolean;
+  dragging: boolean;
+}
+
 export interface BootInfo {
   settings: Settings;
   /** Logical screen rect of the monitor the island lives on. */
@@ -53,6 +68,8 @@ export const Bridge = {
   openUrl: (url: string) => call<void>("open_url", { url }),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
+  /** Brings the agent's own terminal window forward. False when there is none. */
+  focusAgentTerminal: (path: string | null) => call<boolean>("focus_agent_terminal", { path }),
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
   quit: () => call<void>("quit_app"),
@@ -62,19 +79,53 @@ export const Bridge = {
   /** Writes to %LOCALAPPDATA%\Coucou\coucou.log, next to the Rust lines. */
   log: (message: string) => call<void>("log_line", { message }),
 
-  // ── Claude Code hooks ─────────────────────────────────────────────────────
-  hooksStatus: () => call<HookStatus>("hooks_status"),
-  /** Diff to show before anything is written. `install: false` previews removal. */
-  hooksPreview: (install: boolean) => callOrThrow<HookPreview>("hooks_preview", { install }),
-  /**
-   * Writes ~/.claude/settings.json — only ever after an explicit click, and only
-   * when the file still matches the preview the user looked at.
-   */
-  hooksApply: (install: boolean, fingerprint: string) =>
-    callOrThrow<string>("hooks_apply", { install, fingerprint }),
+  // ── Desktop Mochi ──────────────────────────────────────────────────────
+  /** Reveals the floating panel, placing it where the rules say. */
+  desktopMochiShow: () => call<boolean>("desktop_mochi_show"),
+  desktopMochiHide: () => call<void>("desktop_mochi_hide"),
+  desktopMochiSetEnabled: (enabled: boolean) => call<void>("desktop_mochi_set_enabled", { enabled }),
+  desktopMochiRuntime: () => call<DesktopMochiRuntime>("desktop_mochi_runtime"),
+  /** Grabs the panel. Rust records where it was so the drag needs no reads. */
+  desktopMochiDragStart: () => call<void>("desktop_mochi_drag_start"),
+  /** Persists the final physical position once at drag end. */
+  desktopMochiDragEnd: () => call<void>("desktop_mochi_drag_end"),
+  desktopMochiSync: (
+    state: string,
+    bodyColor: string | null,
+    focusedId: string | null,
+    musicPlaying: boolean,
+    permissionPending: boolean,
+  ) => call<void>("desktop_mochi_sync", {
+    state, bodyColor, focusedId, musicPlaying, permissionPending,
+  }),
+  /** Writes a frontend diagnostic line to coucou.log. */
+  desktopMochiProbe: (msg: string) => call<void>("desktop_mochi_probe", { msg }),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
-    call<void>("approval_decision", { requestId, decision }),
+  // ── Music (Windows Global Media Control) ─
+  /** Current media session, or null when nothing is publishing one. */
+  mediaState: () => call<MediaState | null>("media_state"),
+  /**
+   * Sends a transport command. Resolves false when the player does not
+   * advertise that control, so the card hides the button rather than offering
+   * one that would do nothing.
+   */
+  mediaCommand: (cmd: MediaCommand) => call<boolean>("media_command", { cmd }),
+
+  // ── Agent hooks ──────────────────────────────────────────────────────────
+  /** Installed state for one agent's hooks. Omit `agent` for the active one. */
+  hooksStatus: (agent?: string) => call<HookStatus>("hooks_status", { agent }),
+  /** Diff to show before anything is written. `install: false` previews removal. */
+  hooksPreview: (install: boolean, agent?: string) =>
+    callOrThrow<HookPreview>("hooks_preview", { agent, install }),
+  /**
+   * Writes the agent's hook configuration — only ever after an explicit click,
+   * and only when the file still matches the preview the user looked at.
+   */
+  hooksApply: (install: boolean, fingerprint: string, agent?: string) =>
+    callOrThrow<string>("hooks_apply", { agent, install, fingerprint }),
+
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always", note?: string) =>
+    call<void>("approval_decision", { requestId, decision, note: note ?? null }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
@@ -118,8 +169,29 @@ export interface DroppedFile {
   size: number;
 }
 
+/** A media session published by some player, via Global Media Control. */
+export interface MediaState {
+  /** App user-model id, e.g. "Spotify.exe". Reverse-DNS ids come through too. */
+  app: string;
+  title: string;
+  artist: string;
+  /** Frequently empty: not every player publishes one. Never assume it is there. */
+  album: string;
+  playing: boolean;
+  /** A player exists but has not published a track yet. */
+  idle: boolean;
+}
+
+export type MediaCommand = "playPause" | "next" | "previous";
+
 export interface HookStatus {
   installed: boolean;
+  /**
+   * Whether Coucou wrote this file and may therefore update or remove it. False
+   * means something else is there — an extension you edited yourself — which
+   * Coucou will not overwrite.
+   */
+  managed: boolean;
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;

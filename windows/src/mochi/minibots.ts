@@ -63,12 +63,13 @@ export function pruneMiniBots() {
   }
 }
 
-export function syncMiniBotStates(tasks: AgentTask[]) {
+export function syncMiniBotStates(tasks: AgentTask[], musicPlaying = false) {
   for (const mb of live.values()) {
     const task = tasks.find((t) => t.id === mb.taskId);
     if (!task) continue;
     mb.engine.setState(task.state);
     mb.engine.bodyColor = hexToRGB(task.color);
+    mb.engine.singing = task.id === "integration_music" && musicPlaying;
   }
 }
 

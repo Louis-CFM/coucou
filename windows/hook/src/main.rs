@@ -1,10 +1,15 @@
-//! coucou-hook — the relay Claude Code runs on every hook event.
+//! coucou-hook — the relay an agent runs on every hook event.
+//!
+//! The same relay serves every supported agent: Claude Code, Copilot CLI and
+//! Antigravity invoke it as `coucou-hook --agent <name> <EventName>`, and Pi
+//! spawns it the same way from its extension. The `--agent` tag travels to the
+//! app in `coucou_agent`, which is how an event finds the right pill.
 //!
 //! Reads the hook JSON on stdin, adds a little terminal context, and hands it to
 //! Coucou over the named pipe `\\.\pipe\coucou-<sid>` (Windows) or the Unix
 //! socket `$XDG_RUNTIME_DIR/coucou.sock` (Linux).
 //!
-//! Hard rule (docs/CLAUDE.md): **never block Claude Code.**
+//! Hard rule (docs/CLAUDE.md): **never block the agent that called us.**
 //! * If the pipe does not exist — Coucou is closed — we exit 0 immediately with
 //!   nothing on stdout, and the session carries on untouched.
 //! * Every step runs under a deadline enforced by the main thread, so a pipe that
@@ -14,7 +19,9 @@
 //!   island is the whole point. No answer means empty stdout, and Claude Code
 //!   asks in the terminal exactly as if Coucou were not installed.
 //!
-//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON).
+//! Usage: `coucou-hook [--agent <name>] <EventName>`
+//! (the event name is also read from the JSON; `--agent` is optional and absent
+//! means Claude Code, so hooks installed by an older build keep working).
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -45,10 +52,16 @@ mod unix;
 use unix::connect;
 
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event)) = read_event() else {
+        std::process::exit(0)
+    };
 
     let waits_for_answer = event == "PermissionRequest";
-    let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
+    let budget = if waits_for_answer {
+        DECISION_BUDGET
+    } else {
+        FIRE_AND_FORGET_BUDGET
+    };
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
@@ -73,13 +86,51 @@ fn main() {
 /// The documented PermissionRequest output. Anything we do not recognise prints
 /// nothing at all rather than guessing — silence is the safe answer.
 /// See https://code.claude.com/docs/en/hooks
+///
+/// The island sends either a bare word (older builds) or a JSON decision
+/// carrying an optional note and scope. Both are accepted so that a Coucou whose
+/// island and relay are briefly out of step still produces a valid answer instead
+/// of silently falling through to the caller's own UI.
 fn decision_json(decision: &str) -> Option<String> {
-    let behavior = match decision.trim() {
-        // "always" still answers a plain allow; remembering it is the island's
-        // business, not Claude Code's.
-        "allow" | "always" => r#"{"behavior":"allow"}"#.to_string(),
-        "deny" => r#"{"behavior":"deny","message":"Denied from Coucou"}"#.to_string(),
-        _ => return None,
+    let trimmed = decision.trim();
+
+    // Preferred shape: {"behavior":"allow","always":true} / {"behavior":"deny","message":"..."}
+    let behavior = match serde_json::from_str::<serde_json::Value>(trimmed) {
+        Ok(v) => {
+            let behavior = v.get("behavior").and_then(|b| b.as_str()).unwrap_or("");
+            match behavior {
+                "allow" => {
+                    // "always" only means something to callers that can remember
+                    // it. Claude Code reads `behavior` and ignores the rest, so an
+                    // always-allow there degrades to a plain allow rather than
+                    // something it cannot honour.
+                    if v.get("always").and_then(|a| a.as_bool()) == Some(true) {
+                        r#"{"behavior":"allow","always":true}"#.to_string()
+                    } else {
+                        r#"{"behavior":"allow"}"#.to_string()
+                    }
+                }
+                "deny" => {
+                    // The human's own words, handed back as the refusal reason so
+                    // the model can course-correct instead of just being stopped.
+                    let message = v
+                        .get("message")
+                        .and_then(|m| m.as_str())
+                        .map(str::trim)
+                        .filter(|m| !m.is_empty())
+                        .unwrap_or("Denied from Coucou");
+                    let escaped = serde_json::to_string(message).ok()?;
+                    format!(r#"{{"behavior":"deny","message":{escaped}}}"#)
+                }
+                _ => return None,
+            }
+        }
+        // Legacy shape: a bare word.
+        Err(_) => match trimmed {
+            "allow" | "always" => r#"{"behavior":"allow"}"#.to_string(),
+            "deny" => r#"{"behavior":"deny","message":"Denied from Coucou"}"#.to_string(),
+            _ => return None,
+        },
     };
     Some(format!(
         r#"{{"hookSpecificOutput":{{"hookEventName":"PermissionRequest","decision":{behavior}}}}}"#
@@ -126,7 +177,10 @@ fn read_event() -> Option<(String, String)> {
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
-    map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
+    map.insert(
+        "hook_event_name".into(),
+        serde_json::Value::String(event.clone()),
+    );
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -234,7 +288,9 @@ mod tests {
             r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#
         );
         // "always" is an island concept; Claude Code just gets an allow.
-        assert!(decision_json("always").unwrap().contains(r#""behavior":"allow""#));
+        assert!(decision_json("always")
+            .unwrap()
+            .contains(r#""behavior":"allow""#));
     }
 
     #[test]

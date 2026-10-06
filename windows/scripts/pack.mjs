@@ -63,17 +63,35 @@ function newest(dir, suffix) {
 
 mkdirSync(outDir, { recursive: true });
 const written = [];
+const missing = [];
 for (const { dir, suffix, names } of packages) {
   const built = newest(join(bundleRoot, dir), suffix);
   if (!built) {
-    console.error(`No *${suffix} in ${join(bundleRoot, dir)} — run \`npm run tauri build\` first.`);
-    process.exit(1);
+    // A bundle that was never built is not a failure: `tauri build --bundles nsis`
+    // is a normal way to produce just the installer, and on macOS there may be no
+    // MSI concept at all. Hard-failing here meant a perfectly good .exe could not
+    // be published because an .msi happened to be absent.
+    missing.push(suffix);
+    continue;
   }
   for (const name of names) {
     const dest = join(outDir, name);
     copyFileSync(built, dest);
     written.push(dest);
   }
+}
+
+// Nothing at all is a real failure — that means the build never ran, or every
+// bundle step failed, and publishing an empty release directory would look like a
+// successful run with nothing in it.
+if (written.length === 0) {
+  console.error(
+    `No packages in ${bundleRoot}. Run \`npm run tauri build\` first.`,
+  );
+  process.exit(1);
+}
+if (missing.length > 0) {
+  console.warn(`  (skipped, not built: ${missing.join(", ")})\n`);
 }
 
 console.log("\n  Packages ready\n");

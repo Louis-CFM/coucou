@@ -21,7 +21,9 @@ export function timeAgo(value: unknown): string {
 }
 
 function header(color: string, name: string, kind: string, extra?: Node): HTMLElement {
-  const row = h("div", { class: "int-head" }, dot(color, 7), h("b", { text: name }), h("span", { text: kind }));
+  const row = h("div", { class: "int-head" }, dot(color, 7), h("b", { text: name }));
+  // An empty kind would still occupy a flex gap, leaving a phantom indent.
+  if (kind) row.append(h("span", { text: kind }));
   if (extra) row.append(extra);
   return row;
 }
@@ -57,10 +59,18 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
-  // The Claude Code pill is about hooks, not a key — the macOS wording would be
-  // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
-  const label = error ?? (configured ? "Connected · loading…" : missing);
+  // The Claude Code and agent pills are about hooks, not a key, so the macOS
+  // wording would mislead here. `configured` for those comes from the real
+  // per-agent hook status (island/integrations.ts), not from an API key — which
+  // is why an agent whose hooks were never installed reads "Hooks not installed"
+  // here instead of pretending to be ready.
+  const isHookPill = task.id === "integration_claude" || task.id.startsWith("agent_");
+  const missing = isHookPill ? "Hooks not installed" : "Key not configured";
+  const label = error ?? (
+    configured
+      ? (isHookPill ? "Connected · waiting for events" : "Connected · loading…")
+      : missing
+  );
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
   const actions = h("div", { class: "int-actions" });
@@ -113,6 +123,51 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
+  );
+}
+
+/**
+ * The card an agent pill shows: its live state plus the last few steps it
+ * reported. Unlike an integration card there is nothing to poll — this only
+ * ever reflects what arrived over the hook relay.
+ */
+function agentCard(task: AgentTask): HTMLElement {
+  const stateLabel =
+    task.state === "finished" ? "Finished" :
+    task.state === "error" ? "Error" :
+    task.state === "approval" ? "Needs permission" :
+    task.state === "working" || task.state === "thinking" ? "Working" :
+    "Ready";
+  const stateColor =
+    task.state === "error" ? "#F4505E" :
+    task.state === "finished" ? "#22C55E" :
+    task.color;
+  const rows = h("div", { class: "int-rows agent-rows" });
+  // `generating` and `turn_complete` are Pi's keep-alive beats: they would fill
+  // the card with two permanent rows that say nothing.
+  const steps = task.steps.filter((step) => step !== "generating" && step !== "turn_complete");
+
+  // No rows at all when nothing has been reported. The card's own status line
+  // already says "Ready" — this block used to append a second, identical one, so
+  // a freshly launched Coucou showed "● Ready" twice on every agent. An empty
+  // log is the normal state at startup, which is why it was so easy to miss.
+  if (steps.length > 0) {
+    steps.slice(-5).forEach((step, index, visible) => {
+      rows.append(listRow(stateColor, index === visible.length - 1,
+        h("span", { class: "int-name", text: step }),
+      ));
+    });
+    requestAnimationFrame(() => {
+      rows.scrollTop = rows.scrollHeight;
+    });
+  }
+
+  return h(
+    "div",
+    { class: "int-card" },
+    header(task.color, task.name, "Agent"),
+    h("div", { class: "int-status" }, dot(stateColor, 5), h("span", { text: stateLabel })),
+    rows,
   );
 }
 
@@ -226,6 +281,71 @@ function githubCard(): HTMLElement {
       statRow(ICONS.star, "#F5A524", "Total stars", fmt(stars)),
       statRow(ICONS.stack, "#6B7079", "Repositories", String(repos)),
     ),
+  );
+}
+
+// ── Music ───────────────────────────────────────────────────────────────────
+
+/**
+ * The music pill, fed by Global Media Control.
+ *
+ * Unlike every other integration here, nothing is polled: Rust pushes
+ * `media-changed` whenever the session changes, so this only has to read what
+ * it was handed.
+ */
+function musicCard(task: AgentTask): HTMLElement {
+  const d = State.integrations[task.id]?.data ?? {};
+  const title = typeof d.title === "string" ? d.title : "";
+  const artist = typeof d.artist === "string" ? d.artist : "";
+  const album = typeof d.album === "string" ? d.album : "";
+  const playing = d.playing === true;
+  const idle = d.idle === true || (!title && d.app !== undefined);
+
+  // Transport buttons hide themselves rather than offering controls the player
+  // will refuse: GSMTC answers false for anything an app did not advertise, and
+  // a row of dead buttons is worse than a shorter row.
+  const track = (id: string) =>
+    !idle && (typeof d[id] === "boolean" ? d[id] === true : true);
+
+  const control = (cmd: "playPause" | "next" | "previous", icon: string, label: string) =>
+    h("button", {
+      class: "music-btn",
+      title: label,
+      "aria-label": label,
+      onclick: () => {
+        void Bridge.mediaCommand(cmd);
+      },
+    }, svg(icon, 11));
+
+  // Status sits in the header, right beside the name, instead of claiming a
+  // row of its own between the title and the track.
+  const status = h(
+    "span",
+    { class: "music-status" },
+    dot(idle ? "#6B7079" : playing ? "#22C55E" : "#FA2D48", 7),
+    h("span", { text: idle ? "No media" : playing ? "Playing" : "Paused" }),
+  );
+
+  const meta = h("div", { class: "music-meta" });
+  if (!idle && title) meta.append(h("div", { class: "music-title", text: title }));
+  if (artist) meta.append(h("div", { class: "music-artist", text: artist }));
+  // Album is genuinely absent for some players — YouTube Music publishes none —
+  // so the line is omitted rather than left blank.
+  if (album) meta.append(h("div", { class: "music-album", text: album }));
+
+  const bar = h("div", { class: "music-controls" });
+  if (!idle) {
+    if (track("canPrevious")) bar.append(control("previous", ICONS.skipBack, "Previous"));
+    bar.append(control("playPause", playing ? ICONS.pause : ICONS.play, playing ? "Pause" : "Play"));
+    if (track("canNext")) bar.append(control("next", ICONS.skipNext, "Next"));
+  }
+
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#FA2D48", "Music", "", status),
+    meta,
+    bar,
   );
 }
 
@@ -404,6 +524,9 @@ export function hasIntegrationData(id: string): boolean {
 }
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  // An agent pill has no poller behind it: its card is the hook feed itself.
+  if (task.source === "agent") return agentCard(task);
+  if (task.id === "integration_music") return musicCard(task);
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity
