@@ -660,6 +660,9 @@ struct CompactNowPlayingBanner: View {
     private var bandTrailing: CGFloat { 58 }
     private var bandWidth: CGFloat { max(0, islandW - bandLeading - bandTrailing) }
 
+    /// Restart the crawl from the right when the track changes.
+    @State private var crawlStartedAt: Date = .now
+
     var body: some View {
         Group {
             if let np = nowPlaying, bandWidth > 40 {
@@ -669,53 +672,33 @@ struct CompactNowPlayingBanner: View {
                     .position(x: bandLeading + bandWidth / 2, y: islandH / 2)
                     .allowsHitTesting(false)
                     .accessibilityLabel("Now playing \(np.text)")
+                    .onAppear { crawlStartedAt = .now }
+                    .onChange(of: np.text) { _, _ in crawlStartedAt = .now }
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: nowPlaying?.text)
     }
 
     @ViewBuilder
     private func marquee(_ np: NowPlaying) -> some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
             let measured = textWidth(np.text)
-            let gap: CGFloat = 36
-            let cycle = max(measured + gap, bandWidth + gap)
-            // ~28 pt/s — readable “info message” crawl
-            let speed: CGFloat = 28
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            // Seed offset from the track string so a new song restarts from the right.
-            let seed = Double(np.text.hashValue & 0xFFFF) / 1000.0
-            let distance = CGFloat((t + seed) * Double(speed)).truncatingRemainder(dividingBy: Double(cycle))
-            // Start just past the right edge, crawl left.
+            // One full pass: enter from the right edge → exit past the left edge,
+            // then a short gap before the next copy enters from the right.
+            // cycle = band + text + gap  ⇒  when copy1 finishes exiting left,
+            // copy2 is exactly at the right edge (no hard reset).
+            let gap: CGFloat = 48
+            let cycle = bandWidth + measured + gap
+            let speed: CGFloat = 28 // pt/s
+            let elapsed = max(0, timeline.date.timeIntervalSince(crawlStartedAt))
+            let distance = CGFloat(elapsed * Double(speed)).truncatingRemainder(dividingBy: Double(cycle))
             let x = bandWidth - distance
 
             ZStack(alignment: .leading) {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(np.accent)
-                        .frame(width: 5, height: 5)
-                    Text(np.text)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Color(hex: "#C5C8CD"))
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-                .offset(x: x)
-
-                // Second copy so the loop feels continuous when the text is long.
-                if measured + gap > bandWidth * 0.6 {
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(np.accent)
-                            .frame(width: 5, height: 5)
-                        Text(np.text)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(Color(hex: "#C5C8CD"))
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
+                tickerLabel(np)
+                    .offset(x: x)
+                // Always a second copy — seamless handoff at the wrap point.
+                tickerLabel(np)
                     .offset(x: x + cycle)
-                }
             }
             .frame(width: bandWidth, height: islandH, alignment: .leading)
         }
@@ -723,12 +706,25 @@ struct CompactNowPlayingBanner: View {
         .mask(
             HStack(spacing: 0) {
                 LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                    .frame(width: 10)
+                    .frame(width: 12)
                 Color.black
                 LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                    .frame(width: 10)
+                    .frame(width: 12)
             }
         )
+    }
+
+    private func tickerLabel(_ np: NowPlaying) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(np.accent)
+                .frame(width: 5, height: 5)
+            Text(np.text)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(Color(hex: "#C5C8CD"))
+                .lineLimit(1)
+                .fixedSize()
+        }
     }
 
     private func textWidth(_ text: String) -> CGFloat {
