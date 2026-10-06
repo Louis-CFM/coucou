@@ -179,15 +179,17 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
         }
     }
     // The wake strip must always take the mouse, and a resize invalidates the flag.
-    island::set_ignore_cursor(&app, false);
-    shared.gate.forget_ignore_state();
+    island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
-fn set_island_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
+fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    if !platform::CURSOR_POLL {
+        island::refresh_click_through(&app, &shared.gate);
+    }
 }
 
 #[tauri::command]
@@ -208,6 +210,7 @@ fn place_island(app: &AppHandle, shared: &Shared) {
     };
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(app, &pref, saved, collapsed);
+    island::refresh_click_through(app, &shared.gate);
 }
 
 #[tauri::command]

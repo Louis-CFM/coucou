@@ -14,9 +14,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
-use windows::Win32::System::SystemInformation::GetLocalTime;
-
-use crate::settings;
+use crate::{platform, settings};
 
 /// Every event the island reacts to, with the hook timeout written to settings.json.
 /// PermissionRequest waits for a human, so it gets the decision timeout + 10 s.
@@ -58,14 +56,8 @@ pub struct HookPreview {
     pub fingerprint: String,
 }
 
-fn home() -> PathBuf {
-    std::env::var_os("USERPROFILE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-}
-
 pub fn settings_path() -> PathBuf {
-    home().join(".claude").join("settings.json")
+    platform::home_dir().join(".claude").join("settings.json")
 }
 
 /// Reads `~/.claude/settings.json`.
@@ -212,11 +204,8 @@ fn pretty(v: &Value) -> String {
 /// Down to the second: installing then uninstalling in the same minute must not
 /// quietly overwrite the first backup.
 fn stamp() -> String {
-    let t = unsafe { GetLocalTime() };
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond
-    )
+    let t = platform::local_time();
+    format!("{:04}{:02}{:02}-{:02}{:02}{:02}", t.year, t.month, t.day, t.hour, t.minute, t.second)
 }
 
 fn backup_path_for(path: &Path) -> PathBuf {
@@ -328,16 +317,42 @@ pub fn write_at(install: bool, fingerprint: &str, path: &Path, relay: &Path) -> 
 
     // Write beside the target and rename over it: a crash or a full disk leaves
     // the original settings.json intact rather than half a file.
+    #[cfg(unix)]
+    let path = std::fs::canonicalize(&path).unwrap_or(path);
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    std::fs::write(&temp, text.as_bytes()).map_err(|e| format!("write failed: {e}"))?;
-    if let Err(err) = std::fs::rename(&temp, path) {
+    if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    if let Err(err) = std::fs::rename(&temp, &path) {
         let _ = std::fs::remove_file(&temp);
         return Err(format!("write failed: {err}"));
     }
     Ok(backup)
 }
 
-/// Copies coucou-hook.exe into %LOCALAPPDATA%\Coucou\bin on launch.
+fn write_like(temp: &Path, original: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let mut file = options.open(temp)?;
+    file.write_all(bytes)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(original)
+            .map(|metadata| metadata.permissions().mode() & 0o777)
+            .unwrap_or(0o600);
+        file.set_permissions(std::fs::Permissions::from_mode(mode))?;
+    }
+    #[cfg(not(unix))]
+    let _ = original;
+    Ok(())
+}
+
+/// Copies the platform relay into the private local data directory on launch.
 /// In a bundled install it comes from the app resources; in `tauri dev` the
 /// release relay is found alongside the workspace's debug target directory.
 ///
@@ -347,7 +362,7 @@ pub fn write_at(install: bool, fingerprint: &str, path: &Path, relay: &Path) -> 
 /// the relay was simply never installed. It only looked healthy on a developer
 /// machine, where a leftover copy from `tauri dev` was already sitting in bin/.
 pub fn ensure_hook_exe(app: &AppHandle) {
-    let resource = app.path().resolve("coucou-hook.exe", tauri::path::BaseDirectory::Resource).ok();
+    let resource = app.path().resolve(platform::HOOK_EXE, tauri::path::BaseDirectory::Resource).ok();
     if let Err(err) = stage_relay(&relay_candidates(resource), &settings::hook_exe_path()) {
         crate::log::line(err);
     }
@@ -362,10 +377,10 @@ pub fn relay_candidates(resource: Option<PathBuf>) -> Vec<PathBuf> {
         if let Some(parent) = exe.parent() {
             // Installed build, then `tauri dev` (target/debug) next to the
             // release hook the pre-build step produces.
-            candidates.push(parent.join("coucou-hook.exe"));
-            candidates.push(parent.join("../release/coucou-hook.exe"));
+            candidates.push(parent.join(platform::HOOK_EXE));
+            candidates.push(parent.join("../release").join(platform::HOOK_EXE));
             // Belt and braces: where the old glob form used to land it.
-            candidates.push(parent.join("_up_/target/release/coucou-hook.exe"));
+            candidates.push(parent.join("_up_/target/release").join(platform::HOOK_EXE));
         }
     }
     candidates
@@ -375,6 +390,7 @@ pub fn relay_candidates(resource: Option<PathBuf>) -> Vec<PathBuf> {
 /// already there. Ok when `dest` ends up present.
 pub fn stage_relay(candidates: &[PathBuf], dest: &Path) -> Result<(), String> {
     if let Some(dir) = dest.parent() {
+        platform::ensure_private_dir(&settings::local_dir()).map_err(|e| e.to_string())?;
         std::fs::create_dir_all(dir).map_err(|e| format!("could not create {}: {e}", dir.display()))?;
     }
     let Some(src) = candidates.iter().find(|p| p.is_file() && p.as_path() != dest) else {
@@ -529,8 +545,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("coucou-stage-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("bin")).unwrap();
-        let src = dir.join("coucou-hook.exe");
-        let dest = dir.join("bin").join("coucou-hook.exe");
+        let src = dir.join(platform::HOOK_EXE);
+        let dest = dir.join("bin").join(platform::HOOK_EXE);
         std::fs::write(&src, b"new build").unwrap();
         let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
         std::fs::copy(system.join("System32").join("PING.EXE"), &dest).unwrap();
@@ -639,14 +655,38 @@ mod tests {
         assert_ne!(fingerprint(b""), fingerprint(b"{}"));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn rewriting_settings_never_widens_its_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("coucou-perm-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = dir.join("settings.json");
+        let temp = dir.join("settings.json.new");
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        for wanted in [0o600, 0o640, 0o644] {
+            std::fs::write(&original, b"{}").unwrap();
+            std::fs::set_permissions(&original, std::fs::Permissions::from_mode(wanted)).unwrap();
+            let _ = std::fs::remove_file(&temp);
+            write_like(&temp, &original, b"{\"a\":1}").unwrap();
+            assert_eq!(mode(&temp), wanted);
+        }
+        std::fs::remove_file(&original).unwrap();
+        let _ = std::fs::remove_file(&temp);
+        write_like(&temp, &original, b"{}").unwrap();
+        assert_eq!(mode(&temp), 0o600);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// Everything filesystem-shaped lives in one test on purpose: it points
-    /// USERPROFILE at a temp directory, and that is process-wide.
+    /// the platform home directory at a temp directory, and that is process-wide.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
         let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
-        std::env::set_var("USERPROFILE", &tmp);
+        std::env::set_var(platform::HOME_VAR, &tmp);
 
         let path = settings_path();
         assert!(path.starts_with(&tmp), "the test must not touch the real home");

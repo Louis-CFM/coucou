@@ -107,6 +107,8 @@ validateRequiredSources(pbx, ["ClaudeService.swift", "ChatMemoryContracts.swift"
 
 const appDelegate = read("NotchBuddy/Sources/App/AppDelegate.swift");
 assert.match(appDelegate, /@objc private func openMemoryManager\(\) \{[\s\S]*?MemoryManagerWindowController\.shared\.present\(\)\s*\}/);
+assert.equal((appDelegate.match(/@objc private func openMemoryManager\(\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/#selector\(openMemoryManager\)/g) ?? []).length, 1);
 assert.equal((appDelegate.match(/@objc private func openWeeklyRecap\(\)/g) ?? []).length, 1);
 
 const appState = read("NotchBuddy/Sources/App/AppState.swift");
@@ -133,11 +135,17 @@ const claudeService = read("NotchBuddy/Sources/App/ClaudeService.swift");
 assert.match(claudeService, /final class ClaudeService:\s*ChatProviderServing/);
 assert.match(claudeService, /func send\(_ request: ChatProviderRequest\) async throws -> ChatProviderResult/);
 assert.ok(claudeService.includes("claudeRequestParts(request"));
+assert.ok(!claudeService.includes("private func sendOpenAICompatible"));
+assert.ok(claudeService.includes("LocalChat.streamChat("));
+assert.ok(claudeService.includes('"\\n[truncated]"'));
+assert.ok(claudeService.includes("let err = (json[\"error\"] as? [String: Any])?[\"message\"] as? String"));
 assert.ok(providerContracts.includes('"system": anthropicSystemContent'));
 
 const coordinator = read("NotchBuddy/Sources/App/ChatMemoryCoordinator.swift");
-assert.ok(coordinator.includes("AppState.shared.chatProvider"));
-assert.ok(coordinator.includes("AppState.shared.activeChatModel"));
+assert.ok(!coordinator.includes("AppState.shared.chatProvider"));
+assert.ok(!coordinator.includes("AppState.shared.activeChatModel"));
+assert.ok(coordinator.includes("provider: providerSelection.provider"));
+assert.ok(coordinator.includes("model: providerSelection.model"));
 assert.ok(!coordinator.includes("model: state.claudeModel"));
 assert.ok(coordinator.includes("discoverRetainedArtifact(maxAttempts: 4"));
 assert.ok(coordinator.includes("func prepareForgetTurn(turnId: String)"));
@@ -153,13 +161,38 @@ assert.equal((settings.match(/ShortcutRecorderButton\(flags:/g) ?? []).length, 1
 assert.ok(!/ScrollView \{\s*VStack\(alignment: \.leading, spacing: 18\)[\s\S]*?HStack\(spacing: 0\) \{\s*\/\/ Sidebar/.test(settings));
 
 const chat = read("NotchBuddy/Sources/App/IslandViewContent.swift");
+const promptStart = chat.indexOf("struct PromptView: View {");
+const promptEnd = chat.indexOf("// MARK: - Model / provider picker", promptStart);
+const promptView = promptStart >= 0 && promptEnd > promptStart ? chat.slice(promptStart, promptEnd) : "";
+assert.ok(promptView, "PromptView body must be discoverable");
+assert.equal((promptView.match(/TextField\(/g) ?? []).length, 1);
 assert.equal((chat.match(/struct ChatBubble: View/g) ?? []).length, 1);
-assert.equal((chat.match(/TextField\(state\.memoryStatus \?\?/g) ?? []).length, 1);
+assert.ok(!/struct ChatBubble: View[\s\S]*?if !message\.content\.isEmpty[\s\S]*?ChatMarkdownView\(markdown: message\.content\)/.test(chat));
 assert.ok(chat.includes("confirmForget(turnId:"));
 assert.ok(chat.includes("present(documentIds: result.documentIds)"));
 
 const windowController = read("NotchBuddy/Sources/App/MemoryManagerWindowController.swift");
 assert.ok(windowController.includes("memoryManagerWindowConfiguration()"));
 assert.ok(!windowController.includes(".standard"));
+
+const island = read("windows/src-tauri/src/island.rs");
+assert.ok(island.includes("platform::CURSOR_POLL"));
+assert.ok(island.includes("platform::set_input_region"));
+assert.ok(island.includes("pub fn refresh_click_through"));
+assert.ok(!island.includes("use windows::"));
+
+const rustLib = read("windows/src-tauri/src/lib.rs");
+assert.match(rustLib, /fn set_island_rect\(app: AppHandle,[\s\S]*?island::refresh_click_through\(&app, &shared\.gate\)/);
+assert.match(rustLib, /fn place_island\([\s\S]*?island::apply_geometry\([\s\S]*?island::refresh_click_through\(app, &shared\.gate\)/);
+
+const hooks = read("windows/src-tauri/src/hooks.rs");
+for (const contract of ["platform::home_dir()", "platform::local_time()", "platform::HOOK_EXE", "write_like(", "platform::ensure_private_dir", "rewriting_settings_never_widens_its_permissions", "platform::HOME_VAR"]) {
+  assert.ok(hooks.includes(contract), `hooks must preserve ${contract}`);
+}
+const rustSettings = read("windows/src-tauri/src/settings.rs");
+assert.ok(rustSettings.includes("crate::platform::HOOK_EXE"));
+assert.ok(rustSettings.includes("crate::platform::ensure_private_dir"));
+const hookMain = read("windows/hook/src/main.rs");
+assert.match(hookMain, /#\[cfg\(target_os = "linux"\)\]\s*use unix::connect;/);
 
 console.log("hindsight-project: PASS");

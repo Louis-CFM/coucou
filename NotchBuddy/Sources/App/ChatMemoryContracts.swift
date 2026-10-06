@@ -151,13 +151,17 @@ struct ChatMemoryStatusHandoff {
     }
 }
 
+struct ChatProviderSelection: Equatable {
+    let provider: ChatProvider
+    let model: String
+}
+
 struct ChatProviderRequest: Equatable {
     var query: String
     var contextKind: ChatContextKind
     var providerContext: ChatProviderContext?
     var memoryContext: String?
-    var provider: ChatProvider
-    var model: String
+    var providerSelection: ChatProviderSelection
 }
 
 struct ChatProviderResult: Equatable {

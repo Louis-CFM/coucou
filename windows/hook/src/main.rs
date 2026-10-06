@@ -48,6 +48,8 @@ mod win;
 
 #[cfg(target_os = "linux")]
 mod unix;
+#[cfg(target_os = "linux")]
+use unix::connect;
 
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if

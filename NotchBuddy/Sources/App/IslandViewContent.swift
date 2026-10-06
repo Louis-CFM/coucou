@@ -1269,6 +1269,7 @@ struct PromptView: View {
         guard !query.isEmpty else { return }
         text = ""
         focused = false
+        let providerSelection = ChatProviderSelection(provider: state.chatProvider, model: state.activeChatModel)
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
@@ -1284,8 +1285,7 @@ struct PromptView: View {
                     query: query,
                     contextKind: providerContext?.kind ?? .none,
                     providerContext: providerContext,
-                    provider: state.chatProvider.rawValue,
-                    model: state.activeChatModel
+                    providerSelection: providerSelection
                 )
                 state.insertCompletedChatTurn(turnId: result.turnId, assistantText: result.result.text)
                 state.memoryStatus = state.privateChat ? "Private chat — memory off" : state.memoryStatus ?? state.chatMemoryCoordinator.memoryStatus

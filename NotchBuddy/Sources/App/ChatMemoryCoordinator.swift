@@ -155,7 +155,7 @@ final class ChatMemoryCoordinator {
     private func publish(_ turnId: String, _ status: ChatMemorySaveStatus) { saveStatuses.set(status, for: turnId); onSaveStatus?(turnId, status) }
     private func publishSummary(_ turnId: String) { if let summary = registry.summary(turnId: turnId) { onArtifactSummary?(turnId, summary) } }
 
-    func send(query: String, contextKind: ChatContextKind, providerContext: ChatProviderContext? = nil, provider providerName: String, model: String) async throws -> CoordinatedChatResult {
+    func send(query: String, contextKind: ChatContextKind, providerContext: ChatProviderContext? = nil, providerSelection: ChatProviderSelection) async throws -> CoordinatedChatResult {
         let turnId = UUID().uuidString; let timestamp = ISO8601DateFormatter().string(from: Date())
         let turnGeneration = generation
         var recalled: String?
@@ -170,19 +170,17 @@ final class ChatMemoryCoordinator {
                 if generation == turnGeneration { memoryStatus = "Memory recall unavailable" }
             }
         }
-        let selectedProvider = AppState.shared.chatProvider
-        let selectedModel = AppState.shared.activeChatModel
-        let result = try await provider.send(.init(query: query, contextKind: contextKind, providerContext: providerContext, memoryContext: recalled, provider: selectedProvider, model: selectedModel))
+        let result = try await provider.send(.init(query: query, contextKind: contextKind, providerContext: providerContext, memoryContext: recalled, providerSelection: providerSelection))
         guard generation == turnGeneration else { return .init(turnId: turnId, result: result) }
         let current = state()
         let safety = ChatTurnSafety.classify(query: query, result: result, contextKind: contextKind)
         let registryAllowed = enabledAtStart && !privateAtStart && current.config.enabled && !current.privateChat
         if registryAllowed && !safety.hardExcluded {
-            registry.insert(.init(turnId: turnId, timestamp: timestamp, provider: providerName, model: model, baseUrl: beforeRecall.config.baseUrl, tenant: beforeRecall.config.tenant, bank: beforeRecall.config.bank, userText: query, assistantText: result.text, safety: safety))
+            registry.insert(.init(turnId: turnId, timestamp: timestamp, provider: providerSelection.provider.rawValue, model: providerSelection.model, baseUrl: beforeRecall.config.baseUrl, tenant: beforeRecall.config.tenant, bank: beforeRecall.config.bank, userText: query, assistantText: result.text, safety: safety))
         }
         if registryAllowed, !safety.inferredExcluded, current.config.inferredRetention {
             let capturedConfig = beforeRecall.config
-            let provenance = TurnProvenance(turnId: turnId, timestamp: timestamp, provider: providerName, model: model, config: capturedConfig, retentionKind: .inferred, source: "chat")
+            let provenance = TurnProvenance(turnId: turnId, timestamp: timestamp, provider: providerSelection.provider.rawValue, model: providerSelection.model, config: capturedConfig, retentionKind: .inferred, source: "chat")
             guard let candidate = RetentionCandidate.inferred(provenance: provenance, userText: query) else { return .init(turnId: turnId, result: result) }
             publish(turnId, .saving)
             Task { [weak self] in

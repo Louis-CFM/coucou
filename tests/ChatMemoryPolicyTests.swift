@@ -125,7 +125,7 @@ enum ChatMemoryPolicyTests {
         let trusted = "trusted Mochi instructions"
         let tools: [[String: Any]] = [["name": "web_search", "max_uses": 5]]
         let messages: [[String: Any]] = [["role": "user", "content": [["type": "text", "text": "hello"]]]]
-        let providerRequest = ChatProviderRequest(query: "find this", contextKind: .window, providerContext: .window(appName: "Safari", title: "Docs", url: "https://example.test"), memoryContext: block, provider: .anthropic, model: "test-model")
+        let providerRequest = ChatProviderRequest(query: "find this", contextKind: .window, providerContext: .window(appName: "Safari", title: "Docs", url: "https://example.test"), memoryContext: block, providerSelection: .init(provider: .anthropic, model: "test-model"))
         let mapped = claudeRequestParts(providerRequest, isFirstTurn: true)
         precondition((mapped.userContent.last?["text"] as? String) == "find this")
         precondition((mapped.userContent.first?["text"] as? String)?.contains("Safari") == true)
@@ -173,7 +173,7 @@ enum ChatMemoryPolicyTests {
         let statusProvider = ScriptedProvider(.success(.init(text: "status answer", completed: true, cancelled: false, hasToolMaterial: false)))
         let statusCoordinator = ChatMemoryCoordinator(state: statusState.get, memory: { _ in statusMemory }, provider: statusProvider)
         statusCoordinator.onSaveStatus = { turnId, status in renderedStatuses.set(status, for: turnId) }
-        let statusTurn = try await statusCoordinator.send(query: "durable status", contextKind: .none, provider: "anthropic", model: "m")
+        let statusTurn = try await statusCoordinator.send(query: "durable status", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         try? await Task.sleep(nanoseconds: 20_000_000)
         precondition(renderedStatuses.take(statusTurn.turnId) == .saved)
         var explicitStatuses: [ChatMemorySaveStatus] = []
@@ -185,7 +185,7 @@ enum ChatMemoryPolicyTests {
         let failedStatusProvider = ScriptedProvider(.success(.init(text: "failed status answer", completed: true, cancelled: false, hasToolMaterial: false)))
         let failedStatusCoordinator = ChatMemoryCoordinator(state: statusState.get, memory: { _ in failedStatusMemory }, provider: failedStatusProvider)
         failedStatusCoordinator.onSaveStatus = { turnId, status in renderedStatuses.set(status, for: turnId) }
-        let failedStatusTurn = try await failedStatusCoordinator.send(query: "durable failed status", contextKind: .none, provider: "anthropic", model: "m")
+        let failedStatusTurn = try await failedStatusCoordinator.send(query: "durable failed status", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         try? await Task.sleep(nanoseconds: 20_000_000)
         precondition(renderedStatuses.take(failedStatusTurn.turnId) == .notSaved)
         var explicitFailureStatuses: [ChatMemorySaveStatus] = []
@@ -204,7 +204,7 @@ enum ChatMemoryPolicyTests {
         let provider = ScriptedProvider(.success(.init(text: "safe answer", completed: true, cancelled: false, hasToolMaterial: false)))
         let coordinator = ChatMemoryCoordinator(state: state.get, memory: { _ in memory }, provider: provider)
         let marker = "PRIVATE-WINDOW-CONTEXT-MARKER"
-        let result = try await coordinator.send(query: "My durable preference is tea", contextKind: .window, providerContext: .window(appName: "Notes", title: marker, url: nil), provider: "anthropic", model: "m")
+        let result = try await coordinator.send(query: "My durable preference is tea", contextKind: .window, providerContext: .window(appName: "Notes", title: marker, url: nil), providerSelection: .init(provider: .anthropic, model: "m"))
         precondition(result.result.text == "safe answer")
         let request = await provider.requests[0]
         precondition(request.query == "My durable preference is tea" && request.memoryContext == block)
@@ -215,14 +215,14 @@ enum ChatMemoryPolicyTests {
         precondition(!retainedInputContains(marker, firstRetained))
 
         state.set { $0.config.enabled = false }
-        _ = try await coordinator.send(query: "disabled", contextKind: .none, provider: "anthropic", model: "m")
+        _ = try await coordinator.send(query: "disabled", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         precondition(await memory.recallCount == 1)
 
         let raceMemory = ScriptedMemory()
         let raceState = LiveState(.init(config: config, privateChat: false))
         let raceProvider = ScriptedProvider(.success(.init(text: "ok", completed: true, cancelled: false, hasToolMaterial: false)), beforeReturn: { raceState.set { $0.privateChat = true } })
         let race = ChatMemoryCoordinator(state: raceState.get, memory: { _ in raceMemory }, provider: raceProvider)
-        let raceTurn = try await race.send(query: "remember safely", contextKind: .none, provider: "anthropic", model: "m")
+        let raceTurn = try await race.send(query: "remember safely", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         try? await Task.sleep(nanoseconds: 20_000_000)
         precondition(await raceMemory.retainCount == 0)
         raceState.set { $0.privateChat = false }
@@ -239,7 +239,7 @@ enum ChatMemoryPolicyTests {
         let privateOriginState = LiveState(.init(config: config, privateChat: true))
         let privateOriginProvider = ScriptedProvider(.success(.init(text: "private answer", completed: true, cancelled: false, hasToolMaterial: false)), beforeReturn: { privateOriginState.set { $0.privateChat = false } })
         let privateOrigin = ChatMemoryCoordinator(state: privateOriginState.get, memory: { _ in privateOriginMemory }, provider: privateOriginProvider)
-        let privateOriginTurn = try await privateOrigin.send(query: "private question", contextKind: .none, provider: "anthropic", model: "m")
+        let privateOriginTurn = try await privateOrigin.send(query: "private question", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         await privateOrigin.rememberTurn(turnId: privateOriginTurn.turnId)
         await privateOrigin.rememberSelection(turnId: privateOriginTurn.turnId, text: "private answer")
         precondition(await privateOriginMemory.retainCount == 0)
@@ -249,7 +249,7 @@ enum ChatMemoryPolicyTests {
         let fileProvider = ScriptedProvider(.success(.init(text: "file answer", completed: true, cancelled: false, hasToolMaterial: false)))
         let fileState = LiveState(.init(config: config, privateChat: false))
         let fileCoordinator = ChatMemoryCoordinator(state: fileState.get, memory: { _ in fileMemory }, provider: fileProvider)
-        let fileTurn = try await fileCoordinator.send(query: "summarize file", contextKind: .file, providerContext: .file(name: "note.txt", path: nil, bytes: Data(fileMarker.utf8)), provider: "anthropic", model: "m")
+        let fileTurn = try await fileCoordinator.send(query: "summarize file", contextKind: .file, providerContext: .file(name: "note.txt", path: nil, bytes: Data(fileMarker.utf8)), providerSelection: .init(provider: .anthropic, model: "m"))
         let fileRequest = await fileProvider.requests[0]
         precondition(fileRequest.providerContext == .file(name: "note.txt", path: nil, bytes: Data(fileMarker.utf8)))
         await fileCoordinator.rememberTurn(turnId: fileTurn.turnId)
@@ -282,7 +282,7 @@ enum ChatMemoryPolicyTests {
             let localMemory = ScriptedMemory()
             let localProvider = ScriptedProvider(.success(.init(text: secret, completed: true, cancelled: false, hasToolMaterial: false)))
             let local = ChatMemoryCoordinator(state: { .init(config: config, privateChat: false) }, memory: { _ in localMemory }, provider: localProvider)
-            let unsafeTurn = try await local.send(query: "I prefer tea. \(secret)", contextKind: .none, provider: "anthropic", model: "m")
+            let unsafeTurn = try await local.send(query: "I prefer tea. \(secret)", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
             await local.rememberTurn(turnId: unsafeTurn.turnId)
             await local.rememberSelection(turnId: unsafeTurn.turnId, selection: .init(text: secret, utf8Start: 0, utf8End: secret.utf8.count, role: .assistant))
             precondition(await localMemory.retainCount == 0, "retained secret \(secret)")
@@ -299,7 +299,7 @@ enum ChatMemoryPolicyTests {
         for (query, providerResult, context) in unsafeCases {
             let localMemory = ScriptedMemory(); let localProvider = ScriptedProvider(.success(providerResult)); let localState = LiveState(.init(config: config, privateChat: false))
             let local = ChatMemoryCoordinator(state: localState.get, memory: { _ in localMemory }, provider: localProvider)
-            let unsafeTurn = try await local.send(query: query, contextKind: context, provider: "anthropic", model: "m")
+            let unsafeTurn = try await local.send(query: query, contextKind: context, providerSelection: .init(provider: .anthropic, model: "m"))
             try? await Task.sleep(nanoseconds: 5_000_000)
             precondition(await localMemory.retainCount == 0)
             await local.rememberTurn(turnId: unsafeTurn.turnId)
@@ -311,7 +311,7 @@ enum ChatMemoryPolicyTests {
         let transientProvider = ScriptedProvider(.success(.init(text: "Okay", completed: true, cancelled: false, hasToolMaterial: false)))
         let transientState = LiveState(.init(config: config, privateChat: false))
         let transient = ChatMemoryCoordinator(state: transientState.get, memory: { _ in transientMemory }, provider: transientProvider)
-        let transientTurn = try await transient.send(query: "Be concise this time only", contextKind: .none, provider: "anthropic", model: "m")
+        let transientTurn = try await transient.send(query: "Be concise this time only", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         try? await Task.sleep(nanoseconds: 5_000_000)
         precondition(await transientMemory.retainCount == 0)
         await transient.rememberTurn(turnId: transientTurn.turnId)
@@ -361,7 +361,7 @@ enum ChatMemoryPolicyTests {
         let resetCoordinator = ChatMemoryCoordinator(state: resetState.get, memory: { _ in resetMemory }, provider: resetProvider)
         var resetStatuses: [(String, ChatMemorySaveStatus)] = []
         resetCoordinator.onSaveStatus = { resetStatuses.append(($0, $1)) }
-        let resetTask = Task { try await resetCoordinator.send(query: "stale durable preference", contextKind: .none, provider: "anthropic", model: "m") }
+        let resetTask = Task { try await resetCoordinator.send(query: "stale durable preference", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m")) }
         await resetProvider.waitUntilStarted()
         resetCoordinator.clearConversation()
         resetProvider.succeed()
@@ -377,7 +377,7 @@ enum ChatMemoryPolicyTests {
         let failedResetCoordinator = ChatMemoryCoordinator(state: resetState.get, memory: { _ in failedResetMemory }, provider: failedResetProvider)
         var failedResetStatuses: [(String, ChatMemorySaveStatus)] = []
         failedResetCoordinator.onSaveStatus = { failedResetStatuses.append(($0, $1)) }
-        let failedResetTask = Task { try await failedResetCoordinator.send(query: "stale failure", contextKind: .none, provider: "anthropic", model: "m") }
+        let failedResetTask = Task { try await failedResetCoordinator.send(query: "stale failure", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m")) }
         await failedResetProvider.waitUntilStarted()
         failedResetCoordinator.clearConversation()
         failedResetProvider.fail(CancellationError())
@@ -429,7 +429,7 @@ enum ChatMemoryPolicyTests {
         await forgetMemory.setDefaultDocumentPages([[.init(id: "forget-a", text: "a", factType: .world, state: .valid, metadata: [:], tags: [], entities: [], sourceFactIds: []), .init(id: "forget-b", text: "b", factType: .world, state: .valid, metadata: [:], tags: [], entities: [], sourceFactIds: [])]])
         await forgetMemory.setRetireFailures(["forget-b"])
         let forgetCoordinator = ChatMemoryCoordinator(state: forgetState.get, memory: { _ in forgetMemory }, provider: ScriptedProvider(.success(.init(text: "answer", completed: true, cancelled: false, hasToolMaterial: false))), discoverySleep: { _ in })
-        let forgetTurn = try await forgetCoordinator.send(query: "question", contextKind: .none, provider: "anthropic", model: "m")
+        let forgetTurn = try await forgetCoordinator.send(query: "question", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
         await forgetCoordinator.rememberTurn(turnId: forgetTurn.turnId)
         try? await Task.sleep(nanoseconds: 20_000_000)
         let forgetConfirmation = try forgetCoordinator.prepareForgetTurn(turnId: forgetTurn.turnId)
@@ -455,7 +455,7 @@ enum ChatMemoryPolicyTests {
         var failedProviderStatuses: [(String, ChatMemorySaveStatus)] = []
         failedProviderCoordinator.onSaveStatus = { failedProviderStatuses.append(($0, $1)) }
         do {
-            _ = try await failedProviderCoordinator.send(query: "provider failure", contextKind: .none, provider: "anthropic", model: "m")
+            _ = try await failedProviderCoordinator.send(query: "provider failure", contextKind: .none, providerSelection: .init(provider: .anthropic, model: "m"))
             preconditionFailure("Expected provider failure")
         } catch let error as HindsightServiceError {
             precondition(error.message == "provider failed")
