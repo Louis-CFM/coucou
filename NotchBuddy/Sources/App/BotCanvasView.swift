@@ -5,6 +5,9 @@ import SwiftUI
 struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
+    /// When set, overrides island-based eye-tracking (used by desktop Mochi).
+    /// CGPoint in the same coord space as state.mousePosition (y-down from screen top).
+    var lookOriginOverride: CGPoint? = nil
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
@@ -57,12 +60,35 @@ struct BotCanvasView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
+                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                                 animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
-                engine.drawHandsBehind(context: ctx, size: size)
-                engine.draw(context: ctx, size: size)
+                // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
+                // rotate the entire body+accessories context around the body center so the
+                // whole character genuinely turns. Particles/badge (drawHandsAndExtras) are
+                // drawn outside the rotated context and do not spin.
+                if engine.outfit != .none && engine.outfitPresence > 0.05 && abs(engine.roll) > 0.001 {
+                    let center = engine.bodyCenter(size: size)
+                    var rigidCtx = ctx
+                    rigidCtx.translateBy(x: center.x, y: center.y)
+                    rigidCtx.rotate(by: .radians(engine.roll))
+                    rigidCtx.translateBy(x: -center.x, y: -center.y)
+                    engine.drawHandsBehind(context: rigidCtx, size: size)
+                    engine.drawOutfitBehind(context: rigidCtx, size: size)
+                    engine.draw(context: rigidCtx, size: size)
+                    engine.drawOutfitFront(context: rigidCtx, size: size)
+                } else {
+                    engine.drawHandsBehind(context: ctx, size: size)
+                    engine.drawOutfitBehind(context: ctx, size: size)
+                    engine.draw(context: ctx, size: size)
+                    engine.drawOutfitFront(context: ctx, size: size)
+                }
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
@@ -116,10 +142,17 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 
     private func lookX(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return tanh((state.mousePosition.x - origin.x) / 260)
+        }
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
@@ -133,6 +166,9 @@ struct BotCanvasView: View {
     }
 
     private func lookY(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return -tanh((state.mousePosition.y - origin.y) / 200)
+        }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
@@ -191,22 +227,5 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
         }
-    }
-}
-
-// MARK: - CGColor from hex string
-
-func cgColorFromHex(_ hex: String) -> CGColor? {
-    let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-    guard let val = UInt64(h, radix: 16) else { return nil }
-    let r = CGFloat((val >> 16) & 0xFF) / 255
-    let g = CGFloat((val >> 8)  & 0xFF) / 255
-    let b = CGFloat( val        & 0xFF) / 255
-    return CGColor(red: r, green: g, blue: b, alpha: 1)
-}
-
-extension CGColor {
-    static func from(_ hex: String) -> CGColor {
-        cgColorFromHex(hex) ?? CGColor(gray: 0.5, alpha: 1)
     }
 }

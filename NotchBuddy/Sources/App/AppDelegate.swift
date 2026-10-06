@@ -6,6 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
 
+    func applicationWillTerminate(_ notification: Notification) {
+        HotKeyCenter.shared.unregisterAll()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
@@ -14,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        #if PHONE_LINK
+        CloudProbe.shared.startIfEnabled()
+        #endif
     }
 
     // MARK: - Menu bar
@@ -105,6 +112,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotionPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
+        // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
+            DesktopMochiController.shared.launchFlyIfNeeded()
+        }
         #if !APPSTORE
         _ = MusicController.shared
         #endif

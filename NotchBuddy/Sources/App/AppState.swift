@@ -29,6 +29,9 @@ final class AppState: ObservableObject {
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
 
+    // Desktop Mochi: true while Mochi lives on the desktop instead of the notch
+    @Published var mochiOnDesktop: Bool = false
+
     // Mouse tracking
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
@@ -37,6 +40,11 @@ final class AppState: ObservableObject {
 
     // Pinned (alerts that stay open, never auto-close)
     var isPinned: Bool = false
+
+    // Keyboard navigation — index of the selected item within the current card's list (nil = none)
+    @Published var cardSelection: Int? = nil
+    // Number of navigable items in the card currently on screen (0 = no list)
+    @Published var cardItemCount: Int = 0
 
     // Upload progress (0-1) — set to 1.0 only at completion; animation is time-based
     @Published var uploadProgress: Double = 0
@@ -51,6 +59,27 @@ final class AppState: ObservableObject {
     // Sound enabled — persisted
     @Published var soundEnabled: Bool = true {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
+    }
+
+    // Mochi outfit selection — persisted
+    @Published var mochiOutfitSelection: Outfit = .auto {
+        didSet { Outfit.stored = mochiOutfitSelection }
+    }
+    // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
+    var wardrobePreviewOutfit: Outfit? = nil
+    // Per-day seasonal cache — avoids recomputing Easter and date math on every frame
+    private var _seasonalCache: (dayOfYear: Int, year: Int, outfit: Outfit)?
+    var resolvedOutfit: Outfit {
+        if let preview = wardrobePreviewOutfit { return preview }
+        guard mochiOutfitSelection == .auto else { return mochiOutfitSelection }
+        let cal = Calendar.current
+        let now = Date()
+        let day  = cal.ordinality(of: .day, in: .year, for: now) ?? 0
+        let year = cal.component(.year, from: now)
+        if let c = _seasonalCache, c.dayOfYear == day && c.year == year { return c.outfit }
+        let outfit = Outfit.seasonal(for: now, calendar: cal)
+        _seasonalCache = (dayOfYear: day, year: year, outfit: outfit)
+        return outfit
     }
 
     // Claude model used by the chat and the search — persisted
@@ -289,6 +318,9 @@ final class AppState: ObservableObject {
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
 
+    // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
+    @Published var n8nRuns: [N8nRun] = []
+
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
 
@@ -373,6 +405,7 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
+        mochiOutfitSelection = Outfit.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
@@ -707,6 +740,13 @@ struct CalcomBooking: Identifiable, Equatable {
 }
 
 // MARK: - Notion
+
+struct N8nRun: Equatable {
+    let workflow: String
+    let detail: String?
+    let success: Bool
+    let date: Date
+}
 
 struct NotionPage: Identifiable {
     let id: String
