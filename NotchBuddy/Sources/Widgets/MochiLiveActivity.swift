@@ -15,7 +15,7 @@ struct MochiLiveActivity: Widget {
             let state = context.state
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    MochiStill(state: state.botState)
+                    MochiSwap(state: state)
                         .frame(width: 44, height: 44)
                         .padding(.leading, 4)
                 }
@@ -28,8 +28,10 @@ struct MochiLiveActivity: Widget {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(state.toneColor)
                             .lineLimit(1)
+                            .contentTransition(.interpolate)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .animation(.phaseChange, value: state)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if state.others > 0 {
@@ -40,21 +42,38 @@ struct MochiLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if state.stepCount > 0 {
-                        StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
+                    if let fingerprint = state.approval, state.tone == "waiting" {
+                        ApprovalButtons(fingerprint: fingerprint, pillId: state.pillId)
                             .padding(.horizontal, 4)
+                            .transition(.phaseIn)
+                    } else {
+                        HStack(spacing: 10) {
+                            if state.stepCount > 0 {
+                                StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
+                            }
+                            if let since = state.sinceDate, state.isActive {
+                                Text(since, style: .timer)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 52, alignment: .trailing)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                        .transition(.phaseIn)
                     }
                 }
             } compactLeading: {
-                MochiStill(state: state.botState)
+                MochiSwap(state: state)
                     .frame(width: 24, height: 24)
             } compactTrailing: {
                 Text(state.compactText)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(state.toneColor)
                     .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.phaseChange, value: state.compactText)
             } minimal: {
-                MochiStill(state: state.botState)
+                MochiSwap(state: state)
                     .frame(width: 22, height: 22)
             }
             .keylineTint(state.toneColor)
@@ -68,7 +87,7 @@ struct LockScreenActivityView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            MochiStill(state: state.botState)
+            MochiSwap(state: state)
                 .padding(6)
                 .frame(width: 52, height: 52)
                 .background(Color.mochiTile(hex: state.color), in: RoundedRectangle(cornerRadius: 14))
@@ -79,17 +98,97 @@ struct LockScreenActivityView: View {
                         Text("+\(state.others)").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                Text(stale ? "Your Mac went quiet" : state.statusText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(stale ? Color.secondary : state.toneColor)
-                if state.stepCount > 0 && !stale {
+                HStack(spacing: 6) {
+                    Text(stale ? "Your Mac went quiet" : state.statusText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(stale ? Color.secondary : state.toneColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .contentTransition(.interpolate)
+                    // Counts up live, without any push.
+                    if let since = state.sinceDate, state.isActive, !stale {
+                        Text("·").foregroundStyle(.secondary)
+                        Text(since, style: .timer)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let fingerprint = state.approval, state.tone == "waiting", !stale {
+                    ApprovalButtons(fingerprint: fingerprint, pillId: state.pillId)
+                        .padding(.top, 4)
+                        .transition(.phaseIn)
+                } else if state.stepCount > 0 && !stale {
                     StepsBar(index: state.stepIndex, count: state.stepCount, color: state.toneColor)
+                        .transition(.phaseIn)
                 }
             }
             Spacer(minLength: 0)
         }
         .foregroundStyle(.white)
         .padding(16)
+        // Every change of phase (working, question, waiting, done) moves
+        // smoothly instead of jumping.
+        .animation(.phaseChange, value: state)
+        .animation(.phaseChange, value: stale)
+    }
+}
+
+/// Mochi with a little pop when his state changes: the old face fades, the
+/// new one grows in.
+struct MochiSwap: View {
+    let state: MochiActivityState
+
+    var body: some View {
+        ZStack {
+            MochiStill(state: state.botState)
+                .id(state.state)
+                .transition(.mochiSwap)
+        }
+        .animation(.phaseChange, value: state.state)
+    }
+}
+
+extension Animation {
+    /// Mochi's phase changes: a soft spring, inside the 2 s iOS allows.
+    static var phaseChange: Animation { .spring(duration: 0.6, bounce: 0.3) }
+}
+
+extension AnyTransition {
+    /// The old face fades out a little bigger, the new one grows in.
+    static var mochiSwap: AnyTransition {
+        .asymmetric(insertion: .scale(scale: 0.55).combined(with: .opacity),
+                    removal: .scale(scale: 1.15).combined(with: .opacity))
+    }
+
+    /// What appears with a new phase (buttons, steps): slides up and fades in.
+    static var phaseIn: AnyTransition {
+        .asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity)
+    }
+}
+
+/// Deny answers right away; Allow opens Coucou on the command, where Face ID
+/// confirms before anything is sent.
+struct ApprovalButtons: View {
+    let fingerprint: String
+    let pillId: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(intent: DenyApprovalIntent(fingerprint: fingerprint, pillId: pillId)) {
+                Label("Deny", systemImage: "xmark")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+            Button(intent: AllowApprovalIntent(fingerprint: fingerprint, pillId: pillId)) {
+                Label("Allow", systemImage: "faceid")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+        }
     }
 }
 
@@ -111,6 +210,8 @@ struct StepsBar: View {
 }
 
 extension MochiActivityState {
+    var sinceDate: Date? { since.map { Date(timeIntervalSince1970: TimeInterval($0)) } }
+
     var toneColor: Color {
         switch tone {
         case "waiting": .orange

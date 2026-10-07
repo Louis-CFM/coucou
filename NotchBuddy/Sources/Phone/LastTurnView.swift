@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The last turn of a session: your prompt, what the agent did, the files it
 /// changed (tap for the diff) and its answer.
@@ -124,7 +125,7 @@ struct LastTurnView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        .glassCard()
     }
 }
 
@@ -195,6 +196,10 @@ private struct ActionRow: View {
 /// A changed file, line by line: removed in red, added in green.
 struct FileDiffView: View {
     let file: TurnFile
+    /// Shown full screen, where the iPhone can turn sideways for long lines.
+    var fullScreen = false
+    @State private var showFullScreen = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView([.vertical, .horizontal]) {
@@ -222,7 +227,30 @@ struct FileDiffView: View {
                 }
                 .font(.footnote.monospacedDigit().weight(.semibold))
             }
+            ToolbarItem(placement: fullScreen ? .topBarLeading : .topBarTrailing) {
+                if fullScreen {
+                    Button("Done") { dismiss() }
+                } else {
+                    Button { showFullScreen = true } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .accessibilityLabel("Full screen")
+                }
+            }
         }
+        .fullScreenCover(isPresented: $showFullScreen) {
+            NavigationStack { FileDiffView(file: file, fullScreen: true) }
+                .onAppear { Self.allowLandscape(true) }
+                .onDisappear { Self.allowLandscape(false) }
+        }
+    }
+
+    /// Lets the screen turn while the full-screen diff is open; back to portrait after.
+    private static func allowLandscape(_ allowed: Bool) {
+        OrientationLock.mask = allowed ? .allButUpsideDown : .portrait
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else { return }
+        scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        if !allowed { scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) }
     }
 
     @ViewBuilder private func row(_ line: TurnDiffLine) -> some View {

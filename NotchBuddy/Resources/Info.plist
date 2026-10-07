@@ -12,14 +12,27 @@
 	<string>fr.louisraille.NotchBuddy</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ar</string>
+		<string>bn</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>hi</string>
+		<string>id</string>
+		<string>pt-BR</string>
+		<string>ru</string>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Coucou</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.8</string>
+	<string>0.2.0</string>
 	<key>CFBundleVersion</key>
-	<string>9</string>
+	<string>11</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>

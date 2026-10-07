@@ -70,6 +70,7 @@ final class SessionPublisher {
     // MARK: Publishing
 
     private func publish(_ snapshots: [String: SessionSnapshot]) {
+        guard !DemoEngine.shared.isActive else { return }
         guard !publishing else { pending = snapshots; return }
         publishing = true
         Task {
@@ -170,6 +171,9 @@ struct SessionSnapshot: Equatable {
     let approvalCommand: String
     let approvalFingerprint: String
     let question: String
+    /// The question's choices (QuestionPayload JSON) and its fingerprint, for answering from the iPhone.
+    var questionPayload: String = ""
+    var questionFingerprint: String = ""
 
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
                     question: AskQuestion?) -> [String: SessionSnapshot] {
@@ -180,6 +184,7 @@ struct SessionSnapshot: Equatable {
             let questionText = task.state == .question
                 ? (question?.questions.map(\.question).joined(separator: "\n") ?? "")
                 : ""
+            let payload = task.state == .question ? question.map(QuestionPayload.init(ask:)) : nil
             result[task.id] = SessionSnapshot(
                 pillId: task.id,
                 name: task.name,
@@ -192,7 +197,9 @@ struct SessionSnapshot: Equatable {
                 approvalTool: hasApproval ? (approval?.tool ?? "") : "",
                 approvalCommand: hasApproval ? (approval?.command ?? "") : "",
                 approvalFingerprint: hasApproval ? (approval.map(ApprovalRelay.fingerprint) ?? "") : "",
-                question: questionText)
+                question: questionText,
+                questionPayload: payload?.json ?? "",
+                questionFingerprint: payload?.fingerprint ?? "")
         }
         return result
     }
@@ -228,6 +235,7 @@ struct SessionSnapshot: Equatable {
         // Identifies the exact request; the iPhone sends it back with its decision.
         record["approvalFingerprint"] = approvalFingerprint
         record["needsAnswer"] = !question.isEmpty
+        record["questionFingerprint"] = questionFingerprint
         record["updatedAt"] = Date()
         record["macName"] = Host.current().localizedName ?? ""
         // Whether this Mac runs instructions sent from the iPhone (GitHub build, switch on).
@@ -243,6 +251,7 @@ struct SessionSnapshot: Equatable {
         record.encryptedValues["approvalTool"] = approvalTool
         record.encryptedValues["approvalCommand"] = approvalCommand
         record.encryptedValues["question"] = question
+        record.encryptedValues["questionPayload"] = questionPayload
         return record
     }
 }

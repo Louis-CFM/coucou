@@ -25,7 +25,7 @@ struct ShortcutsSettingsView: View {
     // MARK: - Global shortcuts
 
     private var globalSection: some View {
-        GroupBox("Global shortcuts — work from any app") {
+        GroupBox(String(localized: "shortcut.group.global")) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(globalActions, id: \.self) { action in
                     shortcutRow(action)
@@ -36,7 +36,7 @@ struct ShortcutsSettingsView: View {
                 Divider().padding(.top, 8)
                 HStack {
                     Spacer()
-                    Button("Reset all to defaults") { resetAll() }
+                    Button(String(localized: "shortcut.reset-defaults")) { resetAll() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -82,9 +82,9 @@ struct ShortcutsSettingsView: View {
                 .onChange(of: specs[action]) { _, _ in specChanged(action) }
 
             if hasSysConf {
-                conflictTag("System conflict", color: .orange)
+                conflictTag(String(localized: "shortcut.conflict.system"), color: .orange)
             } else if hasIntConf {
-                conflictTag("Duplicate", color: .red)
+                conflictTag(String(localized: "shortcut.conflict.duplicate"), color: .red)
             }
         }
         .padding(.vertical, 5)
@@ -104,7 +104,7 @@ struct ShortcutsSettingsView: View {
     // MARK: - Island-local shortcuts (read-only)
 
     private var islandSection: some View {
-        GroupBox("Island shortcuts — active when the island is focused") {
+        GroupBox(String(localized: "shortcut.group.island")) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(ShortcutLogic.islandShortcuts.enumerated()), id: \.offset) { _, pair in
                     HStack(spacing: 10) {

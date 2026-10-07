@@ -26,6 +26,7 @@ struct IslandViewContent: View {
         case .settings:  SettingsIslandView(state: state)
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
+        case .recap:     WeeklyRecapCardView(state: state)
         }
     }
 }
@@ -217,7 +218,8 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
-        case "agent_gemini", "agent_antigravity":
+        case "agent_gemini", "agent_antigravity",
+             "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
             #if !APPSTORE
             let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
                                      "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
@@ -309,8 +311,11 @@ struct ApprovalView: View {
                     PrimaryButton("Allow") {
                         HookServer.shared.sendApprovalDecision("allow")
                     }
-                    // Codex rejects updatedPermissions, so "Always" is not offered
-                    if approval?.pillId != "agent_codex" {
+                    // Codex, Copilot CLI and Muse Code do not support updatedPermissions
+                    let hideAlways = approval?.pillId == "agent_codex"
+                        || approval?.pillId == "agent_copilot"
+                        || approval?.pillId == "agent_muse"
+                    if !hideAlways {
                         SecondaryButton("Always") {
                             HookServer.shared.sendApprovalDecision("always")
                         }
@@ -431,7 +436,7 @@ struct QuestionView: View {
                                     .buttonStyle(.plain)
                                     .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
                                 } else {
-                                    SecondaryButton(opt.label) {
+                                    SecondaryButton(verbatim: opt.label) {
                                         selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
                                     }
                                     .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
@@ -552,7 +557,7 @@ struct FinishedView: View {
                 Text({
                     if let fl = state.focusTask?.finalLine { return fl }
                     if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
-                    return "Session finished"
+                    return String(localized: "Session finished")
                 }())
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
@@ -884,7 +889,7 @@ struct UploadingView: View {
                             .foregroundColor(Color(hex: "#34D399"))
                             .lineLimit(1).truncationMode(.middle)
                     } else {
-                        Text("Uploading \(state.droppedFile?.name ?? "file")")
+                        Text(String(format: String(localized: "Uploading %@"), state.droppedFile?.name ?? "file"))
                             .font(.system(size: 12.5))
                             .foregroundColor(Color(hex: "#A9ADB5"))
                             .lineLimit(1).truncationMode(.middle)
@@ -916,7 +921,8 @@ struct ChooseView: View {
             CardBackground(wash: nil)
             VStack(alignment: .leading, spacing: 8) {
                 let fileName = state.droppedFile?.name ?? "file"
-                (Text(fileName).font(.system(size: 14, weight: .semibold)) + Text(" is ready.").font(.system(size: 14, weight: .semibold)))
+                Text(String(format: String(localized: "file.ready %@"), fileName))
+                    .font(.system(size: 14, weight: .semibold))
                 Text("What do you want to do with it?").font(.system(size: 12.5)).foregroundColor(Color(hex: "#9398A1"))
                 HStack(spacing: 8) {
                     PrimaryButton("Ask a question") { state.view = .prompt }
@@ -946,8 +952,8 @@ struct MailView: View {
                 HStack(spacing: 6) {
                     Text("New email").font(.system(size: 12, weight: .semibold))
                     if let name = state.droppedFile?.name {
-                        Text("with").font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
-                        Text(name).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
+                        Text(String(format: String(localized: "mail.with %@"), name))
+                            .font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
                             .lineLimit(1).truncationMode(.middle)
                     }
                 }
@@ -971,7 +977,7 @@ struct MailView: View {
                 }
 
                 HStack(spacing: 8) {
-                    PrimaryButton(isSending ? "Sending…" : "Send") {
+                    PrimaryButton(verbatim: isSending ? String(localized: "Sending…") : String(localized: "Send")) {
                         guard !isSending else { return }
                         sendMail()
                     }
@@ -986,7 +992,7 @@ struct MailView: View {
     }
 
     private func sendMail() {
-        guard !to.isEmpty else { statusMsg = "Missing recipient."; return }
+        guard !to.isEmpty else { statusMsg = String(localized: "Missing recipient."); return }
         let subj = subject.isEmpty ? (state.droppedFile?.name ?? "File") : subject
 
         // Prefer Resend if API key + sender address are configured
@@ -1051,7 +1057,7 @@ struct MailView: View {
         #if APPSTORE
         // App Store: no AppleScript — use NSSharingService to compose (user sends manually)
         guard let service = NSSharingService(named: .composeEmail) else {
-            statusMsg = "Mail not available."
+            statusMsg = String(localized: "Mail not available.")
             return
         }
         var items: [Any] = [bodyText.isEmpty ? " " : bodyText]
@@ -1198,7 +1204,7 @@ struct PromptView: View {
                 .padding(.horizontal, 10)
 
                 HStack(spacing: 8) {
-                    TextField(state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…", text: $text)
+                    TextField(state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"), text: $text)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                         .focused($focused)
@@ -1474,9 +1480,9 @@ struct SearchingView: View {
 
     var label: String {
         switch state.promptContext {
-        case .window(_, let title, _): return "Claude is reading \(title)…"
-        case .file(let name, _): return "Claude is reading \(name)…"
-        case nil: return "Claude is searching…"
+        case .window(_, let title, _): return String(format: String(localized: "Claude is reading %@…"), title)
+        case .file(let name, _):       return String(format: String(localized: "Claude is reading %@…"), name)
+        case nil:                      return String(localized: "Claude is searching…")
         }
     }
 
@@ -1607,6 +1613,30 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "agent_copilot":
+            #if !APPSTORE
+            return HookServer.copilotHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_muse":
+            #if !APPSTORE
+            return HookServer.museHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_opencode":
+            #if !APPSTORE
+            return HookServer.openCodePluginInstalled()
+            #else
+            return false
+            #endif
+        case "agent_amp":
+            #if !APPSTORE
+            return HookServer.ampPluginInstalled()
+            #else
+            return false
+            #endif
         case "agent_cursor", "agent_codex":
             return false  // coming soon
         case "integration_music":
@@ -1724,25 +1754,27 @@ struct IntegrationCardView: View {
     private var statusLabel: String {
         #if !APPSTORE
         if task.id == "integration_music" {
-            if appState.musicAutomationDenied { return "Automation not allowed" }
-            if appState.musicPlaying { return "Playing · \(MusicController.shared.trackTitle ?? "Unknown")" }
-            return "Not playing"
+            if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
+            if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
+            return String(localized: "Not playing")
         }
         #endif
-        if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
         let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
+                   || task.id == "agent_copilot" || task.id == "agent_muse"
+                   || task.id == "agent_opencode" || task.id == "agent_amp"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
-            if isHooks { return "Hooks installed" }
+            if isHooks { return String(localized: "Hooks installed") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
                 if provider.isLocal {
                     let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
-                    return "Connected · \(model)"
+                    return String(localized: "Connected · \(model)")
                 }
                 let model: String
                 switch task.id {
@@ -1751,16 +1783,16 @@ struct IntegrationCardView: View {
                 case "ai_openai":    model = appState.openAIChatModel
                 default:             model = ""
                 }
-                return "Key configured · \(model)"
+                return String(localized: "Key configured · \(model)")
             }
-            return "Connected · loading…"
+            return String(localized: "Connected · loading…")
         } else {
-            if isHooks { return "Hooks not installed" }
+            if isHooks { return String(localized: "Hooks not installed") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
-                return provider.isLocal ? "Not connected" : "Key not configured"
+                return provider.isLocal ? String(localized: "Not connected") : String(localized: "Key not configured")
             }
-            return "Key not configured"
+            return String(localized: "Key not configured")
         }
     }
 
@@ -1920,7 +1952,7 @@ struct IntegrationCardView: View {
                         #endif
                     } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {
-                            Button("Chat with \(task.name)") {
+                            Button(String(format: String(localized: "Chat with %@"), task.name)) {
                                 switchChatProvider(provider)
                             }
                             .font(.system(size: 11, weight: .medium))
@@ -2389,7 +2421,7 @@ struct GitHubPulseCardView: View {
                 }()
                 GitHubStatRow(
                     icon: "arrow.triangle.pull", iconColor: ciColor(prWorst),
-                    label: "My PRs", value: prValue
+                    label: String(localized: "My PRs"), value: prValue
                 ) { onTapSection(.myPRs) }
 
                 // To review
@@ -2397,7 +2429,7 @@ struct GitHubPulseCardView: View {
                 GitHubStatRow(
                     icon: "eye",
                     iconColor: reviewCount > 0 ? "#8AB4F8" : "#6B7079",
-                    label: "To review",
+                    label: String(localized: "To review"),
                     value: "\(reviewCount)"
                 ) { onTapSection(.toReview) }
 
@@ -2477,10 +2509,10 @@ struct GitHubDetailView: View {
 
     private var title: String {
         switch section {
-        case .myPRs:    return "My PRs"
-        case .toReview: return "To review"
+        case .myPRs:    return String(localized: "My PRs")
+        case .toReview: return String(localized: "To review")
         case .mainCI:   return "Default branch CI"
-        case .activity: return "Activity"
+        case .activity: return String(localized: "Activity")
         }
     }
 
@@ -2617,7 +2649,7 @@ private struct GitHubActivityDetailContent: View {
         if let day = hoveredDay {
             let label: String
             switch day.count {
-            case 0:  label = "No contributions"
+            case 0:  label = String(localized: "No contributions")
             case 1:  label = "1 contribution"
             default: label = "\(day.count) contributions"
             }
@@ -3346,7 +3378,7 @@ struct N8nDetailView: View {
 
     private var success: Bool  { task.state == .finished }
     private var accent: Color  { success ? Color(hex: "#22C55E") : Color(hex: "#F4505E") }
-    private var statusLabel: String { success ? "Success" : "Failed" }
+    private var statusLabel: String { success ? String(localized: "Success") : String(localized: "Failed") }
     private var detail: String? { task.steps.dropFirst().first }
 
     var body: some View {
@@ -3393,7 +3425,7 @@ struct N8nDetailView: View {
                 }
                 .frame(maxHeight: 88)
             } else {
-                Text(success ? "Completed successfully." : "No error details available.")
+                Text(success ? String(localized: "Completed successfully.") : String(localized: "No error details available."))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#6B7079"))
             }
@@ -4385,7 +4417,7 @@ struct AgentWho: View {
                 Circle().fill(Color(hex: task.color)).frame(width: 8, height: 8)
                 Text(task.name).font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
             }
-            Text(label).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
+            Text(LocalizedStringKey(label)).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
         }
     }
 }
@@ -4508,17 +4540,24 @@ struct ShimmerOverlay: View {
 
 struct PrimaryButton: View {
     let title: String
+    let verbatim: Bool
     let kbd: String?
     let action: () -> Void
 
     init(_ title: String, kbd: String? = nil, action: @escaping () -> Void) {
-        self.title = title; self.kbd = kbd; self.action = action
+        self.title = title; self.verbatim = false; self.kbd = kbd; self.action = action
+    }
+
+    init(verbatim title: String, kbd: String? = nil, action: @escaping () -> Void) {
+        self.title = title; self.verbatim = true; self.kbd = kbd; self.action = action
     }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 7) {
-                Text(title).font(.system(size: 12.5, weight: .medium))
+                Group {
+                    if verbatim { Text(verbatim: title) } else { Text(LocalizedStringKey(title)) }
+                }.font(.system(size: 12.5, weight: .medium))
                 if let k = kbd {
                     Text(k).font(.system(size: 10.5))
                         .padding(.horizontal, 4)
@@ -4537,17 +4576,24 @@ struct PrimaryButton: View {
 
 struct SecondaryButton: View {
     let title: String
+    let verbatim: Bool
     let kbd: String?
     let action: () -> Void
 
     init(_ title: String, kbd: String? = nil, action: @escaping () -> Void) {
-        self.title = title; self.kbd = kbd; self.action = action
+        self.title = title; self.verbatim = false; self.kbd = kbd; self.action = action
+    }
+
+    init(verbatim title: String, kbd: String? = nil, action: @escaping () -> Void) {
+        self.title = title; self.verbatim = true; self.kbd = kbd; self.action = action
     }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 7) {
-                Text(title).font(.system(size: 12.5, weight: .medium))
+                Group {
+                    if verbatim { Text(verbatim: title) } else { Text(LocalizedStringKey(title)) }
+                }.font(.system(size: 12.5, weight: .medium))
                 if let k = kbd {
                     Text(k).font(.system(size: 10.5))
                         .padding(.horizontal, 4)
@@ -4632,7 +4678,7 @@ struct SettingsIslandView: View {
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .frame(width: 16)
-                    Text("Auto-close · \(Int(state.autoCloseInterval))s")
+                    Text(String(format: String(localized: "Auto-close · %llds"), Int64(state.autoCloseInterval)))
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "#C5C8CD"))
                     Spacer()

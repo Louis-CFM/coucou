@@ -1,6 +1,5 @@
 import Foundation
 import LocalAuthentication
-import UserNotifications
 
 enum Decision: String, Codable, Sendable {
     case allow, deny
@@ -24,24 +23,6 @@ struct DecisionLog: Codable, Identifiable, Sendable {
 
     static func save(_ logs: [DecisionLog]) {
         if let data = try? JSONEncoder().encode(logs) { UserDefaults.standard.set(data, forKey: key) }
-    }
-}
-
-/// Notification actions for approval requests. "Review" opens the app on the
-/// command (Allow needs Face ID there); "Deny" works from the notification.
-enum ApprovalActions {
-    static let category = "COUCOU_APPROVAL"
-    static let review = "COUCOU_REVIEW"
-    static let deny = "COUCOU_DENY"
-
-    static func register() {
-        let review = UNNotificationAction(identifier: review, title: "Review",
-                                          options: [.foreground, .authenticationRequired])
-        let deny = UNNotificationAction(identifier: deny, title: "Deny",
-                                        options: [.destructive, .authenticationRequired])
-        let category = UNNotificationCategory(identifier: category, actions: [review, deny],
-                                              intentIdentifiers: [], options: [])
-        UNUserNotificationCenter.current().setNotificationCategories([category])
     }
 }
 

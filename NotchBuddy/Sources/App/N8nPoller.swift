@@ -24,6 +24,7 @@ final class N8nPoller: @unchecked Sendable {
     // MARK: - Poll list endpoint
 
     private func poll() {
+        guard !DemoEngine.isPollerPaused else { return }
         guard let apiKey  = KeychainStore.shared.get("n8n-api-key"),
               let rawBase = KeychainStore.shared.get("n8n-url") else {
             n8nLog("No API key or URL configured")

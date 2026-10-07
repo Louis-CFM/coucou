@@ -217,6 +217,12 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        if DemoEngine.shared.isActive {
+            state.stateOverride = .thinking
+            await DemoEngine.shared.streamChatResponse(for: query)
+            state.stateOverride = nil
+            return
+        }
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return

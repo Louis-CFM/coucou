@@ -90,6 +90,12 @@ function validate(body: RelayRequest): string | null {
     const value = body.state[key];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 999) return `state.${key}`;
   }
+  const since = body.state["since"];
+  if (since !== undefined && since !== null &&
+      (typeof since !== "number" || !Number.isInteger(since) || since < 1_600_000_000 || since > 4_000_000_000)) return "state.since";
+  const approval = body.state["approval"];
+  if (approval !== undefined && approval !== null &&
+      (typeof approval !== "string" || !/^[0-9a-f]{64}$/.test(approval))) return "state.approval";
   if (body.dismissAfter !== undefined &&
       (typeof body.dismissAfter !== "number" || !Number.isInteger(body.dismissAfter) ||
        body.dismissAfter < 0 || body.dismissAfter > 4 * 3600)) return "dismissAfter";
@@ -101,6 +107,10 @@ function buildPayload(body: RelayRequest) {
   // Only the known fields, so nothing else rides along.
   const state: Record<string, unknown> = {};
   for (const key of [...STATE_STRINGS, ...STATE_NUMBERS]) state[key] = body.state[key];
+  // When Mochi left for the iPhone: the activity counts the time from it.
+  if (typeof body.state["since"] === "number") state["since"] = body.state["since"];
+  // The pending command's fingerprint (a hash), for Allow / Deny on the Lock Screen.
+  if (typeof body.state["approval"] === "string") state["approval"] = body.state["approval"];
 
   const aps: Record<string, unknown> = {
     timestamp: now,
@@ -114,6 +124,12 @@ function buildPayload(body: RelayRequest) {
     aps["attributes"] = {};
     // iOS requires an alert to start a Live Activity from a push.
     aps["alert"] = { title: "Coucou", body: `${state.agent} · ${state.statusText}` };
+  }
+  if (body.event === "update" && body.urgent) {
+    // Waiting for your OK or a question: the Dynamic Island opens and the
+    // Lock Screen lights up, with Allow / Deny right there. No sound: the
+    // approval notification already makes one.
+    aps["alert"] = { title: String(state.agent), body: String(state.statusText) };
   }
   if (body.event === "end") {
     aps["dismissal-date"] = now + (body.dismissAfter ?? 0);

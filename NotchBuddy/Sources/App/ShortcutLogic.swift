@@ -38,16 +38,16 @@ enum ShortcutAction: String, CaseIterable, Sendable {
 
     var displayName: String {
         switch self {
-        case .toggleIsland:      return "Open / close island"
-        case .openChat:          return "Open chat"
-        case .goToAlert:         return "Go to alert"
-        case .jumpToTerminal:    return "Jump to terminal"
-        case .attachFrontWindow: return "Attach front window"
-        case .nextPill:          return "Next pill"
-        case .prevPill:          return "Previous pill"
-        case .muteToggle:        return "Mute / unmute sounds"
-        case .desktopToggle:     return "Mochi on / off desktop"
-        case .wardrobeToggle:    return "Open / close wardrobe"
+        case .toggleIsland:      return String(localized: "shortcut.open-close-island")
+        case .openChat:          return String(localized: "shortcut.open-chat")
+        case .goToAlert:         return String(localized: "shortcut.go-to-alert")
+        case .jumpToTerminal:    return String(localized: "shortcut.jump-to-terminal")
+        case .attachFrontWindow: return String(localized: "shortcut.attach-front-window")
+        case .nextPill:          return String(localized: "shortcut.next-pill")
+        case .prevPill:          return String(localized: "shortcut.prev-pill")
+        case .muteToggle:        return String(localized: "shortcut.mute-toggle")
+        case .desktopToggle:     return String(localized: "shortcut.desktop-toggle")
+        case .wardrobeToggle:    return String(localized: "shortcut.wardrobe")
         }
     }
 
@@ -222,15 +222,15 @@ enum ShortcutLogic {
 
     /// Descriptive table of island-local shortcuts for the Settings view.
     static let islandShortcuts: [(key: String, description: String)] = [
-        ("⌘→ / ⌘←",    "Next / previous pill"),
-        ("⌘1 – ⌘9",    "Switch to pill by number"),
-        ("⌘↓ / ⌘↑",    "Navigate list items"),
-        ("⌘O",          "Open selected item"),
-        ("⌘E",          "Open / close current diff"),
-        ("⌘↩",          "Send chat message"),
-        ("⌘K",          "New conversation"),
-        ("⌘,",          "Open Settings"),
-        ("⌘P",          "Pin / unpin island"),
-        ("⎋",           "Close island (if not pinned)"),
+        ("⌘→ / ⌘←",    String(localized: "shortcut.island.next-prev")),
+        ("⌘1 – ⌘9",    String(localized: "shortcut.island.by-number")),
+        ("⌘↓ / ⌘↑",    String(localized: "shortcut.island.nav-items")),
+        ("⌘O",          String(localized: "shortcut.island.open")),
+        ("⌘E",          String(localized: "shortcut.island.diff")),
+        ("⌘↩",          String(localized: "shortcut.island.send")),
+        ("⌘K",          String(localized: "shortcut.island.new-convo")),
+        ("⌘,",          String(localized: "shortcut.island.settings")),
+        ("⌘P",          String(localized: "shortcut.island.pin")),
+        ("⎋",           String(localized: "shortcut.island.close")),
     ]
 }

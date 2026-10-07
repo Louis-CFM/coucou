@@ -61,6 +61,14 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
+    // Weekly recap — persisted
+    @Published var recapEnabled: Bool = (UserDefaults.standard.object(forKey: "recapEnabled") as? Bool) ?? true {
+        didSet { UserDefaults.standard.set(recapEnabled, forKey: "recapEnabled") }
+    }
+    @Published var recapHideProjects: Bool = UserDefaults.standard.bool(forKey: "recapHideProjects") {
+        didSet { UserDefaults.standard.set(recapHideProjects, forKey: "recapHideProjects") }
+    }
+
     // Mochi outfit selection — persisted
     @Published var mochiOutfitSelection: Outfit = .auto {
         didSet { Outfit.stored = mochiOutfitSelection }
@@ -217,6 +225,13 @@ final class AppState: ObservableObject {
             SoundEngine.shared.volume = Float(soundVolume)
         }
     }
+
+    // Selected app language ("" = System, else BCP-47 code e.g. "fr")
+    @Published var appLanguage: String = {
+        let bundleId = Bundle.main.bundleIdentifier ?? "fr.louisraille.NotchBuddy"
+        let langs = UserDefaults.standard.persistentDomain(forName: bundleId)?["AppleLanguages"] as? [String]
+        return langs?.first ?? ""
+    }()
 
     // Context for prompt (window attach / file)
     @Published var promptContext: PromptContext? = nil
@@ -388,6 +403,8 @@ final class AppState: ObservableObject {
     @Published var showPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
     }
+    // In-memory plan usage override for demo mode. Never persisted. Set by DemoEngine.
+    @Published var demoPlanUsageOverride: PlanUsage? = nil
     // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
     @Published var planRelayInstalled: Bool = false
     // Transient — reset when island closes or view changes

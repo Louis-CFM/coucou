@@ -57,6 +57,8 @@ final class ApprovalRelay {
     // MARK: Request lifecycle
 
     private func pendingChanged(to approval: ApprovalInfo?) {
+        // Never publish demo approval cards to iCloud
+        if approval?.sessionId == "demo_session" { return }
         let fingerprint = approval.map(Self.fingerprint)
         if let old = current, old.fingerprint != fingerprint {
             pollTask?.cancel()

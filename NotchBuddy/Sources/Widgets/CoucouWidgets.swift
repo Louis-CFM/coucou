@@ -13,6 +13,7 @@ struct CoucouWidgetBundle: WidgetBundle {
         ListWidget()
         LockScreenWidget()
         MochiLiveActivity()
+        CoucouControl()
     }
 }
 
@@ -129,8 +130,12 @@ struct SoloView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            WidgetMochi(state: session?.botState ?? .sleeping)
-                .frame(width: 56, height: 56)
+            ZStack {
+                WidgetMochi(state: session?.botState ?? .sleeping)
+                    .id(session?.state ?? "sleeping")
+                    .transition(.mochiSwap)
+            }
+            .frame(width: 56, height: 56)
             Spacer(minLength: 0)
             if let session {
                 Text(session.title)
@@ -141,7 +146,9 @@ struct SoloView: View {
                     .lineLimit(2)
                     .opacity(0.85)
                 HStack(spacing: 4) {
-                    Text(session.statusText).foregroundStyle(session.toneColor)
+                    Text(session.statusText)
+                        .foregroundStyle(session.toneColor)
+                        .contentTransition(.interpolate)
                     Text("·")
                     Text(session.updatedAt, style: .relative)
                 }
@@ -227,9 +234,13 @@ struct TeamTile: View {
     var body: some View {
         VStack(spacing: 0) {
             // In his own color, like the little Mochi in the Mac's notch.
-            WidgetMochi(state: session.botState, bodyHex: session.color, pose: pose)
-                .padding(.horizontal, 4)
-                .padding(.top, 2)
+            ZStack {
+                WidgetMochi(state: session.botState, bodyHex: session.color, pose: pose)
+                    .id(session.state)
+                    .transition(.mochiSwap)
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
             Text(session.agent)
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.85))
@@ -304,6 +315,7 @@ struct ListView: View {
                         .font(.caption.weight(session.isWaitingForYou ? .semibold : .regular))
                         .foregroundStyle(session.toneColor)
                         .lineLimit(1)
+                        .contentTransition(.interpolate)
                 }
             }
             Spacer(minLength: 0)
@@ -317,29 +329,46 @@ struct LockScreenView: View {
     @Environment(\.widgetFamily) private var family
     let sessions: [SharedSession]
 
+    /// Steps done of the lead session while it works, for the ring and the bar.
+    private var progress: Double? {
+        guard let lead = sessions.first, lead.isWorking, lead.stepCount > 0 else { return nil }
+        return Double(min(lead.stepIndex + 1, lead.stepCount)) / Double(lead.stepCount)
+    }
+
     var body: some View {
         switch family {
         case .accessoryCircular:
+            // The Lock Screen keeps only brightness: Mochi drawn like in the
+            // tinted Home Screen, so his face shows.
             ZStack {
                 AccessoryWidgetBackground()
-                MochiStill(state: sessions.leadState).padding(6)
+                if let progress {
+                    Gauge(value: progress) { EmptyView() }
+                        .gaugeStyle(.accessoryCircularCapacity)
+                }
+                WidgetMochi(state: sessions.leadState, showBadge: false).padding(progress == nil ? 7 : 10)
             }
+            .widgetURL(sessions.first.map { SharedSession.url(for: $0.id) })
             .containerBackground(for: .widget) { Color.clear }
         case .accessoryRectangular:
             HStack(spacing: 6) {
-                MochiStill(state: sessions.leadState).frame(width: 30, height: 30)
-                VStack(alignment: .leading, spacing: 0) {
+                WidgetMochi(state: sessions.leadState, showBadge: false).frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 1) {
                     Text(sessions.summary ?? "All quiet")
                         .font(.headline)
                         .lineLimit(1)
                     if let lead = sessions.first {
                         Text("\(lead.title) · \(lead.statusText)")
                             .font(.caption)
-                            .lineLimit(2)
+                            .lineLimit(progress == nil ? 2 : 1)
+                    }
+                    if let progress {
+                        ProgressView(value: progress).tint(.white)
                     }
                 }
                 Spacer(minLength: 0)
             }
+            .widgetURL(sessions.first.map { SharedSession.url(for: $0.id) })
             .containerBackground(for: .widget) { Color.clear }
         default:
             Text(sessions.summary.map { "Coucou · \($0)" } ?? "Coucou · all quiet")
@@ -379,8 +408,8 @@ extension SharedSession {
 
 /// Mochi in a widget. In the tinted (and clear) Home Screen styles iOS keeps
 /// only each pixel's opacity, so a white Mochi with black eyes turns into a
-/// blank shape. There he is drawn by brightness instead: the body shows, the
-/// eyes become holes, and you can see his face again.
+/// blank shape; on the Lock Screen it keeps only brightness. There he is drawn
+/// as a white shape with his eyes cut out, which reads in both.
 struct WidgetMochi: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
     var state: BotState = .idle
@@ -392,8 +421,14 @@ struct WidgetMochi: View {
         if renderingMode == .fullColor {
             MochiStill(state: state, bodyHex: bodyHex, showBadge: showBadge, pose: pose)
         } else {
-            MochiStill(state: state, bodyHex: "#FFFFFF", showBadge: showBadge, pose: pose)
-                .luminanceToAlpha()
+            // White where Mochi is bright, see-through where he is dark (his
+            // eyes). The Lock Screen shows brightness, so the mask is filled
+            // with white rather than left black.
+            Color.white
+                .mask {
+                    MochiStill(state: state, bodyHex: "#FFFFFF", showBadge: showBadge, pose: pose)
+                        .luminanceToAlpha()
+                }
                 .widgetAccentable()
         }
     }

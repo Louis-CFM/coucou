@@ -12,6 +12,19 @@
 	<string>fr.louisraille.Coucou</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ar</string>
+		<string>bn</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>hi</string>
+		<string>id</string>
+		<string>pt-BR</string>
+		<string>ru</string>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Coucou</string>
 	<key>CFBundlePackageType</key>
@@ -19,7 +32,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.1</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>6</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>

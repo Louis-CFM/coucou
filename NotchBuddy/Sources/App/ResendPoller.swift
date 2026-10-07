@@ -15,6 +15,7 @@ final class ResendPoller: @unchecked Sendable {
     }
 
     private func poll() {
+        guard !DemoEngine.isPollerPaused else { return }
         guard let apiKey = KeychainStore.shared.get("resend-api-key") else { return }
         guard let url = URL(string: "https://api.resend.com/emails?limit=100") else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)

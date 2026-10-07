@@ -11,7 +11,7 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![Rust](https://img.shields.io/badge/Rust-backend-000?logo=rust)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Code: MIT](https://img.shields.io/badge/code-MIT-green)
 
 </div>
 
@@ -135,6 +135,23 @@ windows/
 
 `%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
+
+## Supported agents
+
+The relay (`coucou-hook.exe`) works with any tool that can run a command on hook events. Pass `--agent <name>` to create a named pill.
+
+| Agent | How to connect | Config file |
+|---|---|---|
+| Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
+| Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
+| Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
+| Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
+| Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
+| Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |
+| Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
+| Any other | `--agent <name>` positional arg | your tool's hook config |
+
+OpenCode and Amp are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
 
 ## What's different from the Mac version
 

@@ -59,6 +59,14 @@ enum PillCatalog {
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_copilot",       name: "Copilot CLI", color: "#818CF8",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_muse",          name: "Muse Code",   color: "#38BDF8",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_opencode",      name: "OpenCode",    color: "#4ADE80",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),

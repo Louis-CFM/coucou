@@ -4,6 +4,7 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
+    @ObservedObject private var demoEngine = DemoEngine.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
@@ -52,6 +53,26 @@ struct SettingsView: View {
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
+
+    @State private var copilotHooksInstalled: Bool = HookServer.copilotHooksInstalled()
+    @State private var showCopilotDiff: Bool = false
+    @State private var pendingCopilotJSON: String = ""
+    @State private var copilotPendingInstall: Bool = true
+
+    @State private var museHooksInstalled: Bool = HookServer.museHooksInstalled()
+    @State private var showMuseDiff: Bool = false
+    @State private var pendingMuseJSON: String = ""
+    @State private var musePendingInstall: Bool = true
+
+    @State private var openCodePluginInstalled: Bool = HookServer.openCodePluginInstalled()
+    @State private var showOpenCodeDiff: Bool = false
+    @State private var pendingOpenCodeContent: String = ""
+    @State private var openCodePendingInstall: Bool = true
+
+    @State private var ampPluginInstalled: Bool = HookServer.ampPluginInstalled()
+    @State private var showAmpDiff: Bool = false
+    @State private var pendingAmpContent: String = ""
+    @State private var ampPendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
@@ -202,13 +223,13 @@ struct SettingsView: View {
 
     private var sectionTitle: String {
         switch selectedSection {
-        case "general":      return "General"
-        case "activepills":  return "Active pills"
-        case "agents":       return "Agents"
-        case "chat":         return "Chat"
-        case "integrations": return "Integrations"
-        case "shortcuts":    return "Shortcuts"
-        default:             return "General"
+        case "general":      return String(localized: "General")
+        case "activepills":  return String(localized: "Active pills")
+        case "agents":       return String(localized: "Agents")
+        case "chat":         return String(localized: "Chat")
+        case "integrations": return String(localized: "Integrations")
+        case "shortcuts":    return String(localized: "Shortcuts")
+        default:             return String(localized: "General")
         }
     }
 
@@ -226,6 +247,21 @@ struct SettingsView: View {
     // MARK: - General section
 
     @ViewBuilder private var generalSection: some View {
+        GroupBox(String(localized: "demo.groupbox.title")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(localized: "demo.description"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(demoEngine.isActive ? String(localized: "demo.stop") : String(localized: "demo.start")) {
+                    if demoEngine.isActive { DemoEngine.shared.stop() }
+                    else { DemoEngine.shared.start() }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(6)
+        }
+
         GroupBox("Sound") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Enable sounds", isOn: $state.soundEnabled)
@@ -296,27 +332,85 @@ struct SettingsView: View {
                 .padding(6)
         }
 
-        #if PHONE_LINK
-        GroupBox("iPhone") {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle("Show my agent sessions on my iPhone", isOn: $iPhoneSyncEnabled)
-                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
-                Text("Sends your sessions to your private iCloud for the Coucou iPhone app. Project names, commands and questions are encrypted with your iCloud keys. Turning it off deletes them from iCloud.")
+        GroupBox(String(localized: "Weekly recap")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "Keep a history of my coding sessions"), isOn: $state.recapEnabled)
+                Text(String(localized: "Stored locally on your Mac. Nothing leaves your Mac. Retained for 12 weeks."))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Toggle("Move Mochi to my iPhone's Dynamic Island when my Mac is locked", isOn: $iPhoneLiveActivityEnabled)
+                Toggle(String(localized: "Hide project names in shared images"), isOn: $state.recapHideProjects)
+                    .disabled(!state.recapEnabled)
+                Button(String(localized: "Clear history")) { RecapStore.shared.clearHistory() }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "Language")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("", selection: $state.appLanguage) {
+                    Text(String(localized: "System")).tag("")
+                    Text("English").tag("en")
+                    Text("简体中文").tag("zh-Hans")
+                    Text("हिन्दी").tag("hi")
+                    Text("Español").tag("es")
+                    Text("العربية").tag("ar")
+                    Text("Français").tag("fr")
+                    Text("বাংলা").tag("bn")
+                    Text("Português (Brasil)").tag("pt-BR")
+                    Text("Русский").tag("ru")
+                    Text("Bahasa Indonesia").tag("id")
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .onChange(of: state.appLanguage) { _, code in
+                    if code.isEmpty {
+                        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                    } else {
+                        UserDefaults.standard.set([code], forKey: "AppleLanguages")
+                    }
+                    UserDefaults.standard.synchronize()
+                }
+                HStack(spacing: 8) {
+                    Button(String(localized: "Restart Coucou")) {
+                        let appPath = Bundle.main.bundleURL.path
+                        let pid = ProcessInfo.processInfo.processIdentifier
+                        let task = Process()
+                        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+                        task.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \"$1\"", "--", appPath]
+                        try? task.run()
+                        NSApp.terminate(nil)
+                    }
+                    .buttonStyle(.bordered)
+                    Text(String(localized: "Applies on next launch"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(6)
+        }
+
+        #if PHONE_LINK
+        GroupBox("iPhone") {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(String(localized: "iphone.sync.toggle"), isOn: $iPhoneSyncEnabled)
+                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
+                Text(String(localized: "iphone.sync.description"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle(String(localized: "iphone.live-activity.toggle"), isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
-                Text("Goes through the Coucou relay to Apple's push service. Only the agent's name and state are sent: no project name, command or path.")
+                Text(String(localized: "iphone.live-activity.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 #if !APPSTORE
-                Toggle("Let my iPhone send instructions to Claude Code", isOn: $iPhoneInstructionsEnabled)
+                Toggle(String(localized: "iphone.instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
-                Text("An instruction sent from the iPhone (Face ID required) continues your last Claude Code session in the background, in its folder, with claude --resume. This Mac checks for one every 15 s while this is on.")
+                Text(String(localized: "iphone.instruction.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -336,11 +430,11 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                Text("\(state.activeIntegrations.count)/4 slots used")
+                Text(String(format: String(localized: "settings.slots-used %lld"), Int64(state.activeIntegrations.count)))
                     .font(.system(size: 11))
                     .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
-                Picker("Main", selection: $state.mainPillId) {
+                Picker(String(localized: "settings.main-pill"), selection: $state.mainPillId) {
                     ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
                         Text(def.name).tag(def.id)
                     }
@@ -371,20 +465,20 @@ struct SettingsView: View {
     // MARK: - Agents section
 
     @ViewBuilder private var agentsSection: some View {
-        GroupBox("Claude Code Hooks") {
+        GroupBox(String(localized: "hooks.claude-code.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 if hookNeedsUpdate {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
-                        Text("Hooks outdated — update them to answer Claude's questions from the notch")
+                        Text(String(localized: "hooks.outdated"))
                             .font(.system(size: 11))
                             .foregroundColor(.orange)
                     }
                     #if APPSTORE
-                    Button("Update hooks") { installHooksAppStore() }
+                    Button(String(localized: "hooks.update")) { installHooksAppStore() }
                     #else
-                    Button("Update hooks") { installHooks() }
+                    Button(String(localized: "hooks.update")) { installHooks() }
                     #endif
                 }
                 #if APPSTORE
@@ -392,9 +486,9 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { installHooksAppStore() }
+                    Button(String(localized: "hooks.install")) { installHooksAppStore() }
                         .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { uninstallHooksAppStore() }
+                    Button(String(localized: "hooks.uninstall")) { uninstallHooksAppStore() }
                         .buttonStyle(.bordered)
                 }
                 #else
@@ -402,9 +496,9 @@ struct SettingsView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { installHooks() }
+                    Button(String(localized: "hooks.install")) { installHooks() }
                         .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { uninstallHooks() }
+                    Button(String(localized: "hooks.uninstall")) { uninstallHooks() }
                         .buttonStyle(.bordered)
                 }
                 #endif
@@ -421,9 +515,9 @@ struct SettingsView: View {
                     .cornerRadius(6)
 
                     HStack {
-                        Button("Confirm & write") { confirmInstall() }
+                        Button(String(localized: "hooks.confirm-write")) { confirmInstall() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") { showDiff = false; pendingHookJSON = "" }
+                        Button(String(localized: "Cancel")) { showDiff = false; pendingHookJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -433,17 +527,17 @@ struct SettingsView: View {
         }
 
         #if !APPSTORE
-        GroupBox("Gemini CLI Hooks") {
+        GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(geminiHooksInstalled
-                     ? "Hooks installed — restart Gemini CLI to activate"
+                     ? String(localized: "hooks.gemini.installed")
                      : "~/.gemini/settings.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerGeminiPreview(install: true) }
+                    Button(String(localized: "hooks.install")) { triggerGeminiPreview(install: true) }
                         .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { triggerGeminiPreview(install: false) }
+                    Button(String(localized: "hooks.uninstall")) { triggerGeminiPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
                 if showGeminiDiff {
@@ -456,9 +550,9 @@ struct SettingsView: View {
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
                     HStack {
-                        Button("Confirm & write") { confirmGeminiOp() }
+                        Button(String(localized: "hooks.confirm-write")) { confirmGeminiOp() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") { showGeminiDiff = false; pendingGeminiJSON = "" }
+                        Button(String(localized: "Cancel")) { showGeminiDiff = false; pendingGeminiJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -466,17 +560,17 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        GroupBox("Antigravity Hooks") {
+        GroupBox(String(localized: "hooks.antigravity.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(agyHooksInstalled
-                     ? "Hooks installed — restart Antigravity to activate"
+                     ? String(localized: "hooks.antigravity.installed")
                      : "~/.gemini/config/hooks.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerAgyPreview(install: true) }
+                    Button(String(localized: "hooks.install")) { triggerAgyPreview(install: true) }
                         .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { triggerAgyPreview(install: false) }
+                    Button(String(localized: "hooks.uninstall")) { triggerAgyPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
                 if showAgyDiff {
@@ -489,9 +583,9 @@ struct SettingsView: View {
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
                     HStack {
-                        Button("Confirm & write") { confirmAgyOp() }
+                        Button(String(localized: "hooks.confirm-write")) { confirmAgyOp() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") { showAgyDiff = false; pendingAgyJSON = "" }
+                        Button(String(localized: "Cancel")) { showAgyDiff = false; pendingAgyJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -499,17 +593,17 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        GroupBox("Codex Hooks") {
+        GroupBox(String(localized: "hooks.codex.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(codexHooksInstalled
-                     ? "Hooks installed — open Codex and run /hooks or open Hooks in the app's settings to trust them"
+                     ? String(localized: "hooks.codex.installed")
                      : "~/.codex/hooks.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
-                    Button("Install hooks") { triggerCodexPreview(install: true) }
+                    Button(String(localized: "hooks.install")) { triggerCodexPreview(install: true) }
                         .buttonStyle(.borderedProminent)
-                    Button("Uninstall") { triggerCodexPreview(install: false) }
+                    Button(String(localized: "hooks.uninstall")) { triggerCodexPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
                 if showCodexDiff {
@@ -522,9 +616,9 @@ struct SettingsView: View {
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
                     HStack {
-                        Button("Confirm & write") { confirmCodexOp() }
+                        Button(String(localized: "hooks.confirm-write")) { confirmCodexOp() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") { showCodexDiff = false; pendingCodexJSON = "" }
+                        Button(String(localized: "Cancel")) { showCodexDiff = false; pendingCodexJSON = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -532,13 +626,145 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        GroupBox("Plan usage") {
+        GroupBox(String(localized: "hooks.copilot.title")) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay to ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.")
+                Text(copilotHooksInstalled
+                     ? String(localized: "hooks.copilot.installed")
+                     : "~/.copilot/hooks/coucou.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "hooks.install")) { triggerCopilotPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerCopilotPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showCopilotDiff {
+                    ScrollView {
+                        Text(pendingCopilotJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmCopilotOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showCopilotDiff = false; pendingCopilotJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "hooks.muse.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(museHooksInstalled
+                     ? String(localized: "hooks.muse.installed")
+                     : "~/.config/muse/settings.json")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "hooks.install")) { triggerMusePreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerMusePreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showMuseDiff {
+                    ScrollView {
+                        Text(pendingMuseJSON)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmMuseOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showMuseDiff = false; pendingMuseJSON = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "plugin.opencode.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(openCodePluginInstalled
+                     ? String(localized: "plugin.opencode.installed")
+                     : "~/.config/opencode/plugins/coucou.js")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "plugin.install")) { triggerOpenCodePreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerOpenCodePreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showOpenCodeDiff {
+                    ScrollView {
+                        Text(pendingOpenCodeContent)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmOpenCodeOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showOpenCodeDiff = false; pendingOpenCodeContent = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "plugin.amp.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(ampPluginInstalled
+                     ? String(localized: "plugin.amp.installed")
+                     : "~/.config/amp/plugins/coucou.ts")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "plugin.install")) { triggerAmpPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerAmpPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showAmpDiff {
+                    ScrollView {
+                        Text(pendingAmpContent)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmAmpOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showAmpDiff = false; pendingAmpContent = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "plan.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(String(localized: "plan.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Toggle("Show in the notch", isOn: Binding(
+                Toggle(String(localized: "plan.show-in-notch"), isOn: Binding(
                     get: { state.showPlanInNotch || planTogglePending },
                     set: { on in
                         if on {
@@ -556,16 +782,16 @@ struct SettingsView: View {
                 ))
                 HStack(spacing: 10) {
                     if state.planRelayInstalled {
-                        Text("Relay: installed")
+                        Text(String(localized: "plan.relay.installed"))
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        Button("Uninstall relay") { uninstallStatusLine() }
+                        Button(String(localized: "plan.relay.uninstall")) { uninstallStatusLine() }
                             .buttonStyle(.bordered)
                     } else {
-                        Text("Relay: not installed")
+                        Text(String(localized: "plan.relay.not-installed"))
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                        Button("Install relay") { installStatusLine() }
+                        Button(String(localized: "plan.relay.install")) { installStatusLine() }
                             .buttonStyle(.borderedProminent)
                     }
                 }
@@ -579,9 +805,9 @@ struct SettingsView: View {
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
                     HStack {
-                        Button("Confirm & write") { confirmStatusLine() }
+                        Button(String(localized: "hooks.confirm-write")) { confirmStatusLine() }
                             .buttonStyle(.borderedProminent)
-                        Button("Cancel") {
+                        Button(String(localized: "Cancel")) {
                             showStatusLineDiff = false
                             pendingStatusLineJSON = ""
                             planTogglePending = false
@@ -598,23 +824,23 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
-        GroupBox("Anthropic API") {
+        GroupBox(String(localized: "chat.anthropic-api.title")) {
             VStack(alignment: .leading, spacing: 8) {
-                SecureField("API key (sk-ant-…)", text: $apiKey)
+                SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
                     .textFieldStyle(.roundedBorder)
-                Button("Save") {
+                Button(String(localized: "Save")) {
                     KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                    statusMessage = "✓ Key saved."
+                    statusMessage = String(localized: "status.key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
                 Divider().padding(.vertical, 2)
 
-                Picker("Model", selection: $modelChoice) {
+                Picker(String(localized: "chat.model"), selection: $modelChoice) {
                     ForEach(displayModels, id: \.id) { preset in
                         Text(preset.label).tag(preset.id)
                     }
-                    Text("Custom…").tag(Self.customModelTag)
+                    Text(String(localized: "chat.model.custom")).tag(Self.customModelTag)
                 }
                 .onChange(of: modelChoice) { _, choice in
                     if choice != Self.customModelTag {
@@ -625,33 +851,33 @@ struct SettingsView: View {
                 }
 
                 if modelChoice == Self.customModelTag {
-                    TextField("Model ID (e.g. claude-sonnet-4-6)", text: $customModel)
+                    TextField(String(localized: "chat.model.custom-id"), text: $customModel)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: customModel) { _, value in applyCustomModel(value) }
                 }
 
-                Text("Used by the chat. The list comes from your Anthropic account.")
+                Text(String(localized: "chat.model.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
             .padding(6)
         }
 
-        GroupBox("Chat — other providers") {
+        GroupBox(String(localized: "chat.other-providers.title")) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.")
+                Text(String(localized: "chat.other-providers.description"))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
                 HStack(spacing: 8) {
                     Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
-                    Text("Google AI").font(.system(size: 12, weight: .semibold))
+                    Text(String(localized: "chat.google-ai")).font(.system(size: 12, weight: .semibold))
                 }
-                SecureField("API key (AI Studio)", text: $googleKey)
+                SecureField(String(localized: "chat.api-key.google"), text: $googleKey)
                     .textFieldStyle(.roundedBorder)
-                Button("Save") {
+                Button(String(localized: "Save")) {
                     KeychainStore.shared.set("google-api-key", value: googleKey)
-                    statusMessage = "✓ Google key saved."
+                    statusMessage = String(localized: "status.google-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -659,22 +885,22 @@ struct SettingsView: View {
 
                 HStack(spacing: 8) {
                     Circle().fill(Color(hex: "#10A37F")).frame(width: 8, height: 8)
-                    Text("OpenAI").font(.system(size: 12, weight: .semibold))
+                    Text(String(localized: "chat.openai")).font(.system(size: 12, weight: .semibold))
                 }
-                SecureField("API key (sk-…)", text: $openAIKey)
+                SecureField(String(localized: "chat.api-key.openai"), text: $openAIKey)
                     .textFieldStyle(.roundedBorder)
-                Button("Save") {
+                Button(String(localized: "Save")) {
                     KeychainStore.shared.set("openai-api-key", value: openAIKey)
-                    statusMessage = "✓ OpenAI key saved."
+                    statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
             }
             .padding(.vertical, 4)
         }
 
-        GroupBox("Local models") {
+        GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Connect to a local model server. No API key needed.")
+                Text(String(localized: "chat.local.description"))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
@@ -683,7 +909,7 @@ struct SettingsView: View {
                     Circle().fill(Color(hex: "#FACC15")).frame(width: 8, height: 8)
                     Text("Ollama").font(.system(size: 12, weight: .semibold))
                     if !state.ollamaServerURL.isEmpty {
-                        Text("Connected")
+                        Text(String(localized: "Connected"))
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#22C55E"))
                     }
@@ -691,7 +917,7 @@ struct SettingsView: View {
                 if state.ollamaServerURL.isEmpty {
                     TextField("http://127.0.0.1:11434", text: $ollamaURL)
                         .textFieldStyle(.roundedBorder)
-                    Button(connectingOllama ? "Connecting…" : "Connect") {
+                    Button(connectingOllama ? String(localized: "chat.connecting") : String(localized: "chat.connect")) {
                         Task { await connectLocal(provider: .ollama) }
                     }
                     .buttonStyle(.borderedProminent)
@@ -700,13 +926,13 @@ struct SettingsView: View {
                     Text(state.ollamaServerURL)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
-                    Button("Disconnect") {
+                    Button(String(localized: "chat.disconnect")) {
                         state.ollamaServerURL = ""
                         ollamaURL = ""
                         state.fetchedProviderModels[.ollama] = nil
                         state.providerModelFetchError[.ollama] = nil
                         if state.chatProvider == .ollama { state.chatProvider = .anthropic }
-                        statusMessage = "Ollama disconnected."
+                        statusMessage = String(localized: "status.local.ollama-disconnected")
                     }
                     .buttonStyle(.bordered)
                 }
@@ -718,7 +944,7 @@ struct SettingsView: View {
                     Circle().fill(Color(hex: "#A3E635")).frame(width: 8, height: 8)
                     Text("LM Studio").font(.system(size: 12, weight: .semibold))
                     if !state.lmstudioServerURL.isEmpty {
-                        Text("Connected")
+                        Text(String(localized: "Connected"))
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#22C55E"))
                     }
@@ -726,7 +952,7 @@ struct SettingsView: View {
                 if state.lmstudioServerURL.isEmpty {
                     TextField("http://127.0.0.1:1234", text: $lmstudioURL)
                         .textFieldStyle(.roundedBorder)
-                    Button(connectingLMStudio ? "Connecting…" : "Connect") {
+                    Button(connectingLMStudio ? String(localized: "chat.connecting") : String(localized: "chat.connect")) {
                         Task { await connectLocal(provider: .lmstudio) }
                     }
                     .buttonStyle(.borderedProminent)
@@ -735,13 +961,13 @@ struct SettingsView: View {
                     Text(state.lmstudioServerURL)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
-                    Button("Disconnect") {
+                    Button(String(localized: "chat.disconnect")) {
                         state.lmstudioServerURL = ""
                         lmstudioURL = ""
                         state.fetchedProviderModels[.lmstudio] = nil
                         state.providerModelFetchError[.lmstudio] = nil
                         if state.chatProvider == .lmstudio { state.chatProvider = .anthropic }
-                        statusMessage = "LM Studio disconnected."
+                        statusMessage = String(localized: "status.local.lmstudio-disconnected")
                     }
                     .buttonStyle(.bordered)
                 }
@@ -779,7 +1005,7 @@ struct SettingsView: View {
                     SecureField("API key", text: $n8nKey)
                         .textFieldStyle(.roundedBorder)
                     IntegrationFilterRow(
-                        label: "Workflows",
+                        label: String(localized: "integrations.workflows"),
                         items: n8nWorkflows,
                         filter: $state.n8nWorkflowFilter,
                         loading: loadingN8n,
@@ -796,7 +1022,7 @@ struct SettingsView: View {
                     SecureField("Token", text: $vercelToken)
                         .textFieldStyle(.roundedBorder)
                     IntegrationFilterRow(
-                        label: "Projects",
+                        label: String(localized: "integrations.projects"),
                         items: vercelProjects,
                         filter: $state.vercelProjectFilter,
                         loading: loadingVercel,
@@ -812,7 +1038,7 @@ struct SettingsView: View {
                     }
                     SecureField("Personal Access Token", text: $githubToken)
                         .textFieldStyle(.roundedBorder)
-                    Text("Classic token with repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.")
+                    Text(String(localized: "integrations.github.token-hint"))
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
@@ -847,7 +1073,7 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
-                Button("Save integrations") { saveIntegrations() }
+                Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
             .padding(6)
@@ -887,7 +1113,7 @@ struct SettingsView: View {
         panel.directoryURL = URL(fileURLWithPath: realHomePath)
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
         guard url.lastPathComponent == ".claude" else {
-            statusMessage = "❌ Select the .claude folder (hidden, in your Home directory)."
+            statusMessage = String(localized: "status.select-claude-folder")
             return nil
         }
         return url
@@ -896,16 +1122,16 @@ struct SettingsView: View {
     private func installHooksAppStore() {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         let alert = NSAlert()
-        alert.messageText = "Install Coucou hooks in ~/.claude?"
-        alert.informativeText = "Will write:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)"
-        alert.addButton(withTitle: "Install")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "alert.hooks.title")
+        alert.informativeText = String(localized: "alert.hooks.body")
+        alert.addButton(withTitle: String(localized: "alert.hooks.button-install"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.alertStyle = .informational
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
             try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
             hookNeedsUpdate = false
-            statusMessage = "✓ Hooks installed — restart VS Code to activate."
+            statusMessage = String(localized: "status.hooks-installed-claude")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -915,7 +1141,7 @@ struct SettingsView: View {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         do {
             try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
-            statusMessage = "✓ Hooks removed."
+            statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -929,7 +1155,7 @@ struct SettingsView: View {
             : rawURL
         let normalised = LocalChat.normaliseURL(candidate)
         guard normalised.hasPrefix("http://") || normalised.hasPrefix("https://") else {
-            statusMessage = "Only http:// and https:// URLs are supported."
+            statusMessage = String(localized: "status.local.url-invalid")
             return
         }
         if provider == .ollama { connectingOllama = true } else { connectingLMStudio = true }
@@ -939,7 +1165,7 @@ struct SettingsView: View {
         let name = provider == .ollama ? "Ollama" : "LM Studio"
         switch result {
         case .success(let models) where models.isEmpty:
-            statusMessage = "No models yet — download one in \(name) first."
+            statusMessage = String(format: String(localized: "status.local.no-models %@"), name)
         case .success(let models):
             if provider == .ollama {
                 state.ollamaServerURL = normalised
@@ -952,9 +1178,9 @@ struct SettingsView: View {
                 state.fetchedProviderModels[.lmstudio] = nil
                 state.providerModelFetchError[.lmstudio] = nil
             }
-            statusMessage = "✓ Connected · \(models.count) model\(models.count == 1 ? "" : "s")"
+            statusMessage = String(localized: "status.local.connected \(models.count)")
         case .failure:
-            statusMessage = "Couldn't reach \(name) at \(normalised). Is it running?"
+            statusMessage = String(format: String(localized: "status.local.unreachable %1$@ %2$@"), name, normalised)
         }
     }
 
@@ -962,7 +1188,7 @@ struct SettingsView: View {
         do {
             pendingHookJSON = try HookServer.shared.previewClaudeHooks()
             showDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -972,7 +1198,7 @@ struct SettingsView: View {
         do {
             try HookServer.shared.writeClaudeHooks()
             showDiff = false
-            statusMessage = "✓ Hooks installed in ~/.claude/settings.json"
+            statusMessage = String(localized: "status.hooks-installed-settings")
             pendingHookJSON = ""
             hookNeedsUpdate = false
         } catch {
@@ -983,7 +1209,7 @@ struct SettingsView: View {
     private func uninstallHooks() {
         do {
             try HookServer.shared.uninstallClaudeHooks()
-            statusMessage = "✓ Hooks removed."
+            statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -995,7 +1221,7 @@ struct SettingsView: View {
             geminiPendingInstall = install
             pendingGeminiJSON = try HookServer.shared.previewGeminiHooks(install: install)
             showGeminiDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch let e as NSError where e.domain == "CoucouNoop" {
             statusMessage = e.localizedDescription
         } catch {
@@ -1010,8 +1236,8 @@ struct SettingsView: View {
             pendingGeminiJSON = ""
             geminiHooksInstalled = geminiPendingInstall
             statusMessage = geminiPendingInstall
-                ? "✓ Gemini CLI hooks installed in ~/.gemini/settings.json"
-                : "✓ Gemini CLI hooks removed."
+                ? String(localized: "status.gemini-hooks-installed")
+                : String(localized: "status.gemini-hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1022,7 +1248,7 @@ struct SettingsView: View {
             agyPendingInstall = install
             pendingAgyJSON = try HookServer.shared.previewAgyHooks(install: install)
             showAgyDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch let e as NSError where e.domain == "CoucouNoop" {
             statusMessage = e.localizedDescription
         } catch {
@@ -1037,8 +1263,8 @@ struct SettingsView: View {
             pendingAgyJSON = ""
             agyHooksInstalled = agyPendingInstall
             statusMessage = agyPendingInstall
-                ? "✓ Antigravity hooks installed in ~/.gemini/config/hooks.json"
-                : "✓ Antigravity hooks removed."
+                ? String(localized: "status.agy-hooks-installed")
+                : String(localized: "status.agy-hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1049,7 +1275,7 @@ struct SettingsView: View {
             codexPendingInstall = install
             pendingCodexJSON = try HookServer.shared.previewCodexHooks(install: install)
             showCodexDiff = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch let e as NSError where e.domain == "CoucouNoop" {
             statusMessage = e.localizedDescription
         } catch {
@@ -1064,8 +1290,124 @@ struct SettingsView: View {
             pendingCodexJSON = ""
             codexHooksInstalled = codexPendingInstall
             statusMessage = codexPendingInstall
-                ? "✓ Codex hooks installed — run /hooks in Codex or open Hooks in the app's settings to trust them."
-                : "✓ Codex hooks removed."
+                ? String(localized: "status.codex-hooks-installed")
+                : String(localized: "status.codex-hooks-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerCopilotPreview(install: Bool) {
+        do {
+            copilotPendingInstall = install
+            pendingCopilotJSON = try HookServer.shared.previewCopilotHooks(install: install)
+            showCopilotDiff = true
+            statusMessage = String(localized: "hooks.review-json")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmCopilotOp() {
+        do {
+            try HookServer.shared.writeCopilotHooks()
+            showCopilotDiff = false
+            pendingCopilotJSON = ""
+            copilotHooksInstalled = copilotPendingInstall
+            statusMessage = copilotPendingInstall
+                ? String(localized: "status.copilot-hooks-installed")
+                : String(localized: "status.copilot-hooks-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerMusePreview(install: Bool) {
+        do {
+            musePendingInstall = install
+            pendingMuseJSON = try HookServer.shared.previewMuseHooks(install: install)
+            showMuseDiff = true
+            statusMessage = String(localized: "hooks.review-json")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmMuseOp() {
+        do {
+            try HookServer.shared.writeMuseHooks()
+            showMuseDiff = false
+            pendingMuseJSON = ""
+            museHooksInstalled = musePendingInstall
+            statusMessage = musePendingInstall
+                ? String(localized: "status.muse-hooks-installed")
+                : String(localized: "status.muse-hooks-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerOpenCodePreview(install: Bool) {
+        do {
+            openCodePendingInstall = install
+            pendingOpenCodeContent = try HookServer.shared.previewOpenCodePlugin(install: install)
+            showOpenCodeDiff = true
+            statusMessage = String(localized: "plugin.review-content")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmOpenCodeOp() {
+        do {
+            if openCodePendingInstall {
+                try HookServer.shared.writeOpenCodePlugin()
+            } else {
+                try HookServer.shared.removeOpenCodePlugin()
+            }
+            showOpenCodeDiff = false
+            pendingOpenCodeContent = ""
+            openCodePluginInstalled = openCodePendingInstall
+            statusMessage = openCodePendingInstall
+                ? String(localized: "status.opencode-plugin-installed")
+                : String(localized: "status.opencode-plugin-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerAmpPreview(install: Bool) {
+        do {
+            ampPendingInstall = install
+            pendingAmpContent = try HookServer.shared.previewAmpPlugin(install: install)
+            showAmpDiff = true
+            statusMessage = String(localized: "plugin.review-content")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmAmpOp() {
+        do {
+            if ampPendingInstall {
+                try HookServer.shared.writeAmpPlugin()
+            } else {
+                try HookServer.shared.removeAmpPlugin()
+            }
+            showAmpDiff = false
+            pendingAmpContent = ""
+            ampPluginInstalled = ampPendingInstall
+            statusMessage = ampPendingInstall
+                ? String(localized: "status.amp-plugin-installed")
+                : String(localized: "status.amp-plugin-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1076,7 +1418,7 @@ struct SettingsView: View {
             pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: true)
             showStatusLineDiff = true
             statusLinePendingInstall = true
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1087,7 +1429,7 @@ struct SettingsView: View {
             pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: false)
             showStatusLineDiff = true
             statusLinePendingInstall = false
-            statusMessage = "Review the JSON below before confirming."
+            statusMessage = String(localized: "hooks.review-json")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }
@@ -1107,8 +1449,8 @@ struct SettingsView: View {
                 state.showPlanInNotch = false
             }
             statusMessage = statusLinePendingInstall
-                ? "✓ Status line installed."
-                : "✓ Status line removed."
+                ? String(localized: "status.statusline-installed")
+                : String(localized: "status.statusline-removed")
         } catch {
             planTogglePending = false
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1140,7 +1482,7 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
-        statusMessage = "✓ Integration keys saved."
+        statusMessage = String(localized: "status.integrations-saved")
     }
 
     private func saveKey(_ key: String, value: String) {
@@ -1227,20 +1569,24 @@ struct SettingsView: View {
         let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
         let hint: String? = {
             if isMain { return nil }
-            if def.comingSoon { return "Coming soon" }
+            if def.comingSoon { return String(localized: "Coming soon") }
             #if !APPSTORE
-            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
-            if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
-            if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
+            if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()      { return String(localized: "Hooks not installed") }
+            if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()        { return String(localized: "Hooks not installed") }
+            if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()      { return String(localized: "Hooks not installed") }
+            if def.id == "agent_copilot"       && !HookServer.copilotHooksInstalled()    { return String(localized: "Hooks not installed") }
+            if def.id == "agent_muse"          && !HookServer.museHooksInstalled()       { return String(localized: "Hooks not installed") }
+            if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
+            if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
             #endif
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
-                    if url.isEmpty { return "Not connected" }
+                    if url.isEmpty { return String(localized: "Not connected") }
                 } else {
                     let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
                                : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
-                    if KeychainStore.shared.get(keyId) == nil { return "Key not configured" }
+                    if KeychainStore.shared.get(keyId) == nil { return String(localized: "Key not configured") }
                 }
             }
             return nil
@@ -1296,7 +1642,7 @@ struct SettingsSidebarRow: View {
 
     var body: some View {
         Label {
-            Text(title)
+            Text(LocalizedStringKey(title))
         } icon: {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .semibold))
@@ -1357,7 +1703,7 @@ struct IntegrationFilterRow: View {
                 }
                 .padding(.leading, 4)
                 if !filter.isEmpty {
-                    Text("Watching \(filter.count) of \(items.count)")
+                    Text(String(format: String(localized: "Watching %lld of %lld"), Int64(filter.count), Int64(items.count)))
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }

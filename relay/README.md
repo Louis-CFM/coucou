@@ -8,8 +8,10 @@ key can't ship inside the Mac app. The Mac posts Mochi's state here; the relay
 signs and forwards it to Apple.
 
 What it sees: the push token of the iPhone's Live Activity and Mochi's state
-(agent name, state, "working · 3/7", counts). Never a project name, a command,
-a path or a message. It stores nothing and logs nothing.
+(agent name, state, "working · 3/7", counts), plus, while a command waits for
+your OK, its fingerprint (a SHA-256 hash, so the Lock Screen's Allow and Deny
+answer that exact command). Never a project name, a command, a path or a
+message. It stores nothing and logs nothing.
 
 ## Deploy (once)
 

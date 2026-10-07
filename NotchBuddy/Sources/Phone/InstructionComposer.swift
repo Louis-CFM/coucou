@@ -13,62 +13,133 @@ struct InstructionComposer: View {
     @State private var sentAt: Date?
     @State private var error: String?
     @State private var dictation = Dictation()
+    @State private var quickReplies = QuickReplies.load()
     @FocusState private var focused: Bool
 
+    /// A bar at the bottom of the session screen, like a chat.
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Send to Claude").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
             if session.acceptsInstructions {
+                shortcuts
                 composer
                 status
             } else {
-                Text("To continue this session from your iPhone, turn on \"Let my iPhone send instructions to Claude Code\" in Coucou's Settings on your Mac (GitHub version), then start a turn in VS Code.")
-                    .font(.footnote)
+                Label("To write to Claude from here, turn on \"Let my iPhone send instructions to Claude Code\" in Coucou's Settings on your Mac (GitHub version).",
+                      systemImage: "info.circle")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 22))
+        // Floating, like Messages on iOS 26: no bar behind it, the screen
+        // fades out underneath.
+        .padding(.horizontal, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 6)
+        .background(alignment: .bottom) {
+            LinearGradient(colors: [.clear, .black.opacity(0.85), .black], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        }
         .onChange(of: dictation.transcript) { _, words in
             if dictation.isRecording { text = dictation.prefix + words }
         }
     }
 
-    private var composer: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            TextField("Tell Claude what to do next…", text: $text, axis: .vertical)
-                .lineLimit(1...8)
-                .focused($focused)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(Color(white: 0.16), in: RoundedRectangle(cornerRadius: 18))
-            Menu {
-                Picker("Dictation language", selection: $dictation.localeID) {
-                    ForEach(Dictation.languages, id: \.self) { id in
-                        Text(Locale.current.localizedString(forIdentifier: id) ?? id).tag(id)
+    /// Instructions you send often: a tap puts one in the field (it isn't sent
+    /// yet); + keeps what is typed; a long press removes one.
+    private var shortcuts: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(quickReplies, id: \.self) { reply in
+                    Button {
+                        text = reply
+                        focused = true
+                        Haptics.impact()
+                    } label: {
+                        Text(reply)
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .glassPill(Capsule(), interactive: true)
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            quickReplies.removeAll { $0 == reply }
+                            QuickReplies.save(quickReplies)
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
                     }
                 }
-            } label: {
-                Text(Dictation.shortName(dictation.localeID))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 36)
+                let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !typed.isEmpty && !quickReplies.contains(typed) {
+                    Button {
+                        quickReplies.append(typed)
+                        QuickReplies.save(quickReplies)
+                        Haptics.success()
+                    } label: {
+                        Label("Keep", systemImage: "plus")
+                            .font(.footnote.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .glassPill(Capsule(), interactive: true, tint: .accentColor)
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                }
             }
-            Button {
-                Task { await dictation.toggle(startingFrom: text) }
-            } label: {
-                Image(systemName: dictation.isRecording ? "stop.circle.fill" : "mic.fill")
-                    .font(.title3)
-                    .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
-                    .frame(width: 36, height: 36)
+        }
+    }
+
+    /// One glass capsule with the field, the language and the mic inside,
+    /// and the send button next to it, like Messages.
+    private var composer: some View {
+        let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 2) {
+                TextField("Tell Claude what to do next…", text: $text, axis: .vertical)
+                    .lineLimit(1...8)
+                    .focused($focused)
+                    .padding(.leading, 16)
+                    .padding(.vertical, 11)
+                Menu {
+                    Picker("Dictation language", selection: $dictation.localeID) {
+                        ForEach(Dictation.languages, id: \.self) { id in
+                            Text(Locale.current.localizedString(forIdentifier: id) ?? id).tag(id)
+                        }
+                    }
+                } label: {
+                    Text(Dictation.shortName(dictation.localeID))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 42)
+                }
+                Button {
+                    Task { await dictation.toggle(startingFrom: text) }
+                } label: {
+                    Image(systemName: dictation.isRecording ? "waveform" : "mic.fill")
+                        .font(.body)
+                        .foregroundStyle(dictation.isRecording ? Color.red : Color.secondary)
+                        .symbolEffect(.variableColor.iterative, isActive: dictation.isRecording)
+                        .frame(width: 38, height: 42)
+                }
+                .padding(.trailing, 4)
             }
+            .glassPill(RoundedRectangle(cornerRadius: 22, style: .continuous))
             Button {
                 Task { await send() }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
+                Image(systemName: "arrow.up")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(empty ? Color.secondary : Color.black)
+                    .frame(width: 44, height: 44)
+                    .background(empty ? Color.white.opacity(0.12) : Color.white, in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
             }
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
+            .buttonStyle(PressableButtonStyle())
+            .disabled(empty || sending)
+            .animation(.spring(duration: 0.3), value: empty)
         }
     }
 
@@ -83,9 +154,6 @@ struct InstructionComposer: View {
                 Label("Sent. Your Mac picks it up within 15 s.", systemImage: "paperplane.fill")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        } else {
-            Text("Face ID sends it. It continues this conversation on your Mac, in its folder.")
-                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -99,13 +167,16 @@ struct InstructionComposer: View {
         error = nil
         guard await OwnerCheck.confirm(reason: "Send this instruction to Claude Code on your Mac") else {
             error = "Face ID didn't confirm. Nothing was sent."
+            Haptics.warning()
             return
         }
         if await link.sendInstruction(instruction, pillId: session.id) {
             sentAt = .now
             text = ""
+            Haptics.success()
         } else {
             error = link.lastPong ?? "Couldn't reach iCloud."
+            Haptics.error()
         }
     }
 }
@@ -203,5 +274,19 @@ final class Dictation: @unchecked Sendable {
         }
         guard speech else { return false }
         return await AVAudioApplication.requestRecordPermission()
+    }
+}
+
+/// The shortcuts above the instruction field, kept on this iPhone.
+enum QuickReplies {
+    private static let key = "quickReplies"
+    static let defaults = ["Continue", "Run the tests", "Fix the errors", "Commit the changes", "Explain what you changed"]
+
+    static func load() -> [String] {
+        UserDefaults.standard.stringArray(forKey: key) ?? defaults
+    }
+
+    static func save(_ replies: [String]) {
+        UserDefaults.standard.set(replies, forKey: key)
     }
 }

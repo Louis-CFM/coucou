@@ -11,7 +11,7 @@ enum IslandMode: String, CaseIterable {
 enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
     case confused, upload, uploading, choose, mail, prompt
-    case searching, result, note, settings, greeting, wardrobe
+    case searching, result, note, settings, greeting, wardrobe, recap
 }
 
 // MARK: - Bot State
@@ -189,6 +189,7 @@ enum IslandConst {
         // Greeting: bot drawn by GreetingCanvasView; no BotPlacement needed
         .greeting:  ViewLayout(height: 150, botX: 320, botY: 90,  botDiameter: 0,  agentMode: .none),
         .wardrobe:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        .recap:     ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
     ]
 
     // Project colors — keyed by lowercase display name or slug
