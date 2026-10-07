@@ -1259,24 +1259,25 @@ struct SettingsView: View {
             return
         }
         loadingGithubRepos = true
-        guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member") else { return }
-        var req = URLRequest(url: url, timeoutInterval: 15)
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        URLSession.shared.dataTask(with: req) { data, _, _ in
+        Task {
+            // Up to 5 pages of 100, most recently pushed first
             var names: [String] = []
-            if let data,
-               let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                names = repos
+            for page in 1...5 {
+                guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&page=\(page)&sort=pushed&affiliation=owner,collaborator,organization_member") else { break }
+                var req = URLRequest(url: url, timeoutInterval: 15)
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                guard let (data, _) = try? await URLSession.shared.data(for: req),
+                      let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { break }
+                names += repos
                     .filter { ($0["archived"] as? Bool) != true }
                     .compactMap { $0["full_name"] as? String }
+                if repos.count < 100 { break }
             }
-            DispatchQueue.main.async {
-                self.githubRepos = names
-                self.loadingGithubRepos = false
-                if names.isEmpty { self.statusMessage = "❌ No GitHub repositories found." }
-            }
-        }.resume()
+            githubRepos = names
+            loadingGithubRepos = false
+            if names.isEmpty { statusMessage = "❌ No GitHub repositories found." }
+        }
     }
 
     // MARK: - Vercel project list

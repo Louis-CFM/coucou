@@ -19,6 +19,8 @@ final class IslandStateMachine {
 
     /// When non-nil and returns true, timers and mouse-leave never auto-collapse or hide the island.
     var isHeldOpen: (() -> Bool)?
+    /// The user is writing in the island (reply panel): the auto-collapse waits instead of firing.
+    var isTyping: (() -> Bool)?
 
     /// home → petit delay (seconds). Override for debug.
     var homeToPetitDelay: TimeInterval = 15
@@ -162,6 +164,7 @@ final class IslandStateMachine {
         homeCollapseWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.state == .home, !(self.isHeldOpen?() ?? false) else { return }
+            if self.isTyping?() == true { self.scheduleHomeCollapse(); return }
             self.transition(to: .petit)
         }
         homeCollapseWork = item

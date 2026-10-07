@@ -98,7 +98,7 @@ struct SidePanelChrome<Content: View>: View {
                 if let status {
                     Text(status.text)
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundColor(Color(hex: status.ok ? "#22C55E" : "#F4505E"))
+                        .foregroundColor(Color(hex: status.neutral ? "#9398A1" : status.ok ? "#22C55E" : "#F4505E"))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .help(status.text)
@@ -322,11 +322,12 @@ struct GitHubSectionPanel: View {
                           help: "Re-run the failed jobs of the latest failed run on \(repo.branch)",
                           perform: {
                               guard let run = try await ServiceAPI.latestFailedRun(repo: repo.repo, branch: repo.branch) else {
-                                  return "No failed run to re-run"
+                                  throw PanelNotice(message: "No failed run to re-run")
                               }
                               return try await ServiceAPI.perform(kind: "github.rerun", target: run)
                           },
-                          onResult: finished)
+                          onResult: finished,
+                          onNotice: { status.show($0, ok: true, neutral: true) })
     }
 
     private func finished(_ message: String, _ ok: Bool) {
@@ -484,7 +485,8 @@ struct VercelDeploymentPanel: View {
                 .padding(.top, 1)
             }
         }
-        .task(id: deployment.id) {
+        // Keyed on the state too: a build that fails while the panel is open gets its reason
+        .task(id: "\(deployment.id)|\(deployment.state)") {
             guard deployment.state == "ERROR" else { return }
             failureReason = nil
             let reason = try? await ServiceAPI.vercelFailureReason(id: deployment.id)
@@ -498,6 +500,13 @@ struct VercelDeploymentPanel: View {
 struct PanelStatus: Equatable {
     let text: String
     let ok: Bool
+    var neutral = false   // information, neither a success nor a failure
+}
+
+/// Thrown by an action that had nothing to do (e.g. no failed run to re-run):
+/// the button goes back to idle and the message shows in grey.
+struct PanelNotice: Error {
+    let message: String
 }
 
 /// The last action's result, cleared after a few seconds.
@@ -506,9 +515,9 @@ final class PanelStatusModel: ObservableObject {
     @Published var current: PanelStatus? = nil
     private var clear: DispatchWorkItem?
 
-    func show(_ text: String, ok: Bool) {
+    func show(_ text: String, ok: Bool, neutral: Bool = false) {
         clear?.cancel()
-        withAnimation(.easeInOut(duration: 0.16)) { current = PanelStatus(text: text, ok: ok) }
+        withAnimation(.easeInOut(duration: 0.16)) { current = PanelStatus(text: text, ok: ok, neutral: neutral) }
         let work = DispatchWorkItem { [weak self] in
             withAnimation(.easeInOut(duration: 0.16)) { self?.current = nil }
         }
@@ -526,6 +535,8 @@ struct PanelActionButton: View {
     var help: String? = nil
     let perform: @MainActor () async throws -> String
     let onResult: (String, Bool) -> Void
+    /// Shows a PanelNotice (nothing was done). Defaults to nothing.
+    var onNotice: (String) -> Void = { _ in }
 
     private enum Phase { case idle, confirming, running, done, failed }
     @State private var phase: Phase = .idle
@@ -563,6 +574,11 @@ struct PanelActionButton: View {
                     phase = .done
                     SoundEngine.shared.play("finish")
                     onResult(message, true)
+                } catch let notice as PanelNotice {
+                    phase = .idle
+                    SoundEngine.shared.play("blip")
+                    onNotice(notice.message)
+                    return
                 } catch {
                     phase = .failed
                     SoundEngine.shared.play("error")
@@ -643,7 +659,6 @@ struct PanelLinkButton: View {
 
 // MARK: - Claude Code session → branch
 
-/// Next to the session name: "#12" with the PR's CI dot, or the branch when it has no open PR.
 /// The chips after a session's name: its branch/PR, and the reply button (GitHub build).
 struct SessionChips: View {
     @ObservedObject var state: AppState
@@ -666,6 +681,7 @@ struct SessionChips: View {
     }
 }
 
+/// Next to the session name: "#12" with the PR's CI dot, or the branch when it has no open PR.
 struct SessionBranchChip: View {
     let git: GitRepoInfo
     let info: SessionBranchInfo?
@@ -789,11 +805,12 @@ struct SessionBranchPanel: View {
                                                       help: "Re-run the failed jobs of the latest failed run on \(git.branch)",
                                                       perform: {
                                                           guard let run = try await ServiceAPI.latestFailedRun(repo: git.repo, branch: git.branch) else {
-                                                              return "No failed run to re-run"
+                                                              throw PanelNotice(message: "No failed run to re-run")
                                                           }
                                                           return try await ServiceAPI.perform(kind: "github.rerun", target: run)
                                                       },
-                                                      onResult: finished)
+                                                      onResult: finished,
+                                                      onNotice: { status.show($0, ok: true, neutral: true) })
                                 }
                             }
                             .frame(height: 20)
@@ -803,7 +820,7 @@ struct SessionBranchPanel: View {
                         if let dep = state.vercelPreview(repo: git.repo, branch: git.branch) {
                             HStack(spacing: 5) {
                                 Circle().fill(Color(hex: dep.stateColor)).frame(width: 5, height: 5)
-                                Text("Vercel")
+                                Text(dep.target == "production" ? "Production" : "Vercel")
                                     .font(.system(size: 10.5))
                                     .foregroundColor(Color(hex: "#9398A1"))
                                 Text("\(dep.statusLabel) · \(dep.isBuilding ? "now" : dep.timeAgo)")
@@ -811,7 +828,8 @@ struct SessionBranchPanel: View {
                                     .foregroundColor(Color(hex: "#C5C8CD"))
                                     .lineLimit(1)
                                 Spacer(minLength: 4)
-                                PanelLinkButton(title: "Preview", accent: "#7C5CFF", help: dep.url) {
+                                PanelLinkButton(title: dep.target == "production" ? "Open" : "Preview",
+                                                accent: "#7C5CFF", help: dep.url) {
                                     if let url = safeWebURL("https://\(dep.url)") { NSWorkspace.shared.open(url) }
                                 }
                             }
@@ -847,7 +865,7 @@ struct VercelPreviewDot: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("Vercel preview · \(deployment.statusLabel) · \(deployment.url)")
+        .help("Vercel \(deployment.target == "production" ? "production" : "preview") · \(deployment.statusLabel) · \(deployment.url)")
     }
 }
 

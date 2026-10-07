@@ -46,7 +46,8 @@ final class SessionResumer {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: claude)
-        process.arguments = ["-p", text, "--resume", session.sessionId]
+        // "--" ends the options: a message starting with "-" stays a message
+        process.arguments = ["-p", "--resume", session.sessionId, "--", text]
         process.currentDirectoryURL = URL(fileURLWithPath: session.cwd)
         var env = ProcessInfo.processInfo.environment
         let home = FileManager.default.homeDirectoryForCurrentUser.path

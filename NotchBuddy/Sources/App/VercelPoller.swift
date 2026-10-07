@@ -63,6 +63,7 @@ final class VercelPoller: @unchecked Sendable {
         #endif
 
         // Fetch the last 20 deployments (enough to cover a few watched projects)
+        let scope = UserDefaults.standard.string(forKey: "vercelTeamId") ?? ""
         guard let url = URL(string: VercelAPI.url("https://api.vercel.com/v6/deployments?limit=20")) else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -81,7 +82,11 @@ final class VercelPoller: @unchecked Sendable {
                 .filter { $0.isTerminal || $0.isBuilding }
             guard !parsed.isEmpty else { return }
 
-            DispatchQueue.main.async { self.handleDeployments(parsed) }
+            DispatchQueue.main.async {
+                // The scope changed while this request was in flight: its deployments are another team's
+                guard scope == (UserDefaults.standard.string(forKey: "vercelTeamId") ?? "") else { return }
+                self.handleDeployments(parsed)
+            }
         }.resume()
     }
 
