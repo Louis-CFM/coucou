@@ -106,6 +106,7 @@ struct SettingsView: View {
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
+    @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -414,6 +415,11 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                 }
                 #endif
+                Toggle("Answer questions and permissions from terminal sessions in the notch", isOn: $terminalCardsEnabled)
+                Text("Off: sessions in Warp, Terminal, iTerm… show in the notch, but their questions and permission requests are asked in the terminal. On: the notch shows them first, and the terminal waits until you answer there or close the island (up to 2 min).")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 #if !APPSTORE
                 if showDiff {

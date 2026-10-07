@@ -14,7 +14,7 @@ final class SessionGitHubLinker {
     private init() {}
 
     func refresh(for task: AgentTask?) {
-        guard let task, task.source == .claudeCode,
+        guard let task, PillCatalog.definition(for: task.id)?.category == .workspace,
               let cwd = task.sessionCwd, !cwd.isEmpty else { return }
         let state = AppState.shared
         guard let git = GitRepoInfo.read(cwd: cwd) else {

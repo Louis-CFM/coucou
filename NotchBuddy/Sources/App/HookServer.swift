@@ -661,7 +661,10 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
-        let isTerminal = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) != nil
+        // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
+        let terminalHost = isCursorEditor || isVSCodeEditor ? nil
+            : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -703,7 +706,7 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId)
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
                                               command: command, inputKey: inputKey, pillId: pillId)
@@ -825,7 +828,10 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
-        let isTerminal = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) != nil
+        // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
+        let terminalHost = isCursorEditor || isVSCodeEditor ? nil
+            : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -848,7 +854,7 @@ final class HookServer: @unchecked Sendable {
         activeSessionId = sessionId
         questionPillId = pillId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
         state.isPinned = true
@@ -883,15 +889,15 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
-    /// If the task already exists (persistent), just updates name/cwd.
-    /// If missing (transient), creates it and inserts after the main pill.
     /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
     @MainActor
     private var claudeHostName: String {
         ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
     }
 
+    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
+    /// If the task already exists (persistent), just updates name/cwd.
+    /// If missing (transient), creates it and inserts after the main pill.
     @MainActor
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil) {
         let state = AppState.shared
@@ -907,7 +913,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        task.hostApp = hostApp
+        if id == "integration_claude" { task.hostApp = hostApp }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {

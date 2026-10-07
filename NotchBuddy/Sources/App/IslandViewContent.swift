@@ -1897,7 +1897,7 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(for: task)
+                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp)
                                                          : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
@@ -3730,7 +3730,7 @@ struct AgentPill: View {
 
     // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
     private var displayName: String {
-        task.id == "integration_claude" ? ClaudeHost.pillName(for: task) : task.name
+        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp) : task.name
     }
 
     var body: some View {

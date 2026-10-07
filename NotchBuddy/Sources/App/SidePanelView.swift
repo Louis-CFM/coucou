@@ -925,8 +925,14 @@ struct SessionReplyPanel: View {
         guard !message.isEmpty, message.count <= 8000, blocker == nil, let session else { return }
         let result = SessionResumer.shared.resume(session, pillId: taskId, text: message, log: { line in
             appendAppLog("nb.log", "[reply] \(line)")
-        }, onExit: { code, _ in
-            if code != 0 { SoundEngine.shared.play("error") }
+        }, onExit: { code, tail in
+            guard code != 0 else { return }
+            SoundEngine.shared.play("error")
+            // The panel is closed by now: the reason shows as the session's last line
+            if let idx = state.tasks.firstIndex(where: { $0.id == taskId }) {
+                let reason = tail.trimmingCharacters(in: .whitespacesAndNewlines)
+                state.tasks[idx].finalLine = "⚠ Reply failed" + (reason.isEmpty ? "" : ": " + String(reason.suffix(160)))
+            }
         })
         switch result {
         case .success:

@@ -17,6 +17,11 @@ struct ClaudeHost: Equatable {
     let bundleId: String
     let name: String
 
+    /// UserDefaults key: show terminal sessions' questions and permission requests in the
+    /// notch (they then wait for the notch). Off by default: the terminal asks itself.
+    static let terminalCardsKey = "terminalCardsEnabled"
+    static var terminalCardsEnabled: Bool { UserDefaults.standard.bool(forKey: terminalCardsKey) }
+
     /// Terminals accepted for Claude Code sessions. Keyed by bundle id; the second
     /// table maps TERM_PROGRAM for hooks that run without __CFBundleIdentifier.
     private static let terminals: [String: String] = [
@@ -59,8 +64,8 @@ struct ClaudeHost: Equatable {
     }
 
     /// Pill label for integration_claude: "VS Code" for editor sessions, "Claude Code" otherwise.
-    static func pillName(for task: AgentTask) -> String {
-        task.hostApp == nil ? "VS Code" : "Claude Code"
+    static func pillName(hostApp: String?) -> String {
+        hostApp == nil ? "VS Code" : "Claude Code"
     }
 
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
@@ -68,7 +73,7 @@ struct ClaudeHost: Equatable {
     static func activate(_ hostBundleId: String?) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
-            running.activate(options: .activateIgnoringOtherApps)
+            running.activate()
         } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
