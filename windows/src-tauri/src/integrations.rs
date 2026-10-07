@@ -2214,6 +2214,109 @@ fn youtrack_fresh(
     (fresh, items)
 }
 
+/// The activity categories read for a piece of news: a field, a comment, the
+/// title, the description, an attachment, a link.
+const YOUTRACK_CHANGE_CATEGORIES: &str =
+    "CustomFieldCategory,CommentsCategory,SummaryCategory,DescriptionCategory,AttachmentsCategory,LinksCategory";
+const YOUTRACK_CHANGE_FIELDS: &str = "timestamp,target(idReadable,issue(idReadable)),author(login,fullName),\
+    category(id),field(name),added(name,fullName,login,text,presentation,idReadable),\
+    removed(name,fullName,login,text,presentation,idReadable)";
+/// Lines kept per issue: the card has room for a few, and a burst of edits is
+/// not worth more.
+const YOUTRACK_CHANGES_KEEP: usize = 8;
+
+/// What happened to issues, in words, from YouTrack's activity stream (oldest
+/// first): a field's old and new value, a comment's first words, an edit. One
+/// list per issue; the user's own changes, and repeats, left out.
+fn youtrack_changes(activities: &[Value], me: &str) -> std::collections::HashMap<String, Vec<Value>> {
+    let mut out: std::collections::HashMap<String, Vec<Value>> = Default::default();
+    for a in activities {
+        // A field change targets the issue; a comment or an attachment targets
+        // itself, and names its issue.
+        let target = a.get("target").cloned().unwrap_or(Value::Null);
+        let issue = Some(s(&target, "idReadable"))
+            .filter(|i| !i.is_empty())
+            .or_else(|| target.get("issue").map(|i| s(i, "idReadable")))
+            .unwrap_or_default();
+        let (login, name) = youtrack_who(a, "author");
+        if issue.is_empty() || (!me.is_empty() && login == me) {
+            continue;
+        }
+        let field = a.get("field").map(|f| s(f, "name")).unwrap_or_default();
+        let added = youtrack_value(&a["added"]);
+        let removed = youtrack_value(&a["removed"]);
+        let category = a.get("category").map(|c| s(c, "id")).unwrap_or_default();
+        let text = match category.as_str() {
+            "CustomFieldCategory" => match (removed.is_empty(), added.is_empty()) {
+                (false, false) => format!("{field}: {removed} → {added}"),
+                (true, false) => format!("{field}: {added}"),
+                (false, true) => format!("{field}: {removed} → none"),
+                (true, true) => continue,
+            },
+            "CommentsCategory" => match (removed.is_empty(), added.is_empty()) {
+                (true, false) => format!("Comment: “{added}”"),
+                (false, true) => "Comment deleted".into(),
+                _ => "Comment edited".into(),
+            },
+            "SummaryCategory" => "Title changed".into(),
+            "DescriptionCategory" => "Description edited".into(),
+            "AttachmentsCategory" if !added.is_empty() => format!("Attached {added}"),
+            "AttachmentsCategory" => format!("Attachment removed: {removed}"),
+            "LinksCategory" if !added.is_empty() => format!("Linked to {added}"),
+            "LinksCategory" => format!("Unlinked from {removed}"),
+            _ => continue,
+        };
+        let lines = out.entry(issue).or_default();
+        if lines.len() < YOUTRACK_CHANGES_KEEP && !lines.iter().any(|l| l["text"] == text.as_str()) {
+            lines.push(json!({ "text": text, "by": name }));
+        }
+    }
+    out
+}
+
+/// A value from the activity stream as one short line: named things (a state,
+/// users, versions) joined, a comment's text, a date, a plain value.
+fn youtrack_value(v: &Value) -> String {
+    let one = |x: &Value| -> String {
+        match x {
+            Value::String(t) => t.clone(),
+            // Dates come as milliseconds since the epoch.
+            Value::Number(n) => match n.as_i64() {
+                Some(ms) if ms > 100_000_000_000 => youtrack_date(ms),
+                _ => n.to_string(),
+            },
+            Value::Bool(b) => b.to_string(),
+            Value::Object(_) => ["name", "fullName", "presentation", "idReadable", "text"]
+                .iter()
+                .map(|k| s(x, k))
+                .find(|t| !t.is_empty())
+                .unwrap_or_default(),
+            _ => String::new(),
+        }
+    };
+    let text = match v {
+        Value::Array(items) => items.iter().map(one).filter(|t| !t.is_empty()).collect::<Vec<_>>().join(", "),
+        other => one(other),
+    };
+    let line = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if line.chars().count() > 80 { format!("{}…", line.chars().take(79).collect::<String>()) } else { line }
+}
+
+/// `ms` since the epoch as YYYY-MM-DD (UTC): YouTrack's date fields are days.
+fn youtrack_date(ms: i64) -> String {
+    // Howard Hinnant's civil-from-days.
+    let z = ms.div_euclid(86_400_000) + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
 /// One GET on the YouTrack REST API. The error carries the HTTP status (0 when
 /// the server was not reached), so each caller can word it.
 async fn youtrack_get(
@@ -2294,21 +2397,56 @@ async fn poll_youtrack(app: AppHandle) {
         Err((_, e)) => return fail(e),
     };
 
-    let mut memory = YOUTRACK.lock().unwrap();
-    let (fresh, items) = youtrack_fresh(&mut memory, &query_id, &issues, &me, &base);
+    // In a block of its own: the lock must be gone before the request below.
+    let (since, mut fresh, items) = {
+        let mut memory = YOUTRACK.lock().unwrap();
+        // Where the last poll left off, for the activity below.
+        let since = memory.seen_until.filter(|_| memory.query_id == query_id);
+        let (fresh, items) = youtrack_fresh(&mut memory, &query_id, &issues, &me, &base);
+        (since, fresh, items)
+    };
+
+    // What changed on the issues in the news, read only when there is some: one
+    // request over the same search, from where the last poll left off. Without
+    // it the news still goes out, just without the detail.
+    if let (Some(since), false) = (since, fresh.is_empty()) {
+        let start = (since + 1).to_string();
+        let issue_query = youtrack_unsorted(&query);
+        let mut params = vec![
+            ("categories", YOUTRACK_CHANGE_CATEGORIES),
+            ("start", start.as_str()),
+            ("fields", YOUTRACK_CHANGE_FIELDS),
+            ("$top", "200"),
+        ];
+        if !issue_query.is_empty() {
+            params.push(("issueQuery", issue_query));
+        }
+        if let Ok(activities) = youtrack_get(&http, &base, &token, "activities", &params).await {
+            let changes = youtrack_changes(activities.as_array().map(Vec::as_slice).unwrap_or_default(), &me);
+            for news in &mut fresh {
+                if let Some(lines) = news["issue"].as_str().and_then(|id| changes.get(id)) {
+                    news["changes"] = json!(lines);
+                }
+            }
+        }
+    }
+
     // The earlier news, read back from disk after a restart, unless it came
     // from another search.
-    let owner = format!("{query_id}@{base}");
-    if memory.news_owner.as_deref() != Some(owner.as_str()) {
-        memory.news = load_news("youtrack", &owner);
-        memory.news_owner = Some(owner.clone());
-    }
-    let kept = recent_news(&fresh, &memory.news);
-    if !fresh.is_empty() {
-        save_news("youtrack", &owner, &kept);
-    }
-    memory.news = kept.clone();
-    drop(memory);
+    let kept = {
+        let mut memory = YOUTRACK.lock().unwrap();
+        let owner = format!("{query_id}@{base}");
+        if memory.news_owner.as_deref() != Some(owner.as_str()) {
+            memory.news = load_news("youtrack", &owner);
+            memory.news_owner = Some(owner.clone());
+        }
+        let kept = recent_news(&fresh, &memory.news);
+        if !fresh.is_empty() {
+            save_news("youtrack", &owner, &kept);
+        }
+        memory.news = kept.clone();
+        kept
+    };
 
     let count = items.len();
     emit(&app, IntegrationUpdate {
@@ -2990,5 +3128,49 @@ mod youtrack_tests {
         assert_eq!(youtrack_unsorted("project: X Order By: created"), "project: X");
         assert_eq!(youtrack_unsorted("été #Unresolved"), "été #Unresolved");
         assert_eq!(youtrack_unsorted(""), "");
+    }
+
+    fn activity(category: &str, target: Value, by: &str, field: &str, added: Value, removed: Value) -> Value {
+        json!({ "category": { "id": category }, "target": target, "field": { "name": field },
+                "author": { "login": by, "fullName": by.to_uppercase() }, "added": added, "removed": removed })
+    }
+
+    #[test]
+    fn the_activity_stream_reads_as_lines_per_issue() {
+        let issue = |id: &str| json!({ "idReadable": id });
+        let on = |id: &str| json!({ "issue": { "idReadable": id } });
+        let stream = vec![
+            activity("CustomFieldCategory", issue("P-1"), "ada", "State",
+                json!([{ "name": "Fixed" }]), json!([{ "name": "In Progress" }])),
+            activity("CustomFieldCategory", issue("P-1"), "ada", "Assignee",
+                json!([{ "login": "cy", "fullName": "Cy Young", "name": "Cy Young" }]), json!([])),
+            activity("CommentsCategory", on("P-1"), "bob", "comments",
+                json!([{ "text": "Looks good,\n  shipping   it" }]), json!([])),
+            activity("DescriptionCategory", issue("P-1"), "ada", "description", json!("new"), json!("old")),
+            activity("DescriptionCategory", issue("P-1"), "ada", "description", json!("newer"), json!("new")),
+            activity("CustomFieldCategory", issue("P-1"), "me", "Priority",
+                json!([{ "name": "Major" }]), json!([{ "name": "Normal" }])),
+            activity("AttachmentsCategory", on("P-2"), "bob", "attachments", json!([{ "name": "log.txt" }]), json!([])),
+            activity("CustomFieldCategory", issue("P-2"), "bob", "Due Date", json!(1791331200000_i64), Value::Null),
+        ];
+        let changes = youtrack_changes(&stream, "me");
+        let texts = |id: &str| changes[id].iter().map(|l| l["text"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        assert_eq!(texts("P-1"), vec![
+            "State: In Progress → Fixed",
+            "Assignee: Cy Young",
+            "Comment: “Looks good, shipping it”",
+            "Description edited",
+        ], "the user's own change left out, the repeated edit told once");
+        assert_eq!(changes["P-1"][2]["by"], "BOB");
+        assert_eq!(texts("P-2"), vec!["Attached log.txt", "Due Date: 2026-10-07"]);
+    }
+
+    #[test]
+    fn a_long_value_is_cut_to_one_line() {
+        let long = "word ".repeat(40);
+        let line = youtrack_value(&json!(long));
+        assert_eq!(line.chars().count(), 80);
+        assert!(line.ends_with('…'));
+        assert_eq!(youtrack_date(0), "1970-01-01");
     }
 }

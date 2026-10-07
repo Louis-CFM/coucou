@@ -608,7 +608,9 @@ own window.
   (Settings… → Integrations: its URL, a permanent token, then one of your saved searches).
   An issue of that search created or updated by someone else notifies you, and
   the pill lists the search's latest issues, five at a time, under the last ten
-  pieces of news, kept through a restart too. Read-only.
+  pieces of news, kept through a restart too. The notification's Details, and a
+  click on a piece of news in the pill, unfold what changed: a field's old and
+  new value, a comment's first words, an attachment. Read-only.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

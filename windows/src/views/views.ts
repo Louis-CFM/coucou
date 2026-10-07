@@ -802,9 +802,9 @@ export const newsDetailsFor = () => detailsFor;
 
 /**
  * The news card unfolded, taller: the latest piece of news — the card's title —
- * and under it what changed: what someone said or did on an MR, the jobs a
- * pipeline failed on. The earlier ones stay on the pill. The title opens its
- * page; Back returns to the card.
+ * and under it what changed: a field's old and new value on an issue, what
+ * someone said or did on an MR, the jobs a pipeline failed on. The earlier ones
+ * stay on the pill. The title opens its page; Back returns to the card.
  */
 function buildNewsDetails(actions: ViewActions): ViewHost {
   const who = h("div");
