@@ -133,6 +133,17 @@ body {
   transition: opacity 0.22s ease-in-out;
 }
 
+/* The invisible views must not swallow the clicks meant for the buttons the
+   canvas paints (.upload-hit sits below #content). */
+#views.hidden-by-upload * {
+  pointer-events: none;
+}
+
+/* #content itself is switched to pointer-events: none from island.ts (inline). */
+#content.upload-on #header {
+  pointer-events: auto;
+}
+
 #bot-glow {
   position: absolute;
   pointer-events: none;

@@ -6,17 +6,16 @@ use std::process::Command;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::{BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
+use ::windows::core::PWSTR;
+use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LocalFree, POINT};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
-use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
-    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -173,37 +172,76 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
     Some(HWND(raw as *mut _))
 }
 
-/// Lets dropped files reach the app again.
+/// True while the foreground window is being moved or resized by its title bar
+/// or border — a held button that is not a drag the island should answer.
+pub fn moving_window() -> bool {
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetGUIThreadInfo, GUITHREADINFO, GUI_INMOVESIZE};
+    let mut info = GUITHREADINFO {
+        cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
+        ..Default::default()
+    };
+    unsafe { GetGUIThreadInfo(0, &mut info).is_ok() && (info.flags.0 & GUI_INMOVESIZE.0) != 0 }
+}
+
+/// Puts the island back on top of the other always-on-top windows.
 ///
-/// wry installs its drop target by walking the webview's child windows **once**,
-/// when the webview is created. WebView2 creates `Chrome_RenderWidgetHostHWND`
-/// later and registers its own target on it; being the innermost window, that one
-/// wins, and since the page has no HTML5 drop handler it refuses everything — the
-/// "no drop" cursor, with nothing reaching Tauri. Revoking it makes OLE fall
-/// through to the target wry registered on the parent widget, which is the one
-/// that feeds Tauri's drag events.
-///
-/// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
-pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
+/// Every topmost window shares one band, and whichever was raised last wins.
+/// A full-width status bar along the top of the screen is often topmost too, and
+/// then covers the strip that wakes the island and takes dropped files. Raising
+/// the island again hands that edge back to it. Never activates, never moves or
+/// resizes. If Explorer is showing its drag picture, that picture is put back
+/// above the island so the file does not vanish behind the bar.
+pub fn raise_topmost(win: &WebviewWindow) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    raise_hwnd(hwnd);
+}
+
+fn raise_hwnd(hwnd: HWND) {
+    set_topmost(hwnd);
+    if let Some(drag) = shell_drag_image() {
+        if drag != hwnd {
+            set_topmost(drag);
         }
     }
 }
 
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 {
-        let class = String::from_utf16_lossy(&name[..len as usize]);
-        if class == "Chrome_RenderWidgetHostHWND" {
-            let _ = unsafe { RevokeDragDrop(hwnd) };
-        }
+fn set_topmost(hwnd: HWND) {
+    use ::windows::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, HWND_TOPMOST, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+    };
+    unsafe {
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS,
+        );
     }
-    true.into()
+}
+
+/// Explorer's drag picture. Present while a file is being dragged, absent for a
+/// text selection or a slider.
+fn shell_drag_image() -> Option<HWND> {
+    use ::windows::core::w;
+    use ::windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, IsWindowVisible};
+    let hwnd = unsafe { FindWindowExW(None, None, w!("SysDragImage"), None).ok()? };
+    unsafe { IsWindowVisible(hwnd).as_bool() }.then_some(hwnd)
+}
+
+/// Such bars can raise themselves again later (on a redraw, or coming back from
+/// a full-screen app), so the island checks back every couple of seconds. One
+/// cheap call, no wake-up of the page.
+pub fn keep_topmost(app: &AppHandle) {
+    let Some(win) = app.get_webview_window(WINDOW_LABEL) else { return };
+    let Some(hwnd) = hwnd_of(&win) else { return };
+    let raw = hwnd.0 as isize;
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        raise_hwnd(HWND(raw as *mut _));
+    });
 }
 
 /// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
