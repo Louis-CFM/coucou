@@ -8387,6 +8387,48 @@
       "ja": {
         "other": "{count} 件のプロジェクトをフォロー中"
       }
+    },
+    "{count} YouTrack updates": {
+      "zh-Hans": {
+        "other": "{count} 条 YouTrack 更新"
+      },
+      "hi": {
+        "one": "{count} YouTrack अपडेट",
+        "other": "{count} YouTrack अपडेट"
+      },
+      "es": {
+        "one": "{count} novedad de YouTrack",
+        "other": "{count} novedades de YouTrack"
+      },
+      "ar": {
+        "zero": "{count} تحديثات من YouTrack",
+        "one": "تحديث واحد من YouTrack",
+        "two": "تحديثان من YouTrack",
+        "few": "{count} تحديثات من YouTrack",
+        "many": "{count} تحديثًا من YouTrack",
+        "other": "{count} تحديث من YouTrack"
+      },
+      "fr": {
+        "one": "{count} nouveauté YouTrack",
+        "other": "{count} nouveautés YouTrack"
+      },
+      "bn": {
+        "one": "{count}টি YouTrack আপডেট",
+        "other": "{count}টি YouTrack আপডেট"
+      },
+      "pt-BR": {
+        "one": "{count} novidade do YouTrack",
+        "other": "{count} novidades do YouTrack"
+      },
+      "ru": {
+        "one": "{count} обновление YouTrack",
+        "few": "{count} обновления YouTrack",
+        "many": "{count} обновлений YouTrack",
+        "other": "{count} обновления YouTrack"
+      },
+      "id": {
+        "other": "{count} pembaruan YouTrack"
+      }
     }
   }
 }

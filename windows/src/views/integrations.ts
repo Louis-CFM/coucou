@@ -6,6 +6,7 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { OVERVIEW_TALL_H } from "../core/layout";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
@@ -123,6 +124,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}d9`,
         text: t("Open {name}", { name: "GitLab" }),
         onclick: () => void Bridge.openGitlab(),
+      }),
+    );
+  } else if (task.id === "integration_youtrack") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open YouTrack",
+        onclick: () => void Bridge.openYoutrack(),
       }),
     );
   } else if (OPEN_URLS[task.id]) {
@@ -468,6 +478,56 @@ function gitlabInboxRow(): ForgeCardOptions["extra"] {
   };
 }
 
+// ── YouTrack ──────────────────────────────────────────────────────────────────
+
+/**
+ * The followed saved search, five rows on screen and the rest a scroll away: the
+ * last ten pieces of news (highlighted for half an hour), then the search's
+ * issues, most recently updated first, without those already told.
+ */
+function youtrackCard(): HTMLElement {
+  const d = get("integration_youtrack");
+  const count = Number(d.count ?? 0);
+  const query = String(d.query ?? "");
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: "Open the search in YouTrack",
+      onclick: () => void Bridge.openYoutrack(`/issues?q=${encodeURIComponent(query)}`),
+    },
+    h("span", {
+      style: count > 0 ? "color:#FF318C" : "color:var(--dim-3)",
+      text: `${count}${d.capped ? "+" : ""} ${count === 1 ? "issue" : "issues"}`,
+    }),
+  );
+
+  const rows = h("div", { class: "int-rows scroll" });
+  let shown = 0;
+  const told = new Set<string>();
+
+  for (const n of arr("integration_youtrack", "news")) {
+    told.add(String(n.issue ?? ""));
+    rows.append(...newsRow(n, "#22C55E"));
+    shown++;
+  }
+  for (const i of arr("integration_youtrack", "issues")) {
+    if (told.has(String(i.id))) continue;
+    const tip = [i.id, i.by ? `updated by ${String(i.by)}` : ""].filter(Boolean).join(" · ");
+    rows.append(linkRow(i.resolved ? "#6B7079" : "#FF318C", false, i.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(i.summary ?? "") }),
+      // An id is short and useless cut: the summary gives way instead.
+      h("span", { class: "int-sub", style: "flex:0 0 auto", text: String(i.id ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(i.updated) }),
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing in this search" }));
+  keepScroll(rows, "integration_youtrack");
+  const kind = String(d.queryName ?? "") || "Saved search";
+  return h("div", { class: "int-card youtrack" }, header("#FF318C", "YouTrack", kind, extra), rows);
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -613,12 +673,18 @@ function n8nDetail(task: AgentTask, onBack: () => void): HTMLElement {
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
-/** The pills whose card has a fourth row, for which the overview grows. */
-const TALL_CARDS = new Set(["integration_gitlab"]);
+/** The overview's height for the pills whose card is taller than three rows. */
+const TALL_CARDS: Record<string, number> = {
+  integration_gitlab: OVERVIEW_TALL_H.fourRows,
+  integration_youtrack: OVERVIEW_TALL_H.fiveRows,
+};
 
-/** True when this pill's card has a fourth row, for which the overview grows. */
-export function wantsTallOverview(task: AgentTask | null): boolean {
-  return task != null && TALL_CARDS.has(task.id) && hasIntegrationData(task.id) && readPulse(get(task.id)) != null;
+/** The overview's height for this pill's card, when it is taller than three rows. */
+export function tallOverviewHeight(task: AgentTask | null): number | null {
+  if (task == null || !(task.id in TALL_CARDS) || !hasIntegrationData(task.id)) return null;
+  // GitLab's fourth row comes with the pulse.
+  if (task.id === "integration_gitlab" && readPulse(get(task.id)) == null) return null;
+  return TALL_CARDS[task.id];
 }
 
 export interface IntegrationCardHooks {
@@ -647,6 +713,8 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_notion":
       return arr(id, "pages").length > 0;
     case "integration_calcom":
+      return info.loaded;
+    case "integration_youtrack":
       return info.loaded;
     default:
       return false;
@@ -702,6 +770,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_youtrack":
+      return youtrackCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

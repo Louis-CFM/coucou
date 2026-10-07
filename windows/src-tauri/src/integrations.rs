@@ -1,6 +1,6 @@
 // Integration pollers — the Rust side of StripePoller / GithubPoller /
 // VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller, plus
-// GitLab, which only exists on Windows.
+// GitLab and YouTrack, which only exist on Windows.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
@@ -67,6 +67,7 @@ pub fn set_paused(on: bool) {
 pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_n8n", 3, 15, poll_n8n);
     spawn(app.clone(), "integration_gitlab", 4, 60, poll_gitlab);
+    spawn(app.clone(), "integration_youtrack", 5, 60, poll_youtrack);
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
@@ -136,6 +137,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_youtrack" => poll_youtrack(app).await,
         _ => {}
     }
 }
@@ -1279,6 +1281,19 @@ const GITLAB_PIPELINE_MEMORY_MS: i64 = 60 * 60 * 1000;
 const GITLAB_PULSE_EVERY_MS: i64 = 5 * 60 * 1000;
 const GITLAB_PULSE_WAKE_MS: i64 = 60 * 1000;
 
+/// One notification for the lot: the label says it, the detail lists it.
+/// `many` names the lot, from its count, when there is more than one.
+fn news_event(fresh: &[Value], many: impl Fn(u64) -> String) -> Option<IntegrationEvent> {
+    (!fresh.is_empty()).then(|| {
+        let labels: Vec<String> = fresh.iter().filter_map(|n| n["label"].as_str().map(str::to_string)).collect();
+        IntegrationEvent {
+            success: fresh.iter().all(|n| n["success"].as_bool().unwrap_or(true)),
+            label: if labels.len() == 1 { labels[0].clone() } else { many(labels.len() as u64) },
+            detail: Some(labels.join("\n")),
+        }
+    })
+}
+
 /// What the poller remembers between polls, source by source. `None` until that
 /// source has answered once: its first answer only fills it — no news on
 /// launch, as with every other poller — and a source that failed then can't
@@ -2049,19 +2064,7 @@ async fn poll_gitlab(app: AppHandle) {
         kept
     };
 
-    // One notification for the lot: the label says it, the detail lists it.
-    let event = (!fresh.is_empty()).then(|| {
-        let labels: Vec<String> = fresh.iter().filter_map(|n| n["label"].as_str().map(str::to_string)).collect();
-        IntegrationEvent {
-            success: fresh.iter().all(|n| n["success"].as_bool().unwrap_or(true)),
-            label: if labels.len() == 1 {
-                labels[0].clone()
-            } else {
-                crate::i18n::tn("{count} GitLab update", "{count} GitLab updates", labels.len() as u64, &[])
-            },
-            detail: Some(labels.join("\n")),
-        }
-    });
+    let event = news_event(&fresh, |n| crate::i18n::tn("{count} GitLab update", "{count} GitLab updates", n, &[]));
 
     // The pulse, every five minutes, or at once for another account or other
     // followed projects.
@@ -2092,6 +2095,275 @@ async fn poll_gitlab(app: AppHandle) {
         data.extend(pulse.clone());
     }
     emit(&app, IntegrationUpdate { id: "integration_gitlab", data, error: None, event });
+}
+
+// ── YouTrack ──────────────────────────────────────────────────────────────────
+// A self-hosted YouTrack (the URL is configurable: `https://host` or
+// `https://host/youtrack`), a permanent token, and one saved search the user
+// picked in the settings. Every minute, the search's most recently updated
+// issues: one created or updated since the last poll, by someone other than the
+// user, is news. As with GitLab, everything new in one poll is one notification.
+// Read-only: Coucou never changes an issue.
+
+/// The configured instance, without a trailing slash. Only http(s): the value
+/// ends up in requests and in the browser.
+pub fn youtrack_base() -> Result<String, String> {
+    let raw = secrets::get("youtrack-url").ok_or("Set the YouTrack URL in Settings → Integrations")?;
+    let base = raw.trim().trim_end_matches('/').to_string();
+    if base.starts_with("https://") || base.starts_with("http://") {
+        Ok(base)
+    } else {
+        Err("The YouTrack URL must start with https://".into())
+    }
+}
+
+/// Issues read each minute, the most recently updated first: far more than
+/// changes in a minute.
+const YOUTRACK_TOP: usize = 50;
+
+/// What the poller remembers between polls.
+#[derive(Default)]
+struct YoutrackMemory {
+    /// The saved search this memory is about: another one starts afresh.
+    query_id: String,
+    /// The latest `updated` seen in that search. `None` until it has answered
+    /// once: its first answer only fills it — no news on launch.
+    seen_until: Option<i64>,
+    /// The latest news, newest first: { label, url, success, at, issue }.
+    news: Vec<Value>,
+    /// Whose news `news` is (the instance and the search), once read from disk.
+    news_owner: Option<String>,
+}
+
+static YOUTRACK: std::sync::LazyLock<Mutex<YoutrackMemory>> = std::sync::LazyLock::new(Default::default);
+
+/// The followed saved search, as the settings stored it. Its id (`120-3`) goes
+/// into a URL path, so nothing else is let through.
+fn youtrack_query_id() -> Option<String> {
+    secrets::get("youtrack-query")
+        .map(|q| q.trim().to_string())
+        .filter(|q| !q.is_empty() && q.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')))
+}
+
+/// The search without its own `sort by:` clause, which would otherwise decide
+/// which issues make the top of the list instead of the latest update.
+fn youtrack_unsorted(query: &str) -> &str {
+    // ASCII lowercase keeps byte offsets, so they still cut `query`.
+    let lower = query.to_ascii_lowercase();
+    let cut = ["sort by:", "order by:"].iter().filter_map(|k| lower.find(k)).min().unwrap_or(query.len());
+    query[..cut].trim()
+}
+
+/// A user field of an issue: (login, name to show).
+fn youtrack_who(issue: &Value, key: &str) -> (String, String) {
+    let user = issue.get(key).cloned().unwrap_or(Value::Null);
+    let login = s(&user, "login");
+    let name = Some(s(&user, "fullName")).filter(|n| !n.is_empty()).unwrap_or_else(|| login.clone());
+    (login, name)
+}
+
+/// What's new in the saved search since the last poll, against `memory`, which
+/// it then updates. `issues` come newest update first. Returns the news and the
+/// issues as the card shows them.
+fn youtrack_fresh(
+    memory: &mut YoutrackMemory,
+    query_id: &str,
+    issues: &[Value],
+    me: &str,
+    base: &str,
+) -> (Vec<Value>, Vec<Value>) {
+    if memory.query_id != query_id {
+        *memory = YoutrackMemory { query_id: query_id.to_string(), ..Default::default() };
+    }
+    let seen = memory.seen_until;
+    let mut fresh: Vec<Value> = Vec::new();
+    let mut items: Vec<Value> = Vec::new();
+    for issue in issues {
+        let id = s(issue, "idReadable");
+        let summary = s(issue, "summary");
+        let created = issue["created"].as_i64().unwrap_or(0);
+        let updated = issue["updated"].as_i64().unwrap_or(created);
+        let url = format!("{base}/issue/{id}");
+        let (_, updater) = youtrack_who(issue, "updater");
+        // Anything above the latest update seen before is news: created since
+        // then, or changed. Who did it — the reporter or the last to update it —
+        // decides whether it is: the user's own doing is not.
+        if let Some(seen) = seen.filter(|&seen| updated > seen) {
+            let (verb, who) = if created > seen { ("Created", "reporter") } else { ("Updated", "updater") };
+            let (login, name) = youtrack_who(issue, who);
+            if me.is_empty() || login != me {
+                let label = if name.is_empty() {
+                    format!("{verb}: {id} {summary}")
+                } else {
+                    format!("{verb} by {name}: {id} {summary}")
+                };
+                fresh.push(json!({ "label": label, "url": url, "success": true, "at": now_ms(), "issue": id }));
+            }
+        }
+        items.push(json!({
+            "id": id,
+            "summary": summary,
+            "url": url,
+            "updated": updated,
+            "resolved": !issue["resolved"].is_null(),
+            "by": updater,
+        }));
+    }
+    let top = issues.iter().filter_map(|i| i["updated"].as_i64()).max().unwrap_or(0);
+    memory.seen_until = Some(seen.unwrap_or(0).max(top));
+    (fresh, items)
+}
+
+/// One GET on the YouTrack REST API. The error carries the HTTP status (0 when
+/// the server was not reached), so each caller can word it.
+async fn youtrack_get(
+    http: &reqwest::Client,
+    base: &str,
+    token: &str,
+    path: &str,
+    params: &[(&str, &str)],
+) -> Result<Value, (u16, String)> {
+    let response = http
+        .get(format!("{base}/api/{path}"))
+        .bearer_auth(token)
+        .header("Accept", "application/json")
+        .query(params)
+        .send()
+        .await
+        // Without the URL: a self-hosted address is the user's business, not the log's.
+        .map_err(|e| (0, format!("No connection: {}", e.without_url())))?;
+    let code = response.status().as_u16();
+    if !response.status().is_success() {
+        return Err((code, status_error(code, "This token can't read YouTrack (403)")));
+    }
+    // A wrong path often lands on an HTML page with a 200.
+    response
+        .json::<Value>()
+        .await
+        .map_err(|_| (code, "Unexpected answer from YouTrack — check the URL".into()))
+}
+
+/// The first request's error: a 404 there means the URL is not YouTrack's.
+fn youtrack_error((code, error): (u16, String)) -> String {
+    if code == 404 { "Not a YouTrack address (404) — check the URL".into() } else { error }
+}
+
+/// The signed-in user's login, which also proves the URL and the token.
+async fn youtrack_me(http: &reqwest::Client, base: &str, token: &str) -> Result<String, String> {
+    let me = youtrack_get(http, base, token, "users/me", &[("fields", "login")]).await.map_err(youtrack_error)?;
+    Some(s(&me, "login"))
+        .filter(|l| !l.is_empty())
+        .ok_or_else(|| "Unexpected answer from YouTrack — check the URL".into())
+}
+
+async fn poll_youtrack(app: AppHandle) {
+    let Some(token) = secrets::get("youtrack-token") else { return };
+    let fail = |error: String| {
+        emit(&app, IntegrationUpdate { id: "integration_youtrack", data: json!({}), error: Some(error), event: None });
+    };
+    let base = match youtrack_base() {
+        Ok(b) => b,
+        Err(e) => return fail(e),
+    };
+    let Some(query_id) = youtrack_query_id() else {
+        return fail("Choose a saved search in Settings → Integrations".into());
+    };
+    let http = client();
+    let me = match youtrack_me(&http, &base, &token).await {
+        Ok(me) => me,
+        Err(e) => return fail(e),
+    };
+
+    let saved = match youtrack_get(&http, &base, &token, &format!("savedQueries/{query_id}"), &[("fields", "name,query")]).await {
+        Ok(v) => v,
+        Err((404, _)) => return fail("The saved search is gone — choose another in Settings".into()),
+        Err((_, e)) => return fail(e),
+    };
+    let name = s(&saved, "name");
+    let query = s(&saved, "query");
+    let search = format!("{} sort by: updated desc", youtrack_unsorted(&query));
+    let top = YOUTRACK_TOP.to_string();
+    let params = [
+        ("query", search.as_str()),
+        ("fields", "idReadable,summary,created,updated,resolved,reporter(login,fullName),updater(login,fullName)"),
+        ("$top", top.as_str()),
+    ];
+    let issues = match youtrack_get(&http, &base, &token, "issues", &params).await {
+        Ok(v) => v.as_array().cloned().unwrap_or_default(),
+        Err((400, _)) => return fail("YouTrack can't run this saved search (400)".into()),
+        Err((_, e)) => return fail(e),
+    };
+
+    let mut memory = YOUTRACK.lock().unwrap();
+    let (fresh, items) = youtrack_fresh(&mut memory, &query_id, &issues, &me, &base);
+    // The earlier news, read back from disk after a restart, unless it came
+    // from another search.
+    let owner = format!("{query_id}@{base}");
+    if memory.news_owner.as_deref() != Some(owner.as_str()) {
+        memory.news = load_news("youtrack", &owner);
+        memory.news_owner = Some(owner.clone());
+    }
+    let kept = recent_news(&fresh, &memory.news);
+    if !fresh.is_empty() {
+        save_news("youtrack", &owner, &kept);
+    }
+    memory.news = kept.clone();
+    drop(memory);
+
+    let count = items.len();
+    emit(&app, IntegrationUpdate {
+        id: "integration_youtrack",
+        data: json!({
+            "base": base,
+            "queryName": name,
+            // The search as saved, its own sort included: what "Open" shows.
+            "query": query,
+            "count": count,
+            "capped": count >= YOUTRACK_TOP,
+            "issues": items,
+            "news": kept,
+            // This poll's news alone: what the notification card shows.
+            "fresh": fresh,
+        }),
+        error: None,
+        event: news_event(&fresh, |n| crate::i18n::tn("{count} YouTrack update", "{count} YouTrack updates", n, &[])),
+    });
+}
+
+/// The saved searches the settings offer, the user's own first, and the one
+/// followed now. Asked from the settings window only.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YoutrackSearches {
+    pub searches: Vec<Value>,
+    pub selected: Option<String>,
+}
+
+pub async fn youtrack_saved_searches() -> Result<YoutrackSearches, String> {
+    let token = secrets::get("youtrack-token").ok_or("Save the token first")?;
+    let base = youtrack_base()?;
+    let http = client();
+    let me = youtrack_me(&http, &base, &token).await?;
+    let list = youtrack_get(&http, &base, &token, "savedQueries", &[("fields", "id,name,query,owner(login)"), ("$top", "500")])
+        .await
+        .map_err(|(_, e)| e)?;
+    let mut searches: Vec<Value> = list
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|q| {
+            json!({
+                "id": s(q, "id"),
+                "name": s(q, "name"),
+                "query": s(q, "query"),
+                "mine": q.get("owner").is_some_and(|o| s(o, "login") == me),
+            })
+        })
+        .collect();
+    let key = |v: &Value| (!v["mine"].as_bool().unwrap_or(false), v["name"].as_str().unwrap_or("").to_lowercase());
+    searches.sort_by_key(key);
+    Ok(YoutrackSearches { searches, selected: youtrack_query_id() })
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
@@ -2665,5 +2937,58 @@ mod gitlab_tests {
         assert_eq!(kept.len(), NEWS_KEEP);
         assert_eq!(kept[0]["label"], "n10", "this poll's news first");
         assert_eq!(kept[9]["label"], "n1", "the oldest pushed out, not timed out");
+    }
+}
+
+#[cfg(test)]
+mod youtrack_tests {
+    use super::*;
+
+    fn issue(id: &str, created: i64, updated: i64, reporter: &str, updater: &str) -> Value {
+        json!({ "idReadable": id, "summary": "Login", "created": created, "updated": updated,
+                "reporter": { "login": reporter, "fullName": reporter.to_uppercase() },
+                "updater": { "login": updater, "fullName": updater.to_uppercase() } })
+    }
+
+    fn labels(news: &[Value]) -> Vec<String> {
+        news.iter().map(|n| n["label"].as_str().unwrap().to_string()).collect()
+    }
+
+    #[test]
+    fn the_first_answer_is_silent_and_the_next_one_tells_what_others_did() {
+        let mut m = YoutrackMemory::default();
+        let base = "https://yt.example.com/youtrack";
+        let (fresh, items) = youtrack_fresh(&mut m, "1-1", &[issue("P-1", 10, 20, "ada", "ada")], "me", base);
+        assert!(fresh.is_empty(), "launch fills the memory without a word");
+        assert_eq!(items[0]["url"], "https://yt.example.com/youtrack/issue/P-1");
+
+        let (fresh, _) = youtrack_fresh(&mut m, "1-1", &[
+            issue("P-3", 30, 30, "bob", "bob"),  // created since
+            issue("P-2", 5, 25, "ada", "me"),    // the user's own change
+            issue("P-1", 10, 22, "ada", "cy"),   // changed by someone else
+            issue("P-0", 1, 15, "ada", "ada"),   // older than what was seen: it only entered the list
+        ], "me", base);
+        assert_eq!(labels(&fresh), vec!["Created by BOB: P-3 Login", "Updated by CY: P-1 Login"]);
+
+        let (fresh, _) = youtrack_fresh(&mut m, "1-1", &[issue("P-3", 30, 30, "bob", "bob")], "me", base);
+        assert!(fresh.is_empty(), "told once");
+    }
+
+    #[test]
+    fn another_saved_search_starts_afresh() {
+        let mut m = YoutrackMemory::default();
+        youtrack_fresh(&mut m, "1-1", &[issue("P-1", 10, 20, "ada", "ada")], "me", "b");
+        m.news.push(json!({ "label": "old" }));
+        let (fresh, _) = youtrack_fresh(&mut m, "1-2", &[issue("Q-1", 50, 60, "ada", "ada")], "me", "b");
+        assert!(fresh.is_empty(), "the new search's first answer is silent too");
+        assert!(m.news.is_empty(), "and the old search's news goes with it");
+    }
+
+    #[test]
+    fn the_search_loses_its_own_sort() {
+        assert_eq!(youtrack_unsorted("for: me #Unresolved sort by: priority desc"), "for: me #Unresolved");
+        assert_eq!(youtrack_unsorted("project: X Order By: created"), "project: X");
+        assert_eq!(youtrack_unsorted("été #Unresolved"), "été #Unresolved");
+        assert_eq!(youtrack_unsorted(""), "");
     }
 }

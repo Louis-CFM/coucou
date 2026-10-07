@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NEWS_VIEWS, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
@@ -22,9 +22,9 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { dominantPct, planColor } from "../core/plan";
 import { tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
-import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
+import { buildHeader, buildViews, newsDetailsFor, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
-import { wantsTallOverview } from "../views/integrations";
+import { tallOverviewHeight } from "../views/integrations";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
@@ -91,7 +91,7 @@ export class Island {
   private running = false;
   private lastFrame = 0;
   private dirty = true;
-  private wasTall = false;
+  private wasTall: number | null = null;
   private canvasPx = 0;
   /** The pixel ratio Mochi's bitmap was sized for: it changes with the monitor. */
   private canvasDpr = 0;
@@ -220,6 +220,7 @@ export class Island {
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
         else if (task.id === "integration_gitlab") void Bridge.openGitlab();
+        else if (task.id === "integration_youtrack") void Bridge.openYoutrack();
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
@@ -736,9 +737,9 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
-  /** The overview grows while its card has a fourth row. */
-  private get tallOverview(): boolean {
-    return State.view === "overview" && wantsTallOverview(State.focusTask);
+  /** The overview's height while its card is taller than three rows. */
+  private get tallOverview(): number | null {
+    return State.view === "overview" ? tallOverviewHeight(State.focusTask) : null;
   }
 
   private targetSize(): { w: number; h: number; r: number } {
@@ -1062,8 +1063,9 @@ export class Island {
       // height without changing the view.
       const tall = this.tallOverview;
       if (tall !== this.wasTall) {
+        const shrinking = (tall ?? 0) < (this.wasTall ?? 0);
         this.wasTall = tall;
-        if (State.mode === "expanded") this.animateGeometry(!tall);
+        if (State.mode === "expanded") this.animateGeometry(shrinking);
       }
       this.syncDom();
     }
@@ -1333,30 +1335,29 @@ export class Island {
   }
 
   /**
-   * Who Mochi stands for right now: the focused pill, except on a GitLab news
-   * card, where he takes GitLab's colour and mood — like its mini Mochi on the
-   * pill — so the card reads at a glance as GitLab's.
+   * Who Mochi stands for right now: the focused pill, except on a news card
+   * (GitLab, YouTrack), where he takes that integration's colour and mood —
+   * like its mini Mochi on the pill — so the card reads at a glance as its own.
    */
-  private get onGitlabCard(): boolean {
+  private get newsCardTask(): AgentTask | null {
     // The view outlives the card: once the island folds back into its bar it
     // still says "gitlab" until the next opening resets it. Only an open card
-    // counts, or Mochi stays orange on the bar.
-    // The unfolded card is still GitLab's news.
-    return State.mode === "expanded" && (State.view === "gitlab" || State.view === "news-details");
+    // counts, or Mochi keeps the colour on the bar.
+    if (State.mode !== "expanded") return null;
+    // The unfolded card is still that integration's news.
+    const id = State.view === "news-details"
+      ? newsDetailsFor()
+      : Object.keys(NEWS_VIEWS).find((k) => NEWS_VIEWS[k] === State.view);
+    return id ? (State.tasks.find((t) => t.id === id) ?? null) : null;
   }
 
   private get shownTask(): AgentTask | null {
-    if (this.onGitlabCard) {
-      return State.tasks.find((t) => t.id === "integration_gitlab") ?? State.focusTask;
-    }
-    return State.focusTask;
+    return this.newsCardTask ?? State.focusTask;
   }
 
   private get shownState(): BotStateName {
-    if (this.onGitlabCard) {
-      const t = State.tasks.find((x) => x.id === "integration_gitlab");
-      if (t && State.stateOverride == null) return t.state;
-    }
+    const t = this.newsCardTask;
+    if (t && State.stateOverride == null) return t.state;
     return State.effectiveState;
   }
 

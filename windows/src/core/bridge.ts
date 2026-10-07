@@ -404,6 +404,10 @@ export const Bridge = {
   openGitlab: (path: string | null = null) => call<void>("open_gitlab", { path }),
   /** Settings: the GitLab projects the user is a member of, sorted by group then name. */
   gitlabProjects: () => callOrThrow<GitlabProject[]>("gitlab_projects"),
+  /** The configured YouTrack instance, or `path` on it (e.g. "/issue/PRJ-1"). */
+  openYoutrack: (path: string | null = null) => call<void>("open_youtrack", { path }),
+  /** The saved searches the YouTrack pill can follow, and the one it follows. */
+  youtrackSavedSearches: () => callOrThrow<YoutrackSearches>("youtrack_saved_searches"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
@@ -545,6 +549,12 @@ export interface IntegrationUpdate {
   data: Record<string, unknown>;
   error: string | null;
   event: { success: boolean; label: string; detail: string | null } | null;
+}
+
+export interface YoutrackSearches {
+  /** The user's own searches first. */
+  searches: { id: string; name: string; query: string; mine: boolean }[];
+  selected: string | null;
 }
 
 export type ChatContext =

@@ -604,6 +604,11 @@ own window.
   and only their merge requests, pipelines and default-branch CI are watched
   (twenty at most for pipelines); your To-Do list stays complete. None ticked
   follows every project.
+- YouTrack, which the Mac doesn't have either, for a self-hosted instance
+  (Settings… → Integrations: its URL, a permanent token, then one of your saved searches).
+  An issue of that search created or updated by someone else notifies you, and
+  the pill lists the search's latest issues, five at a time, under the last ten
+  pieces of news, kept through a restart too. Read-only.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

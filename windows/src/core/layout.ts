@@ -12,6 +12,7 @@ export type IslandViewName =
   | "error"
   | "finished"
   | "gitlab"
+  | "youtrack"
   | "news-details"
   | "confused"
   | "upload"
@@ -72,6 +73,12 @@ export const EXPANDED_CORNER = 22;
 export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
+/** The integrations whose news opens its own card, and that card's view. */
+export const NEWS_VIEWS: Readonly<Record<string, IslandViewName>> = {
+  integration_gitlab: "gitlab",
+  integration_youtrack: "youtrack",
+};
+
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
@@ -79,8 +86,9 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  // GitLab's news, laid out like Claude Code's "finished" card.
+  // GitLab's and YouTrack's news, laid out like Claude Code's "finished" card.
   gitlab: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
+  youtrack: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   // The same card unfolded: what changed behind each piece of news.
   "news-details": { height: 260, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
@@ -121,16 +129,17 @@ export function chatPromptHeight(messageCount: number): number {
 }
 
 /**
- * The overview when its card has a fourth row under the pulse's three
- * (GitLab's Inbox): 160 and one more row.
+ * The overview's height for a card taller than the pulse's three rows: GitLab's
+ * fourth (its Inbox) and YouTrack's five rows (160 + two 21 px rows and their
+ * 3 px gaps, and room to breathe under them).
  */
-export const OVERVIEW_TALL_H = 180;
+export const OVERVIEW_TALL_H = { fourRows: 180, fiveRows: 210 } as const;
 
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
-  tallOverview = false,
+  overviewH: number | null = null,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -142,7 +151,7 @@ export function islandSize(
     case "expanded": {
       const h = view === "prompt"
         ? chatPromptHeight(chatCount)
-        : view === "overview" && tallOverview ? OVERVIEW_TALL_H : VIEW_LAYOUTS[view].height;
+        : view === "overview" && overviewH ? overviewH : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }

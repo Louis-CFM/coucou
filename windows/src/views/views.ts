@@ -6,7 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
-import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
+import { NEWS_VIEWS, washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
@@ -733,21 +733,22 @@ function buildFinished(actions: ViewActions): ViewHost {
   };
 }
 
-// ── GitLab news ───────────────────────────────────────────────────────────────
+// ── GitLab and YouTrack news ──────────────────────────────────────────────────
 
 /**
- * What just happened on GitLab, in the same card as Claude Code's "finished":
- * green, or red as soon as one piece of news is bad (a pipeline failed, an MR
- * can't be merged). The first item is the title; the rest are listed under it.
+ * What just happened on GitLab or YouTrack, in the same card as Claude Code's
+ * "finished": green, or red as soon as one piece of news is bad (a pipeline
+ * failed, an MR can't be merged). The first item is the title; the rest are
+ * listed under it.
  */
-function buildGitlabNews(actions: ViewActions): ViewHost {
+function buildNews(actions: ViewActions, id: string, name: string): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title news-title" });
   const more = h("div", { class: "news-more" });
   let url = "";
   // Only the latest news, when it carries what changed, has details to unfold.
   const details = btn(tl("Details"), "secondary", () => {
-    detailsFor = "integration_gitlab";
+    detailsFor = id;
     actions.setView("news-details");
   });
   const row = h("div", { class: "actions" },
@@ -760,15 +761,15 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
-      const fresh = freshNews("integration_gitlab");
+      const fresh = freshNews(id);
       const bad = fresh.some((n) => n.success === false);
       box.style.setProperty("--wash", washRGBA(bad ? "red" : "green"));
       details.style.display = (fresh[0]?.changes?.length ?? 0) > 0 ? "" : "none";
-      const task = State.tasks.find((t) => t.id === "integration_gitlab") ?? null;
+      const task = State.tasks.find((t) => t.id === id) ?? null;
       clear(who);
       who.append(agentWho(task, fresh.length > 1
         ? tn("{count} update", "{count} updates", fresh.length)
-        : t("{name} update", { name: "GitLab" })));
+        : t("{name} update", { name })));
       title.textContent = fresh[0]?.label ?? t("Nothing new");
       url = fresh[0]?.url ?? "";
       clear(more);
@@ -809,7 +810,7 @@ function buildNewsDetails(actions: ViewActions): ViewHost {
   const who = h("div");
   const list = h("div", { class: "news-details" });
   const row = h("div", { class: "actions" },
-    btn(tl("Back"), "secondary", () => actions.setView("gitlab")),
+    btn(tl("Back"), "secondary", () => actions.setView(NEWS_VIEWS[detailsFor] ?? "overview")),
     btn(tl("OK"), "primary", () => actions.collapse()),
   );
   const box = card("green", stack(116, 16, who, list, row));
@@ -959,7 +960,8 @@ export function buildViews(
   map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
-  map.set("gitlab", buildGitlabNews(actions));
+  map.set("gitlab", buildNews(actions, "integration_gitlab", "GitLab"));
+  map.set("youtrack", buildNews(actions, "integration_youtrack", "YouTrack"));
   map.set("news-details", buildNewsDetails(actions));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
