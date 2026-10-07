@@ -44,6 +44,7 @@ struct GitHubPR: Equatable {
     var ci: CIState
     var review: ReviewState
     var headSha: String? = nil   // oid of last commit; nil if not fetched
+    var headRef: String? = nil   // head branch name; nil if not fetched
 }
 
 // MARK: - GitHubRepoCI
@@ -129,7 +130,8 @@ struct GitHubPulse: Equatable {
                 myPRs.append(GitHubPR(
                     id: id, title: title, url: url, repo: repo, number: number,
                     isDraft: isDraft, ci: CIState(rawGitHub: ciRaw),
-                    review: ReviewState(rawGitHub: reviewDecision), headSha: headSha
+                    review: ReviewState(rawGitHub: reviewDecision), headSha: headSha,
+                    headRef: node["headRefName"] as? String
                 ))
             }
         }
@@ -293,7 +295,7 @@ extension GitHubPulse {
             login
             pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
               nodes {
-                number title url isDraft reviewDecision
+                number title url isDraft reviewDecision headRefName
                 repository { nameWithOwner url }
                 commits(last: 1) {
                   nodes { commit { oid statusCheckRollup { state } } }
@@ -324,5 +326,72 @@ extension GitHubPulse {
         guard parts.count == 2,
               parts.allSatisfy({ !$0.isEmpty && $0.unicodeScalars.allSatisfy(allowed.contains) }) else { return nil }
         return (parts[0], parts[1])
+    }
+}
+
+// MARK: - SessionBranchInfo
+//
+// The open PR and the CI of the branch a Claude Code session works on.
+
+struct SessionBranchInfo: Equatable {
+    var repo: String
+    var branch: String
+    var pr: GitHubPR?
+    var branchCI: CIState
+    var fetchedAt: Date
+
+    var hasPending: Bool { branchCI == .pending || pr?.ci == .pending }
+
+    /// Values go in GraphQL variables, never in the query text.
+    static let query = """
+    query($owner: String!, $name: String!, $branch: String!, $qualified: String!) {
+      repository(owner: $owner, name: $name) {
+        pullRequests(headRefName: $branch, states: [OPEN], first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          nodes {
+            number title url isDraft reviewDecision headRefName
+            headRepository { nameWithOwner }
+            commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } }
+          }
+        }
+        ref(qualifiedName: $qualified) {
+          target { ... on Commit { oid statusCheckRollup { state } } }
+        }
+      }
+    }
+    """
+
+    static func variables(repo: String, branch: String) -> [String: String]? {
+        let parts = repo.split(separator: "/").map(String.init)
+        guard parts.count == 2 else { return nil }
+        return ["owner": parts[0], "name": parts[1], "branch": branch, "qualified": "refs/heads/\(branch)"]
+    }
+
+    static func parse(_ data: Data, repo: String, branch: String, now: Date = Date()) -> SessionBranchInfo? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataNode = root["data"] as? [String: Any],
+              let repository = dataNode["repository"] as? [String: Any] else { return nil }
+        var pr: GitHubPR? = nil
+        // headRefName also matches PRs from forks with a same-named branch: keep this repo's own.
+        let nodes = (repository["pullRequests"] as? [String: Any])?["nodes"] as? [[String: Any]] ?? []
+        let own = nodes.first {
+            let head = ($0["headRepository"] as? [String: Any])?["nameWithOwner"] as? String
+            return head?.caseInsensitiveCompare(repo) == .orderedSame
+        }
+        if let node = own,
+           let number = node["number"] as? Int,
+           let title = node["title"] as? String,
+           let url = node["url"] as? String {
+            let commit = ((node["commits"] as? [String: Any])?["nodes"] as? [[String: Any]])?.last?["commit"] as? [String: Any]
+            let rollup = commit?["statusCheckRollup"] as? [String: Any]
+            pr = GitHubPR(id: "\(repo)#\(number)", title: title, url: url, repo: repo, number: number,
+                          isDraft: node["isDraft"] as? Bool ?? false,
+                          ci: CIState(rawGitHub: rollup?["state"] as? String),
+                          review: ReviewState(rawGitHub: node["reviewDecision"] as? String),
+                          headSha: commit?["oid"] as? String,
+                          headRef: node["headRefName"] as? String ?? branch)
+        }
+        let target = (repository["ref"] as? [String: Any])?["target"] as? [String: Any]
+        let ci = CIState(rawGitHub: (target?["statusCheckRollup"] as? [String: Any])?["state"] as? String)
+        return SessionBranchInfo(repo: repo, branch: branch, pr: pr, branchCI: ci, fetchedAt: now)
     }
 }

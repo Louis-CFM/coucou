@@ -642,6 +642,36 @@ enum ServiceAPI {
         return (failed?["id"] as? Int).map { "\(repo)/\($0)" }
     }
 
+    /// Why a Vercel deployment failed: its errorMessage, else the last error line of its build log.
+    static func vercelFailureReason(id: String) async throws -> String? {
+        let headers = try vercelHeaders()
+        if let d = try? await request(VercelAPI.url("https://api.vercel.com/v13/deployments/\(id)"), headers: headers)
+                as? [String: Any],
+           let message = d["errorMessage"] as? String, !message.isEmpty {
+            return message
+        }
+        // Build log, newest first
+        let json = try await request(
+            VercelAPI.url("https://api.vercel.com/v3/deployments/\(id)/events?direction=backward&limit=100"),
+            headers: headers)
+        let events = json as? [[String: Any]] ?? []
+        let ansi = try? NSRegularExpression(pattern: "\u{1B}\\[[0-9;]*[A-Za-z]")
+        func line(_ event: [String: Any]) -> String? {
+            let raw = (event["text"] as? String) ?? ((event["payload"] as? [String: Any])?["text"] as? String) ?? ""
+            let range = NSRange(raw.startIndex..., in: raw)
+            let clean = ansi?.stringByReplacingMatches(in: raw, range: range, withTemplate: "") ?? raw
+            let trimmed = clean.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        let lines = events.compactMap { e in line(e).map { (type: e["type"] as? String ?? "", text: $0) } }
+        let generic = ["Error: Command", "exited with", "Build failed"]
+        let specific = lines.first { l in
+            l.text.range(of: "error", options: .caseInsensitive) != nil
+                && !generic.contains(where: { l.text.contains($0) })
+        }
+        return (specific ?? lines.first { $0.type == "stderr" } ?? lines.first)?.text
+    }
+
     private static func vercelHeaders() throws -> [String: String] {
         let token = try secret("vercel-token", "Vercel")
         return ["Authorization": "Bearer \(token)", "Accept": "application/json"]

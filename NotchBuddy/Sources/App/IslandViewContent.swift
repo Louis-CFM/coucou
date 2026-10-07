@@ -74,6 +74,12 @@ struct OverviewView: View {
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
                                     .truncationMode(.tail)
+                                if let git = state.sessionGit[agent.id] {
+                                    SessionBranchChip(git: git, info: state.sessionBranchInfo(for: agent.id),
+                                                      isOpen: state.sidePanel == .sessionBranch(agent.id)) {
+                                        state.toggleSidePanel(.sessionBranch(agent.id))
+                                    }
+                                }
                                 Spacer(minLength: 2)
                                 if agent.steps.count > 1 {
                                     Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
@@ -166,6 +172,14 @@ struct OverviewView: View {
             if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
         #endif
+        // While the island is open on a Claude Code session: its branch's PR and CI
+        .task(id: "\(state.focusId ?? "")|\(state.mode == .expanded)") {
+            guard state.mode == .expanded else { return }
+            while !Task.isCancelled {
+                if state.view == .overview { SessionGitHubLinker.shared.refresh(for: state.focusTask) }
+                try? await Task.sleep(for: .seconds(15))
+            }
+        }
         // Pills come back as soon as anything else needs the island (approval, question, chat…)
         .onChange(of: state.view) { _, v in
             if v != .overview { state.sidePanel = nil }
@@ -2091,7 +2105,7 @@ struct VercelDeploymentListView: View {
             VStack(alignment: .leading, spacing: 3) {
                 // First deployment — highlighted, with detail button
                 if let first = deployments.first {
-                    let accent = Color(hex: first.isSuccess ? "#22C55E" : "#F4505E")
+                    let accent = Color(hex: first.stateColor)
                     HStack(spacing: 5) {
                         Circle().fill(accent).frame(width: 5, height: 5)
                         Text(first.projectName)
@@ -2099,7 +2113,7 @@ struct VercelDeploymentListView: View {
                             .foregroundColor(Color(hex: "#C5C8CD"))
                             .lineLimit(1).truncationMode(.tail)
                             .layoutPriority(1)
-                        Text(first.timeAgo)
+                        Text(first.isBuilding ? first.statusLabel.lowercased() + "…" : first.timeAgo)
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#6B7079"))
                         Button(action: { onOpenDetail(first.id) }) {
@@ -2126,7 +2140,7 @@ struct VercelDeploymentListView: View {
 
                 // Remaining deployments — plain rows, identical structure → perfect alignment
                 ForEach(Array(deployments.dropFirst().prefix(2))) { dep in
-                    let accent = Color(hex: dep.isSuccess ? "#22C55E" : "#F4505E")
+                    let accent = Color(hex: dep.stateColor)
                     Button(action: { onOpenDetail(dep.id) }) {
                         HStack(spacing: 5) {
                             Circle().fill(accent).frame(width: 5, height: 5)
@@ -2135,7 +2149,7 @@ struct VercelDeploymentListView: View {
                                 .foregroundColor(Color(hex: "#9398A1"))
                                 .lineLimit(1).truncationMode(.tail)
                                 .layoutPriority(1)
-                            Text(dep.timeAgo)
+                            Text(dep.isBuilding ? dep.statusLabel.lowercased() + "…" : dep.timeAgo)
                                 .font(.system(size: 10))
                                 .foregroundColor(Color(hex: "#6B7079"))
                         }

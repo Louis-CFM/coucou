@@ -388,6 +388,40 @@ enum GitHubPulseTests {
             check("login kept", only.login == pulse.login)
         }
 
+        // ── SessionBranchInfo.parse ───────────────────────────────────────────
+        print("SessionBranchInfo.parse")
+        do {
+            func json(_ prs: String) -> Data {
+                """
+                { "data": { "repository": {
+                    "pullRequests": { "nodes": [\(prs)] },
+                    "ref": { "target": { "oid": "x", "statusCheckRollup": { "state": "PENDING" } } }
+                } } }
+                """.data(using: .utf8)!
+            }
+            let fork = """
+            { "number": 152, "title": "From a fork", "url": "u", "isDraft": false, "headRefName": "main",
+              "headRepository": { "nameWithOwner": "someone/coucou" }, "commits": { "nodes": [] } }
+            """
+            let own = """
+            { "number": 7, "title": "Mine", "url": "u7", "isDraft": true, "reviewDecision": "APPROVED",
+              "headRefName": "main", "headRepository": { "nameWithOwner": "Me/App" },
+              "commits": { "nodes": [ { "commit": { "oid": "h", "statusCheckRollup": { "state": "FAILURE" } } } ] } }
+            """
+            let onlyFork = SessionBranchInfo.parse(json(fork), repo: "me/app", branch: "main")
+            check("fork PR with same branch name ignored", onlyFork != nil && onlyFork?.pr == nil)
+            check("branch CI parsed", onlyFork?.branchCI == .pending)
+            check("hasPending from branch CI", onlyFork?.hasPending == true)
+            let both = SessionBranchInfo.parse(json(fork + "," + own), repo: "me/app", branch: "main")
+            check("own PR found (case-insensitive repo)", both?.pr?.number == 7)
+            check("own PR CI / draft / review", both?.pr?.ci == .failure && both?.pr?.isDraft == true
+                  && both?.pr?.review == .approved)
+            check("PR id uses session repo", both?.pr?.id == "me/app#7")
+            check("variables", SessionBranchInfo.variables(repo: "o/n", branch: "feat/x")
+                  == ["owner": "o", "name": "n", "branch": "feat/x", "qualified": "refs/heads/feat/x"])
+            check("bad repo → no variables", SessionBranchInfo.variables(repo: "nope", branch: "b") == nil)
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

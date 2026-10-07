@@ -30,6 +30,7 @@
 		13663D98590927AF71C17628 /* PillCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C64C4C5D705CE486221B74 /* PillCatalog.swift */; };
 		1558BB00C530B721172F6E65 /* StripePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */; };
 		160EDB9D06275E2607DA5151 /* N8nPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */; };
+		16513E8398CC78F538EBBE8D /* GitRepoInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85588295C63115CAF2C6C8E2 /* GitRepoInfo.swift */; };
 		17392C63757FBAC38F22B9D6 /* ServiceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08128342A3F894D567AD9E6B /* ServiceViews.swift */; };
 		17D6063D3B374FB82340314E /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
 		18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
@@ -120,10 +121,12 @@
 		875FB3F71BD34B53B0524063 /* CoucouWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6723392BE01AF210E484316 /* CoucouWidgets.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
 		8881BC510155DEC038F3B552 /* ServiceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */; };
+		8A6809F8D00B59A697AAC90E /* SessionGitHubLinker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F5EB9E84BA39B03DFBC3EC1 /* SessionGitHubLinker.swift */; };
 		8A6B3688D6B3BF728D106D8B /* UserIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */; };
 		8AC19BAF88822CB31519D447 /* CoucouIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708E1FD9894461B4AD727DB1 /* CoucouIntents.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
 		8C785917FD0740DAE56420A4 /* ServiceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */; };
+		8C9878C52623BABE6FEF64C0 /* SessionGitHubLinker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F5EB9E84BA39B03DFBC3EC1 /* SessionGitHubLinker.swift */; };
 		8C9AF392DAE8F2098A7BE7B6 /* ServiceDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */; };
 		8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
 		8DF63B85A54090AEA72A246C /* KitPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E39852175E81C9632A59C9 /* KitPreviewView.swift */; };
@@ -146,6 +149,7 @@
 		9BCD79FD8CF211DC8FBD2971 /* SearchAndSpotlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE60A834934474CDAE022FF8 /* SearchAndSpotlight.swift */; };
 		9C653B8291EFFA414565E8A8 /* MusicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F142FB3952B5F0639383047 /* MusicController.swift */; };
 		9DD56C95ECABDDCE23652D50 /* HookServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */; };
+		9E8D6E6EC4B179A62E518F85 /* GitRepoInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85588295C63115CAF2C6C8E2 /* GitRepoInfo.swift */; };
 		9ECEE890D4486B6E83BD5B7F /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACB4350729C6513824D1ADF /* ColorHex.swift */; };
 		9F43BE6E77E371FCEB7FE8BA /* ServiceDetailRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6AAC67875F84A862BC2A9AF /* ServiceDetailRunner.swift */; };
 		A7733EE60694EA3E2A86C37A /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
@@ -325,9 +329,11 @@
 		79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiWardrobe.swift; sourceTree = "<group>"; };
 		79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookServer.swift; sourceTree = "<group>"; };
 		7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		7F5EB9E84BA39B03DFBC3EC1 /* SessionGitHubLinker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionGitHubLinker.swift; sourceTree = "<group>"; };
 		824E56D2255CA86DAC350DBF /* SessionPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPublisher.swift; sourceTree = "<group>"; };
 		8296E14A0C15515E6C3C1DBB /* QuestionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionCard.swift; sourceTree = "<group>"; };
 		84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceSnapshot.swift; sourceTree = "<group>"; };
+		85588295C63115CAF2C6C8E2 /* GitRepoInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepoInfo.swift; sourceTree = "<group>"; };
 		871CA2BADC67D97C97C7009D /* error.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = error.wav; sourceTree = "<group>"; };
 		8790ACE9F73BD74640A0F20C /* LocalChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalChat.swift; sourceTree = "<group>"; };
 		8ACB4350729C6513824D1ADF /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
@@ -418,6 +424,7 @@
 				168A9A73B519018FAB0AA465 /* GitHubActivity.swift */,
 				8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */,
 				F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */,
+				85588295C63115CAF2C6C8E2 /* GitRepoInfo.swift */,
 				C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */,
 				79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */,
 				1218B86E249691AF44F819AC /* HotKeyCenter.swift */,
@@ -433,6 +440,7 @@
 				61B5FDDE03F5F711146937E2 /* ResendPoller.swift */,
 				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
 				57BDE57986F4B4D2FC3A0358 /* ServiceAPI.swift */,
+				7F5EB9E84BA39B03DFBC3EC1 /* SessionGitHubLinker.swift */,
 				7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */,
 				FA51E5B140C20812641168EA /* ShortcutLogic.swift */,
 				62CF42AE7611EF212CA0458F /* ShortcutsSettingsView.swift */,
@@ -790,6 +798,7 @@
 				E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */,
 				D9FF132804EB458F6FA69116 /* GitHubActivity.swift in Sources */,
 				862CE6CB220D55E46F646DA9 /* GitHubPulse.swift in Sources */,
+				9E8D6E6EC4B179A62E518F85 /* GitRepoInfo.swift in Sources */,
 				C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */,
 				8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */,
 				2C798C3837A63B9BB561A1A0 /* HookServer.swift in Sources */,
@@ -821,6 +830,7 @@
 				9F43BE6E77E371FCEB7FE8BA /* ServiceDetailRunner.swift in Sources */,
 				694AB4504CD65662E1681E5C /* ServicePublisher.swift in Sources */,
 				0393CA5466F52252378F0346 /* ServiceSnapshot.swift in Sources */,
+				8C9878C52623BABE6FEF64C0 /* SessionGitHubLinker.swift in Sources */,
 				9728564FCBF0334E68E9E6E7 /* SessionPublisher.swift in Sources */,
 				56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */,
 				C07E9A04E827284FDF33DB16 /* ShortcutLogic.swift in Sources */,
@@ -939,6 +949,7 @@
 				2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */,
 				63093DC288B68F7F17249517 /* GitHubActivity.swift in Sources */,
 				38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */,
+				16513E8398CC78F538EBBE8D /* GitRepoInfo.swift in Sources */,
 				C18227D148D99FE6EE3CC51A /* GithubPoller.swift in Sources */,
 				C0E18D0F6F5F6D131E6066B8 /* GreetingCanvasView.swift in Sources */,
 				9DD56C95ECABDDCE23652D50 /* HookServer.swift in Sources */,
@@ -970,6 +981,7 @@
 				4755AAC633DCE5DAA6D54A3C /* ServiceDetailRunner.swift in Sources */,
 				D092D0D597D1CBCE6B775B5E /* ServicePublisher.swift in Sources */,
 				1FE62D4EEA85FB25C17FDBA2 /* ServiceSnapshot.swift in Sources */,
+				8A6809F8D00B59A697AAC90E /* SessionGitHubLinker.swift in Sources */,
 				DE66BB6D18F467A7F4220CC3 /* SessionPublisher.swift in Sources */,
 				8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */,
 				6CCEC73ED68E9F253C22D692 /* ShortcutLogic.swift in Sources */,

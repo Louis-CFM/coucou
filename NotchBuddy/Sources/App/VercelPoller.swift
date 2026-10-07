@@ -62,7 +62,7 @@ final class VercelPoller: @unchecked Sendable {
         guard wanted else { return }
         #endif
 
-        // Fetch the last 20 deployments (enough to cover a few watched projects), keep terminal ones
+        // Fetch the last 20 deployments (enough to cover a few watched projects)
         guard let url = URL(string: VercelAPI.url("https://api.vercel.com/v6/deployments?limit=20")) else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -75,11 +75,10 @@ final class VercelPoller: @unchecked Sendable {
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let rawList = json["deployments"] as? [[String: Any]] else { return }
 
-            // Only terminal deployments (READY, ERROR, CANCELED)
-            let terminal = ["READY", "ERROR", "CANCELED"]
+            // Finished deployments (READY, ERROR, CANCELED) and builds in progress
             let parsed = rawList
                 .compactMap { self.parseDeployment($0) }
-                .filter { terminal.contains($0.state) }
+                .filter { $0.isTerminal || $0.isBuilding }
             guard !parsed.isEmpty else { return }
 
             DispatchQueue.main.async { self.handleDeployments(parsed) }
@@ -89,7 +88,7 @@ final class VercelPoller: @unchecked Sendable {
     private func parseDeployment(_ d: [String: Any]) -> VercelDeployment? {
         guard let uid   = d["uid"]   as? String,
               let name  = d["name"]  as? String,
-              let state = d["state"] as? String else { return nil }
+              let state = (d["state"] as? String) ?? (d["readyState"] as? String) else { return nil }
 
         let url = (d["url"] as? String) ?? ""
         let createdAtMs = (d["createdAt"] as? Double) ?? 0
@@ -105,7 +104,22 @@ final class VercelPoller: @unchecked Sendable {
 
         return VercelDeployment(id: uid, projectName: name, url: url, state: state,
                                  createdAt: createdAt, commitMessage: commitMessage, branch: branch,
-                                 target: d["target"] as? String)
+                                 target: d["target"] as? String,
+                                 repo: Self.repo(fromMeta: meta))
+    }
+
+    /// "org/repo" from a deployment's git metadata (GitHub, GitLab, Bitbucket).
+    static func repo(fromMeta meta: [String: Any]?) -> String? {
+        guard let meta else { return nil }
+        let pairs = [("githubCommitOrg", "githubCommitRepo"), ("githubOrg", "githubRepo"),
+                     ("gitlabProjectNamespace", "gitlabProjectName"),
+                     ("bitbucketRepoOwner", "bitbucketRepoName")]
+        for (o, r) in pairs {
+            if let org = meta[o] as? String, let name = meta[r] as? String, !org.isEmpty, !name.isEmpty {
+                return "\(org)/\(name)"
+            }
+        }
+        return nil
     }
 
     @MainActor
@@ -113,8 +127,9 @@ final class VercelPoller: @unchecked Sendable {
         let appState = AppState.shared
         appState.vercelDeployments = deployments
 
-        // Apply project filter (empty = all projects)
-        guard let latest = appState.vercelWatchedDeployments.first else { return }
+        // Alert once per finished deployment of a watched project (empty filter = all projects).
+        // A build in progress alerts when it finishes, as it becomes the latest finished one.
+        guard let latest = appState.vercelWatchedDeployments.first(where: \.isTerminal) else { return }
         guard latest.id != lastDeploymentId else { return }
         lastDeploymentId = latest.id
         if silentNextPoll { silentNextPoll = false; return }
