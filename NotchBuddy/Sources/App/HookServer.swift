@@ -701,6 +701,9 @@ final class HookServer: @unchecked Sendable {
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
         let inputKey = Self.approvalInputKey(toolInput)
+        let rawDescription = (toolInput["description"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = rawDescription?.isEmpty == false ? rawDescription : nil
         nbLog("PermissionRequest \(tool) [\(pillId)]")
 
         // AskUserQuestion is now handled via the dedicated --ask PreToolUse hook.
@@ -734,7 +737,8 @@ final class HookServer: @unchecked Sendable {
         upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd)
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
-                                              command: command, inputKey: inputKey, pillId: pillId)
+                                              command: command, description: description,
+                                              inputKey: inputKey, pillId: pillId)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 

@@ -136,7 +136,8 @@ struct IslandContainer: View {
             let anim = shrinking ? closeEase : openSpring
             let (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    approvalHeight: state.approvalIslandHeight)
             let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             let tr: CGFloat = 0
             withAnimation(anim) {
@@ -155,7 +156,8 @@ struct IslandContainer: View {
             }
             let (w, h) = islandSize(mode: .expanded, view: newView,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    approvalHeight: state.approvalIslandHeight)
             withAnimation(openSpring) {
                 islandWidth  = w
                 islandHeight = newView == .prompt ? chatPromptHeight : h
@@ -165,10 +167,22 @@ struct IslandContainer: View {
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
+        .onChange(of: state.approvalDetailsExpanded) { _, expanded in
+            guard state.mode == .expanded, state.view == .approval else { return }
+            withAnimation(openSpring) {
+                islandHeight = state.approvalIslandHeight
+            }
+        }
+        .onChange(of: state.approvalDescriptionHeight) { _, _ in
+            guard state.mode == .expanded, state.view == .approval,
+                  state.approvalDetailsExpanded else { return }
+            withAnimation(openSpring) { islandHeight = state.approvalIslandHeight }
+        }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    approvalHeight: state.approvalIslandHeight)
             islandWidth      = w
             islandHeight     = state.view == .prompt ? chatPromptHeight : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
@@ -452,6 +466,7 @@ struct IslandContentView: View {
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
                     let isTall = v == .prompt || (v == .mail && active)
+                        || (v == .approval && active && state.approvalDetailsExpanded)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
