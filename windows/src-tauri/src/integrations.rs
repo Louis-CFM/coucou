@@ -2219,7 +2219,7 @@ fn youtrack_fresh(
 const YOUTRACK_CHANGE_CATEGORIES: &str =
     "CustomFieldCategory,CommentsCategory,SummaryCategory,DescriptionCategory,AttachmentsCategory,LinksCategory";
 const YOUTRACK_CHANGE_FIELDS: &str = "timestamp,target(idReadable,issue(idReadable)),author(login,fullName),\
-    category(id),field(name),added(name,fullName,login,text,presentation,idReadable),\
+    category(id),field(name,customField(fieldType(id))),added(name,fullName,login,text,presentation,idReadable),\
     removed(name,fullName,login,text,presentation,idReadable)";
 /// Lines kept per issue: the card has room for a few, and a burst of edits is
 /// not worth more.
@@ -2243,8 +2243,10 @@ fn youtrack_changes(activities: &[Value], me: &str) -> std::collections::HashMap
             continue;
         }
         let field = a.get("field").map(|f| s(f, "name")).unwrap_or_default();
-        let added = youtrack_value(&a["added"]);
-        let removed = youtrack_value(&a["removed"]);
+        let kind = a["field"]["customField"]["fieldType"].get("id").and_then(Value::as_str).unwrap_or("");
+        let period = youtrack_is_period(kind, &field);
+        let added = youtrack_value(&a["added"], period);
+        let removed = youtrack_value(&a["removed"], period);
         let category = a.get("category").map(|c| s(c, "id")).unwrap_or_default();
         let text = match category.as_str() {
             "CustomFieldCategory" => match (removed.is_empty(), added.is_empty()) {
@@ -2274,14 +2276,28 @@ fn youtrack_changes(activities: &[Value], me: &str) -> std::collections::HashMap
     out
 }
 
+/// Whether a field holds a duration — spent time, an estimation — which the
+/// stream gives as a number of minutes. Its type says so (`period`); where the
+/// type isn't given, the usual names do.
+fn youtrack_is_period(kind: &str, field: &str) -> bool {
+    if !kind.is_empty() {
+        return kind == "period";
+    }
+    let name = field.to_lowercase();
+    ["spent time", "estimation", "remaining time", "temps passé", "temps restant", "temps estimé"]
+        .iter()
+        .any(|n| name == *n)
+}
+
 /// A value from the activity stream as one short line: named things (a state,
-/// users, versions) joined, a comment's text, a date, a plain value.
-fn youtrack_value(v: &Value) -> String {
+/// users, versions) joined, a comment's text, a date, a duration, a plain value.
+fn youtrack_value(v: &Value, period: bool) -> String {
     let one = |x: &Value| -> String {
         match x {
             Value::String(t) => t.clone(),
-            // Dates come as milliseconds since the epoch.
             Value::Number(n) => match n.as_i64() {
+                Some(minutes) if period => youtrack_duration(minutes),
+                // Dates come as milliseconds since the epoch.
                 Some(ms) if ms > 100_000_000_000 => youtrack_date(ms),
                 _ => n.to_string(),
             },
@@ -2300,6 +2316,17 @@ fn youtrack_value(v: &Value) -> String {
     };
     let line = text.split_whitespace().collect::<Vec<_>>().join(" ");
     if line.chars().count() > 80 { format!("{}…", line.chars().take(79).collect::<String>()) } else { line }
+}
+
+/// Minutes as hours and minutes: "45m", "2h", "1h 30m". Not in days: how many
+/// hours a day makes is the instance's own setting, which a token can't read.
+fn youtrack_duration(minutes: i64) -> String {
+    let (h, m) = (minutes / 60, minutes % 60);
+    match (h, m) {
+        (0, m) => format!("{m}m"),
+        (h, 0) => format!("{h}h"),
+        (h, m) => format!("{h}h {m}m"),
+    }
 }
 
 /// `ms` since the epoch as YYYY-MM-DD (UTC): YouTrack's date fields are days.
@@ -3168,9 +3195,27 @@ mod youtrack_tests {
     #[test]
     fn a_long_value_is_cut_to_one_line() {
         let long = "word ".repeat(40);
-        let line = youtrack_value(&json!(long));
+        let line = youtrack_value(&json!(long), false);
         assert_eq!(line.chars().count(), 80);
         assert!(line.ends_with('…'));
         assert_eq!(youtrack_date(0), "1970-01-01");
+    }
+
+    #[test]
+    fn spent_time_reads_as_hours_and_minutes() {
+        let typed = |id: &str| json!({ "name": "Spent time", "customField": { "fieldType": { "id": id } } });
+        let mut change = activity("CustomFieldCategory", json!({ "idReadable": "P-1" }), "ada", "",
+            json!(90), json!(45));
+        change["field"] = typed("period");
+        let mut estimate = activity("CustomFieldCategory", json!({ "idReadable": "P-1" }), "ada", "Estimation",
+            json!(480), Value::Null);
+        estimate["field"] = json!({ "name": "Estimation" }); // no type given: the name says it
+        let mut points = activity("CustomFieldCategory", json!({ "idReadable": "P-1" }), "ada", "",
+            json!(5), json!(3));
+        points["field"] = json!({ "name": "Story points", "customField": { "fieldType": { "id": "integer" } } });
+        let changes = youtrack_changes(&[change, estimate, points], "me");
+        let texts: Vec<&str> = changes["P-1"].iter().map(|l| l["text"].as_str().unwrap()).collect();
+        assert_eq!(texts, vec!["Spent time: 45m → 1h 30m", "Estimation: 8h", "Story points: 3 → 5"]);
+        assert_eq!(youtrack_duration(120), "2h");
     }
 }
