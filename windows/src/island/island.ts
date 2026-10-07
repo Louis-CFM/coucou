@@ -337,6 +337,15 @@ export class Island {
     if (State.mode === "expanded" && !State.isPinned) this.collapse();
   }
 
+  /** An app going fullscreen (or stopping) elsewhere on the desktop. The FSM
+   * handles whether to show/keep the pill at all; a resize is still needed
+   * on its own when the island was already compact, since no state
+   * transition (and so no geometry update) happens in that case. */
+  setFullscreenActive(active: boolean) {
+    this.fsm.setFullscreenActive(active);
+    if (State.mode === "compact") this.animateGeometry(false);
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
@@ -464,7 +473,12 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const { w, h } = islandSize(
+      State.mode,
+      State.view,
+      State.chatHistory.length,
+      this.fsm.fullscreenActive,
+    );
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -871,8 +885,9 @@ export class Island {
       }
     }
 
-    // Compact mini grid
-    const showGrid = State.mode === "compact";
+    // Compact mini grid — not while narrowed down to just an icon over a
+    // fullscreen app, where there's no room for it.
+    const showGrid = State.mode === "compact" && !this.fsm.fullscreenActive;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);

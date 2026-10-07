@@ -144,7 +144,8 @@ export type BridgeEvent =
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null }
-  | { name: "blur"; payload: null };
+  | { name: "blur"; payload: null }
+  | { name: "fullscreen-changed"; payload: boolean };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
