@@ -98,9 +98,15 @@ struct SettingsView: View {
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
     @State private var hotkeyCode: UInt16   = AppState.shared.hotkeyCode
 
-    // Vercel project filter
+    // Vercel project filter + team scope
     @State private var vercelProjects: [String] = []
     @State private var loadingVercel: Bool = false
+    @State private var vercelTeams: [(id: String, name: String)] = []
+    @State private var loadingVercelTeams: Bool = false
+
+    // GitHub watched repos
+    @State private var githubRepos: [String] = []
+    @State private var loadingGithubRepos: Bool = false
 
     // n8n workflow filter
     @State private var n8nWorkflows: [String] = []
@@ -121,6 +127,7 @@ struct SettingsView: View {
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
+    @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -502,6 +509,11 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                 }
                 #endif
+                Toggle("Answer questions and permissions from terminal sessions in the notch", isOn: $terminalCardsEnabled)
+                Text("Off: sessions in Warp, Terminal, iTerm… show in the notch, but their questions and permission requests are asked in the terminal. On: the notch shows them first, and the terminal waits until you answer there or close the island (up to 2 min).")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 #if !APPSTORE
                 if showDiff {
@@ -1021,6 +1033,28 @@ struct SettingsView: View {
                     }
                     SecureField("Token", text: $vercelToken)
                         .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 6) {
+                        Text("Scope")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Picker("", selection: vercelTeamBinding) {
+                            Text("Personal account").tag(String?.none)
+                            ForEach(vercelTeamChoices, id: \.id) { team in
+                                Text(team.name).tag(Optional(team.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .fixedSize()
+                        Spacer()
+                        if loadingVercelTeams {
+                            ProgressView().scaleEffect(0.6)
+                        } else {
+                            Button(vercelTeams.isEmpty ? "Load teams" : "Refresh") { loadVercelTeams() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+                        }
+                    }
                     IntegrationFilterRow(
                         label: String(localized: "integrations.projects"),
                         items: vercelProjects,
@@ -1041,6 +1075,16 @@ struct SettingsView: View {
                     Text(String(localized: "integrations.github.token-hint"))
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#8E939C"))
+                    IntegrationFilterRow(
+                        label: "Repositories",
+                        items: githubRepoChoices,
+                        filter: $state.githubWatchedRepos,
+                        loading: loadingGithubRepos,
+                        onLoad: loadGithubRepos,
+                        emptyMeansAll: false,
+                        maxSelected: 20,
+                        emptyCaption: "None selected: your 10 most recently pushed repos are watched."
+                    )
                 }
 
                 // Stripe
@@ -1493,6 +1537,97 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Vercel team scope
+
+    /// Loaded teams, plus the saved team when the list hasn't been loaded yet.
+    private var vercelTeamChoices: [(id: String, name: String)] {
+        if let id = state.vercelTeamId, !vercelTeams.contains(where: { $0.id == id }) {
+            return [(id, state.vercelTeamName ?? id)] + vercelTeams
+        }
+        return vercelTeams
+    }
+
+    private var vercelTeamBinding: Binding<String?> {
+        Binding(
+            get: { state.vercelTeamId },
+            set: { id in
+                guard id != state.vercelTeamId else { return }
+                state.vercelTeamId = id
+                state.vercelTeamName = vercelTeamChoices.first { $0.id == id }?.name
+                // Projects belong to a scope: start over in the new one
+                state.vercelProjectFilter = []
+                state.vercelFocusProject = nil
+                vercelProjects = []
+                VercelPoller.shared.scopeChanged()
+            }
+        )
+    }
+
+    private func loadVercelTeams() {
+        guard let token = KeychainStore.shared.get("vercel-token") else {
+            statusMessage = "❌ Save Vercel token first."
+            return
+        }
+        loadingVercelTeams = true
+        guard let url = URL(string: "https://api.vercel.com/v2/teams?limit=100") else { return }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            var teams: [(id: String, name: String)] = []
+            if let data,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let list = json["teams"] as? [[String: Any]] {
+                teams = list.compactMap { t in
+                    guard let id = t["id"] as? String else { return nil }
+                    return (id, (t["name"] as? String) ?? (t["slug"] as? String) ?? id)
+                }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
+            DispatchQueue.main.async {
+                self.vercelTeams = teams
+                self.loadingVercelTeams = false
+                if teams.isEmpty { self.statusMessage = "No Vercel teams found: using your personal account." }
+            }
+        }.resume()
+    }
+
+    // MARK: - GitHub repo list
+
+    /// Loaded repos, plus watched ones missing from the list so they can still be unchecked.
+    private var githubRepoChoices: [String] {
+        guard !githubRepos.isEmpty else { return [] }
+        return Array(Set(githubRepos).union(state.githubWatchedRepos)).sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    private func loadGithubRepos() {
+        guard let token = KeychainStore.shared.get("github-token") else {
+            statusMessage = "❌ Save GitHub token first."
+            return
+        }
+        loadingGithubRepos = true
+        Task {
+            // Up to 5 pages of 100, most recently pushed first
+            var names: [String] = []
+            for page in 1...5 {
+                guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&page=\(page)&sort=pushed&affiliation=owner,collaborator,organization_member") else { break }
+                var req = URLRequest(url: url, timeoutInterval: 15)
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                guard let (data, _) = try? await URLSession.shared.data(for: req),
+                      let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { break }
+                names += repos
+                    .filter { ($0["archived"] as? Bool) != true }
+                    .compactMap { $0["full_name"] as? String }
+                if repos.count < 100 { break }
+            }
+            githubRepos = names
+            loadingGithubRepos = false
+            if names.isEmpty { statusMessage = "❌ No GitHub repositories found." }
+        }
+    }
+
     // MARK: - Vercel project list
 
     private func loadVercelProjects() {
@@ -1501,7 +1636,7 @@ struct SettingsView: View {
             return
         }
         loadingVercel = true
-        guard let url = URL(string: "https://api.vercel.com/v9/projects?limit=100") else { return }
+        guard let url = URL(string: VercelAPI.url("https://api.vercel.com/v9/projects?limit=100")) else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         URLSession.shared.dataTask(with: req) { data, response, _ in
@@ -1661,6 +1796,33 @@ struct IntegrationFilterRow: View {
     @Binding var filter: Set<String>
     let loading: Bool
     let onLoad: () -> Void
+    /// true: an empty filter means every item is watched (Vercel, n8n).
+    /// false: an empty filter means none is picked and the caller falls back to a default (GitHub).
+    var emptyMeansAll: Bool = true
+    var maxSelected: Int? = nil
+    var emptyCaption: String? = nil
+
+    private func isOn(_ item: String) -> Bool {
+        emptyMeansAll ? (filter.isEmpty || filter.contains(item)) : filter.contains(item)
+    }
+
+    private func set(_ item: String, on: Bool) {
+        guard emptyMeansAll else {
+            if on {
+                if let max = maxSelected, filter.count >= max { return }
+                filter.insert(item)
+            } else {
+                filter.remove(item)
+            }
+            return
+        }
+        if on { filter.insert(item) }
+        else  {
+            if filter.isEmpty { filter = Set(items).subtracting([item]) }
+            else { filter.remove(item) }
+            if filter.count == items.count { filter = [] }
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -1687,15 +1849,8 @@ struct IntegrationFilterRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(items, id: \.self) { item in
                         Toggle(item, isOn: Binding(
-                            get: { filter.isEmpty || filter.contains(item) },
-                            set: { on in
-                                if on { filter.insert(item) }
-                                else  {
-                                    if filter.isEmpty { filter = Set(items).subtracting([item]) }
-                                    else { filter.remove(item) }
-                                    if filter.count == items.count { filter = [] }
-                                }
-                            }
+                            get: { isOn(item) },
+                            set: { on in set(item, on: on) }
                         ))
                         .font(.system(size: 11))
                         .toggleStyle(.checkbox)
@@ -1703,10 +1858,21 @@ struct IntegrationFilterRow: View {
                 }
                 .padding(.leading, 4)
                 if !filter.isEmpty {
-                    Text(String(format: String(localized: "Watching %lld of %lld"), Int64(filter.count), Int64(items.count)))
+                    let limit = maxSelected.map { filter.count >= $0 ? " (limit \($0))" : "" } ?? ""
+                    Text(String(format: String(localized: "Watching %lld of %lld"), Int64(filter.count), Int64(items.count)) + limit)
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
+            }
+            if filter.isEmpty, let caption = emptyCaption {
+                Text(caption)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else if !filter.isEmpty, items.isEmpty, !emptyMeansAll {
+                Text(filter.sorted().joined(separator: ", "))
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
             }
         }
     }

@@ -277,6 +277,44 @@ final class AppState: ObservableObject {
         }
     }
 
+    // Vercel scope — nil = personal account, else the team ID sent as ?teamId=
+    @Published var vercelTeamId: String? = nil {
+        didSet { UserDefaults.standard.set(vercelTeamId, forKey: "vercelTeamId") }
+    }
+    @Published var vercelTeamName: String? = nil {
+        didSet { UserDefaults.standard.set(vercelTeamName, forKey: "vercelTeamName") }
+    }
+
+    // Vercel project in focus in the notch — nil = all watched projects
+    @Published var vercelFocusProject: String? = nil {
+        didSet { UserDefaults.standard.set(vercelFocusProject, forKey: "vercelFocusProject") }
+    }
+
+    // GitHub repos to watch (nameWithOwner) — empty = the 10 most recently pushed owned repos
+    @Published var githubWatchedRepos: Set<String> = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(Array(githubWatchedRepos)) {
+                UserDefaults.standard.set(data, forKey: "githubWatchedRepos")
+            }
+            if githubWatchedRepos != oldValue { GithubPoller.shared.triggerPulseNow() }
+        }
+    }
+
+    // Right card panel that temporarily replaces the agent pills (nil = pills). Not persisted:
+    // closed when the focus changes, the island collapses or another view takes over.
+    @Published var sidePanel: SidePanel? = nil
+
+    // Claude Code sessions → their git checkout (by task id) and that branch's PR/CI (by "repo@branch")
+    @Published var sessionGit: [String: GitRepoInfo] = [:]
+    @Published var sessionBranches: [String: SessionBranchInfo] = [:]
+    // The Claude Code session last seen on each pill (from the hooks), to continue it from the notch or the iPhone
+    @Published var claudeSessions: [String: ClaudeSessionRef] = [:]
+
+    // GitHub repo in focus in the notch — nil = all watched repos
+    @Published var githubFocusRepo: String? = nil {
+        didSet { UserDefaults.standard.set(githubFocusRepo, forKey: "githubFocusRepo") }
+    }
+
     // n8n workflow filter — empty = watch all workflows
     @Published var n8nWorkflowFilter: Set<String> = [] {
         didSet {
@@ -443,6 +481,12 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
         if let d = ud.data(forKey: "vercelProjectFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
+        vercelTeamId       = ud.string(forKey: "vercelTeamId")
+        vercelTeamName     = ud.string(forKey: "vercelTeamName")
+        vercelFocusProject = ud.string(forKey: "vercelFocusProject")
+        if let d = ud.data(forKey: "githubWatchedRepos"),
+           let a = try? JSONDecoder().decode([String].self, from: d) { githubWatchedRepos = Set(a) }
+        githubFocusRepo    = ud.string(forKey: "githubFocusRepo")
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
@@ -469,6 +513,78 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    // MARK: - Side panel
+
+    /// Opens a panel in the right card, or closes it when it is already open.
+    func toggleSidePanel(_ panel: SidePanel) {
+        sidePanel = sidePanel == panel ? nil : panel
+        SoundEngine.shared.play("blip")
+    }
+
+    // MARK: - Session → GitHub / Vercel
+
+    func sessionBranchInfo(for taskId: String) -> SessionBranchInfo? {
+        guard let git = sessionGit[taskId] else { return nil }
+        return sessionBranches["\(git.repo)@\(git.branch)"]
+    }
+
+    /// The newest Vercel deployment built from this branch of this repo (repo unknown = branch only).
+    func vercelPreview(repo: String, branch: String?) -> VercelDeployment? {
+        guard let branch, !branch.isEmpty else { return nil }
+        return vercelDeployments.first {
+            $0.branch == branch && ($0.repo == nil || $0.repo?.caseInsensitiveCompare(repo) == .orderedSame)
+        }
+    }
+
+    // MARK: - Watch lists and notch focus (Vercel / GitHub)
+
+    /// Deployments of the watched projects (all projects when the filter is empty).
+    var vercelWatchedDeployments: [VercelDeployment] {
+        vercelProjectFilter.isEmpty ? vercelDeployments
+            : vercelDeployments.filter { vercelProjectFilter.contains($0.projectName) }
+    }
+
+    /// Projects offered by the notch picker: the watch list, or the projects seen in recent deployments.
+    var vercelFocusOptions: [String] {
+        if !vercelProjectFilter.isEmpty { return vercelProjectFilter.sorted() }
+        var seen = Set<String>()
+        return vercelDeployments.map(\.projectName).filter { seen.insert($0).inserted }.sorted()
+    }
+
+    /// The focused project, ignored when it is no longer on the watch list.
+    var effectiveVercelFocus: String? {
+        guard let p = vercelFocusProject, vercelFocusOptions.contains(p) else { return nil }
+        return p
+    }
+
+    /// Deployments shown in the notch: watched, narrowed to the focused project.
+    var vercelVisibleDeployments: [VercelDeployment] {
+        guard let p = effectiveVercelFocus else { return vercelWatchedDeployments }
+        return vercelWatchedDeployments.filter { $0.projectName == p }
+    }
+
+    /// Repos offered by the notch picker: the watch list, or the repos in the latest pulse.
+    var githubFocusOptions: [String] {
+        if !githubWatchedRepos.isEmpty { return githubWatchedRepos.sorted() }
+        guard let p = githubPulse else { return [] }
+        var seen = Set<String>()
+        return (p.mainCI.map(\.repo) + p.myPRs.map(\.repo) + p.toReview.map(\.repo))
+            .filter { seen.insert($0).inserted }.sorted()
+    }
+
+    /// The focused repo, ignored when it is no longer offered.
+    var effectiveGithubFocus: String? {
+        guard let r = githubFocusRepo, githubFocusOptions.contains(r) else { return nil }
+        return r
+    }
+
+    /// Pulse shown in the notch, narrowed to the focused repo.
+    var githubVisiblePulse: GitHubPulse? {
+        guard let p = githubPulse else { return nil }
+        guard let r = effectiveGithubFocus else { return p }
+        return p.filtered(toRepos: [r])
     }
 
     var effectiveState: BotState {
@@ -661,6 +777,17 @@ struct ResultItem {
     var url: String?
 }
 
+// MARK: - Side panel (right card)
+
+enum SidePanel: Equatable {
+    case githubRepos                       // pick the repo in focus
+    case vercelProjects                    // pick the project in focus
+    case github(GitHubDetailSection)       // PRs, reviews or default-branch CI
+    case vercelDeployment(String)          // one deployment, by id
+    case sessionBranch(String)             // a Claude Code session's PR, CI and preview, by task id
+    case reply(String)                     // continue a Claude Code session from the notch, by task id
+}
+
 // MARK: - Vercel
 
 struct VercelDeployment: Identifiable {
@@ -671,9 +798,29 @@ struct VercelDeployment: Identifiable {
     let createdAt: Date
     let commitMessage: String?
     let branch: String?
+    var target: String? = nil   // "production", "staging"… nil = preview
+    var repo: String? = nil     // "org/repo" of the git source, when Vercel reports it
 
     var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
+    var isBuilding: Bool { ["BUILDING", "QUEUED", "INITIALIZING"].contains(state) }
+    var isTerminal: Bool { ["READY", "ERROR", "CANCELED"].contains(state) }
+    var statusLabel: String {
+        switch state {
+        case "READY":        return "Ready"
+        case "CANCELED":     return "Canceled"
+        case "BUILDING":     return "Building"
+        case "QUEUED":       return "Queued"
+        case "INITIALIZING": return "Starting"
+        default:             return "Error"
+        }
+    }
+    /// Dot color: green ready, amber building, grey canceled, red error.
+    var stateColor: String {
+        if isSuccess { return "#22C55E" }
+        if isBuilding { return "#F5A524" }
+        if state == "CANCELED" { return "#6B7079" }
+        return "#F4505E"
+    }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
         if diff < 60    { return "just now" }
