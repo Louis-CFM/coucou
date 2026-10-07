@@ -4,6 +4,7 @@ import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
+import { applyTheme } from "./core/theme";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
@@ -20,6 +21,7 @@ async function main() {
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
   }
+  applyTheme(State.settings.theme);
   island.applySettings();
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();
@@ -56,6 +58,7 @@ async function main() {
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };
+    applyTheme(State.settings.theme);
     island.applySettings();
     State.loadIntegrationTasks();
     void refreshConfigured();

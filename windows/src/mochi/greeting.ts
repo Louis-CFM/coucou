@@ -2,6 +2,7 @@
 // Everything is laid out in the same 640×150 reference space as on macOS.
 
 import { Sound } from "../core/sound";
+import { getPalette, getTheme } from "../core/theme";
 import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
 
 // ── Timing (mirrors greeting-v2.html `T`) ─────────────────────────────────────
@@ -275,6 +276,11 @@ function whiteFill(
   x.save();
   x.fillStyle = g;
   x.fill(path);
+  if (getTheme() === "light") {
+    x.strokeStyle = getPalette().mochiOutline;
+    x.lineWidth = 1;
+    x.stroke(path);
+  }
   x.restore();
 }
 
@@ -433,6 +439,7 @@ function drawMochi(x: CanvasRenderingContext2D, p: Pose) {
 
 function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
   if (!(p.card > 0 || p.fx < 1)) return;
+  const sparkRgb = getPalette().sparkRgb;
   for (const ring of PARTICLES.rings) {
     const k = seg(t, ring.t0, ring.t0 + 1.35);
     if (k <= 0 || k >= 1) continue;
@@ -441,7 +448,7 @@ function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
     const fade = (1 - k) * (k < 0.08 ? k / 0.08 : 1) * p.fx * p.card;
     for (const dot of ring.dots) {
       const r = 1 + dot.j;
-      x.fillStyle = `rgba(255,255,255,${dot.al * fade})`;
+      x.fillStyle = `rgba(${sparkRgb},${dot.al * fade})`;
       x.fillRect(C0.x + Math.cos(dot.a) * rx * r, C0.y + Math.sin(dot.a) * ry * r, dot.s, dot.s);
     }
   }
@@ -547,7 +554,7 @@ export class Greeting {
       x.save();
       x.globalAlpha = p.card;
       rr(x, CARD.x, CARD.y, CARD.w, CARD.h, CARD_R);
-      x.fillStyle = "#141518";
+      x.fillStyle = getPalette().card;
       x.fill();
       x.restore();
 

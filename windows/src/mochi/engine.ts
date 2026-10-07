@@ -6,6 +6,7 @@
 
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
+import { getPalette, getTheme } from "../core/theme";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -744,6 +745,13 @@ export class BotEngine {
     hl.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = hl;
     x.fill(body);
+
+    const outline = getPalette().mochiOutline;
+    if (getTheme() === "light") {
+      x.strokeStyle = outline;
+      x.lineWidth = 1;
+      x.stroke(body);
+    }
   }
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
