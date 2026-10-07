@@ -4865,6 +4865,34 @@
         }
       }
     },
+    "Open Antigravity": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "فتح Antigravity" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "Antigravity খুলুন" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Open Antigravity" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Abrir Antigravity" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Ouvrir Antigravity" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "Antigravity खोलें" } },
+        "id": { "stringUnit": { "state": "translated", "value": "Buka Antigravity" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Abrir Antigravity" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Открыть Antigravity" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "打开 Antigravity" } }
+      }
+    },
+    "Open Claude": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "فتح Claude" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "Claude খুলুন" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Open Claude" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Abrir Claude" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Ouvrir Claude" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "Claude खोलें" } },
+        "id": { "stringUnit": { "state": "translated", "value": "Buka Claude" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Abrir Claude" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Открыть Claude" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "打开 Claude" } }
+      }
+    },
     "Open Codex": {
       "localizations": {
         "ar": {

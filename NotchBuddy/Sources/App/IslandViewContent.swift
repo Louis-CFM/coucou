@@ -602,6 +602,69 @@ private func openClaudeDesktopApp() {
 struct FinishedView: View {
     @ObservedObject var state: AppState
 
+    private var taskId: String? { state.focusTask?.id }
+
+    private var primaryActionTitle: String? {
+        switch taskId {
+        case "agent_codex":          return "Open Codex"
+        case "agent_claude-desktop": return "Open Claude"
+        case "agent_cursor":         return "Open Cursor"
+        case "agent_antigravity":    return "Open Antigravity"
+        case "integration_claude", "agent_gemini", "agent_copilot", "agent_muse",
+             "agent_opencode", "agent_amp", "agent_hermes":
+            #if !APPSTORE
+            return "Open terminal"
+            #else
+            return nil
+            #endif
+        default: return nil
+        }
+    }
+
+    private func openApplication(bundleIdentifier: String, fallbackPath: String) {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+        } else {
+            NSWorkspace.shared.open(URL(fileURLWithPath: fallbackPath))
+        }
+    }
+
+    private func openPrimaryDestination() {
+        switch taskId {
+        case "agent_codex":
+            openApplication(bundleIdentifier: "com.openai.codex", fallbackPath: "/Applications/Codex.app")
+        case "agent_claude-desktop":
+            openClaudeDesktopApp()
+        case "agent_cursor":
+            openApplication(bundleIdentifier: "com.todesktop.230313mzl4w4u92",
+                            fallbackPath: "/Applications/Cursor.app")
+        case "agent_antigravity":
+            if let running = NSWorkspace.shared.runningApplications.first(where: {
+                $0.localizedName?.localizedCaseInsensitiveContains("Antigravity") == true
+                    || $0.bundleIdentifier?.localizedCaseInsensitiveContains("antigravity") == true
+            }) {
+                running.activate(options: .activateIgnoringOtherApps)
+            } else {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Antigravity.app"))
+            }
+        case "integration_claude", "agent_gemini", "agent_copilot", "agent_muse",
+             "agent_opencode", "agent_amp", "agent_hermes":
+            #if !APPSTORE
+            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+            let activated = terminalBundleIds.compactMap { id in
+                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
+            if activated == nil {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+            }
+            #endif
+        default:
+            break
+        }
+        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
@@ -616,25 +679,10 @@ struct FinishedView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    if state.focusTask?.id == "agent_claude-desktop" {
-                        // Sessions from the Claude desktop app live there, not in a terminal.
-                        PrimaryButton("Open Claude") {
-                            openClaudeDesktopApp()
-                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    if let title = primaryActionTitle {
+                        PrimaryButton(verbatim: String(localized: String.LocalizationValue(title))) {
+                            openPrimaryDestination()
                         }
-                    } else {
-                        #if !APPSTORE
-                        PrimaryButton("Open terminal") {
-                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                            let activated = terminalBundleIds.compactMap { id in
-                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                            if activated == nil {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
-                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
-                        }
-                        #endif
                     }
                     SecondaryButton("OK") {
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
