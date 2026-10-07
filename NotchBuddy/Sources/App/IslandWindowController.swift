@@ -52,32 +52,47 @@ final class IslandWindowController: NSWindowController {
     private var localKeyMonitor: Any?
 
     convenience init() {
-        let screen = Self.notchScreen() ?? NSScreen.main!
-        let geometry = Self.screenGeometry(for: screen)
-        let nW = geometry.width
-        let nH = geometry.height
-
-        let panelW: CGFloat = 720
-        let panelH: CGFloat = 320
-        let sf = screen.frame
         let panel = IslandPanel(
-            contentRect: NSRect(x: sf.midX - panelW/2, y: sf.maxY - panelH,
-                                width: panelW, height: panelH),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 320),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false
         )
-        panel.notchWidth  = nW
-        panel.notchHeight = nH
-
         self.init(window: panel)
         self.islandPanel = panel
-        self.notchW = nW
-        self.notchH = nH
-        self.hasNotch = geometry.hasNotch
-        setupPanel(screen: screen)
+        placeOnScreen()
+        setupPanel()
+
+        // Plugging or unplugging a display rearranges screen coordinates.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.placeOnScreen() }
+        }
     }
 
-    private func setupPanel(screen: NSScreen) {
+    /// Pins the panel to the top centre of the notch screen (or the main one when the
+    /// lid is closed) and refreshes the notch size, at launch and on every display change.
+    private func placeOnScreen() {
+        guard let screen = Self.notchScreen() ?? NSScreen.main else { return }
+        let geometry = Self.screenGeometry(for: screen)
+        notchW = geometry.width
+        notchH = geometry.height
+        hasNotch = geometry.hasNotch
+        islandPanel.notchWidth  = notchW
+        islandPanel.notchHeight = notchH
+
+        // Propagate real notch dimensions to AppState
+        AppState.shared.notchWidth  = notchW
+        AppState.shared.notchHeight = notchH
+        AppState.shared.hasNotch = hasNotch
+
+        let sf = screen.frame
+        AppState.shared.islandScreenWidth = sf.width
+        let size = islandPanel.frame.size
+        islandPanel.setFrameOrigin(NSPoint(x: sf.midX - size.width/2, y: sf.maxY - size.height))
+    }
+
+    private func setupPanel() {
         guard let panel = window as? IslandPanel else { return }
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -85,11 +100,6 @@ final class IslandWindowController: NSWindowController {
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 3)
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         panel.ignoresMouseEvents = true
-
-        // Propagate real notch dimensions to AppState
-        AppState.shared.notchWidth  = notchW
-        AppState.shared.notchHeight = notchH
-        AppState.shared.hasNotch = hasNotch
 
         let contentSize = panel.contentRect(forFrameRect: panel.frame).size
 

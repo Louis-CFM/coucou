@@ -143,6 +143,14 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
       configs:
+        # Signed with a stable identity so the Keychain keeps its "Always Allow"
+        # across rebuilds (an ad-hoc signature changes on every build).
+        Debug:
+          CODE_SIGNING_REQUIRED: YES
+          CODE_SIGNING_ALLOWED: YES
+          CODE_SIGN_IDENTITY: "Apple Development"
+          DEVELOPMENT_TEAM: 66B5SRH766
+          CODE_SIGN_ENTITLEMENTS: Resources/Coucou.entitlements
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
