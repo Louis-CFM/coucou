@@ -27,7 +27,7 @@ struct SidePanelView: View {
                     title: "Repositories", accent: "#F4505E", allLabel: "All repos",
                     options: state.githubFocusOptions,
                     selection: state.effectiveGithubFocus,
-                    shortLabel: { $0.split(separator: "/").last.map(String.init) ?? $0 },
+                    shortLabel: state.githubRepoLabel,
                     attention: othersNeedAttention, onClose: close,
                     onPick: { repo in
                         state.githubFocusRepo = repo
@@ -694,17 +694,18 @@ struct SessionBranchChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 3) {
-                Circle()
-                    .fill(ghCIDot(ci))
-                    .frame(width: 5, height: 5)
-                    .opacity(ci == .unknown ? 0.35 : 1)
+                if ci != .unknown {
+                    Circle()
+                        .fill(ghCIDot(ci))
+                        .frame(width: 5, height: 5)
+                }
                 if let pr = info?.pr {
                     Text("#\(pr.number)")
                 } else {
                     Image(systemName: "arrow.branch").font(.system(size: 7, weight: .semibold))
                     Text(git.branch)
                         .truncationMode(.middle)
-                        .frame(maxWidth: 60, alignment: .leading)
+                        .frame(minWidth: 30, maxWidth: 60, alignment: .leading)
                 }
             }
             .font(.system(size: 10, weight: .semibold))
@@ -716,7 +717,7 @@ struct SessionBranchChip: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)   // the branch gives way to the session name
         .onHover { isHovered = $0 }
         .help(info?.pr.map { "\($0.title) · \(git.repo)" } ?? "\(git.repo) · \(git.branch)")
     }

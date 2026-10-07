@@ -566,6 +566,13 @@ final class AppState: ObservableObject {
     }
 
     /// Repos offered by the notch picker: the watch list, or the repos in the latest pulse.
+    /// "coucou" for "owner/coucou", or the full "owner/coucou" when another option has the same name.
+    func githubRepoLabel(_ repo: String) -> String {
+        let name = repo.split(separator: "/").last.map(String.init) ?? repo
+        let clash = githubFocusOptions.contains { $0 != repo && $0.split(separator: "/").last.map(String.init) == name }
+        return clash ? repo : name
+    }
+
     var githubFocusOptions: [String] {
         if !githubWatchedRepos.isEmpty { return githubWatchedRepos.sorted() }
         guard let p = githubPulse else { return [] }
