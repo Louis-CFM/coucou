@@ -30,8 +30,15 @@ final class SessionResumer {
     }
 
     private var running: [String: Process] = [:]   // by session id
+    private var endedAt: [String: Date] = [:]       // when each run's process exited
 
     func isRunning(_ sessionId: String) -> Bool { running[sessionId] != nil }
+
+    /// The event comes from a run started here: running, or ended in the last few
+    /// seconds (its last hooks can arrive after the process exits).
+    func isOwnRun(_ sessionId: String) -> Bool {
+        running[sessionId] != nil || endedAt[sessionId].map { Date().timeIntervalSince($0) < 5 } == true
+    }
 
     /// Starts the run. `onExit` gets the exit status and the end of the output.
     func resume(_ session: ClaudeSessionRef, pillId: String, text: String,
@@ -82,6 +89,7 @@ final class SessionResumer {
             let status = finished.terminationStatus
             Task { @MainActor in
                 self?.running[sessionId] = nil
+                self?.endedAt[sessionId] = Date()
                 log(status == 0 ? "finished (\(sessionId.prefix(8)))" : "ended with \(status): \(tail)")
                 onExit?(status, tail)
             }

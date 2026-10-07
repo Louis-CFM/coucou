@@ -562,6 +562,11 @@ final class HookServer: @unchecked Sendable {
             clearPillBadge(id: agentId)
 
         case "SessionEnd":
+            #if !APPSTORE
+            // A run started from the notch or the iPhone ends here, but the session
+            // goes on in its terminal or editor: keep the pill and the run's answer.
+            if SessionResumer.shared.isOwnRun(sessionId) { break }
+            #endif
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
