@@ -34,6 +34,8 @@ struct ApprovalInfo: Sendable {
     var sessionId: String
     var tool: String
     var command: String
+    /// Human-readable reason supplied by the agent, when available.
+    var description: String? = nil
     /// tool_input serialized to JSON with sortedKeys, "" if absent — used to match PostToolUse.
     var inputKey: String
     /// Pill that owns this approval: "integration_claude", "agent_cursor", or "agent_codex".
@@ -163,6 +165,10 @@ enum IslandConst {
     static let notchWidth: CGFloat  = IslandScreenGeometry.fallbackNotchWidth
     static let notchHeight: CGFloat = 32
     static let expandedWidth: CGFloat = 640
+    static let approvalDescriptionLineHeight: CGFloat = 15
+    static let approvalDescriptionMaxHeight: CGFloat = 72
+    static let approvalDescriptionChromeHeight: CGFloat = 19
+    static let approvalMaxHeight: CGFloat = 300
     static let earRadius: CGFloat   = 14
     static let roundedCorner: CGFloat = 14    // hidden/peek/compact
     static let expandedCorner: CGFloat = 22

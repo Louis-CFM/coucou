@@ -340,7 +340,30 @@ final class AppState: ObservableObject {
     @Published var chatHistory: [ChatMessage] = []
 
     // Pending approval request from Claude Code hook
-    @Published var pendingApproval: ApprovalInfo? = nil
+    @Published var pendingApproval: ApprovalInfo? = nil {
+        didSet {
+            if oldValue?.sessionId != pendingApproval?.sessionId
+                || oldValue?.inputKey != pendingApproval?.inputKey {
+                approvalDetailsExpanded = false
+                approvalDescriptionHeight = IslandConst.approvalDescriptionLineHeight
+            }
+        }
+    }
+    @Published var approvalDetailsExpanded = false
+    @Published var approvalDescriptionHeight = IslandConst.approvalDescriptionLineHeight
+
+    var approvalIslandHeight: CGFloat {
+        guard approvalDetailsExpanded else {
+            return IslandConst.viewLayouts[.approval]!.height
+        }
+        let descriptionHeight = min(approvalDescriptionHeight, IslandConst.approvalDescriptionMaxHeight)
+        return min(
+            IslandConst.approvalMaxHeight,
+            IslandConst.viewLayouts[.approval]!.height
+                + descriptionHeight
+                + IslandConst.approvalDescriptionChromeHeight
+        )
+    }
 
     // Pending AskUserQuestion from Claude Code hook
     @Published var pendingQuestion: AskQuestion? = nil
