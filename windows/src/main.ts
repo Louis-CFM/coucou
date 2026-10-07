@@ -53,6 +53,10 @@ async function main() {
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
 
+  // Clicking anywhere else on the desktop closes the island, the same way
+  // Escape already does.
+  await onEvent<null>("blur", () => island.onBlur());
+
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };

@@ -331,6 +331,12 @@ export class Island {
     this.fsm.forcePetit();
   }
 
+  /** The OS window lost focus — e.g. the user clicked elsewhere on the
+   * desktop. Same guard as Escape: a pinned alert stays open either way. */
+  onBlur() {
+    if (State.mode === "expanded" && !State.isPinned) this.collapse();
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
