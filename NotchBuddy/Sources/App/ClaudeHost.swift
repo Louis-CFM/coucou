@@ -35,6 +35,8 @@ struct ClaudeHost: Equatable {
         "com.github.wez.wezterm":     "WezTerm",
         "co.zeit.hyper":              "Hyper",
         "dev.zed.Zed":                "Zed",
+        "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
+        "com.stablyai.orca":          "Orca",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",

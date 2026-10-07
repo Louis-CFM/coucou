@@ -590,6 +590,11 @@ struct FinishedView: View {
                 HStack(spacing: 8) {
                     #if !APPSTORE
                     PrimaryButton("Open terminal") {
+                        // The terminal the session runs in, when the hooks told us
+                        if state.focusTask?.id == "integration_claude", ClaudeHost.activate(state.focusTask?.hostApp) {
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            return
+                        }
                         let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
                         let activated = terminalBundleIds.compactMap { id in
                             NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
