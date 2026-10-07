@@ -25,6 +25,9 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Windows only, added by coucou-hook: where the session's window lives. */
+  terminal_pids?: number[];
+  console_hwnd?: number;
 }
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
@@ -127,6 +130,14 @@ function upsert(projectName: string, cwd: string) {
   if (cwd) t.sessionCwd = cwd;
 }
 
+/** Every event carries it, so the ↗ works right after Coucou restarts too. */
+function rememberTerminal(payload: HookPayload) {
+  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+  if (!t || !Array.isArray(payload.terminal_pids)) return;
+  t.sessionPids = payload.terminal_pids.filter((p) => Number.isInteger(p));
+  t.sessionHwnd = Number.isInteger(payload.console_hwnd) ? payload.console_hwnd! : null;
+}
+
 function clearSession() {
   const t = State.tasks.find((x) => x.id === CLAUDE_ID);
   if (!t) return;
@@ -159,6 +170,7 @@ function handleHook(island: Island, payload: HookPayload) {
   const validAgent = validateAgent(payload.coucou_agent);
   const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
   const isExternalAgent = validAgent !== null;
+  if (!isExternalAgent) rememberTerminal(payload);
 
   const focused = State.focusId === agentId;
 

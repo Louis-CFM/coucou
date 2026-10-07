@@ -114,3 +114,59 @@ unsafe fn token_sid(process: HANDLE) -> Option<String> {
     let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
     sid
 }
+
+/// Our parent, its parent, and so on — nearest first. Windows Terminal and
+/// VS Code own the session's window, and both sit somewhere up this chain.
+/// Stops before explorer.exe: everything launched from the desktop has it as an
+/// ancestor, and focusing a folder window is never what the user meant.
+pub fn ancestor_pids() -> Vec<u32> {
+    use std::collections::HashMap;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    let mut procs: HashMap<u32, (u32, String)> = HashMap::new();
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return Vec::new() };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut ok = Process32FirstW(snap, &mut entry).is_ok();
+        while ok {
+            let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
+            procs.insert(entry.th32ProcessID, (entry.th32ParentProcessID, name));
+            ok = Process32NextW(snap, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snap);
+    }
+
+    let mut chain = Vec::new();
+    let mut pid = std::process::id();
+    // A dead parent's pid can be reused and point anywhere: the depth cap and the
+    // cycle check keep that from ever looping.
+    while let Some((parent, _)) = procs.get(&pid) {
+        let parent = *parent;
+        if parent == 0 || chain.contains(&parent) || chain.len() >= 16 {
+            break;
+        }
+        match procs.get(&parent) {
+            Some((_, name)) if name != "explorer.exe" => chain.push(parent),
+            _ => break,
+        }
+        pid = parent;
+    }
+    chain
+}
+
+/// The classic console window (conhost) we share with Claude Code, when it is a
+/// real, visible window. Windows Terminal hands out a hidden pseudo-window here,
+/// which is useless — `ancestor_pids` covers that case.
+pub fn console_window() -> Option<isize> {
+    use windows::Win32::System::Console::GetConsoleWindow;
+    use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+    let hwnd = unsafe { GetConsoleWindow() };
+    (!hwnd.is_invalid() && unsafe { IsWindowVisible(hwnd) }.as_bool()).then_some(hwnd.0 as isize)
+}

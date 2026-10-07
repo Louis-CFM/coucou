@@ -132,6 +132,18 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
+/// "Open terminal" / ↗ on the Claude pill: bring the session's own window
+/// forward, and only when it cannot be found open the folder like before.
+#[tauri::command]
+fn open_session(path: Option<String>, pids: Vec<u32>, hwnd: Option<isize>) -> bool {
+    let hint = path
+        .as_deref()
+        .and_then(|p| std::path::Path::new(p).file_name())
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    platform::focus_terminal(hwnd, &pids, &hint) || open_in_vscode(path)
+}
+
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -383,6 +395,7 @@ pub fn run() {
             reposition,
             open_url,
             open_in_vscode,
+            open_session,
             quit_app,
             hooks_status,
             hooks_preview,
