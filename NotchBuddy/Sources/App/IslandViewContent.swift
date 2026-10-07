@@ -64,17 +64,19 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .layoutPriority(1)
-                                Text({ () -> String in
-                                    switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
-                                    case .n8n:        return "n8n"
-                                    }
-                                }())
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color(hex: "#8E939C"))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
+                                if state.sessionGit[agent.id] == nil {
+                                    Text({ () -> String in
+                                        switch agent.source {
+                                        case .claudeCode: return "Claude Code"
+                                        case .agent:      return "Agent"
+                                        case .n8n:        return "n8n"
+                                        }
+                                    }())
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Color(hex: "#8E939C"))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                }
                                 SessionChips(state: state, taskId: agent.id)
                                 Spacer(minLength: 2)
                                 if agent.steps.count > 1 {
@@ -1852,7 +1854,7 @@ struct IntegrationCardView: View {
                 pulse: appState.githubVisiblePulse!,
                 stats: appState.githubStats,
                 activity: appState.githubActivity,
-                focusLabel: appState.effectiveGithubFocus.map { $0.split(separator: "/").last.map(String.init) ?? $0 },
+                focusLabel: appState.effectiveGithubFocus.map(appState.githubRepoLabel),
                 canPickRepo: appState.githubFocusOptions.count > 1 || appState.effectiveGithubFocus != nil,
                 pickerOpen: appState.sidePanel == .githubRepos,
                 onTapTitle: { appState.toggleSidePanel(.githubRepos) },
@@ -1896,10 +1898,12 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#8E939C"))
-                        .lineLimit(1).truncationMode(.tail)
+                    if appState.sessionGit[task.id] == nil {
+                        Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
                     SessionChips(state: appState, taskId: task.id)
                     Spacer(minLength: 2)
                     if task.steps.count > 1 {
