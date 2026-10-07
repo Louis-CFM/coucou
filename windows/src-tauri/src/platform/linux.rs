@@ -18,7 +18,7 @@ use std::sync::Mutex;
 
 use gtk::glib::translate::ToGlibPtr;
 use gtk::prelude::*;
-use tauri::{AppHandle, WebviewWindow};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 use super::{home_dir, LocalTime};
 
@@ -168,6 +168,7 @@ mod layer {
     use std::os::raw::{c_char, c_int};
 
     pub const LAYER_OVERLAY: c_int = 3;
+    pub const EDGE_LEFT: c_int = 0;
     pub const EDGE_TOP: c_int = 2;
     pub const KEYBOARD_NONE: c_int = 0;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
@@ -179,6 +180,7 @@ mod layer {
         pub fn gtk_layer_set_namespace(window: *mut GtkWindow, name_space: *const c_char);
         pub fn gtk_layer_set_layer(window: *mut GtkWindow, layer: c_int);
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
+        pub fn gtk_layer_set_margin(window: *mut GtkWindow, edge: c_int, margin_size: c_int);
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
     }
@@ -235,8 +237,12 @@ pub fn make_non_activating(win: &WebviewWindow) {
         layer::gtk_layer_init_for_window(ptr);
         layer::gtk_layer_set_namespace(ptr, c"coucou".as_ptr());
         layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
-        // Top edge only: the compositor centres the surface horizontally.
+        // Anchored top and left: left alone (not also right) is what lets a
+        // left margin position the surface, rather than stretch it edge to
+        // edge. `island::apply_geometry` computes that margin itself —
+        // centred by default, offset by however far the island was dragged.
         layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, 1);
         // -1: sit right against the screen edge, over any top panel, the way
         // the Mac island sits in the notch.
         layer::gtk_layer_set_exclusive_zone(ptr, -1);
@@ -261,6 +267,17 @@ pub fn make_non_activating(win: &WebviewWindow) {
     });
     LAYER_SURFACE.store(true, Ordering::Relaxed);
     crate::log::line("island is a layer-shell overlay");
+}
+
+/// Repositions the island along the top edge by setting its left margin — a
+/// no-op where it never became a layer surface (no layer-shell, or
+/// `COUCOU_LAYER_SHELL=0`), since an ordinary window has no such margin to set.
+pub fn set_horizontal_margin(win: &WebviewWindow, margin: i32) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed) {
+        return;
+    }
+    let Ok(gw) = win.gtk_window() else { return };
+    unsafe { layer::gtk_layer_set_margin(gtk_window_ptr(&gw), layer::EDGE_LEFT, margin) };
 }
 
 /// Temporarily allow keyboard focus so a text field inside the island can be
@@ -298,6 +315,53 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
             gdk_window.input_shape_combine_region(&region, 0, 0);
         }
     }
+}
+
+// ── Fullscreen watch (Hyprland only) ──────────────────────────────────────────
+
+/// Watches Hyprland's own event socket for the active window's fullscreen
+/// state, so the island can stay as its small pill instead of auto-hiding
+/// behind a fullscreen app (a video, a game, a presentation). Hyprland-only:
+/// the layer-shell protocol itself has no generic "something is fullscreen"
+/// signal, and every other compositor this app runs on just keeps today's
+/// behavior, since `HYPRLAND_INSTANCE_SIGNATURE` is unset there.
+pub fn spawn_fullscreen_watch(app: AppHandle) {
+    let (Ok(sig), Ok(runtime_dir)) =
+        (std::env::var("HYPRLAND_INSTANCE_SIGNATURE"), std::env::var("XDG_RUNTIME_DIR"))
+    else {
+        crate::log::line("fullscreen watch: not on Hyprland, skipping".to_string());
+        return;
+    };
+    std::thread::spawn(move || {
+        let path = std::path::PathBuf::from(runtime_dir).join("hypr").join(&sig).join(".socket2.sock");
+        crate::log::line(format!("fullscreen watch: connecting to {}", path.display()));
+        loop {
+            match std::os::unix::net::UnixStream::connect(&path) {
+                Ok(stream) => {
+                    crate::log::line("fullscreen watch: connected".to_string());
+                    use std::io::BufRead;
+                    for line in std::io::BufReader::new(stream).lines().map_while(Result::ok) {
+                        // Payload is literally "0" or "1" — Hyprland's own
+                        // event wire format, not JSON.
+                        if let Some(value) = line.strip_prefix("fullscreen>>") {
+                            let active = value.trim() != "0";
+                            crate::log::line(format!("fullscreen watch: fullscreen={active}"));
+                            let _ = app.emit_to(crate::island::WINDOW_LABEL, "fullscreen-changed", active);
+                        }
+                    }
+                    crate::log::line("fullscreen watch: socket closed, reconnecting".to_string());
+                }
+                Err(err) => {
+                    crate::log::line(format!("fullscreen watch: connect failed: {err}"));
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                }
+            }
+            // The socket only drops if Hyprland itself restarts (a config
+            // reload, a crash) — reconnect rather than leaving the island
+            // stuck believing whatever it last knew.
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    });
 }
 
 #[cfg(test)]

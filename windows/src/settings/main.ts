@@ -254,6 +254,111 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Local models section ──────────────────────────────────────────────────────
+
+type LocalProviderKey = "ollama" | "lmstudio";
+const LOCAL_PROVIDERS: { key: LocalProviderKey; name: string; placeholder: string }[] = [
+  { key: "ollama", name: "Ollama", placeholder: "http://localhost:11434" },
+  { key: "lmstudio", name: "LM Studio", placeholder: "http://localhost:1234" },
+];
+
+function localModelsSection(): HTMLElement {
+  const providerSelect = h("select", {}) as HTMLSelectElement;
+  providerSelect.append(
+    h("option", { value: "anthropic", text: "Claude (cloud)" }),
+    h("option", { value: "ollama", text: "Ollama (local)" }),
+    h("option", { value: "lmstudio", text: "LM Studio (local)" }),
+  );
+  providerSelect.value = settings.chatProvider;
+  providerSelect.addEventListener("change", () => {
+    settings.chatProvider = providerSelect.value as Settings["chatProvider"];
+    void save();
+  });
+
+  const rows: HTMLElement[] = [];
+  for (const def of LOCAL_PROVIDERS) {
+    const urlKey = `${def.key}Url` as const;
+    const modelKey = `${def.key}Model` as const;
+
+    // Pre-filled with the default local address as real, editable text —
+    // not just a placeholder — so Connect works with one click on the
+    // common case, while still being free to point at a different host.
+    const urlInput = h("input", {
+      type: "text",
+      placeholder: def.placeholder,
+      value: settings[urlKey] || def.placeholder,
+      style: "flex:1 1 auto;min-width:0",
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const connectBtn = h("button", { text: "Connect" });
+    const dot = statusDot(settings[urlKey].length > 0);
+    const modelSelect = h("select", { style: "flex:1 1 auto;min-width:0" }) as HTMLSelectElement;
+    const feedback = h("span", { class: "hint" });
+
+    function fillModels(models: string[]) {
+      clear(modelSelect);
+      for (const m of models) modelSelect.append(h("option", { value: m, text: m }));
+      const current = settings[modelKey];
+      if (current && !models.includes(current)) {
+        modelSelect.append(h("option", { value: current, text: current }));
+      }
+      modelSelect.value = current;
+    }
+    fillModels(settings[modelKey] ? [settings[modelKey]] : []);
+
+    connectBtn.addEventListener("click", async () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      feedback.textContent = "Connecting…";
+      connectBtn.disabled = true;
+      try {
+        const models = await Bridge.testLocalConnection(url);
+        settings[urlKey] = url;
+        if (models.length && !models.includes(settings[modelKey])) settings[modelKey] = models[0];
+        fillModels(models);
+        dot.style.background = "#22c55e";
+        feedback.textContent =
+          models.length > 0 ? `Connected — ${models.length} model(s) available.` : "Connected, but no models found.";
+        void save();
+      } catch (err) {
+        dot.style.background = "#f4505e";
+        feedback.textContent = `Could not connect: ${String(err)}`;
+      } finally {
+        connectBtn.disabled = false;
+      }
+    });
+
+    modelSelect.addEventListener("change", () => {
+      settings[modelKey] = modelSelect.value;
+      void save();
+    });
+
+    rows.push(
+      h("div", { style: "display:flex;flex-direction:column;gap:6px" },
+        h("div", { class: "row" },
+          h("label", { style: "min-width:84px", text: def.name }),
+          dot, urlInput, connectBtn,
+        ),
+        h("div", { class: "row" }, h("label", { style: "min-width:84px", text: "Model" }), modelSelect),
+        feedback,
+      ),
+    );
+  }
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Local models" })),
+    h("div", {
+      class: "hint",
+      text: "Chat with a model running on your own machine — no API key, nothing leaves it.",
+    }),
+    h("div", { class: "row" }, h("label", { text: "Chat uses" }), providerSelect),
+    ...rows,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -411,6 +516,23 @@ function generalSection(): HTMLElement {
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: "Lock position" }),
+      toggle(settings.positionLocked, (v) => { settings.positionLocked = v; void save(); }),
+      h("span", { class: "hint", text: "Stops it being dragged by accident" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Position" }),
+      (() => {
+        const btn = h("button", { text: "Recenter" });
+        btn.addEventListener("click", () => {
+          settings.screenOffsetX = 0;
+          void Bridge.setIslandOffset(0);
+        });
+        return btn;
+      })(),
+      h("span", { class: "hint", text: "Drag the small island itself to move it" }),
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
@@ -443,6 +565,7 @@ async function main() {
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    localModelsSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {
