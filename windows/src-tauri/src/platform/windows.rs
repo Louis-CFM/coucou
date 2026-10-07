@@ -206,6 +206,10 @@ unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
     true.into()
 }
 
+/// The Hyprland-specific fullscreen watch is Linux-only; Windows has no
+/// equivalent yet, so the island just keeps its normal auto-hide behavior.
+pub fn spawn_fullscreen_watch(_app: AppHandle) {}
+
 /// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
 /// island out of Alt-Tab.
 pub fn make_non_activating(win: &WebviewWindow) {

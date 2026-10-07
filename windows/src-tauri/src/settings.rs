@@ -23,6 +23,18 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// Which provider the chat talks to: "anthropic" (default), "ollama" or
+    /// "lmstudio". Falls back to "anthropic" for anything unrecognized.
+    pub chat_provider: String,
+    /// Base URL of the user's own Ollama server, e.g. "http://localhost:11434".
+    /// Empty means "not connected" — set by the Settings "Connect" button.
+    pub ollama_url: String,
+    /// Model name last chosen from that Ollama server.
+    pub ollama_model: String,
+    /// Base URL of the user's own LM Studio server, e.g. "http://localhost:1234".
+    pub lmstudio_url: String,
+    /// Model name last chosen from that LM Studio server.
+    pub lmstudio_model: String,
 }
 
 fn default_model() -> String {
@@ -46,6 +58,11 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: "anthropic".into(),
+            ollama_url: String::new(),
+            ollama_model: String::new(),
+            lmstudio_url: String::new(),
+            lmstudio_model: String::new(),
         }
     }
 }
@@ -306,7 +323,12 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
-  "model": "some-model"
+  "model": "some-model",
+  "chatProvider": "ollama",
+  "ollamaUrl": "http://localhost:11434",
+  "ollamaModel": "llama3",
+  "lmstudioUrl": "http://localhost:1234",
+  "lmstudioModel": "local-model"
 }"#;
 
     fn custom() -> Value {
@@ -632,6 +654,11 @@ mod tests {
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "chatProvider",
+                "ollamaUrl",
+                "ollamaModel",
+                "lmstudioUrl",
+                "lmstudioModel",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

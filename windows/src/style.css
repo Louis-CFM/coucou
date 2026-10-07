@@ -790,6 +790,25 @@ input[type="range"]::-webkit-slider-thumb {
   background: linear-gradient(135deg, #ff6b5b, #f7b32b, #2dd4a7, #38bdf8, #a78bfa);
 }
 
+.chat-provider-row {
+  padding: 10px 16px 0 84px;
+}
+
+.chat-provider-select {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  font: 400 11.5px var(--font);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.chat-provider-select:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+}
+
 .chat-log {
   flex: 1 1 auto;
   min-height: 0;

@@ -260,7 +260,15 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
-    if (mode === "expanded") Sound.play("open");
+    if (mode === "expanded") {
+      Sound.play("open");
+      // Keyboard-interactivity must be elevated for the whole expanded
+      // window, not just while the chat view happens to be open: on Linux a
+      // gtk-layer-shell surface in keyboard-mode "none" never receives any
+      // key event at all — Escape included — so Escape and click-outside
+      // only ever worked if chat had been opened first before this.
+      void Bridge.focusWindow(true);
+    }
     if (prev === "expanded") {
       Sound.play("close");
       State.isPinned = false;
@@ -321,6 +329,21 @@ export class Island {
     // back left it thinking the island was still open, and a click on the compact
     // island then did nothing — the island could never be reopened.
     this.fsm.forcePetit();
+  }
+
+  /** The OS window lost focus — e.g. the user clicked elsewhere on the
+   * desktop. Same guard as Escape: a pinned alert stays open either way. */
+  onBlur() {
+    if (State.mode === "expanded" && !State.isPinned) this.collapse();
+  }
+
+  /** An app going fullscreen (or stopping) elsewhere on the desktop. The FSM
+   * handles whether to show/keep the pill at all; a resize is still needed
+   * on its own when the island was already compact, since no state
+   * transition (and so no geometry update) happens in that case. */
+  setFullscreenActive(active: boolean) {
+    this.fsm.setFullscreenActive(active);
+    if (State.mode === "compact") this.animateGeometry(false);
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
@@ -450,7 +473,12 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const { w, h } = islandSize(
+      State.mode,
+      State.view,
+      State.chatHistory.length,
+      this.fsm.fullscreenActive,
+    );
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -847,21 +875,19 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // Window-level keyboard focus is now handled once in `setMode` for the
+    // whole expanded window (see there for why) — here we only still need to
+    // give the caret to the chat's own text field once it is on screen.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
       this.lastSyncedView = State.view;
       if (State.view === "prompt") {
-        void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
-        void Bridge.focusWindow(false);
       }
     }
 
-    // Compact mini grid
-    const showGrid = State.mode === "compact";
+    // Compact mini grid — not while narrowed down to just an icon over a
+    // fullscreen app, where there's no room for it.
+    const showGrid = State.mode === "compact" && !this.fsm.fullscreenActive;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);

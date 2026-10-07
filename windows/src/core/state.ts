@@ -92,6 +92,14 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Which provider the chat talks to. */
+  chatProvider: "anthropic" | "ollama" | "lmstudio";
+  /** Base URL of the user's own Ollama server, e.g. "http://localhost:11434". */
+  ollamaUrl: string;
+  ollamaModel: string;
+  /** Base URL of the user's own LM Studio server, e.g. "http://localhost:1234". */
+  lmstudioUrl: string;
+  lmstudioModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +114,11 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "anthropic",
+  ollamaUrl: "",
+  ollamaModel: "",
+  lmstudioUrl: "",
+  lmstudioModel: "",
 };
 
 type Listener = () => void;

@@ -18,7 +18,7 @@ use std::sync::Mutex;
 
 use gtk::glib::translate::ToGlibPtr;
 use gtk::prelude::*;
-use tauri::{AppHandle, WebviewWindow};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 use super::{home_dir, LocalTime};
 
@@ -298,6 +298,53 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
             gdk_window.input_shape_combine_region(&region, 0, 0);
         }
     }
+}
+
+// ── Fullscreen watch (Hyprland only) ──────────────────────────────────────────
+
+/// Watches Hyprland's own event socket for the active window's fullscreen
+/// state, so the island can stay as its small pill instead of auto-hiding
+/// behind a fullscreen app (a video, a game, a presentation). Hyprland-only:
+/// the layer-shell protocol itself has no generic "something is fullscreen"
+/// signal, and every other compositor this app runs on just keeps today's
+/// behavior, since `HYPRLAND_INSTANCE_SIGNATURE` is unset there.
+pub fn spawn_fullscreen_watch(app: AppHandle) {
+    let (Ok(sig), Ok(runtime_dir)) =
+        (std::env::var("HYPRLAND_INSTANCE_SIGNATURE"), std::env::var("XDG_RUNTIME_DIR"))
+    else {
+        crate::log::line("fullscreen watch: not on Hyprland, skipping".to_string());
+        return;
+    };
+    std::thread::spawn(move || {
+        let path = std::path::PathBuf::from(runtime_dir).join("hypr").join(&sig).join(".socket2.sock");
+        crate::log::line(format!("fullscreen watch: connecting to {}", path.display()));
+        loop {
+            match std::os::unix::net::UnixStream::connect(&path) {
+                Ok(stream) => {
+                    crate::log::line("fullscreen watch: connected".to_string());
+                    use std::io::BufRead;
+                    for line in std::io::BufReader::new(stream).lines().map_while(Result::ok) {
+                        // Payload is literally "0" or "1" — Hyprland's own
+                        // event wire format, not JSON.
+                        if let Some(value) = line.strip_prefix("fullscreen>>") {
+                            let active = value.trim() != "0";
+                            crate::log::line(format!("fullscreen watch: fullscreen={active}"));
+                            let _ = app.emit_to(crate::island::WINDOW_LABEL, "fullscreen-changed", active);
+                        }
+                    }
+                    crate::log::line("fullscreen watch: socket closed, reconnecting".to_string());
+                }
+                Err(err) => {
+                    crate::log::line(format!("fullscreen watch: connect failed: {err}"));
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                }
+            }
+            // The socket only drops if Hyprland itself restarts (a config
+            // reload, a crash) — reconnect rather than leaving the island
+            // stuck believing whatever it last knew.
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    });
 }
 
 #[cfg(test)]
