@@ -28,14 +28,6 @@ final class TurnRecorder {
     private let maxOutput = 1500
     private let maxFinal = 12_000
 
-    /// The Claude Code session last seen on a pill and its folder, for
-    /// instructions sent from the iPhone (InstructionRunner).
-    func lastSession(for pillId: String) -> (sessionId: String, cwd: String)? {
-        guard let info = sessions[pillId], !info.sessionId.isEmpty, !info.cwd.isEmpty else { return nil }
-        return info
-    }
-    private var sessions: [String: (sessionId: String, cwd: String)] = [:]
-
     func start() {
         running = true
         log("turn recorder on")
@@ -60,7 +52,6 @@ final class TurnRecorder {
         let sessionId = payload["session_id"] as? String ?? payload["conversation_id"] as? String ?? ""
         let cwd = payload["cwd"] as? String ?? ""
         let now = Date()
-        if !sessionId.isEmpty, !cwd.isEmpty { sessions[pillId] = (sessionId, cwd) }
 
         switch event {
         case "UserPromptSubmit":

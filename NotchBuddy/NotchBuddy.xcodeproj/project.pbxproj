@@ -42,6 +42,7 @@
 		1FE62D4EEA85FB25C17FDBA2 /* ServiceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */; };
 		2104B8000768F551064B17E4 /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22AF9F301D7A23DA6254D49 /* PhoneLink.swift */; };
 		2132477000FD77F7EB234DAA /* FileDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3232F258523DD8D09B670363 /* FileDropView.swift */; };
+		220F9D1D4003ED72CE5DF282 /* SessionResumer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49393F75E83B2BF1EA7C53C8 /* SessionResumer.swift */; };
 		23BFB915C12B0BC4E9B50AAA /* ApprovalRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD426E81DF79CA79888059D9 /* ApprovalRelay.swift */; };
 		244EC9B77D1903C8DD505D04 /* MochiLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA6A002ABEC0CC57667FBE0 /* MochiLiveActivity.swift */; };
 		25F66E99460D62478899A292 /* MochiWardrobe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */; };
@@ -119,6 +120,7 @@
 		8173F93555ED400954AA1CB3 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 097F57179CC066459E64303A /* AboutView.swift */; };
 		818E87607FD9F0CA5406BF35 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B2AA83D80260660475FAB052 /* Localizable.xcstrings */; };
 		82E72E0AFCAB192D98AB2004 /* MochiActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18399D1CD69468CCF57966 /* MochiActivityState.swift */; };
+		8391B160C85758CBB9E26F08 /* SessionResumer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49393F75E83B2BF1EA7C53C8 /* SessionResumer.swift */; };
 		845D762E9F4F0AD0D5FCEDF4 /* BotEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E6F5FC81429871B6F766A8 /* BotEngine.swift */; };
 		862CE6CB220D55E46F646DA9 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
 		868E3EB4A275AA2394EA20BF /* CoucouWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5C3E2269A202B640E7F3B5E0 /* CoucouWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -314,6 +316,7 @@
 		37147F42613183DBA8896835 /* finish.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = finish.wav; sourceTree = "<group>"; };
 		38BEAB5F20A13E5806A42EC9 /* ApprovalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCard.swift; sourceTree = "<group>"; };
 		3A27178AA6007F7B56901750 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
+		49393F75E83B2BF1EA7C53C8 /* SessionResumer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionResumer.swift; sourceTree = "<group>"; };
 		49E39852175E81C9632A59C9 /* KitPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitPreviewView.swift; sourceTree = "<group>"; };
 		4DC2A07E42245A8CF3BBD2AB /* CoucouAppStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoucouAppStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F142FB3952B5F0639383047 /* MusicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicController.swift; sourceTree = "<group>"; };
@@ -459,6 +462,7 @@
 				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
 				57BDE57986F4B4D2FC3A0358 /* ServiceAPI.swift */,
 				7F5EB9E84BA39B03DFBC3EC1 /* SessionGitHubLinker.swift */,
+				49393F75E83B2BF1EA7C53C8 /* SessionResumer.swift */,
 				7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */,
 				FA51E5B140C20812641168EA /* ShortcutLogic.swift */,
 				62CF42AE7611EF212CA0458F /* ShortcutsSettingsView.swift */,
@@ -857,6 +861,7 @@
 				0393CA5466F52252378F0346 /* ServiceSnapshot.swift in Sources */,
 				8C9878C52623BABE6FEF64C0 /* SessionGitHubLinker.swift in Sources */,
 				9728564FCBF0334E68E9E6E7 /* SessionPublisher.swift in Sources */,
+				8391B160C85758CBB9E26F08 /* SessionResumer.swift in Sources */,
 				56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */,
 				C07E9A04E827284FDF33DB16 /* ShortcutLogic.swift in Sources */,
 				1EAFEE80A8066B77F9410025 /* ShortcutsSettingsView.swift in Sources */,
@@ -1012,6 +1017,7 @@
 				1FE62D4EEA85FB25C17FDBA2 /* ServiceSnapshot.swift in Sources */,
 				8A6809F8D00B59A697AAC90E /* SessionGitHubLinker.swift in Sources */,
 				DE66BB6D18F467A7F4220CC3 /* SessionPublisher.swift in Sources */,
+				220F9D1D4003ED72CE5DF282 /* SessionResumer.swift in Sources */,
 				8D1C01F283FA7806119A1C85 /* SettingsView.swift in Sources */,
 				6CCEC73ED68E9F253C22D692 /* ShortcutLogic.swift in Sources */,
 				908043F62E2C31F5FBC0A0C4 /* ShortcutsSettingsView.swift in Sources */,

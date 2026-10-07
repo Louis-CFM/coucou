@@ -405,6 +405,13 @@ final class HookServer: @unchecked Sendable {
             ? "\(agentId)+\(cwd)"
             : sessionId
 
+        // Remember the session so it can be continued from the notch or the iPhone.
+        if !isExternalAgent, !isCodexEvent, sessionId != "unknown", !cwd.isEmpty {
+            let ref = ClaudeSessionRef(sessionId: sessionId, cwd: cwd,
+                                       hostApp: agentId == "integration_claude" ? hostApp : nil)
+            if state.claudeSessions[agentId] != ref { state.claudeSessions[agentId] = ref }
+        }
+
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
         if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }

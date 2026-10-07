@@ -25,7 +25,6 @@ final class InstructionRunner {
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
     private var pollTask: Task<Void, Never>?
     private var changeToken: CKServerChangeToken?
-    private var running: [String: Process] = [:]   // by session id
 
     /// Instructions older than this are dropped instead of run.
     private let maxAge: TimeInterval = 10 * 60
@@ -93,86 +92,14 @@ final class InstructionRunner {
         guard Date().timeIntervalSince(createdAt) < maxAge else { log("ignored: older than 10 min"); return }
         guard !text.isEmpty, text.count <= 8000 else { log("ignored: empty or too long"); return }
         guard pillId == "integration_claude" || pillId == "agent_cursor" else { log("ignored: \(pillId) can't take instructions"); return }
-        guard let session = TurnRecorder.shared.lastSession(for: pillId) else {
+        guard let session = AppState.shared.claudeSessions[pillId] else {
             log("ignored: no Claude Code session seen for \(pillId) yet")
             return
         }
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: session.cwd, isDirectory: &isDirectory), isDirectory.boolValue else {
-            log("ignored: the session's folder is gone")
-            return
+        if case .failure(let failure) = SessionResumer.shared.resume(session, pillId: pillId, text: text,
+                                                                      log: { [weak self] in self?.log($0) }) {
+            log("ignored: \(failure)")
         }
-        guard running[session.sessionId] == nil else {
-            log("ignored: an instruction is already running for this session")
-            return
-        }
-        guard let claude = Self.claudeExecutable() else {
-            log("can't find the claude command (looked in ~/.claude/local, Homebrew, /usr/local/bin, ~/.npm-global/bin)")
-            return
-        }
-        run(claude: claude, text: text, sessionId: session.sessionId, cwd: session.cwd, pillId: pillId)
-    }
-
-    // MARK: Running
-
-    private func run(claude: String, text: String, sessionId: String, cwd: String, pillId: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: claude)
-        process.arguments = ["-p", text, "--resume", sessionId]
-        process.currentDirectoryURL = URL(fileURLWithPath: cwd)
-        var env = ProcessInfo.processInfo.environment
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        env["PATH"] = [URL(fileURLWithPath: claude).deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin",
-                       "/usr/bin", "/bin", "/usr/sbin", "/sbin", "\(home)/.local/bin", env["PATH"] ?? ""].joined(separator: ":")
-        // The hooks route events by editor: keep them on the same pill.
-        if pillId == "agent_cursor" {
-            env["__CFBundleIdentifier"] = "com.todesktop.230313mzl4w4u92"
-        } else {
-            env["TERM_PROGRAM"] = "vscode"
-        }
-        process.environment = env
-        process.standardInput = FileHandle.nullDevice
-        // Output goes to a file (a pipe could fill up and stall claude); its
-        // end is logged if the run fails.
-        let logURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/NotchBuddy/instruction-last.log")
-        try? FileManager.default.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        FileManager.default.createFile(atPath: logURL.path, contents: nil)
-        let output = try? FileHandle(forWritingTo: logURL)
-        process.standardOutput = output ?? FileHandle.nullDevice
-        process.standardError = output ?? FileHandle.nullDevice
-        process.terminationHandler = { [weak self] finished in
-            try? output?.close()
-            let data = (try? Data(contentsOf: logURL)) ?? Data()
-            let tail = String(decoding: data.suffix(400), as: UTF8.self)
-                .replacingOccurrences(of: "\n", with: " ")
-            let status = finished.terminationStatus
-            Task { @MainActor in
-                self?.running[sessionId] = nil
-                self?.log(status == 0 ? "finished (\(sessionId.prefix(8)))" : "ended with \(status): \(tail)")
-            }
-        }
-        do {
-            try process.run()
-            running[sessionId] = process
-            log("running in \(URL(fileURLWithPath: cwd).lastPathComponent) (\(sessionId.prefix(8))): \(text.count) chars")
-        } catch {
-            log("couldn't start claude: \(error.localizedDescription)")
-        }
-    }
-
-    /// Where `claude` usually lives; the app doesn't get the shell's PATH.
-    static func claudeExecutable() -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let candidates = [
-            "\(home)/.claude/local/claude",
-            "\(home)/.local/bin/claude",
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude",
-            "\(home)/.npm-global/bin/claude",
-            "\(home)/.bun/bin/claude",
-        ]
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
     private func log(_ message: String) {
