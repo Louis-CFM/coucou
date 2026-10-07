@@ -143,7 +143,9 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
+  | { name: "screen-changed"; payload: null }
+  | { name: "blur"; payload: null }
+  | { name: "fullscreen-changed"; payload: boolean };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

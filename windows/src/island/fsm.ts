@@ -18,6 +18,9 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /** Some other app is fullscreen (Hyprland only) — the island stays as its
+   * small pill instead of auto-hiding behind it. */
+  fullscreenActive = false;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -102,10 +105,23 @@ export class IslandStateMachine {
     this.transition("hidden");
   }
 
+  /** An app going fullscreen (or stopping) elsewhere on the desktop. */
+  setFullscreenActive(active: boolean) {
+    if (this.fullscreenActive === active) return;
+    this.fullscreenActive = active;
+    if (active) {
+      this.clear("petitHide");
+      if (this.state === "hidden") this.transition("petit");
+    } else if (this.state === "petit") {
+      this.schedulePetitHide();
+    }
+  }
+
   // ── Timers ──────────────────────────────────────────────────────────────────
 
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.fullscreenActive) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");

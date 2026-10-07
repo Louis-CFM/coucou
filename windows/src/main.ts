@@ -53,6 +53,14 @@ async function main() {
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
 
+  // Clicking anywhere else on the desktop closes the island, the same way
+  // Escape already does.
+  await onEvent<null>("blur", () => island.onBlur());
+
+  // Hyprland only: stay visible as the small pill instead of auto-hiding
+  // behind a fullscreen app (a video, a game, a presentation).
+  await onEvent<boolean>("fullscreen-changed", (active) => island.setFullscreenActive(active));
+
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     State.settings = { ...State.settings, ...s };
