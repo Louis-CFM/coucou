@@ -148,6 +148,15 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
+/// The island's saved horizontal offset from centre, in logical px — 0 until
+/// it has ever been dragged. Read straight from `Shared` rather than threaded
+/// through every caller, the same way `current_screen_key` reads `screen`.
+fn saved_offset_x(app: &AppHandle) -> f64 {
+    app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().screen_offset_x)
+        .unwrap_or(0.0)
+}
+
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
@@ -175,6 +184,21 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+
+    // `set_position` above has no effect on a layer-shell surface — Wayland
+    // leaves positioning to the layer-shell protocol's own anchor/margin,
+    // never the normal windowing API — so centering plus the saved drag
+    // offset is applied as a left margin instead, in the logical pixels
+    // gtk-layer-shell itself works in (not `pw`'s physical/scaled ones).
+    let logical_monitor_w = ms.width as f64 / scale;
+    let centered = (logical_monitor_w - lw) / 2.0;
+    let margin = (centered + saved_offset_x(app)).clamp(0.0, (logical_monitor_w - lw).max(0.0));
+    // `set_horizontal_margin` touches raw GTK FFI, which Tauri documents as
+    // main-thread-only; `apply_geometry` is reached from `#[tauri::command]`
+    // handlers running on a Tokio worker thread, so — same rule as
+    // `refresh_click_through` and `focus_window` — the call has to be
+    // dispatched back to the main thread rather than made directly here.
+    let _ = app.run_on_main_thread(move || platform::set_horizontal_margin(&win, margin.round() as i32));
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here

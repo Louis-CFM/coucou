@@ -516,6 +516,23 @@ function generalSection(): HTMLElement {
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: "Lock position" }),
+      toggle(settings.positionLocked, (v) => { settings.positionLocked = v; void save(); }),
+      h("span", { class: "hint", text: "Stops it being dragged by accident" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Position" }),
+      (() => {
+        const btn = h("button", { text: "Recenter" });
+        btn.addEventListener("click", () => {
+          settings.screenOffsetX = 0;
+          void Bridge.setIslandOffset(0);
+        });
+        return btn;
+      })(),
+      h("span", { class: "hint", text: "Drag the small island itself to move it" }),
+    ),
+    h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),

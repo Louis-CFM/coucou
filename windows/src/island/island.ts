@@ -337,6 +337,47 @@ export class Island {
     if (State.mode === "expanded" && !State.isPinned) this.collapse();
   }
 
+  /** A press on the compact pill: resolves into either a drag (moved past a
+   * small threshold) or the normal click-to-expand (never moved). Only
+   * engaged for the compact pill, and never while position is locked — see
+   * the `mousedown` listener in `wireInput`. */
+  private beginDrag(startClientX: number) {
+    const startOffset = State.settings.screenOffsetX;
+    const threshold = 4;
+    let dragging = false;
+
+    const onMove = (e: MouseEvent) => {
+      const dx = e.clientX - startClientX;
+      if (!dragging) {
+        if (Math.abs(dx) < threshold) return;
+        dragging = true;
+      }
+      // Live feedback only — the window itself doesn't move until the drag
+      // ends; this is the same translateX `applyGeometry` rests the pill at,
+      // just offset by how far the pointer has moved so far.
+      this.islandEl.style.transform = `translateX(calc(-50% + ${dx}px))`;
+    };
+
+    const onUp = (e: MouseEvent) => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (!dragging) {
+        this.fsm.click();
+        return;
+      }
+      const next = startOffset + (e.clientX - startClientX);
+      State.settings.screenOffsetX = next;
+      void Bridge.setIslandOffset(next);
+      // Rests back at plain centering now: the window itself is about to
+      // move to the new margin, which (combined with this) lands the pill
+      // right where the pointer left it.
+      this.islandEl.style.transform = "translateX(-50%)";
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   /** An app going fullscreen (or stopping) elsewhere on the desktop. The FSM
    * handles whether to show/keep the pill at all; a resize is still needed
    * on its own when the island was already compact, since no state
@@ -562,6 +603,10 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      if (State.mode === "compact" && !State.settings.positionLocked) {
+        this.beginDrag(e.clientX);
+        return;
+      }
       if (State.mode !== "expanded") {
         this.fsm.click();
         return;

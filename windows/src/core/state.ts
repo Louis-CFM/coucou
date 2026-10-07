@@ -100,6 +100,11 @@ export interface Settings {
   /** Base URL of the user's own LM Studio server, e.g. "http://localhost:1234". */
   lmstudioUrl: string;
   lmstudioModel: string;
+  /** How far the island sits from horizontal centre, in logical px. Set by
+   * dragging the island itself. */
+  screenOffsetX: number;
+  /** Dragging the island does nothing while this is set. */
+  positionLocked: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -119,6 +124,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ollamaModel: "",
   lmstudioUrl: "",
   lmstudioModel: "",
+  screenOffsetX: 0,
+  positionLocked: false,
 };
 
 type Listener = () => void;

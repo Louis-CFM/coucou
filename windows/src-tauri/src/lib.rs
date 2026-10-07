@@ -110,6 +110,28 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
     }
 }
 
+/// End of a drag: persists the new horizontal offset and repositions. Ignored
+/// while locked — the front end already refuses to start a drag in that
+/// case, but a stray call must not move a locked island either.
+#[tauri::command]
+fn set_island_offset(app: AppHandle, shared: State<Shared>, offset_x: f64) {
+    let (pref, collapsed, updated) = {
+        let mut settings = shared.settings.lock().unwrap();
+        if settings.position_locked {
+            return;
+        }
+        settings.screen_offset_x = offset_x;
+        if let Err(err) = settings::save(&settings) {
+            log::line(format!("could not save settings: {err}"));
+        }
+        (settings.screen.clone(), shared.gate.collapsed.load(Ordering::Relaxed), settings.clone())
+    };
+    island::apply_geometry(&app, &pref, collapsed);
+    // Whichever window asked (island, by dragging, or settings, by resetting)
+    // the other one's copy of `Settings` must not go stale.
+    let _ = app.emit("settings-changed", updated);
+}
+
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
@@ -426,6 +448,7 @@ pub fn run() {
             save_settings,
             set_collapsed,
             set_island_rect,
+            set_island_offset,
             focus_window,
             reposition,
             open_url,

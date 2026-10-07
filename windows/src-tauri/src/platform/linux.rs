@@ -168,6 +168,7 @@ mod layer {
     use std::os::raw::{c_char, c_int};
 
     pub const LAYER_OVERLAY: c_int = 3;
+    pub const EDGE_LEFT: c_int = 0;
     pub const EDGE_TOP: c_int = 2;
     pub const KEYBOARD_NONE: c_int = 0;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
@@ -179,6 +180,7 @@ mod layer {
         pub fn gtk_layer_set_namespace(window: *mut GtkWindow, name_space: *const c_char);
         pub fn gtk_layer_set_layer(window: *mut GtkWindow, layer: c_int);
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
+        pub fn gtk_layer_set_margin(window: *mut GtkWindow, edge: c_int, margin_size: c_int);
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
     }
@@ -235,8 +237,12 @@ pub fn make_non_activating(win: &WebviewWindow) {
         layer::gtk_layer_init_for_window(ptr);
         layer::gtk_layer_set_namespace(ptr, c"coucou".as_ptr());
         layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
-        // Top edge only: the compositor centres the surface horizontally.
+        // Anchored top and left: left alone (not also right) is what lets a
+        // left margin position the surface, rather than stretch it edge to
+        // edge. `island::apply_geometry` computes that margin itself —
+        // centred by default, offset by however far the island was dragged.
         layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, 1);
         // -1: sit right against the screen edge, over any top panel, the way
         // the Mac island sits in the notch.
         layer::gtk_layer_set_exclusive_zone(ptr, -1);
@@ -261,6 +267,17 @@ pub fn make_non_activating(win: &WebviewWindow) {
     });
     LAYER_SURFACE.store(true, Ordering::Relaxed);
     crate::log::line("island is a layer-shell overlay");
+}
+
+/// Repositions the island along the top edge by setting its left margin — a
+/// no-op where it never became a layer surface (no layer-shell, or
+/// `COUCOU_LAYER_SHELL=0`), since an ordinary window has no such margin to set.
+pub fn set_horizontal_margin(win: &WebviewWindow, margin: i32) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed) {
+        return;
+    }
+    let Ok(gw) = win.gtk_window() else { return };
+    unsafe { layer::gtk_layer_set_margin(gtk_window_ptr(&gw), layer::EDGE_LEFT, margin) };
 }
 
 /// Temporarily allow keyboard focus so a text field inside the island can be

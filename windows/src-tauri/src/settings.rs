@@ -35,6 +35,12 @@ pub struct Settings {
     pub lmstudio_url: String,
     /// Model name last chosen from that LM Studio server.
     pub lmstudio_model: String,
+    /// How far the island sits from horizontal centre, in logical px — 0
+    /// until it has ever been dragged. Set by dragging the island itself.
+    pub screen_offset_x: f64,
+    /// Dragging the island does nothing while this is set, until it is
+    /// turned off again.
+    pub position_locked: bool,
 }
 
 fn default_model() -> String {
@@ -63,6 +69,8 @@ impl Default for Settings {
             ollama_model: String::new(),
             lmstudio_url: String::new(),
             lmstudio_model: String::new(),
+            screen_offset_x: 0.0,
+            position_locked: false,
         }
     }
 }
@@ -328,7 +336,9 @@ mod tests {
   "ollamaUrl": "http://localhost:11434",
   "ollamaModel": "llama3",
   "lmstudioUrl": "http://localhost:1234",
-  "lmstudioModel": "local-model"
+  "lmstudioModel": "local-model",
+  "screenOffsetX": -120.5,
+  "positionLocked": true
 }"#;
 
     fn custom() -> Value {
@@ -659,6 +669,8 @@ mod tests {
                 "ollamaModel",
                 "lmstudioUrl",
                 "lmstudioModel",
+                "screenOffsetX",
+                "positionLocked",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
