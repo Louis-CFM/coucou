@@ -292,6 +292,8 @@ final class AppState: ObservableObject {
     // Claude Code sessions → their git checkout (by task id) and that branch's PR/CI (by "repo@branch")
     @Published var sessionGit: [String: GitRepoInfo] = [:]
     @Published var sessionBranches: [String: SessionBranchInfo] = [:]
+    // The Claude Code session last seen on each pill (from the hooks), to continue it from the notch or the iPhone
+    @Published var claudeSessions: [String: ClaudeSessionRef] = [:]
 
     // GitHub repo in focus in the notch — nil = all watched repos
     @Published var githubFocusRepo: String? = nil {
@@ -766,6 +768,7 @@ enum SidePanel: Equatable {
     case github(GitHubDetailSection)       // PRs, reviews or default-branch CI
     case vercelDeployment(String)          // one deployment, by id
     case sessionBranch(String)             // a Claude Code session's PR, CI and preview, by task id
+    case reply(String)                     // continue a Claude Code session from the notch, by task id
 }
 
 // MARK: - Vercel

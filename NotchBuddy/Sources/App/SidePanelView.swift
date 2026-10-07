@@ -49,6 +49,12 @@ struct SidePanelView: View {
                                    attention: othersNeedAttention, onClose: close)
             case .sessionBranch(let taskId):
                 SessionBranchPanel(state: state, taskId: taskId, attention: othersNeedAttention, onClose: close)
+            case .reply(let taskId):
+                #if !APPSTORE
+                SessionReplyPanel(state: state, taskId: taskId, attention: othersNeedAttention, onClose: close)
+                #else
+                EmptyView()
+                #endif
             case .vercelDeployment(let id):
                 if let dep = state.vercelDeployments.first(where: { $0.id == id }) {
                     VercelDeploymentPanel(deployment: dep, attention: othersNeedAttention, onClose: close)
@@ -638,6 +644,28 @@ struct PanelLinkButton: View {
 // MARK: - Claude Code session → branch
 
 /// Next to the session name: "#12" with the PR's CI dot, or the branch when it has no open PR.
+/// The chips after a session's name: its branch/PR, and the reply button (GitHub build).
+struct SessionChips: View {
+    @ObservedObject var state: AppState
+    let taskId: String
+
+    var body: some View {
+        if let git = state.sessionGit[taskId] {
+            SessionBranchChip(git: git, info: state.sessionBranchInfo(for: taskId),
+                              isOpen: state.sidePanel == .sessionBranch(taskId)) {
+                state.toggleSidePanel(.sessionBranch(taskId))
+            }
+        }
+        #if !APPSTORE
+        if state.claudeSessions[taskId] != nil {
+            SessionReplyChip(isOpen: state.sidePanel == .reply(taskId)) {
+                state.toggleSidePanel(.reply(taskId))
+            }
+        }
+        #endif
+    }
+}
+
 struct SessionBranchChip: View {
     let git: GitRepoInfo
     let info: SessionBranchInfo?
@@ -822,3 +850,118 @@ struct VercelPreviewDot: View {
         .help("Vercel preview · \(deployment.statusLabel) · \(deployment.url)")
     }
 }
+
+// MARK: - Continue a Claude Code session
+
+#if !APPSTORE
+/// Opens the reply panel. Same capsule as SessionBranchChip.
+struct SessionReplyChip: View {
+    let isOpen: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrowshape.turn.up.left.fill")
+                .font(.system(size: 7.5, weight: .semibold))
+                .foregroundColor(Color(hex: isHovered || isOpen ? "#C5C8CD" : "#8E939C"))
+                .padding(.horizontal, 5)
+                .frame(height: 15)
+                .background(Capsule().fill(Color.white.opacity(isHovered || isOpen ? 0.12 : 0.06)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .onHover { isHovered = $0 }
+        .help("Continue this conversation from the notch")
+    }
+}
+
+/// Sends the next message of a Claude Code session: `claude -p … --resume <id>` in the
+/// background (SessionResumer). The turn then shows in the left card through the hooks.
+struct SessionReplyPanel: View {
+    @ObservedObject var state: AppState
+    let taskId: String
+    let attention: Bool
+    let onClose: () -> Void
+    @StateObject private var status = PanelStatusModel()
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private var task: AgentTask? { state.tasks.first { $0.id == taskId } }
+    private var session: ClaudeSessionRef? { state.claudeSessions[taskId] }
+
+    /// Why a message can't be sent right now, or nil.
+    private var blocker: String? {
+        guard let session else { return "No session seen yet" }
+        if SessionResumer.shared.isRunning(session.sessionId) { return "Waiting for the reply…" }
+        switch task?.state {
+        case .working, .thinking, .searching: return "Busy — wait for this turn to end"
+        case .approval, .question:            return "Waiting for your answer"
+        default:                              return nil
+        }
+    }
+
+    private func send() {
+        let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty, message.count <= 8000, blocker == nil, let session else { return }
+        let result = SessionResumer.shared.resume(session, pillId: taskId, text: message, log: { line in
+            appendAppLog("nb.log", "[reply] \(line)")
+        }, onExit: { code, _ in
+            if code != 0 { SoundEngine.shared.play("error") }
+        })
+        switch result {
+        case .success:
+            text = ""
+            status.show("Sent", ok: true)
+            SoundEngine.shared.play("send")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                if state.sidePanel == .reply(taskId) { onClose() }
+            }
+        case .failure(let failure):
+            status.show(failure.description, ok: false)
+        }
+    }
+
+    var body: some View {
+        let hostName = ClaudeHost.name(for: session?.hostApp)
+        SidePanelChrome(title: "Continue", accent: task?.color ?? "#F5F6F8",
+                        subtitle: task?.name, status: status.current,
+                        attention: attention, onClose: onClose) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .bottom, spacing: 6) {
+                    TextField(blocker ?? "Message Claude…", text: $text, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .lineLimit(1...3)
+                        .focused($focused)
+                        .onSubmit(send)
+                        .disabled(blocker != nil)
+                    Button(action: send) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(hex: "#0B0C0E"))
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(Color(hex: "#F5F6F8")))
+                            .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || blocker != nil ? 0.3 : 1)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(blocker != nil)
+                    .help("Send (Return)")
+                }
+                .padding(.horizontal, 9).padding(.vertical, 6)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Text("Runs in the background · \(hostName) won't show this turn")
+                    .font(.system(size: 9.5))
+                    .foregroundColor(Color(hex: "#6B7079"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .onAppear { DispatchQueue.main.async { focused = true } }
+    }
+}
+#endif

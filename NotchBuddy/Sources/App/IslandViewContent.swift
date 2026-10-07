@@ -74,12 +74,7 @@ struct OverviewView: View {
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                if let git = state.sessionGit[agent.id] {
-                                    SessionBranchChip(git: git, info: state.sessionBranchInfo(for: agent.id),
-                                                      isOpen: state.sidePanel == .sessionBranch(agent.id)) {
-                                        state.toggleSidePanel(.sessionBranch(agent.id))
-                                    }
-                                }
+                                SessionChips(state: state, taskId: agent.id)
                                 Spacer(minLength: 2)
                                 if agent.steps.count > 1 {
                                     Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
@@ -208,6 +203,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
+            if ClaudeHost.activate(task.hostApp) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -1873,6 +1869,7 @@ struct IntegrationCardView: View {
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
+                    SessionChips(state: appState, taskId: task.id)
                     Spacer(minLength: 2)
                     if task.steps.count > 1 {
                         Text("\(min(task.stepIndex + 1, task.steps.count))/\(task.steps.count)")
@@ -1900,7 +1897,8 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
+                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(for: task)
+                                                         : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
@@ -1922,7 +1920,12 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude" {
+                    if task.id == "integration_claude", task.hostApp != nil {
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.7))
+                            .buttonStyle(.plain)
+                    } else if task.id == "integration_claude" {
                         Button("Open Visual Studio Code") { openVSCode() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
@@ -3725,9 +3728,9 @@ struct AgentPill: View {
 
     private var effectiveColor: String { task.color }
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? ClaudeHost.pillName(for: task) : task.name
     }
 
     var body: some View {

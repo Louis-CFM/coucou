@@ -351,6 +351,7 @@ final class HookServer: @unchecked Sendable {
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
         // • VS Code → integration_claude
+        // • a known terminal (Warp, Terminal, iTerm…) → integration_claude, host recorded on the task
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
         #else
@@ -358,6 +359,7 @@ final class HookServer: @unchecked Sendable {
         #endif
         let agentId: String
         let isExternalAgent: Bool
+        var hostApp: String? = nil
         if isCodexEvent {
             agentId = "agent_codex"
             isExternalAgent = false
@@ -370,12 +372,23 @@ final class HookServer: @unchecked Sendable {
         } else if isVSCodeEditor {
             agentId = "integration_claude"
             isExternalAgent = false
+        } else if let host = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) {
+            agentId = "integration_claude"
+            isExternalAgent = false
+            hostApp = host.bundleId
         } else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
 
         let focused = state.focusId == agentId
+
+        // Remember the session so it can be continued from the notch or the iPhone.
+        if !isExternalAgent, !isCodexEvent, sessionId != "unknown", !cwd.isEmpty {
+            let ref = ClaudeSessionRef(sessionId: sessionId, cwd: cwd,
+                                       hostApp: agentId == "integration_claude" ? hostApp : nil)
+            if state.claudeSessions[agentId] != ref { state.claudeSessions[agentId] = ref }
+        }
 
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
@@ -389,7 +402,7 @@ final class HookServer: @unchecked Sendable {
             switch pending.pillId {
             case "agent_cursor": handledNote = "Handled in Cursor."
             case "agent_codex":  handledNote = "Handled in Codex."
-            default:             handledNote = "Handled in VS Code."
+            default:             handledNote = "Handled in \(claudeHostName)."
             }
             var resolved = false
             switch name {
@@ -418,7 +431,7 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             if state.isPresent { expandIfNeeded(to: .overview) }
@@ -426,7 +439,7 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
@@ -441,7 +454,7 @@ final class HookServer: @unchecked Sendable {
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp) }
             state.updateTask(id: agentId, state: .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = frenchStep(tool: tool, input: input)
@@ -648,7 +661,8 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        let isTerminal = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) != nil
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -712,7 +726,7 @@ final class HookServer: @unchecked Sendable {
             switch capturedPillId {
             case "agent_cursor": note = "Handled in Cursor."
             case "agent_codex":  note = "Handled in Codex."
-            default:             note = "Handled in VS Code."
+            default:             note = "Handled in \(self.claudeHostName)."
             }
             self.dismissApprovalCard(note: note)
         }
@@ -729,7 +743,7 @@ final class HookServer: @unchecked Sendable {
             switch capturedPillId {
             case "agent_cursor": note = "Still waiting in Cursor."
             case "agent_codex":  note = "Still waiting in Codex."
-            default:             note = "Still waiting in VS Code."
+            default:             note = "Still waiting in \(self.claudeHostName)."
             }
             self.dismissApprovalCard(note: note)
         }
@@ -811,7 +825,8 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor else {
+        let isTerminal = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) != nil
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -871,20 +886,28 @@ final class HookServer: @unchecked Sendable {
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
+    /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "") {
+    private var claudeHostName: String {
+        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
+    }
+
+    @MainActor
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             return
         }
         // Transient: create and insert after the main pill
         let def = PillCatalog.definition(for: id)
         let color = def?.color ?? "#C0C4CC"
         let source = def?.source ?? .agent
-        let task = AgentTask(id: id, name: projectName, color: color,
+        var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
+        task.hostApp = hostApp
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {

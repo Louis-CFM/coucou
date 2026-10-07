@@ -14,6 +14,7 @@ final class IslandWindowController: NSWindowController {
     private var wasInIsland = false
     private var frameTimer: Timer?
     private var keyMonitor: Any?
+    private var sidePanelSubscription: AnyCancellable?
     private var viewSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
@@ -155,6 +156,12 @@ final class IslandWindowController: NSWindowController {
                 if newView == .prompt {
                     self.islandPanel.makeKey()
                 }
+            }
+        // Same for the reply panel's text field
+        sidePanelSubscription = state.$sidePanel
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] panel in
+                if case .reply = panel { self?.islandPanel.makeKey() }
             }
     }
 
