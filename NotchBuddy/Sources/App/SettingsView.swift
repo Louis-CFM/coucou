@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
     private static let fallbackModels: [(id: String, label: String)] = [
+        ("claude-opus-5-5[1m]",       "Claude Opus 5.5 (1M)"),
         ("claude-sonnet-4-6",         "Claude Sonnet 4.6"),
         ("claude-sonnet-5-5",         "Claude Sonnet 5.5"),
         ("claude-opus-5-5",           "Claude Opus 5.5"),
@@ -77,6 +78,8 @@ struct SettingsView: View {
 
     // Multi-provider chat keys
     @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var vertexProject: String = VertexAI.project
+    @State private var vertexRegion:  String = UserDefaults.standard.string(forKey: VertexAI.regionKey) ?? ""
     @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
@@ -199,21 +202,29 @@ struct SettingsView: View {
             #if !APPSTORE
             state.refreshPlanRelayState()
             #endif
-            guard fetchedModels.isEmpty,
-                  let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
-            Task {
-                let models = await ClaudeService.fetchModels(apiKey: key)
-                guard !models.isEmpty else { return }
-                await MainActor.run {
-                    fetchedModels = models
-                    let m = state.claudeModel
-                    if models.contains(where: { $0.id == m }) {
-                        modelChoice = m
-                        customModel = ""
-                    } else if modelChoice != Self.customModelTag {
-                        modelChoice = Self.customModelTag
-                        customModel = m
-                    }
+            guard fetchedModels.isEmpty else { return }
+            loadClaudeModels()
+        }
+    }
+
+    /// Fills the Claude model picker from Vertex AI when it is set up, otherwise from the Anthropic API.
+    private func loadClaudeModels() {
+        let viaVertex = VertexAI.serves(.anthropic)
+        let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
+        guard viaVertex || !key.isEmpty else { return }
+        Task {
+            let models = viaVertex ? await VertexAI.fetchClaudeModels()
+                                   : await ClaudeService.fetchModels(apiKey: key)
+            guard !models.isEmpty else { return }
+            await MainActor.run {
+                fetchedModels = models
+                let m = state.claudeModel
+                if models.contains(where: { $0.id == m }) {
+                    modelChoice = m
+                    customModel = ""
+                } else if modelChoice != Self.customModelTag {
+                    modelChoice = Self.customModelTag
+                    customModel = m
                 }
             }
         }
@@ -824,6 +835,42 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
+        #if !APPSTORE
+        GroupBox(String(localized: "chat.vertex.title")) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField(String(localized: "chat.vertex.project"), text: $vertexProject)
+                    .textFieldStyle(.roundedBorder)
+                TextField(String(localized: "chat.vertex.region"), text: $vertexRegion)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    let project = vertexProject.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let region  = vertexRegion.trimmingCharacters(in: .whitespacesAndNewlines)
+                    UserDefaults.standard.set(project, forKey: VertexAI.projectKey)
+                    UserDefaults.standard.set(region,  forKey: VertexAI.regionKey)
+                    state.fetchedProviderModels.removeValue(forKey: .anthropic)
+                    state.fetchedProviderModels.removeValue(forKey: .google)
+                    fetchedModels = []
+                    loadClaudeModels()
+                    if project.isEmpty {
+                        statusMessage = String(localized: "status.vertex.off")
+                    } else if !VertexAI.credentialsAvailable {
+                        statusMessage = String(localized: "status.vertex.no-credentials")
+                    } else {
+                        statusMessage = String(localized: "status.vertex.on \(project) \(VertexAI.region)")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text(VertexAI.credentialsAvailable
+                     ? String(localized: "chat.vertex.help")
+                     : String(localized: "chat.vertex.help.no-credentials"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(6)
+        }
+        #endif
+
         GroupBox(String(localized: "chat.anthropic-api.title")) {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
@@ -856,7 +903,8 @@ struct SettingsView: View {
                         .onChange(of: customModel) { _, value in applyCustomModel(value) }
                 }
 
-                Text(String(localized: "chat.model.description"))
+                Text(VertexAI.serves(.anthropic) ? String(localized: "chat.model.description.vertex")
+                                                 : String(localized: "chat.model.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -1584,9 +1632,9 @@ struct SettingsView: View {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return String(localized: "Not connected") }
                 } else {
-                    let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                               : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
-                    if KeychainStore.shared.get(keyId) == nil { return String(localized: "Key not configured") }
+                    let provider: ChatProvider = def.id == "ai_anthropic" ? .anthropic
+                                               : def.id == "ai_google"    ? .google : .openai
+                    if !provider.hasCloudCredentials { return String(localized: "Key not configured") }
                 }
             }
             return nil
