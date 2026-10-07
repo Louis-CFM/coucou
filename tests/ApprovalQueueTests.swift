@@ -3,9 +3,11 @@ import Foundation
 @main
 enum ApprovalQueueTests {
     static func entry(_ n: Int, session: String = "s1", pill: String = "integration_claude",
-                      tool: String = "Bash", key: String = "{}") -> QueuedApproval {
+                      tool: String = "Bash", key: String = "{}",
+                      description: String? = nil) -> QueuedApproval {
         QueuedApproval(id: UUID(), fd: Int32(n), sessionId: session, pillId: pill,
-                       projectName: "p", cwd: "/", tool: tool, command: "cmd\(n)", inputKey: key)
+                       projectName: "p", cwd: "/", tool: tool, command: "cmd\(n)",
+                       description: description, inputKey: key)
     }
 
     static func main() {
@@ -23,6 +25,11 @@ enum ApprovalQueueTests {
         precondition(q.head == b && q.count == 1)
         precondition(q.remove(id: c.id) == nil)   // already gone: no-op
         precondition(q.remove(id: b.id) == b && q.isEmpty && q.head == nil)
+
+        // Optional context stays with its request as it moves through the queue.
+        let described = entry(4, description: "Run tests before finishing")
+        precondition(q.enqueue(described) == .accepted)
+        precondition(q.head?.description == "Run tests before finishing")
 
         // Cap: the newest is rejected, queue unchanged
         var full = ApprovalQueue()

@@ -516,6 +516,7 @@ final class DemoEngine: ObservableObject {
                 sessionId: "demo_session",
                 tool: "Bash",
                 command: "npm test",
+                description: "Run the project test suite to verify the changes before finishing.",
                 inputKey: #"{"command":"npm test"}"#,
                 pillId: mainPillId
             )

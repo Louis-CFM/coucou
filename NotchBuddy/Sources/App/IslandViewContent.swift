@@ -332,6 +332,7 @@ struct ApprovalView: View {
     @ObservedObject var state: AppState
 
     var approval: ApprovalInfo? { state.pendingApproval }
+    private var command: String { approval?.command ?? approval?.tool ?? "…" }
 
     /// The pill, named after the session that asks (several sessions can share a pill).
     private var asker: AgentTask? {
@@ -357,7 +358,62 @@ struct ApprovalView: View {
                             .monospacedDigit()
                     }
                 }
-                CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
+                if let description = approval?.description {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            state.approvalDetailsExpanded.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            CodeBlock(text: command)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Image(systemName: state.approvalDetailsExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(state.approvalDetailsExpanded ? "Hide permission details" : "Show permission details")
+
+                    if state.approvalDetailsExpanded {
+                        ScrollView(.vertical, showsIndicators: state.approvalDescriptionHeight > IslandConst.approvalDescriptionMaxHeight) {
+                            Text(description)
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "#B8BCC4"))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
+                                .background {
+                                    GeometryReader { proxy in
+                                        Color.clear.preference(
+                                            key: ApprovalDescriptionHeightKey.self,
+                                            value: proxy.size.height
+                                        )
+                                    }
+                                }
+                        }
+                        .frame(height: min(
+                            state.approvalDescriptionHeight,
+                            IslandConst.approvalDescriptionMaxHeight
+                        ))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.045))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.05)))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .transition(.opacity)
+                        .onPreferenceChange(ApprovalDescriptionHeightKey.self) { height in
+                            let measured = max(IslandConst.approvalDescriptionLineHeight, ceil(height))
+                            if abs(state.approvalDescriptionHeight - measured) > 0.5 {
+                                state.approvalDescriptionHeight = measured
+                            }
+                        }
+                    }
+                } else {
+                    CodeBlock(text: command)
+                }
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
                         HookServer.shared.sendApprovalDecision("deny", for: shownId)
@@ -381,6 +437,14 @@ struct ApprovalView: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private struct ApprovalDescriptionHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = IslandConst.approvalDescriptionLineHeight
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
