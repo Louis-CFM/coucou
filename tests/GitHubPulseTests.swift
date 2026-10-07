@@ -343,6 +343,85 @@ enum GitHubPulseTests {
                   GitHubPulse.isStale(fetchedAt: now.addingTimeInterval(-61), now: now, maxAge: 60))
         }
 
+        // ── GitHubPulse.parse — watched repos as aliases r0, r1… ─────────────
+        print("GitHubPulse.parse — watched repo aliases")
+        do {
+            let json = """
+            {
+              "data": {
+                "viewer": { "login": "u", "pullRequests": { "nodes": [] } },
+                "reviewRequested": { "issueCount": 0, "nodes": [] },
+                "r1": { "nameWithOwner": "org/second", "url": "u2", "isArchived": false,
+                        "defaultBranchRef": { "name": "main",
+                          "target": { "oid": "b", "statusCheckRollup": { "state": "FAILURE" } } } },
+                "r0": { "nameWithOwner": "org/first", "url": "u1", "isArchived": false,
+                        "defaultBranchRef": { "name": "dev",
+                          "target": { "oid": "a", "statusCheckRollup": { "state": "SUCCESS" } } } },
+                "r2": null
+              }
+            }
+            """.data(using: .utf8)!
+            let pulse = GitHubPulse.parse(json)
+            check("parses with aliases", pulse != nil)
+            check("aliases in r0, r1 order", pulse?.mainCI.map(\.repo) == ["org/first", "org/second"])
+            check("alias CI parsed", pulse?.mainCI.map(\.ci) == [.success, .failure])
+            check("null alias (no access) skipped", pulse?.mainCI.count == 2)
+        }
+
+        // ── GitHubPulse.filtered ──────────────────────────────────────────────
+        print("GitHubPulse.filtered")
+        do {
+            var pulse = GitHubPulse.parse(emptyJSON)!
+            pulse.myPRs = [GitHubPR(id: "a/x#1", title: "", url: "", repo: "a/x", number: 1,
+                                    isDraft: false, ci: .success, review: .unknown),
+                           GitHubPR(id: "b/y#2", title: "", url: "", repo: "b/y", number: 2,
+                                    isDraft: false, ci: .failure, review: .unknown)]
+            pulse.toReview = [GitHubPR(id: "b/y#3", title: "", url: "", repo: "b/y", number: 3,
+                                       isDraft: false, ci: .unknown, review: .pending)]
+            pulse.mainCI = [GitHubRepoCI(repo: "a/x", url: "", branch: "main", ci: .success),
+                            GitHubRepoCI(repo: "b/y", url: "", branch: "main", ci: .failure)]
+            check("empty set → unchanged", pulse.filtered(toRepos: []) == pulse)
+            let only = pulse.filtered(toRepos: ["b/y"])
+            check("PRs narrowed", only.myPRs.map(\.repo) == ["b/y"])
+            check("to-review narrowed", only.toReview.count == 1)
+            check("main CI narrowed", only.mainCI.map(\.repo) == ["b/y"])
+            check("login kept", only.login == pulse.login)
+        }
+
+        // ── SessionBranchInfo.parse ───────────────────────────────────────────
+        print("SessionBranchInfo.parse")
+        do {
+            func json(_ prs: String) -> Data {
+                """
+                { "data": { "repository": {
+                    "pullRequests": { "nodes": [\(prs)] },
+                    "ref": { "target": { "oid": "x", "statusCheckRollup": { "state": "PENDING" } } }
+                } } }
+                """.data(using: .utf8)!
+            }
+            let fork = """
+            { "number": 152, "title": "From a fork", "url": "u", "isDraft": false, "headRefName": "main",
+              "headRepository": { "nameWithOwner": "someone/coucou" }, "commits": { "nodes": [] } }
+            """
+            let own = """
+            { "number": 7, "title": "Mine", "url": "u7", "isDraft": true, "reviewDecision": "APPROVED",
+              "headRefName": "main", "headRepository": { "nameWithOwner": "Me/App" },
+              "commits": { "nodes": [ { "commit": { "oid": "h", "statusCheckRollup": { "state": "FAILURE" } } } ] } }
+            """
+            let onlyFork = SessionBranchInfo.parse(json(fork), repo: "me/app", branch: "main")
+            check("fork PR with same branch name ignored", onlyFork != nil && onlyFork?.pr == nil)
+            check("branch CI parsed", onlyFork?.branchCI == .pending)
+            check("hasPending from branch CI", onlyFork?.hasPending == true)
+            let both = SessionBranchInfo.parse(json(fork + "," + own), repo: "me/app", branch: "main")
+            check("own PR found (case-insensitive repo)", both?.pr?.number == 7)
+            check("own PR CI / draft / review", both?.pr?.ci == .failure && both?.pr?.isDraft == true
+                  && both?.pr?.review == .approved)
+            check("PR id uses session repo", both?.pr?.id == "me/app#7")
+            check("variables", SessionBranchInfo.variables(repo: "o/n", branch: "feat/x")
+                  == ["owner": "o", "name": "n", "branch": "feat/x", "qualified": "refs/heads/feat/x"])
+            check("bad repo → no variables", SessionBranchInfo.variables(repo: "nope", branch: "b") == nil)
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")
