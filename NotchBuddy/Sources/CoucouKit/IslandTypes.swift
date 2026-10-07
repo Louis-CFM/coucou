@@ -60,6 +60,14 @@ struct AgentTask: Identifiable, Equatable {
     var pillBadge: PillBadge? = nil  // alert badge shown on pill when not focused
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
+
+    /// Provider/editor identity for session UI. `name` is often the project name.
+    var sessionAgentName: String {
+        if let definition = PillCatalog.definition(for: id) {
+            return definition.sessionSubtitle
+        }
+        return source == .claudeCode ? "Claude Code" : "Agent"
+    }
 }
 
 enum AgentSource: Equatable {

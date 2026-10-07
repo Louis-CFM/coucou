@@ -64,13 +64,7 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .layoutPriority(1)
-                                Text({ () -> String in
-                                    switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
-                                    case .n8n:        return "n8n"
-                                    }
-                                }())
+                                Text(agent.sessionAgentName)
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
@@ -289,7 +283,7 @@ struct EmptyStateView: View {
                         .foregroundColor(Color(hex: "#9398A1"))
                 }
                 Spacer()
-                PrimaryButton("Ask Claude") {
+                PrimaryButton("shortcut.open-chat") {
                     state.view = .prompt
                 }
             }
@@ -310,7 +304,12 @@ struct ApprovalView: View {
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
+                AgentWho(
+                    task: state.focusTask,
+                    label: String(format: String(localized: "session.agent.needs-permission %@"),
+                                  state.focusTask?.sessionAgentName ?? String(localized: "Agent")),
+                    verbatim: true
+                )
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
@@ -369,7 +368,12 @@ struct QuestionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Header row: agent name + question counter + "Reply in terminal" link
                     HStack(spacing: 4) {
-                        AgentWho(task: nil, label: "Claude Code is asking")
+                        AgentWho(
+                            task: state.focusTask,
+                            label: String(format: String(localized: "session.agent.asking %@"),
+                                          state.focusTask?.sessionAgentName ?? String(localized: "Agent")),
+                            verbatim: true
+                        )
                         Spacer(minLength: 4)
                         if q.questions.count > 1 {
                             Text("\(qi + 1)/\(q.questions.count)")
@@ -606,7 +610,12 @@ struct FinishedView: View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(
+                    task: state.focusTask,
+                    label: String(format: String(localized: "session.agent.finished %@"),
+                                  state.focusTask?.sessionAgentName ?? String(localized: "Agent")),
+                    verbatim: true
+                )
                 Text({
                     if let fl = state.focusTask?.finalLine { return fl }
                     if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
@@ -1540,10 +1549,14 @@ struct SearchingView: View {
     @ObservedObject var state: AppState
 
     var label: String {
+        let provider = state.chatProvider.displayName
         switch state.promptContext {
-        case .window(_, let title, _): return String(format: String(localized: "Claude is reading %@…"), title)
-        case .file(let name, _):       return String(format: String(localized: "Claude is reading %@…"), name)
-        case nil:                      return String(localized: "Claude is searching…")
+        case .window(_, let title, _):
+            return String(format: String(localized: "chat.provider.reading %@ %@"), provider, title)
+        case .file(let name, _):
+            return String(format: String(localized: "chat.provider.reading %@ %@"), provider, name)
+        case nil:
+            return String(format: String(localized: "chat.provider.searching %@"), provider)
         }
     }
 
@@ -4479,6 +4492,7 @@ extension CardBackground where Content == EmptyView {
 struct AgentWho: View {
     let task: AgentTask?
     let label: String
+    var verbatim: Bool = false
 
     var body: some View {
         HStack(spacing: 7) {
@@ -4486,7 +4500,12 @@ struct AgentWho: View {
                 Circle().fill(Color(hex: task.color)).frame(width: 8, height: 8)
                 Text(task.name).font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
             }
-            Text(LocalizedStringKey(label)).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
+            Group {
+                if verbatim { Text(verbatim: label) }
+                else { Text(LocalizedStringKey(label)) }
+            }
+            .font(.system(size: 12))
+            .foregroundColor(Color(hex: "#8E939C"))
         }
     }
 }

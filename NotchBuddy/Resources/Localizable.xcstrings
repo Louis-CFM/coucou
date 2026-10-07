@@ -8257,6 +8257,34 @@
         }
       }
     },
+    "chat.provider.reading %@ %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "%1$@ يقرأ %2$@…" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "%1$@ %2$@ পড়ছে…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%1$@ is reading %2$@…" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%1$@ está leyendo %2$@…" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%1$@ lit %2$@…" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "%1$@ %2$@ पढ़ रहा है…" } },
+        "id": { "stringUnit": { "state": "translated", "value": "%1$@ sedang membaca %2$@…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%1$@ está lendo %2$@…" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%1$@ читает %2$@…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$@ 正在读取 %2$@…" } }
+      }
+    },
+    "chat.provider.searching %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "%@ يبحث…" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "%@ খুঁজছে…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ is searching…" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ está buscando…" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ recherche…" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "%@ खोज रहा है…" } },
+        "id": { "stringUnit": { "state": "translated", "value": "%@ sedang mencari…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ está pesquisando…" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ ищет…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%@ 正在搜索…" } }
+      }
+    },
     "chat.anthropic-api.title": {
       "localizations": {
         "ar": {
@@ -14656,6 +14684,48 @@
             "value": "设置 — Coucou"
           }
         }
+      }
+    },
+    "session.agent.asking %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "%@ يسأل" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "%@ জিজ্ঞেস করছে" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ is asking" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ está preguntando" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ demande" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "%@ पूछ रहा है" } },
+        "id": { "stringUnit": { "state": "translated", "value": "%@ sedang bertanya" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ está perguntando" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ спрашивает" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%@ 正在提问" } }
+      }
+    },
+    "session.agent.finished %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أنهى %@ العمل" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "%@ শেষ করেছে" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ finished" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ terminó" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ a terminé" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "%@ समाप्त हो गया" } },
+        "id": { "stringUnit": { "state": "translated", "value": "%@ selesai" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ terminou" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ завершил работу" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%@ 已完成" } }
+      }
+    },
+    "session.agent.needs-permission %@": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "%@ يحتاج إلى إذن" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "%@-এর অনুমতি প্রয়োজন" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ needs permission" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ necesita permiso" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ demande une autorisation" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "%@ को अनुमति चाहिए" } },
+        "id": { "stringUnit": { "state": "translated", "value": "%@ memerlukan izin" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ precisa de permissão" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ запрашивает разрешение" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%@ 需要权限" } }
       }
     },
     "shortcut.attach-front-window": {
