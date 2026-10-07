@@ -66,7 +66,7 @@ private let weeklyResetFormatter: DateFormatter = {
     return fmt
 }()
 
-private struct GaugeRowView: View {
+struct GaugeRowView: View {
     let label: String
     let window: PlanWindow?
     let now: Date

@@ -21,8 +21,23 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test Claude hook detection
+        run: bash scripts/test-claude-hooks.sh
+
+      - name: Test display choice
+        run: bash scripts/test-display-choice.sh
+
+      - name: Desktop Mochi and gaze tests
+        run: bash scripts/test-desktop-mochi.sh
+
+      - name: Test auto-close timing
+        run: bash scripts/test-auto-close.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
+
+      - name: Test Claude response text
+        run: bash scripts/test-claude-response.sh
 
       - name: Test chat parsing
         run: bash scripts/test-chat-parsing.sh
@@ -44,6 +59,9 @@ jobs:
 
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
+
+      - name: Claude settings file tests
+        run: bash scripts/test-claude-settings.sh
 
       - name: Build
         run: |

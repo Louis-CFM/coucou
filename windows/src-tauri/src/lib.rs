@@ -69,7 +69,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         (screen_changed, autostart_changed)
     };
     if let Err(err) = settings::save(&settings) {
-        eprintln!("[coucou] could not save settings: {err}");
+        log::line(format!("could not save settings: {err}"));
     }
     if autostart_changed {
         let manager = app.autolaunch();
@@ -204,7 +204,9 @@ fn hooks_apply(
     let updated = {
         let mut current = shared.settings.lock().unwrap();
         current.hooks_installed = install;
-        let _ = settings::save(&current);
+        if let Err(err) = settings::save(&current) {
+            log::line(format!("could not save settings: {err}"));
+        }
         current.clone()
     };
     let _ = app.emit("settings-changed", updated);

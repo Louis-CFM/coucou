@@ -6,7 +6,7 @@ struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
     /// When set, overrides island-based eye-tracking (used by desktop Mochi).
-    /// CGPoint in the same coord space as state.mousePosition (y-down from screen top).
+    /// CGPoint in the same coord space as state.mousePosition (DesktopSpace, y-down).
     var lookOriginOverride: CGPoint? = nil
 
     // One engine per view instance (main bot)
@@ -33,7 +33,9 @@ struct BotCanvasView: View {
                 // Claude Code tasks use state-based gradient (working=blue, thinking=purple, etc.).
                 #if !APPSTORE
                 if state.showingPlanDetail {
-                    let hex = ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+                    let hex = state.planDetailIsCodex
+                        ? CodexPlanGauge.color(state.codexPlanUsage)
+                        : ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
                     engine.bodyColor = cgColorFromHex(hex)
                 } else {
                     engine.bodyColor = (state.focusTask?.isIntegration == true)
@@ -153,16 +155,23 @@ struct BotCanvasView: View {
         if let origin = lookOriginOverride {
             return tanh((state.mousePosition.x - origin.x) / 260)
         }
-        let screen = NSScreen.main ?? NSScreen.screens[0]
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
-        let (botCx, _, _, _) = botPosition(mode: state.mode, view: state.view,
-                                            islandW: islandW, islandH: islandH,
-                                            uploadProgress: state.uploadProgress)
-        // Island is centered on screen; bot is at botCx within island coords
-        let botScreenX = screen.frame.midX - islandW / 2 + botCx
-        return tanh((state.mousePosition.x - botScreenX) / 260)
+        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+                                                islandW: islandW, islandH: islandH,
+                                                uploadProgress: state.uploadProgress)
+        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
+        return tanh((state.mousePosition.x - bot.x) / 260)
+    }
+
+    /// Bot centre in DesktopSpace, like state.mousePosition. The island is centred at the
+    /// top of its screen, which can be any display, anywhere in the arrangement.
+    private func islandBotPoint(islandW: CGFloat, botCx: CGFloat, botCy: CGFloat) -> CGPoint {
+        let screen = IslandWindowController.islandScreen().frame
+        return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
+                                            y: screen.maxY - botCy),
+                                    desktopTop: IslandWindowController.desktopTop)
     }
 
     private func lookY(state: AppState, size: CGSize) -> CGFloat {
@@ -175,11 +184,11 @@ struct BotCanvasView: View {
         let actualH: CGFloat = (state.mode == .expanded && state.view == .prompt)
             ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
             : islandH
-        let (_, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
-                                             islandW: islandW, islandH: actualH,
-                                             uploadProgress: state.uploadProgress)
-        // Island top = screen top → bot screen Y = botCy from island top
-        return -tanh((state.mousePosition.y - botCy) / 200)
+        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+                                                islandW: islandW, islandH: actualH,
+                                                uploadProgress: state.uploadProgress)
+        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
+        return -tanh((state.mousePosition.y - bot.y) / 200)
     }
 }
 

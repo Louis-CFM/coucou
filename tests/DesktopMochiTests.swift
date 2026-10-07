@@ -70,24 +70,43 @@ enum DesktopMochiTests {
     // MARK: - lookOrigin
 
     static func testLookOrigin() {
-        // Panel at (200, 300) on a 1440×900 screen starting at x=0
+        // Panel at (200, 300) on a 1440×900 menu-bar screen
         let o = DesktopMochiLogic.lookOrigin(panelMinX: 200, panelMinY: 300,
-                                              screenMinX: 0, screenHeight: 900,
-                                              panelSize: 120)
-        // cx = 200 + 60 = 260 → x = 260 - 0 = 260
-        precondition(o.x == 260, "lookOrigin x must be panel center relative to screen left")
-        // cy = 300 + 60 = 360 → y = 900 - 360 = 540
+                                              desktopTop: 900, panelSize: 120)
+        // cx = 200 + 60 = 260; cy = 300 + 60 = 360 → y = 900 - 360 = 540
+        precondition(o.x == 260, "lookOrigin x must be the panel center")
         precondition(o.y == 540, "lookOrigin y must be flipped from bottom-left to top-left")
 
-        // Panel on a secondary screen starting at x=1440
+        // Panel on a secondary screen to the right: x stays global, not screen-relative
         let o2 = DesktopMochiLogic.lookOrigin(panelMinX: 1540, panelMinY: 100,
-                                               screenMinX: 1440, screenHeight: 1080,
-                                               panelSize: 120)
-        // cx = 1540 + 60 = 1600 → x = 1600 - 1440 = 160
-        precondition(o2.x == 160, "lookOrigin x must be relative to screen minX")
-        // cy = 100 + 60 = 160 → y = 1080 - 160 = 920
-        precondition(o2.y == 920, "lookOrigin y on secondary screen")
+                                               desktopTop: 900, panelSize: 120)
+        precondition(o2.x == 1600, "lookOrigin x must be global (DesktopSpace)")
+        precondition(o2.y == 740, "lookOrigin y must be measured from the menu-bar screen top")
+
+        // Gaze signs across a real arrangement. Menu-bar MacBook 1512×982 at (0,0);
+        // external 2560×1440 above it at (-500, 982); portrait 1080×1920 on the left
+        // at (-1080, -600). AppKit coordinates, y up.
+        let top: CGFloat = 982
+        func gaze(_ bot: CGPoint, _ mouse: CGPoint) -> (Int, Int) {
+            let b = DesktopSpace.topDown(bot, desktopTop: top)
+            let m = DesktopSpace.topDown(mouse, desktopTop: top)
+            // Same formula as BotCanvasView / DesktopMochi: x right +, y up +
+            return (sign(tanh((m.x - b.x) / 260)), sign(-tanh((m.y - b.y) / 200)))
+        }
+        // Mochi in the island at the top of the external screen above
+        let islandOnTop = CGPoint(x: 780, y: 2422 - 16)
+        precondition(gaze(islandOnTop, CGPoint(x: 1400, y: 100)) == (1, -1), "cursor on the MacBook below-right")
+        precondition(gaze(islandOnTop, CGPoint(x: -1000, y: 0)) == (-1, -1), "cursor on the portrait screen")
+        precondition(gaze(islandOnTop, CGPoint(x: 780, y: 2500)) == (0, 1), "cursor above Mochi")
+        // Mochi on the desktop of the portrait screen, cursor on the external screen above
+        let desktopOnLeft = DesktopMochiLogic.lookOrigin(panelMinX: -700, panelMinY: -200,
+                                                          desktopTop: top, panelSize: 120)
+        let mouseAbove = DesktopSpace.topDown(CGPoint(x: 1000, y: 2000), desktopTop: top)
+        precondition(mouseAbove.x > desktopOnLeft.x && mouseAbove.y < desktopOnLeft.y,
+                     "desktop Mochi looks right and up at a cursor on another screen")
     }
+
+    private static func sign(_ v: CGFloat) -> Int { v == 0 ? 0 : (v < 0 ? -1 : 1) }
 
     // MARK: - shouldRetractOnLanding
 

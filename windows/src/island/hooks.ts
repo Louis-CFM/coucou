@@ -13,6 +13,17 @@ const CLAUDE_ID = "integration_claude";
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
 
+/** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
+const stopTimers = new Map<string, number>();
+
+function cancelStopTimer(id: string): boolean {
+  const timer = stopTimers.get(id);
+  if (timer == null) return false;
+  window.clearTimeout(timer);
+  stopTimers.delete(id);
+  return true;
+}
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
@@ -182,6 +193,15 @@ function handleHook(island: Island, payload: HookPayload) {
     }
   };
 
+  /**
+   * Called where a handler is about to replace `finished` with a newer state:
+   * the timer Stop armed would otherwise put the pill back to idle over it. The
+   * badge that timer was going to clear goes now.
+   */
+  const supersedeStop = () => {
+    if (cancelStopTimer(agentId)) State.setPillBadge(agentId, null);
+  };
+
   switch (name) {
     case "SessionStart":
       ensurePill();
@@ -191,6 +211,7 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "UserPromptSubmit": {
       ensurePill();
+      supersedeStop();
       State.updateTask(agentId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
@@ -201,6 +222,7 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PreToolUse": {
       ensurePill();
+      supersedeStop();
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
@@ -209,10 +231,12 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "PostToolUse":
+      supersedeStop();
       State.updateTask(agentId, "working");
       break;
 
     case "PostToolUseFailure":
+      supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, "⚠ failed");
       break;
@@ -221,9 +245,11 @@ function handleHook(island: Island, payload: HookPayload) {
       const message = payload.message ?? "";
       const lower = message.toLowerCase();
       if (lower.includes("rate limit") || lower.includes("limite d")) {
+        supersedeStop();
         State.updateTask(agentId, "ratelimit");
         Sound.play("rate");
       } else if (message.endsWith("?")) {
+        supersedeStop();
         State.updateTask(agentId, "question");
         State.appendStep(agentId, message);
       }
@@ -236,17 +262,23 @@ function handleHook(island: Island, payload: HookPayload) {
       Sound.play("finish");
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
-      window.setTimeout(() => {
-        if (isExternalAgent) {
-          State.removeTask(agentId);
-        } else {
-          State.updateTask(agentId, "idle");
-          State.setPillBadge(agentId, null);
-        }
-      }, 5200);
+      cancelStopTimer(agentId);
+      stopTimers.set(
+        agentId,
+        window.setTimeout(() => {
+          stopTimers.delete(agentId);
+          if (isExternalAgent) {
+            State.removeTask(agentId);
+          } else {
+            State.updateTask(agentId, "idle");
+            State.setPillBadge(agentId, null);
+          }
+        }, 5200),
+      );
       break;
 
     case "StopFailure":
+      supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
       if (focused) surface("error", true);
@@ -254,6 +286,9 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
+      // Nothing left for the timer to do, and it must not outlive the session: a
+      // pill recreated within 5.2 s would be removed by it.
+      cancelStopTimer(agentId);
       if (isExternalAgent) {
         State.removeTask(agentId);
       } else {
@@ -288,6 +323,7 @@ function handleHook(island: Island, payload: HookPayload) {
         break;
       }
       upsert(projectName, cwd);
+      supersedeStop();
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};

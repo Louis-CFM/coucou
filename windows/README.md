@@ -151,7 +151,7 @@ The relay (`coucou-hook.exe`) works with any tool that can run a command on hook
 | Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
 | Any other | `--agent <name>` positional arg | your tool's hook config |
 
-OpenCode and Amp are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
+OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
 
 ## What's different from the Mac version
 

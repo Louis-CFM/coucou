@@ -177,6 +177,14 @@ struct IslandContainer: View {
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             greetNotif.toggle()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .islandScreenChanged)) { _ in
+            // New screen, new resting size (notch ↔ bar): snap without animation.
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            islandWidth  = w
+            islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
+        }
     }
 
     private func modeOrder(_ m: IslandMode) -> Int {
@@ -479,6 +487,15 @@ struct IslandContentView: View {
 struct IslandHeader: View {
     @ObservedObject var state: AppState
 
+    // Claude + Codex pills together: tighten the right side so it clears the notch
+    private var bothPlans: Bool {
+        #if !APPSTORE
+        return state.view == .overview && state.showPlanInNotch && state.planRelayInstalled && state.showCodexPlanInNotch
+        #else
+        return false
+        #endif
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // Left: tab capsules
@@ -498,13 +515,16 @@ struct IslandHeader: View {
             Spacer()
 
             // Right: plan pill (GitHub build, home view only) + action icons
-            HStack(spacing: 8) {
+            HStack(spacing: bothPlans ? 5 : 8) {
                 #if !APPSTORE
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
                     ClaudePlanHeaderPill(state: state)
                 }
+                if state.view == .overview && state.showCodexPlanInNotch {
+                    ClaudePlanHeaderPill(state: state, codex: true)
+                }
                 #endif
-                HStack(spacing: 14) {
+                HStack(spacing: bothPlans ? 10 : 14) {
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             state.view = .settings
@@ -524,7 +544,7 @@ struct IslandHeader: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.trailing, 16)
+            .padding(.trailing, bothPlans ? 8 : 16)
         }
         .frame(maxHeight: .infinity)
     }
@@ -569,25 +589,32 @@ struct TabButton: View {
 #if !APPSTORE
 struct ClaudePlanHeaderPill: View {
     @ObservedObject var state: AppState
+    var codex: Bool = false
     @State private var isHovered = false
 
     private var effectiveColor: String {
-        ClaudePlanGauge.color(for: (state.demoPlanUsageOverride ?? state.claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) })
+        if codex { return CodexPlanGauge.color(state.codexPlanUsage) }
+        return ClaudePlanGauge.color(for: (state.demoPlanUsageOverride ?? state.claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) })
     }
 
     private var label: String {
+        if codex { return CodexPlanGauge.pillLabel(state.codexPlanUsage) }
         guard let usage = state.demoPlanUsageOverride ?? state.claudePlanUsage,
               let pct = ClaudePlanGauge.dominantPct(usage) else { return "Claude —" }
         return "Claude \(Int(pct.rounded()))%"
     }
 
-    private var isActive: Bool { state.showingPlanDetail || isHovered }
+    private var isOpen: Bool { state.showingPlanDetail && state.planDetailIsCodex == codex }
+    private var isActive: Bool { isOpen || isHovered }
 
     var body: some View {
         Button(action: {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                state.showingPlanDetail.toggle()
+                let open = isOpen
+                state.planDetailIsCodex = codex
+                state.showingPlanDetail = !open
             }
+            if codex { state.refreshCodexPlanUsage() }
         }) {
             HStack(spacing: 4) {
                 Circle()
@@ -618,6 +645,7 @@ struct ClaudePlanHeaderPill: View {
         .onHover { h in
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
+        .onAppear { if codex { state.refreshCodexPlanUsage() } }
     }
 }
 #endif
