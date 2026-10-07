@@ -68,6 +68,8 @@ struct SidePanelChrome<Content: View>: View {
     let title: String
     let accent: String
     var subtitle: String? = nil
+    /// Result of the last action, shown in place of the subtitle for a few seconds.
+    var status: PanelStatus? = nil
     var trailing: AnyView? = nil
     let attention: Bool
     let onClose: () -> Void
@@ -85,7 +87,15 @@ struct SidePanelChrome<Content: View>: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
-                if let subtitle {
+                if let status {
+                    Text(status.text)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(Color(hex: status.ok ? "#22C55E" : "#F4505E"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(status.text)
+                        .transition(.opacity)
+                } else if let subtitle {
                     Text(subtitle)
                         .font(.system(size: 10.5))
                         .foregroundColor(Color(hex: "#6B7079"))
@@ -254,6 +264,7 @@ struct GitHubSectionPanel: View {
     let attention: Bool
     let onClose: () -> Void
     @ObservedObject private var appState = AppState.shared
+    @StateObject private var status = PanelStatusModel()
 
     private var title: String {
         switch section {
@@ -279,8 +290,42 @@ struct GitHubSectionPanel: View {
 
     private var total: Int { prs.count + repos.count }
 
+    @ViewBuilder
+    private func prAction(_ pr: GitHubPR) -> some View {
+        let ref = "\(pr.repo)#\(pr.number)"
+        if section == .myPRs && !pr.isDraft {
+            PanelActionButton(title: "Merge", symbol: "arrow.triangle.merge", accent: "#A371F7",
+                              help: "Squash and merge \(ref)",
+                              perform: { try await ServiceAPI.perform(kind: "github.merge", target: ref) },
+                              onResult: finished)
+        } else if section == .toReview {
+            PanelActionButton(title: "Approve", symbol: "checkmark.seal", accent: "#22C55E",
+                              help: "Approve \(ref)",
+                              perform: { try await ServiceAPI.perform(kind: "github.approve", target: ref) },
+                              onResult: finished)
+        }
+    }
+
+    private func rerunAction(_ repo: GitHubRepoCI) -> some View {
+        PanelActionButton(title: "Re-run", symbol: "arrow.clockwise", accent: "#F5A524",
+                          help: "Re-run the failed jobs of the latest failed run on \(repo.branch)",
+                          perform: {
+                              guard let run = try await ServiceAPI.latestFailedRun(repo: repo.repo, branch: repo.branch) else {
+                                  return "No failed run to re-run"
+                              }
+                              return try await ServiceAPI.perform(kind: "github.rerun", target: run)
+                          },
+                          onResult: finished)
+    }
+
+    private func finished(_ message: String, _ ok: Bool) {
+        status.show(message, ok: ok)
+        // Give GitHub a moment, then show where things are.
+        if ok { DispatchQueue.main.asyncAfter(deadline: .now() + 3) { GithubPoller.shared.triggerPulseNow() } }
+    }
+
     var body: some View {
-        SidePanelChrome(title: title, accent: "#F4505E", subtitle: "\(total)",
+        SidePanelChrome(title: title, accent: "#F4505E", subtitle: "\(total)", status: status.current,
                         attention: attention, onClose: onClose) {
             if total == 0 {
                 SidePanelEmpty(text: "Nothing here")
@@ -288,12 +333,18 @@ struct GitHubSectionPanel: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(prs.enumerated()), id: \.element.id) { idx, pr in
-                            GitHubPRRowView(pr: pr, showCI: section == .myPRs,
-                                            selected: appState.cardSelection == idx)
+                            HStack(spacing: 6) {
+                                GitHubPRRowView(pr: pr, showCI: section == .myPRs,
+                                                selected: appState.cardSelection == idx)
+                                prAction(pr)
+                            }
                         }
                         ForEach(Array(repos.enumerated()), id: \.element.repo) { idx, repo in
-                            GitHubRepoCIRowView(repo: repo,
-                                                selected: appState.cardSelection == prs.count + idx)
+                            HStack(spacing: 6) {
+                                GitHubRepoCIRowView(repo: repo,
+                                                    selected: appState.cardSelection == prs.count + idx)
+                                if repo.ci == .failure { rerunAction(repo) }
+                            }
                         }
                     }
                 }
@@ -327,6 +378,12 @@ struct VercelDeploymentPanel: View {
     let deployment: VercelDeployment
     let attention: Bool
     let onClose: () -> Void
+    @StateObject private var status = PanelStatusModel()
+
+    private func finished(_ message: String, _ ok: Bool) {
+        status.show(message, ok: ok)
+        if ok { DispatchQueue.main.asyncAfter(deadline: .now() + 2) { VercelPoller.shared.pollNow() } }
+    }
 
     private var accentHex: String {
         switch deployment.state {
@@ -344,7 +401,7 @@ struct VercelDeploymentPanel: View {
     var body: some View {
         let accent = Color(hex: accentHex)
         SidePanelChrome(
-            title: deployment.projectName, accent: accentHex,
+            title: deployment.projectName, accent: accentHex, status: status.current,
             trailing: AnyView(
                 Text(deployment.statusLabel)
                     .font(.system(size: 9.5, weight: .medium))
@@ -372,21 +429,182 @@ struct VercelDeploymentPanel: View {
                 }
                 .font(.system(size: 10))
                 .foregroundColor(Color(hex: "#6B7079"))
-                Button(action: {
-                    if let url = safeWebURL("https://\(deployment.url)") { NSWorkspace.shared.open(url) }
-                }) {
-                    HStack(spacing: 4) {
-                        Text(deployment.url)
-                            .font(.system(size: 10, design: .monospaced))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 7, weight: .semibold))
+                HStack(spacing: 5) {
+                    PanelLinkButton(title: "Open", accent: "#7C5CFF", help: deployment.url) {
+                        if let url = safeWebURL("https://\(deployment.url)") { NSWorkspace.shared.open(url) }
                     }
-                    .foregroundColor(Color(hex: "#7C5CFF").opacity(0.9))
+                    if deployment.state == "READY" || deployment.state == "ERROR" {
+                        PanelActionButton(title: "Redeploy", symbol: "arrow.clockwise", accent: "#7C5CFF",
+                                          help: "Build this deployment again",
+                                          perform: {
+                                              try await ServiceAPI.perform(
+                                                  kind: "vercel.redeploy",
+                                                  target: "\(deployment.id)|\(deployment.projectName)|\(deployment.target ?? "")")
+                                          },
+                                          onResult: finished)
+                    }
+                    if deployment.state == "READY" && deployment.target != "production" {
+                        PanelActionButton(title: "Promote", symbol: "arrow.up.circle", accent: "#22C55E",
+                                          help: "Start a production build from this deployment, with your production environment variables",
+                                          perform: {
+                                              try await ServiceAPI.perform(
+                                                  kind: "vercel.promote",
+                                                  target: "\(deployment.id)|\(deployment.projectName)")
+                                          },
+                                          onResult: finished)
+                    }
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
+                .padding(.top, 1)
             }
         }
+    }
+}
+
+// MARK: - Actions
+
+struct PanelStatus: Equatable {
+    let text: String
+    let ok: Bool
+}
+
+/// The last action's result, cleared after a few seconds.
+@MainActor
+final class PanelStatusModel: ObservableObject {
+    @Published var current: PanelStatus? = nil
+    private var clear: DispatchWorkItem?
+
+    func show(_ text: String, ok: Bool) {
+        clear?.cancel()
+        withAnimation(.easeInOut(duration: 0.16)) { current = PanelStatus(text: text, ok: ok) }
+        let work = DispatchWorkItem { [weak self] in
+            withAnimation(.easeInOut(duration: 0.16)) { self?.current = nil }
+        }
+        clear = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + (ok ? 4 : 8), execute: work)
+    }
+}
+
+/// A small capsule button that acts on GitHub or Vercel. Nothing runs on the first click:
+/// it turns into "Confirm?" for 3 seconds, and only a second click runs the action.
+struct PanelActionButton: View {
+    let title: String
+    let symbol: String
+    let accent: String
+    var help: String? = nil
+    let perform: @MainActor () async throws -> String
+    let onResult: (String, Bool) -> Void
+
+    private enum Phase { case idle, confirming, running, done, failed }
+    @State private var phase: Phase = .idle
+    @State private var isHovered = false
+    @State private var reset: DispatchWorkItem?
+
+    private var color: String {
+        switch phase {
+        case .idle, .running: return accent
+        case .confirming:     return "#F5A524"
+        case .done:           return "#22C55E"
+        case .failed:         return "#F4505E"
+        }
+    }
+
+    private func resetLater(_ seconds: Double) {
+        reset?.cancel()
+        let work = DispatchWorkItem { phase = .idle }
+        reset = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    private func tap() {
+        switch phase {
+        case .idle:
+            phase = .confirming
+            SoundEngine.shared.play("blip")
+            resetLater(3)
+        case .confirming:
+            reset?.cancel()
+            phase = .running
+            Task { @MainActor in
+                do {
+                    let message = try await perform()
+                    phase = .done
+                    SoundEngine.shared.play("finish")
+                    onResult(message, true)
+                } catch {
+                    phase = .failed
+                    SoundEngine.shared.play("error")
+                    onResult(ServiceAPI.describe(error), false)
+                }
+                resetLater(2.5)
+            }
+        case .running, .done, .failed:
+            break
+        }
+    }
+
+    var body: some View {
+        Button(action: tap) {
+            HStack(spacing: 3) {
+                switch phase {
+                case .idle:
+                    Image(systemName: symbol).font(.system(size: 7.5, weight: .bold))
+                    Text(title)
+                case .confirming:
+                    Text("Confirm?")
+                case .running:
+                    ProgressView().controlSize(.mini).scaleEffect(0.6).frame(width: 8, height: 8)
+                    Text(title)
+                case .done:
+                    Image(systemName: "checkmark").font(.system(size: 7.5, weight: .bold))
+                    Text("Done")
+                case .failed:
+                    Image(systemName: "xmark").font(.system(size: 7.5, weight: .bold))
+                    Text("Failed")
+                }
+            }
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundColor(Color(hex: color).lighter(by: 0.25))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 7)
+            .frame(height: 17)
+            .background(Capsule().fill(Color(hex: color).opacity(isHovered || phase == .confirming ? 0.24 : 0.13)))
+            .overlay(Capsule().stroke(Color(hex: color).opacity(0.35), lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .layoutPriority(2)
+        .onHover { isHovered = $0 }
+        .help(phase == .confirming ? "Click again to confirm" : (help ?? title))
+        .animation(.easeInOut(duration: 0.14), value: phase)
+    }
+}
+
+/// Same shape as PanelActionButton for a plain link (no confirmation).
+struct PanelLinkButton: View {
+    let title: String
+    let accent: String
+    var help: String? = nil
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Text(title)
+                Image(systemName: "arrow.up.right").font(.system(size: 7, weight: .bold))
+            }
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundColor(Color(hex: isHovered ? "#C5C8CD" : "#8E939C"))
+            .fixedSize()
+            .padding(.horizontal, 7)
+            .frame(height: 17)
+            .background(Capsule().fill(Color.white.opacity(isHovered ? 0.12 : 0.06)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(help ?? title)
     }
 }

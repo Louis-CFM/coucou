@@ -44,6 +44,11 @@ final class VercelPoller: @unchecked Sendable {
         DispatchQueue.global(qos: .background).async { [weak self] in self?.poll() }
     }
 
+    /// Polls right away, e.g. after a redeploy from the notch.
+    func pollNow() {
+        DispatchQueue.global(qos: .background).async { [weak self] in self?.poll() }
+    }
+
     // MARK: - Poll
 
     private func poll() {
