@@ -137,6 +137,14 @@ button:disabled {
   cursor: default;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
 code,
 .path {
   font: 400 11.5px var(--mono);
@@ -194,6 +202,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="number"],
 input[type="text"],
+input[type="url"],
 input[type="password"],
 select {
   font: 400 12.5px var(--font);
@@ -264,4 +273,62 @@ select option {
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
+}
+
+/* ── Hotkeys ─────────────────────────────────────────────────────────── */
+
+.hotkey-field {
+  min-width: 170px;
+  font-family: var(--mono, ui-monospace, monospace);
+  text-align: left;
+}
+
+.hotkey-field.recording {
+  border-color: rgba(99, 102, 241, 0.9);
+  color: #c7c9ff;
+}
+
+.hotkey-field.off {
+  color: var(--dim);
+}
+
+.hotkey-error:empty {
+  display: none;
+}
+
+/* ── One-step setup ──────────────────────────────────────────────────── */
+
+section.setup {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+section.setup.highlight {
+  animation: setup-pulse 1.4s ease-out 2;
+}
+
+@keyframes setup-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  100% { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
+}
+
+button.setup-all {
+  font-size: 13.5px;
+  padding: 9px 18px;
+}
+
+.follow-ups {
+  margin: 6px 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+textarea.robot-list {
+  font: 400 12px var(--font);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 6px 8px;
+  resize: vertical;
 }

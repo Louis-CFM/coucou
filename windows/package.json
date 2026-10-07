@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "test:memory-status": "node scripts/test-memory-status.mjs",
+    "test:memory-ui": "node scripts/test-memory-ui.mjs",
+    "test:memory-controllers": "node scripts/test-memory-controllers.mjs",
     "preview": "vite preview",
     "icons": "node scripts/gen-icons.mjs",
     "tauri": "tauri",
@@ -19,6 +22,7 @@
     "vite": "^6"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.1"
   }
 }

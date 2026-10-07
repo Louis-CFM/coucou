@@ -10,7 +10,7 @@ import {
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, canOpenOrigin } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -19,10 +19,21 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { ALERT_VIEWS, AlertGate } from "./alerts";
+import { HERMES_ALREADY_ANSWERED, clearPendingApprovalTimer, releaseQuestionToApp, submitHermesAnswers, submitQuestionAnswers } from "./hooks";
+import { decideRobot, isRobotApproval } from "./robot";
+import type { RobotHost } from "../views/robot";
+import { currentStep, goStep, togglePick } from "../core/questions";
+import { resetChat } from "../core/chat-sync";
+import type { PromptHost } from "../views/chat";
+import type { TaskHost } from "../views/task";
 
 const BOT_OVERHANG = 40;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** Unlocked island: hold this long (or move DRAG_SLOP_PX) on an empty spot to drag it. */
+const DRAG_HOLD_MS = 150;
+const DRAG_SLOP_PX = 4;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -34,6 +45,7 @@ const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 :
 
 export class Island {
   readonly fsm = new IslandStateMachine();
+  private alerts = new AlertGate(this.fsm);
 
   private root: HTMLElement;
   private islandEl!: HTMLElement;
@@ -105,20 +117,38 @@ export class Island {
 
   private build() {
     const actions: ViewActions = {
-      setView: (v) => this.setView(v),
+      setView: (v) => {
+        // A click that leaves an alert card (OK on the error card, a tab) is the
+        // user seeing it.
+        if (ALERT_VIEWS.has(State.view) && !ALERT_VIEWS.has(v)) this.acknowledge();
+        this.setView(v);
+      },
       collapse: () => this.collapse(),
+      hold: (on) => {
+        if (State.pendingApproval) return;
+        State.isPinned = on;
+        this.fsm.pinned = on;
+        this.homeCollapseAt = null;
+        if (on) this.fsm.mouseEntered();
+      },
       setFocus: (id) => {
+        // Read before setFocus clears the finished/error badge it reports.
+        const view = State.sessionView(id);
         State.setFocus(id);
         Sound.play("blip");
+        this.acknowledge();
+        if (view) this.setView(view);
+        else if (["approval", "finished", "error", "question", "notice"].includes(State.view)) this.setView("overview");
       },
-      openTerminal: () => {
-        const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
-      },
-      // The ↗ button — same targets as openAgentTarget() on macOS.
+      // The ↗ button: an agent session goes back to the window it started from
+      // (or its folder); integrations open their dashboard.
       openTarget: () => {
         const task = State.focusTask;
         if (!task) return;
+        if (task.source === "agent" || task.source === "claudeCode") {
+          this.openOrigin(task.id);
+          return;
+        }
         const urls: Record<string, string> = {
           integration_resend: "https://resend.com/emails",
           integration_vercel: "https://vercel.com/dashboard",
@@ -127,10 +157,10 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
-        else if (task.id === "integration_n8n") void Bridge.openN8n();
+        if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
+      openOrigin: (id) => this.openOrigin(id),
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
@@ -139,18 +169,113 @@ export class Island {
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
-        void Bridge.approvalDecision(req.requestId, d);
+        if (isRobotApproval(req)) decideRobot(req, d === "allow");
+        else void Bridge.approvalDecision(req.requestId, d);
+        clearPendingApprovalTimer();
         State.pendingApproval = null;
         State.isPinned = false;
         this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
+        State.updateTask(req.taskId, "working");
+        State.setPillBadge(req.taskId, null);
+        this.acknowledge();
         this.setView(State.defaultView());
+      },
+      pick: (index, label) => {
+        const req = State.pendingApproval;
+        if (!req?.questions) return;
+        togglePick(req, index, label);
+        Sound.play("tick");
+        const q = req.questions[index];
+        const picked = req.picks?.[index]?.length === 1;
+        if (q && !q.multiSelect && picked && index === currentStep(req)) {
+          // A single choice moves straight on to the next question.
+          const n = req.questions.length;
+          const reqId = req.requestId;
+          if (index < n - 1) {
+            setTimeout(() => {
+              const cur = State.pendingApproval;
+              if (cur?.requestId === reqId && currentStep(cur) === index && goStep(cur, 1)) State.notify();
+            }, 220);
+          }
+        }
+        State.notify();
+      },
+      stepQuestion: (delta) => {
+        const req = State.pendingApproval;
+        if (!req?.questions) return;
+        if (goStep(req, delta)) {
+          Sound.play("tick");
+          State.notify();
+        }
+      },
+      submitAnswers: () => {
+        const req = submitQuestionAnswers();
+        void Bridge.log(`answers req=${req?.requestId ?? "none"}`);
+        if (!req) return;
+        Sound.play("approve");
+        this.releaseCard(req.taskId);
+      },
+      answerInApp: () => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        const task = State.tasks.find((t) => t.id === req.taskId);
+        releaseQuestionToApp();
+        Sound.play("blip");
+        this.releaseCard(req.taskId);
+        if (task && (task.originHwnd != null || task.sessionCwd)) this.openOrigin(task.id);
+      },
+      pickExternal: (index, label) => {
+        const task = State.focusTask;
+        if (!task?.questions || task.questionStatus === "sending") return;
+        togglePick(task, index, label);
+        task.questionStatus = null;
+        Sound.play("tick");
+        const q = task.questions[index];
+        if (q && !q.multiSelect && task.picks?.[index]?.length === 1 && index === currentStep(task)
+          && index < task.questions.length - 1) {
+          const questions = task.questions;
+          setTimeout(() => {
+            if (task.questions === questions && currentStep(task) === index && goStep(task, 1)) State.notify();
+          }, 220);
+        }
+        State.notify();
+      },
+      stepExternal: (delta) => {
+        const task = State.focusTask;
+        if (task?.questions && goStep(task, delta)) { Sound.play("tick"); State.notify(); }
+      },
+      sendExternal: () => {
+        const task = State.focusTask;
+        if (!task) return;
+        const id = task.id;
+        void submitHermesAnswers(id).then((outcome) => {
+          void Bridge.log(`hermes clarify answer: ${outcome}`);
+          if (outcome === "answered") {
+            Sound.play("approve");
+            if (State.view === "question" && State.focusId === id) this.setView(State.defaultView());
+          } else if (outcome === "expired") {
+            Sound.play("blip");
+            setTimeout(() => {
+              const now = State.tasks.find((candidate) => candidate.id === id);
+              if (now?.questionStatus !== HERMES_ALREADY_ANSWERED) return;
+              now.questions = null;
+              now.questionStatus = null;
+              if (State.view === "question" && State.focusId === id) this.setView(State.defaultView());
+              State.notify();
+            }, 1600);
+          }
+        });
       },
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
         Sound.setEnabled(State.settings.soundEnabled);
         void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+      toggleLock: () => {
+        Sound.play("blip");
+        State.settings.islandLocked = !State.settings.islandLocked;
+        void Bridge.islandSetLocked(State.settings.islandLocked);
         State.notify();
       },
       setVolume: (v) => {
@@ -166,6 +291,16 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      acceptSetupOffer: () => {
+        State.setupOffer = [];
+        void Bridge.openSettingsForSetup();
+        this.collapse();
+      },
+      dismissSetupOffer: () => {
+        State.setupOffer = [];
+        void Bridge.agentsSetupDismiss();
+        this.collapse();
+      },
       blip: () => Sound.play("blip"),
     };
 
@@ -314,7 +449,37 @@ export class Island {
     State.notify();
   }
 
+  /**
+   * Brings the session's own terminal, editor or desktop-app window to the
+   * front. Without one, a Claude Code session opens its folder instead; other
+   * agents have nothing to fall back to. The island folds away so it is not in
+   * the way.
+   */
+  openOrigin(id: string) {
+    const task = State.tasks.find((t) => t.id === id);
+    if (!task || !canOpenOrigin(task)) return;
+    void Bridge.focusOrigin(task.originHwnd ?? null, task.originPid ?? null, task.sessionCwd ?? null, task.agent ?? "claude", task.originConsolePid ?? null, task.sessionId ?? null);
+    if (State.pendingApproval?.taskId !== id) this.collapse();
+  }
+
+  private releaseCard(taskId: string) {
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    State.updateTask(taskId, "working");
+    State.setPillBadge(taskId, null);
+    this.setView(State.defaultView());
+  }
+
+  /** The user acted on the alert card: auto-close may run again. */
+  private acknowledge() {
+    this.alerts.acknowledge(this.wasInIsland);
+    if (!State.isPinned && !this.wasInIsland && this.fsm.state === "home") {
+      this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    }
+  }
+
   collapse() {
+    if (State.pendingApproval) return;
     State.isPinned = false;
     this.fsm.pinned = false;
     // Drive the state machine rather than the mode: setting the mode behind its
@@ -323,10 +488,12 @@ export class Island {
     this.fsm.forcePetit();
   }
 
-  /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
+  /**
+   * Alert from the hook server: open on this view. Alert cards are pinned and
+   * stay up until the user acts on them (OK, Open, a pill, Esc).
+   */
   alert(view: IslandViewName) {
-    this.fsm.pinned = State.isPinned;
-    this.fsm.forceHome();
+    this.alerts.open(view);
     this.expand(view);
   }
 
@@ -334,9 +501,9 @@ export class Island {
     this.fsm.reveal();
   }
 
-  /** An alert stopped waiting for an answer: let the island auto-close again. */
+  /** An approval stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
-    this.fsm.pinned = false;
+    this.alerts.drop(this.wasInIsland);
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -388,8 +555,7 @@ export class Island {
     const name = path.split(/[\\/]/).pop() || "file";
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
-    State.chatHistory = [];
-    void Bridge.chatReset();
+    resetChat();
 
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
@@ -450,7 +616,9 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    const hasChoices = State.view === "approval" ? !!State.pendingApproval?.questions?.length
+      : State.view === "question" && !!State.focusTask?.questions?.length;
+    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, hasChoices);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -475,7 +643,10 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    // At the top edge of a display the island hangs from it like a notch;
+    // dragged elsewhere it is a rounded pill all round.
+    const top = this.atTopEdge ? 0 : r;
+    this.islandEl.style.borderRadius = `${top}px ${top}px ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -534,6 +705,7 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      if (e.button === 0 && this.maybeDrag(e)) return;
       if (State.mode !== "expanded") {
         this.fsm.click();
         return;
@@ -545,7 +717,14 @@ export class Island {
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      // Esc dismisses an alert card too; only a pending approval must be answered.
+      if (e.key === "Escape" && State.mode === "expanded" && !State.pendingApproval) {
+        if (ALERT_VIEWS.has(State.view)) {
+          const id = State.focusId;
+          if (id && (State.view === "finished" || State.view === "error")) State.setPillBadge(id, null);
+        }
+        this.collapse();
+      }
       State.lastActivity = performance.now();
     });
 
@@ -567,6 +746,42 @@ export class Island {
     window.addEventListener("mouseout", (e) => {
       if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
     });
+  }
+
+  /**
+   * Unlocked island: a press on an empty part of the island (not a button,
+   * field, pill or Mochi) that is held for DRAG_HOLD_MS or moves a few pixels
+   * hands the window to Windows to move. A quick click still clicks.
+   * Returns true when the press is being watched as a possible drag.
+   */
+  private maybeDrag(e: MouseEvent): boolean {
+    if (State.settings.islandLocked || !IS_TAURI) return false;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, input, textarea, select, a, label, .pill, .model-menu, [contenteditable]")) return false;
+    if (State.mode === "expanded" && this.isBotHit(e.clientX, e.clientY)) return false;
+    const start = { x: e.screenX, y: e.screenY };
+    let done = false;
+    const finish = (drag: boolean) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("mousemove", onMove, true);
+      window.removeEventListener("mouseup", onUp, true);
+      if (drag) {
+        this.homeCollapseAt = null;
+        void Bridge.islandStartDrag();
+      } else if (State.mode !== "expanded") {
+        this.fsm.click();
+      }
+    };
+    const onMove = (m: MouseEvent) => {
+      if (Math.hypot(m.screenX - start.x, m.screenY - start.y) > DRAG_SLOP_PX) finish(true);
+    };
+    const onUp = () => finish(false);
+    const timer = window.setTimeout(() => finish(true), DRAG_HOLD_MS);
+    window.addEventListener("mousemove", onMove, true);
+    window.addEventListener("mouseup", onUp, true);
+    return true;
   }
 
   /** Cursor in window-logical coordinates. */
@@ -847,17 +1062,22 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // The chat and the new-task form are the only views with text fields, so
+    // they are the only times the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
+      const typing = (v: IslandViewName | null) => v === "prompt" || v === "task" || v === "robot";
+      const wasTyping = typing(this.lastSyncedView);
       this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      if (typing(State.view)) {
+        const view = State.view;
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
+        window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
+      } else if (wasTyping) {
         void Bridge.focusWindow(false);
       }
+      if (State.view !== "prompt") (this.views.get("prompt") as PromptHost | undefined)?.cancelVoice();
+      if (State.view !== "task") (this.views.get("task") as TaskHost | undefined)?.cancelVoice();
+      if (State.view !== "robot") (this.views.get("robot") as RobotHost | undefined)?.cancelVoice();
     }
 
     // Compact mini grid
@@ -880,10 +1100,26 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
+  /** Another window changed the chat log: the prompt card may need a new height. */
+  chatChanged() {
+    if (State.mode === "expanded" && State.view === "prompt") this.animateGeometry(false);
+  }
+
+  /** The island hangs from the top edge of a display (Rust reports it on every placement). */
+  private atTopEdge = true;
+
+  placed(atTop: boolean) {
+    if (this.atTopEdge === atTop) return;
+    this.atTopEdge = atTop;
+    this.applyGeometry();
+  }
+
   /** Applies settings coming from Rust at boot. */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
+    this.islandEl.classList.toggle("unlocked", !State.settings.islandLocked);
+    this.applyGeometry();
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     State.notify();
   }

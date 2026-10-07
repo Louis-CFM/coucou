@@ -218,6 +218,40 @@ final class AppState: ObservableObject {
         }
     }
 
+    @Published var hindsightEnabled = HindsightConfig.defaults.enabled {
+        didSet { UserDefaults.standard.set(hindsightEnabled, forKey: "hindsightEnabled") }
+    }
+    @Published var hindsightBaseUrl = HindsightConfig.defaults.baseUrl {
+        didSet { UserDefaults.standard.set(hindsightBaseUrl, forKey: "hindsightBaseUrl") }
+    }
+    @Published var hindsightTenant = HindsightConfig.defaults.tenant {
+        didSet { UserDefaults.standard.set(hindsightTenant, forKey: "hindsightTenant") }
+    }
+    @Published var hindsightBank = HindsightConfig.defaults.bank {
+        didSet { UserDefaults.standard.set(hindsightBank, forKey: "hindsightBank") }
+    }
+    @Published var hindsightAutomaticRecall = HindsightConfig.defaults.automaticRecall {
+        didSet { UserDefaults.standard.set(hindsightAutomaticRecall, forKey: "hindsightAutomaticRecall") }
+    }
+    @Published var hindsightInferredRetention = HindsightConfig.defaults.inferredRetention {
+        didSet { UserDefaults.standard.set(hindsightInferredRetention, forKey: "hindsightInferredRetention") }
+    }
+    @Published var hindsightAllowDevelopmentHttp = HindsightConfig.defaults.allowDevelopmentHttp {
+        didSet { UserDefaults.standard.set(hindsightAllowDevelopmentHttp, forKey: "hindsightAllowDevelopmentHttp") }
+    }
+
+    var hindsightConfig: HindsightConfig {
+        HindsightConfig(
+            enabled: hindsightEnabled,
+            baseUrl: hindsightBaseUrl,
+            tenant: hindsightTenant,
+            bank: hindsightBank,
+            automaticRecall: hindsightAutomaticRecall,
+            inferredRetention: hindsightInferredRetention,
+            allowDevelopmentHttp: hindsightAllowDevelopmentHttp
+        )
+    }
+
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
     @Published var soundVolume: Double = 0.12 {
         didSet {
@@ -338,6 +372,55 @@ final class AppState: ObservableObject {
 
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
+    @Published var privateChat = AppSessionDefaults.privateChat
+    @Published var memoryStatus: String? = nil
+    var pendingChatMemoryStatuses = PendingChatMemoryStatuses(limit: 128)
+    lazy var chatMemoryCoordinator: ChatMemoryCoordinator = {
+        let coordinator = ChatMemoryCoordinator(
+            state: { let app = AppState.shared; return .init(config: app.hindsightConfig, privateChat: app.privateChat) },
+            memory: { try HindsightService(config: $0) },
+            provider: ClaudeService.shared
+        )
+        coordinator.onSaveStatus = { turnId, status in
+            AppState.shared.receiveChatMemoryStatus(status, turnId: turnId)
+        }
+        coordinator.onArtifactSummary = { turnId, summary in
+            AppState.shared.receiveArtifactSummary(summary, turnId: turnId)
+        }
+        return coordinator
+    }()
+
+    func receiveChatMemoryStatus(_ status: ChatMemorySaveStatus, turnId: String) {
+        guard let index = chatHistory.lastIndex(where: { $0.turnId == turnId && $0.role == .assistant }) else {
+            pendingChatMemoryStatuses.set(status, for: turnId)
+            return
+        }
+        chatHistory[index].memoryStatus = status
+        memoryStatus = status.label
+    }
+
+    func receiveArtifactSummary(_ summary: ArtifactSummary, turnId: String) {
+        guard let index = chatHistory.lastIndex(where: { $0.turnId == turnId && $0.role == .assistant }) else { return }
+        chatHistory[index].artifactSummary = summary
+        memoryStatus = summary.label
+    }
+
+    func insertCompletedChatTurn(turnId: String, assistantText: String) {
+        if let index = chatHistory.lastIndex(where: { $0.role == .user && $0.turnId == nil }) {
+            chatHistory[index].turnId = turnId
+        }
+        chatHistory.append(ChatMessage(role: .assistant, content: assistantText, turnId: turnId))
+        if let status = pendingChatMemoryStatuses.take(turnId),
+           let index = chatHistory.lastIndex(where: { $0.role == .assistant && $0.turnId == turnId }) {
+            chatHistory[index].memoryStatus = status
+            memoryStatus = status.label
+        }
+    }
+
+    func clearChatMemoryState() {
+        pendingChatMemoryStatuses.clear()
+        chatMemoryCoordinator.clearConversation()
+    }
 
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
@@ -432,6 +515,19 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
+        if let v = ud.object(forKey: "hindsightEnabled") as? Bool { hindsightEnabled = v }
+        if let v = ud.string(forKey: "hindsightBaseUrl"), !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            hindsightBaseUrl = v.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let v = ud.string(forKey: "hindsightTenant"), !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            hindsightTenant = v.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let v = ud.string(forKey: "hindsightBank"), !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            hindsightBank = v.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let v = ud.object(forKey: "hindsightAutomaticRecall") as? Bool { hindsightAutomaticRecall = v }
+        if let v = ud.object(forKey: "hindsightInferredRetention") as? Bool { hindsightInferredRetention = v }
+        if let v = ud.object(forKey: "hindsightAllowDevelopmentHttp") as? Bool { hindsightAllowDevelopmentHttp = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
@@ -788,5 +884,29 @@ enum ChatRole { case user, assistant }
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: ChatRole
-    var content: String   // var for streaming updates
+    var content: String
+    var turnId: String? = nil
+    var memoryStatus: ChatMemorySaveStatus? = nil
+    var artifactSummary: ArtifactSummary? = nil
+}
+
+extension ArtifactSummary {
+    var label: String {
+        switch state {
+        case .discovering: return "Discovering memory IDs…"
+        case .saved: return "Memory IDs: \(remoteIdCount)"
+        case .partial: return "Memory retirement partially completed"
+        case .retired: return "Retired \(remoteIdCount) memories"
+        }
+    }
+}
+
+extension ChatMemorySaveStatus {
+    var label: String {
+        switch self {
+        case .saving: return "Saving memory…"
+        case .saved: return "Memory saved"
+        case .notSaved: return "Memory not saved"
+        }
+    }
 }

@@ -24,6 +24,8 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test Hindsight contracts
+        run: bash scripts/test-hindsight.sh
       - name: Test chat parsing
         run: bash scripts/test-chat-parsing.sh
 

@@ -5,8 +5,10 @@ import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
+import { followChat } from "./core/chat-sync";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
+import { registerRobotHandlers } from "./island/robot";
 
 async function main() {
   const root = document.getElementById("root");
@@ -51,7 +53,18 @@ async function main() {
     }
   });
 
+  // First launch: agents were found that are not hooked up yet. The card only
+  // offers to open Settings; nothing is installed from the island.
+  await onEvent<string[]>("setup-offer", (names) => {
+    if (!names.length || State.pendingApproval) return;
+    State.setupOffer = names;
+    island.alert("setupOffer");
+  });
+
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
+  await onEvent<boolean>("island-placed", (atTop) => island.placed(atTop));
+  // Rust placed the window before this listener existed.
+  void Bridge.reposition();
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
@@ -61,8 +74,12 @@ async function main() {
     void refreshConfigured();
   });
 
+  // The quick chat window talks to the same conversation; show its turns here.
+  await followChat(() => island.chatChanged());
+
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
+  void registerRobotHandlers(island);
 
   island.launch();
 

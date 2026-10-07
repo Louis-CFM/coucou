@@ -4,11 +4,10 @@
 ; installer never recorded it and the default uninstaller leaves it behind. The
 ; inbox and the log live in the same place and are ours too.
 ;
-; Claude Code's own settings.json is deliberately NOT touched here: it belongs to
-; the user, it may contain hooks from other tools, and rewriting somebody's
-; config from an uninstaller with no diff and no consent is exactly what the rest
-; of this app goes out of its way not to do. A relay that is gone exits 0 without
-; printing anything, so a leftover entry costs nothing beyond a dead path.
+; The user's Claude, Kimi, Codex and Hermes hook configs are deliberately NOT
+; touched here: removing entries without a preview and consent could disturb
+; unrelated hooks. An orphaned Coucou entry invokes a missing relay until the
+; user removes it from Coucou Settings before uninstalling or cleans it manually.
 
 !macro NSIS_HOOK_PREUNINSTALL
   RMDir /r "$LOCALAPPDATA\Coucou\bin"

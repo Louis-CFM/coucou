@@ -17,10 +17,16 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+toml_edit = "0.25"
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
+time = { version = "0.3", features = ["formatting"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "native-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
@@ -28,10 +34,20 @@ windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
+  "Win32_System_Com",
+  "Win32_System_Console",
+  "Win32_System_DataExchange",
+  "Win32_System_JobObjects",
+  "Win32_System_Memory",
+  "Win32_System_Registry",
   "Win32_System_Ole",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_Storage_FileSystem",
+  "Win32_UI_Accessibility",
   "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }
 

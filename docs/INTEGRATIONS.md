@@ -78,8 +78,8 @@ Demande l'autorisation Automatisation la première fois (normal).
 
 ## 1bis. Jauge de forfait Claude (statusLine)
 
-**Affichage** : petit pill dans l'en-tête de l'île (vue home uniquement) — plus de pastille dans le catalogue Active pills.  
-**Plateforme** : macOS uniquement (build GitHub)  
+**Affichage** : petit pill dans l'en-tête de l'île (vue home uniquement) — plus de pastille dans le catalogue Active pills.
+**Plateforme** : macOS uniquement (build GitHub)
 **Plans** : Pro et Max uniquement (le champ `rate_limits` n'est présent que pour ces plans)
 
 Affiche la consommation du forfait Claude via un pill coloré dans l'en-tête de l'île. Couleur dynamique : vert `#22C55E` < 50 %, orange `#F59E0B` 50–80 %, rouge `#F4505E` ≥ 80 %, gris `#6B7079` sans données. Cliquer sur le pill bascule `showingPlanDetail`, ce qui remplace la carte en cours par `ClaudePlanCardView`. `showingPlanDetail` se remet à false au changement de focusId, de vue ou de mode.
@@ -277,8 +277,8 @@ Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de past
 
 ## 5ter. Modèles locaux (Ollama / LM Studio)
 
-**IDs de pastilles** : `ai_ollama` (jaune `#FACC15`), `ai_lmstudio` (vert citron `#A3E635`)  
-**Catégorie** : AI for the chat  
+**IDs de pastilles** : `ai_ollama` (jaune `#FACC15`), `ai_lmstudio` (vert citron `#A3E635`)
+**Catégorie** : AI for the chat
 **Plateforme** : macOS uniquement
 
 Connexion à un serveur local compatible OpenAI. Aucune clé d'API requise.
@@ -332,5 +332,3 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 
 Aucune permission Accessibilité nécessaire.
-
-

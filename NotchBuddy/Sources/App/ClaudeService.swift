@@ -105,7 +105,7 @@ final class KeychainStore: @unchecked Sendable {
 // MARK: - Claude API
 
 @MainActor
-final class ClaudeService {
+final class ClaudeService: ChatProviderServing {
     static let shared = ClaudeService()
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
@@ -188,6 +188,7 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        AppState.shared.clearChatMemoryState()
     }
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
@@ -216,6 +217,49 @@ final class ClaudeService {
 
     // MARK: - Chat (multi-turn, natural text + web search)
 
+    func send(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
+        switch request.providerSelection.provider {
+        case .anthropic:
+            return try await sendAnthropic(request)
+        case .google, .openai, .ollama, .lmstudio:
+            return try await chatOpenAICompatible(request: request)
+        }
+    }
+
+    private func sendAnthropic(_ request: ChatProviderRequest) async throws -> ChatProviderResult {
+        guard let key = apiKey, !key.isEmpty else {
+            throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "API key missing. Open settings."])
+        }
+        let mapped = claudeRequestParts(request, isFirstTurn: conversationMessages.isEmpty)
+        var userContent = mapped.userContent
+        if conversationMessages.isEmpty, case .file(let name, let path, let bytes) = request.providerContext {
+            if let bytes, let block = fileBlock(data: bytes, name: name) { userContent.insert(block, at: 0) }
+            else if let path, let block = readFileAsBlock(url: URL(fileURLWithPath: path)) { userContent.insert(block, at: 0) }
+        }
+        conversationMessages.append(["role": "user", "content": userContent])
+        let body = anthropicChatBody(model: request.providerSelection.model, trustedSystem: systemPrompt, memoryContext: mapped.memoryContext, tools: webSearchTools, messages: conversationMessages)
+        do {
+            let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let content = json["content"] as? [[String: Any]] else {
+                throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected API response."])
+            }
+            let text = content.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }
+                .joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "No response text."]) }
+            conversationMessages.append(["role": "assistant", "content": content])
+            let hasToolMaterial = content.contains { block in
+                let type = block["type"] as? String
+                return type == "tool_use" || type == "tool_result" || type == "server_tool_use" || type == "web_search_tool_result"
+            }
+            return .init(text: text, completed: true, cancelled: false, hasToolMaterial: hasToolMaterial)
+        } catch {
+            conversationMessages.removeLast()
+            throw error
+        }
+    }
+
+
     func chat(query: String, context: PromptContext?, state: AppState) async {
         if DemoEngine.shared.isActive {
             state.stateOverride = .thinking
@@ -224,7 +268,19 @@ final class ClaudeService {
             return
         }
         guard state.chatProvider == .anthropic else {
-            await chatOpenAICompatible(query: query, context: context, state: state)
+            let providerContext: ChatProviderContext? = {
+                switch context {
+                case .window(let app, let title, let url): return .window(appName: app, title: title, url: url)
+                case .file(let name, let fileURL): return .file(name: name, path: fileURL?.path, bytes: fileURL.flatMap { try? Data(contentsOf: $0) })
+                case nil: return nil
+                }
+            }()
+            do {
+                let result = try await chatOpenAICompatible(request: .init(query: query, contextKind: providerContext?.kind ?? .none, providerContext: providerContext, memoryContext: nil, providerSelection: .init(provider: state.chatProvider, model: state.activeChatModel)))
+                state.chatHistory.append(ChatMessage(role: .assistant, content: result.text))
+                state.stateOverride = nil
+                state.view = .prompt
+            } catch { await showError(error.localizedDescription, state: state) }
             return
         }
         guard let key = apiKey, !key.isEmpty else {
@@ -272,9 +328,14 @@ final class ClaudeService {
 
     // MARK: - OpenAI-compatible chat (Google Gemini / OpenAI / Ollama / LM Studio)
 
-    func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState) async {
-        let provider = state.chatProvider
-        guard provider != .anthropic else { return }
+    func chatOpenAICompatible(request: ChatProviderRequest) async throws -> ChatProviderResult {
+        let state = AppState.shared
+        let query = request.query
+        let provider = request.providerSelection.provider
+        let model = request.providerSelection.model
+        guard provider != .anthropic else {
+            throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid provider"])
+        }
 
         let baseURL: String
         if provider == .ollama {
@@ -290,13 +351,12 @@ final class ClaudeService {
         }
 
         guard !baseURL.isEmpty else {
-            if provider.isLocal {
-                let name = provider == .ollama ? "Ollama" : "LM Studio"
-                await showError("Connect \(name) in Settings → Chat first.", state: state)
-            }
-            return
+            let name = provider == .ollama ? "Ollama" : "LM Studio"
+            throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Connect \(name) in Settings → Chat first."])
         }
-        guard let url = URL(string: "\(baseURL)/chat/completions") else { return }
+        guard let url = URL(string: "\(baseURL)/chat/completions") else {
+            throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid provider URL"])
+        }
 
         // Auth header
         let authHeader: String
@@ -304,14 +364,13 @@ final class ClaudeService {
             authHeader = "Bearer ollama"
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
-                await showError("\(provider.displayName) API key missing. Configure it in Settings.", state: state)
-                return
+                throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "\(provider.displayName) API key missing. Configure it in Settings."])
             }
             authHeader = "Bearer \(key)"
         }
 
         // Build messages
-        var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt]]
+        var msgs: [[String: Any]] = [["role": "system", "content": anthropicSystemContent(trusted: systemPrompt, memoryContext: request.memoryContext)]]
         for m in conversationMessages {
             var simplified = m
             if let content = m["content"] as? [[String: Any]],
@@ -322,18 +381,19 @@ final class ClaudeService {
             msgs.append(simplified)
         }
         var userText = query
-        if conversationMessages.isEmpty, let ctx = context {
+        if conversationMessages.isEmpty, let ctx = request.providerContext {
             switch ctx {
             case .window(let app, let title, let url):
                 var prefix = "Context — App: \(app), Window: \(title)"
                 if let u = url { prefix += ", URL: \(u)" }
                 userText = prefix + "\n\n" + query
-            case .file(let name, let fileURL):
-                if provider.isLocal, let fileURL = fileURL {
-                    let ext = fileURL.pathExtension.lowercased()
+            case .file(let name, let path, let bytes):
+                if provider.isLocal {
+                    let ext = URL(fileURLWithPath: path ?? name).pathExtension.lowercased()
                     let binaryExts = ["pdf", "jpg", "jpeg", "png", "gif", "webp"]
                     if !binaryExts.contains(ext),
-                       let text = try? String(contentsOf: fileURL, encoding: .utf8), !text.isEmpty {
+                       let bytes,
+                       let text = String(data: bytes, encoding: .utf8), !text.isEmpty {
                         let truncated = text.count > 24_000
                             ? String(text.prefix(24_000)) + "\n[truncated]"
                             : text
@@ -351,7 +411,7 @@ final class ClaudeService {
 
         let useStream = provider.isLocal
         var body: [String: Any] = [
-            "model": state.activeChatModel,
+            "model": model,
             "max_tokens": 4096,
             "messages": msgs,
         ]
@@ -369,7 +429,7 @@ final class ClaudeService {
             let msgId = placeholder.id
             state.chatHistory.append(placeholder)
             state.stateOverride = .thinking
-            let modelCopy = state.activeChatModel
+            let modelCopy = model
             let streamBody: [String: Any] = [
                 "model": modelCopy,
                 "messages": msgs,
@@ -394,9 +454,8 @@ final class ClaudeService {
                 if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
                     state.chatHistory[idx].content = final
                 }
-                state.stateOverride = nil
-                state.view = .prompt
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                state.chatHistory.removeAll { $0.id == msgId }
+                return .init(text: final, completed: true, cancelled: false, hasToolMaterial: false)
             } catch let e as LocalChatError {
                 conversationMessages.removeLast()
                 state.chatHistory.removeAll { $0.id == msgId }
@@ -412,12 +471,12 @@ final class ClaudeService {
                 case .serverError(let s):
                     msg = s
                 }
-                await showError(msg, state: state)
+                throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
             } catch {
                 conversationMessages.removeLast()
                 state.chatHistory.removeAll { $0.id == msgId }
                 state.stateOverride = nil
-                await showError(error.localizedDescription, state: state)
+                throw error
             }
         } else {
             // Non-streaming (Google, OpenAI)
@@ -438,13 +497,10 @@ final class ClaudeService {
                 }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
                 conversationMessages.append(["role": "assistant", "content": trimmed])
-                state.chatHistory.append(ChatMessage(role: .assistant, content: trimmed))
-                state.stateOverride = nil
-                state.view = .prompt
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                return .init(text: trimmed, completed: true, cancelled: false, hasToolMaterial: false)
             } catch {
                 conversationMessages.removeLast()
-                await showError(error.localizedDescription, state: state)
+                throw error
             }
         }
     }

@@ -1,0 +1,214 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import assert from "node:assert/strict";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (path) => readFileSync(resolve(root, path), "utf8");
+
+function section(text, name) {
+  const match = text.match(new RegExp(`/\\* Begin ${name} section \\*/([\\s\\S]*?)/\\* End ${name} section \\*/`));
+  assert.ok(match, `missing ${name} section`);
+  return match[1];
+}
+
+function objectBodies(text) {
+  const values = new Map();
+  const matcher = /^\s*([A-F0-9]{24})\s*(?:\/\*[^\n]*?\*\/)?\s*=\s*\{([\s\S]*?)\};/gm;
+  for (const match of text.matchAll(matcher)) {
+    assert.ok(!values.has(match[1]), `duplicate object ID ${match[1]}`);
+    values.set(match[1], match[2]);
+  }
+  return values;
+}
+
+function listIDs(body, key) {
+  const match = body.match(new RegExp(`${key}\\s*=\\s*\\(([\\s\\S]*?)\\);`));
+  assert.ok(match, `missing ${key} list`);
+  return [...match[1].matchAll(/([A-F0-9]{24})\s*(?:\/\*[^\n]*?\*\/)?\s*,/g)].map((value) => value[1]);
+}
+
+function targetSourcePhase(text, targetName) {
+  const targets = objectBodies(section(text, "PBXNativeTarget"));
+  const match = [...targets.entries()].find(([, body]) => new RegExp(`name\\s*=\\s*${targetName};`).test(body));
+  assert.ok(match, `missing target ${targetName}`);
+  const phases = listIDs(match[1], "buildPhases");
+  const sourceObjects = objectBodies(section(text, "PBXSourcesBuildPhase"));
+  const sourcePhases = phases.filter((id) => sourceObjects.has(id));
+  assert.equal(sourcePhases.length, 1, `${targetName} must have exactly one Sources phase`);
+  return { id: sourcePhases[0], fileIDs: listIDs(sourceObjects.get(sourcePhases[0]), "files") };
+}
+
+export function validateRequiredSources(text, required, targetNames = ["NotchBuddy", "CoucouAppStore"]) {
+  const fileRefs = objectBodies(section(text, "PBXFileReference"));
+  const buildFiles = objectBodies(section(text, "PBXBuildFile"));
+  const phases = new Map(targetNames.map((name) => [name, targetSourcePhase(text, name)]));
+
+  for (const path of required) {
+    const refs = [...fileRefs.entries()].filter(([, body]) => new RegExp(`path\\s*=\\s*${path.replaceAll(".", "\\.")};`).test(body));
+    assert.equal(refs.length, 1, `${path} must have exactly one PBXFileReference`);
+    const fileRefID = refs[0][0];
+    const builds = [...buildFiles.entries()].filter(([, body]) => new RegExp(`fileRef\\s*=\\s*${fileRefID}(?:\\s|;|/)`).test(body));
+    assert.equal(builds.length, 2, `${path} must have exactly two PBXBuildFile objects`);
+    const buildIDs = new Set(builds.map(([id]) => id));
+    const usedByTarget = new Map();
+    for (const [targetName, phase] of phases) {
+      const entries = phase.fileIDs.filter((id) => buildIDs.has(id));
+      assert.equal(entries.length, 1, `${path} must occur exactly once in ${targetName} Sources phase`);
+      usedByTarget.set(targetName, entries[0]);
+    }
+    const usedIDs = [...usedByTarget.values()];
+    assert.equal(new Set(usedIDs).size, 2, `${path} must use distinct PBXBuildFile IDs in the two target phases`);
+    assert.deepEqual(new Set(usedIDs), buildIDs, `${path} target phases must use the complete PBXBuildFile ID set`);
+    for (const buildID of buildIDs) {
+      assert.equal(usedIDs.filter((used) => used === buildID).length, 1, `${path} build ID ${buildID} must be used exactly once across target phases`);
+    }
+  }
+}
+
+function fixture({ includeRef = true, duplicateFirstPhase = false, includeSecondPhase = true, reuseFirstBuildInSecondPhase = false } = {}) {
+  const fileRef = "AAAAAAAAAAAAAAAAAAAAAAAA";
+  const firstBuild = "BBBBBBBBBBBBBBBBBBBBBBBB";
+  const secondBuild = "CCCCCCCCCCCCCCCCCCCCCCCC";
+  const firstTarget = "111111111111111111111111";
+  const secondTarget = "222222222222222222222222";
+  const firstPhase = "333333333333333333333333";
+  const secondPhase = "444444444444444444444444";
+  return `
+/* Begin PBXFileReference section */
+${includeRef ? `${fileRef} /* Required.swift */ = {isa = PBXFileReference; path = Required.swift; sourceTree = "<group>"; };` : ""}
+/* End PBXFileReference section */
+/* Begin PBXBuildFile section */
+${firstBuild} /* Required.swift in Sources */ = {isa = PBXBuildFile; fileRef = ${fileRef} /* Required.swift */; };
+${secondBuild} /* Required.swift in Sources */ = {isa = PBXBuildFile; fileRef = ${fileRef} /* Required.swift */; };
+/* End PBXBuildFile section */
+/* Begin PBXNativeTarget section */
+${firstTarget} /* NotchBuddy */ = {isa = PBXNativeTarget; buildPhases = (${firstPhase} /* Sources */,); name = NotchBuddy; };
+${secondTarget} /* CoucouAppStore */ = {isa = PBXNativeTarget; buildPhases = (${secondPhase} /* Sources */,); name = CoucouAppStore; };
+/* End PBXNativeTarget section */
+/* Begin PBXSourcesBuildPhase section */
+${firstPhase} /* Sources */ = {isa = PBXSourcesBuildPhase; files = (${firstBuild} /* Required.swift in Sources */,${duplicateFirstPhase ? `${firstBuild} /* Required.swift in Sources */,` : ""}); };
+${secondPhase} /* Sources */ = {isa = PBXSourcesBuildPhase; files = (${includeSecondPhase ? `${reuseFirstBuildInSecondPhase ? firstBuild : secondBuild} /* Required.swift in Sources */,` : ""}); };
+/* End PBXSourcesBuildPhase section */`;
+}
+
+function expectInvalid(text, label) {
+  assert.throws(() => validateRequiredSources(text, ["Required.swift"]), undefined, label);
+}
+
+validateRequiredSources(fixture(), ["Required.swift"]);
+expectInvalid(fixture({ includeRef: false }), "missing ref fixture must fail");
+expectInvalid(fixture({ duplicateFirstPhase: true }), "duplicate phase entry fixture must fail");
+expectInvalid(fixture({ includeSecondPhase: false }), "missing second phase fixture must fail");
+expectInvalid(fixture({ reuseFirstBuildInSecondPhase: true }), "same build ID in both target phases must fail");
+
+const pbx = read("NotchBuddy/NotchBuddy.xcodeproj/project.pbxproj");
+validateRequiredSources(pbx, ["ClaudeService.swift", "ChatMemoryContracts.swift", "KeychainStore.swift", "HindsightUIContracts.swift", "MemoryManagerView.swift", "MemoryManagerWindowController.swift"]);
+
+const appDelegate = read("NotchBuddy/Sources/App/AppDelegate.swift");
+assert.match(appDelegate, /@objc private func openMemoryManager\(\) \{[\s\S]*?MemoryManagerWindowController\.shared\.present\(\)\s*\}/);
+assert.equal((appDelegate.match(/@objc private func openMemoryManager\(\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/#selector\(openMemoryManager\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/@objc private func openSettings\(\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/#selector\(openSettings\)/g) ?? []).length, 1);
+assert.equal((appDelegate.match(/@objc private func openWeeklyRecap\(\)/g) ?? []).length, 1);
+
+const appState = read("NotchBuddy/Sources/App/AppState.swift");
+assert.match(appState, /var hindsightConfig: HindsightConfig \{[\s\S]*?allowDevelopmentHttp: hindsightAllowDevelopmentHttp\s*\)\s*\}/);
+assert.ok(!/extension ChatMessage[\s\S]*?\n\s*let content: String/.test(appState));
+assert.ok(appState.includes("@Published var privateChat = AppSessionDefaults.privateChat"));
+assert.ok(!appState.includes('forKey: "privateChat"'));
+assert.ok(!appState.includes('object(forKey: "privateChat")'));
+assert.ok(appState.includes("lastIndex(where: { $0.turnId == turnId && $0.role == .assistant })"));
+
+const keychain = read("NotchBuddy/Sources/App/KeychainStore.swift");
+assert.ok(keychain.includes("keys: [String]? = nil"));
+assert.ok(!keychain.includes("keys: [String] = KeychainStore.allKeys"));
+
+const manager = read("NotchBuddy/Sources/App/MemoryManagerView.swift");
+assert.ok(manager.includes("private var requestState = MemoryManagerRequestState()"));
+assert.ok(manager.includes("service.memorySafeDetail(id: memory.id)"));
+assert.ok(manager.includes("setPendingDocumentIds"));
+assert.ok(!manager.includes("private var listGeneration"));
+assert.ok(!manager.includes("private var detailGeneration"));
+
+const providerContracts = read("NotchBuddy/Sources/App/ChatMemoryContracts.swift");
+const claudeService = read("NotchBuddy/Sources/App/ClaudeService.swift");
+assert.match(claudeService, /final class ClaudeService:\s*ChatProviderServing/);
+assert.match(claudeService, /func send\(_ request: ChatProviderRequest\) async throws -> ChatProviderResult/);
+assert.ok(claudeService.includes("claudeRequestParts(request"));
+assert.ok(!claudeService.includes("private func sendOpenAICompatible"));
+assert.ok(claudeService.includes("LocalChat.streamChat("));
+assert.ok(claudeService.includes('"\\n[truncated]"'));
+assert.ok(claudeService.includes("let err = (json[\"error\"] as? [String: Any])?[\"message\"] as? String"));
+assert.ok(providerContracts.includes('"system": anthropicSystemContent'));
+
+const coordinator = read("NotchBuddy/Sources/App/ChatMemoryCoordinator.swift");
+assert.ok(!coordinator.includes("AppState.shared.chatProvider"));
+assert.ok(!coordinator.includes("AppState.shared.activeChatModel"));
+assert.ok(coordinator.includes("provider: providerSelection.provider"));
+assert.ok(coordinator.includes("model: providerSelection.model"));
+assert.ok(!coordinator.includes("model: state.claudeModel"));
+assert.ok(coordinator.includes("discoverRetainedArtifact(maxAttempts: 4"));
+assert.ok(coordinator.includes("func prepareForgetTurn(turnId: String)"));
+assert.ok(coordinator.includes("func forgetTurn(confirmation: PreparedForgetTurn)"));
+assert.ok(coordinator.includes("completeDocumentUnion(documentIds:"));
+assert.ok(coordinator.includes("registry.clear()"));
+assert.ok(!coordinator.includes("String(describing: value)"));
+
+const settings = read("NotchBuddy/Sources/App/SettingsView.swift");
+assert.ok(settings.includes("HindsightCredentialReplacement.store"));
+assert.ok(!settings.includes("KeychainStore.shared.set(hindsightBearerTokenKey"));
+assert.equal((settings.match(/ShortcutRecorderButton\(flags:/g) ?? []).length, 1);
+assert.ok(!/ScrollView \{\s*VStack\(alignment: \.leading, spacing: 18\)[\s\S]*?HStack\(spacing: 0\) \{\s*\/\/ Sidebar/.test(settings));
+
+const chat = read("NotchBuddy/Sources/App/IslandViewContent.swift");
+const promptStart = chat.indexOf("struct PromptView: View {");
+const promptEnd = chat.indexOf("// MARK: - Model / provider picker", promptStart);
+const promptView = promptStart >= 0 && promptEnd > promptStart ? chat.slice(promptStart, promptEnd) : "";
+assert.ok(promptView, "PromptView body must be discoverable");
+assert.equal((promptView.match(/TextField\(/g) ?? []).length, 1);
+assert.equal((chat.match(/struct ChatBubble: View/g) ?? []).length, 1);
+assert.ok(!/struct ChatBubble: View[\s\S]*?if !message\.content\.isEmpty[\s\S]*?ChatMarkdownView\(markdown: message\.content\)/.test(chat));
+assert.ok(chat.includes("confirmForget(turnId:"));
+assert.ok(chat.includes("present(documentIds: result.documentIds)"));
+const sendStart = promptView.indexOf("private func sendMessage()");
+const sendBody = sendStart >= 0 ? promptView.slice(sendStart) : "";
+const demoBranch = sendBody.indexOf("if DemoEngine.shared.isActive");
+const coordinatorCall = sendBody.indexOf("state.chatMemoryCoordinator.send(");
+assert.ok(demoBranch >= 0, "PromptView.sendMessage must handle demo mode");
+assert.ok(coordinatorCall > demoBranch, "demo mode must bypass the memory coordinator and provider");
+assert.match(sendBody.slice(demoBranch, coordinatorCall), /await DemoEngine\.shared\.streamChatResponse\(for: query\)[\s\S]*?return/);
+
+const windowController = read("NotchBuddy/Sources/App/MemoryManagerWindowController.swift");
+assert.ok(windowController.includes("memoryManagerWindowConfiguration()"));
+assert.ok(!windowController.includes(".standard"));
+
+const island = read("windows/src-tauri/src/island.rs");
+assert.ok(island.includes("platform::CURSOR_POLL"));
+assert.ok(island.includes("platform::set_input_region"));
+assert.ok(island.includes("pub fn refresh_click_through"));
+assert.ok(!island.includes("use windows::"));
+
+const rustLib = read("windows/src-tauri/src/lib.rs");
+assert.match(rustLib, /fn set_island_rect\(app: AppHandle,[\s\S]*?island::refresh_click_through\(&app, &shared\.gate\)/);
+assert.match(rustLib, /fn place_island\([\s\S]*?island::apply_geometry\([\s\S]*?island::refresh_click_through\(app, &shared\.gate\)/);
+
+const hooks = read("windows/src-tauri/src/hooks.rs");
+for (const contract of ["platform::home_dir()", "platform::local_time()", "platform::HOOK_EXE", "write_like(", "platform::ensure_private_dir", "rewriting_settings_never_widens_its_permissions", "platform::HOME_VAR"]) {
+  assert.ok(hooks.includes(contract), `hooks must preserve ${contract}`);
+}
+assert.match(hooks, /#\[cfg\(windows\)\]\s*pub fn stage_relay/);
+assert.match(hooks, /#\[cfg\(unix\)\]\s*pub fn stage_relay/);
+assert.match(hooks, /#\[cfg\(unix\)\][\s\S]*?from_mode\(0o755\)[\s\S]*?std::fs::rename\(&temp, dest\)/);
+assert.match(hooks, /#\[cfg\(windows\)\]\s*#\[test\]\s*fn a_running_relay_is_replaced_by_moving_it_aside/);
+assert.ok(hooks.includes("fn sh_quote("));
+assert.ok(hooks.includes("the_hook_path_is_one_shell_word_whatever_it_contains"));
+assert.ok(hooks.includes("could not install {}"));
+const rustSettings = read("windows/src-tauri/src/settings.rs");
+assert.ok(rustSettings.includes("crate::platform::HOOK_EXE"));
+assert.ok(rustSettings.includes("crate::platform::ensure_private_dir"));
+const hookMain = read("windows/hook/src/main.rs");
+assert.match(hookMain, /#\[cfg\(target_os = "linux"\)\]\s*use unix::connect;/);
+
+console.log("hindsight-project: PASS");

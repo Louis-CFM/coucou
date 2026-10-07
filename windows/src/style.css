@@ -75,6 +75,24 @@ body {
   will-change: width, height, transform;
 }
 
+/* Unlocked: a dashed outline says "you can drag me". */
+#island.unlocked {
+  outline: 1px dashed rgba(255, 255, 255, 0.28);
+  outline-offset: -1px;
+  cursor: move;
+}
+
+#island.unlocked button,
+#island.unlocked input,
+#island.unlocked textarea,
+#island.unlocked .pill {
+  cursor: default;
+}
+
+.header-actions .lock-btn.on {
+  color: var(--amber);
+}
+
 #island-clip {
   position: absolute;
   inset: 0;
@@ -229,6 +247,20 @@ body {
   color: var(--ink);
 }
 
+.tab.tab-task {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 9px 0 7px;
+  font: 500 11px var(--font);
+}
+
+.tab:focus-visible {
+  outline: 1.5px solid var(--indigo);
+  outline-offset: 1px;
+}
+
 .header-actions {
   margin-left: auto;
   display: flex;
@@ -287,6 +319,10 @@ body {
   background: var(--card);
   border: 1px solid var(--hairline);
   overflow: hidden;
+}
+
+.card.openable:hover {
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .card.wash::after {
@@ -516,8 +552,10 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 28px;
   gap: 4px;
-  align-content: center;
-  padding: 0 8px;
+  align-content: start;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 8px;
 }
 
 .pill {
@@ -528,26 +566,30 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+  color: inherit;
   cursor: default;
   transition: transform 0.2s cubic-bezier(0.3, 1.2, 0.4, 1), background 0.18s, border-color 0.18s,
     box-shadow 0.18s, filter 0.18s;
 }
 
 .pill .mini {
-  margin-left: 7px;
+  flex: 0 0 auto;
+  margin-left: 4px;
 }
 
 .pill .lbl {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
   font: 600 10px var(--font);
   color: var(--dim-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 12px 0 5px;
   pointer-events: none;
 }
 
@@ -638,6 +680,112 @@ body {
 .actions {
   display: flex;
   gap: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  transform: none;
+}
+
+/* ── Multiple-choice question card ──────────────────────────────────────── */
+
+.stack.mcq {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 16px 10px 116px;
+}
+
+.mcq > .actions {
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.mcq-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.mcq-q {
+  font: 600 13px var(--font);
+  color: var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.mcq-tag {
+  font: 600 10.5px var(--font);
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mcq-count {
+  font: 500 11px var(--font);
+  color: var(--dim);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.mcq-hint {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+}
+
+.mcq-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mcq-opt {
+  font: 500 12px var(--font);
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 5px 10px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  cursor: default;
+}
+
+.mcq-opt .l {
+  overflow-wrap: anywhere;
+}
+
+.mcq-opt .d {
+  font: 400 10.5px var(--font);
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mcq-opt:not(.ro):hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.mcq-opt.on {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: var(--cyan);
+  color: var(--ink);
+}
+
+.mcq-opt.ro {
+  opacity: 0.85;
 }
 
 .status-badge {
@@ -829,6 +977,30 @@ input[type="range"]::-webkit-slider-thumb {
   user-select: text;
 }
 
+.reply-wrap { min-width: 0; }
+.memory-actions { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:3px; }
+.memory-action,.private-chat-toggle { border:0; border-radius:999px; background:rgba(255,255,255,.09); color:var(--dim-2); font:500 10.5px var(--font); padding:3px 7px; cursor:pointer; }
+.memory-action:hover:not(:disabled),.private-chat-toggle:hover:not(:disabled) { background:rgba(255,255,255,.16); color:var(--ink); }
+.memory-action:focus-visible,.private-chat-toggle:focus-visible,.send-btn:focus-visible { outline:2px solid #93c5fd; outline-offset:2px; }
+.memory-action-status { color:var(--dim-3); font:400 10.5px var(--font); }
+.private-chat-toggle[aria-pressed="true"] { color:#fbc06a; background:rgba(245,165,36,.17); }
+
+.chat-action {
+  font: 500 11.5px var(--font);
+  color: var(--green-2);
+  padding: 1px 2px;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.chat-action.paste {
+  color: var(--amber);
+}
+
+.chat-action.error {
+  color: var(--red-text);
+}
+
 .typing {
   display: flex;
   gap: 4px;
@@ -878,6 +1050,225 @@ input[type="range"]::-webkit-slider-thumb {
 
 .chat-input::placeholder {
   color: var(--dim-3);
+}
+
+/* ── New task ───────────────────────────────────────────────────────────── */
+
+.task-body {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 12px 84px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.task-seg button {
+  font: 500 11.5px var(--font);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dim);
+  cursor: default;
+}
+
+.task-seg button:hover:not(:disabled) {
+  color: var(--ink-2);
+}
+
+.task-seg button.on {
+  background: #2a2d35;
+  color: var(--ink);
+}
+
+.task-seg button:focus-visible,
+.task-input:focus-visible,
+.task-body .btn:focus-visible {
+  outline: 1.5px solid var(--indigo);
+  outline-offset: 1px;
+}
+
+.task-label {
+  font: 500 11px var(--font);
+  color: var(--dim-2);
+  flex: 0 0 auto;
+}
+
+.task-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font: 400 12.5px var(--font);
+  padding: 6px 10px;
+  outline: none;
+  cursor: text;
+  user-select: text;
+}
+
+.task-body .task-browse {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  font-size: 11.5px;
+}
+
+.task-input::placeholder {
+  color: var(--dim-3);
+}
+
+.task-input:disabled {
+  opacity: 0.6;
+}
+
+.task-prompt {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+  line-height: 1.4;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.task-note {
+  font: 400 11.5px var(--font);
+  color: var(--dim-2);
+  min-width: 0;
+  flex: 1 1 auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  user-select: text;
+}
+
+.task-note.ok {
+  color: var(--green-2);
+}
+
+.task-note.paste {
+  color: var(--amber);
+}
+
+.task-note.error {
+  color: var(--red-text);
+}
+
+/* Model picker on the left of the chat bar. The closed control truncates the
+   id; the full id is in the tooltip and in the OS popup. */
+.model-picker {
+  flex: 0 1 auto;
+  width: 112px;
+  min-width: 64px;
+  height: 22px;
+  padding: 0 18px 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%239398a1' stroke-width='1.3'/%3E%3C/svg%3E")
+      no-repeat right 7px center,
+    rgba(255, 255, 255, 0.06);
+  color: var(--dim);
+  font: 500 11px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  appearance: none;
+  outline: none;
+  cursor: default;
+}
+
+.model-picker:hover:not(:disabled) {
+  color: var(--ink);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.model-picker:focus-visible {
+  border-color: rgba(99, 102, 241, 0.8);
+  color: var(--ink);
+}
+
+.model-picker.error {
+  color: var(--red-text);
+  border-color: rgba(244, 80, 94, 0.35);
+}
+
+.model-picker:disabled {
+  opacity: 0.5;
+}
+
+.model-picker {
+  text-align: left;
+}
+
+.model-picker-wrap {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 64px;
+  display: flex;
+}
+
+.model-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  width: 260px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: #1a1c20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.model-menu[hidden] {
+  display: none;
+}
+
+.model-option {
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--dim);
+  font: 500 11px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.model-option.active,
+.model-option:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.model-option.selected {
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 rgba(99, 102, 241, 0.9);
+}
+
+.model-option.disabled {
+  opacity: 0.6;
 }
 
 .send-btn {
@@ -1364,4 +1755,136 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Voice ──────────────────────────────────────────────────────────────── */
+
+.mic-btn {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+
+.mic-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mic-btn:focus-visible {
+  outline: 1.5px solid var(--indigo);
+  outline-offset: 1px;
+}
+
+.mic-btn.recording {
+  background: var(--red);
+  color: #fff;
+  animation: mic-pulse 1.1s ease-in-out infinite;
+}
+
+.mic-btn.busy {
+  color: var(--ink);
+  animation: mic-pulse 0.6s ease-in-out infinite;
+}
+
+.mic-btn:disabled:not(.busy) {
+  opacity: 0.4;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 80, 94, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(244, 80, 94, 0); }
+}
+
+.voice-note {
+  font: 400 11px var(--font);
+  color: var(--amber);
+  line-height: 1.35;
+  user-select: text;
+}
+
+.voice-note:empty {
+  display: none;
+}
+
+.voice-note .voice-settings {
+  margin-left: 6px;
+  color: var(--ink-2);
+  text-decoration: underline;
+}
+
+.task-prompt-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.task-prompt-wrap .task-prompt {
+  padding-right: 38px;
+}
+
+.task-prompt-wrap .task-mic {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+}
+
+/* ── Robot ──────────────────────────────────────────────────────────────── */
+
+.task-body.robot-body {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.robot-left {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.robot-files {
+  font: 400 11px var(--font);
+  color: var(--green-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+
+.robot-files:empty {
+  display: none;
+}
+
+.robot-preview {
+  flex: 0 0 236px;
+  align-self: stretch;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.robot-shot {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.robot-shot-empty {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  padding: 0 14px;
+  text-align: center;
 }

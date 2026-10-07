@@ -5,10 +5,13 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, agentDisplayName, canOpenOrigin, sessionLabel, sessionOrdinal, sessionTitle, type AgentTask, type QuestionInfo } from "../core/state";
+import { allAnswered, currentStep, stepAnswered } from "../core/questions";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
+import { buildTask } from "./task";
+import { buildRobot } from "./robot";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 
@@ -16,16 +19,38 @@ export interface ViewActions {
   setView(v: IslandViewName): void;
   collapse(): void;
   setFocus(id: string): void;
-  openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
+  /** Brings the session's originating window (or its folder) to the front. */
+  openOrigin(id: string): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
+  /** Question card: toggle one option of question `index`. */
+  pick(index: number, label: string): void;
+  /** Question card: show the previous (-1) or next (+1) question. */
+  stepQuestion(delta: -1 | 1): void;
+  /** Question card: send every pick to Claude Code. */
+  submitAnswers(): void;
+  /** Question card: let Claude Code ask in its own interface instead. */
+  answerInApp(): void;
+  /** Hermes question card: toggle one option of question `index`. */
+  pickExternal(index: number, label: string): void;
+  /** Hermes question card: show the previous (-1) or next (+1) question. */
+  stepExternal(delta: -1 | 1): void;
+  /** Hermes question card: send the picks to Hermes. */
+  sendExternal(): void;
   toggleSound(): void;
+  /** Lock / unlock the island position. */
+  toggleLock(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
+  /** First-launch offer: open Settings on "Set up all my agents" (installs nothing). */
+  acceptSetupOffer(): void;
+  dismissSetupOffer(): void;
   blip(): void;
+  /** Keep the island open (no auto-collapse) while a native dialog has the mouse. */
+  hold(on: boolean): void;
 }
 
 export interface ViewHost {
@@ -81,9 +106,15 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabTask = h("button", { class: "tab tab-task", title: "New task", "aria-label": "New task", onclick: () => go("task") },
+    svg(ICONS.plus, 11), h("span", { text: "Task" }));
+  const tabRobot = h("button", { class: "tab tab-task", title: "Robot: do a task in the hidden browser", "aria-label": "Robot", onclick: () => go("robot") },
+    h("span", { text: "Robot" }));
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const lockBtn = h("button", { class: "lock-btn", onclick: () => actions.toggleLock() }, svg(ICONS.lock, 13));
+  let lockShown: boolean | null = null;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -93,8 +124,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabTask, tabRobot),
+    h("div", { class: "header-actions" }, lockBtn, gearBtn, soundBtn),
   );
 
   return {
@@ -104,11 +135,22 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabTask.classList.toggle("on", v === "task");
+      tabRobot.classList.toggle("on", v === "robot");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      const locked = State.settings.islandLocked;
+      if (lockShown !== locked) {
+        lockShown = locked;
+        clear(lockBtn);
+        lockBtn.append(svg(locked ? ICONS.lock : ICONS.lockOpen, 13));
+        lockBtn.title = locked ? "Unlock position (then drag the island)" : "Lock position";
+        lockBtn.setAttribute("aria-label", lockBtn.title);
+        lockBtn.classList.toggle("on", !locked);
+      }
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -117,9 +159,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
   const who = h("div", { class: "who" });
-  const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
+  const tickerBody = h("div", { class: "card-body" }, who);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
@@ -138,6 +179,8 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
+  let currentTicker = new Ticker();
+  tickerBody.append(currentTicker.el);
   let mode: "ticker" | "card" | null = null;
   let cardKey = "";
 
@@ -161,7 +204,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   return {
     el,
     tick(nowMs: number) {
-      if (mode === "ticker") ticker.tick(nowMs);
+      if (mode === "ticker") currentTicker.tick(nowMs);
     },
     sync() {
       const task = State.focusTask;
@@ -170,12 +213,13 @@ function buildOverview(actions: ViewActions): ViewHost {
         detailOpen = false;
         cardKey = "";
         mode = null;
+        currentTicker = new Ticker();
+        clear(tickerBody);
+        tickerBody.append(who, currentTicker.el);
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+      const sessionActive = task && (task.source === "agent" || task.source === "claudeCode") &&
+        (task.sessionId != null || task.state !== "idle" || task.steps.length > 0);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -185,10 +229,12 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         clear(who);
+        const ordinal = sessionOrdinal(task, State.tasks);
+        who.title = sessionTitle(task, State.tasks);
         who.append(
           dot(task.color, 7),
-          h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "name", text: ordinal ? `${task.name} ${ordinal}` : task.name }),
+          h("span", { class: "tool", text: agentDisplayName(task) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -196,7 +242,7 @@ function buildOverview(actions: ViewActions): ViewHost {
             text: `${Math.min(task.stepIndex + 1, task.steps.length)}/${task.steps.length}`,
           }));
         }
-        ticker.sync(task);
+        currentTicker.sync(task);
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -212,14 +258,20 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen ? "none" : "";
+      const hasTarget = task && (canOpenOrigin(task) || task.id === "integration_n8n" ||
+        ["integration_resend", "integration_vercel", "integration_github", "integration_stripe", "integration_notion", "integration_calcom"].includes(task.id));
+      jump.style.display = detailOpen || !hasTarget ? "none" : "";
+      jump.title = task?.originHwnd != null ? "Open the session window" : task?.source === "claudeCode" ? "Open folder in VS Code" : "Open";
+      // `canOpenOrigin` already hides the button for agent sessions with no window.
 
-      const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
+      const others = State.otherTasks;
+      const pillKey = others.map((t) => `${t.id}:${t.name}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
+        const scrollTop = pills.scrollTop;
         pillIds = pillKey;
         clear(pills);
         for (const t of others) pills.append(buildPill(t, actions));
+        pills.scrollTop = scrollTop;
         pruneMiniBots();
       }
     },
@@ -227,11 +279,11 @@ function buildOverview(actions: ViewActions): ViewHost {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = sessionLabel(task, State.tasks);
   const canvas = createMiniBot(task, 24);
   const pill = h(
-    "div",
-    { class: "pill", onclick: () => actions.setFocus(task.id) },
+    "button",
+    { class: "pill", type: "button", title: sessionTitle(task, State.tasks), "aria-label": label, onclick: () => actions.setFocus(task.id) },
     canvas,
     h("span", { class: "lbl", text: label }),
   );
@@ -288,17 +340,111 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/**
+ * The questions with one button per option. `picked` marks selected labels;
+ * without `onPick` the buttons are read-only. Rebuilt only when `key` changes,
+ * so a click is never swallowed by a rebuild between mouse-down and mouse-up.
+ */
+function renderQuestions(
+  host: HTMLElement,
+  questions: QuestionInfo[],
+  picked: string[][] | null,
+  onPick: ((index: number, label: string) => void) | null,
+  only?: number,
+) {
+  clear(host);
+  questions.forEach((q, i) => {
+    if (only != null && i !== only) return;
+    const head = h("div", { class: "mcq-q" });
+    if (q.header) head.append(h("span", { class: "mcq-tag", text: q.header }));
+    head.append(h("span", { text: q.question }));
+    if (q.multiSelect) head.append(h("span", { class: "mcq-hint", text: "· choose any" }));
+    const opts = h("div", { class: "mcq-opts" });
+    for (const o of q.options) {
+      const on = picked?.[i]?.includes(o.label) ?? false;
+      const b = h("button", {
+        class: `mcq-opt${on ? " on" : ""}${onPick ? "" : " ro"}`,
+        type: "button",
+        title: o.description ?? o.label,
+        "aria-pressed": onPick ? String(on) : undefined,
+        onclick: onPick ? () => onPick(i, o.label) : undefined,
+      }, h("span", { class: "l", text: o.label }), o.description ? h("span", { class: "d", text: o.description }) : null);
+      if (!onPick) b.setAttribute("tabindex", "-1");
+      opts.append(b);
+    }
+    host.append(h("div", { class: "mcq-item" }, head, opts));
+  });
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const plain = stack(116, 16, who, code, row);
+
+  const mcqWho = h("div");
+  const list = h("div", { class: "mcq-list" });
+  const submit = btn("Submit", "primary", () => actions.submitAnswers());
+  const back = btn("Back", "secondary", () => actions.stepQuestion(-1));
+  const next = btn("Next", "primary", () => actions.stepQuestion(1));
+  const counter = h("span", { class: "mcq-count" });
+  const openBtn = btn("Open", "secondary", () => {
+    const id = State.pendingApproval?.taskId;
+    if (id) actions.openOrigin(id);
+  });
+  const mcqRow = h("div", { class: "actions" },
+    btn("Answer in app", "secondary", () => actions.answerInApp()),
+    openBtn,
+    h("div", { class: "grow" }),
+    counter,
+    back,
+    next,
+    submit,
+  );
+  const mcq = h("div", { class: "stack mcq" }, mcqWho, list, mcqRow);
+
+  const body = card("cyan", plain, mcq);
+  const el = h("div", { class: "view" }, body);
   let rowKey = "";
+  let listKey = "";
   return {
     el,
     sync() {
+      const approval = State.pendingApproval;
+      const approvalTask = State.tasks.find((t) => t.id === approval?.taskId) ?? null;
+      const questions = approval?.questions ?? null;
+      plain.style.display = questions ? "none" : "";
+      mcq.style.display = questions ? "" : "none";
+      body.style.setProperty("--wash", washRGBA(questions ? "cyan" : "amber"));
+      if (questions) {
+        clear(mcqWho);
+        mcqWho.append(agentWho(approvalTask, questions.length > 1 ? `asks ${questions.length} questions` : "asks a question"));
+        const step = currentStep(approval);
+        const total = questions.length;
+        const key = JSON.stringify([approval!.requestId, approval!.picks, step]);
+        if (key !== listKey) {
+          listKey = key;
+          renderQuestions(list, questions, approval!.picks ?? null, (i, label) => actions.pick(i, label), step);
+          list.scrollTop = 0;
+        }
+        openBtn.style.display = canOpenOrigin(approvalTask) ? "" : "none";
+        const last = step === total - 1;
+        counter.textContent = total > 1 ? `${step + 1} of ${total}` : "";
+        counter.style.display = total > 1 ? "" : "none";
+        back.style.display = total > 1 && step > 0 ? "" : "none";
+        next.style.display = last ? "none" : "";
+        const answered = stepAnswered(approval, step);
+        next.toggleAttribute("disabled", !answered);
+        next.title = answered ? "Next question" : "Pick an answer first";
+        submit.style.display = last ? "" : "none";
+        const ready = allAnswered(approval);
+        submit.toggleAttribute("disabled", !ready);
+        submit.title = ready ? "Send these answers to Claude Code" : "Answer every question first";
+        return;
+      }
+      listKey = "";
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      who.append(agentWho(approvalTask, "needs permission"));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
@@ -319,20 +465,121 @@ function buildApproval(actions: ViewActions): ViewHost {
 
 // ── Question ──────────────────────────────────────────────────────────────────
 
-function buildQuestion(): ViewHost {
+function agentLabel(task: AgentTask | null): string {
+  return task ? agentDisplayName(task) : "Agent";
+}
+
+/** Hermes questions can be answered from the card (coucou-clarify plugin). */
+function answerable(task: AgentTask | null): boolean {
+  return task?.agent === "hermes" && !!task.sessionId && !!task.questions?.length;
+}
+
+function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
-  return {
+  const list = h("div", { class: "mcq-list" });
+  const openBtn = btn("Open", "primary", () => {
+    const task = State.focusTask;
+    if (task && canOpenOrigin(task)) actions.openOrigin(task.id);
+  });
+  // Built once: rebuilding a button between mouse-down and mouse-up swallows the click.
+  const hint = h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." });
+  let step = 0;
+  let stepTask = "";
+  const counter = h("span", { class: "mcq-count" });
+  const back = btn("Back", "secondary", () => {
+    if (answerable(State.focusTask)) return actions.stepExternal(-1);
+    step--; listKey = ""; host.sync();
+  });
+  const next = btn("Next", "secondary", () => {
+    if (answerable(State.focusTask)) return actions.stepExternal(1);
+    step++; listKey = ""; host.sync();
+  });
+  const send = btn("Send", "primary", () => actions.sendExternal());
+  const row = h("div", { class: "actions" }, hint, h("div", { class: "grow" }), counter, back, next, openBtn, send);
+  const body = stack(116, 16, who, title, list, row);
+  const el = h("div", { class: "view" }, card("cyan", body));
+  let listKey = "";
+  const host: ViewHost = {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
-      clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
+      who.append(agentWho(task, `${agentLabel(task)} is asking a question`));
+      const questions = task?.questions ?? null;
+      const live = answerable(task);
+      body.classList.toggle("mcq", !!questions);
+      title.style.display = questions ? "none" : "";
+      list.style.display = questions ? "" : "none";
+      const status = live ? task!.questionStatus ?? null : null;
+      hint.textContent = live
+        ? status === "sending" ? "Sending to Hermes…" : status ?? "Answer here or in Hermes."
+        : questions
+          ? `Answer in ${agentLabel(task)} — Coucou can't reply for it.`
+          : "Answer in your terminal — Coucou can't reply for you yet.";
+      const total = questions?.length ?? 0;
+      if (questions) {
+        const id = JSON.stringify([task!.id, questions]);
+        if (id !== stepTask) { stepTask = id; step = 0; }
+        if (live) step = currentStep(task);
+        step = Math.min(Math.max(0, step), total - 1);
+        const key = JSON.stringify([id, step, live ? task!.picks : null, status === "sending"]);
+        if (key !== listKey) {
+          listKey = key;
+          const onPick = live && status !== "sending" ? (i: number, label: string) => actions.pickExternal(i, label) : null;
+          renderQuestions(list, questions, live ? task!.picks ?? null : null, onPick, step);
+        }
+      } else {
+        listKey = "";
+        stepTask = "";
+        step = 0;
+        title.textContent = task?.steps.at(-1) ?? "Answer needed.";
+      }
+      counter.textContent = total > 1 ? `${step + 1} of ${total}` : "";
+      counter.style.display = total > 1 ? "" : "none";
+      back.style.display = total > 1 && step > 0 ? "" : "none";
+      const last = step >= total - 1;
+      next.style.display = total > 1 && !last ? "" : "none";
+      const stepDone = live ? stepAnswered(task, step) : true;
+      next.toggleAttribute("disabled", !stepDone);
+      next.title = stepDone ? "Next question" : "Pick an answer first";
+      openBtn.style.display = canOpenOrigin(task) ? "" : "none";
+      openBtn.classList.toggle("primary", !live);
+      openBtn.classList.toggle("secondary", live);
+      send.style.display = live && last ? "" : "none";
+      const ready = live && allAnswered(task) && status !== "sending";
+      send.toggleAttribute("disabled", !ready);
+      send.title = ready ? "Send these answers to Hermes" : "Answer every question first";
+    },
+  };
+  return host;
+}
+
+// ── Approval notice (Kimi, Hermes) ────────────────────────────────────────────
+
+/**
+ * A Kimi or Hermes approval, shown so it is not missed. Their hooks cannot
+ * answer it, so the card only says what is asked and opens the agent's window.
+ */
+function buildNotice(actions: ViewActions): ViewHost {
+  const who = h("div");
+  const code = h("div", { class: "code" });
+  const openBtn = btn("Open", "primary", () => {
+    const task = State.focusTask;
+    if (task && canOpenOrigin(task)) actions.openOrigin(task.id);
+  });
+  const hint = h("div", { class: "sub" });
+  const row = h("div", { class: "actions" }, hint, h("div", { class: "grow" }), openBtn);
+  const body = card("amber", stack(116, 16, who, code, row));
+  return {
+    el: h("div", { class: "view" }, body),
+    sync() {
+      const task = State.focusTask;
+      clear(who);
+      who.append(agentWho(task, "needs permission"));
+      code.textContent = task?.approvalNotice ?? "…";
+      hint.textContent = `Approve or deny in ${agentLabel(task)}.`;
+      openBtn.style.display = canOpenOrigin(task) ? "" : "none";
     },
   };
 }
@@ -344,8 +591,7 @@ function buildError(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title", text: "Workflow stopped." });
   const detail = h("div", { class: "detail" });
   const row = h("div", { class: "actions" },
-    btn("Retry", "primary", () => actions.setView(State.defaultView())),
-    btn("Open in n8n", "secondary", () => actions.openUrl("")),
+    btn("OK", "secondary", () => actions.setView(State.defaultView())),
   );
   const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, row)));
   return {
@@ -353,7 +599,7 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
+      who.append(agentWho(task, agentLabel(task)));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
       detail.textContent = task?.steps.at(-1) ?? "No detail available.";
     },
@@ -365,17 +611,29 @@ function buildError(actions: ViewActions): ViewHost {
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" },
-    btn("Open terminal", "primary", () => actions.openTerminal()),
-    btn("OK", "secondary", () => actions.collapse()),
-  );
-  const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
+  const open = () => {
+    const task = State.focusTask;
+    if (task && canOpenOrigin(task)) actions.openOrigin(task.id);
+  };
+  const openBtn = btn("Open", "primary", open);
+  const okBtn = btn("OK", "secondary", () => actions.collapse());
+  // OK must only dismiss, never also open.
+  okBtn.addEventListener("click", (e) => e.stopPropagation());
+  openBtn.addEventListener("click", (e) => e.stopPropagation());
+  const row = h("div", { class: "actions" }, okBtn, openBtn);
+  const body = card("green", stack(116, 16, who, title, row));
+  body.addEventListener("click", open);
+  const el = h("div", { class: "view" }, body);
   return {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      const task = State.focusTask;
+      who.append(agentWho(task, `${agentLabel(task)} finished`));
+      title.textContent = task?.steps.at(-1) ?? "Session finished";
+      const openable = canOpenOrigin(task);
+      openBtn.style.display = openable ? "" : "none";
+      body.classList.toggle("openable", openable);
     },
   };
 }
@@ -403,6 +661,28 @@ function buildNote(): ViewHost {
       title.textContent = State.noteMessage ?? "";
     },
   };
+}
+
+// ── First-launch setup offer ──────────────────────────────────────────────────
+
+function buildSetupOffer(actions: ViewActions): ViewHost {
+  const title = h("div", { class: "title" });
+  const detail = h("div", { class: "detail", text: "Settings shows what changes. Nothing is installed until you click." });
+  const row = h("div", { class: "actions" },
+    btn("Not now", "secondary", () => actions.dismissSetupOffer()),
+    btn("Set them up", "primary", () => actions.acceptSetupOffer()),
+  );
+  const el = h("div", { class: "view" }, card("green", stack(116, 16, title, detail, row)));
+  return {
+    el,
+    sync() {
+      title.textContent = setupOfferText(State.setupOffer);
+    },
+  };
+}
+
+export function setupOfferText(names: string[]): string {
+  return `Coucou found: ${names.join(", ")}. Set them up?`;
 }
 
 // ── In-island settings ────────────────────────────────────────────────────────
@@ -491,13 +771,17 @@ export function buildViews(
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
-  map.set("question", buildQuestion());
+  map.set("question", buildQuestion(actions));
+  map.set("notice", buildNotice(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
+  map.set("setupOffer", buildSetupOffer(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
+  map.set("task", buildTask(() => actions.setView(State.defaultView()), (on) => actions.hold(on)));
+  map.set("robot", buildRobot(() => actions.setView(State.defaultView())));
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));

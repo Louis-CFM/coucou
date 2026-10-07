@@ -92,6 +92,9 @@ struct SettingsView: View {
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
     @State private var connectingLMStudio:  Bool = false
+    @State private var hindsightToken: String = ""
+    @State private var hindsightCredentialPresent = KeychainStore.shared.contains(hindsightBearerTokenKey)
+    @State private var hindsightConnectionStatus: String = ""
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -989,6 +992,53 @@ struct SettingsView: View {
             .padding(.vertical, 4)
         }
 
+        GroupBox("Hindsight Memory") {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Enable Hindsight memory", isOn: $state.hindsightEnabled)
+                TextField("Base URL", text: $state.hindsightBaseUrl).textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("Tenant", text: $state.hindsightTenant).textFieldStyle(.roundedBorder)
+                    TextField("Bank", text: $state.hindsightBank).textFieldStyle(.roundedBorder)
+                }
+                Toggle("Recall before chat", isOn: $state.hindsightAutomaticRecall)
+                Toggle("Retain durable completed turns", isOn: $state.hindsightInferredRetention)
+                #if DEBUG
+                Toggle("Allow development HTTP", isOn: $state.hindsightAllowDevelopmentHttp)
+                #endif
+                SecureField("Bearer token", text: $hindsightToken).textFieldStyle(.roundedBorder)
+                Text(hindsightCredentialPresent ? "Credential stored" : "Credential not stored")
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                HStack {
+                    Button("Save / replace token") {
+                        switch HindsightCredentialReplacement.store(hindsightToken) {
+                        case .success:
+                            hindsightToken = ""
+                            hindsightCredentialPresent = true
+                            hindsightConnectionStatus = "Credential stored"
+                        case .failure(let error):
+                            hindsightConnectionStatus = error.localizedDescription
+                        }
+                    }.disabled(hindsightToken.isEmpty)
+                    Button("Remove token") {
+                        switch KeychainStore.shared.delete(hindsightBearerTokenKey) {
+                        case .success:
+                            hindsightToken = ""
+                            hindsightCredentialPresent = false
+                            hindsightConnectionStatus = "Credential removed"
+                        case .failure(let error):
+                            hindsightConnectionStatus = error.localizedDescription
+                        }
+                    }.disabled(!hindsightCredentialPresent)
+                    Button("Test connection") { Task { await testHindsightConnection() } }
+                    Button("Open Memory Manager") { MemoryManagerWindowController.shared.present() }
+                }
+                if !hindsightConnectionStatus.isEmpty {
+                    Text(hindsightConnectionStatus).font(.system(size: 11)).foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(localized: "chat.local.description"))
@@ -1172,6 +1222,17 @@ struct SettingsView: View {
     }
 
     // MARK: - Actions
+
+    @MainActor
+    private func testHindsightConnection() async {
+        do {
+            let service = try HindsightService(config: state.hindsightConfig)
+            try await service.testConnection()
+            hindsightConnectionStatus = "Connection successful"
+        } catch {
+            hindsightConnectionStatus = error.localizedDescription
+        }
+    }
 
     private func applyCustomModel(_ value: String) {
         let id = value.trimmingCharacters(in: .whitespacesAndNewlines)

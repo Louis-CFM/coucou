@@ -9,6 +9,7 @@ export type IslandViewName =
   | "empty"
   | "approval"
   | "question"
+  | "notice"
   | "error"
   | "finished"
   | "confused"
@@ -21,6 +22,9 @@ export type IslandViewName =
   | "result"
   | "note"
   | "settings"
+  | "task"
+  | "setupOffer"
+  | "robot"
   | "greeting";
 
 export type BotStateName =
@@ -71,6 +75,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
   approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
+  // Kimi/Hermes approval: shown, not answerable (they ask in their own window).
+  notice: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
@@ -85,6 +91,11 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   result: { height: 160, botX: 52, botY: null, botDiameter: 44, agentMode: "column" },
   note: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "column" },
   settings: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  // "+ New task" form: agent, target, folder, prompt, Go. Fits the 320 px panel.
+  task: { height: 268, botX: 44, botY: 64, botDiameter: 36, agentMode: "none" },
+  setupOffer: { height: 160, botX: 60, botY: null, botDiameter: 50, agentMode: "none" },
+  // Robot panel: task box, Run/Stop, status, live preview of the hidden browser.
+  robot: { height: 268, botX: 44, botY: 64, botDiameter: 36, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
 };
 
@@ -97,10 +108,14 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/** Approval/question views showing multiple-choice options; the card scrolls past this. */
+export const QUESTION_CARD_H = 300;
+
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  hasChoices = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -110,7 +125,9 @@ export function islandSize(
     case "compact":
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
-      const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
+      const h = view === "prompt" ? chatPromptHeight(chatCount)
+        : hasChoices && (view === "approval" || view === "question") ? QUESTION_CARD_H
+        : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }
