@@ -113,6 +113,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "agent_devin" => crate::devin::poll_once(app).await,
         _ => {}
     }
 }

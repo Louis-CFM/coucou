@@ -68,6 +68,20 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Devin
+
+Open **Settings… → Devin**, paste a Personal Access Token (`cog_…`, created in
+app.devin.ai → Settings → Devin API → PATs) and click **Connect**. The token is
+checked against Cognition's official API before it is saved, then stored in the
+**Windows Credential Manager** — never on disk, never shown again.
+
+Your cloud Devin sessions appear in the island on their own, wherever you
+started them (web, Slack, CLI): one pill aggregates them, the ticker shows the
+session titles, waiting-for-you gets a sound and a badge, and clicking the pill
+opens the most relevant session in your browser. The only network requests go
+to `api.devin.ai`, at a gentle pace (every 20 s while a session runs, 120 s to
+discover new ones), and none at all without a token.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

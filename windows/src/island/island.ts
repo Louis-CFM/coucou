@@ -129,6 +129,12 @@ export class Island {
         };
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === "agent_devin") {
+          // The URL the poller chose (waiting session first), never a guess.
+          const data = State.integrations[task.id]?.data as { url?: string } | undefined;
+          const url = typeof data?.url === "string" && data.url ? data.url : "https://app.devin.ai/sessions";
+          void Bridge.openUrl(url);
+        }
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
