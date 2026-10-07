@@ -153,6 +153,16 @@ The relay (`coucou-hook.exe`) works with any tool that can run a command on hook
 
 OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
 
+### Google Antigravity
+
+Antigravity hooks are natively supported and manageable through the settings UI:
+
+- **1-Click Install:** In **Settings → Antigravity**, click **Install hooks** (or **Preview changes** to see a unified diff).
+- **Config location:** Configured in `%USERPROFILE%\.gemini\config\hooks.json` with timestamped `.bak` backups before write.
+- **Windows Command Safety:** Generates clean unquoted command lines (`coucou-hook.exe --agent antigravity <event>`) so Windows `cmd.exe /c` does not fail on escape quotes.
+- **Protocol Normalization:** `coucou-hook.exe` automatically translates Antigravity protojson payloads (`toolCall` args/name, `conversationId` to `session_id`, `workspacePaths` to `cwd`, `PreInvocation` to `UserPromptSubmit`, `PostInvocation` to `PostToolUse`).
+- **Non-blocking Contract:** Always responds `{"decision":"allow"}` on `PreToolUse` so Antigravity tools run unhindered while keeping Coucou's top island ticker live.
+
 ## What's different from the Mac version
 
 - No notch, so the island lives at the top centre of the screen and retracts into
