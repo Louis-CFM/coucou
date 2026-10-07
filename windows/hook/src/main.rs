@@ -45,15 +45,15 @@ mod unix;
 use unix::connect;
 
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event, agent)) = read_event() else {
+        std::process::exit(0)
+    };
 
     let waits_for_answer = event == "PermissionRequest";
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
-    // (No catch_unwind here — the release profile is panic = "abort", so it would
-    // be dead code. `talk` is written to have nothing to panic on instead.)
     let (tx, rx) = mpsc::channel::<Option<String>>();
     std::thread::spawn(move || {
         let _ = tx.send(talk(&payload, waits_for_answer));
@@ -66,7 +66,22 @@ fn main() {
             let _ = out.flush();
         }
     }
-    // Nothing printed: Claude Code asks in the terminal, as if we were not here.
+
+    // Antigravity, Gemini CLI, Muse Code and Copilot expect valid JSON on stdout
+    if agent.eq_ignore_ascii_case("antigravity") {
+        let mut out = std::io::stdout();
+        if event == "PreToolUse" {
+            let _ = writeln!(out, r#"{{"decision":"allow"}}"#);
+        } else {
+            let _ = writeln!(out, "{{}}");
+        }
+        let _ = out.flush();
+    } else if agent == "gemini" || agent == "muse" || agent == "copilot" {
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "{{}}");
+        let _ = out.flush();
+    }
+
     std::process::exit(0);
 }
 
@@ -86,8 +101,90 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
-/// Reads stdin and returns the payload to forward plus the event name.
-fn read_event() -> Option<(String, String)> {
+fn normalize_event_name(raw: &str) -> String {
+    match raw {
+        "PreInvocation" | "BeforeAgent" | "pre_invocation" | "user_prompt_submit" | "userPromptSubmitted" => {
+            "UserPromptSubmit".into()
+        }
+        "PostInvocation" | "AfterModel" | "post_invocation" => "PostToolUse".into(),
+        "BeforeTool" | "BeforeToolSelection" | "pre_tool_use" | "preToolUse" => "PreToolUse".into(),
+        "AfterTool" | "post_tool_use" | "postToolUse" => "PostToolUse".into(),
+        "AfterAgent" | "agentStop" | "stop" => "Stop".into(),
+        "startup" | "session_start" | "sessionStart" => "SessionStart".into(),
+        "exit" | "session_end" | "sessionEnd" => "SessionEnd".into(),
+        other => other.to_string(),
+    }
+}
+
+fn normalize_payload(map: &mut serde_json::Map<String, serde_json::Value>) {
+    // 1. Session ID normalization (Antigravity conversationId -> session_id)
+    if !map.contains_key("session_id") {
+        for key in ["conversationId", "conversation_id", "sessionId"] {
+            if let Some(v) = map.get(key).and_then(|x| x.as_str()) {
+                if !v.is_empty() {
+                    map.insert("session_id".into(), serde_json::Value::String(v.to_string()));
+                    break;
+                }
+            }
+        }
+    }
+
+    // 2. Tool name normalization (Antigravity toolCall.name -> tool_name)
+    if !map.contains_key("tool_name") {
+        if let Some(name) = map.get("toolName").and_then(|x| x.as_str()) {
+            map.insert("tool_name".into(), serde_json::Value::String(name.to_string()));
+        } else if let Some(tc) = map.get("toolCall").and_then(|x| x.as_object()) {
+            if let Some(name) = tc.get("name").and_then(|x| x.as_str()) {
+                map.insert("tool_name".into(), serde_json::Value::String(name.to_string()));
+            }
+        } else if let Some(tool) = map.get("tool").and_then(|x| x.as_str()) {
+            map.insert("tool_name".into(), serde_json::Value::String(tool.to_string()));
+        }
+    }
+
+    // 3. Tool input normalization (Antigravity toolCall.args -> tool_input)
+    if !map.contains_key("tool_input") {
+        if let Some(args) = map.get("toolArgs").and_then(|x| x.as_object()) {
+            map.insert("tool_input".into(), serde_json::Value::Object(args.clone()));
+        } else if let Some(tc) = map.get("toolCall").and_then(|x| x.as_object()) {
+            if let Some(args) = tc.get("args").and_then(|x| x.as_object()) {
+                let mut flat = args.clone();
+                for (src, dst) in [
+                    ("CommandLine", "command"),
+                    ("FilePath", "file_path"),
+                    ("Path", "path"),
+                    ("Url", "url"),
+                    ("Query", "query"),
+                    ("Pattern", "pattern"),
+                ] {
+                    if let Some(v) = flat.get(src).cloned() {
+                        flat.insert(dst.into(), v);
+                    }
+                }
+                map.insert("tool_input".into(), serde_json::Value::Object(flat));
+            }
+        }
+    }
+
+    // 4. Working directory normalization (Antigravity workspacePaths -> cwd)
+    let cwd_missing = map
+        .get("cwd")
+        .and_then(|v| v.as_str())
+        .map(str::is_empty)
+        .unwrap_or(true);
+    if cwd_missing {
+        if let Some(paths) = map.get("workspacePaths").and_then(|v| v.as_array()) {
+            if let Some(first) = paths.first().and_then(|p| p.as_str()) {
+                map.insert("cwd".into(), serde_json::Value::String(first.to_string()));
+            }
+        } else if let Some(workdir) = map.get("workdir").and_then(|v| v.as_str()) {
+            map.insert("cwd".into(), serde_json::Value::String(workdir.to_string()));
+        }
+    }
+}
+
+/// Reads stdin and returns the payload to forward plus the event name and agent.
+fn read_event() -> Option<(String, String, String)> {
     let mut raw = Vec::new();
     if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() {
         return None;
@@ -102,7 +199,6 @@ fn read_event() -> Option<(String, String)> {
 
     // Parse argv: "coucou-hook.exe [--agent <name>] [<EventName>]"
     // --agent tags the payload with coucou_agent so the app routes to the right pill.
-    // Absent or invalid names are validated and discarded by the app, not here.
     let mut agent = String::new();
     let mut arg_event = String::new();
     {
@@ -115,18 +211,21 @@ fn read_event() -> Option<(String, String)> {
             }
         }
     }
-    // Which agent this hook was installed for. Absent means Claude Code,
-    // so existing hook commands keep working unchanged.
     if !agent.is_empty() {
-        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+        map.insert("coucou_agent".into(), serde_json::Value::String(agent.clone()));
     }
-    let event = map
+
+    let raw_event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
+
+    let event = normalize_event_name(&raw_event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
+
+    normalize_payload(map);
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -165,7 +264,7 @@ fn read_event() -> Option<(String, String)> {
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some((line, event))
+    Some((line, event, agent))
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
@@ -252,5 +351,39 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn antigravity_payload_normalization() {
+        let mut map = match serde_json::json!({
+            "conversationId": "conv-12345",
+            "workspacePaths": ["C:\\Projects\\test"],
+            "toolCall": {
+                "name": "run_command",
+                "args": {
+                    "CommandLine": "cargo check"
+                }
+            }
+        }) {
+            serde_json::Value::Object(m) => m,
+            _ => unreachable!(),
+        };
+
+        normalize_payload(&mut map);
+
+        assert_eq!(map.get("session_id").unwrap(), "conv-12345");
+        assert_eq!(map.get("cwd").unwrap(), "C:\\Projects\\test");
+        assert_eq!(map.get("tool_name").unwrap(), "run_command");
+        let tool_input = map.get("tool_input").unwrap().as_object().unwrap();
+        assert_eq!(tool_input.get("command").unwrap(), "cargo check");
+    }
+
+    #[test]
+    fn antigravity_event_normalization() {
+        assert_eq!(normalize_event_name("PreInvocation"), "UserPromptSubmit");
+        assert_eq!(normalize_event_name("PostInvocation"), "PostToolUse");
+        assert_eq!(normalize_event_name("PreToolUse"), "PreToolUse");
+        assert_eq!(normalize_event_name("PostToolUse"), "PostToolUse");
+        assert_eq!(normalize_event_name("Stop"), "Stop");
     }
 }

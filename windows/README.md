@@ -144,7 +144,7 @@ The relay (`coucou-hook.exe`) works with any tool that can run a command on hook
 |---|---|---|
 | Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
 | Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
-| Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
+| Antigravity | **Settings → Antigravity → Install hooks** | `%USERPROFILE%\.gemini\config\hooks.json` |
 | Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
 | Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
 | Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |

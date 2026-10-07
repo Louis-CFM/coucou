@@ -172,10 +172,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
+      // VS Code with a live Claude Code session or an active agent keeps the ticker;
+      // every other pill shows its own card, exactly like IntegrationCardView.
+      const isCodingTool = task?.id === "integration_claude" || task?.id.startsWith("agent_");
       const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+        Boolean(isCodingTool && task && (task.state !== "idle" || task.steps.length > 0));
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -185,10 +186,16 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         clear(who);
+        const toolLabel =
+          task.source === "claudeCode"
+            ? "Claude Code"
+            : task.id === "agent_antigravity"
+              ? "Antigravity"
+              : task.name;
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: toolLabel }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -374,7 +381,8 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
+      const isAgy = State.focusTask?.id === "agent_antigravity";
+      who.append(agentWho(State.focusTask, isAgy ? "Antigravity finished" : "Claude Code finished"));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
     },
   };

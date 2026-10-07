@@ -1,5 +1,6 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod antigravity;
 mod claude;
 mod files;
 mod hooks;
@@ -213,6 +214,30 @@ fn hooks_apply(
     Ok(backup)
 }
 
+// ── Antigravity hooks ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn antigravity_hooks_status() -> HookStatus {
+    antigravity::status()
+}
+
+#[tauri::command]
+fn antigravity_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    antigravity::preview(install)
+}
+
+#[tauri::command]
+fn antigravity_hooks_apply(
+    app: AppHandle,
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    let backup = antigravity::write(install, &fingerprint)?;
+    let status = antigravity::status();
+    let _ = app.emit("antigravity-hooks-changed", status.installed);
+    Ok(backup)
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
@@ -389,6 +414,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            antigravity_hooks_status,
+            antigravity_hooks_preview,
+            antigravity_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,

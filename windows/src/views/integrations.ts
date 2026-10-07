@@ -57,10 +57,9 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const error = info?.error ?? null;
-  // The Claude Code pill is about hooks, not a key — the macOS wording would be
-  // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
-  const label = error ?? (configured ? "Connected · loading…" : missing);
+  const isHooks = task.id === "integration_claude" || task.id === "agent_antigravity";
+  const missing = isHooks ? "Hooks not installed" : "Key not configured";
+  const label = error ?? (isHooks ? (configured ? "Hooks installed" : missing) : (configured ? "Connected · loading…" : missing));
   const statusColor = error || !configured ? "#F4505E" : "#22C55E";
 
   const actions = h("div", { class: "int-actions" });
@@ -71,6 +70,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}b3`,
         text: "Open Visual Studio Code",
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
+      }),
+    );
+  } else if (task.id === "agent_antigravity") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: configured ? "Configure hooks" : "Install hooks…",
+        onclick: openSettings,
       }),
     );
   } else if (task.id === "integration_n8n") {
@@ -92,7 +100,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       }),
     );
   }
-  if (configured) {
+  if (configured && !isHooks) {
     actions.append(
       h("button", {
         class: "link-btn",
@@ -101,16 +109,17 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.refreshIntegration(task.id),
       }),
     );
-  } else {
+  } else if (!configured && task.id !== "agent_antigravity") {
     actions.append(
       h("button", { class: "link-btn", style: "color:#8e939c", text: "Settings…", onclick: openSettings }),
     );
   }
 
+  const kind = task.id === "agent_antigravity" ? "Google DeepMind" : "Integration";
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
+    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, kind),
     h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
     actions,
   );

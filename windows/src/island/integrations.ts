@@ -22,6 +22,15 @@ const clearTimers = new Map<string, number>();
 
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
+  void onEvent<boolean>("antigravity-hooks-changed", (installed) => {
+    State.settings.antigravityHooksInstalled = installed;
+    const agy = State.integrations.agent_antigravity ?? {
+      data: {}, error: null, loaded: false, configured: false,
+    };
+    State.integrations.agent_antigravity = { ...agy, configured: installed };
+    State.loadIntegrationTasks();
+    State.notify();
+  });
   void refreshConfigured();
 }
 
@@ -37,6 +46,14 @@ export async function refreshConfigured() {
     data: {}, error: null, loaded: false, configured: false,
   };
   State.integrations.integration_claude = { ...claude, configured: hooks };
+
+  const agyStatus = await Bridge.antigravityHooksStatus();
+  const agy = State.integrations.agent_antigravity ?? {
+    data: {}, error: null, loaded: false, configured: false,
+  };
+  State.integrations.agent_antigravity = { ...agy, configured: agyStatus?.installed ?? false };
+  State.settings.antigravityHooksInstalled = agyStatus?.installed ?? false;
+  State.loadIntegrationTasks();
   State.notify();
 }
 

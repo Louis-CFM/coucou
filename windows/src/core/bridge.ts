@@ -73,6 +73,13 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Antigravity hooks ─────────────────────────────────────────────────────
+  antigravityHooksStatus: () => call<HookStatus>("antigravity_hooks_status"),
+  antigravityHooksPreview: (install: boolean) =>
+    callOrThrow<HookPreview>("antigravity_hooks_preview", { install }),
+  antigravityHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("antigravity_hooks_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */

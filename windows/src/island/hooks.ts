@@ -48,11 +48,17 @@ function validateAgent(raw: string | undefined): string | null {
 const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
 
 function agentColor(name: string): string {
+  if (name === "antigravity") return "#E879F9";
   let h = 0;
   for (let i = 0; i < name.length; i++) {
     h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
   }
   return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
+}
+
+function agentName(name: string): string {
+  if (name === "antigravity") return "Antigravity";
+  return name;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -87,18 +93,27 @@ const TOOL_LABELS: Record<string, string> = {
   MultiEdit: "Modifie",
   NotebookEdit: "Notebook",
   PowerShell: "Exécute",
+  run_command: "Exécute",
+  view_file: "Lit",
+  write_to_file: "Écrit",
+  replace_file_content: "Modifie",
+  read_url_content: "Récupère",
+  search_web: "Recherche web",
+  invoke_subagent: "Sous-agent",
+  manage_task: "Tâche",
+  ask_question: "Question",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
   const label = TOOL_LABELS[tool] ?? tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
-  const cmd = str("command");
+  const cmd = str("command") ?? str("CommandLine");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
-  const path = str("path");
+  const path = str("path") ?? str("AbsolutePath") ?? str("TargetFile") ?? str("file_path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
-  const file = str("file_path");
-  if (file) return `${label} · ${lastPathComponent(file)}`;
-  const query = str("query");
+  const url = str("url") ?? str("Url");
+  if (url) return `${label} · ${url.slice(0, 40)}`;
+  const query = str("query") ?? str("Query");
   if (query) return `${label} · ${query.slice(0, 40)}`;
   return label;
 }
@@ -187,7 +202,7 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
+      State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
     } else {
       upsert(projectName, cwd);
     }
@@ -268,7 +283,12 @@ function handleHook(island: Island, payload: HookPayload) {
         window.setTimeout(() => {
           stopTimers.delete(agentId);
           if (isExternalAgent) {
-            State.removeTask(agentId);
+            if (agentId === "agent_antigravity") {
+              State.updateTask(agentId, "idle");
+              State.setPillBadge(agentId, null);
+            } else {
+              State.removeTask(agentId);
+            }
           } else {
             State.updateTask(agentId, "idle");
             State.setPillBadge(agentId, null);
@@ -290,7 +310,11 @@ function handleHook(island: Island, payload: HookPayload) {
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
       if (isExternalAgent) {
-        State.removeTask(agentId);
+        if (agentId === "agent_antigravity") {
+          State.updateTask(agentId, "idle");
+        } else {
+          State.removeTask(agentId);
+        }
       } else {
         State.updateTask(agentId, "idle");
         clearSession();
