@@ -5,6 +5,7 @@ mod files;
 mod hooks;
 mod integrations;
 mod island;
+mod local_chat;
 mod log;
 mod pipe;
 mod platform;
@@ -24,6 +25,7 @@ use claude::{Chat, ChatContext, ChatReply};
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
+use local_chat::LocalChat;
 use pipe::Pending;
 use settings::Settings;
 
@@ -242,20 +244,56 @@ fn approval_decline(app: AppHandle, request_id: String) {
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn. The API key and any file bytes stay on the Rust side.
+/// Local providers (Ollama, LM Studio) stream their reply back as "chat-token"
+/// events on the island window while this is still in flight.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
+    local_chat: State<'_, LocalChat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    match settings.chat_provider.as_str() {
+        "ollama" => {
+            local_chat::send(
+                &local_chat,
+                &app,
+                island::WINDOW_LABEL,
+                &settings.ollama_url,
+                &settings.ollama_model,
+                query,
+            )
+            .await
+        }
+        "lmstudio" => {
+            local_chat::send(
+                &local_chat,
+                &app,
+                island::WINDOW_LABEL,
+                &settings.lmstudio_url,
+                &settings.lmstudio_model,
+                query,
+            )
+            .await
+        }
+        _ => claude::send(&chat, &settings.model, query, context).await,
+    }
+}
+
+/// Models available on a local Ollama/LM Studio server — backs the Settings
+/// "Connect" button, which validates the URL before saving it.
+#[tauri::command]
+async fn test_local_connection(url: String) -> Result<Vec<String>, String> {
+    local_chat::list_models(&url).await
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, local_chat: State<LocalChat>) {
     chat.reset();
+    local_chat.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -382,6 +420,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(LocalChat::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -401,6 +440,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_reset,
+            test_local_connection,
             ingest_file,
             secret_present,
             secret_set,

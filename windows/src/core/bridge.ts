@@ -85,6 +85,8 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** Model list from a local Ollama/LM Studio server — also validates the URL. */
+  testLocalConnection: (url: string) => callOrThrow<string[]>("test_local_connection", { url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -145,6 +147,7 @@ export type BridgeEvent =
   | { name: "hook"; payload: Record<string, unknown> }
   | { name: "screen-changed"; payload: null }
   | { name: "blur"; payload: null }
+  | { name: "chat-token"; payload: string }
   | { name: "fullscreen-changed"; payload: boolean };
 
 export interface DragDropPayload {
