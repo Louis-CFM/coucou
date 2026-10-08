@@ -568,6 +568,9 @@ export class Island {
         if (State.droppedFile?.path !== path) return;
         UploadSeq.deactivate();
         State.noteMessage = String(err).replace(/^Error:\s*/, "");
+        // This note leaves on its own, below: no OK button for it.
+        State.noteThen = null;
+        State.noteAt = performance.now();
         this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");

@@ -147,3 +147,15 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
 });
+
+test("a failed turn shows a note that knows the way back to the chat", async () => {
+  answers.chat_send = () => Promise.reject("Google AI: model not found (404).");
+  State.noteThen = null;
+  $(".chat-input").value = "hello";
+  $(".send-btn").fire("click");
+  await flush();
+  assert.equal(State.view, "note");
+  assert.equal(State.noteMessage, "Google AI: model not found (404).");
+  assert.equal(State.noteThen, "prompt");
+  assert.ok(State.noteAt > 0);
+});

@@ -750,6 +750,11 @@ body {
   overflow: hidden;
 }
 
+/* With its OK button under it, a note has room for three lines. */
+.stack.closable .title.note {
+  -webkit-line-clamp: 3;
+}
+
 /* Claude's final message on the finished card: one line, never past the card. */
 .title.one-line {
   white-space: nowrap;

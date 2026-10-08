@@ -208,6 +208,14 @@ class AppState {
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
+  /**
+   * The view the note's OK button goes back to. A note that has one also
+   * leaves by itself after a moment (see buildNote); null is for a note with
+   * its own timing, like a failed drop.
+   */
+  noteThen: IslandViewName | null = null;
+  /** When the note went up: tells one note from the next, even with the same words. */
+  noteAt = 0;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;

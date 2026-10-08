@@ -295,6 +295,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     } catch (err) {
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      // What the error asks for (another model, a key) is done from the chat:
+      // the note's OK button comes back here.
+      State.noteThen = "prompt";
+      State.noteAt = performance.now();
       State.view = "note";
       Sound.play("error");
     } finally {
