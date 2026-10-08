@@ -114,7 +114,7 @@ two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
 polling, a few frames a second. He remembers his spot between launches; if it
 was on a display that is no longer connected, he stays in the island.
 
-**Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
+**Live diff.** Every file Claude or Antigravity edits (`Edit`, `MultiEdit`, `Write`, `replace_file_content`, `write_to_file`) shows up in the
 session ticker with its **+N −M** lines; click it for the diff. Same limits as the
 Mac: past 200 KB or 4 000 lines only the counts are kept, at most 50 diffs per
 session, and they are forgotten an hour after the last edit or when the session
@@ -424,8 +424,9 @@ own window.
   (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
   shows its "Edits · file" step without counts rather than wrong ones. The
   diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
-  never the file itself. Counts and diffs come from Claude Code's Edit,
-  MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
+  never the file itself. Counts and diffs come from Claude Code (`Edit`,
+  `MultiEdit`, `Write`) and Antigravity (`replace_file_content`, `write_to_file`),
+  on whichever pill its session is on (VS Code, Cursor, Antigravity,
   Claude Desktop); other agents' edits show as plain steps.
 - The GitHub lists are clicked, not walked with the arrow keys, and there is no
   iPhone to keep fetching them while the pill is off.

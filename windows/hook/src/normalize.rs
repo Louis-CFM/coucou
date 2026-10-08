@@ -51,6 +51,10 @@ const ARG_ALIASES: &[(&str, &str)] = &[
     ("Url", "url"),
     ("Query", "query"),
     ("Pattern", "pattern"),
+    ("TargetFile", "file_path"),
+    ("TargetContent", "old_string"),
+    ("ReplacementContent", "new_string"),
+    ("CodeContent", "content"),
 ];
 
 fn non_empty_str<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
@@ -70,7 +74,12 @@ pub fn fields(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Option<String>
             .or_else(|| non_empty_str(map, "tool"))
             .map(str::to_string);
         if let Some(name) = name {
-            map.insert("tool_name".into(), Value::String(name));
+            let canonical = match name.as_str() {
+                "replace_file_content" => "Edit",
+                "write_to_file" => "Write",
+                other => other,
+            };
+            map.insert("tool_name".into(), Value::String(canonical.to_string()));
         }
     }
 
@@ -196,6 +205,36 @@ mod tests {
         assert_eq!(m["tool_input"]["CommandLine"], "cargo check");
         assert_eq!(m["session_id"], "conv-1");
         assert_eq!(m["cwd"], "C:\\Projects\\test");
+
+        let mut m = obj(json!({
+            "toolCall": {
+                "name": "replace_file_content",
+                "args": {
+                    "TargetFile": "src/lib.rs",
+                    "TargetContent": "old",
+                    "ReplacementContent": "new"
+                }
+            }
+        }));
+        fields(&mut m, &no_env);
+        assert_eq!(m["tool_name"], "Edit");
+        assert_eq!(m["tool_input"]["file_path"], "src/lib.rs");
+        assert_eq!(m["tool_input"]["old_string"], "old");
+        assert_eq!(m["tool_input"]["new_string"], "new");
+
+        let mut m = obj(json!({
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {
+                    "TargetFile": "src/new.rs",
+                    "CodeContent": "fn main() {}"
+                }
+            }
+        }));
+        fields(&mut m, &no_env);
+        assert_eq!(m["tool_name"], "Write");
+        assert_eq!(m["tool_input"]["file_path"], "src/new.rs");
+        assert_eq!(m["tool_input"]["content"], "fn main() {}");
     }
 
     #[test]
