@@ -45,11 +45,15 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
             }
         }
         // Claude Code and Codex share the documented hookSpecificOutput. Only
-        // Claude Code asks questions.
+        // Claude Code asks questions, and only Claude Code takes a mode switch.
         "" => decision.and_then(|d| decision_json(d, question)),
-        _ => decision.and_then(|d| decision_json(d, None)),
+        _ => decision.filter(|d| !d.trim_start().starts_with('{')).and_then(|d| decision_json(d, None)),
     }
 }
+
+/// Every permission mode Claude Code takes from a `setMode` permission update
+/// (https://code.claude.com/docs/en/hooks). Anything else switches nothing.
+pub const MODES: &[&str] = &["default", "plan", "acceptEdits", "auto", "dontAsk", "bypassPermissions"];
 
 /// The documented PermissionRequest output. Anything we do not recognise prints
 /// nothing at all rather than guessing — silence is the safe answer.
@@ -62,6 +66,25 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
 pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String> {
     if decision.trim_start().starts_with('{') {
         let reply = serde_json::from_str::<Value>(decision).ok()?;
+        // Allow, and switch the session to another permission mode — clicked as
+        // one on the island. A mode we do not know prints nothing at all.
+        if let Some(mode) = reply.get("allowWithMode") {
+            let mode = mode.as_str().filter(|m| MODES.contains(m))?;
+            return Some(
+                json!({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PermissionRequest",
+                        "decision": {
+                            "behavior": "allow",
+                            "updatedPermissions": [
+                                { "type": "setMode", "mode": mode, "destination": "session" }
+                            ],
+                        },
+                    }
+                })
+                .to_string(),
+            );
+        }
         let answers = reply.get("answers")?.as_object()?;
         let question = question?;
         if !answers_fit(question, answers) {
@@ -238,6 +261,34 @@ mod tests {
         assert_eq!(decision["updatedInput"]["answers"]["Which one?"], "B");
         // Only Claude Code asks questions: an answer for anyone else is nothing.
         assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).is_none());
+    }
+
+    #[test]
+    fn allowing_with_a_mode_switches_the_session_and_nothing_else() {
+        for mode in MODES {
+            let decision = json!({ "allowWithMode": mode }).to_string();
+            let out = stdout("", "PermissionRequest", Some(&decision), None).unwrap();
+            let v: Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(
+                v["hookSpecificOutput"]["decision"],
+                json!({
+                    "behavior": "allow",
+                    "updatedPermissions": [{ "type": "setMode", "mode": mode, "destination": "session" }]
+                })
+            );
+        }
+        // An unknown mode, or a mode that is not a string, is no decision at all.
+        for bad in [r#"{"allowWithMode":"yolo"}"#, r#"{"allowWithMode":""}"#, r#"{"allowWithMode":1}"#] {
+            assert!(stdout("", "PermissionRequest", Some(bad), None).is_none(), "{bad}");
+        }
+        // Only Claude Code takes a mode switch; nobody else is allowed by one.
+        for agent in AGENTS.iter().filter(|a| !a.is_empty()) {
+            if let Some(out) = stdout(agent, "PermissionRequest", Some(r#"{"allowWithMode":"plan"}"#), None) {
+                assert!(!allows(&out), "{agent:?}: {out}");
+            }
+        }
+        // And never outside a permission request.
+        assert!(stdout("", "PreToolUse", Some(r#"{"allowWithMode":"plan"}"#), None).is_none());
     }
 
     #[test]

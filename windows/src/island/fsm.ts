@@ -29,6 +29,20 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /**
+   * An agent is working: the compact island stays on screen until it stops,
+   * then hides after the usual delay.
+   */
+  get busy(): boolean {
+    return this.isBusy;
+  }
+  set busy(on: boolean) {
+    if (on === this.isBusy) return;
+    this.isBusy = on;
+    if (on) this.clear("petitHide");
+    else if (this.state === "petit") this.schedulePetitHide();
+  }
+  private isBusy = false;
 
   /**
    * When the open island will fold, on the performance.now() clock, while the
@@ -127,10 +141,10 @@ export class IslandStateMachine {
     this.clear("petitHide");
     // A card folded away while it waits for an answer keeps the compact island
     // on screen, so it can be reopened (isHeldOpen on macOS).
-    if (this.pinned) return;
+    if (this.pinned || this.isBusy) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
-      if (this.state === "petit" && !this.pinned) this.transition("hidden");
+      if (this.state === "petit" && !this.pinned && !this.isBusy) this.transition("hidden");
     }, this.petitToHiddenDelay * 1000);
   }
 

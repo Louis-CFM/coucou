@@ -6,7 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
-import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
+import { washRGBA, wantsFinishedPreview, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
@@ -16,12 +16,14 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { renderMarkdown } from "./markdown";
 import { lastTextStep } from "../core/diff";
+import { isPermissionMode, modeLabel, modeSkipsPrompts, modelLabel, nextMode } from "../core/session";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
-import { language, t, tl, type Msg } from "../i18n/i18n";
+import { language, t, tl, tn, type Msg } from "../i18n/i18n";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -176,7 +178,10 @@ function buildOverview(actions: ViewActions): ViewHost {
     State.notify();
   });
   const who = h("div", { class: "who" });
-  const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
+  // What the session runs with: permission mode, effort, model.
+  const meta = h("div", { class: "session-meta" });
+  let metaKey = "";
+  const tickerBody = h("div", { class: "card-body" }, who, ticker.el, meta);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
@@ -324,6 +329,12 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
+        const subs = (task.subagents ?? []).map((s) => s.type).join(",");
+        const key = `${task.permissionMode ?? ""}~${task.effort ?? ""}~${task.model ?? ""}~${subs}`;
+        if (key !== metaKey) {
+          metaKey = key;
+          renderSessionMeta(meta, task);
+        }
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -351,6 +362,34 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
     },
   };
+}
+
+/** Small chips under the ticker: the mode (red when it skips prompts), effort, model. */
+function renderSessionMeta(row: HTMLElement, task: AgentTask): void {
+  clear(row);
+  if (task.permissionMode) {
+    const danger = modeSkipsPrompts(task.permissionMode);
+    row.append(h("span", {
+      class: danger ? "meta-chip mode danger" : "meta-chip mode",
+      title: tl("Permission mode"),
+      text: modeLabel(task.permissionMode),
+    }));
+  }
+  if (task.effort) {
+    row.append(h("span", { class: "meta-chip", title: tl("Effort"), text: task.effort }));
+  }
+  if (task.model) {
+    row.append(h("span", { class: "meta-chip model", title: task.model, text: modelLabel(task.model) }));
+  }
+  // Subagents running now: how many, and which kinds on hover.
+  const subagents = task.subagents ?? [];
+  if (subagents.length > 0) {
+    row.append(h("span", {
+      class: "meta-chip sub",
+      title: subagents.map((s) => s.type).join(", "),
+      text: tn("{count} subagent", "{count} subagents", subagents.length),
+    }));
+  }
 }
 
 /**
@@ -461,6 +500,36 @@ function buildApproval(actions: ViewActions): ViewHost {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
+  // Claude Code's mode, and the one Allow switches it to: each click picks the
+  // next mode, back round to the current one (no switch). Picking only changes
+  // what Allow does — nothing is sent until Allow is clicked. Built once, like
+  // the buttons; only its text and colour change.
+  const modeChip = h("button", {
+    class: "mode-chip",
+    title: tl("Mode after Allow — click to change"),
+    onclick: () => {
+      const req = State.pendingApproval;
+      const current = req?.permissionMode;
+      if (!req || !isPermissionMode(current)) return;
+      actions.blip();
+      const next = nextMode(req.switchTo ?? current);
+      req.switchTo = next === current ? null : next;
+      State.notify();
+    },
+  });
+  const syncModeChip = () => {
+    const req = State.pendingApproval;
+    const current = req?.permissionMode;
+    if (!req || !isPermissionMode(current)) {
+      modeChip.style.display = "none";
+      return;
+    }
+    modeChip.style.display = "";
+    const target = req.switchTo ?? null;
+    modeChip.textContent = target ? `→ ${modeLabel(target)}` : modeLabel(current);
+    modeChip.classList.toggle("switching", target != null);
+    modeChip.classList.toggle("danger", modeSkipsPrompts(target ?? current));
+  };
   return {
     el,
     sync() {
@@ -475,6 +544,7 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
+      syncModeChip();
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
@@ -484,6 +554,7 @@ function buildApproval(actions: ViewActions): ViewHost {
       row.append(
         btn(tl("Deny"), "secondary", guarded("deny"), "N"),
         btn(tl("Allow"), "primary", guarded("allow"), "Y"),
+        modeChip,
       );
     },
   };
@@ -623,7 +694,12 @@ function buildFinished(actions: ViewActions): ViewHost {
     open,
     btn(tl("OK"), "secondary", () => actions.collapse()),
   );
-  const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
+  // A final message longer than the card's one line is shown whole, scrollable,
+  // with the buttons after it; the island grows for it (FINISHED_PREVIEW_H).
+  const preview = h("div", { class: "final-preview reply" });
+  let previewText: string | null = null;
+  const body = stack(116, 16, who, title, preview, row);
+  const el = h("div", { class: "view" }, card("green", body));
   return {
     el,
     sync() {
@@ -632,6 +708,16 @@ function buildFinished(actions: ViewActions): ViewHost {
       who.append(agentWho(State.focusTask, agent ? t("finished") : t("Claude Code finished")));
       // The final message, else the last step that is not a diff (FinishedView).
       const task = State.focusTask;
+      const full = task?.finalText ?? null;
+      const long = wantsFinishedPreview(full);
+      body.classList.toggle("with-preview", long);
+      title.style.display = long ? "none" : "";
+      preview.style.display = long ? "" : "none";
+      if (long && full !== previewText) {
+        previewText = full;
+        renderMarkdown(preview, full!);
+        preview.scrollTop = 0;
+      }
       title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || t("Session finished");
       // Sessions from the Claude desktop app live there, not in a terminal.
       const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");

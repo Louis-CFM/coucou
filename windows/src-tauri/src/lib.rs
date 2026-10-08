@@ -23,6 +23,8 @@ mod platform;
 mod recap;
 mod secrets;
 mod session_window;
+#[cfg(target_os = "linux")]
+mod terminal_focus;
 mod settings;
 mod shortcuts;
 mod tray;
@@ -222,10 +224,26 @@ fn open_in_vscode(path: Option<String>) -> bool {
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
-/// runs in, when it was found (Windows, see session_window.rs); otherwise opens
-/// the folder in VS Code, as before.
+/// runs in, when it was found (Windows: session_window.rs; Linux with KWin, its
+/// Konsole tab included: terminal_focus.rs); otherwise opens the folder in VS
+/// Code, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+async fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    // Linux: the session's Konsole tab and window, through KWin (D-Bus calls,
+    // so off the main thread).
+    #[cfg(target_os = "linux")]
+    {
+        let (session, folder) = (session_id.clone(), path.clone());
+        let raised = tauri::async_runtime::spawn_blocking(move || {
+            let folder = folder.as_deref().map(session_window::folder_name).unwrap_or_default();
+            session.as_deref().is_some_and(|s| terminal_focus::focus(s, folder))
+        })
+        .await
+        .unwrap_or(false);
+        if raised {
+            return true;
+        }
+    }
     if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
         let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
         if platform::focus_process_window(owner, folder) {
@@ -391,6 +409,15 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
     pipe::answer(&app, &request_id, &decision);
+}
+
+/// Allow, clicked with another permission mode picked on the card: Claude Code
+/// allows the request and switches the session to that mode.
+#[tauri::command]
+fn approval_allow_with_mode(app: AppHandle, request_id: String, mode: String) {
+    if pipe::answer_with_mode(&app, &request_id, &mode) {
+        recap::record_decision(&app, &request_id, "allow");
+    }
 }
 
 /// An option picked on the island for a question Claude Code asked.
@@ -672,6 +699,7 @@ pub fn run() {
             status_line_apply,
             codex_plan_usage,
             approval_decision,
+            approval_allow_with_mode,
             approval_answer,
             approval_ack,
             approval_decline,

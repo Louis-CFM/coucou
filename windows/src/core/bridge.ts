@@ -120,6 +120,9 @@ export const Bridge = {
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
+  /** Allow, and switch the Claude Code session to `mode` (a PermissionMode). */
+  approvalAllowWithMode: (requestId: string, mode: string) =>
+    call<void>("approval_allow_with_mode", { requestId, mode }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
   /** Answers a question Claude Code asked: question text → chosen label. */

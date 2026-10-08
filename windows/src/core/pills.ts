@@ -169,7 +169,19 @@ export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
 }
 
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
+/**
+ * Pills made for a second (third…) Claude Code session running at the same
+ * time as the one on Claude Code's own pill: `session_` + the start of its ID.
+ * They exist only while their session does, and are never declared or saved.
+ */
+export const SESSION_PILL_PREFIX = "session_";
+
+export function isSessionPill(id: string): boolean {
+  return id.startsWith(SESSION_PILL_PREFIX);
+}
+
 export function sessionSubtitle(id: string): string {
+  if (isSessionPill(id)) return "Claude Code";
   switch (id) {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";

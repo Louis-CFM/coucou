@@ -6,10 +6,11 @@
 // Code's (hook/src/normalize.rs), so one handler serves them all.
 
 import { Bridge, onEvent } from "../core/bridge";
-import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
+import { buildFileDiff, fileName, lastTextStep, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
-import { State, type AskedQuestion } from "../core/state";
-import { pillDefinition } from "../core/pills";
+import { State, type AgentTask, type AskedQuestion } from "../core/state";
+import { effortLevel } from "../core/session";
+import { isSessionPill, pillDefinition, SESSION_PILL_PREFIX } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
@@ -44,6 +45,48 @@ function cancelStopTimer(id: string): boolean {
   return true;
 }
 
+/** A session silent this long, and not busy, gives its pill up: it was closed without a SessionEnd. */
+const STALE_SESSION_MS = 20 * 60_000;
+/** States in which a session is doing something, or waiting on you. */
+const ACTIVE_STATES = new Set(["thinking", "working", "approval", "question"]);
+
+function isStale(t: AgentTask, now: number): boolean {
+  return !ACTIVE_STATES.has(t.state) && t.lastEventAt != null && now - t.lastEventAt > STALE_SESSION_MS;
+}
+
+/**
+ * The pill of a Claude Code session. One session per pill: the first one takes
+ * Claude Code's own pill (VS Code's or Cursor's); another running at the same
+ * time in another terminal gets a pill of its own, named after its project,
+ * instead of overwriting the first one's steps, card and terminal.
+ */
+function claudePillFor(workspaceId: string, sessionId: string, now: number): string {
+  if (!sessionId) return workspaceId;
+  const own = State.tasks.find(
+    (t) => t.sessionId === sessionId && (t.id === workspaceId || isSessionPill(t.id)),
+  );
+  if (own) return own.id;
+  const main = State.tasks.find((t) => t.id === workspaceId);
+  if (!main || !main.sessionId || isStale(main, now)) return workspaceId;
+  return SESSION_PILL_PREFIX + sessionId.replace(/[^A-Za-z0-9-]/g, "").slice(0, 12);
+}
+
+/** Session pills whose session went quiet long ago (closed without SessionEnd) go. */
+function dropStaleSessionPills(now: number): void {
+  for (const t of State.tasks.filter((x) => isSessionPill(x.id) && isStale(x, now))) {
+    cancelStopTimer(t.id);
+    State.clearSessionDiffs(t.id);
+    State.removeTask(t.id);
+  }
+}
+
+/** "proj", or "proj 2" when another pill already shows a session of "proj". */
+function sessionPillName(projectName: string, id: string): string {
+  const taken = new Set(State.tasks.filter((t) => t.id !== id).map((t) => t.name));
+  if (!taken.has(projectName)) return projectName;
+  for (let n = 2; ; n++) if (!taken.has(`${projectName} ${n}`)) return `${projectName} ${n}`;
+}
+
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
@@ -69,6 +112,70 @@ interface HookPayload {
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
+  /** Claude Code's permission mode, on most events ("default", "plan"…). */
+  permission_mode?: string;
+  /** `{ level }` on Claude Code's events and its status line. */
+  effort?: unknown;
+  /** SessionStart: the model id. StatusLine: `{ id, display_name }`. */
+  model?: unknown;
+  /** PostModelSwitch: the model the session switched to. */
+  to_model?: unknown;
+  /** Set on every event fired inside a subagent, and on SubagentStart/Stop. */
+  agent_id?: string;
+  /** The subagent's kind ("Explore", "general-purpose"…). */
+  agent_type?: string;
+  /** MessageDisplay: the assistant message the text belongs to, and the text. */
+  message_id?: string;
+  turn_id?: string;
+  delta?: string;
+}
+
+/** Per pill, the assistant message whose first words are already a step. */
+const narrated = new Map<string, string>();
+
+/** A subagent's kind, short enough for a step. */
+function subagentName(payload: HookPayload): string {
+  const type = (payload.agent_type ?? "").trim();
+  return type ? type.slice(0, 24) : t("subagent");
+}
+
+/** Claude's own words, as a step: quoted, one line, short. */
+function narrationStep(text: string): string {
+  const line = toOneLine(text);
+  return `“${line.length > 100 ? `${line.slice(0, 99)}…` : line}”`;
+}
+
+/** The model a payload names, as an id when there is one. */
+function payloadModel(payload: HookPayload): string | null {
+  const pick = (v: unknown): string | null => {
+    if (typeof v === "string") return v.trim() || null;
+    if (v && typeof v === "object") {
+      const o = v as { id?: unknown; display_name?: unknown };
+      return pick(o.id) ?? pick(o.display_name);
+    }
+    return null;
+  };
+  return pick(payload.to_model) ?? pick(payload.model);
+}
+
+/**
+ * Keeps what the session runs with — mode, effort, model — on its pill, from
+ * any event that says. A field an event leaves out keeps its last value.
+ */
+function recordSessionMeta(task: AgentTask | undefined, payload: HookPayload): boolean {
+  if (!task) return false;
+  let changed = false;
+  const set = (key: "permissionMode" | "effort" | "model", value: string | null) => {
+    if (value && task[key] !== value) {
+      task[key] = value;
+      changed = true;
+    }
+  };
+  const mode = payload.permission_mode;
+  set("permissionMode", typeof mode === "string" && /^[A-Za-z]{1,24}$/.test(mode) ? mode : null);
+  set("effort", effortLevel(payload.effort));
+  set("model", payloadModel(payload));
+  return changed;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -181,8 +288,18 @@ function askedQuestions(tool: string, input: Record<string, unknown>): AskedQues
 
 /** The Claude Code session's pill, named after its project for the session. */
 function upsert(id: string, projectName: string, cwd: string, sessionId: string) {
-  const t = State.upsertWorkspacePill(id, projectName, cwd);
-  if (t && sessionId) t.sessionId = sessionId;
+  adoptSession(State.upsertWorkspacePill(id, projectName, cwd), sessionId);
+}
+
+/** The pill now shows `sessionId`; what another session ran with is forgotten. */
+function adoptSession(t: AgentTask | null | undefined, sessionId: string) {
+  if (!t || !sessionId) return;
+  if (t.sessionId && t.sessionId !== sessionId) {
+    t.permissionMode = null;
+    t.effort = null;
+    t.model = null;
+  }
+  t.sessionId = sessionId;
 }
 
 /** The session is over: the pill goes back as it was, or away if it was only there for it. */
@@ -201,12 +318,20 @@ function clearSession(id: string) {
   t.pillBadge = null;
   t.sessionId = null;
   t.finalLine = null;
+  t.finalText = null;
+  t.subagents = [];
+  t.permissionMode = null;
+  t.effort = null;
+  t.model = null;
 }
 
 /** The final message stays on the card until the next turn starts. */
 function clearFinalLine(id: string) {
   const t = State.tasks.find((x) => x.id === id);
-  if (t) t.finalLine = null;
+  if (t) {
+    t.finalLine = null;
+    t.finalText = null;
+  }
 }
 
 /**
@@ -236,6 +361,9 @@ function handleHook(island: Island, payload: HookPayload) {
   if (payload.hook_event_name === "StatusLine") {
     const usage = parseClaudePlan(payload.rate_limits);
     if (usage) setClaudePlanUsage(usage);
+    // The model and effort it carries belong to the pill showing that session.
+    const session = payload.session_id ? State.tasks.find((t) => t.sessionId === payload.session_id) : undefined;
+    if (recordSessionMeta(session, payload)) State.notify();
     return;
   }
 
@@ -257,9 +385,13 @@ function handleHook(island: Island, payload: HookPayload) {
   // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
   const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
-  const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
-  const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
+  const now = Date.now();
+  dropStaleSessionPills(now);
+  const agentId = validAgent ? `agent_${validAgent}` : claudePillFor(workspaceId, sessionId, now);
+  const isExternalAgent = validAgent !== null;
+  /** A Claude Code session on a pill of its own, beside the one on Claude Code's pill. */
+  const isExtraSession = isSessionPill(agentId);
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -278,7 +410,13 @@ function handleHook(island: Island, payload: HookPayload) {
       State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
       const t = State.tasks.find((x) => x.id === agentId);
       if (t && cwd) t.sessionCwd = cwd;
-      if (t && sessionId) t.sessionId = sessionId;
+      adoptSession(t, sessionId);
+    } else if (isExtraSession) {
+      const color = pillDefinition(workspaceId)?.color ?? "#d97757";
+      State.upsertExternalAgent(agentId, sessionPillName(projectName, agentId), color);
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t && cwd) t.sessionCwd = cwd;
+      adoptSession(t, sessionId);
     } else {
       upsert(agentId, projectName, cwd, sessionId);
     }
@@ -343,8 +481,23 @@ function handleHook(island: Island, payload: HookPayload) {
       clearFinalLine(agentId);
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
-      State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
+      const label = stepLabel(tool, payload.tool_input ?? {});
+      // A tool call inside a subagent says whose it is.
+      State.appendStep(agentId, payload.agent_id ? `↳ ${subagentName(payload)} · ${label}` : label);
       surface("overview", false);
+      break;
+    }
+
+    case "MessageDisplay": {
+      // What Claude says between tool calls ("Let me check the config…") as it
+      // appears in the terminal. It comes in batches of lines: the first batch
+      // of each message becomes a step, the rest would only flood the ticker.
+      const text = (payload.delta ?? "").trim();
+      const key = payload.message_id ?? payload.turn_id ?? "";
+      if (!text || !State.tasks.some((x) => x.id === agentId)) break;
+      if (key && narrated.get(agentId) === key) break;
+      narrated.set(agentId, key);
+      State.appendStep(agentId, payload.agent_id ? `↳ ${subagentName(payload)} · ${narrationStep(text)}` : narrationStep(text));
       break;
     }
 
@@ -391,11 +544,22 @@ function handleHook(island: Island, payload: HookPayload) {
       // no transcript to read (the relay does not even forward its path). Other
       // agents report their last words the same way (Hermes, Codex) or as
       // `message`.
-      const finalText = toOneLine(payload.last_assistant_message ?? payload.message ?? "");
+      const fullText = (payload.last_assistant_message ?? payload.message ?? "").trim();
+      const finalText = toOneLine(fullText);
+      const stopped = State.tasks.find((x) => x.id === agentId);
+      // The turn is over: no subagent of it is still running.
+      if (stopped) stopped.subagents = [];
+      narrated.delete(agentId);
       if (finalText) {
-        State.appendStep(agentId, finalText);
-        const t = State.tasks.find((x) => x.id === agentId);
-        if (t) t.finalLine = finalText;
+        // Its first words may already be a step, from MessageDisplay.
+        const last = stopped ? lastTextStep(stopped.steps) : undefined;
+        const said = last?.startsWith("“") ? last.slice(1).replace(/[”…]+$/, "") : null;
+        if (!said || !finalText.startsWith(said)) State.appendStep(agentId, finalText);
+        const t = stopped;
+        if (t) {
+          t.finalLine = finalText;
+          t.finalText = fullText;
+        }
       }
       Sound.play("finish");
       // A card waiting for an answer is never covered by another alert.
@@ -437,7 +601,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
       State.clearSessionDiffs(agentId);
-      if (isExternalAgent) {
+      if (isExternalAgent || isExtraSession) {
         State.removeTask(agentId);
       } else {
         State.updateTask(agentId, "idle");
@@ -445,13 +609,23 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       break;
 
-    case "SubagentStart":
-      State.appendStep(agentId, t("+ subagent"));
+    case "SubagentStart": {
+      const task = State.tasks.find((x) => x.id === agentId);
+      if (task && payload.agent_id && !task.subagents?.some((s) => s.id === payload.agent_id)) {
+        task.subagents = [...(task.subagents ?? []), { id: payload.agent_id, type: subagentName(payload) }];
+      }
+      State.appendStep(agentId, payload.agent_type ? `${t("+ subagent")} · ${subagentName(payload)}` : t("+ subagent"));
       break;
+    }
 
-    case "SubagentStop":
-      State.appendStep(agentId, t("• subagent done"));
+    case "SubagentStop": {
+      const task = State.tasks.find((x) => x.id === agentId);
+      if (task?.subagents && payload.agent_id) {
+        task.subagents = task.subagents.filter((s) => s.id !== payload.agent_id);
+      }
+      State.appendStep(agentId, payload.agent_type ? `${t("• subagent done")} · ${subagentName(payload)}` : t("• subagent done"));
       break;
+    }
 
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
@@ -490,6 +664,8 @@ function handleHook(island: Island, payload: HookPayload) {
         tool,
         command: approvalTarget(tool, input),
         ...(questions ? { questions } : {}),
+        // Only Claude Code takes a mode switch with its answer.
+        ...(!isExternalAgent && payload.permission_mode ? { permissionMode: payload.permission_mode } : {}),
       });
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
@@ -510,6 +686,15 @@ function handleHook(island: Island, payload: HookPayload) {
 
     default:
       break;
+  }
+  // The pill now shows this session: keep what it runs with. A session that has
+  // ended has nothing left to show.
+  if (name !== "SessionEnd") {
+    const t = State.tasks.find((x) => x.id === agentId);
+    if (t && (!sessionId || !t.sessionId || t.sessionId === sessionId)) {
+      recordSessionMeta(t, payload);
+      t.lastEventAt = now;
+    }
   }
   State.notify();
 }

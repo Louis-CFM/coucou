@@ -307,3 +307,30 @@ test("an unusable delay is ignored", () => {
   for (const bad of [NaN, -1, Infinity]) fsm.homeToPetitDelay = bad;
   assert.equal(fsm.homeToPetitDelay, 15);
 });
+
+test("the compact island stays up while an agent works, then hides after the usual delay", () => {
+  fsm.reveal();
+  assert.equal(fsm.state, "petit");
+  fsm.busy = true;
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+  // Becoming busy after the countdown started stops it too.
+  fsm.busy = false;
+  seconds(59);
+  assert.equal(fsm.state, "petit");
+  fsm.busy = true;
+  seconds(120);
+  assert.equal(fsm.state, "petit");
+  fsm.busy = false;
+  seconds(60);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("the mouse leaving a busy compact island does not hide it", () => {
+  fsm.reveal();
+  fsm.busy = true;
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(300);
+  assert.equal(fsm.state, "petit");
+});
