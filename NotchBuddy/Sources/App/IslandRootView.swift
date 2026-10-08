@@ -22,6 +22,7 @@ struct IslandRootView: View {
 
 struct IslandContainer: View {
     @ObservedObject var state: AppState
+    @ObservedObject private var demoEngine = DemoEngine.shared
     @State private var islandWidth:  CGFloat = IslandConst.notchWidth
     @State private var islandHeight: CGFloat = IslandConst.notchHeight
     @State private var cornerRadius: CGFloat = IslandConst.roundedCorner
@@ -106,6 +107,19 @@ struct IslandContainer: View {
 
             CountdownBar(state: state, islandW: islandWidth)
 
+            if demoEngine.isActive {
+                Text(verbatim: "DEMO")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color(hex: "#4ADE80"))
+                    .clipShape(Capsule())
+                    .position(x: 18, y: islandHeight - 8)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: demoEngine.isActive)
+            }
+
             Group {
                 if state.mode == .compact {
                     CompactMiniGrid(state: state)
@@ -162,6 +176,14 @@ struct IslandContainer: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             greetNotif.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .islandScreenChanged)) { _ in
+            // New screen, new resting size (notch ↔ bar): snap without animation.
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            islandWidth  = w
+            islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
         }
     }
 
@@ -300,14 +322,14 @@ struct BotPlacement: View {
                     let uploadCx = 36 + CGFloat(t * (2 - t)) * 526
                     BotCanvasView(state: state, particleOverhang: 0)
                         .frame(width: canvasSize, height: canvasSize)
-                        .opacity(state.isDraggingBot ? 0 : opacity)
+                        .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
                 BotCanvasView(state: state, particleOverhang: overhang)
                     .frame(width: canvasSize, height: canvasSize + overhang)
-                    .opacity(state.isDraggingBot ? 0 : opacity)
+                    .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cx)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cy)
@@ -465,6 +487,15 @@ struct IslandContentView: View {
 struct IslandHeader: View {
     @ObservedObject var state: AppState
 
+    // Claude + Codex pills together: tighten the right side so it clears the notch
+    private var bothPlans: Bool {
+        #if !APPSTORE
+        return state.view == .overview && state.showPlanInNotch && state.planRelayInstalled && state.showCodexPlanInNotch
+        #else
+        return false
+        #endif
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // Left: tab capsules
@@ -483,27 +514,37 @@ struct IslandHeader: View {
 
             Spacer()
 
-            // Right: action icons
-            HStack(spacing: 14) {
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        state.view = .settings
+            // Right: plan pill (GitHub build, home view only) + action icons
+            HStack(spacing: bothPlans ? 5 : 8) {
+                #if !APPSTORE
+                if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
+                    ClaudePlanHeaderPill(state: state)
+                }
+                if state.view == .overview && state.showCodexPlanInNotch {
+                    ClaudePlanHeaderPill(state: state, codex: true)
+                }
+                #endif
+                HStack(spacing: bothPlans ? 10 : 14) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            state.view = .settings
+                        }
+                    }) {
+                        Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
+                            .font(.system(size: 14))
+                            .foregroundColor(state.view == .settings ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                     }
-                }) {
-                    Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
-                        .font(.system(size: 14))
-                        .foregroundColor(state.view == .settings ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Button(action: { state.soundEnabled.toggle() }) {
-                    Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "#8E939C"))
+                    Button(action: { state.soundEnabled.toggle() }) {
+                        Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.trailing, 16)
+            .padding(.trailing, bothPlans ? 8 : 16)
         }
         .frame(maxHeight: .infinity)
     }
@@ -543,6 +584,72 @@ struct TabButton: View {
     }
 }
 
+// MARK: - Claude Plan header pill (GitHub build only)
+
+#if !APPSTORE
+struct ClaudePlanHeaderPill: View {
+    @ObservedObject var state: AppState
+    var codex: Bool = false
+    @State private var isHovered = false
+
+    private var effectiveColor: String {
+        if codex { return CodexPlanGauge.color(state.codexPlanUsage) }
+        return ClaudePlanGauge.color(for: (state.demoPlanUsageOverride ?? state.claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) })
+    }
+
+    private var label: String {
+        if codex { return CodexPlanGauge.pillLabel(state.codexPlanUsage) }
+        guard let usage = state.demoPlanUsageOverride ?? state.claudePlanUsage,
+              let pct = ClaudePlanGauge.dominantPct(usage) else { return "Claude —" }
+        return "Claude \(Int(pct.rounded()))%"
+    }
+
+    private var isOpen: Bool { state.showingPlanDetail && state.planDetailIsCodex == codex }
+    private var isActive: Bool { isOpen || isHovered }
+
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                let open = isOpen
+                state.planDetailIsCodex = codex
+                state.showingPlanDetail = !open
+            }
+            if codex { state.refreshCodexPlanUsage() }
+        }) {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Color(hex: effectiveColor))
+                    .frame(width: 6, height: 6)
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(isActive
+                                     ? Color(hex: effectiveColor).lighter(by: 0.3)
+                                     : Color(hex: "#6B7079"))
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(isActive
+                          ? Color(hex: effectiveColor).opacity(0.18)
+                          : Color(hex: "#0E0F11"))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color(hex: effectiveColor).opacity(isActive ? 0.55 : 0.14), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { h in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
+        }
+        .onAppear { if codex { state.refreshCodexPlanUsage() } }
+    }
+}
+#endif
+
 // MARK: - Compact mini mochi grid (2×2 to the right of the notch)
 
 struct CompactMiniGrid: View {
@@ -562,18 +669,5 @@ struct CompactMiniGrid: View {
             }
         }
         .frame(width: 28, height: 28)
-    }
-}
-
-// MARK: - Color helper
-
-extension Color {
-    init(hex: String) {
-        let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        let val = UInt64(h, radix: 16) ?? 0
-        let r = Double((val >> 16) & 0xFF) / 255
-        let g = Double((val >> 8)  & 0xFF) / 255
-        let b = Double( val        & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
     }
 }

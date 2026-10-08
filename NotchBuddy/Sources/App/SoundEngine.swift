@@ -23,7 +23,7 @@ final class SoundEngine {
         let names = ["peek","open","close","hover","blip","slap","annoyed","dizzy","greet",
                      "work","finish","error","approval","question","approve","gulp","tick",
                      "send","love","pop","proud","wink","yawn","attach","think","search",
-                     "rate","sleep"]
+                     "rate","sleep","greeting"]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "wav", subdirectory: "sounds") else { continue }
             var pool: [AVAudioPlayer] = []
@@ -35,6 +35,21 @@ final class SoundEngine {
                 }
             }
             if !pool.isEmpty { players[name] = pool }
+        }
+    }
+
+    /// Fade out all currently-playing instances of `name` over `duration` seconds,
+    /// then stop and reset them so they can be reused.
+    func fadeOut(_ name: String, duration: TimeInterval) {
+        guard let pool = players[name] else { return }
+        for player in pool where player.isPlaying {
+            player.setVolume(0, fadeDuration: duration)
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak player] in
+                guard let p = player else { return }
+                p.stop()
+                p.currentTime = 0
+                p.volume = self.volume
+            }
         }
     }
 

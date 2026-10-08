@@ -41,12 +41,14 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focus": false,
+        "focusable": false,
+        "visibleOnAllWorkspaces": true,
         "visible": false,
         "center": false,
         "maximizable": false,
         "minimizable": false,
         "closable": false,
-        "dragDropEnabled": false,
+        "dragDropEnabled": true,
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
       }
     ]

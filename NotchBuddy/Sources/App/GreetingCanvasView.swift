@@ -1,49 +1,43 @@
 import SwiftUI
 
-// MARK: - Timing constants (mirrors greeting-v2.html T = {...})
+// MARK: - Timing constants
 
 private enum GT {
-    static let grow:     Double = 0.45
-    static let squint0:  Double = 0.60
-    static let squint1:  Double = 0.82
-    static let dip0:     Double = 1.25
-    static let dip1:     Double = 1.40
-    static let pop0:     Double = 1.36
-    static let pop1:     Double = 1.52
-    static let content0: Double = 2.45
-    static let content1: Double = 2.58
-    static let tuck0:    Double = 2.58
-    static let tuck1:    Double = 2.80
+    static let pop0:     Double = 1.30
+    static let pop1:     Double = 1.45
+    static let content0: Double = 2.40
+    static let tuck0:    Double = 2.45
+    static let tuck1:    Double = 2.70
     static let badge:    Double = 2.72
     static let down0:    Double = 2.85
-    static let down1:    Double = 3.20
-    static let blink2:   Double = 3.80
+    static let down1:    Double = 3.45
+    static let blink2:   Double = 3.70
     static let tint0:    Double = 3.85
     static let tint1:    Double = 4.15
-    static let end:      Double = 4.60   // animation done; greetComplete fires here
-    static let autoLeave:Double = 4.90   // visual collapse trigger (no hover)
+    static let end:      Double = 4.60
+    static let autoLeave:Double = 4.90
     static let COLLAPSE: Double = 0.34
 }
 
 // MARK: - Geometry constants (640×150 reference space)
 
-private let GC0     = CGPoint(x: 320, y: 90)   // Mochi center
-private let GHB:    CGFloat = 58                // body height at full size
-private let GASP:   CGFloat = 1.34             // body width/height ratio
-private let GEAR_X: CGFloat = 40               // ear x from small island left edge (matches BotPlacement compact x=40)
-private let GEAR_HB:CGFloat = 17               // ear body height
+private let GC0     = CGPoint(x: 320, y: 90)
+private let GHB:    CGFloat = 58
+private let GASP:   CGFloat = 1.34
+private let GEAR_X: CGFloat = 40
+private let GEAR_HB:CGFloat = 17
 private let GCARD   = CGRect(x: 10, y: 36, width: 620, height: 104)
 private let GCARD_R:CGFloat = 20
 
-// MARK: - Easing (mirrors E = {...})
+// MARK: - Easing
 
 private enum GE {
-    static func out(_ t: Double)   -> Double { 1 - pow(1 - t, 3) }
-    static func easeIn(_ t: Double)-> Double { t * t * t }
-    static func inOut(_ t: Double) -> Double {
+    static func out(_ t: Double)    -> Double { 1 - pow(1 - t, 3) }
+    static func easeIn(_ t: Double) -> Double { t * t * t }
+    static func inOut(_ t: Double)  -> Double {
         t < 0.5 ? 4*t*t*t : 1 - pow(-2*t+2, 3)/2
     }
-    static func back(_ t: Double)  -> Double {
+    static func back(_ t: Double)   -> Double {
         let c1=1.70158, c3=c1+1
         return 1 + c3*pow(t-1,3) + c1*pow(t-1,2)
     }
@@ -65,108 +59,196 @@ private struct GreetPose {
     var handL, handR, wave: Double
     var badge, tint, halo, haloBlue, minis, fx: Double
     var header, card: Double
-    // island dims (only for reference — not drawn here, just used for clip ref)
     var iw, ih: Double
 }
 
-// MARK: - Particles (seeded LCG matching JS reference seed=7)
+// MARK: - Particle data (seeded LCG, seed=7)
 
-private struct GRingDot { let a, j, s, al: Double }
-private struct GRing    { let t0: Double; let dots: [GRingDot] }
-private struct GStreak  { let a, sp, len, t0: Double; let col: String }
+private struct GWarpStreak { let xNorm, speed, len, thick, alpha, t0: Double }
+private struct GRingDot    { let a, j, s, al: Double }
 
-private let greetParticles: (rings: [GRing], streaks: [GStreak]) = {
+private let greetParticles: (warps: [GWarpStreak], ring: [GRingDot]) = {
     var seed: UInt32 = 7
     func rnd() -> Double {
         seed = (seed &* 1103515245 &+ 12345) & 0x7fffffff
         return Double(seed) / Double(0x7fff_ffff)
     }
-    let rings = [0.10, 0.20, 0.30, 0.45, 0.60].map { t0 in
-        GRing(t0: t0, dots: (0..<170).map { _ in
-            GRingDot(a: rnd() * .pi * 2, j: (rnd()-0.5)*0.22, s: 0.7+rnd()*0.9, al: 0.45+rnd()*0.55)
-        })
+    // ~70 white warp streaks for the fall-in (0 → 0.55 s)
+    let warps = (0..<70).map { _ in
+        GWarpStreak(xNorm: rnd(),
+                    speed: 400 + rnd() * 300,
+                    len:   6   + rnd() * 16,
+                    thick: 1   + rnd() * 0.5,
+                    alpha: 0.25 + rnd() * 0.55,
+                    t0:   rnd() * 0.35)
     }
-    let cols = ["#3B9EFF","#F29B38","#FF5A4E","#2EC4A0","#A78BFA"]
-    let streaks = (0..<16).map { i in
-        GStreak(a: Double(i)/16 * .pi * 2+(rnd()-0.5)*0.3, sp: 230+rnd()*260,
-                len: 6+rnd()*9, t0: 0.08+rnd()*0.14, col: cols[i%5])
+    // Single burst ring at 0.45 s, ~90 dots, white
+    let ring = (0..<90).map { _ in
+        GRingDot(a: rnd() * .pi * 2, j: (rnd()-0.5)*0.22,
+                 s: 0.7+rnd()*0.9,   al: 0.45+rnd()*0.55)
     }
-    return (rings, streaks)
+    return (warps, ring)
 }()
 
 // MARK: - Pose computation
 
 private func greetPose(_ t: Double, compact: IslandRestingLayout) -> GreetPose {
-    // island size interpolation (used as reference for clip, not drawn)
+    // Island size (reference for clip / warp spread)
     let gx = gSeg(t, 0, 0.5)
     let g  = sin(.pi*gx/2) + 0.04*sin(.pi*gx)*gx
     let iw = gLerp(Double(compact.width - 160), 640, g)
     let ih = gLerp(Double(compact.height), 150, g)
 
-    // body grows with back-ease (tiny → full size)
-    let gg = GE.back(gSeg(t, 0.02, GT.grow))
-    var hb = gLerp(3, Double(GHB), gg)
-    var x  = Double(GC0.x)
-    var y  = gLerp(Double(compact.botCenterY), Double(GC0.y), GE.out(gSeg(t, 0.02, GT.grow)))
-    var sx = 1.0, sy = 1.0, tilt = 0.0
+    let GH = Double(GHB)   // 58
+    let cx = Double(GC0.x) // 320
+    let cy = Double(GC0.y) // 90
 
-    // dip (1.25→1.52): body squishes forward
-    if t >= GT.dip0 && t < GT.pop1 {
-        let k = sin(.pi*gSeg(t, GT.dip0, GT.pop1))
-        y += hb*0.22*k; sy = 1-0.06*k; sx = 1+0.04*k
+    // Body height: invisible before 0.20, grows 0.15→1.0 with back ease
+    let hb: Double = t < 0.20 ? 0 : gLerp(GH * 0.15, GH, GE.back(gSeg(t, 0.20, 0.60)))
+
+    // Landmark y positions (absolute, GC0-relative in multiples of GH)
+    let restY   = cy
+    let landY   = cy + 0.12 * GH   // landing: y=+0.12
+    let peakY   = cy - 0.15 * GH   // bounce peak: y=−0.15
+    let dipY    = cy + 0.36 * GH   // plunge low: y=+0.36
+    let springY = cy - 0.10 * GH   // spring high: y=−0.10
+    let sinkY   = cy + 0.30 * GH   // sink for tuck: y=+0.30
+
+    // Landmark x positions
+    let restX   = cx
+    let drift1  = cx - 0.16 * GH
+    let drift2  = cx - 0.45 * GH
+    let drift3  = cx - 0.57 * GH
+    let drift4  = cx - 0.85 * GH
+
+    // --- X (lateral travel) ---
+    var x: Double
+    if t < 0.85 {
+        x = restX
+    } else if t < 1.20 {
+        x = gLerp(restX,  drift1, GE.inOut(gSeg(t, 0.85, 1.20)))
+    } else if t < 1.30 {
+        x = gLerp(drift1, drift2, GE.easeIn(gSeg(t, 1.20, 1.30)))
+    } else if t < 1.45 {
+        x = gLerp(drift2, drift3, GE.inOut(gSeg(t, 1.30, 1.45)))
+    } else if t < 2.40 {
+        x = gLerp(drift3, drift4, GE.inOut(gSeg(t, 1.45, 2.40)))
+    } else if t < 2.85 {
+        x = drift4
+    } else {
+        x = gLerp(drift4, restX,  GE.inOut(gSeg(t, 2.85, 3.45)))
     }
-    // wave sway (1.52→2.80)
-    if t >= GT.pop1 && t < GT.tuck1 {
+
+    // --- Y (vertical travel, base without bob) ---
+    var y: Double
+    if t < 0.20 {
+        y = Double(compact.botCenterY)
+    } else if t < 0.60 {
+        y = gLerp(Double(compact.botCenterY), landY, GE.easeIn(gSeg(t, 0.20, 0.60)))
+    } else if t < 0.73 {
+        y = gLerp(landY,   peakY,   GE.out(gSeg(t, 0.60, 0.73)))
+    } else if t < 0.90 {
+        y = gLerp(peakY,   restY,   GE.inOut(gSeg(t, 0.73, 0.90)))
+    } else if t < 1.20 {
+        y = restY
+    } else if t < 1.30 {
+        y = gLerp(restY,   dipY,    GE.easeIn(gSeg(t, 1.20, 1.30)))
+    } else if t < 1.45 {
+        y = gLerp(dipY,    springY, GE.out(gSeg(t, 1.30, 1.45)))
+    } else if t < 1.60 {
+        y = gLerp(springY, restY,   GE.inOut(gSeg(t, 1.45, 1.60)))
+    } else if t < 2.40 {
+        y = restY
+    } else if t < 2.70 {
+        y = gLerp(restY,   sinkY,   GE.inOut(gSeg(t, 2.40, 2.70)))
+    } else if t < 2.85 {
+        y = sinkY
+    } else {
+        y = gLerp(sinkY,   restY,   GE.inOut(gSeg(t, 2.85, 3.45)))
+    }
+
+    // Body bob: in phase with hand wave, active pop1 → tuck0, ramp-in 0.08 s
+    if t >= GT.pop1 && t < GT.tuck0 {
         let w = t - GT.pop1
-        let fade = 1 - gSeg(t, GT.tuck0, GT.tuck1)
-        x += sin(w*2 * .pi*0.9)*hb*Double(GASP)*0.05*fade
-        tilt = sin(w*2 * .pi*0.9+0.6)*0.05*fade
-        y += sin(w*2 * .pi*1.8)*0.8*fade
-    }
-    // settle (2.58→3.20)
-    if t >= GT.tuck0 && t < GT.down1 {
-        y += hb*0.12*sin(.pi*gSeg(t, GT.tuck0, GT.down1))
+        let rampIn = gClamp(w / 0.08, 0, 1)
+        y += sin(w * 2 * .pi * 5.0) * 0.02 * GH * rampIn
     }
 
-    // eyes
+    // --- Scale ---
+    var sx = 1.0, sy = 1.0
+
+    // Landing squash (peak at 0.60, pulse 0.52→0.68)
+    let landSqK = (t >= 0.52 && t < 0.68) ? sin(.pi * gSeg(t, 0.52, 0.68)) : 0
+    // Bounce stretch (peak at 0.73, resolves 0.62→0.84)
+    let bounceK  = (t >= 0.62 && t < 0.84) ? sin(.pi * gSeg(t, 0.62, 0.84)) : 0
+    sx = 1.0 + 0.14 * landSqK - 0.10 * bounceK
+    sy = 1.0 - 0.14 * landSqK + 0.18 * bounceK
+
+    // Plunge squash (peaks at 1.30, pulse 1.18→1.42)
+    let plungeK = (t >= 1.18 && t < 1.42) ? sin(.pi * gSeg(t, 1.18, 1.42)) : 0
+    // Spring stretch (peak at 1.38, resolves 1.30→1.46)
+    let springK = (t >= 1.30 && t < 1.46) ? sin(.pi * gSeg(t, 1.30, 1.46)) : 0
+    sx += 0.12 * plungeK - 0.18 * springK
+    sy -= 0.12 * plungeK - 0.25 * springK
+
+    // Sink squash (peak at 2.70)
+    let sinkK: Double
+    if t >= 2.38 && t < 2.70 {
+        sinkK = GE.inOut(gSeg(t, 2.38, 2.70))
+    } else if t >= 2.70 && t < 2.85 {
+        sinkK = 1 - GE.inOut(gSeg(t, 2.70, 2.85))
+    } else {
+        sinkK = 0
+    }
+    sx += 0.18 * sinkK
+    sy -= 0.14 * sinkK
+
+    // Micro squash at 3.70 (with blink)
+    let microK = (t >= 3.70 && t < 3.82) ? sin(.pi * gSeg(t, 3.70, 3.82)) : 0
+    sx += 0.08 * microK
+    sy -= 0.07 * microK
+
+    // --- Eyes ---
     var eye: GEyeType = .dot
-    if t >= GT.squint0 && t < GT.squint1 { eye = .happy }
-    if t >= GT.content0 && t < GT.content1 { eye = .content }
-    if t >= GT.down0 && t < GT.down1 { eye = .content }
-    var eyeRoll = 0.0
-    if t >= GT.dip0 && t < GT.pop1 { eyeRoll = sin(.pi*gSeg(t, GT.dip0, GT.pop1)) }
+    if t >= 0.55  && t < 0.80      { eye = .happy   }
+    if t >= GT.content0 && t < GT.tuck1 { eye = .content }
+
     let blink: (Double) -> Double = { tb in
-        let k = gSeg(t, tb, tb+0.12); return (k>0&&k<1) ? 1-sin(.pi*k)*0.94 : 1
+        let k = gSeg(t, tb, tb + 0.12)
+        return (k > 0 && k < 1) ? 1 - sin(.pi * k) * 0.94 : 1
     }
-    let openVal = min(blink(1.95), blink(GT.blink2))
+    let openVal = min(blink(1.95), min(blink(3.05), blink(GT.blink2)))
 
-    // look
+    // --- Look ---
     var lookX = 0.0, lookY = 0.0
-    if t >= GT.squint1 && t < GT.dip0 { lookY = -0.2 }
-    if t >= GT.pop1 && t < GT.content0 { lookX = 0.55; lookY = -0.45 }
-    if t >= GT.content0 && t < GT.down1 { lookX = -0.3; lookY = 0.6 }
-    if t >= GT.down1 {
-        let k = GE.inOut(gSeg(t, GT.down1, GT.down1+0.35))
-        lookX = gLerp(-0.3, 0, k); lookY = gLerp(0.6, 0, k)
+    if t >= GT.pop1 && t < GT.content0 {         // wave: up-right
+        lookX = 0.55; lookY = -0.45
+    } else if t >= GT.content0 && t < GT.down0 { // tuck: down-left
+        lookX = -0.3; lookY = 0.6
+    } else if t >= GT.down0 && t < GT.down1 {    // slide: down-right (returning)
+        lookX = 0.3;  lookY = 0.6
+    } else if t >= GT.down1 {
+        let k = GE.inOut(gSeg(t, GT.down1, GT.down1 + 0.35))
+        lookX = gLerp(0.3, 0, k); lookY = gLerp(0.6, 0, k)
     }
 
-    // hands
+    // --- Hands ---
     let handL = t < GT.tuck0
-        ? GE.back(gSeg(t, GT.pop0, GT.pop0+0.14))
-        : 1 - GE.easeIn(gSeg(t, GT.tuck0, GT.tuck1-0.03))
+        ? GE.back(gSeg(t, GT.pop0, GT.pop0 + 0.14))
+        : 1 - GE.easeIn(gSeg(t, GT.tuck0, GT.tuck1 - 0.03))
     let handR = t < GT.tuck0
-        ? GE.back(gSeg(t, GT.pop0+0.04, GT.pop0+0.18))
-        : 1 - GE.easeIn(gSeg(t, GT.tuck0+0.03, GT.tuck1))
+        ? GE.back(gSeg(t, GT.pop0 + 0.04, GT.pop0 + 0.18))
+        : 1 - GE.easeIn(gSeg(t, GT.tuck0 + 0.03, GT.tuck1))
     let wave = (t >= GT.pop1 && t < GT.tuck0) ? t - GT.pop1 : -1.0
 
     return GreetPose(
-        hb: hb, x: x, y: y, sx: sx, sy: sy, tilt: tilt,
-        eye: eye, open: openVal, eyeRoll: eyeRoll,
+        hb: hb, x: x, y: y, sx: sx, sy: sy, tilt: 0,
+        eye: eye, open: openVal, eyeRoll: 0,
         lookX: lookX, lookY: lookY,
         handL: handL, handR: handR, wave: wave,
-        badge: GE.back(gSeg(t, GT.badge, GT.badge+0.28)),
-        tint:  0.6*GE.inOut(gSeg(t, GT.tint0, GT.tint1)),
-        halo:  GE.out(gSeg(t, 0.3, 0.7)),
+        badge:    GE.back(gSeg(t, GT.badge, GT.badge + 0.28)),
+        tint:     0.6 * GE.inOut(gSeg(t, GT.tint0, GT.tint1)),
+        halo:     GE.out(gSeg(t, 0.3, 0.7)),
         haloBlue: gSeg(t, GT.tint0, GT.tint1),
         minis: 0, fx: 1,
         header: gSeg(t, 0.35, 0.6), card: gSeg(t, 0.18, 0.45),
@@ -230,14 +312,15 @@ private func gHex(_ hex: String, alpha: CGFloat = 1) -> CGColor {
                    blue: CGFloat(v&0xFF)/255, alpha: alpha)
 }
 
-private func gRR(_ ctx: CGContext, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ r: CGFloat) {
+private func gRR(_ ctx: CGContext, _ x: CGFloat, _ y: CGFloat,
+                 _ w: CGFloat, _ h: CGFloat, _ r: CGFloat) {
     let r = max(0, min(r, w/2, h/2))
     ctx.beginPath()
     ctx.move(to: CGPoint(x: x+r, y: y))
-    ctx.addArc(tangent1End: CGPoint(x: x+w, y: y), tangent2End: CGPoint(x: x+w, y: y+h), radius: r)
-    ctx.addArc(tangent1End: CGPoint(x: x+w, y: y+h), tangent2End: CGPoint(x: x, y: y+h), radius: r)
-    ctx.addArc(tangent1End: CGPoint(x: x, y: y+h), tangent2End: CGPoint(x: x, y: y), radius: r)
-    ctx.addArc(tangent1End: CGPoint(x: x, y: y), tangent2End: CGPoint(x: x+r, y: y), radius: r)
+    ctx.addArc(tangent1End: CGPoint(x: x+w, y: y),   tangent2End: CGPoint(x: x+w, y: y+h), radius: r)
+    ctx.addArc(tangent1End: CGPoint(x: x+w, y: y+h), tangent2End: CGPoint(x: x,   y: y+h), radius: r)
+    ctx.addArc(tangent1End: CGPoint(x: x,   y: y+h), tangent2End: CGPoint(x: x,   y: y),   radius: r)
+    ctx.addArc(tangent1End: CGPoint(x: x,   y: y),   tangent2End: CGPoint(x: x+r, y: y),   radius: r)
     ctx.closePath()
 }
 
@@ -256,26 +339,37 @@ private func mochiPath(hw: CGFloat, hh: CGFloat) -> CGPath {
     path.closeSubpath(); return path
 }
 
-// Linear gradient fill clipped to path (body-local coords, centered at origin)
 private func whiteFill(_ ctx: CGContext, _ path: CGPath,
-                        x0: CGFloat, y0: CGFloat, x1: CGFloat, y1: CGFloat) {
-    let cs   = CGColorSpaceCreateDeviceRGB()
-    let c0   = CGColor(red: 251/255, green: 251/255, blue: 252/255, alpha: 1)
-    let c1   = CGColor(red: 231/255, green: 233/255, blue: 236/255, alpha: 1)
+                       x0: CGFloat, y0: CGFloat, x1: CGFloat, y1: CGFloat) {
+    let cs = CGColorSpaceCreateDeviceRGB()
+    let c0 = CGColor(red: 251/255, green: 251/255, blue: 252/255, alpha: 1)
+    let c1 = CGColor(red: 231/255, green: 233/255, blue: 236/255, alpha: 1)
     guard let g = CGGradient(colorsSpace: cs, colors: [c0,c1] as CFArray, locations: [0,1]) else { return }
     ctx.saveGState()
     ctx.addPath(path); ctx.clip()
-    ctx.drawLinearGradient(g, start: CGPoint(x: x0, y: y0), end: CGPoint(x: x1, y: y1), options: [])
+    ctx.drawLinearGradient(g, start: CGPoint(x: x0, y: y0),
+                              end:   CGPoint(x: x1, y: y1),
+                              options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
     ctx.restoreGState()
 }
 
+// Left hand: ball, waves (bobs vertically)
 private func drawHandL(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose) {
     let k = CGFloat(p.handL); guard k > 0.01 else { return }
-    let hb = hh*2, r = hb*0.15*k
-    let rx = gLerpF(-hw*0.35, -hw-hb*0.22, k)
-    let ry0 = gLerpF(hh*0.85, hh*0.62, k)
+    let hb = hh * 2
+    let r  = hb * 0.15 * k
+    let rx = gLerpF(-hw * 0.35, -hw - hb * 0.22, k)
+    let ry0 = gLerpF(hh * 0.85, hh * 0.62, k)
     var ry = Double(ry0)
-    if p.wave >= 0 { ry += sin(p.wave*6)*Double(hb)*0.02 }
+    if p.wave >= 0 {
+        let w = p.wave
+        // Ramp in 0.08 s after pop1; ramp out over tuck0→tuck1
+        let rampIn  = gClamp(w / 0.08, 0, 1)
+        let waveEnd = GT.tuck0 - GT.pop1   // = 1.00
+        let rampOut = 1 - gClamp((w - waveEnd) / (GT.tuck1 - GT.tuck0), 0, 1)
+        let ramp    = rampIn * rampOut
+        ry += sin(w * 2 * .pi * 5.0) * Double(hb) * 0.14 * ramp
+    }
     ctx.saveGState()
     ctx.translateBy(x: rx, y: CGFloat(ry))
     let circ = CGPath(ellipseIn: CGRect(x: -r, y: -r, width: r*2, height: r*2), transform: nil)
@@ -286,21 +380,23 @@ private func drawHandL(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose)
     ctx.restoreGState()
 }
 
+// Right hand: capsule, quasi-static with breathing rotation ±0.04 rad at 2.5 Hz
 private func drawHandR(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose) {
     let k = CGFloat(p.handR); guard k > 0.01 else { return }
-    let hb = hh*2, L = hb*0.40*k, T2 = hb*0.22*k
-    let rx0 = gLerpF(hw*0.35, hw+hb*0.20, k)
-    let ry0 = gLerpF(hh*0.85, hh*0.20, k)
-    var rx = Double(rx0), ry = Double(ry0), ang = -0.61
-    if p.wave >= 0 {
-        let w = p.wave*2 * .pi*2.5
-        ang += sin(w)*0.21; ry += sin(w+0.8)*Double(hb)*0.04; rx += cos(w)*Double(hb)*0.015
-    }
+    let hb = hh * 2, L = hb * 0.40 * k, T2 = hb * 0.22 * k
+    let rx0 = gLerpF(hw * 0.35, hw + hb * 0.20, k)
+    let ry0 = gLerpF(hh * 0.85, hh * 0.20, k)
+    // Breathing rotation ±0.04 rad at 2.5 Hz, only while wave is active; no displacement
+    let ang: CGFloat = p.wave >= 0
+        ? -0.61 + CGFloat(sin(p.wave * 2 * .pi * 2.5)) * 0.04
+        : -0.61
     ctx.saveGState()
-    ctx.translateBy(x: CGFloat(rx), y: CGFloat(ry)); ctx.rotate(by: CGFloat(ang))
+    ctx.translateBy(x: rx0, y: ry0)
+    ctx.rotate(by: ang)
     let cap = CGMutablePath()
     gRR(ctx, -L/2, -T2/2, L, T2, T2/2)
-    cap.addPath(ctx.path!); ctx.beginPath()  // use current ctx path as clip path
+    cap.addPath(ctx.path!)
+    ctx.beginPath()
     whiteFill(ctx, cap, x0: L/2, y0: -T2/2, x1: -L/2, y1: T2/2)
     gRR(ctx, -L/2, -T2/2, L, T2, T2/2)
     ctx.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.08))
@@ -311,36 +407,34 @@ private func drawHandR(_ ctx: CGContext, hw: CGFloat, hh: CGFloat, p: GreetPose)
 private func drawMochi(_ ctx: CGContext, p: GreetPose) {
     let hh = CGFloat(p.hb/2), hw = hh*GASP; guard hh > 0.4 else { return }
 
-    // Halo (golden → blue) — soft diffuse aura, two-pass for smoothness
+    // Halo (golden → blue)
     if p.halo > 0 {
         let bl = CGFloat(p.haloBlue)
         let cr = gLerpF(232/255, 59/255, bl)
         let cg = gLerpF(195/255, 158/255, bl)
         let cb = gLerpF(154/255, 255/255, bl)
         let cs = CGColorSpaceCreateDeviceRGB()
-        let cx = CGFloat(p.x), cy = CGFloat(p.y)
-        // Inner soft glow
+        let px = CGFloat(p.x), py = CGFloat(p.y)
         let R1 = hw * 2.6
         let ic1 = CGColor(red: cr, green: cg, blue: cb, alpha: CGFloat(0.18 * p.halo))
         let oc1 = CGColor(red: cr, green: cg, blue: cb, alpha: 0)
-        if let g1 = CGGradient(colorsSpace: cs, colors: [ic1, oc1] as CFArray, locations: [0, 1]) {
+        if let g1 = CGGradient(colorsSpace: cs, colors: [ic1,oc1] as CFArray, locations: [0,1]) {
             ctx.saveGState()
-            ctx.addEllipse(in: CGRect(x: cx-R1, y: cy-R1, width: R1*2, height: R1*2))
+            ctx.addEllipse(in: CGRect(x: px-R1, y: py-R1, width: R1*2, height: R1*2))
             ctx.clip()
-            ctx.drawRadialGradient(g1, startCenter: CGPoint(x: cx, y: cy), startRadius: 0,
-                                   endCenter: CGPoint(x: cx, y: cy), endRadius: R1, options: [])
+            ctx.drawRadialGradient(g1, startCenter: CGPoint(x: px,y: py), startRadius: 0,
+                                   endCenter: CGPoint(x: px,y: py), endRadius: R1, options: [])
             ctx.restoreGState()
         }
-        // Outer wide aura
         let R2 = hw * 4.2
         let ic2 = CGColor(red: cr, green: cg, blue: cb, alpha: CGFloat(0.07 * p.halo))
         let oc2 = CGColor(red: cr, green: cg, blue: cb, alpha: 0)
-        if let g2 = CGGradient(colorsSpace: cs, colors: [ic2, oc2] as CFArray, locations: [0, 1]) {
+        if let g2 = CGGradient(colorsSpace: cs, colors: [ic2,oc2] as CFArray, locations: [0,1]) {
             ctx.saveGState()
-            ctx.addEllipse(in: CGRect(x: cx-R2, y: cy-R2, width: R2*2, height: R2*2))
+            ctx.addEllipse(in: CGRect(x: px-R2, y: py-R2, width: R2*2, height: R2*2))
             ctx.clip()
-            ctx.drawRadialGradient(g2, startCenter: CGPoint(x: cx, y: cy), startRadius: 0,
-                                   endCenter: CGPoint(x: cx, y: cy), endRadius: R2, options: [])
+            ctx.drawRadialGradient(g2, startCenter: CGPoint(x: px,y: py), startRadius: 0,
+                                   endCenter: CGPoint(x: px,y: py), endRadius: R2, options: [])
             ctx.restoreGState()
         }
     }
@@ -350,15 +444,12 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
     ctx.rotate(by: CGFloat(p.tilt))
     ctx.scaleBy(x: CGFloat(p.sx), y: CGFloat(p.sy))
 
-    // Hands behind body
     drawHandL(ctx, hw: hw, hh: hh, p: p)
     drawHandR(ctx, hw: hw, hh: hh, p: p)
 
-    // Body
     let mpath = mochiPath(hw: hw, hh: hh)
     whiteFill(ctx, mpath, x0: hw*0.6, y0: -hh, x1: -hw*0.6, y1: hh)
 
-    // Blue tint overlay
     if p.tint > 0 {
         let cs = CGColorSpaceCreateDeviceRGB()
         let c0 = CGColor(red: 127/255, green: 180/255, blue: 234/255, alpha: CGFloat(p.tint))
@@ -366,12 +457,12 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
         if let g = CGGradient(colorsSpace: cs, colors: [c0,c1] as CFArray, locations: [0,1]) {
             ctx.saveGState()
             ctx.addPath(mpath); ctx.clip()
-            ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: hh), end: CGPoint(x: 0, y: -hh*0.1), options: [])
+            ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: hh),
+                                      end:   CGPoint(x: 0, y: -hh*0.1), options: [])
             ctx.restoreGState()
         }
     }
 
-    // Eyes (clipped to body)
     ctx.saveGState()
     ctx.addPath(mpath); ctx.clip()
     ctx.setFillColor(gHex("#16171A"))
@@ -384,15 +475,13 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
         ctx.saveGState()
         ctx.translateBy(x: sd*sp+lx, y: ly)
         if p.eye == .happy {
-            ctx.setLineWidth(er*0.95)
-            ctx.setLineCap(.round)
+            ctx.setLineWidth(er*0.95); ctx.setLineCap(.round)
             ctx.beginPath()
             ctx.addArc(center: CGPoint(x: 0, y: er*0.6), radius: er*1.25,
                        startAngle: .pi*1.15, endAngle: .pi*1.85, clockwise: false)
             ctx.strokePath()
         } else if p.eye == .content {
-            ctx.setLineWidth(er*0.95)
-            ctx.setLineCap(.round)
+            ctx.setLineWidth(er*0.95); ctx.setLineCap(.round)
             ctx.beginPath()
             ctx.addArc(center: CGPoint(x: 0, y: -er*0.5), radius: er*1.25,
                        startAngle: .pi*0.15, endAngle: .pi*0.85, clockwise: false)
@@ -406,7 +495,7 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
     }
     ctx.restoreGState()
 
-    // Activity badge (top-left corner)
+    // Activity badge
     if p.badge > 0.01 {
         let bs = CGFloat(p.badge)
         let br = hh*0.3
@@ -418,10 +507,12 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
                                   width: (br+hh*0.07)*2, height: (br+hh*0.07)*2))
         ctx.fillPath()
         ctx.setFillColor(gHex("#3BA0F5"))
-        ctx.addEllipse(in: CGRect(x: -br, y: -br, width: br*2, height: br*2)); ctx.fillPath()
+        ctx.addEllipse(in: CGRect(x: -br, y: -br, width: br*2, height: br*2))
+        ctx.fillPath()
         ctx.setFillColor(gHex("#0B1B3A"))
         for i: CGFloat in [-1, 0, 1] {
-            ctx.addEllipse(in: CGRect(x: i*br*0.5-br*0.17, y: -br*0.17, width: br*0.34, height: br*0.34))
+            ctx.addEllipse(in: CGRect(x: i*br*0.5-br*0.17, y: -br*0.17,
+                                      width: br*0.34, height: br*0.34))
             ctx.fillPath()
         }
         ctx.restoreGState()
@@ -433,36 +524,42 @@ private func drawMochi(_ ctx: CGContext, p: GreetPose) {
 private func drawParticles(_ ctx: CGContext, t: Double, tc: Double, p: GreetPose) {
     guard p.card > 0 || p.fx < 1 else { return }
     let fx = p.fx
-    // RINGS
-    for ring in greetParticles.rings {
-        let k = gSeg(t, ring.t0, ring.t0 + 1.35)
-        guard k > 0 && k < 1 else { continue }
-        let rx = gLerpF(14, 380, CGFloat(GE.out(k)))
-        let ry = rx * 0.34
-        let fade = CGFloat((1-k) * (k < 0.08 ? k/0.08 : 1) * fx * p.card)
-        for dot in ring.dots {
-            let r: CGFloat = 1 + CGFloat(dot.j)
-            ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: CGFloat(dot.al)*fade))
-            let dx = CGFloat(GC0.x) + cos(CGFloat(dot.a))*rx*r
-            let dy = CGFloat(GC0.y) + sin(CGFloat(dot.a))*ry*r
-            ctx.fill(CGRect(x: dx, y: dy, width: CGFloat(dot.s), height: CGFloat(dot.s)))
+
+    // WARP STREAKS: white vertical lines, fall-in 0 → 0.55 s
+    if t < 0.55 {
+        for s in greetParticles.warps {
+            guard t >= s.t0 else { continue }
+            let elapsed = t - s.t0
+            let yBot = CGFloat(elapsed * s.speed)
+            let yTop = yBot - CGFloat(s.len)
+            guard yBot > 0 else { continue }
+            let streakX  = CGFloat(320 - p.iw/2 + s.xNorm * p.iw)
+            let fadeOut  = 1 - gSeg(t, 0.40, 0.55)
+            let alpha    = CGFloat(s.alpha * fx * fadeOut)
+            ctx.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: alpha))
+            ctx.setLineWidth(CGFloat(s.thick)); ctx.setLineCap(.butt)
+            ctx.beginPath()
+            ctx.move(to:    CGPoint(x: streakX, y: max(0, yTop)))
+            ctx.addLine(to: CGPoint(x: streakX, y: min(150, yBot)))
+            ctx.strokePath()
         }
     }
-    // STREAKS
-    for s in greetParticles.streaks {
-        let k = gSeg(t, s.t0, s.t0 + 0.6)
-        guard k > 0 && k < 1 else { continue }
-        let dist = CGFloat(s.sp * GE.out(k) * 0.9 + 10)
-        let alpha = CGFloat((1-k) * fx)
-        ctx.setStrokeColor(gHex(s.col, alpha: alpha))
-        ctx.setLineWidth(1.6); ctx.setLineCap(.round)
-        let a = CGFloat(s.a)
-        ctx.beginPath()
-        ctx.move(to: CGPoint(x: CGFloat(GC0.x)+cos(a)*(dist-CGFloat(s.len)),
-                             y: CGFloat(GC0.y)+sin(a)*(dist-CGFloat(s.len))*0.42))
-        ctx.addLine(to: CGPoint(x: CGFloat(GC0.x)+cos(a)*dist,
-                                y: CGFloat(GC0.y)+sin(a)*dist*0.42))
-        ctx.strokePath()
+
+    // RING: single white burst at 0.45 s, ~90 dots
+    let ringT0 = 0.45
+    let k = gSeg(t, ringT0, ringT0 + 1.35)
+    if k > 0 && k < 1 {
+        let rx   = gLerpF(14, 380, CGFloat(GE.out(k)))
+        let ry   = rx * 0.34
+        let fade = CGFloat((1-k) * (k < 0.08 ? k/0.08 : 1) * fx * p.card)
+        for dot in greetParticles.ring {
+            let r: CGFloat = 1 + CGFloat(dot.j)
+            ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1,
+                                     alpha: CGFloat(dot.al) * fade))
+            let dx = CGFloat(GC0.x) + cos(CGFloat(dot.a)) * rx * r
+            let dy = CGFloat(GC0.y) + sin(CGFloat(dot.a)) * ry * r
+            ctx.fill(CGRect(x: dx, y: dy, width: CGFloat(dot.s), height: CGFloat(dot.s)))
+        }
     }
 }
 
@@ -470,16 +567,13 @@ private func drawHeader(_ ctx: CGContext, alpha: Double) {
     guard alpha > 0 else { return }
     ctx.saveGState()
     ctx.setAlpha(CGFloat(alpha))
-    // VS Code icon pill (top-left)
     gRR(ctx, 18, 4, 44, 26, 13)
     ctx.setFillColor(gHex("#1D1F23")); ctx.fillPath()
     ctx.setFillColor(gHex("#F5F6F8"))
-    // Simple chevron-up shape
     ctx.beginPath()
     ctx.move(to: CGPoint(x: 33, y: 20)); ctx.addLine(to: CGPoint(x: 40, y: 13))
     ctx.addLine(to: CGPoint(x: 47, y: 20)); ctx.addLine(to: CGPoint(x: 47, y: 25))
     ctx.addLine(to: CGPoint(x: 33, y: 25)); ctx.closePath(); ctx.fillPath()
-    // Two dots (circles) top-right
     ctx.setFillColor(gHex("#8E939C"))
     ctx.addEllipse(in: CGRect(x: 75.5, y: 10.5, width: 13, height: 13)); ctx.fillPath()
     ctx.addEllipse(in: CGRect(x: 572, y: 11, width: 12, height: 12)); ctx.fillPath()
@@ -507,12 +601,12 @@ private func drawMinis(_ ctx: CGContext, alpha: Double, compact: IslandRestingLa
     }
 }
 
-// MARK: - Full draw function
+// MARK: - Full draw
 
-private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double, tc: Double, compact: IslandRestingLayout) {
+private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double,
+                          tc: Double, compact: IslandRestingLayout) {
     let p = pose(t, tc: tc, compact: compact)
 
-    // Card background (dark panel)
     if p.card > 0 {
         ctx.saveGState()
         ctx.setAlpha(CGFloat(p.card))
@@ -520,20 +614,17 @@ private func drawGreeting(_ ctx: CGContext, size: CGSize, t: Double, tc: Double,
         ctx.setFillColor(gHex("#141518")); ctx.fillPath()
         ctx.restoreGState()
 
-        // Particles inside card area
         ctx.saveGState()
         gRR(ctx, GCARD.minX, GCARD.minY, GCARD.width, GCARD.height, GCARD_R)
         ctx.clip()
         drawParticles(ctx, t: t, tc: tc, p: p)
         ctx.restoreGState()
     } else if tc.isFinite && t >= tc {
-        // During collapse, fade particles without card clip
         ctx.saveGState()
         drawParticles(ctx, t: t, tc: tc, p: p)
         ctx.restoreGState()
     }
 
-    // drawHeader: no icons during greeting
     drawMinis(ctx, alpha: p.minis, compact: compact)
     drawMochi(ctx, p: p)
 }
@@ -544,13 +635,9 @@ struct GreetingCanvasView: View {
     @ObservedObject var state: AppState
 
     @State private var startDate = Date()
-    @State private var tc: Double = .infinity   // collapses only when FSM fires .greetingInterrupt
+    @State private var tc: Double = .infinity
     @State private var greetFired = false
-
-    // Scheduled works (cancellable)
-    @State private var soundWork1: DispatchWorkItem? = nil
-    @State private var soundWork2: DispatchWorkItem? = nil
-    @State private var doneWork:   DispatchWorkItem? = nil
+    @State private var doneWork: DispatchWorkItem? = nil
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -562,7 +649,6 @@ struct GreetingCanvasView: View {
                                                               height: state.notchHeight))
                 }
             }
-            // Fire greetComplete exactly once at T.end (when no hover)
             .onChange(of: !greetFired && t >= GT.end && tc >= GT.autoLeave) { _, trigger in
                 if trigger { fireGreetComplete() }
             }
@@ -571,45 +657,33 @@ struct GreetingCanvasView: View {
             startDate = Date()
             tc = .infinity
             greetFired = false
-            scheduleWorks()
+            // Original score plays from the start; greet.wav and blip.wav kept for other uses
+            SoundEngine.shared.play("greeting")
+            // Safety fallback: fire done if timeline onChange misses it
+            let item = DispatchWorkItem { fireGreetComplete() }
+            doneWork = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + GT.end + 0.05, execute: item)
         }
         .onDisappear {
-            cancelWorks()
+            doneWork?.cancel(); doneWork = nil
+            SoundEngine.shared.fadeOut("greeting", duration: 0.2)
         }
         .onReceive(NotificationCenter.default.publisher(for: .greetingHover)) { _ in
-            // Mouse on notch during greeting → hold open (no auto-collapse)
             if tc >= GT.autoLeave { tc = .infinity }
         }
         .onReceive(NotificationCenter.default.publisher(for: .greetingInterrupt)) { _ in
-            // Mouse left during greeting → start collapse from current time
             let t = Date().timeIntervalSince(startDate)
             if tc.isInfinite || tc > t { tc = t }
-            cancelWorks()   // cancel auto-done timer (FSM already went to .petit)
+            doneWork?.cancel(); doneWork = nil
+            SoundEngine.shared.fadeOut("greeting", duration: 0.25)
         }
     }
 
     private func fireGreetComplete() {
         guard !greetFired else { return }
         greetFired = true
-        cancelWorks()
+        doneWork?.cancel(); doneWork = nil
+        // Note: greeting music continues for ~0.3 s after greetComplete — intentional queue overlap
         NotificationCenter.default.post(name: .greetComplete, object: nil)
-    }
-
-    private func scheduleWorks() {
-        func schedule(_ delay: Double, _ block: @escaping () -> Void) -> DispatchWorkItem {
-            let item = DispatchWorkItem(block: block)
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-            return item
-        }
-        soundWork1 = schedule(GT.pop0)  { SoundEngine.shared.play("greet") }
-        soundWork2 = schedule(GT.badge) { SoundEngine.shared.play("blip")  }
-        // doneWork is a safety fallback; normal path fires via .onChange
-        doneWork = schedule(GT.end + 0.05) { fireGreetComplete() }
-    }
-
-    private func cancelWorks() {
-        soundWork1?.cancel(); soundWork1 = nil
-        soundWork2?.cancel(); soundWork2 = nil
-        doneWork?.cancel();   doneWork = nil
     }
 }

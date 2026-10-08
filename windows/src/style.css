@@ -4,7 +4,12 @@
 :root {
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", sans-serif;
+  /* After the Latin fonts: the scripts of the other interface languages —
+     Devanagari and Bengali (Nirmala UI), Simplified Chinese (Microsoft YaHei)
+     on Windows, the Noto families on Linux. Arabic and Cyrillic are in Segoe UI. */
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", "Nirmala UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 
   --ink: #f5f6f8;        /* primary text */
@@ -126,22 +131,17 @@ body {
   cursor: pointer;
 }
 
-/* The ordinary views step aside while the sequence owns the body. */
+/* The ordinary views step aside while the sequence owns the body. The active
+   view sets pointer-events back to auto, which beats the parent's none: it has
+   to be switched off too, or its invisible card swallows the canvas buttons. */
 #views.hidden-by-upload {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease-in-out;
 }
 
-/* The invisible views must not swallow the clicks meant for the buttons the
-   canvas paints (.upload-hit sits below #content). */
-#views.hidden-by-upload * {
+#views.hidden-by-upload .view.on {
   pointer-events: none;
-}
-
-/* #content itself is switched to pointer-events: none from island.ts (inline). */
-#content.upload-on #header {
-  pointer-events: auto;
 }
 
 #bot-glow {
@@ -280,6 +280,13 @@ body {
   transform: scale(1);
   pointer-events: auto;
   transition: opacity 0.3s ease-out 0.16s, transform 0.3s cubic-bezier(0.3, 1.2, 0.4, 1) 0.16s;
+}
+
+/* A view that is not on is only transparent, not gone: an infinite animation
+   inside it (the drop frame's marching dashes) would keep the webview
+   repainting every frame for as long as the app runs, island hidden or not. */
+.view:not(.on) * {
+  animation-play-state: paused;
 }
 
 /* ── Cards ──────────────────────────────────────────────────────────────── */
@@ -442,6 +449,14 @@ body {
   z-index: 2;
 }
 
+/* Folds a waiting permission card or question away without answering it. */
+.fold {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+}
+
 /* Ticker */
 
 .ticker {
@@ -484,6 +499,137 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Live diff step: file name, then +N −M right after it (TickerRowView). */
+.ticker-row .tick-count {
+  flex: 0 0 auto;
+  margin-left: -6px; /* no row gap: the counts sit right after the name */
+  font: 500 10px var(--mono);
+  white-space: pre;
+}
+
+.ticker-row .tick-count .plus {
+  color: var(--green);
+}
+
+.ticker-row .tick-count .minus {
+  color: var(--red);
+}
+
+/* ── Diff card (overview, left card) — DiffCardView ─────────────────────── */
+
+.diff-card {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 10px 4px 108px;
+}
+
+.diff-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 3px;
+  min-width: 0;
+}
+
+.diff-back {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: default;
+}
+
+.diff-back b {
+  font: 600 12px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-head .grow {
+  flex: 1 1 auto;
+}
+
+.diff-head .tick-count {
+  flex: 0 0 auto;
+  font: 500 10px var(--mono);
+}
+
+.diff-head .plus {
+  color: var(--green);
+}
+
+.diff-head .minus {
+  color: var(--red);
+}
+
+.diff-head .icon-btn {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.diff-note {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+}
+
+.diff-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  user-select: text;
+}
+
+.diff-lines::-webkit-scrollbar {
+  display: none;
+}
+
+.diff-line {
+  display: flex;
+  min-height: 14px; /* an empty line still takes a row */
+  font: 400 10.5px/1.35 var(--mono);
+  color: var(--dim-3);
+}
+
+.diff-line .sym {
+  flex: 0 0 12px;
+  color: #454850;
+}
+
+.diff-line .txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-line.added {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+}
+
+.diff-line.added .sym {
+  color: var(--green);
+}
+
+.diff-line.removed {
+  background: rgba(244, 80, 94, 0.12);
+  color: #fca5a5;
+}
+
+.diff-line.removed .sym {
+  color: var(--red);
 }
 
 /* Shimmer sweep, 2.2 s — same as TickerShimmerText / ShimmeringText */
@@ -592,6 +738,14 @@ body {
   font: 600 15px var(--font);
 }
 
+/* Claude's final message on the finished card: one line, never past the card. */
+.title.one-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 .sub {
   font: 400 13px var(--font);
   color: var(--dim);
@@ -642,6 +796,24 @@ body {
 .actions {
   display: flex;
   gap: 8px;
+}
+
+/* Options to pick from when Claude Code asks a question. */
+.actions.options {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.question-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn.off {
+  opacity: 0.4;
 }
 
 .status-badge {
@@ -831,6 +1003,127 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: pre-wrap;
   padding-right: 8px;
   user-select: text;
+  /* Answers are Markdown blocks (views/markdown.ts), spaced as ChatMarkdownView. */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* ── Markdown in the answers ─────────────────────────────────────────────── */
+
+.md-p {
+  font: 400 12.5px var(--font);
+  color: #b0b5be;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-h {
+  font: 600 13px var(--font);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.md-h1 {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.reply strong {
+  color: #e8e9ec;
+  font-weight: 600;
+}
+
+.md-code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  font: 400 11.5px var(--mono);
+  color: #c8cdd4;
+}
+
+.md-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.md-pre {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #0d0e12;
+}
+
+.md-pre pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 400 11px var(--mono);
+  color: #c8cdd4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-copy {
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--dim-3);
+  cursor: default;
+}
+
+.md-copy:hover {
+  color: var(--dim);
+}
+
+.md-copy.done {
+  color: var(--green);
+}
+
+.md-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.md-bullet {
+  flex: 0 0 auto;
+  min-width: 10px;
+  font: 400 12.5px var(--font);
+  color: var(--dim-3);
+}
+
+.md-quote {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.md-quote i {
+  flex: 0 0 2px;
+  border-radius: 1px;
+  background: var(--dim-5);
+}
+
+.md-quote .md-p {
+  color: #8a8f98;
+}
+
+.md-rule {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  opacity: 0.3;
 }
 
 .typing {
@@ -858,6 +1151,177 @@ input[type="range"]::-webkit-slider-thumb {
 @keyframes typing {
   0%, 100% { transform: scale(0.6); }
   50% { transform: scale(1.2); }
+}
+
+/* ── Provider and model switcher (PromptView's model button) ─────────────── */
+
+.model-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 10px;
+}
+
+.model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #5c6370;
+  cursor: default;
+}
+
+.model-btn:hover:not(:disabled),
+.model-btn.open {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.model-btn:disabled {
+  opacity: 0.6;
+}
+
+.model-dot {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.model-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 10.5px var(--font);
+  color: #7b8089;
+}
+
+.picker {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #16171b;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chat-body.picking .picker {
+  display: flex;
+}
+
+.chat-body.picking .chat-log,
+.chat-body.picking .chip-row {
+  display: none;
+}
+
+.picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.picker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  font: 400 11.5px var(--font);
+  color: #c8cdd4;
+  cursor: default;
+}
+
+.picker-chip.on {
+  font-weight: 600;
+  color: var(--ink-2);
+  /* Plain fallbacks for WebKitGTK builds without color-mix(). */
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.picker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.picker-rule {
+  flex: 0 0 1px;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0.4;
+}
+
+.picker-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.picker-model {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #c8cdd4;
+  font: 400 12px var(--font);
+  text-align: left;
+  cursor: default;
+}
+
+.picker-model:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.picker-model.on {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.picker-model-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+  font: 400 11px var(--font);
+  color: #8a8f98;
+}
+
+.picker-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #60a5fa;
+  font: inherit;
+  cursor: default;
 }
 
 .chat-bar {
@@ -1368,4 +1832,515 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Plan usage: the pills in the header and the card behind them ────────────
+   ClaudePlanHeaderPill / ClaudePlanCardView / CodexPlanCardView on the Mac.
+   Nothing here applies until a pill is turned on in Settings. */
+
+/* Off: takes no room, so the header is exactly as it shipped. */
+.plan-pills {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  /* .header-actions spaces its items 14px apart; the Mac puts 8px between
+     the pills and the gear. */
+  margin-right: -6px;
+}
+
+.plan-pills.on {
+  display: flex;
+}
+
+/* Both pills: the Mac tightens the right side (icons 10px apart, pills 5px
+   from the gear, 8px from the edge). */
+.header-actions.both-plans {
+  gap: 10px;
+  padding-right: 8px;
+}
+
+.header-actions.both-plans .plan-pills {
+  margin-right: -5px;
+}
+
+.header-actions .plan-pill {
+  --plan: #6b7079;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--plan) 14%, transparent);
+  border-radius: 999px;
+  background: #0e0f11;
+  color: var(--dim-3);
+  font: 600 10px var(--font);
+  line-height: 12px;
+  white-space: nowrap;
+  cursor: default;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.header-actions .plan-pill:hover,
+.header-actions .plan-pill.active {
+  background: color-mix(in srgb, var(--plan) 18%, transparent);
+  border-color: color-mix(in srgb, var(--plan) 55%, transparent);
+  color: color-mix(in srgb, var(--plan) 70%, white);
+}
+
+.plan-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.plan-card {
+  position: relative;
+  z-index: 1;
+  padding-top: 10px;
+}
+
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 36px 0 108px;
+  white-space: nowrap;
+}
+
+.plan-head > * {
+  flex: 0 0 auto;
+}
+
+.plan-title {
+  font: 600 12px var(--font);
+  color: var(--ink);
+}
+
+.plan-head > .plan-sub {
+  flex: 0 1 auto; /* the one part that gives way, with an ellipsis */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+}
+
+.plan-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 12px 0 108px;
+}
+
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 11px var(--font);
+  white-space: nowrap;
+}
+
+.plan-label {
+  flex: 0 0 40px;
+  color: var(--dim-3);
+}
+
+.plan-bar {
+  flex: 0 0 50px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.plan-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.plan-pct {
+  flex: 0 0 30px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #c5c8cd;
+}
+
+.plan-reset-icon {
+  display: inline-flex;
+  color: var(--dim-3);
+}
+
+.plan-reset {
+  font-size: 10px;
+  color: var(--dim-3);
+}
+
+.plan-none {
+  color: var(--dim-3);
+}
+
+.plan-credits {
+  font-weight: 600;
+  color: #c5c8cd;
+}
+
+/* ── GitHub pulse (GitHubPulseCardView / GitHubDetailView) ─────────────── */
+
+.gh-spark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  cursor: default;
+  min-width: 0;
+}
+
+.gh-mini {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.gh-mini i,
+.gh-cell {
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+  flex: 0 0 auto;
+}
+
+.int-stats.gh-rows {
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.gh-stat {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: default;
+}
+
+.gh-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 600 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.gh-head-right {
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  cursor: default;
+}
+
+.gh-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 60px; /* three 20 px rows; the rest scrolls */
+  overflow-y: auto;
+  margin-top: 4px;
+  scrollbar-width: none;
+}
+
+.gh-list::-webkit-scrollbar {
+  display: none;
+}
+
+.gh-list.fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+}
+
+.gh-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  flex: 0 0 20px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  min-width: 0;
+}
+
+.gh-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gh-gap {
+  width: 5px;
+  flex: 0 0 5px;
+}
+
+.gh-ref {
+  font: 400 10.5px var(--font);
+  color: #9398a1;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.gh-title {
+  font: 400 11px var(--font);
+  color: #c5c8cd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gh-draft {
+  font: 400 9.5px var(--font);
+  color: var(--dim-3);
+  flex: 0 0 auto;
+}
+
+.gh-word {
+  margin-left: auto;
+  padding-left: 4px;
+  font: 400 10px var(--font);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.gh-empty {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  padding-top: 8px;
+}
+
+.gh-grid {
+  display: flex;
+  gap: 1.5px;
+  padding-top: 5px;
+}
+
+.gh-week {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+}
+
+.gh-cell.empty {
+  background: transparent;
+}
+
+/* ── Weekly recap ───────────────────────────────────────────────────────── */
+/* WeeklyRecapCardView: text from x = 116, indigo wash, chips of 17 px values. */
+
+.recap-stack {
+  padding: 4px 16px 4px 116px;
+  gap: 4px;
+}
+
+.recap-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.recap-title {
+  font: 600 11px var(--font);
+  color: #818cf8;
+}
+
+.recap-range {
+  font: 400 10px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+}
+
+.recap-chips {
+  display: flex;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.recap-chip .v {
+  font: 700 17px var(--font);
+  color: var(--ink-2);
+}
+
+.recap-chip .l {
+  font: 400 9px var(--font);
+  color: var(--dim-2);
+}
+
+.recap-meta {
+  display: flex;
+  gap: 5px;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recap-meta .n {
+  color: var(--ink-2);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recap-meta .sep {
+  color: var(--dim-4);
+}
+
+.recap-stack .actions {
+  margin-top: 3px;
+}
+
+.recap-share {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 8px 16px 8px 116px;
+}
+
+.recap-thumb {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 114px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.recap-share-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recap-status {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 14px;
+  font: 400 11px var(--font);
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recap-link {
+  color: #818cf8;
+  padding: 0;
+}
+
+/* ── Wardrobe (right-click on Mochi) — WardrobeView on macOS ─────────────── */
+
+.wardrobe-stack {
+  padding: 12px 16px 12px 104px;
+  gap: 10px;
+}
+
+.wardrobe-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wardrobe-title {
+  font: 600 12px var(--font);
+  color: var(--ink);
+  flex: 0 0 auto;
+}
+
+.wardrobe-note {
+  margin-left: auto;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wardrobe-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wardrobe-item {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out;
+}
+
+.wardrobe-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.wardrobe-item.on {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.wardrobe-item canvas {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}
+
+/* ── Arabic: right to left ─────────────────────────────────────────────────────
+   i18n.ts sets <html data-dir="rtl">. The text of the cards reads and aligns
+   right to left; Mochi, the pills, the header and the cards themselves keep
+   their places, and code, commands and the contribution grid stay left to
+   right. A chat message follows its own text's direction (an English answer
+   stays left to right). */
+html[data-dir="rtl"] #views :is(.stack, .int-card, .plan-card, .drop-body, .up-card) {
+  direction: rtl;
+}
+
+html[data-dir="rtl"] #views :is(.code, .gh-grid, .diff-card, .md-pre) {
+  direction: ltr;
+}
+
+html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-item, .reply .md-quote, .chat-input) {
+  unicode-bidi: plaintext;
+  text-align: start;
 }

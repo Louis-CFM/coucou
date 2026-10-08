@@ -33,7 +33,14 @@ struct PillDefinition {
 
     /// Label shown in the active-session card header (workspace/agent pills only).
     var sessionSubtitle: String {
-        id == "integration_claude" ? "Claude Code" : "Agent"
+        switch id {
+        case "integration_claude": return "Claude Code"
+        case "agent_cursor":       return "Cursor"
+        case "agent_codex":        return "Codex"
+        case "agent_hermes":       return "Hermes"
+        case "agent_claude-desktop": return "Claude Desktop"
+        default:                   return "Agent"
+        }
     }
 }
 
@@ -46,20 +53,38 @@ enum PillCatalog {
         .init(id: "integration_claude",  name: "VS Code",     color: "#F5F6F8",
               category: .workspace, subtitle: "Integration",  source: .claudeCode),
         .init(id: "agent_cursor",        name: "Cursor",      color: "#C0C4CC",
-              category: .workspace, subtitle: "Integration",  source: .agent,  comingSoon: true),
+              category: .workspace, subtitle: "Integration",  source: .agent),
+        .init(id: "agent_antigravity",   name: "Antigravity", color: "#E879F9",
+              category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
         .init(id: "agent_codex",         name: "Codex",       color: "#2DD4BF",
-              category: .workspace, subtitle: "Integration",  source: .agent,  comingSoon: true, githubOnly: true),
+              category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
-        .init(id: "agent_antigravity",   name: "Antigravity", color: "#E879F9",
+        .init(id: "agent_copilot",       name: "Copilot CLI", color: "#818CF8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_muse",          name: "Muse Code",   color: "#38BDF8",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_opencode",      name: "OpenCode",    color: "#4ADE80",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        // Claude Code sessions run from the Claude desktop app: the relay tags them
+        // `coucou_agent: claude-desktop` from CLAUDE_CODE_ENTRYPOINT, so nothing to install.
+        .init(id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757",
+              category: .agent,     subtitle: "Agent",        source: .agent),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_google",           name: "Google AI",   color: ChatProvider.google.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_openai",           name: "OpenAI",      color: ChatProvider.openai.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n),
+        .init(id: "ai_ollama",           name: "Ollama",      color: ChatProvider.ollama.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n),
+        .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",
@@ -76,6 +101,8 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_stripe",  name: "Stripe",      color: "#0570DE",
               category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
+              category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
     ]
 
     /// Pills available in the current build target.
