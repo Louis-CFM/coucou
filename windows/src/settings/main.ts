@@ -852,6 +852,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       void Bridge.spotifyInstalled().then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
+      rows.append(
+        h("div", { class: "row" },
+          h("label", { text: t("Announce new songs") }),
+          toggle(settings.announceSongs, (v) => { settings.announceSongs = v; void save(); }),
+        ),
+        h("div", { class: "hint", text: t("The island opens on each new song for a few seconds, then folds back.") }),
+      );
     }
 
     list.append(

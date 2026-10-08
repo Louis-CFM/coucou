@@ -51,7 +51,22 @@ export const IDLE_SPOTIFY: SpotifyState = {
 export const Spotify = {
   state: { ...IDLE_SPOTIFY } as SpotifyState,
   artwork: null as { artUrl: string; dataUrl: string } | null,
+  /** The id of the last track heard playing, to tell a new song from the same one going on. */
+  heard: null as string | null,
+  /** A new song is being announced (island/spotify.ts): 0, or a number of its own for each. */
+  announcing: 0,
 };
+
+/** How long the island stays open on a song that just started, seconds. */
+export const ANNOUNCE_SECONDS = 3;
+
+/**
+ * A song starts after another one. Not the first heard since Spotify started,
+ * not the same one going on after a pause or a seek, and never an ad.
+ */
+export function isNewSong(heard: string | null, s: SpotifyState): boolean {
+  return s.playing && s.track != null && heard != null && heard !== s.track.id && !isAd(s.track);
+}
 
 /** The cover to show for the current track, if it has arrived. */
 export function currentArtwork(s: SpotifyState = Spotify.state): string | null {

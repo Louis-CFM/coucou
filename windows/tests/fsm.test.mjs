@@ -377,3 +377,70 @@ test("open on hover: an island opened by an alert keeps the normal delay", () =>
   seconds(2);
   assert.equal(fsm.state, "petit");
 });
+
+// ── A glance: news that asks nothing (a new song) ─────────────────────────────
+
+test("a glance opens the island and folds it after its own delay, whatever the auto-close", () => {
+  fsm.homeToPetitDelay = 15;
+  fsm.glance(4.5);
+  assert.equal(fsm.state, "home");
+  fsm.mouseLeft();               // the island: the mouse is elsewhere
+  seconds(4.4);
+  assert.equal(fsm.state, "home");
+  seconds(0.2);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a glance: the mouse coming makes it an open island like any other", () => {
+  fsm.homeToPetitDelay = 15;
+  fsm.glance(4.5);
+  fsm.mouseLeft();
+  seconds(2);
+  fsm.mouseEntered();
+  seconds(30);
+  assert.equal(fsm.state, "home", "held for as long as the mouse is on it");
+  fsm.mouseLeft();
+  seconds(14);
+  assert.equal(fsm.state, "home", "the auto-close delay now, not the glance's");
+  seconds(2);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a glance somebody took over waits the normal delay, and a second glance starts its own again", () => {
+  fsm.homeToPetitDelay = 15;
+  fsm.glance(4.5);
+  fsm.mouseLeft();
+  seconds(4);
+  // The next song, half a second before the fold.
+  fsm.glance(4.5);
+  fsm.mouseLeft();
+  seconds(4);
+  assert.equal(fsm.state, "home");
+  fsm.userInteracted();          // a key, an alert: the short countdown becomes the normal one
+  seconds(14);
+  assert.equal(fsm.state, "home");
+  seconds(2);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a glance leaves nothing behind: the next open folds after the auto-close delay", () => {
+  fsm.homeToPetitDelay = 15;
+  fsm.glance(4.5);
+  fsm.mouseLeft();
+  seconds(5);
+  assert.equal(fsm.state, "petit");
+  fsm.click();
+  fsm.mouseLeft();
+  seconds(14);
+  assert.equal(fsm.state, "home");
+  seconds(2);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a glance never folds a pinned island", () => {
+  fsm.glance(4.5);
+  fsm.pinned = true;             // a card came up meanwhile
+  fsm.mouseLeft();
+  seconds(60);
+  assert.equal(fsm.state, "home");
+});

@@ -2440,6 +2440,59 @@ input[type="range"]::-webkit-slider-thumb {
   opacity: 0;
 }
 
+/* A new song is being announced (island/spotify.ts): the island opened on its
+   own, and light says why. A wash of Mochi's colour (--np-light: the pill's,
+   or the one picked for it in Settings) breathes behind him for as long as the
+   island stays open, the cover glows in it and a sheen crosses it. Each plays
+   once; without the class the card is as it always was. */
+.np-root.announce {
+  position: relative;
+  z-index: 0;
+}
+
+.np-root.announce::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(120% 140% at 12% 50%, rgba(var(--np-light, 29, 185, 84), 0.34), transparent 62%);
+  animation: np-announce-wash var(--np-announce, 3s) ease-in-out both;
+}
+
+@keyframes np-announce-wash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  45% { opacity: 0.55; }
+  70% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+.np-root.announce .np-art {
+  animation: np-announce-glow 1.6s ease-out both;
+}
+
+@keyframes np-announce-glow {
+  0% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(var(--np-light, 29, 185, 84), 0.9); }
+  35% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 0 14px 3px rgba(var(--np-light, 29, 185, 84), 0.65); }
+  100% { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(var(--np-light, 29, 185, 84), 0); }
+}
+
+.np-root.announce .np-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: np-announce-sheen 0.9s 0.25s ease-in-out both;
+}
+
+@keyframes np-announce-sheen {
+  to { transform: translateX(120%); }
+}
+
 .np-text {
   display: flex;
   flex-direction: column;

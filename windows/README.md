@@ -425,6 +425,15 @@ own window.
   sleeps until Windows says a session or Spotify's state changed, while the
   pill is declared. Other players (a browser, another music app) are not
   shown. For Linux see [Linux](#linux).
+- **A new song** can open the island on Spotify's card for three seconds and
+  fold it back, the pill that was in front getting its place again (Settings →
+  Integrations → Spotify → **Announce new songs**, off by default; Windows and
+  Linux, the Mac does not do this). A light in Mochi's colour breathes behind
+  him, the cover glows and a sheen crosses it, so it reads as news and not as
+  an island that opened by accident. No sound. Never over an island that is
+  open, under the mouse, pinned or waiting for an answer; the mouse coming, a
+  key or an alert makes it an open island like any other. Not for the first
+  song after Spotify starts, the same one going on after a pause, or an ad.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
