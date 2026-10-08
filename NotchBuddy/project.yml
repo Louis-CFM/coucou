@@ -138,6 +138,7 @@ targets:
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         CFBundleLocalizations:
           - en
@@ -205,6 +206,7 @@ targets:
         LSApplicationCategoryType: public.app-category.developer-tools
         ITSAppUsesNonExemptEncryption: NO
         NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         CFBundleLocalizations:
           - en
