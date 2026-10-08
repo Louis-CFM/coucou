@@ -1089,6 +1089,8 @@ export class Island {
 
     const live = expanded && !greetingActive;
     this.contentEl.style.opacity = live ? "1" : "0";
+    // Lets the stylesheet pause what nobody can see (see `#content:not(.live)`).
+    this.contentEl.classList.toggle("live", live);
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
