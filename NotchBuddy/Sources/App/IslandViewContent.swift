@@ -200,7 +200,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            if ClaudeHost.activate(task.hostApp) { return }
+            if ClaudeHost.activate(task.hostApp, tty: task.sessionTTY) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let url = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId })?.bundleURL {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
@@ -270,7 +270,7 @@ struct OverviewView: View {
                 }
             } else {
                 #if !APPSTORE
-                TerminalTarget.activate(sessionBundleId: task.sessionBundleId)
+                TerminalTarget.activate(sessionBundleId: task.sessionBundleId, tty: task.sessionTTY)
                 #endif
             }
         }
@@ -632,8 +632,8 @@ struct FinishedView: View {
                         PrimaryButton("Open terminal") {
                             // The app the session runs in (its terminal, or VS Code), then any known terminal
                             let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
-                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp, tty: task?.sessionTTY)),
+                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId, tty: task?.sessionTTY) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -2103,7 +2103,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude", task.hostApp != nil {
-                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp, tty: task.sessionTTY) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
