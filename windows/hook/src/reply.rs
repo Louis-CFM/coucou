@@ -26,6 +26,11 @@ fn wants_json(agent: &str) -> bool {
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
     if event != "PermissionRequest" {
+        // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
+        // (and the user's Always Allow): Coucou never allows a tool by itself.
+        if agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse" {
+            return Some(r#"{"decision":"ask"}"#.to_string());
+        }
         return wants_json(agent).then(|| "{}".to_string());
     }
     let decision = decision.filter(|_| takes_decisions(agent));
@@ -152,7 +157,10 @@ mod tests {
     fn allows(out: &str) -> bool {
         let v: Value = serde_json::from_str(out).expect("every reply is JSON");
         let text = v.to_string();
-        text.contains("allow") || v.get("decision").is_some() || v.get("permission").is_some() || v.get("continue").is_some()
+        // Any decision counts as one, except "ask" (Antigravity's PreToolUse): that hands the
+        // choice back to the agent's own prompt.
+        let decided = v.get("decision").map_or(false, |d| d.as_str() != Some("ask"));
+        text.contains("allow") || decided || v.get("permission").is_some() || v.get("continue").is_some()
     }
 
     #[test]
@@ -213,12 +221,15 @@ mod tests {
         );
         assert_eq!(stdout("devin", "PermissionRequest", None, None), None);
         assert_eq!(stdout("devin", "PreToolUse", None, None), None);
-        // Gemini CLI and Antigravity read "{}" as "no opinion" — Antigravity's
-        // PreToolUse included: the tool is never allowed on Coucou's say-so.
-        for agent in ["gemini", "antigravity"] {
-            for event in ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"] {
-                assert_eq!(stdout(agent, event, None, None).unwrap(), "{}");
-            }
+        // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
+        // other lifecycle events receive "{}".
+        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
+        for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
+            assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");
+        }
+        // Gemini CLI reads "{}" as "no opinion".
+        for event in ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"] {
+            assert_eq!(stdout("gemini", event, None, None).unwrap(), "{}");
         }
         // Cursor: silence, which Cursor reads as "carry on as usual".
         for event in ["PreToolUse", "UserPromptSubmit", "Stop"] {
