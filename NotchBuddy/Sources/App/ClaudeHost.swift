@@ -64,12 +64,13 @@ struct ClaudeHost: Equatable {
     }
 
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
+    /// Goes through Launch Services: NSRunningApplication.activate() is ignored on macOS 14+
+    /// unless the caller is the active app, which Coucou never is.
     @discardableResult
     static func activate(_ hostBundleId: String?) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
-            running.activate()
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+        let running = NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+        if let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
         return true
