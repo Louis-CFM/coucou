@@ -269,13 +269,14 @@ enum ServiceSnapshots {
         let deployments = filter.isEmpty ? s.vercelDeployments : s.vercelDeployments.filter { filter.contains($0.projectName) }
         guard let latest = deployments.first else { return nil }
         func tone(_ d: VercelDeployment) -> ServiceTone {
-            d.isSuccess ? .ok : (d.state == "CANCELED" ? .warning : .error)
+            d.isSuccess ? .ok : ((d.state == "CANCELED" || d.isBuilding) ? .warning : .error)
         }
         let branch = latest.branch.map { " · \($0)" } ?? ""
         let reason: String
         switch latest.state {
         case "READY": reason = "Last deploy is live: \(latest.projectName)\(branch)"
         case "CANCELED": reason = "Last deploy was canceled: \(latest.projectName)\(branch)"
+        case "BUILDING", "QUEUED", "INITIALIZING": reason = "Building: \(latest.projectName)\(branch)"
         default: reason = "Last deploy failed: \(latest.projectName)\(branch)"
         }
         let items = deployments.prefix(10).map { d in
