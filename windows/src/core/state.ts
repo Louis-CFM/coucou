@@ -238,6 +238,9 @@ class AppState {
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
 
+  /** The chat's model picker is open: the island gives it its full height. */
+  pickingModel = false;
+
   lastActivity = performance.now();
 
   settings: Settings = { ...DEFAULT_SETTINGS };
