@@ -189,6 +189,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        #if !APPSTORE
+        CodexEventAdapter.shared.start()
+        #endif
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()

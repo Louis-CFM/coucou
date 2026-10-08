@@ -82,6 +82,100 @@ enum DiffEngine {
         )
     }
 
+    /// Codex patch input contains only the changed lines, never a full old file.
+    static func fromCodexPatch(_ patch: String) -> [FileDiff] {
+        guard patch.utf8.count <= FileDiff.maxBytes else { return [] }
+        var result: [FileDiff] = []
+        var path: String?, lines: [DiffLine] = [], isNew = false
+        func flush() {
+            guard let file = path else { return }
+            result.append(FileDiff(path: file, added: lines.filter { $0.kind == .added }.count,
+                          removed: lines.filter { $0.kind == .removed }.count,
+                          hunks: lines.isEmpty ? [] : [DiffHunk(origStart: 0, newStart: 0, lines: lines)],
+                          tooLarge: false, isNewFile: isNew))
+            lines = []
+        }
+        let parts = patch.components(separatedBy: "\n")
+        guard parts.count <= FileDiff.maxLines else { return [] }
+        for line in parts {
+            if line.hasPrefix("*** Add File: ") || line.hasPrefix("*** Update File: ") || line.hasPrefix("*** Delete File: ") {
+                flush()
+                path = String(line.dropFirst(line.firstIndex(of: ":")!.utf16Offset(in: line) + 2))
+                isNew = line.hasPrefix("*** Add File: ")
+            } else if line.hasPrefix("*** Move to: ") {
+                path = String(line.dropFirst("*** Move to: ".count))
+            } else if path != nil, let first = line.first, first == "+" || first == "-" || first == " " {
+                lines.append(DiffLine(kind: first == "+" ? .added : first == "-" ? .removed : .context,
+                             text: String(line.dropFirst()), origLine: -1, newLine: -1))
+            }
+        }
+        flush()
+        return result
+    }
+
+    /// Parse bounded native unified diffs. Counts come from hunks, never whole-file guesses.
+    static func fromUnifiedDiff(_ diff: String, path fallback: String? = nil) -> [FileDiff] {
+        guard diff.utf8.count <= FileDiff.maxBytes else { return [] }
+        let parts = diff.components(separatedBy: "\n")
+        guard parts.count <= FileDiff.maxLines else { return [] }
+        var result: [FileDiff] = []
+        var path = fallback, oldPath: String?, hunks: [DiffHunk] = [], lines: [DiffLine] = []
+        var old = 0, new = 0, startOld = 0, startNew = 0, active = false
+        var oldRemaining = 0, newRemaining = 0
+        func flushHunk() {
+            if !lines.isEmpty { hunks.append(DiffHunk(origStart: startOld, newStart: startNew, lines: lines)) }
+            lines = []; active = false
+        }
+        func flushFile() {
+            flushHunk()
+            guard let file = path, !hunks.isEmpty else { return }
+            let flat = hunks.flatMap(\.lines)
+            result.append(FileDiff(path: file, added: flat.filter { $0.kind == .added }.count,
+                                  removed: flat.filter { $0.kind == .removed }.count,
+                                  hunks: hunks, tooLarge: false, isNewFile: oldPath == "/dev/null"))
+            hunks = []
+        }
+        func fileName(_ raw: String) -> String {
+            let text = raw.components(separatedBy: "\t")[0].trimmingCharacters(in: .newlines)
+            return text.hasPrefix("a/") || text.hasPrefix("b/") ? String(text.dropFirst(2)) : text
+        }
+        for line in parts {
+            if line.hasPrefix("diff --git ") { flushFile(); path = fallback; oldPath = nil }
+            else if !active && line.hasPrefix("--- ") {
+                // The previous hunk's declared counts distinguish file headers
+                // from legitimate removed/added lines starting with -- or ++.
+                flushFile(); path = fallback
+                oldPath = fileName(String(line.dropFirst(4)))
+            } else if !active && line.hasPrefix("+++ ") {
+                let next = fileName(String(line.dropFirst(4)))
+                path = fallback ?? (next == "/dev/null" ? oldPath : next)
+            } else if line.hasPrefix("@@ ") {
+                flushHunk()
+                let fields = line.split(separator: " ")
+                guard fields.count >= 4, fields[1].hasPrefix("-"), fields[2].hasPrefix("+"), fields[3] == "@@" else { continue }
+                let before = fields[1].dropFirst().split(separator: ",", omittingEmptySubsequences: false)
+                let after = fields[2].dropFirst().split(separator: ",", omittingEmptySubsequences: false)
+                guard let a = before.first.flatMap({ Int($0) }), let b = after.first.flatMap({ Int($0) }),
+                      before.count <= 2, after.count <= 2,
+                      let ac = before.count == 2 ? Int(before[1]) : 1,
+                      let bc = after.count == 2 ? Int(after[1]) : 1,
+                      a >= 0, b >= 0, ac >= 0, bc >= 0 else { continue }
+                old = a; new = b; startOld = a; startNew = b
+                oldRemaining = ac; newRemaining = bc; active = ac > 0 || bc > 0
+            } else if active, let first = line.first, first == "+" || first == "-" || first == " " {
+                let kind: DiffLine.Kind = first == "+" ? .added : first == "-" ? .removed : .context
+                guard (kind == .added || oldRemaining > 0), (kind == .removed || newRemaining > 0) else { active = false; continue }
+                lines.append(DiffLine(kind: kind, text: String(line.dropFirst()),
+                                     origLine: kind == .added ? -1 : old, newLine: kind == .removed ? -1 : new))
+                if kind != .added { old += 1; oldRemaining -= 1 }
+                if kind != .removed { new += 1; newRemaining -= 1 }
+                if oldRemaining == 0 && newRemaining == 0 { active = false }
+            }
+        }
+        flushFile()
+        return result
+    }
+
     // MARK: - Line splitting
 
     private static func splitLines(_ text: String) -> [String] {

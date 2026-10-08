@@ -104,14 +104,11 @@ struct OverviewView: View {
                 #if !APPSTORE
                 if state.showingPlanDetail {
                     CardBackground(wash: nil)
-                    Group {
-                        if state.planDetailIsCodex {
-                            CodexPlanCardView(usage: state.codexPlanUsage)
-                        } else {
-                            ClaudePlanCardView(usage: state.claudePlanUsage)
-                        }
+                    if state.planDetailProvider == "codex" {
+                        CodexPlanCardView().transition(.opacity)
+                    } else {
+                        ClaudePlanCardView(usage: state.claudePlanUsage).transition(.opacity)
                     }
-                    .transition(.opacity)
                 }
                 #endif
 
@@ -188,12 +185,11 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+            #if !APPSTORE
+            SessionTarget.open(task)
+            #else
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
+            #endif
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
@@ -210,19 +206,9 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
-        case "agent_cursor":
+        case "agent_cursor", "agent_codex":
             #if !APPSTORE
-            if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
-                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-            }
-            #endif
-        case "agent_codex":
-            #if !APPSTORE
-            if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.openai.codex") {
-                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
-            }
+            SessionTarget.open(task)
             #endif
         case "agent_claude-desktop":
             openClaudeDesktopApp()
@@ -289,7 +275,7 @@ struct EmptyStateView: View {
                         .foregroundColor(Color(hex: "#9398A1"))
                 }
                 Spacer()
-                PrimaryButton("Ask Claude") {
+                PrimaryButton(String(localized: "Chat")) {
                     state.view = .prompt
                 }
             }
@@ -327,6 +313,19 @@ struct ApprovalView: View {
                         SecondaryButton("Always") {
                             HookServer.shared.sendApprovalDecision("always")
                         }
+                    }
+                    if approval?.allowsSession == true {
+                        SecondaryButton(String(localized: "approval.session", defaultValue: "Allow this session")) {
+                            HookServer.shared.sendApprovalDecision("session")
+                        }
+                    }
+                    if let labels = approval?.ruleLabels, !labels.isEmpty {
+                        Menu(String(localized: "approval.remember-rule", defaultValue: "Remember rule")) {
+                            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                                Button(label) { HookServer.shared.sendApprovalDecision("rule:\(index)") }
+                            }
+                        }
+                        .font(.system(size: 11))
                     }
                 }
             }
@@ -369,7 +368,7 @@ struct QuestionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Header row: agent name + question counter + "Reply in terminal" link
                     HStack(spacing: 4) {
-                        AgentWho(task: nil, label: "Claude Code is asking")
+                        AgentWho(task: state.tasks.first(where: { $0.id == q.pillId }) ?? state.focusTask, label: String(localized: "agent.asking", defaultValue: "is asking"))
                         Spacer(minLength: 4)
                         if q.questions.count > 1 {
                             Text("\(qi + 1)/\(q.questions.count)")
@@ -395,10 +394,19 @@ struct QuestionView: View {
                     // Options (wrapping) or "Other…" compact inline row
                     if curOther {
                         HStack(spacing: 6) {
-                            TextField("Your answer…", text: Binding(
-                                get: { qi < otherTexts.count ? otherTexts[qi] : "" },
-                                set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
-                            ))
+                            Group {
+                                if item.isSecret {
+                                    SecureField("Your answer…", text: Binding(
+                                        get: { qi < otherTexts.count ? otherTexts[qi] : "" },
+                                        set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
+                                    ))
+                                } else {
+                                    TextField("Your answer…", text: Binding(
+                                        get: { qi < otherTexts.count ? otherTexts[qi] : "" },
+                                        set: { v in if qi < otherTexts.count { otherTexts[qi] = v } }
+                                    ))
+                                }
+                            }
                             .textFieldStyle(.plain)
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#F5F6F8"))
@@ -487,8 +495,10 @@ struct QuestionView: View {
                                 }
                             }
                             // "Other…" implicit free-text option
-                            SecondaryButton("Other…") {
-                                if qi < showOther.count { showOther[qi] = true }
+                            if item.isOther {
+                                SecondaryButton("Other…") {
+                                    if qi < showOther.count { showOther[qi] = true }
+                                }
                             }
                         }
                     }
@@ -517,7 +527,7 @@ struct QuestionView: View {
         let count = state.pendingQuestion?.questions.count ?? 0
         selections = Array(repeating: [], count: count)
         otherTexts = Array(repeating: "", count: count)
-        showOther  = Array(repeating: false, count: count)
+        showOther = state.pendingQuestion?.questions.map { $0.options.isEmpty || $0.isSecret } ?? []
     }
 
     private func toggleSelection(qi: Int, label: String) {
@@ -606,7 +616,7 @@ struct FinishedView: View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(task: state.focusTask, label: String(localized: "agent.finished", defaultValue: "finished"))
                 Text({
                     if let fl = state.focusTask?.finalLine { return fl }
                     if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
@@ -617,7 +627,6 @@ struct FinishedView: View {
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
                     if state.focusTask?.id == "agent_claude-desktop" {
-                        // Sessions from the Claude desktop app live there, not in a terminal.
                         PrimaryButton("Open Claude") {
                             openClaudeDesktopApp()
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -625,13 +634,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                            let activated = terminalBundleIds.compactMap { id in
-                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                            if activated == nil {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
+                            SessionTarget.open(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
@@ -1192,6 +1195,9 @@ struct PromptView: View {
             CardBackground(wash: .indigo)
 
             VStack(alignment: .leading, spacing: 6) {
+                #if !APPSTORE
+                if state.chatProvider == .codex { codexProjectBar }
+                #endif
                 if let ctx = state.promptContext {
                     ContextChip(context: ctx).padding(.top, 4)
                 }
@@ -1277,7 +1283,7 @@ struct PromptView: View {
                             .foregroundColor(Color(hex: "#0B0C0E"))
                     }
                     .buttonStyle(SendButtonStyle())
-                    .disabled(text.isEmpty)
+                    .disabled(text.isEmpty || state.codexChatBusy)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(Color.white.opacity(0.07))
@@ -1290,7 +1296,13 @@ struct PromptView: View {
             .padding(.bottom, 14)
         }
         .padding(.bottom, 10)
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            #if !APPSTORE
+            if state.codexProjectPath.isEmpty, let cwd = state.focusTask?.sessionCwd,
+               let valid = try? CodexChatService.validatedProject(cwd) { state.codexProjectPath = valid }
+            #endif
+        }
         .onChange(of: state.view) { _, view in
             if view == .prompt {
                 state.fetchModelsIfNeeded(for: state.chatProvider)
@@ -1314,9 +1326,42 @@ struct PromptView: View {
         }
     }
 
+    #if !APPSTORE
+    private var codexProjectBar: some View {
+        HStack(spacing: 6) {
+            Button {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.allowsMultipleSelection = false
+                if panel.runModal() == .OK, let url = panel.url,
+                   let path = try? CodexChatService.validatedProject(url.path) {
+                    state.selectCodexProject(path)
+                }
+            } label: {
+                Label(state.codexProjectPath.isEmpty ? String(localized: "codex.choose-project", defaultValue: "Choose project")
+                    : URL(fileURLWithPath: state.codexProjectPath).lastPathComponent, systemImage: "folder")
+            }
+            .help(state.codexProjectPath)
+            .disabled(state.codexChatBusy)
+            Text(state.codexCanWrite ? String(localized: "codex.project-write", defaultValue: "Project write access")
+                 : String(localized: "codex.read-only", defaultValue: "Read only"))
+                .foregroundColor(.secondary)
+            Spacer(minLength: 0)
+            if state.codexChatBusy {
+                Button(String(localized: "Cancel")) { CodexChatService.shared.cancel() }
+            } else {
+                Button(String(localized: "codex.new-chat", defaultValue: "New chat")) {
+                    CodexChatService.shared.reset(); state.chatHistory = []
+                }
+            }
+        }
+        .font(.system(size: 10))
+        .buttonStyle(.plain)
+    }
+    #endif
+
     private func sendMessage() {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return }
+        guard !query.isEmpty, !state.codexChatBusy else { return }
         text = ""
         focused = false
         state.chatHistory.append(ChatMessage(role: .user, content: query))
@@ -1367,6 +1412,9 @@ struct ModelPickerView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Provider chips — wrap; hide local providers when not connected and not already active
             let visibleProviders = ChatProvider.allCases.filter { p in
+                #if APPSTORE
+                if p == .codex { return false }
+                #endif
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
                 return true
@@ -1401,6 +1449,7 @@ struct ModelPickerView: View {
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .disabled(state.codexChatBusy)
                 }
             }
 
@@ -1454,6 +1503,7 @@ struct ModelPickerView: View {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
+                            case .codex:     state.codexModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
                             }
@@ -1481,6 +1531,7 @@ struct ModelPickerView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
+                        .disabled(state.codexChatBusy)
                     }
                 }
             }
@@ -1639,6 +1690,9 @@ struct NoteView: View {
 // MARK: - Integration card (overview left card when an integration pill is focused)
 
 struct IntegrationCardView: View {
+    #if !APPSTORE
+    @ObservedObject private var codexInfo = CodexAgentsInfo.shared
+    #endif
     let task: AgentTask
     @Binding var showingDetail: Bool
     var onDiffTap: ((Int) -> Void)? = nil
@@ -1653,7 +1707,7 @@ struct IntegrationCardView: View {
             return HookServer.claudeHooksInstalled()
         case "agent_codex":
             #if !APPSTORE
-            return HookServer.codexHooksInstalled()
+            return CodexAgentsInfo.shared.hooksStatus == .done
             #else
             return false
             #endif
@@ -1815,6 +1869,9 @@ struct IntegrationCardView: View {
 
     private var statusLabel: String {
         #if !APPSTORE
+        if task.id == "agent_codex" {
+            return codexInfo.hooksStatus == .done ? String(localized: "Done") : codexInfo.hookDetail
+        }
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
             if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
@@ -1989,7 +2046,13 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude" {
-                        Button("Open Visual Studio Code") { openVSCode() }
+                        Button("Open Visual Studio Code") {
+                            #if !APPSTORE
+                            SessionTarget.open(task)
+                            #else
+                            openVSCode()
+                            #endif
+                        }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -2008,16 +2071,10 @@ struct IntegrationCardView: View {
                         #endif
                     } else if task.id == "agent_codex" {
                         #if !APPSTORE
-                        if let url = NSWorkspace.shared.urlForApplication(
-                            withBundleIdentifier: "com.openai.codex") {
-                            Button("Open Codex") {
-                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
-                                                                   completionHandler: nil)
-                            }
+                        Button(String(localized: "session.open-source", defaultValue: "Open session source")) { SessionTarget.open(task) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
-                        }
                         #endif
                     } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {
@@ -2085,7 +2142,6 @@ struct IntegrationCardView: View {
                     // Settings button: shown when not configured, except cursor/codex and music
                     if !isConfigured
                        && task.id != "agent_cursor"
-                       && task.id != "agent_codex"
                        && task.id != "integration_music" {
                         Button("Settings…") {
                             let section: String
@@ -4484,7 +4540,7 @@ struct AgentWho: View {
         HStack(spacing: 7) {
             if let task = task {
                 Circle().fill(Color(hex: task.color)).frame(width: 8, height: 8)
-                Text(task.name).font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                Text(task.id == "agent_codex" ? task.sessionOriginLabel : task.name).font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
             }
             Text(LocalizedStringKey(label)).font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
         }
@@ -4703,23 +4759,57 @@ struct SendButtonStyle: ButtonStyle {
 
 struct SettingsIslandView: View {
     @ObservedObject var state: AppState
+    #if !APPSTORE
+    @ObservedObject private var codexInfo = CodexAgentsInfo.shared
+    @ObservedObject private var codexChat = CodexChatService.shared
+    #endif
 
-    private var claudeConnected: Bool {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any],
-              let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
-        return ss.contains { matcher in
-            (matcher["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false
+    private var currentAgent: AgentTask? {
+        if let task = state.focusTask, task.source != .n8n { return task }
+        return state.tasks.filter { $0.source != .n8n }.max {
+            ($0.lastEventAt ?? .distantPast) < ($1.lastEventAt ?? .distantPast)
         }
     }
 
-    private var apiConnected: Bool {
-        KeychainStore.shared.get("anthropic-api-key") != nil
+    private var agentStatus: (label: String, ok: Bool?) {
+        guard let task = currentAgent else { return (String(localized: "Agent"), nil) }
+        let name = task.id == "integration_claude" ? "Claude Code" : PillCatalog.definition(for: task.id)?.name ?? task.name
+        let label = String(format: String(localized: "Agent · %@"), name)
+        let ok: Bool?
+        #if APPSTORE
+        ok = task.id == "integration_claude"
+            ? UserDefaults.standard.bool(forKey: "coucouHooksInstalled") : nil
+        #else
+        switch task.id {
+        case "integration_claude": ok = HookServer.claudeHooksInstalled()
+        case "agent_codex": ok = codexInfo.hooksStatus == .unknown ? nil : codexInfo.hooksStatus == .done
+        case "agent_gemini": ok = HookServer.geminiHooksInstalled()
+        case "agent_antigravity": ok = HookServer.agyHooksInstalled()
+        case "agent_copilot": ok = HookServer.copilotHooksInstalled()
+        case "agent_muse": ok = HookServer.museHooksInstalled()
+        case "agent_opencode": ok = HookServer.openCodePluginInstalled()
+        case "agent_amp": ok = HookServer.ampPluginInstalled()
+        default: ok = task.lastEventAt == nil ? nil : true
+        }
+        #endif
+        return (label, ok)
+    }
+
+    private var chatStatus: (label: String, ok: Bool?) {
+        let provider = state.chatProvider
+        if provider == .codex {
+            #if APPSTORE
+            return (String(localized: "Chat · ChatGPT login"), nil)
+            #else
+            return (String(format: String(localized: "Chat · ChatGPT · %@"), codexChat.authenticationStatus.label), codexChat.authenticationStatus.connected)
+            #endif
+        }
+        if provider.isLocal {
+            let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
+            return (String(format: String(localized: "Chat · %@ server"), provider.displayName), !url.isEmpty)
+        }
+        let key = KeychainStore.shared.get(provider.keychainKey)
+        return (String(format: String(localized: "Chat · %@ API"), provider.displayName), !(key ?? "").isEmpty)
     }
 
     var body: some View {
@@ -4768,8 +4858,10 @@ struct SettingsIslandView: View {
 
                 // Connection status
                 HStack(spacing: 14) {
-                    StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    StatusBadge(label: agentStatus.label, ok: agentStatus.ok)
+                        .help(String(localized: "Agent relay configuration or an observed session. Gray means it has not been checked."))
+                    StatusBadge(label: chatStatus.label, ok: chatStatus.ok)
+                        .help(String(localized: "Chat uses its selected provider independently of the current agent. Codex uses its ChatGPT login without an API key; other providers show their key or server configuration."))
                     Spacer()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
@@ -4783,22 +4875,35 @@ struct SettingsIslandView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 14)
         }
+        #if !APPSTORE
+        .task(id: currentAgent?.id) {
+            guard let agent = currentAgent, agent.id == "agent_codex" else { return }
+            await codexInfo.refresh(threadId: agent.codexThreadId, rolloutPath: agent.codexRolloutPath)
+        }
+        .task(id: state.chatProvider) {
+            guard state.chatProvider == .codex else { return }
+            await codexChat.refreshAuthentication()
+        }
+        #endif
     }
 }
 
 struct StatusBadge: View {
     let label: String
-    let ok: Bool
+    let ok: Bool?
 
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(ok ? Color(hex: "#22C55E") : Color(hex: "#F4505E"))
+                .fill(Color(hex: ok.map { $0 ? "#22C55E" : "#F4505E" } ?? "#6B7079"))
                 .frame(width: 6, height: 6)
             Text(label)
                 .font(.system(size: 11))
                 .foregroundColor(Color(hex: "#8E939C"))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(ok.map { $0 ? String(localized: "Connected") : String(localized: "Not connected") } ?? String(localized: "Unknown"))
     }
 }
 

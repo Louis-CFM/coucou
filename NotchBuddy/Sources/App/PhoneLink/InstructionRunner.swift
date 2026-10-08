@@ -26,13 +26,12 @@ final class InstructionRunner {
     private var pollTask: Task<Void, Never>?
     private var changeToken: CKServerChangeToken?
     private var running: [String: Process] = [:]   // by session id
-
-    /// Instructions older than this are dropped instead of run.
-    private let maxAge: TimeInterval = 10 * 60
+    private var pendingCodex = Set<String>()
 
     func setEnabled(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: Self.enabledKey)
         if on && CloudProbe.isEnabled { start() } else { stop() }
+        SessionPublisher.shared.refresh()
     }
 
     func startIfEnabled() {
@@ -78,39 +77,64 @@ final class InstructionRunner {
             return
         }
         guard !found.isEmpty else { return }
-        // Single use: gone from iCloud before anything runs.
-        _ = try? await database.modifyRecords(saving: [], deleting: found.map(\.recordID))
+        // At most once: a failed deletion must never launch a turn that might
+        // be fetched again after a restart.
+        guard let consumed = try? await database.modifyRecords(saving: [], deleting: found.map(\.recordID), atomically: false) else { return }
         for record in found.sorted(by: { ($0["createdAt"] as? Date ?? .distantPast) < ($1["createdAt"] as? Date ?? .distantPast) }) {
+            guard case .success? = consumed.deleteResults[record.recordID] else { continue }
             handle(record)
         }
+    }
+
+    static func targetIdentity(for task: AgentTask) -> String? {
+        guard [.idle, .finished, .sleeping, .error, .ratelimit].contains(task.state),
+              let sessionId = task.sessionId, let cwd = task.sessionCwd else { return nil }
+        if task.id == "agent_codex" {
+            guard task.codexManaged, let thread = task.codexThreadId,
+                  !CodexChatService.shared.isBusy, CodexChatService.shared.owns(threadId: thread) else { return nil }
+            return SessionInstructionIdentity.make(pillId: task.id, sessionId: sessionId, threadId: thread, cwd: cwd, turnId: task.codexTurnId)
+        }
+        guard task.id == "integration_claude" || task.id == "agent_cursor" else { return nil }
+        return SessionInstructionIdentity.make(pillId: task.id, sessionId: sessionId, threadId: nil, cwd: cwd)
     }
 
     private func handle(_ record: CKRecord) {
         let pillId = record["pillId"] as? String ?? ""
         let createdAt = record["createdAt"] as? Date ?? .distantPast
         let text = (record.encryptedValues["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let identity = record["targetIdentity"] as? String ?? ""
         guard Self.isEnabled else { log("ignored: instructions are off"); return }
-        guard Date().timeIntervalSince(createdAt) < maxAge else { log("ignored: older than 10 min"); return }
-        guard !text.isEmpty, text.count <= 8000 else { log("ignored: empty or too long"); return }
-        guard pillId == "integration_claude" || pillId == "agent_cursor" else { log("ignored: \(pillId) can't take instructions"); return }
-        guard let session = TurnRecorder.shared.lastSession(for: pillId) else {
-            log("ignored: no Claude Code session seen for \(pillId) yet")
+        guard record["identityVersion"] as? Int == SessionInstructionIdentity.version,
+              let task = AppState.shared.tasks.first(where: { $0.id == pillId }),
+              let sessionId = task.sessionId, let cwd = task.sessionCwd,
+              SessionInstructionIdentity.accepts(identity, current: Self.targetIdentity(for: task), createdAt: createdAt,
+                                                 text: text, busy: running[sessionId] != nil || pendingCodex.contains(task.codexThreadId ?? "")) else {
+            log("ignored: missing, expired, changed or busy session target; refresh the iPhone")
             return
         }
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: session.cwd, isDirectory: &isDirectory), isDirectory.boolValue else {
+        guard FileManager.default.fileExists(atPath: cwd, isDirectory: &isDirectory), isDirectory.boolValue else {
             log("ignored: the session's folder is gone")
             return
         }
-        guard running[session.sessionId] == nil else {
-            log("ignored: an instruction is already running for this session")
+        if pillId == "agent_codex", let threadId = task.codexThreadId {
+            pendingCodex.insert(threadId)
+            Task {
+                defer { pendingCodex.remove(threadId) }
+                do {
+                    try await CodexChatService.shared.sendManagedInstruction(threadId: threadId, text: text, expectedCwd: cwd)
+                    log("sent to the owned Codex thread")
+                } catch {
+                    log("Codex instruction rejected: \(error.localizedDescription)")
+                }
+            }
             return
         }
         guard let claude = Self.claudeExecutable() else {
             log("can't find the claude command (looked in ~/.claude/local, Homebrew, /usr/local/bin, ~/.npm-global/bin)")
             return
         }
-        run(claude: claude, text: text, sessionId: session.sessionId, cwd: session.cwd, pillId: pillId)
+        run(claude: claude, text: text, sessionId: sessionId, cwd: cwd, pillId: pillId)
     }
 
     // MARK: Running

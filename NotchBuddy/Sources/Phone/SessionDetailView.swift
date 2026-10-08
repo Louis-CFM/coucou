@@ -79,7 +79,7 @@ struct SessionDetailView: View {
         }
         // The composer stays at the bottom, like a chat.
         .safeAreaInset(edge: .bottom) {
-            if let session, session.id == "integration_claude" || session.id == "agent_cursor" {
+            if let session, session.id == "integration_claude" || session.id == "agent_cursor" || session.id == "agent_codex" {
                 InstructionComposer(link: link, session: session)
             }
         }
@@ -92,7 +92,7 @@ struct SessionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await link.refresh() }
         .toolbar {
-            // The last turn as a picture, to show what Claude did.
+            // The last turn as a picture, to show what the agent did.
             if let shareImage {
                 ToolbarItem(placement: .topBarTrailing) {
                     ShareLink(item: Image(uiImage: shareImage),

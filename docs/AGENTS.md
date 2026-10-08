@@ -73,11 +73,11 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+Canonical hook events route to the named agent's pill. On macOS, the blocking relay
+supports permission cards for Claude Code, Codex, Copilot CLI and Muse Code.
+Codex hook decisions are **Allow / Deny**; the relay does not send Claude-specific
+permission updates to Codex. Display-only integrations such as Amp and OpenCode do
+not gain blocking approvals merely by forwarding a `PermissionRequest` event.
 
 The pill lifecycle:
 
@@ -103,11 +103,41 @@ The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigr
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
 Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
-the main pill; session support is coming in a future version.
+the main pill. Live sessions still arrive when a different workspace, such as VS Code,
+is the Main tool.
 
 Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
 
 ## Real-world examples
+
+### Codex in VS Code, the CLI or the Codex app (macOS, GitHub build)
+
+1. Install the OpenAI Codex extension in VS Code, or the Codex CLI, and open a project.
+2. Open **Settings → Agents → Codex hooks → Install hooks** in Coucou. Review the
+   preview, then confirm. Coucou merges into `~/.codex/hooks.json` after making a backup.
+3. In the Codex client that runs your session, enable and trust Coucou's hooks using
+   `/hooks` or its Hooks settings. **Done** requires all required hooks to be enabled
+   and trusted; modified, disabled, incomplete and unknown states remain distinct.
+4. Start a new turn. The relay uses `--agent codex`; Coucou retains the working
+   directory and available source application identity. Codex appears on its own pill
+   rather than replacing Claude Code's VS Code pill.
+
+The installed hook events are `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+`PermissionRequest`, `PostToolUse`, `Stop`, `SubagentStart`, `SubagentStop`,
+`Interrupt` and `SessionEnd`. Codex has a different hook payload and event set from
+Claude Code; forwarding a Claude-only event does not make Codex emit it.
+
+For Coucou-managed Codex threads, the native app-server connection also handles
+question choices, free-form answers, available session approvals, completed file
+changes, turn failures and search events. Responses retain thread, turn, item and
+request identity and return through the original connection. Hook and native events
+for a managed turn are combined without counting the same action twice. An external
+IDE thread remains owned by that IDE; creating a new app-server does not attach to
+its pending questions. See [Codex app-server](https://learn.chatgpt.com/docs/app-server).
+
+The CLI version displayed in Coucou is the executable used for its native
+connection. A VS Code extension may bundle a different version. Verify its hook
+settings when CLI diagnostics succeed but no IDE events arrive.
 
 ### Gemini CLI (macOS)
 

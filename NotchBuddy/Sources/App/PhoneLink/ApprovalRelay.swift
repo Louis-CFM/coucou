@@ -32,7 +32,8 @@ final class ApprovalRelay {
 
     /// Stable identifier of one pending request.
     nonisolated static func fingerprint(_ approval: ApprovalInfo) -> String {
-        let raw = [approval.pillId, approval.sessionId, approval.tool, approval.command, approval.inputKey]
+        let raw = [approval.pillId, approval.sessionId, approval.threadId ?? "", approval.turnId ?? "",
+                   approval.requestId ?? "", approval.tool, approval.command, approval.inputKey]
             .joined(separator: "\u{1F}")
         return SHA256.hash(data: Data(raw.utf8)).map { String(format: "%02x", $0) }.joined()
     }
@@ -104,7 +105,7 @@ final class ApprovalRelay {
     /// Returns true once a matching decision was applied.
     private func checkDecisions(for fingerprint: String) async -> Bool {
         guard current?.fingerprint == fingerprint, let since = current?.since else { return true }
-        var found: [(CKRecord.ID, String, String)] = []   // id, fingerprint, decision
+        var found: [(CKRecord.ID, String, String, String)] = []   // id, fingerprint, decision, pill
         do {
             var more = true
             while more {
@@ -114,7 +115,7 @@ final class ApprovalRelay {
                     let record = mod.record
                     let decidedAt = record["decidedAt"] as? Date ?? .distantPast
                     guard decidedAt >= since.addingTimeInterval(-5) else { continue }
-                    found.append((id, record["fingerprint"] as? String ?? "", record["decision"] as? String ?? ""))
+                    found.append((id, record["fingerprint"] as? String ?? "", record["decision"] as? String ?? "", record["pillId"] as? String ?? ""))
                 }
                 changeToken = changes.changeToken
                 more = changes.moreComing
@@ -135,26 +136,28 @@ final class ApprovalRelay {
             log("ignored \(found.count) decision(s) for another request")
             return false
         }
-        apply(match.2, fingerprint: fingerprint)
-        return true
+        return apply(match.2, fingerprint: fingerprint, pillId: match.3)
     }
 
-    private func apply(_ decision: String, fingerprint: String) {
+    private func apply(_ decision: String, fingerprint: String, pillId: String) -> Bool {
         // Check again on the main actor, right before answering the hook.
-        guard let pending = AppState.shared.pendingApproval,
+        guard let pending = AppState.shared.pendingApproval, pending.pillId == pillId,
               Self.fingerprint(pending) == fingerprint else {
             log("decision arrived after the request was resolved, ignored")
-            return
+            return false
         }
         switch decision {
         case "allow":
             log("allowed from the iPhone: \(pending.tool)")
             HookServer.shared.sendApprovalDecision("allow")
+            return true
         case "deny":
             log("denied from the iPhone: \(pending.tool)")
             HookServer.shared.sendApprovalDecision("deny")
+            return true
         default:
             log("unknown decision '\(decision)', ignored")
+            return false
         }
     }
 
