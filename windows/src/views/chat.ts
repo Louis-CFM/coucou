@@ -26,6 +26,7 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  notAvailable: N_("Not available"),
   openSettings: N_("Open Settings"),
 };
 
@@ -121,15 +122,22 @@ function buildPicker(onChange: () => void): Picker {
     list.append(line);
   }
 
-  function drawModels(p: ProviderDef, models: ModelInfo[]) {
+  function drawModels(p: ProviderDef, models: ModelInfo[], refused: ReadonlySet<string>) {
     clear(list);
     const current = activeModel(State.settings);
     for (const m of models) {
       const on = m.id === current;
+      // The provider lists it and answered "not found" when it was used.
+      const gone = refused.has(m.id);
       const row = h(
         "button",
-        { class: on ? "picker-model on" : "picker-model", style: `--accent:${p.accent}`, title: m.id },
+        {
+          class: `picker-model${on ? " on" : ""}${gone ? " refused" : ""}`,
+          style: `--accent:${p.accent}`,
+          title: m.id,
+        },
         h("span", { class: "picker-model-name", text: m.label }),
+        gone ? h("span", { class: "picker-flag", text: t(STRINGS.notAvailable) }) : null,
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
@@ -146,9 +154,11 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    const refused = new Set((await Bridge.chatRefused(p.id)) ?? []);
+    if (ticket !== request) return;
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
-      drawModels(p, cached);
+      drawModels(p, cached, refused);
       return;
     }
     // Nothing is asked of a provider that has no key yet.
@@ -168,7 +178,7 @@ function buildPicker(onChange: () => void): Picker {
         saveSettings();
         onChange();
       }
-      drawModels(p, models);
+      drawModels(p, models, refused);
     } catch (err) {
       if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
     }

@@ -79,6 +79,23 @@ test("with a key, the models are listed and picking one saves it", async () => {
   assert.equal($(".model-name").textContent, "claude-sonnet-5");
 });
 
+test("a model its provider refused is marked in the list, and can still be picked", async () => {
+  answers.secret_present = true;
+  answers.chat_models = [
+    { id: "claude-opus-5", label: "Claude Opus 5" },
+    { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  ];
+  answers.chat_refused = (args) => (args.provider === "anthropic" ? ["claude-sonnet-5"] : []);
+  $(".model-btn").fire("click");
+  await flush();
+  const rows = view.el.find(".picker-model");
+  assert.ok(!rows[0].classList.contains("refused"));
+  assert.ok(rows[1].classList.contains("refused"));
+  assert.match(rows[1].textContent, /Not available/);
+  rows[1].fire("click");
+  assert.equal(State.settings.model, "claude-sonnet-5");
+});
+
 test("switching provider saves it and asks the new provider only", async () => {
   answers.secret_present = (args) => args.key === "google-api-key";
   answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-2.5-flash", label: "gemini-2.5-flash" }] : []);

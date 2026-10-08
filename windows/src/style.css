@@ -1322,6 +1322,17 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
+/* A model its provider refused since launch: listed, and "not found" once used. */
+.picker-model.refused .picker-model-name {
+  color: #8a8f98;
+}
+
+.picker-flag {
+  flex: 0 0 auto;
+  font: 400 11px var(--font);
+  color: var(--amber);
+}
+
 .picker-status {
   display: flex;
   align-items: center;

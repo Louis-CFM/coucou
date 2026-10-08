@@ -445,6 +445,13 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The models of a provider that it refused since launch: a 404 for a model
+/// its own list offers. The picker marks them. Nothing is asked of anyone.
+#[tauri::command]
+fn chat_refused(chat: State<'_, Chat>, provider: String) -> Vec<String> {
+    chat.refused_models(&provider)
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -678,6 +685,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            chat_refused,
             local_connect,
             local_set_key,
             chat_reset,

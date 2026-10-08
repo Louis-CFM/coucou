@@ -48,6 +48,10 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// (provider, model) pairs a provider answered "not found" for since
+    /// launch. Its own list offers them, this key cannot use them, and nothing
+    /// says so before trying: the picker marks them (`refused_models`).
+    refused: Mutex<Vec<(String, String)>>,
 }
 
 #[derive(Default)]
@@ -72,6 +76,25 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// `provider` listed `model`, then answered that it has no such model.
+    pub fn refuse(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock().unwrap();
+        if !refused.iter().any(|(p, m)| p == provider && m == model) {
+            refused.push((provider.to_string(), model.to_string()));
+        }
+    }
+
+    /// `model` answered: what was held against it no longer is.
+    pub fn accept(&self, provider: &str, model: &str) {
+        self.refused.lock().unwrap().retain(|(p, m)| !(p == provider && m == model));
+    }
+
+    /// The models of `provider` the picker marks as not available.
+    pub fn refused_models(&self, provider: &str) -> Vec<String> {
+        let refused = self.refused.lock().unwrap();
+        refused.iter().filter(|(p, _)| p == provider).map(|(_, m)| m.clone()).collect()
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -247,6 +270,25 @@ mod tests {
             .iter()
             .map(|m| (m["role"].as_str().unwrap().to_string(), m["content"].clone()))
             .collect()
+    }
+
+    #[test]
+    fn a_refused_model_is_remembered_until_it_answers() {
+        let chat = Chat::default();
+        assert!(chat.refused_models("google").is_empty());
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openai", "gpt-x");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(chat.refused_models("openai"), ["gpt-x"]);
+        // "New chat" forgets the conversation, not what the provider said of its models.
+        chat.reset();
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        // Another provider's model of the same name is its own business.
+        chat.accept("openai", "gemini-2.5-pro");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        chat.accept("google", "gemini-2.5-pro");
+        assert!(chat.refused_models("google").is_empty());
     }
 
     #[test]

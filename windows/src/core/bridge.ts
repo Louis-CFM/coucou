@@ -139,6 +139,8 @@ export const Bridge = {
    * the provider only when it has a key (or a server address).
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  /** Models this provider refused since launch (404 for a model its list offers). */
+  chatRefused: (provider: string) => call<string[]>("chat_refused", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
