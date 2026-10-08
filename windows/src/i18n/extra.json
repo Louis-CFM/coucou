@@ -826,6 +826,39 @@
    "ru": "Сначала введите адрес сервера.",
    "id": "Masukkan alamat server terlebih dahulu."
   },
+  "Editor command": {
+   "zh-Hans": "编辑器命令",
+   "hi": "संपादक कमांड",
+   "es": "Comando de editor",
+   "ar": "أمر المحرر",
+   "fr": "Commande d'éditeur",
+   "bn": "এডিটর কমান্ড",
+   "pt-BR": "Comando do editor",
+   "ru": "Команда редактора",
+   "id": "Perintah editor"
+  },
+  "code (or $VISUAL / $EDITOR)": {
+   "zh-Hans": "code（或 $VISUAL / $EDITOR）",
+   "hi": "code (या $VISUAL / $EDITOR)",
+   "es": "code (o $VISUAL / $EDITOR)",
+   "ar": "code (أو $VISUAL / $EDITOR)",
+   "fr": "code (ou $VISUAL / $EDITOR)",
+   "bn": "code (বা $VISUAL / $EDITOR)",
+   "pt-BR": "code (ou $VISUAL / $EDITOR)",
+   "ru": "code (или $VISUAL / $EDITOR)",
+   "id": "code (atau $VISUAL / $EDITOR)"
+  },
+  "e.g. cursor, zed, code": {
+   "zh-Hans": "如 cursor, zed, code",
+   "hi": "उदा. cursor, zed, code",
+   "es": "p. ej. cursor, zed, code",
+   "ar": "مثال: cursor, zed, code",
+   "fr": "ex. cursor, zed, code",
+   "bn": "যেমন cursor, zed, code",
+   "pt-BR": "ex.: cursor, zed, code",
+   "ru": "напр. cursor, zed, code",
+   "id": "mis. cursor, zed, code"
+  },
   "Error": {
    "zh-Hans": "错误",
    "hi": "त्रुटि",
