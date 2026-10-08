@@ -174,7 +174,11 @@ impl Relay for NamedPipeServer {
 
 /// Dropping the stream closes it; the relay reads up to our newline first.
 #[cfg(target_os = "linux")]
-impl Relay for tokio::net::UnixStream {}
+impl Relay for tokio::net::UnixStream {
+    fn client_pid(&self) -> Option<u32> {
+        self.peer_cred().ok()?.pid().and_then(|p| u32::try_from(p).ok())
+    }
+}
 
 async fn handle(app: AppHandle, mut pipe: impl Relay) {
     let mut buf = Vec::new();
@@ -253,7 +257,13 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
     if event == "SessionEnd" {
         session_window::forget(session);
+        #[cfg(target_os = "linux")]
+        crate::terminal_focus::forget(session);
         return;
+    }
+    #[cfg(target_os = "linux")]
+    if let Some(relay) = pipe.client_pid() {
+        crate::terminal_focus::note(session, relay);
     }
     if session_window::known(session) {
         return;
@@ -343,6 +353,24 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// The permission modes Allow can switch a Claude Code session to. The relay
+/// checks the same list (hook/src/reply.rs) before printing anything.
+const MODES: &[&str] = &["default", "plan", "acceptEdits", "auto", "dontAsk", "bypassPermissions"];
+
+/// Called when Allow is clicked with another permission mode picked on the
+/// card: the request is allowed and the session switches to `mode`. A mode we
+/// do not know is refused here, before anything reaches the relay.
+pub fn answer_with_mode(app: &AppHandle, request_id: &str, mode: &str) -> bool {
+    if !MODES.contains(&mode) {
+        return false;
+    }
+    log::line(format!("decision id={request_id} allow, mode {mode}"));
+    // One line: the relay reads up to the first newline.
+    let line = json!({ "allowWithMode": mode }).to_string();
+    send(app, request_id, Reply::Decision(line), false);
+    true
 }
 
 /// Called when an option is picked for a question Claude Code asked. `answers`

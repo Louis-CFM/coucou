@@ -9,6 +9,7 @@ import {
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
+import type { PermissionMode } from "./session";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 
@@ -37,6 +38,18 @@ export interface AgentTask {
   sessionId?: string | null;
   /** Claude's final message after Stop, one line; cleared when a new turn starts. */
   finalLine?: string | null;
+  /** The same message whole (Markdown), for the finished card's preview. */
+  finalText?: string | null;
+  /** Claude Code's permission mode as its hooks report it ("default", "plan"…). */
+  permissionMode?: string | null;
+  /** The session's effort level ("low" … "max"), from its hooks or status line. */
+  effort?: string | null;
+  /** The session's model id (e.g. "claude-opus-5-5"), or its display name. */
+  model?: string | null;
+  /** Date.now() of the session's last hook event: a long-silent session gives its pill up. */
+  lastEventAt?: number | null;
+  /** The session's subagents running right now (SubagentStart → SubagentStop). */
+  subagents?: { id: string; type: string }[];
 }
 
 export interface ApprovalInfo {
@@ -48,6 +61,10 @@ export interface ApprovalInfo {
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /** The session's permission mode when it asked; only Claude Code's can be switched. */
+  permissionMode?: string | null;
+  /** The mode picked on the card: Allow switches the session to it. */
+  switchTo?: PermissionMode | null;
 }
 
 /** One question of an AskUserQuestion call. */
@@ -257,6 +274,17 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
+  /**
+   * Sessions thinking or working right now. One silent for ten minutes no longer
+   * counts: it was interrupted, which sends no Stop.
+   */
+  get workingTasks(): AgentTask[] {
+    const now = Date.now();
+    return this.tasks.filter(
+      (t) => (t.state === "thinking" || t.state === "working") && (t.lastEventAt == null || now - t.lastEventAt < 600_000),
+    );
+  }
+
   get otherTasks(): AgentTask[] {
     return this.tasks.filter((t) => t.id !== this.focusId);
   }
@@ -403,6 +431,7 @@ class AppState {
       delete t.stepSeq;
       t.pillBadge = null;
       t.finalLine = null;
+      t.finalText = null;
       const def = pillDefinition(id);
       if (def) t.name = def.name;
       this.clearSessionDiffs(id);

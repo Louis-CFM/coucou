@@ -36,6 +36,10 @@ pub const HOOK_EVENTS: &[(&str, u64)] = &[
     ("StopFailure", 10),
     ("SubagentStart", 10),
     ("SubagentStop", 10),
+    // /model mid-session: the pill shows the new model at once.
+    ("PostModelSwitch", 10),
+    // What Claude says between tool calls, as it appears in the terminal.
+    ("MessageDisplay", 10),
 ];
 
 /// Marker that identifies a Coucou entry inside settings.json.

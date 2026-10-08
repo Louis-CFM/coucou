@@ -3,8 +3,9 @@
 //!
 //! Claude Code hands its status line command the session's JSON on stdin, and
 //! whatever that command prints becomes the status line. Coucou only wants the
-//! plan limits (`rate_limits`) out of it: they go on to the app in the
-//! background and nothing else of the input does. If the user had a status line
+//! plan limits (`rate_limits`), the model and the effort level out of it: they
+//! go on to the app in the background and nothing else of the input does
+//! (see [`payload`]). If the user had a status line
 //! of their own, it is run the way Claude Code runs it — `/bin/sh -c` on Linux,
 //! Git Bash's `bash -c` on Windows — with the same input, and what it prints is
 //! passed on untouched, so it keeps working.
@@ -69,16 +70,44 @@ pub fn run() -> ! {
     std::process::exit(0);
 }
 
-/// The one line the app gets from a status line call: the limits and which
-/// session they came from, nothing else (no cwd, no model, no transcript).
-/// Without limits — API-key users — there is nothing to send.
+/// The one line the app gets from a status line call: which session it came
+/// from, the limits, and the session's model and effort level for its pill —
+/// nothing else (no cwd, no cost, no transcript). The model goes as its id and
+/// display name only, the effort as its level only. With none of the three —
+/// an API-key user on a model without effort — there is nothing to send.
 pub fn payload(map: &serde_json::Map<String, serde_json::Value>) -> Option<String> {
-    let limits = map.get("rate_limits").filter(|v| v.is_object())?;
+    let limits = map.get("rate_limits").filter(|v| v.is_object());
+    let model = map.get("model").and_then(|m| m.as_object()).and_then(|m| {
+        let mut kept = serde_json::Map::new();
+        for key in ["id", "display_name"] {
+            if let Some(s) = m.get(key).and_then(|v| v.as_str()).filter(|s| !s.is_empty()) {
+                kept.insert(key.into(), s.into());
+            }
+        }
+        (!kept.is_empty()).then_some(serde_json::Value::Object(kept))
+    });
+    let effort = map
+        .get("effort")
+        .and_then(|e| e.get("level"))
+        .and_then(|l| l.as_str())
+        .filter(|l| !l.is_empty());
+    if limits.is_none() && model.is_none() && effort.is_none() {
+        return None;
+    }
     let mut value = serde_json::json!({
         "hook_event_name": "StatusLine",
         "session_id": map.get("session_id").cloned().unwrap_or(serde_json::Value::Null),
-        "rate_limits": limits,
     });
+    let out = value.as_object_mut()?;
+    if let Some(limits) = limits {
+        out.insert("rate_limits".into(), limits.clone());
+    }
+    if let Some(model) = model {
+        out.insert("model".into(), model);
+    }
+    if let Some(effort) = effort {
+        out.insert("effort".into(), serde_json::json!({ "level": effort }));
+    }
     truncate_strings(&mut value);
     let mut line = value.to_string();
     line.push('\n');
@@ -229,9 +258,12 @@ mod tests {
     use std::ffi::OsString;
 
     #[test]
-    fn only_the_limits_and_the_session_go_to_the_app() {
+    fn only_the_limits_the_model_the_effort_and_the_session_go_to_the_app() {
         let input = serde_json::json!({
-            "session_id": "s1", "cwd": "/secret", "model": { "id": "x" },
+            "session_id": "s1", "cwd": "/secret",
+            "model": { "id": "claude-opus-5-5", "display_name": "Opus", "extra": "/secret" },
+            "effort": { "level": "high", "extra": 1 },
+            "cost": { "total_cost_usd": 1.5 },
             "transcript_path": "/home/me/.claude/x.jsonl",
             "rate_limits": { "five_hour": { "used_percentage": 42, "resets_at": 1 } }
         });
@@ -241,14 +273,26 @@ mod tests {
         assert_eq!(v["hook_event_name"], "StatusLine");
         assert_eq!(v["session_id"], "s1");
         assert_eq!(v["rate_limits"]["five_hour"]["used_percentage"], 42);
-        assert_eq!(v.as_object().unwrap().len(), 3);
+        assert_eq!(v["model"], serde_json::json!({ "id": "claude-opus-5-5", "display_name": "Opus" }));
+        assert_eq!(v["effort"], serde_json::json!({ "level": "high" }));
+        assert_eq!(v.as_object().unwrap().len(), 5);
     }
 
     #[test]
-    fn without_limits_nothing_is_sent() {
-        // API-key users get no rate_limits.
+    fn without_limits_the_model_and_effort_still_go() {
+        // API-key users get no rate_limits, but their pill still shows the model.
+        let input = serde_json::json!({ "session_id": "s1", "model": { "id": "claude-sonnet-5-5" } });
+        let v: serde_json::Value = serde_json::from_str(payload(input.as_object().unwrap()).unwrap().trim()).unwrap();
+        assert_eq!(v["model"]["id"], "claude-sonnet-5-5");
+        assert!(v.get("rate_limits").is_none());
+        assert!(v.get("effort").is_none());
+    }
+
+    #[test]
+    fn with_nothing_worth_showing_nothing_is_sent() {
         assert!(payload(serde_json::json!({ "session_id": "s1" }).as_object().unwrap()).is_none());
         assert!(payload(serde_json::json!({ "rate_limits": "x" }).as_object().unwrap()).is_none());
+        assert!(payload(serde_json::json!({ "model": { "id": "" }, "effort": {} }).as_object().unwrap()).is_none());
     }
 
     #[cfg(unix)]

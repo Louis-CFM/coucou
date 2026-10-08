@@ -7,7 +7,7 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  QUESTION_PICKER_H,
+  QUESTION_PICKER_H, FINISHED_PREVIEW_H, wantsFinishedPreview, COMPACT_BUSY_W,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
@@ -21,6 +21,7 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { ActivityStrip } from "../views/activity";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
@@ -56,6 +57,14 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  /** What the working sessions are doing, on the compact island. */
+  private activity = new ActivityStrip();
+  /** The light running along the island's lower edge while an agent works. */
+  private busyGlow!: HTMLElement;
+  /** Agents were at work at the last sync: the compact island is wider then. */
+  private compactBusy = false;
+  /** While busy, a sync now and then so a session gone silent stops counting. */
+  private busyTimer: number | null = null;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -196,7 +205,9 @@ export class Island {
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
-        void Bridge.approvalDecision(req.requestId, d);
+        // Allow with another mode picked on the card switches the session too.
+        if (d === "allow" && req.switchTo) void Bridge.approvalAllowWithMode(req.requestId, req.switchTo);
+        else void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();
       },
       answer: (answers) => {
@@ -253,6 +264,7 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.busyGlow = h("div", { id: "busy-glow" });
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -286,6 +298,8 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.activity.el,
+      this.busyGlow,
       this.countdown,
     );
 
@@ -615,6 +629,10 @@ export class Island {
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    if (State.mode === "expanded" && State.view === "finished" && wantsFinishedPreview(State.focusTask?.finalText)) {
+      h = FINISHED_PREVIEW_H;
+    }
+    if (State.mode === "compact" && this.compactBusy) w = COMPACT_BUSY_W;
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -1137,8 +1155,32 @@ export class Island {
       }
     }
 
+    this.syncBusy();
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  /**
+   * While any session works: the island stays on screen, its lower edge lights
+   * up, and the compact island widens to say what each one is doing.
+   */
+  private syncBusy() {
+    const working = State.workingTasks;
+    const busy = working.length > 0;
+    this.fsm.busy = busy;
+    if (busy !== this.compactBusy) {
+      this.compactBusy = busy;
+      if (State.mode === "compact") this.animateGeometry(!busy);
+    }
+    this.activity.sync(State.mode === "compact" && busy, working);
+    this.busyGlow.classList.toggle("on", busy && State.mode !== "hidden");
+    if (busy) this.busyGlow.style.setProperty("--busy", working[0].color);
+    if (busy && this.busyTimer == null) {
+      this.busyTimer = window.setInterval(() => State.notify(), 30_000);
+    } else if (!busy && this.busyTimer != null) {
+      window.clearInterval(this.busyTimer);
+      this.busyTimer = null;
+    }
   }
 
   /** Applies settings coming from Rust at boot. */

@@ -3316,6 +3316,125 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Permission mode": {
+   "zh-Hans": "权限模式",
+   "hi": "अनुमति मोड",
+   "es": "Modo de permisos",
+   "ar": "وضع الأذونات",
+   "fr": "Mode d'autorisation",
+   "bn": "অনুমতি মোড",
+   "pt-BR": "Modo de permissão",
+   "ru": "Режим разрешений",
+   "id": "Mode izin"
+  },
+  "Effort": {
+   "zh-Hans": "推理强度",
+   "hi": "प्रयास स्तर",
+   "es": "Esfuerzo",
+   "ar": "مستوى الجهد",
+   "fr": "Effort",
+   "bn": "প্রচেষ্টার স্তর",
+   "pt-BR": "Esforço",
+   "ru": "Усилие",
+   "id": "Upaya"
+  },
+  "Mode after Allow — click to change": {
+   "zh-Hans": "允许后的模式 — 点击更改",
+   "hi": "अनुमति के बाद मोड — बदलने के लिए क्लिक करें",
+   "es": "Modo tras Permitir — haz clic para cambiarlo",
+   "ar": "الوضع بعد السماح — انقر للتغيير",
+   "fr": "Mode après Autoriser — cliquez pour le changer",
+   "bn": "অনুমতির পরে মোড — বদলাতে ক্লিক করুন",
+   "pt-BR": "Modo após Permitir — clique para mudar",
+   "ru": "Режим после «Разрешить» — нажмите, чтобы изменить",
+   "id": "Mode setelah Izinkan — klik untuk mengubah"
+  },
+  "Thinking…": {
+   "zh-Hans": "思考中…",
+   "hi": "सोच रहा है…",
+   "es": "Pensando…",
+   "ar": "يفكّر…",
+   "fr": "Réflexion…",
+   "bn": "ভাবছে…",
+   "pt-BR": "Pensando…",
+   "ru": "Думает…",
+   "id": "Berpikir…"
+  },
+  "Working…": {
+   "zh-Hans": "工作中…",
+   "hi": "काम कर रहा है…",
+   "es": "Trabajando…",
+   "ar": "يعمل…",
+   "fr": "Au travail…",
+   "bn": "কাজ করছে…",
+   "pt-BR": "Trabalhando…",
+   "ru": "Работает…",
+   "id": "Bekerja…"
+  },
+  "{count} active": {
+   "zh-Hans": "{count} 个进行中",
+   "hi": "{count} सक्रिय",
+   "es": "{count} activas",
+   "ar": "{count} نشطة",
+   "fr": "{count} actives",
+   "bn": "{count}টি সক্রিয়",
+   "pt-BR": "{count} ativas",
+   "ru": "Активно: {count}",
+   "id": "{count} aktif"
+  },
+  "subagent": {
+   "zh-Hans": "子代理",
+   "hi": "सबएजेंट",
+   "es": "subagente",
+   "ar": "وكيل فرعي",
+   "fr": "sous-agent",
+   "bn": "সাবএজেন্ট",
+   "pt-BR": "subagente",
+   "ru": "субагент",
+   "id": "subagen"
+  },
+  "{count} subagents": {
+   "zh-Hans": {
+    "other": "{count} 个子代理"
+   },
+   "hi": {
+    "one": "{count} सबएजेंट",
+    "other": "{count} सबएजेंट"
+   },
+   "es": {
+    "one": "{count} subagente",
+    "other": "{count} subagentes"
+   },
+   "ar": {
+    "zero": "{count} وكيل فرعي",
+    "one": "وكيل فرعي واحد",
+    "two": "وكيلان فرعيان",
+    "few": "{count} وكلاء فرعيين",
+    "many": "{count} وكيلًا فرعيًا",
+    "other": "{count} وكيل فرعي"
+   },
+   "fr": {
+    "one": "{count} sous-agent",
+    "other": "{count} sous-agents"
+   },
+   "bn": {
+    "one": "{count}টি সাবএজেন্ট",
+    "other": "{count}টি সাবএজেন্ট"
+   },
+   "pt-BR": {
+    "one": "{count} subagente",
+    "other": "{count} subagentes"
+   },
+   "ru": {
+    "one": "{count} субагент",
+    "few": "{count} субагента",
+    "many": "{count} субагентов",
+    "other": "{count} субагента"
+   },
+   "id": {
+    "other": "{count} subagen"
+   }
   }
  }
 }

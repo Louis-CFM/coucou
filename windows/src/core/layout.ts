@@ -59,6 +59,8 @@ export const PANEL_H = 320;
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
+/** The compact island while agents work: wide enough for what they are doing. */
+export const COMPACT_BUSY_W = 460;
 export const EXPANDED_W = 640;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
@@ -101,6 +103,13 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
+/** The finished card with a final message too long for one line: read it there. */
+export const FINISHED_PREVIEW_H = 300;
+
+/** True when a final message needs the preview rather than the card's one line. */
+export function wantsFinishedPreview(text: string | null | undefined): boolean {
+  return !!text && (text.includes("\n") || text.length > 90);
+}
 
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {

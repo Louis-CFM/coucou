@@ -58,6 +58,9 @@ const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
 /// 1 MiB the app reads from the pipe even once JSON-escaped.
 const MAX_DIFF_TOTAL: usize = 512 * 1024;
+/// The turn's final answer on Stop, which the finished card shows whole in a
+/// scrollable preview. Longer than any reply worth reading in the island.
+const MAX_FINAL_LEN: usize = 32 * 1024;
 
 #[cfg(windows)]
 mod win;
@@ -257,8 +260,20 @@ fn truncate_payload(payload: &mut serde_json::Value, event: &str) {
     } else {
         None
     };
+    let final_answer = if event == "Stop" {
+        payload.as_object_mut().and_then(|map| map.remove("last_assistant_message"))
+    } else {
+        None
+    };
 
     truncate_strings(payload);
+
+    if let Some(serde_json::Value::String(mut text)) = final_answer {
+        cut(&mut text, MAX_FINAL_LEN);
+        if let Some(map) = payload.as_object_mut() {
+            map.insert("last_assistant_message".into(), serde_json::Value::String(text));
+        }
+    }
 
     if let Some(mut input) = input {
         let mut budget = MAX_DIFF_TOTAL;
@@ -506,6 +521,24 @@ mod tests {
         });
         truncate_payload(&mut multi, "PostToolUse");
         assert_eq!(multi["tool_input"]["edits"][0]["old_string"].as_str().unwrap().len(), big.len());
+    }
+
+    #[test]
+    fn the_final_answer_on_stop_is_kept_long_enough_for_the_preview() {
+        let long = "word ".repeat(2_000); // 10 000 bytes: past the ordinary cap
+        let raw = serde_json::json!({ "hook_event_name": "Stop", "last_assistant_message": long }).to_string();
+        let (v, _) = run(&raw, "", "Stop");
+        assert_eq!(v["last_assistant_message"], long.as_str());
+        // Still capped, at its own length.
+        let huge = "x".repeat(MAX_FINAL_LEN + 10);
+        let raw = serde_json::json!({ "hook_event_name": "Stop", "last_assistant_message": huge }).to_string();
+        let (v, _) = run(&raw, "", "Stop");
+        assert_eq!(v["last_assistant_message"].as_str().unwrap().len(), MAX_FINAL_LEN + '…'.len_utf8());
+        // Anything else, or the same field on another event, keeps the ordinary cap.
+        let raw = serde_json::json!({ "hook_event_name": "Stop", "message": long }).to_string();
+        assert!(run(&raw, "", "Stop").0["message"].as_str().unwrap().len() <= MAX_FIELD_LEN + 3);
+        let raw = serde_json::json!({ "hook_event_name": "Notification", "last_assistant_message": long }).to_string();
+        assert!(run(&raw, "", "Notification").0["last_assistant_message"].as_str().unwrap().len() <= MAX_FIELD_LEN + 3);
     }
 
     #[test]

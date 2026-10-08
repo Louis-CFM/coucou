@@ -695,3 +695,185 @@ test("a declined permission request leaves the stop timer running", () => {
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }, { requestId: "r2" }]);
   assert.equal(task().state, "idle");
 });
+
+// ── Mode, effort and model ────────────────────────────────────────────────────
+
+test("the pill keeps the session's mode, effort and model as its events report them", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "s1", cwd: "/p", model: "claude-opus-5-5" });
+  assert.equal(task().model, "claude-opus-5-5");
+  hook({
+    hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", prompt: "hi",
+    permission_mode: "plan", effort: { level: "high" },
+  });
+  assert.equal(task().permissionMode, "plan");
+  assert.equal(task().effort, "high");
+  // An event that leaves a field out keeps the last value.
+  hook({ hook_event_name: "PreToolUse", session_id: "s1", cwd: "/p", tool_name: "Read", tool_input: {} });
+  assert.equal(task().permissionMode, "plan");
+  // /model mid-session.
+  hook({ hook_event_name: "PostModelSwitch", session_id: "s1", from_model: "claude-opus-5-5", to_model: "claude-sonnet-5-5" });
+  assert.equal(task().model, "claude-sonnet-5-5");
+  // The status line follows /effort, for the session it belongs to only.
+  hook({ hook_event_name: "StatusLine", session_id: "s1", effort: { level: "max" }, model: { id: "claude-fable-5-1", display_name: "Fable" } });
+  assert.equal(task().effort, "max");
+  assert.equal(task().model, "claude-fable-5-1");
+  hook({ hook_event_name: "StatusLine", session_id: "other", effort: { level: "low" } });
+  assert.equal(task().effort, "max");
+  // Another session's events do not overwrite this one's.
+  hook({ hook_event_name: "PostToolUse", session_id: "other", cwd: "/p", permission_mode: "auto", tool_name: "Read" });
+  assert.equal(task().permissionMode, "plan");
+});
+
+test("a new session on the pill forgets what the last one ran with, and the end clears it", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", permission_mode: "acceptEdits", effort: { level: "low" } });
+  hook({ hook_event_name: "SessionEnd", session_id: "s1", cwd: "/p" });
+  assert.equal(task().model, null);
+  assert.equal(task().permissionMode, null);
+  hook({ hook_event_name: "SessionStart", session_id: "s2", cwd: "/p", model: "claude-haiku-4-5-20251001" });
+  assert.equal(task().sessionId, "s2");
+  assert.equal(task().permissionMode, null);
+  assert.equal(task().effort, null);
+  assert.equal(task().model, "claude-haiku-4-5-20251001");
+});
+
+// ── One pill per session ──────────────────────────────────────────────────────
+
+const sessionPills = () => State.tasks.filter((t) => t.id.startsWith("session_"));
+
+test("a second session running at the same time gets a pill of its own", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "aaaa1111", cwd: "/home/me/api", prompt: "one" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "bbbb2222", cwd: "/home/me/web", prompt: "two" });
+  assert.equal(task().sessionId, "aaaa1111");
+  assert.equal(task().name, "api");
+  const [other] = sessionPills();
+  assert.ok(other, "the second session has its own pill");
+  assert.equal(other.sessionId, "bbbb2222");
+  assert.equal(other.name, "web");
+  assert.equal(other.sessionCwd, "/home/me/web");
+  // Each session's steps stay on its own pill.
+  hook({ hook_event_name: "PreToolUse", session_id: "bbbb2222", cwd: "/home/me/web", tool_name: "Read", tool_input: { file_path: "/x/b.ts" } });
+  assert.ok(other.steps.some((s) => s.includes("b.ts")));
+  assert.ok(!task().steps.some((s) => s.includes("b.ts")));
+  assert.equal(other.state, "working");
+  // Its stop leaves its pill, idle; its end takes the pill away.
+  hook({ hook_event_name: "Stop", session_id: "bbbb2222", cwd: "/home/me/web" });
+  seconds(6);
+  assert.equal(other.state, "idle");
+  assert.equal(sessionPills().length, 1);
+  hook({ hook_event_name: "SessionEnd", session_id: "bbbb2222", cwd: "/home/me/web" });
+  assert.equal(sessionPills().length, 0);
+  assert.equal(task().sessionId, "aaaa1111");
+});
+
+test("two sessions of the same project are told apart", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p/proj", prompt: "a" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s2", cwd: "/p/proj", prompt: "b" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s3", cwd: "/p/proj", prompt: "c" });
+  const names = [task().name, ...sessionPills().map((t) => t.name)].sort();
+  assert.deepEqual(names, ["proj", "proj 2", "proj 3"]);
+});
+
+test("a second session's permission request comes up on its own pill", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/a", prompt: "x" });
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r9", session_id: "s2", cwd: "/b",
+    permission_mode: "default", tool_name: "Bash", tool_input: { command: "ls" },
+  });
+  const [other] = sessionPills();
+  assert.equal(State.pendingApproval.pillId, other.id);
+  assert.equal(State.pendingApproval.permissionMode, "default");
+  assert.equal(other.state, "approval");
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "r9" }]);
+});
+
+test("a session silent for long gives Claude Code's pill up to a new one", () => {
+  const realNow = Date.now;
+  let clock = realNow();
+  Date.now = () => clock;
+  try {
+    hook({ hook_event_name: "UserPromptSubmit", session_id: "old", cwd: "/a", prompt: "x" });
+    hook({ hook_event_name: "Stop", session_id: "old", cwd: "/a" });
+    seconds(6);
+    clock += 21 * 60_000;
+    hook({ hook_event_name: "UserPromptSubmit", session_id: "new", cwd: "/b", prompt: "y" });
+    assert.equal(task().sessionId, "new");
+    assert.equal(sessionPills().length, 0);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("Claude Code's card knows its mode, and Allow with another mode picked switches it", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", cwd: "/p",
+    permission_mode: "default", tool_name: "Bash", tool_input: { command: "ls" },
+  });
+  assert.equal(State.pendingApproval.permissionMode, "default");
+  // An agent's card has no mode to switch.
+  State.pendingApproval = null;
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r2", session_id: "s9", coucou_agent: "codex",
+    permission_mode: "default", tool_name: "Bash", tool_input: { command: "ls" },
+  });
+  assert.equal(State.pendingApproval.permissionMode, undefined);
+});
+
+// ── Finished preview ──────────────────────────────────────────────────────────
+
+test("the final answer is kept whole for the finished card, and a new turn clears it", async () => {
+  const { wantsFinishedPreview } = await import("../src/core/layout.ts");
+  const answer = "## Done\n\n- fixed the bug\n- added a test";
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", prompt: "fix it" });
+  hook({ hook_event_name: "Stop", session_id: "s1", cwd: "/p", last_assistant_message: answer });
+  assert.equal(task().finalText, answer);
+  assert.ok(task().finalLine && !task().finalLine.includes("\n"));
+  assert.ok(wantsFinishedPreview(task().finalText));
+  assert.ok(!wantsFinishedPreview("All done."));
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", prompt: "next" });
+  assert.equal(task().finalText, null);
+});
+
+// ── Claude's words and subagents ──────────────────────────────────────────────
+
+test("what Claude says between tool calls becomes a step, once per message", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", prompt: "go" });
+  hook({ hook_event_name: "MessageDisplay", session_id: "s1", cwd: "/p", message_id: "m1", index: 0, delta: "Let me check the config first.\n" });
+  hook({ hook_event_name: "MessageDisplay", session_id: "s1", cwd: "/p", message_id: "m1", index: 1, delta: "It lives in settings.json.\n" });
+  assert.deepEqual(task().steps.filter((s) => s.startsWith("“")), ["“Let me check the config first.”"]);
+  hook({ hook_event_name: "MessageDisplay", session_id: "s1", cwd: "/p", message_id: "m2", delta: "Now the tests." });
+  assert.equal(task().steps.at(-1), "“Now the tests.”");
+  // The final answer, already begun as a step, is not repeated by Stop.
+  hook({ hook_event_name: "MessageDisplay", session_id: "s1", cwd: "/p", message_id: "m3", delta: "All done: the config is fixed." });
+  const before = task().steps.length;
+  hook({ hook_event_name: "Stop", session_id: "s1", cwd: "/p", last_assistant_message: "All done: the config is fixed.\n\nDetails…" });
+  assert.equal(task().steps.length, before);
+  assert.ok(task().finalLine.startsWith("All done: the config is fixed."));
+  assert.equal(task().finalText, "All done: the config is fixed.\n\nDetails…");
+});
+
+test("subagents are counted while they run, and their tool calls say whose they are", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p", prompt: "go" });
+  hook({ hook_event_name: "SubagentStart", session_id: "s1", cwd: "/p", agent_id: "a1", agent_type: "Explore" });
+  hook({ hook_event_name: "SubagentStart", session_id: "s1", cwd: "/p", agent_id: "a2", agent_type: "Plan" });
+  assert.deepEqual(task().subagents.map((s) => s.type), ["Explore", "Plan"]);
+  hook({
+    hook_event_name: "PreToolUse", session_id: "s1", cwd: "/p", agent_id: "a1", agent_type: "Explore",
+    tool_name: "Read", tool_input: { file_path: "/p/src/main.rs" },
+  });
+  assert.equal(task().steps.at(-1), "↳ Explore · Reads · main.rs");
+  hook({ hook_event_name: "SubagentStop", session_id: "s1", cwd: "/p", agent_id: "a1", agent_type: "Explore" });
+  assert.deepEqual(task().subagents.map((s) => s.type), ["Plan"]);
+  // The turn ending means none is left running.
+  hook({ hook_event_name: "Stop", session_id: "s1", cwd: "/p" });
+  assert.deepEqual(task().subagents, []);
+});
+
+test("only sessions at work, and not silent for ten minutes, count as working", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/a", prompt: "x" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s2", cwd: "/b", prompt: "y" });
+  assert.equal(State.workingTasks.length, 2);
+  hook({ hook_event_name: "Stop", session_id: "s2", cwd: "/b" });
+  assert.equal(State.workingTasks.length, 1);
+  task().lastEventAt = Date.now() - 11 * 60_000;
+  assert.equal(State.workingTasks.length, 0);
+});
