@@ -110,6 +110,8 @@ final class ClaudeService {
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let anthropicVersion = "2023-06-01"
+    nonisolated static let longContextSuffix = "[1m]"
+    nonisolated static let longContextBeta = "context-1m-2025-08-07"
 
     // MARK: - Model list
 
@@ -227,7 +229,8 @@ final class ClaudeService {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
         }
-        guard let key = apiKey, !key.isEmpty else {
+        let key = apiKey ?? ""
+        guard VertexAI.serves(.anthropic) || !key.isEmpty else {
             await showError("API key missing. Open settings.", state: state)
             return
         }
@@ -283,6 +286,7 @@ final class ClaudeService {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
         } else {
             switch provider {
+            case .google where VertexAI.serves(.google): baseURL = VertexAI.openAIBaseURL
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
@@ -302,6 +306,13 @@ final class ClaudeService {
         let authHeader: String
         if provider.isLocal {
             authHeader = "Bearer ollama"
+        } else if VertexAI.serves(provider) {
+            do {
+                authHeader = "Bearer \(try await VertexToken.shared.accessToken())"
+            } catch {
+                await showError(error.localizedDescription, state: state)
+                return
+            }
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
                 await showError("\(provider.displayName) API key missing. Configure it in Settings.", state: state)
@@ -350,14 +361,15 @@ final class ClaudeService {
         conversationMessages.append(["role": "user", "content": userText])
 
         let useStream = provider.isLocal
+        let viaVertex = VertexAI.serves(provider)
         var body: [String: Any] = [
-            "model": state.activeChatModel,
+            "model": viaVertex ? VertexAI.geminiModelId(state.activeChatModel) : state.activeChatModel,
             "max_tokens": 4096,
             "messages": msgs,
         ]
         if useStream { body["stream"] = true }
 
-        var req = URLRequest(url: url, timeoutInterval: useStream ? 120 : 30)
+        var req = URLRequest(url: url, timeoutInterval: useStream ? 120 : (viaVertex ? 90 : 30))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(authHeader, forHTTPHeaderField: "Authorization")
@@ -424,8 +436,7 @@ final class ClaudeService {
             do {
                 let (data, response) = try await URLSession.shared.data(for: req)
                 guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let err = (json["error"] as? [String: Any])?["message"] as? String {
+                    if let err = VertexAI.errorMessage(from: data) {
                         throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: err])
                     }
                     throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"])
@@ -452,7 +463,8 @@ final class ClaudeService {
     // MARK: - Structured search (M8 — window attach + web search)
 
     func search(query: String, context: PromptContext?, state: AppState) async {
-        guard let key = apiKey, !key.isEmpty else {
+        let key = apiKey ?? ""
+        guard VertexAI.serves(.anthropic) || !key.isEmpty else {
             await showError("Anthropic API key missing. Open settings to configure it.", state: state)
             return
         }
@@ -503,14 +515,37 @@ final class ClaudeService {
     // MARK: - API call
 
     private func callAPI(body: [String: Any], key: String, beta: String? = nil) async throws -> Data {
-        var request = URLRequest(url: endpoint)
+        var body = body
+        var betas = beta.map { [$0] } ?? []
+        // "claude-opus-5-5[1m]" (same convention as Claude Code): the real model id plus the 1M-context beta.
+        if let m = body["model"] as? String, m.hasSuffix(Self.longContextSuffix) {
+            body["model"] = String(m.dropLast(Self.longContextSuffix.count))
+            betas.append(Self.longContextBeta)
+        }
+        var request: URLRequest
+        if VertexAI.serves(.anthropic) {
+            // Vertex: the model goes in the URL, the API version in the body.
+            let model = body["model"] as? String ?? self.model
+            guard let url = VertexAI.claudeURL(model: model) else {
+                throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid Vertex AI project or region."])
+            }
+            var vertexBody = body
+            vertexBody.removeValue(forKey: "model")
+            vertexBody["anthropic_version"] = VertexAI.anthropicVersion
+            request = URLRequest(url: url)
+            request.setValue("Bearer \(try await VertexToken.shared.accessToken())", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: vertexBody)
+            request.timeoutInterval = 90
+        } else {
+            request = URLRequest(url: endpoint)
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+            request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.timeoutInterval = 45
+        }
         request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        if let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 45
+        if !betas.isEmpty { request.setValue(betas.joined(separator: ","), forHTTPHeaderField: "anthropic-beta") }
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -529,7 +564,12 @@ final class ClaudeService {
                 throw NSError(domain: "Claude", code: 0,
                     userInfo: [NSLocalizedDescriptionKey: errMsg])
             }
-            let msg = String(data: data, encoding: .utf8) ?? "unknown error"
+            // Vertex errors use the Google format: {"error":{"code":404,"message":"…","status":"NOT_FOUND"}}
+            if let http = response as? HTTPURLResponse, http.statusCode == 404, VertexAI.serves(.anthropic) {
+                throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey:
+                    "Model not available on Vertex AI: \(self.model). Pick another one in Settings."])
+            }
+            let msg = VertexAI.errorMessage(from: data) ?? String(data: data, encoding: .utf8) ?? "unknown error"
             throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
         }
         return data

@@ -8833,6 +8833,518 @@
         }
       }
     },
+    "chat.vertex.title": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI (Google Cloud)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertex AI（Google Cloud）"
+          }
+        }
+      }
+    },
+    "chat.vertex.project": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معرّف المشروع (مثل my-gcp-project)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রজেক্ট আইডি (যেমন my-gcp-project)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project ID (e.g. my-gcp-project)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID del proyecto (p. ej. my-gcp-project)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID du projet (ex. my-gcp-project)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रोजेक्ट आईडी (जैसे my-gcp-project)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID proyek (mis. my-gcp-project)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID do projeto (ex.: my-gcp-project)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID проекта (например, my-gcp-project)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "项目 ID（例如 my-gcp-project）"
+          }
+        }
+      }
+    },
+    "chat.vertex.region": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المنطقة (الافتراضية: global)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রিজিয়ন (ডিফল্ট: global)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region (default: global)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Región (por defecto: global)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Région (par défaut : global)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रीजन (डिफ़ॉल्ट: global)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region (bawaan: global)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Região (padrão: global)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Регион (по умолчанию: global)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "区域（默认：global）"
+          }
+        }
+      }
+    },
+    "status.vertex.off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ تم إيقاف Vertex AI — تستخدم الدردشة مفاتيح API الخاصة بك."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI বন্ধ — চ্যাট আপনার API কী ব্যবহার করে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI off — the chat uses your API keys."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI desactivado: el chat usa tus claves de API."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI désactivé — le chat utilise vos clés API."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI बंद — चैट आपकी API कुंजियों का उपयोग करता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI nonaktif — chat memakai kunci API Anda."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI desativado — o chat usa suas chaves de API."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Vertex AI выключен — чат использует ваши API-ключи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 已关闭 Vertex AI，聊天将使用你的 API 密钥。"
+          }
+        }
+      }
+    },
+    "status.vertex.no-credentials": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ لا توجد بيانات اعتماد Google Cloud. شغّل gcloud auth application-default login."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Google Cloud ক্রেডেনশিয়াল নেই। gcloud auth application-default login চালান।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ No Google Cloud credentials. Run gcloud auth application-default login."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ No hay credenciales de Google Cloud. Ejecuta gcloud auth application-default login."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Aucun identifiant Google Cloud. Lancez gcloud auth application-default login."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Google Cloud क्रेडेंशियल नहीं मिले। gcloud auth application-default login चलाएँ।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Tidak ada kredensial Google Cloud. Jalankan gcloud auth application-default login."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Nenhuma credencial do Google Cloud. Execute gcloud auth application-default login."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Нет учётных данных Google Cloud. Выполните gcloud auth application-default login."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ 没有 Google Cloud 凭据。请运行 gcloud auth application-default login。"
+          }
+        }
+      }
+    },
+    "status.vertex.on %@ %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ يمر Claude وGemini الآن عبر Vertex AI (%1$@، %2$@)."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude ও Gemini এখন Vertex AI দিয়ে চলে (%1$@, %2$@)।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude and Gemini now go through Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude y Gemini ahora pasan por Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude et Gemini passent maintenant par Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude और Gemini अब Vertex AI से चलते हैं (%1$@, %2$@)।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude dan Gemini kini melalui Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude e Gemini agora passam pelo Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude и Gemini теперь работают через Vertex AI (%1$@, %2$@)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Claude 和 Gemini 现在通过 Vertex AI（%1$@，%2$@）。"
+          }
+        }
+      }
+    },
+    "chat.vertex.help": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم بيانات اعتماد gcloud الافتراضية للتطبيقات. عند تعيين مشروع، يستخدمه Claude وGemini بدلاً من مفاتيح API أدناه."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার gcloud Application Default Credentials ব্যবহার করে। প্রজেক্ট সেট থাকলে Claude ও Gemini নিচের API কীর বদলে সেটি ব্যবহার করে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses your gcloud Application Default Credentials. When a project is set, Claude and Gemini use it instead of the API keys below."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa tus credenciales predeterminadas de aplicación de gcloud. Con un proyecto definido, Claude y Gemini lo usan en lugar de las claves de API de abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilise vos identifiants par défaut gcloud (Application Default Credentials). Quand un projet est défini, Claude et Gemini l’utilisent à la place des clés API ci-dessous."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपके gcloud Application Default Credentials का उपयोग करता है। प्रोजेक्ट सेट होने पर Claude और Gemini नीचे दी गई API कुंजियों की जगह उसका उपयोग करते हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memakai Application Default Credentials gcloud Anda. Jika proyek diatur, Claude dan Gemini memakainya alih-alih kunci API di bawah."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa suas credenciais padrão de aplicativo do gcloud. Com um projeto definido, Claude e Gemini o usam no lugar das chaves de API abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использует учётные данные gcloud Application Default Credentials. Если проект задан, Claude и Gemini используют его вместо API-ключей ниже."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用你的 gcloud 应用默认凭据。设置项目后，Claude 和 Gemini 将通过它访问，而不是使用下面的 API 密钥。"
+          }
+        }
+      }
+    },
+    "chat.vertex.help.no-credentials": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شغّل أولاً gcloud auth application-default login، ثم عيّن المشروع. سيستخدمه Claude وGemini بدلاً من مفاتيح API أدناه."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রথমে gcloud auth application-default login চালান, তারপর প্রজেক্ট সেট করুন। Claude ও Gemini নিচের API কীর বদলে সেটি ব্যবহার করবে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run gcloud auth application-default login first, then set the project. Claude and Gemini will use it instead of the API keys below."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecuta primero gcloud auth application-default login y luego define el proyecto. Claude y Gemini lo usarán en lugar de las claves de API de abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancez d’abord gcloud auth application-default login, puis indiquez le projet. Claude et Gemini l’utiliseront à la place des clés API ci-dessous."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पहले gcloud auth application-default login चलाएँ, फिर प्रोजेक्ट सेट करें। Claude और Gemini नीचे दी गई API कुंजियों की जगह उसका उपयोग करेंगे।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jalankan dulu gcloud auth application-default login, lalu atur proyeknya. Claude dan Gemini akan memakainya alih-alih kunci API di bawah."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Execute primeiro gcloud auth application-default login e depois defina o projeto. Claude e Gemini vão usá-lo no lugar das chaves de API abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала выполните gcloud auth application-default login, затем укажите проект. Claude и Gemini будут использовать его вместо API-ключей ниже."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先运行 gcloud auth application-default login，然后设置项目。Claude 和 Gemini 将通过它访问，而不是使用下面的 API 密钥。"
+          }
+        }
+      }
+    },
     "chat.api-key.claude": {
       "localizations": {
         "ar": {
@@ -9661,6 +10173,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "由聊天使用。列表来自你的 Anthropic 账户。"
+          }
+        }
+      }
+    },
+    "chat.model.description.vertex": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم في الدردشة. القائمة مأخوذة من Vertex AI."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "চ্যাটে ব্যবহৃত হয়। তালিকাটি Vertex AI থেকে আসে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used by the chat. The list comes from Vertex AI."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo usa el chat. La lista viene de Vertex AI."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisé par le chat. La liste vient de Vertex AI."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चैट में उपयोग होता है। सूची Vertex AI से आती है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dipakai oleh chat. Daftarnya berasal dari Vertex AI."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usado pelo chat. A lista vem do Vertex AI."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Используется в чате. Список берётся из Vertex AI."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于聊天。列表来自 Vertex AI。"
           }
         }
       }

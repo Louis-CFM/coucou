@@ -191,6 +191,29 @@ final class AppState: ObservableObject {
             }
             return
         }
+        // Anthropic and Google through Vertex AI: no API key
+        if VertexAI.serves(provider) {
+            loadingProviderModels.insert(provider)
+            providerModelFetchError.removeValue(forKey: provider)
+            Task {
+                let models = provider == .anthropic ? await VertexAI.fetchClaudeModels()
+                                                    : await VertexAI.fetchGeminiModels()
+                loadingProviderModels.remove(provider)
+                if models.isEmpty {
+                    providerModelFetchError[provider] = "Failed to load models from Vertex AI. Check the project and `gcloud auth application-default login`."
+                } else {
+                    fetchedProviderModels[provider] = models
+                    if provider == .anthropic, !models.contains(where: { $0.id == claudeModel }) {
+                        claudeModel = models.first(where: { $0.id == AppState.defaultClaudeModel })?.id
+                            ?? models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
+                    }
+                    if provider == .google, !models.contains(where: { $0.id == googleChatModel }) {
+                        googleChatModel = models.first(where: { $0.id.contains("flash") })?.id ?? models.first!.id
+                    }
+                }
+            }
+            return
+        }
         // Remote providers: require API key
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
             providerModelFetchError[provider] = "No API key — add it in Settings."
