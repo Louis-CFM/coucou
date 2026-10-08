@@ -73,7 +73,7 @@ test("IDs are unique", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("this build leaves out what only macOS has, Claude Desktop on Linux and Spotify on Windows", () => {
+test("this build leaves out what only macOS has, and Claude Desktop on Linux", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
   for (const id of ["integration_music"]) {
@@ -88,18 +88,15 @@ test("this build leaves out what only macOS has, Claude Desktop on Linux and Spo
   }
   assert.ok(windows.includes("agent_claude-desktop"));
   assert.ok(!linux.includes("agent_claude-desktop"));
-  // Spotify is read over MPRIS, which only Linux has.
+  // Spotify is read from Spotify itself on both: MPRIS, or Windows' media session.
   assert.ok(linux.includes("integration_spotify"));
-  assert.ok(!windows.includes("integration_spotify"));
-  assert.deepEqual(
-    linux.filter((id) => id !== "integration_spotify"),
-    windows.filter((id) => id !== "agent_claude-desktop"),
-  );
+  assert.ok(windows.includes("integration_spotify"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop"));
 });
 
-test("Spotify: a Linux-only service with nothing to set up", () => {
+test("Spotify: a service with nothing to set up, on Windows and Linux", () => {
   const def = pillDefinition("integration_spotify");
-  assert.equal(def.support, "linux");
+  assert.equal(def.support, "yes");
   assert.deepEqual(def.connect, { kind: "none" });
   assert.equal(def.category, "service");
   assert.ok(!isComingSoon("integration_spotify"));
@@ -107,14 +104,14 @@ test("Spotify: a Linux-only service with nothing to set up", () => {
   assert.ok(!mainPillChoices("linux").some((p) => p.id === "integration_spotify"));
 });
 
-test("a Linux-only pill can be declared on Linux and is dropped on Windows", () => {
+test("Spotify can be declared on both, and a Windows-only pill is dropped on Linux", () => {
   const d = { mainPill: "integration_claude", activeIntegrations: ["integration_spotify", "integration_n8n"] };
   assert.deepEqual(sanitizeDeclared(d, "linux").activeIntegrations, ["integration_spotify", "integration_n8n"]);
-  assert.deepEqual(sanitizeDeclared(d, "windows").activeIntegrations, ["integration_n8n"]);
+  assert.deepEqual(sanitizeDeclared(d, "windows").activeIntegrations, ["integration_spotify", "integration_n8n"]);
   const empty = { mainPill: "integration_claude", activeIntegrations: [] };
   assert.deepEqual(toggleDeclared(empty, "integration_spotify", "linux"), ["integration_spotify"]);
-  assert.equal(toggleDeclared(empty, "integration_spotify", "windows"), null);
-  // And the other way round: Claude Desktop stays Windows only.
+  assert.deepEqual(toggleDeclared(empty, "integration_spotify", "windows"), ["integration_spotify"]);
+  // Claude Desktop stays Windows only.
   assert.equal(toggleDeclared(empty, "agent_claude-desktop", "linux"), null);
   assert.deepEqual(toggleDeclared(empty, "agent_claude-desktop", "windows"), ["agent_claude-desktop"]);
 });

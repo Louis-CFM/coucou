@@ -1,10 +1,8 @@
-// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (Linux,
-// through MPRIS), and the pure rules the views and Mochi follow — ports of
-// SpotifyController.swift, NowPlayingViews.swift and the Mac's dance rules
-// (BotCanvasView, DesktopMochi.swift).
-//
-// Windows has no music source yet: nothing ever reports a track there, so
-// nothing plays and Mochi never dances, through the same code.
+// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (over
+// MPRIS on Linux, through the system's media session on Windows), and the pure
+// rules the views and Mochi follow — ports of SpotifyController.swift,
+// NowPlayingViews.swift and the Mac's dance rules (BotCanvasView,
+// DesktopMochi.swift).
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 
@@ -37,11 +35,16 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+  /**
+   * Shuffle and repeat can be read and set. Not on Windows: Spotify tells the
+   * system it changed them and changes nothing, so the card leaves them out.
+   */
+  modes: boolean;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
   running: false, installed: false, track: null, playing: false,
-  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
+  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50, modes: true,
 };
 
 /** The page's copy of the player, and the cover of the track that has one. */

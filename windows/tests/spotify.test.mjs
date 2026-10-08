@@ -193,7 +193,7 @@ test("the pill wears the track's title, and its own name when nothing plays", ()
   assert.equal(spotifyTask().name, "Spotify");
 });
 
-test("music starting shows the hidden island once, silently; nothing on Windows-like setups", () => {
+test("music starting shows the hidden island once, silently; nothing while the pill is not declared", () => {
   emit("spotify", playing({ playing: false }));
   assert.equal(island.reveals, 0);
   emit("spotify", playing());
@@ -247,6 +247,21 @@ test("the idle card: not playing, or not installed with a way to get it", () => 
   setLanguage("fr");
   card.sync();
   assert.ok(card.el.textContent.includes(lookup("Get Spotify", "fr")));
+});
+
+test("where shuffle and repeat cannot be set, the card leaves the two buttons out", () => {
+  const card = buildSpotifyCard();
+  Spotify.state = playing({ modes: false });
+  card.sync();
+  const [shuffle, prev, play, next, repeat] = card.el.querySelector("np-buttons").children;
+  assert.equal(shuffle.style.display, "none");
+  assert.equal(repeat.style.display, "none");
+  for (const button of [prev, play, next]) assert.notEqual(button.style.display, "none");
+  // Where they work, they are there.
+  Spotify.state = playing({ modes: true });
+  card.sync();
+  assert.notEqual(shuffle.style.display, "none");
+  assert.notEqual(repeat.style.display, "none");
 });
 
 test("the playing card: title, artist · album, times, and the controls", () => {

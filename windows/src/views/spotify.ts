@@ -2,7 +2,7 @@
 // (SpotifyViews.swift) and the shared now-playing pieces (NowPlayingViews.swift
 // and MusicControlButton). Sizes, colours and wording are the Mac's.
 //
-// What they show comes from src-tauri/src/spotify.rs (Linux, MPRIS) through
+// What they show comes from src-tauri/src/spotify.rs through
 // island/spotify.ts. A click changes the page's copy at once and Spotify
 // confirms it, as the Mac's controller does.
 
@@ -378,6 +378,8 @@ export function buildSpotifyCard(): SpotifyCardHost {
     progress.enabled = !isAd(track) && track.duration > 0;
     paintProgress();
 
+    // Where they cannot work (see SpotifyState.modes) they are left out, and the three others close up.
+    shuffle.style.display = repeat.style.display = s.modes ? "" : "none";
     shuffle.style.color = s.shuffle ? green : "#6B7079";
     shuffle.title = s.shuffle ? t("Shuffle on") : t("Shuffle off");
     repeat.style.color = s.repeat ? green : "#6B7079";
