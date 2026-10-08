@@ -106,6 +106,7 @@ const AGENT_NAMES: Record<string, string> = {
   agent_gemini: "Gemini CLI",
   agent_copilot: "Copilot CLI",
   agent_muse: "Muse Code",
+  agent_devin: "Devin",
   agent_opencode: "OpenCode",
   agent_amp: "Amp",
   agent_hermes: "Hermes",

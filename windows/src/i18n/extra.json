@@ -2157,6 +2157,17 @@
    "ru": "Начните новую сессию Copilot CLI, чтобы хуки заработали.",
    "id": "Mulai sesi Copilot CLI baru agar hooks dimuat."
   },
+  "Start a new Devin session to pick the hooks up.": {
+   "zh-Hans": "开启新的 Devin 会话即可启用 hooks。",
+   "hi": "hooks लागू करने के लिए Devin का नया सत्र शुरू करें।",
+   "es": "Abre una nueva sesión de Devin para que cargue los hooks.",
+   "ar": "ابدأ جلسة Devin جديدة لتفعيل الـ hooks.",
+   "fr": "Lance une nouvelle session Devin pour qu'elle prenne les hooks.",
+   "bn": "hooks চালু করতে Devin-এর নতুন সেশন শুরু করুন।",
+   "pt-BR": "Inicie uma nova sessão do Devin para carregar os hooks.",
+   "ru": "Начните новую сессию Devin, чтобы хуки заработали.",
+   "id": "Mulai sesi Devin baru agar hooks dimuat."
+  },
   "Start a new Gemini CLI session to pick the hooks up.": {
    "zh-Hans": "开启新的 Gemini CLI 会话即可启用 hooks。",
    "hi": "hooks लागू करने के लिए Gemini CLI का नया सत्र शुरू करें।",

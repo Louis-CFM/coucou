@@ -87,6 +87,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_muse", name: "Muse Code", color: "#38BDF8", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
+  { id: "agent_devin", name: "Devin", color: "#F472B6", category: "agent",
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // A plugin that starts the relay, written from Settings → Agents (agents.rs).
   { id: "agent_opencode", name: "OpenCode", color: "#4ADE80", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
@@ -174,6 +176,7 @@ export function sessionSubtitle(id: string): string {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";
     case "agent_codex": return "Codex";
+    case "agent_devin": return "Devin";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";
     default: return N_("Agent");

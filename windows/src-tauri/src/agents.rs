@@ -98,6 +98,7 @@ pub enum Agent {
     Codex,
     Copilot,
     Muse,
+    Devin,
     OpenCode,
     Amp,
     Hermes,
@@ -108,6 +109,7 @@ impl Agent {
         Agent::Codex,
         Agent::Copilot,
         Agent::Muse,
+        Agent::Devin,
         Agent::Gemini,
         Agent::Antigravity,
         Agent::Cursor,
@@ -125,6 +127,7 @@ impl Agent {
             Agent::Codex => "codex",
             Agent::Copilot => "copilot",
             Agent::Muse => "muse",
+            Agent::Devin => "devin",
             Agent::OpenCode => "opencode",
             Agent::Amp => "amp",
             Agent::Hermes => "hermes",
@@ -144,6 +147,14 @@ impl Agent {
             Agent::Codex => vec![home.join(".codex").join("hooks.json")],
             Agent::Copilot => vec![home.join(".copilot").join("hooks").join("coucou.json")],
             Agent::Muse => vec![home.join(".config").join("muse").join("settings.json")],
+            // %APPDATA%\devin\config.json — home's AppData\Roaming on Windows —
+            // and ~/.config/devin/config.json on Linux.
+            #[cfg(windows)]
+            Agent::Devin => {
+                vec![home.join("AppData").join("Roaming").join("devin").join("config.json")]
+            }
+            #[cfg(target_os = "linux")]
+            Agent::Devin => vec![home.join(".config").join("devin").join("config.json")],
             // OpenCode and Amp read ~/.config on Windows too.
             Agent::OpenCode => vec![home.join(".config").join("opencode").join("plugins").join("coucou.js")],
             Agent::Amp => vec![home.join(".config").join("amp").join("plugins").join("coucou.ts")],
@@ -229,6 +240,11 @@ impl Agent {
                     .collect();
                 Box::new(move |v| muse_install(v, &commands).map(Some))
             }
+            (Agent::Devin, false) => Box::new(|v| groups_uninstall(v, "devin").map(Some)),
+            (Agent::Devin, true) => {
+                let command = relay.command(Shell::Sh, "--agent devin");
+                Box::new(move |v| devin_install(v, &command).map(Some))
+            }
             // Plugins are whole files (see `plugin`), never merged into JSON.
             (Agent::OpenCode | Agent::Amp | Agent::Hermes, _) => {
                 Box::new(|_| Err(crate::i18n::t("This agent takes a plugin, not hook entries.")))
@@ -260,6 +276,7 @@ impl Agent {
                 .and_then(Value::as_object)
                 .is_some_and(|h| h.values().filter_map(Value::as_array).flatten().any(copilot_entry_is_ours)),
             Agent::Muse => groups_have_ours(&json(), "muse"),
+            Agent::Devin => groups_have_ours(&json(), "devin"),
             Agent::OpenCode | Agent::Amp | Agent::Hermes => false,
         }
     }
@@ -267,7 +284,7 @@ impl Agent {
     /// Whether the island can answer this agent's permission requests. Must
     /// match `takes_decisions` in the relay (hook/src/reply.rs).
     fn approvals(self) -> bool {
-        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse)
+        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse | Agent::Devin)
     }
 }
 
@@ -284,6 +301,7 @@ impl Agent {
             Agent::Codex => "Codex",
             Agent::Copilot => "GitHub Copilot CLI",
             Agent::Muse => "Muse Code",
+            Agent::Devin => "Devin",
             Agent::OpenCode => "OpenCode",
             Agent::Amp => "Amp",
             Agent::Hermes => "Hermes Agent",
@@ -300,6 +318,7 @@ impl Agent {
             Agent::Codex => t("Codex runs new hooks only once you trust them: start Codex and review them once with /hooks."),
             Agent::Copilot => t("Start a new Copilot CLI session to pick the hooks up."),
             Agent::Muse => t("Start a new Muse Code session to pick the hooks up."),
+            Agent::Devin => t("Start a new Devin session to pick the hooks up."),
             Agent::OpenCode => t("Restart OpenCode to load the plugin."),
             Agent::Amp => t("Restart Amp to load the plugin."),
             Agent::Hermes => t("Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session."),
@@ -724,6 +743,40 @@ fn muse_install(root: &Value, commands: &[(String, String, u64)]) -> Result<Valu
         root.insert("schema_version".into(), json!(1));
     }
     Ok(Value::Object(root))
+}
+
+// ── Devin — %APPDATA%\devin\config.json, "hooks" key ──────────────────────────
+//
+// Devin's hooks are Claude Code-compatible: the same group shape, PascalCase
+// events and timeouts in seconds — but in the "hooks" key of Devin's own
+// config.json, which also holds Devin's settings; groups_install leaves those
+// alone. Devin runs the command through a POSIX shell even on Windows (Git
+// Bash, like Claude Code — backslashes in a bare path die as escapes), so the
+// command is built for Sh. The event name arrives in the payload, so one
+// command line serves every event. A
+// PermissionRequest waits for the island (120 s) and is answered with
+// {"decision": "approve" | "block"} — only after a click; silence is "no
+// opinion" and Devin asks itself. See
+// https://docs.devin.ai/cli/extensibility/hooks/overview
+
+const DEVIN_EVENTS: &[(&str, u64)] = &[
+    ("SessionStart", 10),
+    ("UserPromptSubmit", 10),
+    ("PreToolUse", 10),
+    ("PermissionRequest", 120),
+    ("PostToolUse", 10),
+    ("Stop", 10),
+    ("SessionEnd", 10),
+];
+
+fn devin_install(root: &Value, command: &str) -> Result<Value, String> {
+    let events = DEVIN_EVENTS.iter().map(|(event, timeout)| {
+        (
+            event.to_string(),
+            json!({ "matcher": "", "hooks": [{ "type": "command", "command": command, "timeout": timeout }] }),
+        )
+    });
+    groups_install(root, "devin", events).map(Value::Object)
 }
 
 // ── Plugins: OpenCode, Amp, Hermes ────────────────────────────────────────────
@@ -1191,9 +1244,43 @@ mod tests {
     }
 
     #[test]
-    fn only_codex_copilot_and_muse_take_approvals() {
+    fn devin_hooks_live_in_its_config_and_leave_the_rest_alone() {
+        let existing = r#"{"version":1,"permissions":{"allow":["web.search"]},"hooks":{"Stop":[{"matcher":"*","hooks":[{"type":"command","command":"./done.sh","timeout":5}]}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Devin, Some(existing));
+        // Devin's own settings are untouched.
+        assert_eq!(installed["version"], 1);
+        assert_eq!(installed["permissions"]["allow"], json!(["web.search"]));
+        for (event, timeout) in DEVIN_EVENTS {
+            let hook = installed["hooks"][event].as_array().unwrap().last().unwrap()["hooks"][0].clone();
+            assert_eq!(hook["type"], "command", "{event}");
+            assert_eq!(hook["timeout"], *timeout, "{event}");
+            assert!(hook["command"].as_str().unwrap().ends_with("--agent devin"), "{event}");
+        }
+        assert_eq!(installed["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"], 120);
+        // Someone else's Stop hook stays first, untouched.
+        assert_eq!(installed["hooks"]["Stop"][0]["hooks"][0]["command"], "./done.sh");
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert!(Agent::Devin.approvals());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn devin_keeps_nothing_it_did_not_write_and_installs_once() {
+        let command = "'x/coucou-hook' --agent devin";
+        let once = devin_install(&json!({}), command).unwrap();
+        let twice = devin_install(&once, "'y/coucou-hook' --agent devin").unwrap();
+        assert_eq!(twice["hooks"]["Stop"].as_array().unwrap().len(), 1);
+        // A hook without our marker is somebody else's and stays.
+        let theirs = json!({ "hooks": { "PreToolUse": [{ "command": "./lint" }] } });
+        let merged = devin_install(&theirs, command).unwrap();
+        assert_eq!(merged["hooks"]["PreToolUse"].as_array().unwrap().len(), 2);
+        assert_eq!(merged["hooks"]["PreToolUse"][0]["command"], "./lint");
+    }
+
+    #[test]
+    fn only_codex_copilot_muse_and_devin_take_approvals() {
         let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
-        assert_eq!(with, ["codex", "copilot", "muse"]);
+        assert_eq!(with, ["codex", "copilot", "muse", "devin"]);
     }
 
     #[test]
