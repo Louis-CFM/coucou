@@ -284,8 +284,11 @@ body {
 
 /* A view that is not on is only transparent, not gone: an infinite animation
    inside it (the drop frame's marching dashes) would keep the webview
-   repainting every frame for as long as the app runs, island hidden or not. */
-.view:not(.on) * {
+   repainting every frame for as long as the app runs, island hidden or not.
+   The same goes for the view that is on while the island is compact or hidden:
+   the ticker's shimmer went on repainting inside an island of zero height. */
+.view:not(.on) *,
+#content:not(.live) * {
   animation-play-state: paused;
 }
 
