@@ -66,6 +66,10 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// Custom editor command to open project folders (e.g. "cursor", "zed", "code").
+    /// Falls back to $VISUAL, $EDITOR, then "code".
+    #[serde(default)]
+    pub editor: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -120,6 +124,7 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            editor: None,
         }
     }
 }
@@ -395,7 +400,8 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "editor": "cursor"
 }"##;
 
     fn custom() -> Value {
@@ -798,6 +804,7 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "editor",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
