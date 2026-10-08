@@ -656,12 +656,15 @@ function buildConfused(): ViewHost {
 // ── Note ──────────────────────────────────────────────────────────────────────
 
 function buildNote(): ViewHost {
-  const title = h("div", { class: "title" });
+  const title = h("div", { class: "title note" });
   const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title)));
   return {
     el,
     sync() {
-      title.textContent = State.noteMessage ?? "";
+      const note = State.noteMessage ?? "";
+      title.textContent = note;
+      // A note that had to be cut (see `.title.note`) can still be read in full.
+      title.title = note;
     },
   };
 }

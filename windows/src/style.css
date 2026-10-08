@@ -741,6 +741,15 @@ body {
   font: 600 15px var(--font);
 }
 
+/* A note is one short sentence. A longer one — an error passed on from a
+   provider — stops with an ellipsis instead of filling its card to the edges. */
+.title.note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
 /* Claude's final message on the finished card: one line, never past the card. */
 .title.one-line {
   white-space: nowrap;
