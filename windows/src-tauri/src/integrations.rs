@@ -67,6 +67,7 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_n8n", 3, 15, poll_n8n);
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
+    spawn(app.clone(), "integration_cursor_cloud", 7, 30, poll_cursor_cloud);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
@@ -110,6 +111,7 @@ where
 pub async fn poll_once(app: AppHandle, id: &str) {
     match id {
         "integration_stripe" => poll_stripe(app).await,
+        "integration_cursor_cloud" => poll_cursor_cloud(app).await,
         "integration_github" => {
             wake_github_pulse();
             github_refresh_if_stale("activity");
@@ -269,6 +271,127 @@ async fn poll_stripe(app: AppHandle) {
         error: None,
         event,
     });
+}
+
+// ── Cursor Cloud Agents ───────────────────────────────────────────────────────
+
+async fn poll_cursor_cloud(app: AppHandle) {
+    let Some(key) = secrets::get("cursor-api-key") else { return };
+    let response = client()
+        .get("https://api.cursor.com/v1/agents?limit=20")
+        .basic_auth(&key, None::<&str>)
+        .header("Accept", "application/json")
+        .send()
+        .await;
+    let Ok(response) = response else { return };
+    if !response.status().is_success() {
+        emit(
+            &app,
+            IntegrationUpdate {
+                id: "integration_cursor_cloud",
+                data: json!({}),
+                error: Some(status_error(
+                    response.status().as_u16(),
+                    &crate::i18n::t("Key lacks access"),
+                )),
+                event: None,
+            },
+        );
+        return;
+    }
+    let json: Value = response.json().await.unwrap_or(json!({}));
+    let agents: Vec<Value> = json
+        .get("items")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|a| {
+                    let status = a.get("status")?.as_str()?;
+                    if status == "ARCHIVED" {
+                        return None;
+                    }
+                    let id = a.get("id")?.as_str()?;
+                    let name = a.get("name")?.as_str()?;
+                    let url = a
+                        .get("url")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string();
+                    let url = if url.is_empty() {
+                        format!("https://cursor.com/agents/{id}")
+                    } else {
+                        url
+                    };
+                    Some(json!({
+                        "id": id,
+                        "name": name,
+                        "status": status,
+                        "url": url,
+                        "latestRunId": a.get("latestRunId").and_then(Value::as_str),
+                        "updatedAt": a.get("updatedAt").and_then(Value::as_str).unwrap_or(""),
+                    }))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let active: Vec<&Value> = agents
+        .iter()
+        .filter(|a| a.get("status").and_then(Value::as_str) == Some("ACTIVE"))
+        .collect();
+    let fingerprint = active
+        .iter()
+        .filter_map(|a| a.get("id").and_then(Value::as_str))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    // Reuse is_new with a stable key: fire when the active set changes to a
+    // non-empty fingerprint (new ACTIVE work). Leaving ACTIVE is handled by a
+    // separate “was-active” marker stored alongside.
+    let event = if !fingerprint.is_empty() && is_new("cursor_cloud_active", &fingerprint) {
+        Some(IntegrationEvent {
+            success: true,
+            label: active
+                .first()
+                .and_then(|a| a.get("name").and_then(Value::as_str))
+                .unwrap_or("Cloud agent")
+                .to_string(),
+            detail: Some("ACTIVE".into()),
+        })
+    } else if fingerprint.is_empty() {
+        // Detect transition out of ACTIVE: is_new returns false on first empty
+        // after a previous non-empty only if we compare against previous.
+        let mut map = SEEN.0.lock().unwrap();
+        let prev = map.get("cursor_cloud_active").cloned();
+        let had_active = prev.as_ref().is_some_and(|p| !p.is_empty());
+        map.insert("cursor_cloud_active", String::new());
+        drop(map);
+        if had_active {
+            Some(IntegrationEvent {
+                success: true,
+                label: agents
+                    .first()
+                    .and_then(|a| a.get("name").and_then(Value::as_str))
+                    .unwrap_or("Done")
+                    .to_string(),
+                detail: None,
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    emit(
+        &app,
+        IntegrationUpdate {
+            id: "integration_cursor_cloud",
+            data: json!({ "agents": agents }),
+            error: None,
+            event,
+        },
+    );
 }
 
 // ── GitHub ────────────────────────────────────────────────────────────────────

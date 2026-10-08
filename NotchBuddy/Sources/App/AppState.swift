@@ -355,6 +355,11 @@ final class AppState: ObservableObject {
     @Published var stripeLoaded: Bool = false       // true after first successful poll
     @Published var stripeError: String? = nil      // last API error (nil = ok)
 
+    // Cursor Cloud Agents (populated by CursorCloudPoller)
+    @Published var cursorCloudAgents: [CursorCloudAgent] = []
+    @Published var cursorCloudLoaded: Bool = false
+    @Published var cursorCloudError: String? = nil
+
     // Cal.com (populated by CalcomPoller)
     @Published var calcomBookings: [CalcomBooking] = []
     @Published var calcomLoaded: Bool = false
@@ -766,6 +771,34 @@ struct ResendEmail: Identifiable {
 struct GitHubStats {
     let totalRepos: Int
     let totalStars: Int
+}
+
+// MARK: - Cursor Cloud
+
+struct CursorCloudAgent: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let status: String          // "ACTIVE", "IDLE", "ARCHIVED"
+    let url: String
+    let latestRunId: String?
+    let updatedAt: Date
+
+    var isActive: Bool { status == "ACTIVE" }
+    var statusLabel: String {
+        switch status {
+        case "ACTIVE": return "Active"
+        case "IDLE":   return "Idle"
+        case "ARCHIVED": return "Archived"
+        default:       return status.capitalized
+        }
+    }
+    var timeAgo: String {
+        let diff = Date().timeIntervalSince(updatedAt)
+        if diff < 60    { return "just now" }
+        if diff < 3600  { return "\(Int(diff/60))m" }
+        if diff < 86400 { return "\(Int(diff/3600))h" }
+        return "\(Int(diff/86400))d"
+    }
 }
 
 // MARK: - Stripe
