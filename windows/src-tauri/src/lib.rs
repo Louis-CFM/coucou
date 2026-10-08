@@ -188,10 +188,35 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -206,8 +231,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock().unwrap().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -225,14 +251,14 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// runs in, when it was found (Windows, see session_window.rs); otherwise opens
 /// the folder in VS Code, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<String>) -> bool {
     if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
         let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
         if platform::focus_process_window(owner, folder) {
             return true;
         }
     }
-    open_in_vscode(path)
+    open_in_vscode(shared, path)
 }
 
 /// The Claude Desktop pill's target: the Claude app (Windows only — it has no
@@ -756,6 +782,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+    use super::*;
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
@@ -773,5 +800,24 @@ mod tests {
         assert!(diff_file("").is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        #[cfg(windows)]
+        let target = "cmd";
+        #[cfg(not(windows))]
+        let target = "sh";
+
+        let found = resolve_editor(Some(target));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains(target));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
     }
 }

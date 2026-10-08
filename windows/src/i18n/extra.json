@@ -826,6 +826,17 @@
    "ru": "Сначала введите адрес сервера.",
    "id": "Masukkan alamat server terlebih dahulu."
   },
+  "Editor command": {
+   "zh-Hans": "编辑器命令",
+   "hi": "संपादक कमांड",
+   "es": "Comando de editor",
+   "ar": "أمر المحرر",
+   "fr": "Commande d'éditeur",
+   "bn": "এডিটর কমান্ড",
+   "pt-BR": "Comando do editor",
+   "ru": "Команда редактора",
+   "id": "Perintah editor"
+  },
   "Error": {
    "zh-Hans": "错误",
    "hi": "त्रुटि",
