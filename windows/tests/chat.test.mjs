@@ -56,10 +56,26 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
-  assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
+  // Nothing is set up: only where the chat goes is shown, and it says what is missing.
+  assert.deepEqual(chips(), ["Anthropic"]);
+  // The credential store is only ever asked whether a provider's key is there.
+  const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
+  assert.ok(sent("secret_present").every((call) => keys.includes(call.key)));
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
+});
+
+test("the picker offers the providers that are set up, and the active one", async () => {
+  answers.secret_present = (args) => args.key === "google-api-key" || args.key === "openrouter-api-key";
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenRouter"]);
+  // A key added in Settings since shows the next time the picker opens.
+  $(".model-btn").fire("click");
+  answers.secret_present = true;
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
 });
 
 test("with a key, the models are listed and picking one saves it", async () => {

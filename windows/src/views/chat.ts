@@ -11,7 +11,7 @@ import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  PROVIDERS, activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
@@ -81,12 +81,27 @@ function buildPicker(onChange: () => void): Picker {
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
+  /** The keys the credential store held the last time it was asked. */
+  const stored = new Set<string>();
   let isOpen = false;
   let request = 0;
 
+  /** Which cloud providers have their key: asked again each time the picker opens. */
+  async function findKeys() {
+    const keys = PROVIDERS.flatMap((p) => (p.key ? [p.key] : []));
+    const present = await Promise.all(keys.map((key) => Bridge.secretPresent(key)));
+    stored.clear();
+    keys.forEach((key, i) => {
+      if (present[i]) stored.add(key);
+    });
+    if (isOpen) drawChips();
+  }
+  // Known before the first opening, so the chips do not arrive one after another.
+  void findKeys();
+
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
+    for (const p of visibleProviders(State.settings, (key) => stored.has(key))) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -188,6 +203,7 @@ function buildPicker(onChange: () => void): Picker {
     isOpen = true;
     el.classList.add("on");
     drawChips();
+    void findKeys();
     onChange();
     void loadModels();
   }

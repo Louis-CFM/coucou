@@ -54,14 +54,18 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
 }
 
 /**
- * The chips of the picker: every cloud provider (one without a key says so
- * when picked), and a model server once it is connected — or while it is the
- * active one, so the picker never hides where the chat goes.
+ * The chips of the picker: what is set up — a cloud provider whose key is in
+ * the credential store (`hasKey`), a model server once it is connected — and
+ * always the active one, so the picker never hides where the chat goes. The
+ * active one says so when its key is missing; the others are added in
+ * Settings, where their keys go.
  */
-export function visibleProviders(settings: Settings): ProviderDef[] {
-  return PROVIDERS.filter(
-    (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
-  );
+export function visibleProviders(settings: Settings, hasKey: (key: string) => boolean): ProviderDef[] {
+  return PROVIDERS.filter((p) => {
+    if (settings.chatProvider === p.id) return true;
+    if (p.urlField) return settings[p.urlField] !== "";
+    return p.key != null && hasKey(p.key);
+  });
 }
 
 /** The model to keep once the list arrives: the saved one if offered, else a sensible one. */
