@@ -1214,6 +1214,7 @@ struct PromptView: View {
     @State private var text: String = ""
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
+    @State private var isSending = false
 
     #if !APPSTORE
     @State private var dictation = MacDictation()
@@ -1265,6 +1266,15 @@ struct PromptView: View {
                 }
 
                 HStack(spacing: 0) {
+                    Button(action: clearChat) {
+                        Label("Clear chat", systemImage: "trash")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundColor(Color(hex: "#7B8089"))
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(state.chatHistory.isEmpty || isChatBusy)
+                    .help("Clear this conversation (⌘K)")
                     Spacer()
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -1330,7 +1340,7 @@ struct PromptView: View {
                             .foregroundColor(Color(hex: "#0B0C0E"))
                     }
                     .buttonStyle(SendButtonStyle())
-                    .disabled(text.isEmpty)
+                    .disabled(text.isEmpty || isSending)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(Color.white.opacity(0.07))
@@ -1360,14 +1370,29 @@ struct PromptView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandNewConversation)) { _ in
             guard state.view == .prompt else { return }
-            text = ""
-            state.chatHistory = []
-            ClaudeService.shared.clearConversation()
-            focused = true
+            clearChat()
         }
     }
 
+    private var isChatBusy: Bool {
+        #if !APPSTORE
+        return isSending || dictation.isRecording
+        #else
+        return isSending
+        #endif
+    }
+
+    private func clearChat() {
+        // A pending reply must finish before its conversation can be removed.
+        guard !isChatBusy else { return }
+        text = ""
+        state.chatHistory = []
+        ClaudeService.shared.clearConversation()
+        focused = true
+    }
+
     private func sendMessage() {
+        guard !isSending else { return }
         #if !APPSTORE
         // Still dictating: take the final words (and the right language) before sending.
         if dictation.isRecording {
@@ -1384,9 +1409,13 @@ struct PromptView: View {
         focused = false
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
+        isSending = true
         Task {
             await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
-            await MainActor.run { focused = true }
+            await MainActor.run {
+                isSending = false
+                focused = true
+            }
         }
     }
 }

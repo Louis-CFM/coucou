@@ -334,3 +334,5 @@ In **Settings → Chat → OpenRouter**, enter your API key and click **Save and
 The catalogue refreshes whenever you open the OpenRouter model picker. Only text-capable models with zero advertised pricing are offered; pricing is checked again before each message and requests set zero maximum prompt, completion and per-request prices. No paid model fallback is requested. Free usage is subject to OpenRouter's account limits and provider availability; it is not unlimited. API keys stay in macOS Keychain. Messages are sent to OpenRouter and the selected model provider.
 
 Run the offline catalogue/pricing/error regression tests with `bash scripts/test-openrouter.sh`.
+
+Use **Clear chat** beside the chat model selector (or **⌘K**) to reset the visible conversation and its AI context. Clearing is disabled while a reply or dictation is in progress.
