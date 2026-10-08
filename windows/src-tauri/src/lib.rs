@@ -286,7 +286,32 @@ fn open_gitea_url(url: String) {
     }
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
@@ -304,8 +329,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = settings::load().editor;
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -364,14 +390,15 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
+/// The diff card's ↗: opens the edited file in the configured editor (or VS Code) when found,
 /// otherwise shows its folder. The file itself is never opened by its type —
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = settings::load().editor;
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
@@ -1135,6 +1162,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{diff_file, is_forge_instance_url};
+    use super::*;
 
     #[test]
     fn forge_links_stay_on_the_configured_instance() {
@@ -1169,5 +1197,24 @@ mod tests {
         assert!(diff_file("").is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        #[cfg(windows)]
+        let target = "cmd";
+        #[cfg(not(windows))]
+        let target = "sh";
+
+        let found = resolve_editor(Some(target));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains(target));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
     }
 }
