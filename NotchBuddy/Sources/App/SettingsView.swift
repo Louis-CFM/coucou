@@ -394,6 +394,7 @@ struct SettingsView: View {
                     Text(String(localized: "System")).tag("")
                     Text("English").tag("en")
                     Text("简体中文").tag("zh-Hans")
+                    Text("繁體中文").tag("zh-Hant")
                     Text("हिन्दी").tag("hi")
                     Text("Español").tag("es")
                     Text("العربية").tag("ar")

@@ -148,6 +148,7 @@ targets:
           - pt-BR
           - ru
           - zh-Hans
+          - zh-Hant
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
@@ -215,6 +216,7 @@ targets:
           - pt-BR
           - ru
           - zh-Hans
+          - zh-Hant
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
