@@ -127,13 +127,15 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "12"
-        CFBundleShortVersionString: "0.2.1"
+        CFBundleVersion: "13"
+        CFBundleShortVersionString: "0.2.2"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
-        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique."
+        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a message in the chat."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

@@ -68,7 +68,10 @@ struct SessionDetailView: View {
             ZStack {
                 Color.black
                 if let session {
-                    AgentBackdrop(hex: PillCatalog.definition(for: session.id)?.color ?? session.color)
+                    // The Mac sends the colour it paints with: the user's own, if they picked one.
+                    AgentBackdrop(hex: session.color.isEmpty
+                                  ? PillCatalog.definition(for: session.id)?.color ?? "#C0C4CC"
+                                  : session.color)
                         .frame(height: 360)
                         .mask(LinearGradient(colors: [.black, .black.opacity(0.5), .clear],
                                              startPoint: .top, endPoint: .bottom))

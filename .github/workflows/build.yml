@@ -33,6 +33,12 @@ jobs:
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
 
+      - name: Test open on hover
+        run: bash scripts/test-island-hover.sh
+
+      - name: Test terminal target
+        run: bash scripts/test-terminal-target.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
@@ -59,6 +65,9 @@ jobs:
 
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
+
+      - name: Pill colour tests
+        run: bash scripts/test-pill-colors.sh
 
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh

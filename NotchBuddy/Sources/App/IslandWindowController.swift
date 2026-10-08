@@ -17,6 +17,7 @@ final class IslandWindowController: NSWindowController {
     private var viewSubscription: AnyCancellable?
     private var displaySubscription: AnyCancellable?
     private var autoCloseSubscription: AnyCancellable?
+    private var openOnHoverSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -227,6 +228,9 @@ final class IslandWindowController: NSWindowController {
         autoCloseSubscription = state.$autoCloseInterval.sink { [weak self] delay in
             self?.fsm.homeToPetitDelay = delay
         }
+        openOnHoverSubscription = state.$openOnHover.sink { [weak self] on in
+            self?.fsm.openOnHover = on
+        }
 
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
@@ -274,14 +278,34 @@ final class IslandWindowController: NSWindowController {
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
     }
 
-    // MARK: - 60 Hz polling loop
+    // MARK: - Polling loop
+    // 60 Hz while the island is on screen, Mochi is on the desktop, a drag is under way or the
+    // pointer is near the island; 8 Hz (with timer tolerance) while it is hidden and the pointer
+    // is elsewhere, so a hidden island costs next to nothing (CLAUDE.md: 0 % CPU when hidden).
 
-    private func startPolling() {
-        frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.pollFrame() }
+    private static let fastPoll: TimeInterval = 1.0 / 60.0
+    private static let idlePoll: TimeInterval = 1.0 / 8.0
+    private var pollInterval: TimeInterval = 0
+
+    private func startPolling(interval: TimeInterval = IslandWindowController.fastPoll) {
+        frameTimer?.invalidate()
+        pollInterval = interval
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            // Scheduled on the main run loop: already on the main actor, no Task per tick.
+            MainActor.assumeIsolated { self?.pollFrame() }
         }
-        RunLoop.main.add(frameTimer!, forMode: .common)
+        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0
+        RunLoop.main.add(timer, forMode: .common)
+        frameTimer = timer
+    }
+
+    /// Picks the polling rate for the next ticks (see startPolling).
+    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect) {
+        let nearIsland = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
+        let busy = state.mode != .hidden || state.mochiOnDesktop || inAttachDrag || attachDragStart != nil
+            || fsm.state != .hidden || nearIsland
+        let wanted = busy ? Self.fastPoll : Self.idlePoll
+        if wanted != pollInterval { startPolling(interval: wanted) }
     }
 
     private func pollFrame() {
@@ -322,18 +346,21 @@ final class IslandWindowController: NSWindowController {
         if state.mode == .hidden && fsm.state == .petit { fsm.hiddenExternally() }
 
         // Feed FSM hover enter/leave
-        if inIsland && !wasInIsland {
-            guard !inAttachDrag else { wasInIsland = inIsland; return }
+        // Update the hit test before feeding the FSM: its transitions read wasInIsland
+        // (a hover-opened island must not start its close timer while the pointer is on it).
+        let previouslyInIsland = wasInIsland
+        wasInIsland = inIsland
+        if inIsland && !previouslyInIsland {
+            guard !inAttachDrag else { return }
             // If in coucou: tell greeting to stay open (tc → infinity)
             if fsm.state == .coucou {
                 NotificationCenter.default.post(name: .greetingHover, object: nil)
             }
             fsm.mouseEntered()
         }
-        if !inIsland && wasInIsland {
+        if !inIsland && previouslyInIsland {
             fsm.mouseLeft()
         }
-        wasInIsland = inIsland
 
         // Bot-head hover (love emote)
         let overBot = state.mode == .expanded && state.stateOverride == nil && isBotHit(local)
@@ -355,6 +382,8 @@ final class IslandWindowController: NSWindowController {
             updateDragGhost()
             updateWindowHighlight()
         }
+
+        adjustPollRate(mouse: mouse, panelFrame: pf)
     }
 
     private var lastMouse: CGPoint = .zero
@@ -614,12 +643,7 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                 "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-        let activated = terminalBundleIds.compactMap { id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-        if activated == nil {
+        if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
@@ -707,6 +731,7 @@ final class IslandWindowController: NSWindowController {
             guard let self else { return event }
             MainActor.assumeIsolated {
                 guard self.wasInIsland else { return }
+                self.fsm.userInteracted()
                 self.pendingIslandClick = true
                 self.hoverTimer?.cancel()
                 self.botHoverTimer?.cancel()

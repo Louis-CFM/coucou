@@ -54,6 +54,11 @@ pub struct Settings {
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
     pub mochi_outfit: String,
+    /// A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB"),
+    /// picked in Settings → Active pills. Empty means the catalog's colours.
+    /// Kept as it comes, like `mochi_outfit`: src/core/pill-colors.ts reads
+    /// whatever is not a colour as "no choice".
+    pub pill_colors: BTreeMap<String, String>,
     /// Interface language: "" follows the system, else one of i18n::LANGUAGES
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
@@ -112,6 +117,7 @@ impl Default for Settings {
             custom_url: String::new(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
+            pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
         }
@@ -365,7 +371,8 @@ mod tests {
     use serde_json::{json, Value};
 
     /// A settings.json in which no value is the default one.
-    const CUSTOM: &str = r#"{
+    // Two #: the colours in it are written "#RRGGBB".
+    const CUSTOM: &str = r##"{
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
@@ -386,9 +393,10 @@ mod tests {
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
+  "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
-}"#;
+}"##;
 
     fn custom() -> Value {
         serde_json::from_str(CUSTOM).unwrap()
@@ -507,6 +515,24 @@ mod tests {
         let loaded = parse(&custom_with("desktopMochi", Some(json!({ "onDesktop": true })))).unwrap();
         assert!(loaded.desktop_mochi.on_desktop);
         assert_eq!(loaded.desktop_mochi.spot, None);
+    }
+
+    #[test]
+    fn a_file_from_before_the_colours_paints_every_pill_as_the_catalog_says() {
+        let loaded = parse(&custom_with("pillColors", None)).unwrap();
+        assert!(loaded.pill_colors.is_empty());
+        assert_eq!(loaded.mochi_outfit, "witchHat");
+    }
+
+    #[test]
+    fn pill_colours_are_kept_as_written_and_cost_nothing_else_when_unusable() {
+        // A pill a newer build added keeps its colour through a save by this one.
+        let loaded = parse(&custom_with("pillColors", Some(json!({ "agent_new": "#abcdef" })))).unwrap();
+        assert_eq!(loaded.pill_colors.get("agent_new").map(String::as_str), Some("#abcdef"));
+        // Not a map of strings: the colours fall back, and nothing else does.
+        let loaded = parse(&custom_with("pillColors", Some(json!(["#2DD4BF"])))).unwrap();
+        assert!(loaded.pill_colors.is_empty());
+        assert_eq!(loaded.model, "some-model");
     }
 
     #[test]
@@ -769,6 +795,7 @@ mod tests {
                 "customUrl",
                 "shortcuts",
                 "mochiOutfit",
+                "pillColors",
                 "language",
                 "desktopMochi",
             ]

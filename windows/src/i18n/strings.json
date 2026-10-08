@@ -101,6 +101,17 @@
    "ru": "Активность",
    "id": "Aktivitas"
   },
+  "Advertisement": {
+   "zh-Hans": "广告",
+   "hi": "विज्ञापन",
+   "es": "Anuncio",
+   "ar": "إعلان",
+   "fr": "Publicité",
+   "bn": "বিজ্ঞাপন",
+   "pt-BR": "Anúncio",
+   "ru": "Реклама",
+   "id": "Iklan"
+  },
   "Agent": {
    "zh-Hans": "代理",
    "hi": "एजेंट",
@@ -144,6 +155,17 @@
    "pt-BR": "Permitir que o Coucou controle o Music",
    "ru": "Разрешить Coucou управлять Music",
    "id": "Izinkan Coucou mengontrol Music"
+  },
+  "Allow Coucou to control Spotify": {
+   "zh-Hans": "允许 Coucou 控制 Spotify",
+   "hi": "Coucou को Spotify नियंत्रित करने दें",
+   "es": "Permitir que Coucou controle Spotify",
+   "ar": "السماح لـ Coucou بالتحكم في Spotify",
+   "fr": "Autoriser Coucou à contrôler Spotify",
+   "bn": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন",
+   "pt-BR": "Permitir que o Coucou controle o Spotify",
+   "ru": "Разрешить Coucou управлять Spotify",
+   "id": "Izinkan Coucou mengontrol Spotify"
   },
   "Always": {
    "zh-Hans": "始终允许",
@@ -563,6 +585,17 @@
    "ru": "Хуки Codex",
    "id": "Hooks Codex"
   },
+  "Color": {
+   "zh-Hans": "颜色",
+   "hi": "रंग",
+   "es": "Color",
+   "ar": "اللون",
+   "fr": "Couleur",
+   "bn": "রং",
+   "pt-BR": "Cor",
+   "ru": "Цвет",
+   "id": "Warna"
+  },
   "Coming soon": {
    "zh-Hans": "即将推出",
    "hi": "जल्द आ रहा है",
@@ -694,6 +727,17 @@
    "pt-BR": "Personalizado…",
    "ru": "Свой…",
    "id": "Kustom…"
+  },
+  "Default": {
+   "zh-Hans": "默认",
+   "hi": "डिफ़ॉल्ट",
+   "es": "Predeterminado",
+   "ar": "الافتراضي",
+   "fr": "Par défaut",
+   "bn": "ডিফল্ট",
+   "pt-BR": "Padrão",
+   "ru": "По умолчанию",
+   "id": "Bawaan"
   },
   "Demo": {
    "zh-Hans": "演示",
@@ -882,6 +926,17 @@
    "ru": "Ошибка",
    "id": "Gagal"
   },
+  "Favorite": {
+   "zh-Hans": "收藏",
+   "hi": "पसंदीदा में जोड़ें",
+   "es": "Añadir a favoritos",
+   "ar": "إضافة إلى المفضلة",
+   "fr": "Ajouter aux favoris",
+   "bn": "প্রিয়তে যোগ করুন",
+   "pt-BR": "Favoritar",
+   "ru": "В избранное",
+   "id": "Tambahkan ke favorit"
+  },
   "Fetches": {
    "zh-Hans": "获取",
    "hi": "प्राप्त करता है",
@@ -914,6 +969,17 @@
    "pt-BR": "Geral",
    "ru": "Основные",
    "id": "Umum"
+  },
+  "Get Spotify": {
+   "zh-Hans": "获取 Spotify",
+   "hi": "Spotify पाएँ",
+   "es": "Descargar Spotify",
+   "ar": "احصل على Spotify",
+   "fr": "Obtenir Spotify",
+   "bn": "Spotify নিন",
+   "pt-BR": "Baixar o Spotify",
+   "ru": "Скачать Spotify",
+   "id": "Dapatkan Spotify"
   },
   "GitHub Copilot CLI hooks": {
    "zh-Hans": "GitHub Copilot CLI 钩子",
@@ -1608,6 +1674,17 @@
    "ru": "Не подключено",
    "id": "Tidak terhubung"
   },
+  "Not installed": {
+   "zh-Hans": "未安装",
+   "hi": "इंस्टॉल नहीं",
+   "es": "No instalado",
+   "ar": "غير مثبت",
+   "fr": "Non installé",
+   "bn": "ইনস্টল নেই",
+   "pt-BR": "Não instalado",
+   "ru": "Не установлено",
+   "id": "Belum terpasang"
+  },
   "Not playing": {
    "zh-Hans": "未播放",
    "hi": "नहीं चल रहा",
@@ -1795,6 +1872,17 @@
    "ru": "Открыть настройки…",
    "id": "Buka Pengaturan…"
   },
+  "Open Spotify": {
+   "zh-Hans": "打开 Spotify",
+   "hi": "Spotify खोलें",
+   "es": "Abrir Spotify",
+   "ar": "فتح Spotify",
+   "fr": "Ouvrir Spotify",
+   "bn": "Spotify খুলুন",
+   "pt-BR": "Abrir o Spotify",
+   "ru": "Открыть Spotify",
+   "id": "Buka Spotify"
+  },
   "Open Visual Studio Code": {
    "zh-Hans": "打开 Visual Studio Code",
    "hi": "Visual Studio Code खोलें",
@@ -1916,6 +2004,17 @@
    "ru": "Обзор",
    "id": "Ikhtisar"
   },
+  "Pause": {
+   "zh-Hans": "暂停",
+   "hi": "रोकें",
+   "es": "Pausa",
+   "ar": "إيقاف مؤقت",
+   "fr": "Pause",
+   "bn": "বিরতি",
+   "pt-BR": "Pausar",
+   "ru": "Пауза",
+   "id": "Jeda"
+  },
   "Payments": {
    "zh-Hans": "付款",
    "hi": "भुगतान",
@@ -1948,6 +2047,17 @@
    "pt-BR": "Uso do plano",
    "ru": "Использование плана",
    "id": "Penggunaan paket"
+  },
+  "Play": {
+   "zh-Hans": "播放",
+   "hi": "चलाएँ",
+   "es": "Reproducir",
+   "ar": "تشغيل",
+   "fr": "Lecture",
+   "bn": "চালান",
+   "pt-BR": "Reproduzir",
+   "ru": "Воспроизвести",
+   "id": "Putar"
   },
   "Playing · {title}": {
    "zh-Hans": "正在播放 · {title}",
@@ -1992,6 +2102,17 @@
    "pt-BR": "Plugin não instalado",
    "ru": "Плагин не установлен",
    "id": "Plugin tidak terpasang"
+  },
+  "Previous": {
+   "zh-Hans": "上一首",
+   "hi": "पिछला",
+   "es": "Anterior",
+   "ar": "السابق",
+   "fr": "Précédent",
+   "bn": "আগেরটি",
+   "pt-BR": "Anterior",
+   "ru": "Предыдущий",
+   "id": "Sebelumnya"
   },
   "Previous tab": {
    "zh-Hans": "上一个标签",
@@ -2080,6 +2201,61 @@
    "pt-BR": "Relay: não instalado",
    "ru": "Ретранслятор: не установлен",
    "id": "Relay: belum terpasang"
+  },
+  "Remove from favorites": {
+   "zh-Hans": "取消收藏",
+   "hi": "पसंदीदा से हटाएँ",
+   "es": "Quitar de favoritos",
+   "ar": "إزالة من المفضلة",
+   "fr": "Retirer des favoris",
+   "bn": "প্রিয় থেকে সরান",
+   "pt-BR": "Remover dos favoritos",
+   "ru": "Убрать из избранного",
+   "id": "Hapus dari favorit"
+  },
+  "Repeat all": {
+   "zh-Hans": "全部重复",
+   "hi": "सभी दोहराएँ",
+   "es": "Repetir todo",
+   "ar": "تكرار الكل",
+   "fr": "Tout répéter",
+   "bn": "সব রিপিট",
+   "pt-BR": "Repetir tudo",
+   "ru": "Повторять все",
+   "id": "Ulangi semua"
+  },
+  "Repeat off": {
+   "zh-Hans": "重复：关",
+   "hi": "दोहराना बंद",
+   "es": "Repetir desactivado",
+   "ar": "التكرار متوقف",
+   "fr": "Répétition désactivée",
+   "bn": "রিপিট বন্ধ",
+   "pt-BR": "Repetir desativado",
+   "ru": "Повтор выкл.",
+   "id": "Ulangi nonaktif"
+  },
+  "Repeat on": {
+   "zh-Hans": "重复：开",
+   "hi": "दोहराना चालू",
+   "es": "Repetir activado",
+   "ar": "التكرار مفعّل",
+   "fr": "Répétition activée",
+   "bn": "রিপিট চালু",
+   "pt-BR": "Repetir ativado",
+   "ru": "Повтор вкл.",
+   "id": "Ulangi aktif"
+  },
+  "Repeat one": {
+   "zh-Hans": "单曲重复",
+   "hi": "एक दोहराएँ",
+   "es": "Repetir una",
+   "ar": "تكرار مقطع واحد",
+   "fr": "Répéter le morceau",
+   "bn": "একটি রিপিট",
+   "pt-BR": "Repetir uma",
+   "ru": "Повторять один",
+   "id": "Ulangi satu"
   },
   "Reply in terminal": {
    "zh-Hans": "在终端回复",
@@ -2444,6 +2620,28 @@
    "ru": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Coucou добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max.",
    "id": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Coucou menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max."
   },
+  "Shuffle off": {
+   "zh-Hans": "随机播放：关",
+   "hi": "शफ़ल बंद",
+   "es": "Aleatorio desactivado",
+   "ar": "الترتيب العشوائي متوقف",
+   "fr": "Aléatoire désactivé",
+   "bn": "শাফল বন্ধ",
+   "pt-BR": "Aleatório desativado",
+   "ru": "Перемешивание выкл.",
+   "id": "Acak nonaktif"
+  },
+  "Shuffle on": {
+   "zh-Hans": "随机播放：开",
+   "hi": "शफ़ल चालू",
+   "es": "Aleatorio activado",
+   "ar": "الترتيب العشوائي مفعّل",
+   "fr": "Aléatoire activé",
+   "bn": "শাফল চালু",
+   "pt-BR": "Aleatório ativado",
+   "ru": "Перемешивание вкл.",
+   "id": "Acak aktif"
+  },
   "Sound": {
    "zh-Hans": "声音",
    "hi": "ध्वनि",
@@ -2454,6 +2652,17 @@
    "pt-BR": "Som",
    "ru": "Звук",
    "id": "Suara"
+  },
+  "Spotify not installed": {
+   "zh-Hans": "未安装 Spotify",
+   "hi": "Spotify इंस्टॉल नहीं है",
+   "es": "Spotify no está instalado",
+   "ar": "Spotify غير مثبت",
+   "fr": "Spotify n'est pas installé",
+   "bn": "Spotify ইনস্টল নেই",
+   "pt-BR": "Spotify não está instalado",
+   "ru": "Spotify не установлен",
+   "id": "Spotify belum terpasang"
   },
   "Startup": {
    "zh-Hans": "启动",
@@ -2718,6 +2927,17 @@
    "pt-BR": "Volume",
    "ru": "Громкость",
    "id": "Volume"
+  },
+  "Volume {0}%": {
+   "zh-Hans": "音量 {0}%",
+   "hi": "वॉल्यूम {0}%",
+   "es": "Volumen {0}%",
+   "ar": "مستوى الصوت {0}%",
+   "fr": "Volume {0} %",
+   "bn": "ভলিউম {0}%",
+   "pt-BR": "Volume {0}%",
+   "ru": "Громкость {0}%",
+   "id": "Volume {0}%"
   },
   "Waiting for a response from Claude Code": {
    "zh-Hans": "等待 Claude Code 回复",
@@ -3004,6 +3224,17 @@
    "pt-BR": "com {name}",
    "ru": "с {name}",
    "id": "dengan {name}"
+  },
+  "{0} — open Spotify": {
+   "zh-Hans": "{0} — 打开 Spotify",
+   "hi": "{0} — Spotify खोलें",
+   "es": "{0} — abrir Spotify",
+   "ar": "{0} — فتح Spotify",
+   "fr": "{0} — ouvrir Spotify",
+   "bn": "{0} — Spotify খুলুন",
+   "pt-BR": "{0} — abrir o Spotify",
+   "ru": "{0} — открыть Spotify",
+   "id": "{0} — buka Spotify"
   },
   "{count}/4 slots used": {
    "zh-Hans": "已用 {count}/4 个插槽",
