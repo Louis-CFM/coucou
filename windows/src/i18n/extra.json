@@ -3305,6 +3305,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Waiting for you in Coucou": {
+   "zh-Hans": "在 Coucou 等你",
+   "hi": "Coucou में आपका इंतज़ार है",
+   "es": "Coucou te está esperando",
+   "ar": "Coucou في انتظارك",
+   "fr": "Coucou vous attend",
+   "bn": "Coucou আপনার জন্য অপেক্ষা করছে",
+   "pt-BR": "O Coucou está esperando por você",
+   "ru": "Coucou ждёт вас",
+   "id": "Coucou sedang menunggu Anda"
   }
  }
 }

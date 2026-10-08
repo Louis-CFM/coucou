@@ -17,6 +17,7 @@ mod island;
 mod local_chat;
 mod log;
 mod net;
+mod notify;
 mod openai_compat;
 mod pipe;
 mod platform;
@@ -632,6 +633,12 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None));
+    // Windows only: the notification that says a card is waiting. Linux keeps
+    // its own libnotify-free world, and nothing there needs a new crate.
+    #[cfg(windows)]
+    {
+        builder = builder.plugin(tauri_plugin_notification::init());
+    }
     // Where no global shortcut can work, the plugin isn't even started.
     if platform::global_shortcuts_blocked().is_none() {
         builder = builder.plugin(shortcuts::plugin());

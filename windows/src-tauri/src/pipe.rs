@@ -228,10 +228,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     }
     crate::recap::note_request(&app, &id, &payload);
     payload["request_id"] = json!(id);
+    // Read before the payload is handed to the island, for the notification.
+    let agent = match payload.get("coucou_agent").and_then(Value::as_str) {
+        Some("") | None => "Claude Code".to_string(),
+        Some(agent) => agent.to_string(),
+    };
+    let tool = payload.get("tool_name").and_then(Value::as_str).unwrap_or("").to_string();
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    let decision = wait_for_decision(&app, &id, &agent, &tool, &mut rx).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -269,9 +275,20 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
-async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
+///
+/// The card being up is also the moment the notification goes out: an agent that
+/// blocks on the answer - OpenCode's `permission.ask` above all - cannot afford
+/// to be missed, and a strip at the top of the screen is easy to miss. Only once
+/// the island has acknowledged, so it never announces a card that is not there.
+async fn wait_for_decision(
+    app: &AppHandle,
+    id: &str,
+    agent: &str,
+    tool: &str,
+    rx: &mut mpsc::Receiver<Reply>,
+) -> Option<String> {
     match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
-        Ok(Some(Reply::Ack)) => {}
+        Ok(Some(Reply::Ack)) => crate::notify::approval_waiting(app, agent, tool),
         // A click that beats the ack is still a click.
         Ok(Some(Reply::Decision(d))) => {
             log::line(format!("hook id={id} answered {}", loggable(&d)));
