@@ -1,5 +1,5 @@
 // SoundEngine — port of SoundEngine.swift.
-// The 28 WAVs are the macOS app's own files (see SOUNDS_DIR in vite.config.ts);
+// The 29 WAVs are the macOS app's own files (see SOUNDS_DIR in vite.config.ts);
 // they are served at /sounds/<name>.wav. Default volume 0.12, slider range 0–0.2,
 // exactly like the Mac player, and several sounds may overlap.
 
@@ -7,7 +7,7 @@ export const SOUND_NAMES = [
   "peek", "open", "close", "hover", "blip", "slap", "annoyed", "dizzy", "greet",
   "work", "finish", "error", "approval", "question", "approve", "gulp", "tick",
   "send", "love", "pop", "proud", "wink", "yawn", "attach", "think", "search",
-  "rate", "sleep",
+  "rate", "sleep", "greeting",
 ] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
@@ -21,6 +21,8 @@ class SoundEngine {
   private buffers = new Map<string, AudioBuffer>();
   private loading: Promise<void> | null = null;
   private idleTimer: number | null = null;
+  /** Sounds still playing, by name, so one can be faded out (the greeting). */
+  private playing = new Map<string, Set<{ src: AudioBufferSourceNode; gain: GainNode }>>();
 
   /** Creates the context and decodes every WAV. Safe to call more than once. */
   preload(): Promise<void> {
@@ -97,8 +99,36 @@ class SoundEngine {
     if (ctx.state === "suspended") void ctx.resume();
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(master);
+    const gain = ctx.createGain();
+    src.connect(gain);
+    gain.connect(master);
+    const voice = { src, gain };
+    let voices = this.playing.get(name);
+    if (!voices) this.playing.set(name, (voices = new Set()));
+    voices.add(voice);
+    src.onended = () => {
+      voices.delete(voice);
+      gain.disconnect();
+    };
     src.start();
+  }
+
+  /** Fades every playing copy of `name` to silence over `seconds`, then stops it. */
+  fadeOut(name: string, seconds: number) {
+    const ctx = this.ctx;
+    const voices = this.playing.get(name);
+    if (!ctx || !voices) return;
+    const t = ctx.currentTime;
+    for (const { src, gain } of voices) {
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0, t + seconds);
+      try {
+        src.stop(t + seconds);
+      } catch {
+        /* already stopped */
+      }
+    }
   }
 }
 

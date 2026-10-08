@@ -1,6 +1,17 @@
 import Foundation
 import CoreGraphics
 
+// MARK: - Desktop space
+
+/// One y-down space for the whole desktop, like Quartz: x as in AppKit, y measured down
+/// from the top of the menu-bar screen. The cursor and every Mochi (island or desktop)
+/// use it, so the gaze stays right whichever screen each one sits on.
+enum DesktopSpace {
+    static func topDown(_ appKitPoint: CGPoint, desktopTop: CGFloat) -> CGPoint {
+        CGPoint(x: appKitPoint.x, y: desktopTop - appKitPoint.y)
+    }
+}
+
 // MARK: - Alert state machine phase
 
 /// Phase of the desktop Mochi lifecycle.
@@ -45,16 +56,14 @@ enum DesktopMochiLogic {
         return dx * dx + dy * dy <= r * r
     }
 
-    /// Eye-tracking origin: panel center in screen-space with y-down from top of screen.
-    /// Matches the coordinate space of `AppState.mousePosition`.
-    static func lookOrigin(panelMinX:    CGFloat,
-                            panelMinY:    CGFloat,
-                            screenMinX:   CGFloat,
-                            screenHeight: CGFloat,
-                            panelSize:    CGFloat) -> CGPoint {
-        let cx = panelMinX + panelSize / 2
-        let cy = panelMinY + panelSize / 2
-        return CGPoint(x: cx - screenMinX, y: screenHeight - cy)
+    /// Eye-tracking origin: panel center in `DesktopSpace`, the coordinate space of
+    /// `AppState.mousePosition`.
+    static func lookOrigin(panelMinX:  CGFloat,
+                           panelMinY:  CGFloat,
+                           desktopTop: CGFloat,
+                           panelSize:  CGFloat) -> CGPoint {
+        DesktopSpace.topDown(CGPoint(x: panelMinX + panelSize / 2, y: panelMinY + panelSize / 2),
+                             desktopTop: desktopTop)
     }
 
     /// Whether Mochi should immediately retract after landing (alert was active during the flight).

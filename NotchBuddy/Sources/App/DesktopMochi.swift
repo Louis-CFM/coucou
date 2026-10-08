@@ -12,7 +12,7 @@ final class DesktopBotViewState: ObservableObject {
     @Published var isSleeping: Bool = false
     /// Pause entirely (screen sleep / lock).
     @Published var paused: Bool = false
-    /// Bot center in the same coord space as AppState.mousePosition (y-down from screen top).
+    /// Bot center in the same coord space as AppState.mousePosition (DesktopSpace, y-down).
     /// Updated every poll frame; Canvas reads it inside TimelineView — @Published not needed.
     var lookOrigin: CGPoint = .zero
 }
@@ -45,8 +45,10 @@ struct DesktopBotView: View {
                 // Dance when music plays (same rules as compact mode)
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard appState.musicPlaying else { return false }
-                    guard appState.activeIntegrations.contains("integration_music") else { return false }
+                    let music = appState.musicPlaying && appState.activeIntegrations.contains("integration_music")
+                    let spotify = SpotifyController.shared.isPlaying
+                        && appState.activeIntegrations.contains(SpotifyController.pillId)
+                    guard music || spotify else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     return allowed.contains(appState.effectiveState)
                     #else
@@ -150,6 +152,18 @@ final class DesktopMochiController {
 
     static let panelSize: CGFloat = DesktopMochiLogic.panelSize
 
+    // MARK: - Keyboard shortcut toggle (⌃⌥D)
+
+    /// Fly Mochi to the desktop if not there, or bring him back if he is.
+    func flyOutOrHome() {
+        if phase == .home {
+            UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
+            launchFlyIfNeeded()
+        } else if phase == .onDesktop {
+            flyHome()
+        }
+    }
+
     // MARK: - Install (from drag-drop)
 
     /// Promote `ghostPanel` (the drag ghost) or create a fresh panel as the desktop Mochi,
@@ -245,7 +259,7 @@ final class DesktopMochiController {
 
         phase = .flyingOut
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let startOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         let target = loadSavedPosition()
 
@@ -317,7 +331,7 @@ final class DesktopMochiController {
         cancellables.removeAll()
         isSleeping = false
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let targetOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45
@@ -345,7 +359,7 @@ final class DesktopMochiController {
         isSleeping = false
 
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let targetOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45
@@ -683,13 +697,11 @@ final class DesktopMochiController {
     // MARK: - Position helpers
 
     private func lookOriginFor(panel: NSPanel) -> CGPoint {
-        let screen = panel.screen ?? NSScreen.main!
-        return DesktopMochiLogic.lookOrigin(
-            panelMinX:    panel.frame.minX,
-            panelMinY:    panel.frame.minY,
-            screenMinX:   screen.frame.minX,
-            screenHeight: screen.frame.height,
-            panelSize:    DesktopMochiController.panelSize)
+        DesktopMochiLogic.lookOrigin(
+            panelMinX:  panel.frame.minX,
+            panelMinY:  panel.frame.minY,
+            desktopTop: IslandWindowController.desktopTop,
+            panelSize:  DesktopMochiController.panelSize)
     }
 
     private func clampToVisibleFrame(_ origin: NSPoint) -> NSPoint {

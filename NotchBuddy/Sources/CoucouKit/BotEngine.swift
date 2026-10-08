@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import QuartzCore
 import SwiftUI
 
 // MARK: - Easing functions (same as prototype: E.out, E.inOut, E.back, E.lin)

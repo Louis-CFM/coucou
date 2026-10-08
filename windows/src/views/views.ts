@@ -11,21 +11,44 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { pillDefinition, sessionSubtitle } from "../core/pills";
+import {
+  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
+} from "./usage";
+import { buildDiffCard } from "./diff";
+import { lastTextStep } from "../core/diff";
+import { Bridge } from "../core/bridge";
+import { buildRecap } from "./recap";
+import { buildWardrobe } from "./wardrobe";
+import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
+import { language, t, tl, type Msg } from "../i18n/i18n";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
+  /** "Cancel" on a dropped file: forgets it and goes back home. */
+  cancelDrop(): void;
   collapse(): void;
+  /** Folds a waiting card to the compact island without answering it. */
+  foldApproval(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
+  /** Answers the question Claude Code asked: question text → chosen label. */
+  answer(answers: Record<string, string | string[]>): void;
+  /** Hands the pending request back to the terminal. */
+  answerInTerminal(): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
   blip(): void;
+  /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
+  chooseOutfit(selection: OutfitSelection): void;
+  /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
+  previewOutfit(outfit: Outfit | null): void;
 }
 
 export interface ViewHost {
@@ -33,8 +56,8 @@ export interface ViewHost {
   sync(): void;
   /** Called when the view becomes active, for views with a text field. */
   focus?(): void;
-  /** Called every frame while the view is on screen. */
-  tick?(nowMs: number): void;
+  /** Called every frame while the view is on screen. True = needs another frame. */
+  tick?(nowMs: number): boolean | void;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -46,7 +69,7 @@ function card(wash: Wash, ...children: (Node | string)[]): HTMLElement {
 }
 
 function btn(
-  label: string,
+  label: string | Msg,
   kind: "primary" | "secondary",
   onClick: () => void,
   kbd?: string,
@@ -78,12 +101,17 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
-  const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
-  const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
-  const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
+  const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
+  const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
 
-  const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
-  const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
+  const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
+  const claudePill = buildPlanPill(false);
+  const codexPill = buildPlanPill(true);
+  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
+  let codexShown = false;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -94,8 +122,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
+  const headerActions = el.lastElementChild as HTMLElement;
 
   return {
     el,
@@ -109,26 +138,57 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
+
+  function syncPlanPills() {
+    const claudeOn = claudePillVisible();
+    const codexOn = codexPillVisible();
+    claudePill.el.style.display = claudeOn ? "" : "none";
+    codexPill.el.style.display = codexOn ? "" : "none";
+    planPills.classList.toggle("on", claudeOn || codexOn);
+    // Both pills: the right side tightens so it still clears the screen edge.
+    headerActions.classList.toggle("both-plans", claudeOn && codexOn);
+    if (claudeOn) claudePill.sync();
+    if (codexOn) codexPill.sync();
+    // Codex is asked when its pill comes into view (stale answers only).
+    const shown = codexOn && State.mode === "expanded";
+    if (shown && !codexShown) refreshCodexPlanUsage();
+    codexShown = shown;
+  }
 }
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
+  /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
+  let activeDiffId: number | null = null;
+  const closeDiff = () => {
+    if (activeDiffId == null) return;
+    activeDiffId = null;
+    State.notify();
+  };
+  const ticker = new Ticker((diffId) => {
+    actions.blip();
+    activeDiffId = diffId;
+    State.notify();
+  });
   const who = h("div", { class: "who" });
   const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
   const leftBody = h("div", { class: "left-body" });
   const jump = h(
     "button",
-    { class: "icon-btn jump", title: "Open", onclick: () => actions.openTarget() },
+    { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
+  // Opened from a plan pill in the header: stands in for the left card.
+  const plan = new PlanCard();
+  let planTimer: number | null = null;
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -138,8 +198,25 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | null = null;
   let cardKey = "";
+
+  // Leaving the overview or folding the island closes the diff, as on macOS.
+  State.subscribe(() => {
+    if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
+      activeDiffId = null;
+    }
+  });
+  // Escape steps back out of the diff before it closes the island.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Escape" || activeDiffId == null || State.view !== "overview") return;
+      e.stopImmediatePropagation();
+      closeDiff();
+    },
+    true,
+  );
 
   const hooks: IntegrationCardHooks = {
     get detailOpen() {
@@ -158,26 +235,74 @@ function buildOverview(actions: ViewActions): ViewHost {
     openSettings: () => actions.openSettingsWindow(),
   };
 
+  /** The countdowns move every 30 s while a card is open, and only then. */
+  function syncPlanTimer(open: boolean) {
+    const stop = () => {
+      if (planTimer != null) window.clearInterval(planTimer);
+      planTimer = null;
+    };
+    if (!open) return stop();
+    if (planTimer != null) return;
+    planTimer = window.setInterval(() => {
+      if (planCardOpen() && State.mode === "expanded") State.notify();
+      else stop();
+    }, 30_000);
+  }
+
   return {
     el,
     tick(nowMs: number) {
-      if (mode === "ticker") ticker.tick(nowMs);
+      if (mode !== "ticker") return false;
+      ticker.tick(nowMs);
+      return ticker.animating;
     },
     sync() {
       const task = State.focusTask;
       if (task?.id !== lastFocus) {
         lastFocus = task?.id ?? null;
         detailOpen = false;
+        activeDiffId = null;
         cardKey = "";
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+      // A workspace or agent pill with a live session keeps the ticker; every
+      // other pill shows its own card, exactly like IntegrationCardView.
+      const sessionActive = task != null && hasSessionTicker(task);
 
-      if (task && sessionActive) {
+      const planOpen = planCardOpen();
+      if (mode === "plan" && !planOpen) {
+        mode = null;
+        cardKey = "";
+      }
+      syncPlanTimer(planOpen);
+
+      // A diff that has since been dropped (cap, expiry, session end) just closes.
+      const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
+      if (!diff) activeDiffId = null;
+
+      if (planOpen) {
+        if (mode !== "plan") {
+          clear(leftBody);
+          leftBody.append(plan.el);
+          mode = "plan";
+        }
+        plan.sync();
+      } else if (task && diff) {
+        const key = `diff~${task.id}~${diff.id}`;
+        if (key !== cardKey) {
+          cardKey = key;
+          mode = "diff";
+          clear(leftBody);
+          leftBody.append(buildDiffCard(diff, {
+            dismiss: () => {
+              actions.blip();
+              closeDiff();
+            },
+            open: (path) => void Bridge.openFileInVSCode(path),
+          }));
+        }
+      } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
           leftBody.append(tickerBody);
@@ -185,10 +310,12 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         clear(who);
+        // The agent's name is already the pill's: the label says what kind of
+        // pill it is, as on the Mac (PillDefinition.sessionSubtitle).
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: t(sessionSubtitle(task.id)) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -200,7 +327,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
-          task.id, detailOpen, task.state, task.steps.join("|"),
+          language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
         ].join("~");
@@ -212,10 +339,10 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
+      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
@@ -224,6 +351,20 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
     },
   };
+}
+
+/**
+ * IntegrationCardView.agentSessionActive: a workspace tool or an agent — or
+ * any other tagged agent — with something going on.
+ */
+export function hasSessionTicker(task: AgentTask): boolean {
+  // A pill made for an agent's session (Gemini CLI, Codex… not declared) only
+  // exists while that session does: it keeps the ticker from the first event.
+  if (task.source === "agent" && !task.isIntegration) return true;
+  const category = pillDefinition(task.id)?.category;
+  const isSession = category === "workspace" || category === "agent" ||
+    (category == null && task.id.startsWith("agent_"));
+  return isSession && (task.state !== "idle" || task.steps.length > 0);
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
@@ -277,28 +418,59 @@ function buildEmpty(actions: ViewActions): ViewHost {
     h(
       "div",
       { style: "display:flex;flex-direction:column;gap:5px" },
-      h("div", { class: "title", text: "Nothing running right now." }),
-      h("div", { class: "sub", text: "Drop a file or window, or ask me anything." }),
+      h("div", { class: "title", text: tl("Nothing running right now.") }),
+      h("div", { class: "sub", text: tl("Drop a file or window, or ask me anything.") }),
     ),
     h("div", { class: "grow" }),
-    btn("Ask Claude", "primary", () => actions.setView("prompt")),
+    btn(tl("Ask Claude"), "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/** How long a fresh permission card ignores clicks on its buttons. */
+const CLICK_GUARD_MS = 600;
+
+/**
+ * The ⌃ in the corner of a waiting card: folds the island to its compact size
+ * and leaves the request waiting — nothing is answered (Mac #290). Opening the
+ * island again brings the card back.
+ */
+function foldButton(actions: ViewActions): HTMLElement {
+  return h(
+    "button",
+    { class: "icon-btn fold", title: tl("Later — keep it waiting"), onclick: () => actions.foldApproval() },
+    svg(ICONS.chevronUp, 8, { stroke: 2.4 }),
+  );
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const el = h("div", { class: "view" },
+    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
   let rowKey = "";
+  // The card pops up under a cursor that was busy with something else: a click
+  // meant for the window underneath must not land on Allow. Clicks in the first
+  // moments after a new request appears are ignored.
+  let shownFor: string | null = null;
+  let shownAt = 0;
+  const guarded = (d: "allow" | "deny") => () => {
+    if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+    actions.decide(d);
+  };
   return {
     el,
     sync() {
+      const req = State.pendingApproval?.requestId ?? null;
+      if (req !== shownFor) {
+        shownFor = req;
+        shownAt = performance.now();
+      }
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      who.append(agentWho(State.focusTask, t("needs permission")));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
@@ -310,8 +482,8 @@ function buildApproval(actions: ViewActions): ViewHost {
       rowKey = "built";
       clear(row);
       row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
-        btn("Allow", "primary", () => actions.decide("allow"), "Y"),
+        btn(tl("Deny"), "secondary", guarded("deny"), "N"),
+        btn(tl("Allow"), "primary", guarded("allow"), "Y"),
       );
     },
   };
@@ -319,20 +491,99 @@ function buildApproval(actions: ViewActions): ViewHost {
 
 // ── Question ──────────────────────────────────────────────────────────────────
 
-function buildQuestion(): ViewHost {
+function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
-  const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
+  const title = h("div", { class: "title question-text" });
+  const row = h("div", { class: "actions options" });
+  const fold = foldButton(actions);
+  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row), fold));
+
+  // Where we are in the request on screen: which question, what is answered so
+  // far, and what is ticked in a pick-several question.
+  let requestId = "";
+  let index = 0;
+  let answers: Record<string, string | string[]> = {};
+  let picked = new Set<string>();
+  // The buttons are only rebuilt when what they show changes: rebuilding them
+  // between a mouse-down and a mouse-up would swallow the click.
+  let rowKey = "";
+
+  const next = (question: string, answer: string | string[], total: number) => {
+    answers[question] = answer;
+    picked = new Set();
+    index += 1;
+    if (index >= total) actions.answer(answers);
+    else State.notify();
+  };
+
   return {
     el,
     sync() {
+      const questions = State.pendingApproval?.questions;
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
-      const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      // Only a request that is waiting can be folded away and come back.
+      fold.style.display = State.pendingApproval ? "" : "none";
+
+      // A question that arrived as a notification has nothing to pick from.
+      if (!questions) {
+        who.append(agentWho(State.focusTask, t("is asking a question")));
+        const task = State.focusTask;
+        title.textContent = (task && lastTextStep(task.steps)) ?? t("Claude needs an answer.");
+        if (rowKey !== "terminal") {
+          rowKey = "terminal";
+          clear(row);
+          row.append(h("div", { class: "sub", text: tl("Answer it in your terminal.") }));
+        }
+        return;
+      }
+
+      if (State.pendingApproval!.requestId !== requestId) {
+        requestId = State.pendingApproval!.requestId;
+        index = 0;
+        answers = {};
+        picked = new Set();
+      }
+      const q = questions[Math.min(index, questions.length - 1)];
+      const asking = questions.length > 1
+        ? t("is asking ({index} of {total})", { index: index + 1, total: questions.length })
+        : t("is asking");
+      who.append(agentWho(State.focusTask, asking));
+      title.textContent = q.question;
+      title.title = q.question;
+
+      const key = `${requestId}:${index}:${[...picked].join("|")}`;
+      if (rowKey === key) return;
+      rowKey = key;
       clear(row);
-      row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
+      for (const option of q.options) {
+        const on = picked.has(option.label);
+        const button = btn(option.label, on ? "primary" : "secondary", () => {
+          if (!q.multiSelect) {
+            next(q.question, option.label, questions.length);
+            return;
+          }
+          if (on) picked.delete(option.label);
+          else picked.add(option.label);
+          State.notify();
+        });
+        if (option.description) button.title = option.description;
+        row.append(button);
+      }
+      if (q.multiSelect) {
+        const done = btn(tl("Done"), "primary", () => {
+          if (picked.size > 0) next(q.question, [...picked], questions.length);
+        });
+        if (picked.size === 0) done.classList.add("off");
+        row.append(done);
+      }
+      row.append(
+        h("button", {
+          class: "link-btn",
+          style: "color:#8e939c",
+          text: tl("Answer in terminal"),
+          onclick: () => actions.answerInTerminal(),
+        }),
+      );
     },
   };
 }
@@ -341,11 +592,11 @@ function buildQuestion(): ViewHost {
 
 function buildError(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title", text: "Workflow stopped." });
+  const title = h("div", { class: "title" });
   const detail = h("div", { class: "detail" });
   const row = h("div", { class: "actions" },
-    btn("Retry", "primary", () => actions.setView(State.defaultView())),
-    btn("Open in n8n", "secondary", () => actions.openUrl("")),
+    btn(tl("Retry"), "primary", () => actions.setView(State.defaultView())),
+    btn(tl("Open in n8n"), "secondary", () => actions.openUrl("")),
   );
   const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, row)));
   return {
@@ -353,9 +604,11 @@ function buildError(actions: ViewActions): ViewHost {
     sync() {
       const task = State.focusTask;
       clear(who);
-      who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
-      title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
-      detail.textContent = task?.steps.at(-1) ?? "No detail available.";
+      // agentWho already shows an agent's name: its label is just the kind.
+      const whoLabel = task?.source === "n8n" ? "n8n" : task?.source === "agent" ? t("Agent") : "Claude Code";
+      who.append(agentWho(task, whoLabel));
+      title.textContent = task?.source === "n8n" ? t("Workflow stopped.") : t("Session stopped on an error.");
+      detail.textContent = (task && lastTextStep(task.steps)) ?? t("No detail available.");
     },
   };
 }
@@ -364,18 +617,26 @@ function buildError(actions: ViewActions): ViewHost {
 
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
+  const title = h("div", { class: "title one-line" });
+  const open = btn(tl("Open terminal"), "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
-    btn("Open terminal", "primary", () => actions.openTerminal()),
-    btn("OK", "secondary", () => actions.collapse()),
+    open,
+    btn(tl("OK"), "secondary", () => actions.collapse()),
   );
   const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
   return {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      const agent = State.focusTask?.source === "agent";
+      who.append(agentWho(State.focusTask, agent ? t("finished") : t("Claude Code finished")));
+      // The final message, else the last step that is not a diff (FinishedView).
+      const task = State.focusTask;
+      title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || t("Session finished");
+      // Sessions from the Claude desktop app live there, not in a terminal.
+      const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");
+      const span = open.firstElementChild as HTMLElement;
+      if (span.textContent !== label) span.textContent = label;
     },
   };
 }
@@ -386,8 +647,8 @@ function buildConfused(): ViewHost {
   const body = h(
     "div",
     { class: "stack", style: "padding:0 18px 0 128px" },
-    h("div", { class: "title", text: "Too many hits at once." }),
-    h("div", { class: "sub", text: "Give me a sec — back to work in three seconds." }),
+    h("div", { class: "title", text: tl("Too many hits at once.") }),
+    h("div", { class: "sub", text: tl("Give me a sec — back to work in three seconds.") }),
   );
   return { el: h("div", { class: "view" }, card("pink", body)), sync() {} };
 }
@@ -423,7 +684,7 @@ function buildSettings(actions: ViewActions): ViewHost {
   const rows = h(
     "div",
     { class: "settings-rows" },
-    h("div", { class: "settings-row" }, soundSwitch, h("span", { text: "Sound" }), volume),
+    h("div", { class: "settings-row" }, soundSwitch, h("span", { text: tl("Sound") }), volume),
     h(
       "div",
       { class: "settings-row" },
@@ -440,7 +701,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       h("button", {
         class: "link-btn",
         style: "color:#8e939c;font-size:11.5px",
-        text: "Settings…",
+        text: tl("Settings…"),
         onclick: () => actions.openSettingsWindow(),
       }),
     ),
@@ -456,7 +717,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       soundSwitch.classList.toggle("on", s.soundEnabled);
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
-      autoLabel.textContent = `Auto-close · ${Math.round(s.autoCloseInterval)}s`;
+      autoLabel.textContent = t("Auto-close · {seconds}s", { seconds: Math.round(s.autoCloseInterval) });
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
       clear(claudeBadge);
       claudeBadge.append(
@@ -471,7 +732,7 @@ function buildSettings(actions: ViewActions): ViewHost {
 
 // ── Placeholders filled in later stages ───────────────────────────────────────
 
-function buildPlaceholder(title: string, sub: string): ViewHost {
+function buildPlaceholder(title: Msg, sub: string): ViewHost {
   const body = h(
     "div",
     { class: "stack", style: "padding:0 18px 0 118px" },
@@ -491,7 +752,7 @@ export function buildViews(
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
-  map.set("question", buildQuestion());
+  map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());
@@ -501,9 +762,11 @@ export function buildViews(
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
+  map.set("recap", buildRecap(actions));
+  map.set("wardrobe", buildWardrobe(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
-  map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
-  map.set("searching", buildPlaceholder("Claude is searching…", ""));
-  map.set("result", buildPlaceholder("Result", ""));
+  map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
+  map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
+  map.set("result", buildPlaceholder(tl("Result"), ""));
   return map;
 }

@@ -4,7 +4,7 @@ import { resolve, join, extname } from "node:path";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // THE one and only place the shared sound folder is declared.
-// The 28 WAVs live in the macOS app and are NOT duplicated in the repo; when they
+// The 29 WAVs live in the macOS app and are NOT duplicated in the repo; when they
 // move to `shared/sounds/`, change this single line.
 export const SOUNDS_DIR = resolve(__dirname, "../NotchBuddy/Resources/sounds");
 // ───────────────────────────────────────────────────────────────────────────────
@@ -45,7 +45,14 @@ function sharedSounds(): Plugin {
 export default defineConfig({
   plugins: [sharedSounds()],
   clearScreen: false,
-  server: { port: 1420, strictPort: true, host: "127.0.0.1" },
+  server: {
+    port: 1420,
+    strictPort: true,
+    host: "127.0.0.1",
+    // Cargo writes and locks files under target/ while Vite starts; watching them
+    // crashes Vite on Windows with EBUSY. Tauri watches src-tauri/ itself.
+    watch: { ignored: ["**/target/**", "**/src-tauri/**"] },
+  },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
     target: "chrome110",
@@ -56,6 +63,7 @@ export default defineConfig({
       input: {
         island: resolve(__dirname, "index.html"),
         settings: resolve(__dirname, "settings.html"),
+        mochi: resolve(__dirname, "mochi.html"),
       },
     },
   },

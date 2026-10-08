@@ -23,7 +23,8 @@ enum PillCategory: String, CaseIterable {
 struct PillDefinition {
     let id:         String
     let name:       String
-    let color:      String
+    /// The catalog's colour for this pill, whatever the user picked.
+    let defaultColor: String
     let category:   PillCategory
     /// Label shown next to the task name in the idle card header.
     let subtitle:   String
@@ -31,12 +32,32 @@ struct PillDefinition {
     var comingSoon: Bool = false
     var githubOnly: Bool = false
 
+    /// The colour the pill is painted with: the user's own if they picked one
+    /// (Settings → Active pills), else the catalog's.
+    var color: String {
+        PillColors.color(for: id, catalogColor: defaultColor, in: PillColors.stored)
+    }
+
+    init(id: String, name: String, color: String, category: PillCategory, subtitle: String,
+         source: AgentSource, comingSoon: Bool = false, githubOnly: Bool = false) {
+        self.id = id
+        self.name = name
+        self.defaultColor = color
+        self.category = category
+        self.subtitle = subtitle
+        self.source = source
+        self.comingSoon = comingSoon
+        self.githubOnly = githubOnly
+    }
+
     /// Label shown in the active-session card header (workspace/agent pills only).
     var sessionSubtitle: String {
         switch id {
         case "integration_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
+        case "agent_hermes":       return "Hermes"
+        case "agent_claude-desktop": return "Claude Desktop"
         default:                   return "Agent"
         }
     }
@@ -59,6 +80,20 @@ enum PillCatalog {
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_copilot",       name: "Copilot CLI", color: "#818CF8",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_muse",          name: "Muse Code",   color: "#38BDF8",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_opencode",      name: "OpenCode",    color: "#4ADE80",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        // Claude Code sessions run from the Claude desktop app: the relay tags them
+        // `coucou_agent: claude-desktop` from CLAUDE_CODE_ENTRYPOINT, so nothing to install.
+        .init(id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757",
+              category: .agent,     subtitle: "Agent",        source: .agent),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
@@ -86,6 +121,8 @@ enum PillCatalog {
         .init(id: "integration_stripe",  name: "Stripe",      color: "#0570DE",
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
+              category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
+        .init(id: "integration_spotify", name: "Spotify",     color: "#1DB954",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
     ]
 

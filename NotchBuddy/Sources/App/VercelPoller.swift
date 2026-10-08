@@ -23,6 +23,7 @@ final class VercelPoller: @unchecked Sendable {
     // MARK: - Poll
 
     private func poll() {
+        guard !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("vercel-token") else { return }
 
         // Fetch last 5 terminal deployments

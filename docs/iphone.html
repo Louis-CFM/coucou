@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coucou on iPhone</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
+<header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
+<nav><a href="index.html">Home</a><a href="iphone.html" class="on">iPhone</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
+<div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
+<section id="en">
+<h1>Coucou on iPhone</h1>
+<div class="meta">Your Mac does the work, your iPhone keeps you in the loop when you step away.</div>
+<p style="text-align:center;margin:20px 0"><a class="btn" href="https://testflight.apple.com/join/3GpeHv2b">Join the TestFlight beta</a></p>
+<p class="meta" style="text-align:center">Apple is reviewing the beta: it opens within a day or two. If the link says it isn't accepting testers yet, come back soon, or ⭐ the <a href="https://github.com/Louis-CFM/coucou">repo</a> to follow along.</p>
+<img src="media/iphone-live-activity.jpg" style="width:100%;max-width:520px;border-radius:14px;display:block;margin:16px auto" alt="Mochi on the Lock Screen, waiting for your OK with Deny and Allow">
+
+<h2>What you need</h2>
+<ul>
+<li><b>Mac:</b> Coucou 0.1.9 or later on macOS 15+ (<a href="https://github.com/Louis-CFM/coucou/releases/latest">download</a>, or the Mac App Store version once it’s out).</li>
+<li><b>iPhone:</b> iOS 18 or later.</li>
+<li><b>iCloud:</b> the same Apple Account on the Mac and the iPhone. That’s the whole link: no account to create, no pairing code.</li>
+</ul>
+
+<h2>Get it on your iPhone</h2>
+<ol>
+<li><b>Install Coucou on your iPhone:</b> install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> from the App Store, then <a href="https://testflight.apple.com/join/3GpeHv2b"><b>Join the TestFlight beta</b></a>. The beta is free; Apple limits it to 10,000 testers. App Store version coming soon.</li>
+<li><b>On your Mac:</b> Coucou icon in the menu bar → <b>Settings… → General → iPhone</b>, turn on <b>Show my agent sessions on my iPhone</b>, and <b>Move Mochi to my iPhone’s Dynamic Island when my Mac is locked</b> for the Lock Screen.</li>
+<li><b>On the iPhone:</b> open Coucou and allow notifications.</li>
+<li><b>Start a Claude Code session on the Mac:</b> it shows up on the iPhone within seconds.</li>
+</ol>
+
+<h2>What you can do</h2>
+<ul>
+<li><b>Allow or Deny</b> a permission from the notification, the Lock Screen or the app. Allow asks for Face ID, and your Mac only applies a decision meant for the exact command it is waiting on.</li>
+<li><b>Answer Claude’s questions</b> with one tap.</li>
+<li><b>Follow every session live:</b> the prompt, the commands, the diffs and Claude’s answer.</li>
+<li><b>Send the next instruction</b> by text or voice (GitHub build of the Mac app).</li>
+<li><b>Mochi on the Lock Screen and in the Dynamic Island</b> while your Mac is locked.</li>
+<li><b>Your services up close</b> (GitHub, Vercel, Stripe, Cal.com, n8n, Notion, Resend), with safe actions behind Face ID: re-run CI, merge a pull request, redeploy, pause a workflow. Nothing that moves money or sends an email.</li>
+<li><b>Widgets, Control Center, Siri and Shortcuts, Spotlight and a Focus filter.</b></li>
+</ul>
+
+<div class="card"><b>Private by design.</b> Your sessions go from your Mac to your own private iCloud, encrypted with your iCloud keys. No API key leaves your Mac, and no Coucou server sees your projects, commands or paths. <a href="privacy.html">Read the privacy policy</a>.</div>
+
+<h2>Troubleshooting</h2>
+<h3>Nothing shows up</h3>
+<p>Check that the Mac and the iPhone use the same Apple Account in iCloud, that <b>Show my agent sessions on my iPhone</b> is on in the Mac app (0.1.9 or later), then pull down on the Agents tab to refresh.</p>
+<h3>No notifications</h3>
+<p>iPhone <b>Settings → Notifications → Coucou</b>: allow them. A Focus mode or Coucou’s quiet hours can hide them.</p>
+<h3>Mochi doesn’t come to the Lock Screen</h3>
+<p>Turn on the Dynamic Island switch on the Mac, and iPhone <b>Settings → Coucou → Live Activities</b>. Open Coucou on the iPhone once after installing it. iOS limits how often an app can start a Live Activity: after many lock cycles in a row it may skip a few, then it comes back on its own.</p>
+<p>The full guide, with how to build the iPhone app yourself, is on <a href="https://github.com/Louis-CFM/coucou/blob/main/docs/IPHONE.md">GitHub</a>. Still stuck? <a href="support.html">Support</a>.</p>
+</section>
+<hr>
+<section id="fr" lang="fr">
+<h1>Coucou sur iPhone</h1>
+<div class="meta">Ton Mac fait le travail, ton iPhone te tient au courant quand tu t’éloignes.</div>
+<p style="text-align:center;margin:20px 0"><a class="btn" href="https://testflight.apple.com/join/3GpeHv2b">Rejoindre la bêta TestFlight</a></p>
+<p class="meta" style="text-align:center">Apple vérifie la bêta : elle ouvre d’ici un ou deux jours. Si le lien dit qu’elle n’accepte pas encore de testeurs, reviens bientôt, ou mets une ⭐ au <a href="https://github.com/Louis-CFM/coucou">repo</a> pour suivre.</p>
+
+<h2>Ce qu’il te faut</h2>
+<ul>
+<li><b>Mac :</b> Coucou 0.1.9 ou plus récent sur macOS 15+ (<a href="https://github.com/Louis-CFM/coucou/releases/latest">télécharger</a>, ou la version Mac App Store dès qu’elle sort).</li>
+<li><b>iPhone :</b> iOS 18 ou plus récent.</li>
+<li><b>iCloud :</b> le même compte Apple sur le Mac et l’iPhone. C’est tout le lien : pas de compte à créer, pas de code d’appairage.</li>
+</ul>
+
+<h2>L’installer sur ton iPhone</h2>
+<ol>
+<li><b>Installe Coucou sur ton iPhone :</b> installe <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> depuis l’App Store, puis <a href="https://testflight.apple.com/join/3GpeHv2b"><b>rejoins la bêta TestFlight</b></a>. La bêta est gratuite ; Apple la limite à 10 000 testeurs. Version App Store à venir.</li>
+<li><b>Sur ton Mac :</b> icône Coucou dans la barre des menus → <b>Settings… → General → iPhone</b>, active <b>Show my agent sessions on my iPhone</b>, et <b>Move Mochi to my iPhone’s Dynamic Island when my Mac is locked</b> pour l’écran verrouillé.</li>
+<li><b>Sur l’iPhone :</b> ouvre Coucou et autorise les notifications.</li>
+<li><b>Lance une session Claude Code sur le Mac :</b> elle apparaît sur l’iPhone en quelques secondes.</li>
+</ol>
+
+<h2>Ce que tu peux faire</h2>
+<ul>
+<li><b>Autoriser ou refuser</b> une permission depuis la notification, l’écran verrouillé ou l’app. Autoriser demande Face ID, et ton Mac n’applique une décision qu’à la commande exacte qu’il attend.</li>
+<li><b>Répondre aux questions de Claude</b> en un geste.</li>
+<li><b>Suivre chaque session en direct :</b> la demande, les commandes, les diffs et la réponse de Claude.</li>
+<li><b>Envoyer l’instruction suivante</b> au clavier ou à la voix (version GitHub de l’app Mac).</li>
+<li><b>Mochi sur l’écran verrouillé et dans la Dynamic Island</b> pendant que ton Mac est verrouillé.</li>
+<li><b>Tes services en détail</b> (GitHub, Vercel, Stripe, Cal.com, n8n, Notion, Resend), avec des actions sûres derrière Face ID : relancer la CI, merger une pull request, redéployer, mettre un workflow en pause. Rien qui déplace de l’argent ou envoie un e-mail.</li>
+<li><b>Widgets, Centre de contrôle, Siri et Raccourcis, Spotlight et un filtre de concentration.</b></li>
+</ul>
+
+<div class="card"><b>Privé par conception.</b> Tes sessions passent de ton Mac à ton propre iCloud privé, chiffrées avec tes clés iCloud. Aucune clé d’API ne quitte ton Mac, et aucun serveur Coucou ne voit tes projets, commandes ou chemins. <a href="privacy.html#fr">Lire la politique de confidentialité</a>.</div>
+
+<h2>Dépannage</h2>
+<h3>Rien n’apparaît</h3>
+<p>Vérifie que le Mac et l’iPhone utilisent le même compte Apple dans iCloud, que <b>Show my agent sessions on my iPhone</b> est activé dans l’app Mac (0.1.9 ou plus récent), puis tire vers le bas sur l’onglet Agents pour actualiser.</p>
+<h3>Pas de notifications</h3>
+<p>Sur l’iPhone, <b>Réglages → Notifications → Coucou</b> : autorise-les. Un mode de concentration ou les heures calmes de Coucou peuvent les masquer.</p>
+<h3>Mochi ne vient pas sur l’écran verrouillé</h3>
+<p>Active l’option Dynamic Island sur le Mac, et sur l’iPhone <b>Réglages → Coucou → Activités en direct</b>. Ouvre Coucou une fois sur l’iPhone après l’installation. iOS limite le nombre d’Activités en direct qu’une app peut lancer : après beaucoup de verrouillages d’affilée, il peut en sauter quelques-unes, puis ça revient tout seul.</p>
+<p>Le guide complet, avec comment compiler l’app iPhone soi-même, est sur <a href="https://github.com/Louis-CFM/coucou/blob/main/docs/IPHONE.md">GitHub</a>. Toujours bloqué ? <a href="support.html#fr">Assistance</a>.</p>
+</section>
+<footer>© 2026 Louis Raillé · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>

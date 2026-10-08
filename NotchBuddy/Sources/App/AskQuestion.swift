@@ -14,8 +14,40 @@ struct AskQuestionItem: Equatable {
     var multiSelect: Bool
 }
 
+/// Island height of the pending question, readable from the nonisolated `islandSize`. Written on the main actor only.
+enum QuestionLayout {
+    nonisolated(unsafe) static var height: CGFloat?
+}
+
+extension AskQuestionItem {
+    /// True when at least one option carries a description: the card then lists options vertically.
+    var hasDescriptions: Bool { options.contains { !$0.description.isEmpty } }
+}
+
 struct AskQuestion: Equatable {
     var questions: [AskQuestionItem]   // 1–4 questions
+
+    /// Island height that fits the tallest question without truncation (rough estimate, text wraps at ~500 pt).
+    var estimatedIslandHeight: CGFloat {
+        func lines(_ text: String, charWidth: CGFloat) -> CGFloat {
+            max(1, (CGFloat(text.count) * charWidth / 500).rounded(.up))
+        }
+        let tallest = questions.map { item -> CGFloat in
+            var h: CGFloat = 20 + lines(item.question, charWidth: 7) * 17 + 64
+            if !item.header.isEmpty { h += 14 }
+            if item.hasDescriptions {
+                for opt in item.options {
+                    h += 34 + (opt.description.isEmpty ? 0 : lines(opt.description, charWidth: 6.4) * 14)
+                }
+                h += 40   // "Other…" row
+            } else {
+                h += item.options.count >= 3 ? 74 : 40
+            }
+            if item.multiSelect { h += 34 }
+            return h
+        }.max() ?? 160
+        return min(max(tallest, 160), 560)
+    }
 
     // MARK: - Parse from tool_input dict
     // Returns nil if the payload is malformed (fallback → Allow/Deny card).

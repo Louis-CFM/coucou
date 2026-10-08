@@ -21,8 +21,29 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test Claude hook detection
+        run: bash scripts/test-claude-hooks.sh
+
+      - name: Test display choice
+        run: bash scripts/test-display-choice.sh
+
+      - name: Desktop Mochi and gaze tests
+        run: bash scripts/test-desktop-mochi.sh
+
+      - name: Test auto-close timing
+        run: bash scripts/test-auto-close.sh
+
+      - name: Test open on hover
+        run: bash scripts/test-island-hover.sh
+
+      - name: Test terminal target
+        run: bash scripts/test-terminal-target.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
+
+      - name: Test Claude response text
+        run: bash scripts/test-claude-response.sh
 
       - name: Test chat parsing
         run: bash scripts/test-chat-parsing.sh
@@ -45,6 +66,12 @@ jobs:
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
+      - name: Pill colour tests
+        run: bash scripts/test-pill-colors.sh
+
+      - name: Claude settings file tests
+        run: bash scripts/test-claude-settings.sh
+
       - name: Build
         run: |
           xcodebuild \
@@ -54,3 +81,42 @@ jobs:
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Build App Store target (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouAppStore \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, DebugCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddyCloud \
+            -configuration DebugCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, ReleaseCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddy \
+            -configuration ReleaseCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone app (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouPhone \
+            -destination 'generic/platform=iOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO
