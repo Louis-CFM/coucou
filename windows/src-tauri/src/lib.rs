@@ -445,8 +445,9 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
-/// The models of a provider that it refused since launch: a 404 for a model
-/// its own list offers. The picker marks them. Nothing is asked of anyone.
+/// The models of a provider that it refused and that have not answered since:
+/// a 404 for a model its own list offers. The picker marks them. Nothing is
+/// asked of anyone.
 #[tauri::command]
 fn chat_refused(chat: State<'_, Chat>, provider: String) -> Vec<String> {
     chat.refused_models(&provider)
@@ -650,7 +651,7 @@ pub fn run() {
             gate: gate.clone(),
         })
         .manage(Pending::default())
-        .manage(Chat::default())
+        .manage(Chat::stored())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![

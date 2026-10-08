@@ -1322,7 +1322,7 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
-/* A model its provider refused since launch: listed, and "not found" once used. */
+/* A model its provider refused: listed, "not found" once used, and not answered since. */
 .picker-model.refused .picker-model-name {
   color: #8a8f98;
 }
