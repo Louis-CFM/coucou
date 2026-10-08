@@ -154,8 +154,8 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 As on the Mac, the island's header can show your plan limits: a small pill
 ("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
-weekly Claude limits, and another for Codex. Click one for the details and the
-reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+weekly Claude limits, and pills for Codex and Antigravity. Click one for the details and the
+reset times. All are off by default; turn them on in **Settings… → Plan usage**.
 
 - **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
   line. **Show in notch** first shows you the diff of the `statusLine` change in
@@ -172,6 +172,10 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   once a minute) Coucou starts `codex app-server` and asks it
   `account/rateLimits/read`, as Codex's `/status` does, then stops it (15 s at
   most, never while paused). Codex must be signed in with ChatGPT.
+- **Antigravity**: nothing is installed and no CLI is required. When the pill shows
+  (or is clicked, at most once a minute), Coucou queries the local Antigravity
+  application's language server to retrieve your 5-hour and weekly limits for
+  Gemini models (and 3rd-party models).
 
 ## Weekly recap
 
