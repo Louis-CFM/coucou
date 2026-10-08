@@ -64,6 +64,7 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "openrouter-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -285,6 +286,7 @@ final class ClaudeService {
             switch provider {
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
+            case .openrouter: baseURL = "https://openrouter.ai/api/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }
@@ -308,6 +310,21 @@ final class ClaudeService {
                 return
             }
             authHeader = "Bearer \(key)"
+        }
+
+        // Revalidate pricing before sending: a cached catalogue must never opt into billing.
+        let selectedModel = state.activeChatModel
+        if provider == .openrouter {
+            do {
+                let key = KeychainStore.shared.get(provider.keychainKey) ?? ""
+                let models = try await OpenRouterChat.fetchModels(apiKey: key)
+                guard models.contains(where: { $0.id == selectedModel }) else {
+                    throw OpenRouterChat.Failure.unavailableModel
+                }
+            } catch {
+                await showError(error.localizedDescription, state: state)
+                return
+            }
         }
 
         // Build messages
@@ -351,13 +368,16 @@ final class ClaudeService {
 
         let useStream = provider.isLocal
         var body: [String: Any] = [
-            "model": state.activeChatModel,
+            "model": selectedModel,
             "max_tokens": 4096,
             "messages": msgs,
         ]
         if useStream { body["stream"] = true }
+        if provider == .openrouter {
+            body["provider"] = OpenRouterChat.freeProviderPreferences
+        }
 
-        var req = URLRequest(url: url, timeoutInterval: useStream ? 120 : 30)
+        var req = URLRequest(url: url, timeoutInterval: (useStream || provider == .openrouter) ? 120 : 30)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(authHeader, forHTTPHeaderField: "Authorization")
@@ -420,9 +440,12 @@ final class ClaudeService {
                 await showError(error.localizedDescription, state: state)
             }
         } else {
-            // Non-streaming (Google, OpenAI)
+            // Non-streaming (Google, OpenAI, OpenRouter)
             do {
                 let (data, response) = try await URLSession.shared.data(for: req)
+                if provider == .openrouter {
+                    try OpenRouterChat.checkResponse(response)
+                }
                 guard (response as? HTTPURLResponse)?.statusCode == 200 else {
                     if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let err = (json["error"] as? [String: Any])?["message"] as? String {

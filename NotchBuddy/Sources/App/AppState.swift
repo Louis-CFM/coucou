@@ -129,6 +129,9 @@ final class AppState: ObservableObject {
     @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
     }
+    @Published var openRouterChatModel: String = ChatProvider.openrouter.defaultModel {
+        didSet { UserDefaults.standard.set(openRouterChatModel, forKey: "openRouterChatModel") }
+    }
     @Published var ollamaChatModel: String = ChatProvider.ollama.defaultModel {
         didSet { UserDefaults.standard.set(ollamaChatModel, forKey: "ollamaChatModel") }
     }
@@ -204,11 +207,21 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .openrouter:
+                do {
+                    models = try await OpenRouterChat.fetchModels(apiKey: apiKey)
+                } catch {
+                    loadingProviderModels.remove(provider)
+                    providerModelFetchError[provider] = error.localizedDescription
+                    return
+                }
             case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
-                providerModelFetchError[provider] = "Failed to load models. Check your API key."
+                providerModelFetchError[provider] = provider == .openrouter
+                    ? "No free text models are available. Try refreshing later."
+                    : "Failed to load models. Check your API key."
             } else {
                 fetchedProviderModels[provider] = models
                 switch provider {
@@ -224,6 +237,10 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
+                case .openrouter:
+                    if !models.contains(where: { $0.id == openRouterChatModel }) {
+                        openRouterChatModel = models.first(where: { $0.id == ChatProvider.openrouter.defaultModel })?.id ?? models[0].id
+                    }
                 case .ollama, .lmstudio: break
                 }
             }
@@ -236,6 +253,7 @@ final class AppState: ObservableObject {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
+        case .openrouter: return openRouterChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
         }
@@ -480,6 +498,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
+        if let v = ud.string(forKey: "openRouterChatModel"), !v.isEmpty { openRouterChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }

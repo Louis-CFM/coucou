@@ -38,7 +38,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - See what Claude is editing, live in the notch: each file modification shows the file name and +N −M counts in the ticker, tap to read the full diff
 - ✅ **Approve and answer from the notch** — Claude Code permission requests show up with **Allow / Deny / Always**; `AskUserQuestion` prompts show the choices right in the notch (single or multi-select, up to 4 questions). One click, or "Reply in terminal" to fall back to the CLI. Codex also gets Allow / Deny.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
-- 💬 **Chat with Claude, Gemini, OpenAI, or a local model (Ollama / LM Studio)** — click the model name above the chat box to switch provider and pick a model. Cloud providers use your own API key; local providers connect to a server running on your Mac. *(Gemini, OpenAI and local models: macOS)*
+- 💬 **Chat with Claude, Gemini, OpenAI, OpenRouter, or a local model (Ollama / LM Studio)** — click the model name above the chat box to switch provider and pick a model. Cloud providers use your own API key; local providers connect to a server running on your Mac. *(Gemini, OpenAI, OpenRouter and local models: macOS)*
 - 📊 **Claude plan usage** *(macOS, GitHub build)* — a small pill in the notch header shows your 5-hour and weekly Claude plan limits. Enable it from Settings → Agents → Plan usage. Pro and Max plans only.
 - 📊 **Codex plan usage** *(macOS, GitHub build)* — a Codex pill next to it shows your Codex limits and how many free resets you have left, read from the Codex CLI. Turn it on in Settings → Agents → Plan usage.
 - 📋 **Declare the tools you use** — open Settings → Active pills and pick your main workspace tool (VS Code, Cursor, Codex or Antigravity), then toggle up to 4 more: Gemini CLI, Anthropic, Google AI, OpenAI, Ollama, LM Studio and service integrations *(macOS)*.
@@ -231,6 +231,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 | **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
 | **Google AI API key** *(macOS)* | chat with Google AI (Gemini) | Settings → Chat — other providers · Keychain |
 | **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |
+| **OpenRouter API key** *(macOS)* | chat with dynamically listed free models | Settings → Chat → OpenRouter · Keychain |
 | **Ollama server** *(macOS)* | chat with local models via Ollama | Settings → Chat → Local models → **Connect** |
 | **LM Studio server** *(macOS)* | chat with local models via LM Studio | Settings → Chat → Local models → **Connect** |
 | **iPhone** *(macOS)* | sessions, approvals, questions and Mochi on your iPhone | Settings → General → iPhone · your private iCloud, see [docs/IPHONE.md](docs/IPHONE.md) |
@@ -325,3 +326,13 @@ Inspired by the notch-companion concepts shared by design studios — this proje
 [Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
 
 </div>
+
+### OpenRouter free chat (macOS)
+
+In **Settings → Chat → OpenRouter**, enter your API key and click **Save and refresh models**. In the chat model menu, choose **OpenRouter**, then a free model or **Auto — Free** (`openrouter/free`, when available in the catalogue). You can also enable its pill in **Settings → Active pills**.
+
+The catalogue refreshes whenever you open the OpenRouter model picker. Only text-capable models with zero advertised pricing are offered; pricing is checked again before each message and requests set zero maximum prompt, completion and per-request prices. No paid model fallback is requested. Free usage is subject to OpenRouter's account limits and provider availability; it is not unlimited. API keys stay in macOS Keychain. Messages are sent to OpenRouter and the selected model provider.
+
+Run the offline catalogue/pricing/error regression tests with `bash scripts/test-openrouter.sh`.
+
+Use **Clear chat** beside the chat model selector (or **⌘K**) to reset the visible conversation and its AI context. Clearing is disabled while a reply or dictation is in progress.

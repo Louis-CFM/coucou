@@ -87,6 +87,7 @@ struct SettingsView: View {
 
     // Multi-provider chat keys
     @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openRouterKey: String = KeychainStore.shared.get("openrouter-api-key") ?? ""
     @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
@@ -1066,6 +1067,36 @@ struct SettingsView: View {
             .padding(.vertical, 4)
         }
 
+        GroupBox("OpenRouter") {
+            VStack(alignment: .leading, spacing: 12) {
+                SecureField("OpenRouter API key", text: $openRouterKey)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save and refresh models") {
+                    let key = openRouterKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    openRouterKey = key
+                    KeychainStore.shared.set("openrouter-api-key", value: key)
+                    state.fetchedProviderModels[.openrouter] = nil
+                    state.providerModelFetchError[.openrouter] = nil
+                    state.fetchModelsIfNeeded(for: .openrouter)
+                    statusMessage = "OpenRouter API key saved."
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(openRouterKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                          || state.loadingProviderModels.contains(.openrouter))
+                if state.loadingProviderModels.contains(.openrouter) {
+                    ProgressView("Loading free models…")
+                } else if let error = state.providerModelFetchError[.openrouter] {
+                    Text(error).font(.system(size: 12)).foregroundColor(.secondary)
+                } else if let models = state.fetchedProviderModels[.openrouter] {
+                    Text("\(models.count) free options available in the chat model menu.")
+                        .font(.system(size: 12)).foregroundColor(.secondary)
+                }
+                Text("Choose OpenRouter above the chat box. Free models refresh when you open the model menu. Auto — Free picks an available free model. Usage limits and availability apply; paid models are never selected.")
+                    .font(.system(size: 12)).foregroundColor(.secondary)
+            }
+            .padding(.vertical, 4)
+        }
+
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(localized: "chat.local.description"))
@@ -1805,8 +1836,7 @@ struct SettingsView: View {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return String(localized: "Not connected") }
                 } else {
-                    let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                               : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
+                    let keyId = ChatProvider(pillID: def.id)?.keychainKey ?? ""
                     if KeychainStore.shared.get(keyId) == nil { return String(localized: "Key not configured") }
                 }
             }
