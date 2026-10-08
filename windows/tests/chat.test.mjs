@@ -10,6 +10,7 @@ import { calls, emit, internals, sent } from "./tauri.mjs";
 installFakeDom();
 const { buildPrompt } = await import("../src/views/chat.ts");
 const { DEFAULT_SETTINGS, State } = await import("../src/core/state.ts");
+const { CHAT_PICKER_H, PANEL_H, chatPromptHeight, islandSize } = await import("../src/core/layout.ts");
 
 /** What the mocked Rust side answers, by command. */
 let answers;
@@ -31,6 +32,7 @@ beforeEach(() => {
   State.stateOverride = null;
   State.view = "prompt";
   State.droppedFile = null;
+  State.pickingModel = false;
   view = buildPrompt(() => {});
   view.sync();
 });
@@ -91,6 +93,29 @@ test("switching provider saves it and asks the new provider only", async () => {
   assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
   assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
   assert.deepEqual(models(), ["gemini-2.5-flash"]);
+});
+
+test("the island makes room while the model picker is open, and takes it back", async () => {
+  let resized = 0;
+  const chat = buildPrompt(() => resized++);
+  chat.sync();
+  const button = chat.el.querySelector(".model-btn");
+  button.fire("click");
+  await flush();
+  assert.equal(State.pickingModel, true);
+  assert.equal(resized, 1);
+  button.fire("click");
+  assert.equal(State.pickingModel, false);
+  assert.equal(resized, 2);
+});
+
+test("the chat is as tall as the panel allows while its picker is open", () => {
+  assert.equal(islandSize("expanded", "prompt", 0).h, 240);
+  assert.equal(islandSize("expanded", "prompt", 0, true).h, CHAT_PICKER_H);
+  assert.equal(islandSize("expanded", "prompt", 9, true).h, CHAT_PICKER_H);
+  assert.ok(CHAT_PICKER_H > chatPromptHeight(99) && CHAT_PICKER_H < PANEL_H);
+  // Only the chat: every other view keeps its own height.
+  assert.equal(islandSize("expanded", "overview", 0, true).h, islandSize("expanded", "overview").h);
 });
 
 test("a local answer streams into one reply, then the finished text replaces it", async () => {
