@@ -62,10 +62,8 @@ struct BotCanvasView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
-                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
-                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
-                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                let outfitPillId = state.focusId ?? state.mainPillId
+                engine.setOutfit(state.resolvedOutfit(for: outfitPillId),
                                  animated: state.view != .wardrobe)
 
                 engine.update(dt: dt)
@@ -144,10 +142,8 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
-            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
-            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
-            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
-            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
+            let outfitPillId = state.focusId ?? state.mainPillId
+            engine.setOutfit(state.resolvedOutfit(for: outfitPillId), animated: false)
         }
     }
 
@@ -196,6 +192,7 @@ struct BotCanvasView: View {
 struct MiniBotCanvasView: View {
     let task: AgentTask
     var isDancing: Bool = false
+    @ObservedObject private var state = AppState.shared
     @StateObject private var engine: BotEngine
 
     init(task: AgentTask, isDancing: Bool = false) {
@@ -215,10 +212,13 @@ struct MiniBotCanvasView: View {
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dt = min(0.05, now - engine.lastTime)
                 engine.setDancing(isDancing)
+                engine.setOutfit(state.resolvedOutfit(for: task.id), animated: true)
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
+                engine.drawOutfitBehind(context: ctx, size: size)
                 engine.draw(context: ctx, size: size)
+                engine.drawOutfitFront(context: ctx, size: size)
             }
         }
         .onChange(of: task.state) { _, newState in
@@ -226,6 +226,7 @@ struct MiniBotCanvasView: View {
         }
         .onAppear {
             engine.setState(task.state, force: true)
+            engine.setOutfit(state.resolvedOutfit(for: task.id), animated: false)
             if let emote = task.emote {
                 engine.setPermanentEmote(emote)
             }

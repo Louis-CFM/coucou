@@ -294,7 +294,7 @@ func drawOutfitFrontStatic(
     roll: CGFloat, morph: CGFloat, isMini: Bool,
     presence: CGFloat = 1, rollTurns: CGFloat = 1
 ) {
-    guard !isMini, outfit != .none, outfit != .auto else { return }
+    guard outfit != .none, outfit != .auto else { return }
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
     guard morphFade > 0.01 else { return }
 
@@ -431,7 +431,7 @@ func drawOutfitBehindStatic(
     roll: CGFloat, morph: CGFloat, isMini: Bool,
     presence: CGFloat = 1, rollTurns: CGFloat = 1
 ) {
-    guard !isMini, outfit != .none, outfit != .auto else { return }
+    guard outfit != .none, outfit != .auto else { return }
     let morphFade = 1 - min(1, max(0, (morph - 0.3) / 0.2))
     guard morphFade > 0.01 else { return }
 

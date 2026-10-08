@@ -483,16 +483,18 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
-                Picker(String(localized: "settings.main-pill"), selection: $state.mainPillId) {
+                Picker(String(localized: "settings.main-pill"), selection: Binding(
+                    get: { state.mainPillId },
+                    set: { state.setMainPill($0) }
+                )) {
                     ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
                         Text(def.name).tag(def.id)
                     }
                 }
-                .onChange(of: state.mainPillId) { _, newId in
-                    state.activeIntegrations.remove(newId)
-                    state.loadIntegrationTasks()
-                    state.setFocus(newId)
-                }
+                Text("The main workspace is always available and appears first. Each workspace and agent keeps its own outfit.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 ForEach(PillCategory.allCases, id: \.self) { cat in
                     let catPills = PillCatalog.available.filter { $0.category == cat }

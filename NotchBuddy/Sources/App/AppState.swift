@@ -69,17 +69,50 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(recapHideProjects, forKey: "recapHideProjects") }
     }
 
-    // Mochi outfit selection — persisted
-    @Published var mochiOutfitSelection: Outfit = .auto {
-        didSet { Outfit.stored = mochiOutfitSelection }
+    // Mochi outfit selections — persisted per workspace/agent pill.
+    // The legacy global value is migrated to the current main pill in init().
+    @Published private(set) var mochiOutfitSelections: [String: Outfit] = [:] {
+        didSet {
+            UserDefaults.standard.set(
+                mochiOutfitSelections.mapValues(\.rawValue),
+                forKey: "mochiOutfitsByPill"
+            )
+        }
     }
-    // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
+    // Transient: outfit preview while hovering in wardrobe.
     var wardrobePreviewOutfit: Outfit? = nil
     // Per-day seasonal cache — avoids recomputing Easter and date math on every frame
     private var _seasonalCache: (dayOfYear: Int, year: Int, outfit: Outfit)?
-    var resolvedOutfit: Outfit {
-        if let preview = wardrobePreviewOutfit { return preview }
-        guard mochiOutfitSelection == .auto else { return mochiOutfitSelection }
+
+    /// The workspace/agent currently being customized. Service pills fall back to the main workspace.
+    var wardrobePillId: String {
+        if let focusId,
+           let def = PillCatalog.definition(for: focusId),
+           def.category == .workspace || def.category == .agent {
+            return focusId
+        }
+        return mainPillId
+    }
+
+    var mochiOutfitSelection: Outfit {
+        get { outfitSelection(for: wardrobePillId) }
+        set { setOutfitSelection(newValue, for: wardrobePillId) }
+    }
+
+    func outfitSelection(for pillId: String) -> Outfit {
+        if let stored = mochiOutfitSelections[pillId] { return stored }
+        // Preserve the old behaviour: only the main Mochi follows seasons by default.
+        return pillId == mainPillId ? .auto : .none
+    }
+
+    func setOutfitSelection(_ outfit: Outfit, for pillId: String) {
+        mochiOutfitSelections[pillId] = outfit
+    }
+
+    func resolvedOutfit(for pillId: String) -> Outfit {
+        if pillId == wardrobePillId, let preview = wardrobePreviewOutfit { return preview }
+        let selection = outfitSelection(for: pillId)
+        guard selection == .auto else { return selection }
         let cal = Calendar.current
         let now = Date()
         let day  = cal.ordinality(of: .day, in: .year, for: now) ?? 0
@@ -89,6 +122,9 @@ final class AppState: ObservableObject {
         _seasonalCache = (dayOfYear: day, year: year, outfit: outfit)
         return outfit
     }
+
+    /// The desktop Mochi represents the main workspace.
+    var resolvedOutfit: Outfit { resolvedOutfit(for: mainPillId) }
 
     // Claude model used by the chat and the search — persisted
     static let defaultClaudeModel = "claude-sonnet-4-6"
@@ -446,7 +482,6 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
-        mochiOutfitSelection = Outfit.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
@@ -475,6 +510,14 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
            PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v
+        }
+        if let raw = ud.dictionary(forKey: "mochiOutfitsByPill") as? [String: String] {
+            mochiOutfitSelections = raw.reduce(into: [:]) { result, entry in
+                if let outfit = Outfit(rawValue: entry.value) { result[entry.key] = outfit }
+            }
+        } else {
+            // One-time migration from the former global outfit preference.
+            mochiOutfitSelections = [mainPillId: Outfit.stored]
         }
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
@@ -543,6 +586,17 @@ final class AppState: ObservableObject {
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         focusId = id
         tasks[idx].pillBadge = nil  // clear badge when user brings task to focus
+    }
+
+    func setMainPill(_ id: String) {
+        guard id != mainPillId,
+              PillCatalog.available.contains(where: {
+                  $0.id == id && $0.category == .workspace && !$0.comingSoon
+              }) else { return }
+        mainPillId = id
+        activeIntegrations.remove(id)
+        loadIntegrationTasks()
+        setFocus(id)
     }
 
     func setPillBadge(_ badge: PillBadge, for id: String) {

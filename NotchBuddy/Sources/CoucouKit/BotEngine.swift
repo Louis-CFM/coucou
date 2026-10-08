@@ -908,7 +908,7 @@ final class BotEngine: ObservableObject {
 
         // Body fill
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
-                 pumpkinColors: outfit == .pumpkin && !isMini)
+                 pumpkinColors: outfit == .pumpkin)
 
         // Blush — always shows a floor proportional to tint (prototype behaviour)
         let blushVal = max(blush, tint * 0.5) * (1 - morph)
@@ -1084,7 +1084,7 @@ final class BotEngine: ObservableObject {
     }
 
     func drawOutfitBehind(context: GraphicsContext, size: CGSize) {
-        guard outfit != .none, !isMini else { return }
+        guard outfit != .none else { return }
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06
@@ -1098,7 +1098,7 @@ final class BotEngine: ObservableObject {
     }
 
     func drawOutfitFront(context: GraphicsContext, size: CGSize) {
-        guard outfit != .none, !isMini else { return }
+        guard outfit != .none else { return }
         let W = size.width, H = size.height, R = W * 0.3
         let cx = W / 2 + ox * R
         let cy = H / 2 + particleOverhang / 2 + oy * R + R * 0.06

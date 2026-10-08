@@ -4126,6 +4126,21 @@ struct WardrobeView: View {
 
     private let columns = Array(repeating: GridItem(.fixed(30), spacing: 5), count: 14)
 
+    private var customizableTasks: [AgentTask] {
+        state.tasks.filter { task in
+            guard let category = PillCatalog.definition(for: task.id)?.category else { return false }
+            return category == .workspace || category == .agent
+        }
+    }
+
+    private var wardrobeTask: AgentTask? {
+        state.tasks.first { $0.id == state.wardrobePillId }
+    }
+
+    private func catalogName(for task: AgentTask) -> String {
+        PillCatalog.definition(for: task.id)?.name ?? task.name
+    }
+
     private var headerRight: String {
         // Hover takes priority: show hovered outfit name
         if let h = hoveredOutfit {
@@ -4153,6 +4168,46 @@ struct WardrobeView: View {
                 Text("Wardrobe")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#F5F6F8"))
+                if let task = wardrobeTask {
+                    Menu {
+                        ForEach(customizableTasks, id: \.id) { candidate in
+                            Button {
+                                hoveredOutfit = nil
+                                state.wardrobePreviewOutfit = nil
+                                state.setFocus(candidate.id)
+                            } label: {
+                                if candidate.id == state.mainPillId {
+                                    Label("\(catalogName(for: candidate)) · Main", systemImage: "star.fill")
+                                } else {
+                                    Text(catalogName(for: candidate))
+                                }
+                            }
+                        }
+                        if task.id != state.mainPillId,
+                           PillCatalog.definition(for: task.id)?.category == .workspace {
+                            Divider()
+                            Button("Use \(catalogName(for: task)) as main workspace") {
+                                hoveredOutfit = nil
+                                state.wardrobePreviewOutfit = nil
+                                state.setMainPill(task.id)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(hex: task.color))
+                                .frame(width: 6, height: 6)
+                            Text(catalogName(for: task))
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 7, weight: .semibold))
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
                 Spacer(minLength: 4)
                 Text(headerRight)
                     .font(.system(size: 11))
@@ -4190,7 +4245,9 @@ struct WardrobeView: View {
                                 SoundEngine.shared.play("pop")
                                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
                             },
-                            seasonalOutfit: outfit == .auto ? state.resolvedOutfit : .none
+                            seasonalOutfit: outfit == .auto
+                                ? state.resolvedOutfit(for: state.wardrobePillId)
+                                : .none
                         )
                     }
                 }
@@ -4212,6 +4269,11 @@ struct WardrobeView: View {
         .padding(.leading, 108)
         .padding(.trailing, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            if !customizableTasks.contains(where: { $0.id == state.focusId }) {
+                state.setFocus(state.mainPillId)
+            }
+        }
         .onDisappear {
             state.wardrobePreviewOutfit = nil
             hoveredOutfit = nil
