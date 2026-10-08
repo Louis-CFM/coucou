@@ -1,5 +1,18 @@
 import Foundation
 
+// MARK: - VercelAPI
+
+enum VercelAPI {
+    /// Adds `teamId` to a Vercel API URL when a team scope is selected in Settings.
+    /// Reads UserDefaults directly so it is safe from any thread.
+    static func url(_ base: String) -> String {
+        guard let team = UserDefaults.standard.string(forKey: "vercelTeamId"), !team.isEmpty,
+              var components = URLComponents(string: base) else { return base }
+        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "teamId", value: team)]
+        return components.string ?? base
+    }
+}
+
 // MARK: - VercelPoller
 // Polls Vercel API for latest deployments every 30s.
 // On new terminal deployment: updates integration_vercel task state + AppState.vercelDeployments.
@@ -8,6 +21,8 @@ final class VercelPoller: @unchecked Sendable {
     static let shared = VercelPoller()
     private var timer: DispatchSourceTimer?
     private var lastDeploymentId: String = ""
+    // Set when the scope changes: the next poll records the latest deployment without an alert.
+    private var silentNextPoll = false
 
     private init() {}
 
@@ -20,14 +35,37 @@ final class VercelPoller: @unchecked Sendable {
         timer = t
     }
 
+    /// Called when the team scope changes: drops the old scope's deployments and polls again silently.
+    @MainActor
+    func scopeChanged() {
+        AppState.shared.vercelDeployments = []
+        lastDeploymentId = ""
+        silentNextPoll = true
+        DispatchQueue.global(qos: .background).async { [weak self] in self?.poll() }
+    }
+
+    /// Polls right away, e.g. after a redeploy from the notch.
+    func pollNow() {
+        DispatchQueue.global(qos: .background).async { [weak self] in self?.poll() }
+    }
+
     // MARK: - Poll
 
     private func poll() {
         guard !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("vercel-token") else { return }
+        let wanted = DispatchQueue.main.sync {
+            MainActor.assumeIsolated { AppState.shared.activeIntegrations.contains("integration_vercel") }
+        }
+        #if PHONE_LINK
+        guard wanted || UserDefaults.standard.bool(forKey: "iPhoneSyncEnabled") else { return }
+        #else
+        guard wanted else { return }
+        #endif
 
-        // Fetch last 5 terminal deployments
-        guard let url = URL(string: "https://api.vercel.com/v6/deployments?limit=5") else { return }
+        // Fetch the last 20 deployments (enough to cover a few watched projects)
+        let scope = UserDefaults.standard.string(forKey: "vercelTeamId") ?? ""
+        guard let url = URL(string: VercelAPI.url("https://api.vercel.com/v6/deployments?limit=20")) else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -39,21 +77,24 @@ final class VercelPoller: @unchecked Sendable {
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let rawList = json["deployments"] as? [[String: Any]] else { return }
 
-            // Only terminal deployments (READY, ERROR, CANCELED)
-            let terminal = ["READY", "ERROR", "CANCELED"]
+            // Finished deployments (READY, ERROR, CANCELED) and builds in progress
             let parsed = rawList
                 .compactMap { self.parseDeployment($0) }
-                .filter { terminal.contains($0.state) }
+                .filter { $0.isTerminal || $0.isBuilding }
             guard !parsed.isEmpty else { return }
 
-            DispatchQueue.main.async { self.handleDeployments(parsed) }
+            DispatchQueue.main.async {
+                // The scope changed while this request was in flight: its deployments are another team's
+                guard scope == (UserDefaults.standard.string(forKey: "vercelTeamId") ?? "") else { return }
+                self.handleDeployments(parsed)
+            }
         }.resume()
     }
 
     private func parseDeployment(_ d: [String: Any]) -> VercelDeployment? {
         guard let uid   = d["uid"]   as? String,
               let name  = d["name"]  as? String,
-              let state = d["state"] as? String else { return nil }
+              let state = (d["state"] as? String) ?? (d["readyState"] as? String) else { return nil }
 
         let url = (d["url"] as? String) ?? ""
         let createdAtMs = (d["createdAt"] as? Double) ?? 0
@@ -68,7 +109,23 @@ final class VercelPoller: @unchecked Sendable {
                   ?? meta?["bitbucketBranch"] as? String
 
         return VercelDeployment(id: uid, projectName: name, url: url, state: state,
-                                 createdAt: createdAt, commitMessage: commitMessage, branch: branch)
+                                 createdAt: createdAt, commitMessage: commitMessage, branch: branch,
+                                 target: d["target"] as? String,
+                                 repo: Self.repo(fromMeta: meta))
+    }
+
+    /// "org/repo" from a deployment's git metadata (GitHub, GitLab, Bitbucket).
+    static func repo(fromMeta meta: [String: Any]?) -> String? {
+        guard let meta else { return nil }
+        let pairs = [("githubCommitOrg", "githubCommitRepo"), ("githubOrg", "githubRepo"),
+                     ("gitlabProjectNamespace", "gitlabProjectName"),
+                     ("bitbucketRepoOwner", "bitbucketRepoName")]
+        for (o, r) in pairs {
+            if let org = meta[o] as? String, let name = meta[r] as? String, !org.isEmpty, !name.isEmpty {
+                return "\(org)/\(name)"
+            }
+        }
+        return nil
     }
 
     @MainActor
@@ -76,12 +133,12 @@ final class VercelPoller: @unchecked Sendable {
         let appState = AppState.shared
         appState.vercelDeployments = deployments
 
-        // Apply project filter (empty = all projects)
-        let filter = appState.vercelProjectFilter
-        let filtered = filter.isEmpty ? deployments : deployments.filter { filter.contains($0.projectName) }
-        guard let latest = filtered.first else { return }
+        // Alert once per finished deployment of a watched project (empty filter = all projects).
+        // A build in progress alerts when it finishes, as it becomes the latest finished one.
+        guard let latest = appState.vercelWatchedDeployments.first(where: \.isTerminal) else { return }
         guard latest.id != lastDeploymentId else { return }
         lastDeploymentId = latest.id
+        if silentNextPoll { silentNextPoll = false; return }
 
         guard let idx = appState.tasks.firstIndex(where: { $0.id == "integration_vercel" }) else { return }
         let focused = appState.focusId == "integration_vercel"

@@ -6,6 +6,13 @@ import AppKit
 // bundle_id. VS Code sessions keep the original "VS Code" pill; sessions from a
 // terminal also route to integration_claude and the pill says "Claude Code".
 
+/// The Claude Code session last seen on a pill, from the hooks.
+struct ClaudeSessionRef: Equatable {
+    let sessionId: String
+    let cwd: String
+    let hostApp: String?   // bundle id of the terminal, nil = VS Code
+}
+
 struct ClaudeHost: Equatable {
     let bundleId: String
     let name: String

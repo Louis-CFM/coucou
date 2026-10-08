@@ -101,11 +101,14 @@ final class GithubPoller: @unchecked Sendable {
             }
             self.pulseInFlight = true
             let gen = self.tokenGeneration
-            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token, generation: gen) }
+            let watched = AppState.shared.githubWatchedRepos.sorted()
+            DispatchQueue.global(qos: .background).async {
+                self.fetchPulse(token: token, watched: watched, generation: gen)
+            }
         }
     }
 
-    private func fetchPulse(token: String, generation: Int) {
+    private func fetchPulse(token: String, watched: [String], generation: Int) {
         guard let url = URL(string: "https://api.github.com/graphql") else {
             finishPulse(hasPending: false); return
         }
@@ -113,7 +116,7 @@ final class GithubPoller: @unchecked Sendable {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        guard let body = try? JSONSerialization.data(withJSONObject: ["query": Self.graphQLQuery]) else {
+        guard let body = try? JSONSerialization.data(withJSONObject: ["query": GitHubPulse.query(watched: watched)]) else {
             finishPulse(hasPending: false); return
         }
         req.httpBody = body
@@ -136,9 +139,10 @@ final class GithubPoller: @unchecked Sendable {
                     self.finishPulse(hasPending: false); return
                 }
             }
-            guard let pulse = GitHubPulse.parse(data) else {
+            guard let parsed = GitHubPulse.parse(data) else {
                 self.finishPulse(hasPending: false); return
             }
+            let pulse = parsed.filtered(toRepos: Set(watched))
             DispatchQueue.main.async {
                 // Discard stale response if token changed while request was in flight
                 guard self.tokenGeneration == generation else { return }
@@ -292,42 +296,6 @@ final class GithubPoller: @unchecked Sendable {
     }
 
     // MARK: - GraphQL queries
-
-    private static let graphQLQuery = """
-    query {
-      viewer {
-        login
-        pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
-          nodes {
-            number title url isDraft reviewDecision
-            repository { nameWithOwner url }
-            commits(last: 1) {
-              nodes { commit { oid statusCheckRollup { state } } }
-            }
-          }
-        }
-        repositories(first: 10, ownerAffiliations: [OWNER], orderBy: {field: PUSHED_AT, direction: DESC}) {
-          nodes {
-            nameWithOwner url isArchived
-            defaultBranchRef {
-              name
-              target { ... on Commit { oid statusCheckRollup { state } } }
-            }
-          }
-        }
-      }
-      reviewRequested: search(query: "is:pr is:open review-requested:@me archived:false", type: ISSUE, first: 20) {
-        issueCount
-        nodes {
-          ... on PullRequest {
-            number title url isDraft
-            author { login }
-            repository { nameWithOwner url }
-          }
-        }
-      }
-    }
-    """
 
     private static let activityQuery = """
     query {

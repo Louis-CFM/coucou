@@ -14,6 +14,7 @@ final class IslandWindowController: NSWindowController {
     private var wasInIsland = false
     private var frameTimer: Timer?
     private var keyMonitor: Any?
+    private var sidePanelSubscription: AnyCancellable?
     private var viewSubscription: AnyCancellable?
     private var displaySubscription: AnyCancellable?
     private var autoCloseSubscription: AnyCancellable?
@@ -161,6 +162,12 @@ final class IslandWindowController: NSWindowController {
                     self.islandPanel.makeKey()
                 }
             }
+        // Same for the reply panel's text field
+        sidePanelSubscription = state.$sidePanel
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] panel in
+                if case .reply = panel { self?.islandPanel.makeKey() }
+            }
 
         // Screen choice changed in Settings: move right away (explicit user action).
         displaySubscription = state.$islandDisplay
@@ -272,6 +279,10 @@ final class IslandWindowController: NSWindowController {
         }
 
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        fsm.isTyping = {
+            if case .reply = AppState.shared.sidePanel { return AppState.shared.mode == .expanded }
+            return false
+        }
     }
 
     // MARK: - Polling loop
@@ -545,6 +556,9 @@ final class IslandWindowController: NSWindowController {
     private func handleIslandKey(_ event: NSEvent) -> Bool {
         let raw = event.modifierFlags.intersection([.command, .control, .option, .shift])
         let cmd = raw == .command
+
+        // In the reply panel, ⌘ + arrows move the text cursor
+        if case .reply = state.sidePanel, cmd, [123, 124, 125, 126].contains(event.keyCode) { return false }
 
         // ⌘→ — next pill
         if cmd && event.keyCode == 124 { cyclePill(by: +1); return true }

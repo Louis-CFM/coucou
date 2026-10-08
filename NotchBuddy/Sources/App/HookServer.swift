@@ -405,6 +405,13 @@ final class HookServer: @unchecked Sendable {
             ? "\(agentId)+\(cwd)"
             : sessionId
 
+        // Remember the session so it can be continued from the notch or the iPhone.
+        if !isExternalAgent, !isCodexEvent, sessionId != "unknown", !cwd.isEmpty {
+            let ref = ClaudeSessionRef(sessionId: sessionId, cwd: cwd,
+                                       hostApp: agentId == "integration_claude" ? hostApp : nil)
+            if state.claudeSessions[agentId] != ref { state.claudeSessions[agentId] = ref }
+        }
+
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
         if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
@@ -561,6 +568,11 @@ final class HookServer: @unchecked Sendable {
             clearPillBadge(id: agentId)
 
         case "SessionEnd":
+            #if !APPSTORE
+            // A run started from the notch or the iPhone ends here, but the session
+            // goes on in its terminal or editor: keep the pill and the run's answer.
+            if SessionResumer.shared.isOwnRun(sessionId) { break }
+            #endif
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
