@@ -238,6 +238,8 @@ struct OverviewView: View {
             switchChatProvider(.google)
         case "ai_openai":
             switchChatProvider(.openai)
+        case "ai_openrouter":
+            switchChatProvider(.openrouter)
         case "ai_ollama":
             switchChatProvider(.ollama)
         case "ai_lmstudio":
@@ -1474,15 +1476,15 @@ struct ModelPickerView: View {
         .padding(14)
         .background(Color(hex: "#16171B"))
         .onAppear {
-            // Force-refresh local providers every time the picker opens
-            if state.chatProvider.isLocal {
+            // Force-refresh local providers and OpenRouter every time the picker opens
+            if state.chatProvider.isLocal || state.chatProvider == .openrouter {
                 state.fetchedProviderModels[state.chatProvider] = nil
                 state.providerModelFetchError[state.chatProvider] = nil
             }
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
         .onChange(of: state.chatProvider) { _, provider in
-            if provider.isLocal {
+            if provider.isLocal || provider == .openrouter {
                 state.fetchedProviderModels[provider] = nil
                 state.providerModelFetchError[provider] = nil
             }
@@ -1515,6 +1517,7 @@ struct ModelPickerView: View {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
+                            case .openrouter: state.openRouterChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
                             }
@@ -1771,6 +1774,7 @@ struct IntegrationCardView: View {
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_openrouter": return !(KeychainStore.shared.get("openrouter-api-key") ?? "").isEmpty
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
@@ -1920,6 +1924,7 @@ struct IntegrationCardView: View {
                 case "ai_anthropic": model = appState.claudeModel
                 case "ai_google":    model = appState.googleChatModel
                 case "ai_openai":    model = appState.openAIChatModel
+                case "ai_openrouter": model = appState.openRouterChatModel
                 default:             model = ""
                 }
                 return String(localized: "Key configured · \(model)")

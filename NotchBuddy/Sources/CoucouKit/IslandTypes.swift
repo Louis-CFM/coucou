@@ -76,6 +76,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
     case google    = "google"
     case openai    = "openai"
+    case openrouter = "openrouter"
     case ollama    = "ollama"
     case lmstudio  = "lmstudio"
 
@@ -84,6 +85,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "Anthropic"
         case .google:    "Google"
         case .openai:    "OpenAI"
+        case .openrouter: "OpenRouter"
         case .ollama:    "Ollama"
         case .lmstudio:  "LM Studio"
         }
@@ -94,6 +96,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "#E07950"
         case .google:    "#4285F4"
         case .openai:    "#10A37F"
+        case .openrouter: "#A78BFA"
         case .ollama:    "#FACC15"
         case .lmstudio:  "#A3E635"
         }
@@ -104,6 +107,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "claude-sonnet-4-6"
         case .google:    "gemini-2.0-flash"
         case .openai:    "gpt-4o"
+        case .openrouter: "openrouter/free"
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
         }
@@ -114,6 +118,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "anthropic-api-key"
         case .google:    "google-api-key"
         case .openai:    "openai-api-key"
+        case .openrouter: "openrouter-api-key"
         case .ollama:    ""
         case .lmstudio:  ""
         }
@@ -128,6 +133,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .anthropic: "ai_anthropic"
         case .google:    "ai_google"
         case .openai:    "ai_openai"
+        case .openrouter: "ai_openrouter"
         case .ollama:    "ai_ollama"
         case .lmstudio:  "ai_lmstudio"
         }
@@ -138,6 +144,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_anthropic": self = .anthropic
         case "ai_google":    self = .google
         case "ai_openai":    self = .openai
+        case "ai_openrouter": self = .openrouter
         case "ai_ollama":    self = .ollama
         case "ai_lmstudio":  self = .lmstudio
         default:             return nil
