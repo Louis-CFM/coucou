@@ -655,13 +655,43 @@ function buildConfused(): ViewHost {
 
 // ── Note ──────────────────────────────────────────────────────────────────────
 
-function buildNote(): ViewHost {
-  const title = h("div", { class: "title" });
-  const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title)));
+/** How long a note with an OK button stays up when nobody clicks it. */
+export const NOTE_SECONDS = 10;
+
+export function buildNote(actions: Pick<ViewActions, "setView" | "collapse">): ViewHost {
+  const title = h("div", { class: "title note" });
+  // Back to where the note came from. A click may take the keyboard there.
+  const ok = btn(tl("OK"), "secondary", () => {
+    if (State.view === "note" && State.noteThen) actions.setView(State.noteThen);
+  });
+  const row = h("div", { class: "actions" }, ok);
+  const body = h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title, row);
+  const el = h("div", { class: "view" }, card(null, body));
+  let armedFor = -1;
+  let timer: number | null = null;
   return {
     el,
     sync() {
-      title.textContent = State.noteMessage ?? "";
+      const note = State.noteMessage ?? "";
+      title.textContent = note;
+      // A note that had to be cut (see `.title.note`) can still be read in full.
+      title.title = note;
+      const closable = State.noteThen != null;
+      body.classList.toggle("closable", closable);
+      row.style.display = closable ? "" : "none";
+
+      if (State.noteAt === armedFor) return;
+      armedFor = State.noteAt;
+      if (timer != null) window.clearTimeout(timer);
+      timer = null;
+      if (!closable) return;
+      // Left alone, the note folds the island instead of going back by itself:
+      // the chat takes the keyboard, and nobody asked for that.
+      const mine = State.noteAt;
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (State.view === "note" && State.noteAt === mine) actions.collapse();
+      }, NOTE_SECONDS * 1000);
     },
   };
 }
@@ -756,7 +786,7 @@ export function buildViews(
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());
-  map.set("note", buildNote());
+  map.set("note", buildNote(actions));
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("upload", buildUpload());

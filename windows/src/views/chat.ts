@@ -11,7 +11,7 @@ import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  PROVIDERS, activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
@@ -26,6 +26,7 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  notAvailable: N_("Not available"),
   openSettings: N_("Open Settings"),
 };
 
@@ -80,12 +81,27 @@ function buildPicker(onChange: () => void): Picker {
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
+  /** The keys the credential store held the last time it was asked. */
+  const stored = new Set<string>();
   let isOpen = false;
   let request = 0;
 
+  /** Which cloud providers have their key: asked again each time the picker opens. */
+  async function findKeys() {
+    const keys = PROVIDERS.flatMap((p) => (p.key ? [p.key] : []));
+    const present = await Promise.all(keys.map((key) => Bridge.secretPresent(key)));
+    stored.clear();
+    keys.forEach((key, i) => {
+      if (present[i]) stored.add(key);
+    });
+    if (isOpen) drawChips();
+  }
+  // Known before the first opening, so the chips do not arrive one after another.
+  void findKeys();
+
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
+    for (const p of visibleProviders(State.settings, (key) => stored.has(key))) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -121,15 +137,22 @@ function buildPicker(onChange: () => void): Picker {
     list.append(line);
   }
 
-  function drawModels(p: ProviderDef, models: ModelInfo[]) {
+  function drawModels(p: ProviderDef, models: ModelInfo[], refused: ReadonlySet<string>) {
     clear(list);
     const current = activeModel(State.settings);
     for (const m of models) {
       const on = m.id === current;
+      // The provider lists it and answered "not found" when it was used.
+      const gone = refused.has(m.id);
       const row = h(
         "button",
-        { class: on ? "picker-model on" : "picker-model", style: `--accent:${p.accent}`, title: m.id },
+        {
+          class: `picker-model${on ? " on" : ""}${gone ? " refused" : ""}`,
+          style: `--accent:${p.accent}`,
+          title: m.id,
+        },
         h("span", { class: "picker-model-name", text: m.label }),
+        gone ? h("span", { class: "picker-flag", text: t(STRINGS.notAvailable) }) : null,
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
@@ -146,9 +169,11 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    const refused = new Set((await Bridge.chatRefused(p.id)) ?? []);
+    if (ticket !== request) return;
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
-      drawModels(p, cached);
+      drawModels(p, cached, refused);
       return;
     }
     // Nothing is asked of a provider that has no key yet.
@@ -168,7 +193,7 @@ function buildPicker(onChange: () => void): Picker {
         saveSettings();
         onChange();
       }
-      drawModels(p, models);
+      drawModels(p, models, refused);
     } catch (err) {
       if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
     }
@@ -178,6 +203,7 @@ function buildPicker(onChange: () => void): Picker {
     isOpen = true;
     el.classList.add("on");
     drawChips();
+    void findKeys();
     onChange();
     void loadModels();
   }
@@ -228,6 +254,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
+    // The list needs room: the island is as tall as it can be while it is open.
+    if (State.pickingModel !== picker.isOpen) {
+      State.pickingModel = picker.isOpen;
+      onHeightChange();
+    }
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
 
@@ -290,6 +321,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     } catch (err) {
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      // What the error asks for (another model, a key) is done from the chat:
+      // the note's OK button comes back here.
+      State.noteThen = "prompt";
+      State.noteAt = performance.now();
       State.view = "note";
       Sound.play("error");
     } finally {

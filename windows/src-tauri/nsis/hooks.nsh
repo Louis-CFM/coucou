@@ -14,4 +14,5 @@
   RMDir /r "$LOCALAPPDATA\Coucou\bin"
   RMDir /r "$LOCALAPPDATA\Coucou\inbox"
   Delete "$LOCALAPPDATA\Coucou\coucou.log"
+  Delete "$LOCALAPPDATA\Coucou\refused-models.json"
 !macroend

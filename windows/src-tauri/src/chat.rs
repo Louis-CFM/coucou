@@ -6,6 +6,7 @@
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -48,7 +49,17 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// (provider, model) pairs a provider answered "not found" for, oldest
+    /// first. Its own list offers them, this key cannot use them, and nothing
+    /// says so before trying: the picker marks them (`refused_models`) until
+    /// they answer again.
+    refused: Mutex<Vec<(String, String)>>,
+    /// Where `refused` is kept between launches. `None` keeps it in memory only.
+    store: Option<PathBuf>,
 }
+
+/// The most refused models that are remembered; past that the oldest go.
+const MAX_REFUSED: usize = 200;
 
 #[derive(Default)]
 struct Conversation {
@@ -72,6 +83,62 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// The running app's chat: what its providers refused is read from
+    /// `refused-models.json`, next to the log, and written back as it changes.
+    /// Only model names are in it, and it never leaves the machine.
+    pub fn stored() -> Self {
+        Self::stored_at(crate::settings::local_dir().join("refused-models.json"))
+    }
+
+    fn stored_at(path: PathBuf) -> Self {
+        // A file that is missing or cannot be used means nothing was refused.
+        let mut refused: Vec<(String, String)> = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        Self { refused: Mutex::new(refused), store: Some(path), ..Default::default() }
+    }
+
+    /// Writes `refused` where it is kept. Failing to only costs the memory of it.
+    fn keep(&self, refused: &[(String, String)]) {
+        let Some(path) = &self.store else { return };
+        let dir_ready = path.parent().is_none_or(|dir| crate::platform::ensure_private_dir(dir).is_ok());
+        if let (true, Ok(json)) = (dir_ready, serde_json::to_vec(refused)) {
+            let _ = std::fs::write(path, json);
+        }
+    }
+
+    /// `provider` listed `model`, then answered that it has no such model.
+    pub fn refuse(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock().unwrap();
+        if refused.iter().any(|(p, m)| p == provider && m == model) {
+            return;
+        }
+        refused.push((provider.to_string(), model.to_string()));
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        self.keep(&refused);
+    }
+
+    /// `model` answered: what was held against it no longer is. Called for
+    /// every answer, so the file is only touched when a mark really goes.
+    pub fn accept(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock().unwrap();
+        let before = refused.len();
+        refused.retain(|(p, m)| !(p == provider && m == model));
+        if refused.len() != before {
+            self.keep(&refused);
+        }
+    }
+
+    /// The models of `provider` the picker marks as not available.
+    pub fn refused_models(&self, provider: &str) -> Vec<String> {
+        let refused = self.refused.lock().unwrap();
+        refused.iter().filter(|(p, _)| p == provider).map(|(_, m)| m.clone()).collect()
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -247,6 +314,72 @@ mod tests {
             .iter()
             .map(|m| (m["role"].as_str().unwrap().to_string(), m["content"].clone()))
             .collect()
+    }
+
+    #[test]
+    fn a_refused_model_is_remembered_until_it_answers() {
+        let chat = Chat::default();
+        assert!(chat.refused_models("google").is_empty());
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openai", "gpt-x");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(chat.refused_models("openai"), ["gpt-x"]);
+        // "New chat" forgets the conversation, not what the provider said of its models.
+        chat.reset();
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        // Another provider's model of the same name is its own business.
+        chat.accept("openai", "gemini-2.5-pro");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        chat.accept("google", "gemini-2.5-pro");
+        assert!(chat.refused_models("google").is_empty());
+    }
+
+    #[test]
+    fn refused_models_are_kept_between_launches_until_they_answer() {
+        let dir = std::env::temp_dir().join(format!("coucou-refused-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join("refused-models.json");
+
+        // Nothing there yet: nothing refused, and nothing written until something is.
+        let chat = Chat::stored_at(file.clone());
+        assert!(chat.refused_models("google").is_empty());
+        chat.accept("google", "gemini-3.5-flash");
+        assert!(!file.exists());
+
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openrouter", "a/b:free");
+        // The next launch still knows.
+        let next = Chat::stored_at(file.clone());
+        assert_eq!(next.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(next.refused_models("openrouter"), ["a/b:free"]);
+
+        // Once it answers, the mark is gone for good.
+        next.accept("google", "gemini-2.5-pro");
+        let later = Chat::stored_at(file.clone());
+        assert!(later.refused_models("google").is_empty());
+        assert_eq!(later.refused_models("openrouter"), ["a/b:free"]);
+
+        // A file that cannot be used reads as nothing refused, and is replaced on the next change.
+        std::fs::write(&file, b"not json").unwrap();
+        let broken = Chat::stored_at(file.clone());
+        assert!(broken.refused_models("openrouter").is_empty());
+        broken.refuse("google", "x");
+        assert_eq!(Chat::stored_at(file.clone()).refused_models("google"), ["x"]);
+
+        // Only the newest MAX_REFUSED are remembered.
+        for i in 0..MAX_REFUSED + 5 {
+            broken.refuse("openrouter", &format!("m{i}"));
+        }
+        let full = Chat::stored_at(file.clone());
+        assert_eq!(full.refused_models("openrouter").len(), MAX_REFUSED);
+        assert!(full.refused_models("google").is_empty(), "the oldest went first");
+        assert_eq!(full.refused_models("openrouter").last().unwrap(), &format!("m{}", MAX_REFUSED + 4));
+
+        // A chat without a store (the tests' own) writes nothing anywhere.
+        let _ = std::fs::remove_dir_all(&dir);
+        Chat::default().refuse("google", "y");
+        assert!(!file.exists());
     }
 
     #[test]

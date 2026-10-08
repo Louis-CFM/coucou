@@ -10,6 +10,7 @@ import { calls, emit, internals, sent } from "./tauri.mjs";
 installFakeDom();
 const { buildPrompt } = await import("../src/views/chat.ts");
 const { DEFAULT_SETTINGS, State } = await import("../src/core/state.ts");
+const { CHAT_PICKER_H, PANEL_H, chatPromptHeight, islandSize } = await import("../src/core/layout.ts");
 
 /** What the mocked Rust side answers, by command. */
 let answers;
@@ -31,6 +32,7 @@ beforeEach(() => {
   State.stateOverride = null;
   State.view = "prompt";
   State.droppedFile = null;
+  State.pickingModel = false;
   view = buildPrompt(() => {});
   view.sync();
 });
@@ -54,10 +56,26 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
-  assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
+  // Nothing is set up: only where the chat goes is shown, and it says what is missing.
+  assert.deepEqual(chips(), ["Anthropic"]);
+  // The credential store is only ever asked whether a provider's key is there.
+  const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
+  assert.ok(sent("secret_present").every((call) => keys.includes(call.key)));
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
+});
+
+test("the picker offers the providers that are set up, and the active one", async () => {
+  answers.secret_present = (args) => args.key === "google-api-key" || args.key === "openrouter-api-key";
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenRouter"]);
+  // A key added in Settings since shows the next time the picker opens.
+  $(".model-btn").fire("click");
+  answers.secret_present = true;
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
 });
 
 test("with a key, the models are listed and picking one saves it", async () => {
@@ -77,6 +95,23 @@ test("with a key, the models are listed and picking one saves it", async () => {
   assert.equal($(".model-name").textContent, "claude-sonnet-5");
 });
 
+test("a model its provider refused is marked in the list, and can still be picked", async () => {
+  answers.secret_present = true;
+  answers.chat_models = [
+    { id: "claude-opus-5", label: "Claude Opus 5" },
+    { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  ];
+  answers.chat_refused = (args) => (args.provider === "anthropic" ? ["claude-sonnet-5"] : []);
+  $(".model-btn").fire("click");
+  await flush();
+  const rows = view.el.find(".picker-model");
+  assert.ok(!rows[0].classList.contains("refused"));
+  assert.ok(rows[1].classList.contains("refused"));
+  assert.match(rows[1].textContent, /Not available/);
+  rows[1].fire("click");
+  assert.equal(State.settings.model, "claude-sonnet-5");
+});
+
 test("switching provider saves it and asks the new provider only", async () => {
   answers.secret_present = (args) => args.key === "google-api-key";
   answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-2.5-flash", label: "gemini-2.5-flash" }] : []);
@@ -91,6 +126,29 @@ test("switching provider saves it and asks the new provider only", async () => {
   assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
   assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
   assert.deepEqual(models(), ["gemini-2.5-flash"]);
+});
+
+test("the island makes room while the model picker is open, and takes it back", async () => {
+  let resized = 0;
+  const chat = buildPrompt(() => resized++);
+  chat.sync();
+  const button = chat.el.querySelector(".model-btn");
+  button.fire("click");
+  await flush();
+  assert.equal(State.pickingModel, true);
+  assert.equal(resized, 1);
+  button.fire("click");
+  assert.equal(State.pickingModel, false);
+  assert.equal(resized, 2);
+});
+
+test("the chat is as tall as the panel allows while its picker is open", () => {
+  assert.equal(islandSize("expanded", "prompt", 0).h, 240);
+  assert.equal(islandSize("expanded", "prompt", 0, true).h, CHAT_PICKER_H);
+  assert.equal(islandSize("expanded", "prompt", 9, true).h, CHAT_PICKER_H);
+  assert.ok(CHAT_PICKER_H > chatPromptHeight(99) && CHAT_PICKER_H < PANEL_H);
+  // Only the chat: every other view keeps its own height.
+  assert.equal(islandSize("expanded", "overview", 0, true).h, islandSize("expanded", "overview").h);
 });
 
 test("a local answer streams into one reply, then the finished text replaces it", async () => {
@@ -121,4 +179,16 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.equal(view.el.find(".reply")[0].textContent, "Hello there!");
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
+});
+
+test("a failed turn shows a note that knows the way back to the chat", async () => {
+  answers.chat_send = () => Promise.reject("Google AI: model not found (404).");
+  State.noteThen = null;
+  $(".chat-input").value = "hello";
+  $(".send-btn").fire("click");
+  await flush();
+  assert.equal(State.view, "note");
+  assert.equal(State.noteMessage, "Google AI: model not found (404).");
+  assert.equal(State.noteThen, "prompt");
+  assert.ok(State.noteAt > 0);
 });

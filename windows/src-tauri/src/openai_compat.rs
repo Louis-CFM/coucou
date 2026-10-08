@@ -177,12 +177,18 @@ pub async fn send(
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
+        // A provider's list offers models a key cannot use (Gemini's, for new
+        // accounts): the picker marks this one from now on.
+        if status.as_u16() == 404 {
+            chat.refuse(p.id, model);
+        }
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
     let text = reply_text(p, &json)?;
+    chat.accept(p.id, model);
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);

@@ -20,12 +20,15 @@ enum IslandAutoCloseTests {
         try await waitForCompact(edited, timeout: 1)
 
         // Increasing the delay must also cancel the previous, shorter timer.
+        // The new delay is a full second: the sleep below only has to outlast
+        // the old 50 ms timer, and on a busy CI runner a 100 ms sleep can run
+        // long enough to meet a timer set a few hundred milliseconds out.
         let extended = openedMachine(delay: 0.05)
         extended.mouseLeft()
-        extended.homeToPetitDelay = 0.25
+        extended.homeToPetitDelay = 1
         try await Task.sleep(for: .milliseconds(100))
         precondition(extended.state == .home)
-        try await waitForCompact(extended, timeout: 1)
+        try await waitForCompact(extended, timeout: 3)
 
         // Returning to the island cancels the countdown; leaving starts it again.
         let hovered = openedMachine(delay: 0.05)
@@ -45,14 +48,15 @@ enum IslandAutoCloseTests {
         try await waitForCompact(hoveredEdit, timeout: 1)
 
         // Greeting timing is independent from the normal auto-close preference.
+        // A full second here too, for the same reason as above.
         let greeting = IslandStateMachine()
-        greeting.greetAutoCollapseDelay = 0.15
+        greeting.greetAutoCollapseDelay = 1
         greeting.launch()
         greeting.greetComplete()
         greeting.homeToPetitDelay = 0.01
         try await Task.sleep(for: .milliseconds(50))
         precondition(greeting.state == .coucou)
-        try await waitForCompact(greeting, timeout: 1)
+        try await waitForCompact(greeting, timeout: 3)
 
         // An unanswered approval holds the island open even after a delay edit.
         let heldOpen = openedMachine(delay: 0.05)
