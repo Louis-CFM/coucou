@@ -407,6 +407,15 @@ body {
   flex: 1 1 auto;
 }
 
+.overview.solo > .left {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.overview.solo > .right {
+  display: none;
+}
+
 .card-body {
   position: relative;
   z-index: 1;

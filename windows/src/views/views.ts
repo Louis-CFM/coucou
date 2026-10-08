@@ -342,6 +342,8 @@ function buildOverview(actions: ViewActions): ViewHost {
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
+      // No other pill to show: the focused card takes the whole width.
+      el.classList.toggle("solo", others.length === 0);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
