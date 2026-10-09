@@ -8,14 +8,19 @@ import {
   toggleDeclared,
 } from "../src/core/pills.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
+import { installFakeDom } from "./fakedom.mjs";
+import { renderIntegrationCard } from "../src/views/integrations.ts";
+
+installFakeDom();
 
 // ── The catalog itself ────────────────────────────────────────────────────────
 
-test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's values", () => {
+test("the catalog holds the Mac's pills with the Claude Code label for Windows and Linux", () => {
   // Copied from NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID is a
   // contract value, and a colour or subtitle that drifts is a visible bug.
+  // Windows and Linux name the Claude Code integration after the agent.
   const mac = [
-    ["integration_claude", "VS Code", "#F5F6F8", "workspace", "Integration"],
+    ["integration_claude", "Claude Code", "#F5F6F8", "workspace", "Integration"],
     ["agent_cursor", "Cursor", "#C0C4CC", "workspace", "Integration"],
     ["agent_antigravity", "Antigravity", "#E879F9", "workspace", "Integration"],
     ["agent_codex", "Codex", "#2DD4BF", "workspace", "Integration"],
@@ -50,9 +55,9 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
   ]);
 });
 
-test("the pills Windows always had keep their IDs, names, colours and sources", () => {
+test("the shipped pills keep their IDs, colours and sources with current display names", () => {
   const shipped = [
-    ["integration_claude", "VS Code", "#F5F6F8", "claudeCode"],
+    ["integration_claude", "Claude Code", "#F5F6F8", "claudeCode"],
     ["integration_resend", "Resend", "#22C55E", "n8n"],
     ["integration_n8n", "n8n", "#F29B38", "n8n"],
     ["integration_vercel", "Vercel", "#7C5CFF", "n8n"],
@@ -233,13 +238,14 @@ test("the main pill always loads, the declared ones join it, and focus starts on
   assert.equal(State.tasks[1].color, "#8AB4F8");
 });
 
-test("an old settings file gets VS Code as its main pill and keeps its integrations", () => {
+test("an old settings file gets Claude Code as its main pill and keeps its integrations", () => {
   State.settings = { ...DEFAULT_SETTINGS, mainPill: undefined };
   State.loadIntegrationTasks();
   assert.deepEqual(ids(), [
     "integration_claude", "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   ]);
   assert.equal(State.settings.mainPill, "integration_claude");
+  assert.equal(State.tasks[0].name, "Claude Code");
 });
 
 test("switching the main pill frees its slot and the old main pill goes when idle", () => {
@@ -303,4 +309,22 @@ test("toggling declares up to four pills and never the main one", () => {
   State.toggleIntegration("agent_gemini");
   assert.ok(!ids().includes("agent_gemini"));
   assert.equal(State.focusId, "integration_claude");
+});
+
+test("Claude Code is named after the agent in main-tool choices on both platforms", () => {
+  for (const os of ["windows", "linux"]) {
+    const choice = mainPillChoices(os).find((p) => p.id === "integration_claude");
+    assert.equal(choice.name, "Claude Code");
+    assert.equal(choice.source, "claudeCode");
+  }
+});
+
+test("the Claude Code idle card keeps the agent title when the task has a project name", () => {
+  State.loadIntegrationTasks();
+  const task = State.tasks.find((t) => t.id === "integration_claude");
+  task.name = "my-project";
+  const card = renderIntegrationCard(task, { openSettings() {} });
+  assert.ok(card.textContent.includes("Claude Code"));
+  assert.ok(!card.textContent.includes("my-project"));
+  assert.ok(card.textContent.includes("Open Visual Studio Code"));
 });
