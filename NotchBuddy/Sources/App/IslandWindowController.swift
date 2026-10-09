@@ -276,6 +276,10 @@ final class IslandWindowController: NSWindowController {
         }
 
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        fsm.hoverPeekHideDelay = { [weak self] in
+            guard let self, self.state.autoHideRestingBar, !self.hasNotch else { return nil }
+            return RestingBarAutoHide.hoverPeekHideDelay
+        }
     }
 
     // MARK: - Polling loop
@@ -325,6 +329,7 @@ final class IslandWindowController: NSWindowController {
         let hoverRect = !hasNotch && state.mode != .expanded
             ? islandRect : islandRect.insetBy(dx: -6, dy: -6)
         let inIsland = hoverRect.contains(local)
+        updateRestingBarVisibility(panel, islandRect: islandRect, pointer: local)
 
         // Toggle click-through
         let shouldAcceptMouse = inIsland || inAttachDrag || attachDragStart != nil
@@ -387,6 +392,26 @@ final class IslandWindowController: NSWindowController {
     }
 
     private var lastMouse: CGPoint = .zero
+
+    // MARK: - Resting bar auto-hide (screens without a notch, opt-in)
+
+    private var restingBarShown = true
+
+    private func updateRestingBarVisibility(_ panel: IslandPanel, islandRect: CGRect, pointer: CGPoint) {
+        let held = state.pendingApproval != nil || state.fileDragOver
+            || inAttachDrag || attachDragStart != nil
+        let show = RestingBarAutoHide.isVisible(
+            enabled: state.autoHideRestingBar, hasNotch: hasNotch,
+            isResting: state.mode == .hidden, isHeld: held,
+            pointerNear: RestingBarAutoHide.revealZone(around: islandRect).contains(pointer))
+        guard show != restingBarShown else { return }
+        restingBarShown = show
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = show ? 0.15 : 0.35
+            ctx.timingFunction = CAMediaTimingFunction(name: show ? .easeOut : .easeIn)
+            panel.animator().alphaValue = show ? 1 : 0
+        }
+    }
 
     // MARK: - Bot-head hover (love emote — mirrors prototype botHover())
 

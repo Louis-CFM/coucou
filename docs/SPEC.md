@@ -19,6 +19,7 @@ Toutes les mesures sont en points macOS. Les valeurs viennent de `reference/notc
 - La panel peut devenir key uniquement quand un champ texte de l'island a le focus (prompt, mail). Sinon elle ne vole jamais le focus.
 - Détection du notch : `NSScreen.safeAreaInsets.top` > 0 et `auxiliaryTopLeftArea` / `auxiliaryTopRightArea`. Largeur du notch `wN` = largeur écran − les deux zones auxiliaires ; hauteur `hN` = `safeAreaInsets.top`. Le prototype utilise `wN = 184`, `hN = 32` : dans l'app, prendre les vraies valeurs.
 - Pas d'écran avec notch (Mac de bureau, écran externe ou capot fermé), ou écran sans notch choisi dans **Display** : afficher sur cet écran une barre noire de 80 pt au repos (`hidden`), avec Mochi visible au centre et son animation en pause ; 240 pt en `compact`, en haut au centre. Hauteur plafonnée à 24 pt et à celle de la barre de menus ; personnage et pastilles adaptés à cette hauteur. Le salut se replie vers les dimensions réelles de la barre compacte. La zone de survol au repos ne déborde pas sous la barre. Les vues ouvertes gardent leur largeur de 640 pt.
+- Option **Hide the bar until the pointer comes near** (désactivée par défaut) : sur un écran sans notch, la barre au repos s'efface (`alphaValue` 0) et revient quand le pointeur entre dans une zone de 60 pt sur les côtés et 16 pt sous la barre. Elle reste visible en `compact` et `expanded`, pendant une approbation en attente, un glisser de fichier ou un glisser de Mochi. Avec l'option, un `compact` ouvert seulement par le survol (ou une island ouverte au survol puis repliée) se masque 1 s après le départ du pointeur, au lieu de 60 s ; un `compact` ouvert par le travail d'un agent garde les 60 s.
 - Suivi de la souris : polling de `NSEvent.mouseLocation` à chaque frame. Aucune permission nécessaire.
 
 ### Forme de l'island
@@ -241,7 +242,7 @@ Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
 - **Integrations** : clé ou token (Trousseau) pour chaque service (n8n, Stripe, GitHub, Vercel, Resend, Notion, Cal.com).
 - **Sound** : son on/off, volume.
 - **Behavior** : fermeture après N s d'inactivité ; masquage après N min sans mouvement.
-- **Display** : écran de l'island — Screen with the notch (défaut), Main screen (menu bar), Follow the mouse, ou un écran précis par son nom (`NSScreen.localizedName`). Un écran mémorisé mais débranché s'affiche « Saved screen (not connected) ». Voir §1.
+- **Display** : écran de l'island — Screen with the notch (défaut), Main screen (menu bar), Follow the mouse, ou un écran précis par son nom (`NSScreen.localizedName`). Un écran mémorisé mais débranché s'affiche « Saved screen (not connected) ». Option « Hide the bar until the pointer comes near » pour les écrans sans notch. Voir §1.
 - **Active pills** : pastilles actives (VS Code toujours actif + jusqu'à 4 autres) ; sélecteur de pastille principale (affiché uniquement si une pastille workspace est active) ; liste par catégorie (voir catalogue §5).
 - **Hotkey** : raccourci global pour ouvrir le notch.
 - **Startup** : lancer au démarrage (`SMAppService.mainApp`).

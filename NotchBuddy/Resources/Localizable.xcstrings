@@ -21374,6 +21374,134 @@
           }
         }
       }
+    },
+    "Hide the bar until the pointer comes near": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إخفاء الشريط حتى يقترب المؤشر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পয়েন্টার কাছে না আসা পর্যন্ত বারটি লুকান"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide the bar until the pointer comes near"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar la barra hasta que se acerque el puntero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masquer la barre jusqu'à l'approche du pointeur"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पॉइंटर पास आने तक बार छिपाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sembunyikan bilah sampai penunjuk mendekat"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar a barra até o ponteiro se aproximar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрывать панель, пока к ней не приблизится указатель"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏横条，直到指针靠近"
+          }
+        }
+      }
+    },
+    "On a screen without a notch, the resting bar fades out and comes back when the pointer nears the top center. It stays visible while Mochi is working or needs you.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "على شاشة بلا نتوء، يتلاشى الشريط في وضع الراحة ويعود عندما يقترب المؤشر من أعلى الوسط. يبقى ظاهرًا ما دام Mochi يعمل أو يحتاج إليك."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নচ ছাড়া স্ক্রিনে, বিশ্রামের বারটি মিলিয়ে যায় এবং পয়েন্টার উপরের মাঝখানে এলে ফিরে আসে। Mochi কাজ করার সময় বা আপনাকে দরকার হলে এটি দৃশ্যমান থাকে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On a screen without a notch, the resting bar fades out and comes back when the pointer nears the top center. It stays visible while Mochi is working or needs you."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En una pantalla sin notch, la barra en reposo se desvanece y vuelve cuando el puntero se acerca al centro superior. Sigue visible mientras Mochi trabaja o te necesita."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur un écran sans encoche, la barre au repos s'efface et revient quand le pointeur s'approche du haut, au centre. Elle reste visible tant que Mochi travaille ou a besoin de toi."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बिना नॉच वाली स्क्रीन पर, विश्राम बार गायब हो जाता है और पॉइंटर ऊपर बीच में आने पर लौट आता है। Mochi के काम करते समय या आपकी ज़रूरत होने पर यह दिखता रहता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di layar tanpa notch, bilah istirahat memudar dan muncul kembali saat penunjuk mendekati bagian tengah atas. Bilah tetap terlihat selama Mochi bekerja atau membutuhkan Anda."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em uma tela sem notch, a barra em repouso desaparece e volta quando o ponteiro se aproxima do centro superior. Ela continua visível enquanto o Mochi trabalha ou precisa de você."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На экране без выреза панель в покое исчезает и появляется снова, когда указатель приближается к верхнему центру. Она остаётся видимой, пока Mochi работает или ждёт вас."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在没有刘海的屏幕上，空闲横条会淡出，指针靠近顶部中央时再出现。Mochi 工作中或需要你时，它会一直显示。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
