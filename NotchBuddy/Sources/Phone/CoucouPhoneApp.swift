@@ -78,12 +78,13 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         let kind = userInfo["kind"] as? String ?? ""
         let fingerprint = userInfo["fingerprint"] as? String ?? ""
         let options = userInfo["options"] as? [String] ?? []
+        let targetIdentity = userInfo["targetIdentity"] as? String ?? ""
         Task { @MainActor in
             let link = PhoneLink.shared
             switch (kind, action) {
             case ("done", NotificationActions.reply):
                 let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !text.isEmpty { _ = await link.sendInstruction(text, pillId: pillId) }
+                if !text.isEmpty { _ = await link.sendInstruction(text, pillId: pillId, targetIdentity: targetIdentity) }
             case ("question", let picked) where picked.hasPrefix(NotificationActions.pickPrefix):
                 let index = Int(picked.dropFirst(NotificationActions.pickPrefix.count)) ?? -1
                 if options.indices.contains(index) {

@@ -590,31 +590,34 @@ struct TabButton: View {
 struct ClaudePlanHeaderPill: View {
     @ObservedObject var state: AppState
     var codex: Bool = false
+    @ObservedObject private var codexInfo = CodexAgentsInfo.shared
     @State private var isHovered = false
+    @State private var now = Date()
 
     private var effectiveColor: String {
-        if codex { return CodexPlanGauge.color(state.codexPlanUsage) }
+        if codex { return codexInfo.isStale(at: now) ? "#6B7079" : CodexPlanGauge.color(codexInfo.planUsage) }
         return ClaudePlanGauge.color(for: (state.demoPlanUsageOverride ?? state.claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) })
     }
 
     private var label: String {
-        if codex { return CodexPlanGauge.pillLabel(state.codexPlanUsage) }
+        if codex {
+            return codexInfo.dominantPercent.map { "Codex \(codexInfo.isStale(at: now) ? "~" : "")\(Int(min(100, max(0, $0)).rounded()))%" } ?? "Codex —"
+        }
         guard let usage = state.demoPlanUsageOverride ?? state.claudePlanUsage,
               let pct = ClaudePlanGauge.dominantPct(usage) else { return "Claude —" }
         return "Claude \(Int(pct.rounded()))%"
     }
 
-    private var isOpen: Bool { state.showingPlanDetail && state.planDetailIsCodex == codex }
+    private var isOpen: Bool { state.showingPlanDetail && state.planDetailProvider == (codex ? "codex" : "claude") }
     private var isActive: Bool { isOpen || isHovered }
 
     var body: some View {
         Button(action: {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 let open = isOpen
-                state.planDetailIsCodex = codex
+                state.planDetailProvider = codex ? "codex" : "claude"
                 state.showingPlanDetail = !open
             }
-            if codex { state.refreshCodexPlanUsage() }
         }) {
             HStack(spacing: 4) {
                 Circle()
@@ -645,7 +648,15 @@ struct ClaudePlanHeaderPill: View {
         .onHover { h in
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
-        .onAppear { if codex { state.refreshCodexPlanUsage() } }
+        .task {
+            if codex {
+                let task = state.tasks.first { $0.id == "agent_codex" }
+                await codexInfo.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+            }
+        }
+        .background(TimelineView(.periodic(from: .now, by: 30)) { tick in
+            Color.clear.onChange(of: tick.date) { _, date in now = date }
+        })
     }
 }
 #endif

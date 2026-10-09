@@ -245,6 +245,22 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 
 If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
 
+### Codex and VS Code (macOS, GitHub source build)
+
+These Codex additions are in this source build; they are not included in the published releases.
+
+1. Install the OpenAI Codex extension in VS Code, or run the Codex CLI in VS Code's integrated terminal. Open the project folder you want to work on.
+2. In Coucou, open **Settings → Agents → Codex hooks → Install hooks**. Review the changes to `~/.codex/hooks.json`, then **Confirm and write**. Existing configuration is backed up.
+3. In Codex, run `/hooks`, or open its **Hooks** settings. Enable and trust Coucou's hooks. A configured file alone does not grant trust: Coucou shows **Done** after Codex reports all required hooks enabled and trusted.
+4. Start a new turn. Codex gets its own pill, even when your **Main** tool is VS Code. Its project and source application are used when you open the session. Enable the Codex pill in **Settings → Active pills** to keep it visible between sessions.
+5. **Settings → Agents → Codex hooks** also shows plan usage, reset times, account token totals, daily totals and tokens for the confirmed selected thread. **Show in notch** displays Codex usage when its pill is selected. Unavailable or old values are labelled; they are not displayed as zero.
+
+The extension may include a different Codex executable from the CLI Coucou found. The CLI version shown in Settings describes that executable. If it is ready but VS Code sends no events, check the extension's version, hook settings and trust, then start a fresh turn. See [OpenAI's shared CLI/IDE configuration](https://learn.chatgpt.com/docs/developer-settings?surface=ide).
+
+For account-based chat, open **Settings → Chat → Codex — ChatGPT account** and click **Sign in with ChatGPT**. Choose a project folder, or **Use current project**, then select **Codex (ChatGPT)** above the chat box. No API key is required. The chat uses a separate Codex thread for that project; it does not take over an existing VS Code conversation. It is read-only unless you turn on **Allow project changes**; permission requests still need your decision. Search can use cached results, live results, or be disabled, and attached files are passed as content supported by the selected model.
+
+Hook-connected external sessions support status and permission cards. Native Codex questions and session-scoped approvals are answered through the connection that owns a Coucou-managed thread. They cannot be injected into an unrelated IDE connection. See [agent integration](docs/AGENTS.md) and [iPhone setup](docs/IPHONE.md).
+
 ### Supported agents
 
 | Agent | How it connects | Mac-only? |

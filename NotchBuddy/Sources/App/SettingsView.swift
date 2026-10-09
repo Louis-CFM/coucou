@@ -32,8 +32,14 @@ struct SettingsView: View {
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
+    @State private var claudeHooksInstalled: Bool = HookServer.claudeHooksInstalled()
+    #if APPSTORE
+    @State private var appStoreClaudeSettingsURL: URL?
+    #endif
 
     #if !APPSTORE
+    @ObservedObject private var codexInfo = CodexAgentsInfo.shared
+    @ObservedObject private var codexChat = CodexChatService.shared
     @State private var showStatusLineDiff: Bool = false
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
@@ -213,6 +219,7 @@ struct SettingsView: View {
             }
         }
         .onAppear {
+            refreshHookStates()
             #if !APPSTORE
             state.refreshPlanRelayState()
             #endif
@@ -233,6 +240,10 @@ struct SettingsView: View {
                     }
                 }
             }
+        }
+        .onChange(of: selectedSection) { _, _ in refreshHookStates() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshHookStates()
         }
     }
 
@@ -418,6 +429,7 @@ struct SettingsView: View {
                     Text(String(localized: "System")).tag("")
                     Text("English").tag("en")
                     Text("简体中文").tag("zh-Hans")
+                    Text("繁體中文").tag("zh-Hant")
                     Text("हिन्दी").tag("hi")
                     Text("Español").tag("es")
                     Text("العربية").tag("ar")
@@ -473,10 +485,10 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 #if !APPSTORE
-                Toggle(String(localized: "iphone.instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
+                Toggle(String(localized: "iphone.agents-instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
                     .disabled(!iPhoneSyncEnabled)
                     .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
-                Text(String(localized: "iphone.instruction.description"))
+                Text(String(localized: "iphone.agents-instruction.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -540,6 +552,16 @@ struct SettingsView: View {
     @ViewBuilder private var agentsSection: some View {
         GroupBox(String(localized: "hooks.claude-code.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                #if APPSTORE
+                if appStoreClaudeSettingsURL == nil {
+                    Label(String(localized: "Unknown"), systemImage: "questionmark.circle")
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                } else {
+                    hookCompletion(claudeHooksInstalled && !hookNeedsUpdate)
+                }
+                #else
+                hookCompletion(claudeHooksInstalled && !hookNeedsUpdate)
+                #endif
                 if hookNeedsUpdate {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -607,6 +629,7 @@ struct SettingsView: View {
         #if !APPSTORE
         GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(geminiHooksInstalled)
                 Text(geminiHooksInstalled
                      ? String(localized: "hooks.gemini.installed")
                      : "~/.gemini/settings.json")
@@ -640,6 +663,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "hooks.antigravity.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(agyHooksInstalled)
                 Text(agyHooksInstalled
                      ? String(localized: "hooks.antigravity.installed")
                      : "~/.gemini/config/hooks.json")
@@ -673,6 +697,12 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "hooks.codex.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                Label(codexHookStatusLabel, systemImage: codexInfo.hooksStatus == .done ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(codexInfo.hooksStatus == .done ? .green : .secondary)
+                Text(codexInfo.hookDetail)
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(codexHooksInstalled
                      ? String(localized: "hooks.codex.installed")
                      : "~/.codex/hooks.json")
@@ -684,6 +714,30 @@ struct SettingsView: View {
                     Button(String(localized: "hooks.uninstall")) { triggerCodexPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
+                Text(String(localized: "codex.vscode.setup"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let executable = CodexConnection.shared.executable {
+                    Text(executable.path).font(.system(size: 10, design: .monospaced)).foregroundColor(.secondary)
+                }
+                Text(String(format: String(localized: "codex.version %@"), codexInfo.cliVersion ?? String(localized: "Unknown")))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                Text(String(localized: "codex.vscode.version-note"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let task = state.tasks.first(where: { $0.id == "agent_codex" }) {
+                    Text(String(format: String(localized: "codex.session.source %@"), task.sessionOriginLabel))
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                    if let cwd = task.sessionCwd {
+                        Text(cwd).font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary).textSelection(.enabled)
+                    }
+                    if let date = task.lastEventAt {
+                        Text(String(format: String(localized: "codex.session.last-event %@"), date.formatted(date: .abbreviated, time: .shortened)))
+                            .font(.system(size: 10)).foregroundColor(.secondary)
+                    }
+                }
+                CodexAgentsUsageView()
                 if showCodexDiff {
                     ScrollView {
                         Text(pendingCodexJSON)
@@ -706,6 +760,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "hooks.copilot.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(copilotHooksInstalled)
                 Text(copilotHooksInstalled
                      ? String(localized: "hooks.copilot.installed")
                      : "~/.copilot/hooks/coucou.json")
@@ -739,6 +794,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "hooks.muse.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(museHooksInstalled)
                 Text(museHooksInstalled
                      ? String(localized: "hooks.muse.installed")
                      : "~/.config/muse/settings.json")
@@ -772,6 +828,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "plugin.opencode.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(openCodePluginInstalled)
                 Text(openCodePluginInstalled
                      ? String(localized: "plugin.opencode.installed")
                      : "~/.config/opencode/plugins/coucou.js")
@@ -805,6 +862,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "plugin.amp.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(ampPluginInstalled)
                 Text(ampPluginInstalled
                      ? String(localized: "plugin.amp.installed")
                      : "~/.config/amp/plugins/coucou.ts")
@@ -992,6 +1050,64 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
+        #if !APPSTORE
+        GroupBox(String(localized: "codex.chat.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(String(localized: "codex.chat.description"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(codexChat.authenticationStatus.label)
+                    .font(.system(size: 11))
+                    .foregroundColor(codexChat.authenticationStatus == .connected ? .green : .secondary)
+                HStack {
+                    if codexChat.authenticationStatus == .connected {
+                        Button(String(localized: "chat.disconnect")) { codexChat.disconnect() }
+                            .help(String(localized: "codex.auth.disconnect-help"))
+                    } else {
+                        Button(String(localized: "codex.chat.sign-in")) {
+                            Task {
+                                await codexChat.login(state: state)
+                                if codexChat.authenticationStatus == .connected {
+                                    state.fetchedProviderModels[.codex] = nil
+                                    state.fetchModelsIfNeeded(for: .codex)
+                                    await codexInfo.refresh()
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(codexChat.authenticationStatus == .signingIn || codexChat.authenticationStatus == .checking || state.codexChatBusy)
+                    }
+                    if codexChat.authenticationStatus == .signingIn || codexChat.authenticationStatus == .checking {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+                HStack {
+                    Text(state.codexProjectPath.isEmpty ? String(localized: "codex.chat.project-none") : state.codexProjectPath)
+                        .font(.system(size: 11)).foregroundColor(.secondary).lineLimit(2).textSelection(.enabled)
+                    Spacer()
+                    Button(String(localized: "codex.chat.choose-project")) { chooseCodexProject() }
+                        .disabled(state.codexChatBusy)
+                    Button(String(localized: "codex.chat.current-project")) {
+                        if let path = state.focusTask?.sessionCwd { state.selectCodexProject(path) }
+                    }
+                    .disabled(state.focusTask?.sessionCwd == nil || state.codexChatBusy)
+                }
+                Toggle(String(localized: "codex.chat.allow-writes"), isOn: $state.codexCanWrite)
+                    .disabled(state.codexChatBusy)
+                Text(String(localized: "codex.chat.writes-description"))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Picker(String(localized: "codex.chat.search"), selection: $state.codexSearchMode) {
+                    Text(String(localized: "codex.chat.search-cached")).tag("cached")
+                    Text(String(localized: "codex.chat.search-live")).tag("live")
+                    Text(String(localized: "codex.chat.search-disabled")).tag("disabled")
+                }
+                .disabled(state.codexChatBusy)
+            }
+            .padding(6)
+        }
+        .task { await codexChat.refreshAuthentication() }
+        #endif
         GroupBox(String(localized: "chat.anthropic-api.title")) {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
@@ -1250,6 +1366,60 @@ struct SettingsView: View {
 
     // MARK: - Actions
 
+    private func hookCompletion(_ installed: Bool) -> some View {
+        Label(installed ? String(localized: "Done") : String(localized: "Not configured"),
+              systemImage: installed ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(installed ? .green : .secondary)
+    }
+
+    private func refreshHookStates() {
+        #if APPSTORE
+        claudeHooksInstalled = HookServer.claudeHooksInstalled(settingsURL: appStoreClaudeSettingsURL)
+        #else
+        claudeHooksInstalled = HookServer.claudeHooksInstalled()
+        geminiHooksInstalled = HookServer.geminiHooksInstalled()
+        agyHooksInstalled = HookServer.agyHooksInstalled()
+        codexHooksInstalled = HookServer.codexHooksInstalled()
+        copilotHooksInstalled = HookServer.copilotHooksInstalled()
+        museHooksInstalled = HookServer.museHooksInstalled()
+        openCodePluginInstalled = HookServer.openCodePluginInstalled()
+        ampPluginInstalled = HookServer.ampPluginInstalled()
+        state.refreshPlanRelayState()
+        if selectedSection == "agents" {
+            Task {
+                let task = state.tasks.first { $0.id == "agent_codex" }
+                await codexInfo.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+            }
+        }
+        #endif
+        hookNeedsUpdate = HookServer.hooksNeedUpdate()
+    }
+
+    #if !APPSTORE
+    private var codexHookStatusLabel: String {
+        switch codexInfo.hooksStatus {
+        case .done: return String(localized: "Done")
+        case .missing: return String(localized: "Not configured")
+        case .untrusted: return String(localized: "codex.hooks.untrusted")
+        case .modified: return String(localized: "codex.hooks.modified")
+        case .disabled: return String(localized: "codex.hooks.disabled")
+        case .incomplete: return String(localized: "codex.hooks.incomplete")
+        case .unknown: return String(localized: "Unknown")
+        }
+    }
+
+    private func chooseCodexProject() {
+        let panel = NSOpenPanel()
+        panel.message = String(localized: "codex.chat.choose-project")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        if !state.codexProjectPath.isEmpty { panel.directoryURL = URL(fileURLWithPath: state.codexProjectPath) }
+        if panel.runModal() == .OK, let url = panel.url { state.selectCodexProject(url.path) }
+    }
+    #endif
+
     private func applyCustomModel(_ value: String) {
         let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if !id.isEmpty { state.claudeModel = id }
@@ -1260,7 +1430,7 @@ struct SettingsView: View {
             if on { try SMAppService.mainApp.register() }
             else  { try SMAppService.mainApp.unregister() }
         } catch {
-            statusMessage = "❌ Startup: \(error.localizedDescription)"
+            statusMessage = String(format: String(localized: "error.startup %@"), error.localizedDescription)
             launchAtStartup = !on
         }
     }
@@ -1270,7 +1440,7 @@ struct SettingsView: View {
     #if APPSTORE
     private func pickClaudeFolder(prompt: String) -> URL? {
         let panel = NSOpenPanel()
-        panel.message = "Select your .claude folder (press ⇧⌘. to show hidden files)"
+        panel.message = String(localized: "settings.claude-folder")
         panel.prompt = prompt
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -1288,7 +1458,7 @@ struct SettingsView: View {
     }
 
     private func installHooksAppStore() {
-        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
+        guard let claudeURL = pickClaudeFolder(prompt: String(localized: "Select")) else { return }
         let alert = NSAlert()
         alert.messageText = String(localized: "alert.hooks.title")
         alert.informativeText = String(localized: "alert.hooks.body")
@@ -1298,7 +1468,8 @@ struct SettingsView: View {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
             try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
-            hookNeedsUpdate = false
+            appStoreClaudeSettingsURL = claudeURL.appendingPathComponent("settings.json")
+            refreshHookStates()
             statusMessage = String(localized: "status.hooks-installed-claude")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1306,9 +1477,11 @@ struct SettingsView: View {
     }
 
     private func uninstallHooksAppStore() {
-        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
+        guard let claudeURL = pickClaudeFolder(prompt: String(localized: "Select")) else { return }
         do {
             try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
+            appStoreClaudeSettingsURL = claudeURL.appendingPathComponent("settings.json")
+            refreshHookStates()
             statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1368,15 +1541,16 @@ struct SettingsView: View {
             showDiff = false
             statusMessage = String(localized: "status.hooks-installed-settings")
             pendingHookJSON = ""
-            hookNeedsUpdate = false
+            refreshHookStates()
         } catch {
-            statusMessage = "❌ Write error: \(error.localizedDescription)"
+            statusMessage = String(format: String(localized: "error.write %@"), error.localizedDescription)
         }
     }
 
     private func uninstallHooks() {
         do {
             try HookServer.shared.uninstallClaudeHooks()
+            refreshHookStates()
             statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1402,7 +1576,7 @@ struct SettingsView: View {
             try HookServer.shared.writeGeminiHooks()
             showGeminiDiff = false
             pendingGeminiJSON = ""
-            geminiHooksInstalled = geminiPendingInstall
+            refreshHookStates()
             statusMessage = geminiPendingInstall
                 ? String(localized: "status.gemini-hooks-installed")
                 : String(localized: "status.gemini-hooks-removed")
@@ -1429,7 +1603,7 @@ struct SettingsView: View {
             try HookServer.shared.writeAgyHooks()
             showAgyDiff = false
             pendingAgyJSON = ""
-            agyHooksInstalled = agyPendingInstall
+            refreshHookStates()
             statusMessage = agyPendingInstall
                 ? String(localized: "status.agy-hooks-installed")
                 : String(localized: "status.agy-hooks-removed")
@@ -1456,7 +1630,7 @@ struct SettingsView: View {
             try HookServer.shared.writeCodexHooks()
             showCodexDiff = false
             pendingCodexJSON = ""
-            codexHooksInstalled = codexPendingInstall
+            refreshHookStates()
             statusMessage = codexPendingInstall
                 ? String(localized: "status.codex-hooks-installed")
                 : String(localized: "status.codex-hooks-removed")
@@ -1483,7 +1657,7 @@ struct SettingsView: View {
             try HookServer.shared.writeCopilotHooks()
             showCopilotDiff = false
             pendingCopilotJSON = ""
-            copilotHooksInstalled = copilotPendingInstall
+            refreshHookStates()
             statusMessage = copilotPendingInstall
                 ? String(localized: "status.copilot-hooks-installed")
                 : String(localized: "status.copilot-hooks-removed")
@@ -1510,7 +1684,7 @@ struct SettingsView: View {
             try HookServer.shared.writeMuseHooks()
             showMuseDiff = false
             pendingMuseJSON = ""
-            museHooksInstalled = musePendingInstall
+            refreshHookStates()
             statusMessage = musePendingInstall
                 ? String(localized: "status.muse-hooks-installed")
                 : String(localized: "status.muse-hooks-removed")
@@ -1541,7 +1715,7 @@ struct SettingsView: View {
             }
             showOpenCodeDiff = false
             pendingOpenCodeContent = ""
-            openCodePluginInstalled = openCodePendingInstall
+            refreshHookStates()
             statusMessage = openCodePendingInstall
                 ? String(localized: "status.opencode-plugin-installed")
                 : String(localized: "status.opencode-plugin-removed")
@@ -1572,7 +1746,7 @@ struct SettingsView: View {
             }
             showAmpDiff = false
             pendingAmpContent = ""
-            ampPluginInstalled = ampPendingInstall
+            refreshHookStates()
             statusMessage = ampPendingInstall
                 ? String(localized: "status.amp-plugin-installed")
                 : String(localized: "status.amp-plugin-removed")
@@ -1717,7 +1891,7 @@ struct SettingsView: View {
 
     private func loadVercelProjects() {
         guard let token = KeychainStore.shared.get("vercel-token") else {
-            statusMessage = "❌ Save Vercel token first."
+            statusMessage = String(localized: "error.vercel-token-first")
             return
         }
         loadingVercel = true
@@ -1736,7 +1910,7 @@ struct SettingsView: View {
             DispatchQueue.main.async {
                 self.vercelProjects = names
                 self.loadingVercel = false
-                if names.isEmpty { self.statusMessage = "❌ No Vercel projects found." }
+                if names.isEmpty { self.statusMessage = String(localized: "error.vercel-projects") }
             }
         }.resume()
     }
@@ -1746,7 +1920,7 @@ struct SettingsView: View {
     private func loadN8nWorkflows() {
         guard let apiKey  = KeychainStore.shared.get("n8n-api-key"),
               let rawBase = KeychainStore.shared.get("n8n-url") else {
-            statusMessage = "❌ Save n8n URL and API key first."
+            statusMessage = String(localized: "error.n8n-settings-first")
             return
         }
         loadingN8n = true
@@ -1757,7 +1931,7 @@ struct SettingsView: View {
 
     private func fetchN8nWorkflows(urls: [String], apiKey: String, idx: Int) {
         guard idx < urls.count, let url = URL(string: urls[idx]) else {
-            DispatchQueue.main.async { self.loadingN8n = false; self.statusMessage = "❌ No n8n workflows found." }
+            DispatchQueue.main.async { self.loadingN8n = false; self.statusMessage = String(localized: "error.n8n-workflows") }
             return
         }
         var req = URLRequest(url: url, timeoutInterval: 10)
@@ -1777,7 +1951,7 @@ struct SettingsView: View {
             DispatchQueue.main.async {
                 self.n8nWorkflows = names
                 self.loadingN8n = false
-                if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
+                if names.isEmpty { self.statusMessage = String(localized: "error.n8n-workflows") }
             }
         }.resume()
     }
@@ -1957,7 +2131,7 @@ struct IntegrationFilterRow: View {
                 if loading {
                     ProgressView().scaleEffect(0.6)
                 } else {
-                    Button(items.isEmpty ? "Load list" : "Refresh") { onLoad() }
+                    Button(items.isEmpty ? String(localized: "Load list") : String(localized: "Refresh")) { onLoad() }
                         .buttonStyle(.bordered)
                         .controlSize(.mini)
                 }
@@ -2021,7 +2195,7 @@ struct ShortcutRecorderButton: View {
                 return nil
             }
         } label: {
-            Text(isRecording ? "Press keys…" : shortcutLabel)
+            Text(isRecording ? String(localized: "Press keys…") : shortcutLabel)
                 .font(.system(size: 11, design: .monospaced))
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(isRecording ? Color.accentColor.opacity(0.12) : Color(NSColor.controlBackgroundColor))
@@ -2039,7 +2213,7 @@ struct ShortcutRecorderButton: View {
         if f.contains(.shift)   { s += "⇧" }
         if f.contains(.command) { s += "⌘" }
         s += keyChar(code)
-        return s.isEmpty ? "None" : s
+        return s.isEmpty ? String(localized: "None") : s
     }
 
     private func keyChar(_ c: UInt16) -> String {

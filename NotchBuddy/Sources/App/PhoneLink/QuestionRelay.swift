@@ -29,7 +29,10 @@ final class QuestionRelay {
         guard cancellable == nil else { return }
         // @Published sends the new value before the property changes: use the value passed along.
         cancellable = AppState.shared.$pendingQuestion
-            .map { $0.map(QuestionPayload.init(ask:)) }
+            .map { ask -> QuestionPayload? in
+                guard let ask, !ask.questions.contains(where: \.isSecret) else { return nil }
+                return QuestionPayload(ask: ask)
+            }
             .removeDuplicates()
             .sink { [weak self] payload in
                 MainActor.assumeIsolated { self?.pendingChanged(to: payload) }
@@ -64,7 +67,7 @@ final class QuestionRelay {
     /// Returns true once a matching answer was applied.
     private func checkAnswers(for fingerprint: String) async -> Bool {
         guard current?.fingerprint == fingerprint, let since = current?.since else { return true }
-        var found: [(id: CKRecord.ID, fingerprint: String, selections: String)] = []
+        var found: [(id: CKRecord.ID, fingerprint: String, pillId: String, selections: String)] = []
         do {
             var more = true
             while more {
@@ -74,7 +77,7 @@ final class QuestionRelay {
                     let record = mod.record
                     let answeredAt = record["answeredAt"] as? Date ?? .distantPast
                     guard answeredAt >= since.addingTimeInterval(-5) else { continue }
-                    found.append((id, record["fingerprint"] as? String ?? "",
+                    found.append((id, record["fingerprint"] as? String ?? "", record["pillId"] as? String ?? "",
                                   record.encryptedValues["selections"] as? String ?? ""))
                 }
                 changeToken = changes.changeToken
@@ -94,27 +97,28 @@ final class QuestionRelay {
             log("ignored \(found.count) answer(s) for another question")
             return false
         }
-        apply(match.selections, fingerprint: fingerprint)
-        return true
+        return apply(match.selections, fingerprint: fingerprint, pillId: match.pillId)
     }
 
-    private func apply(_ json: String, fingerprint: String) {
+    private func apply(_ json: String, fingerprint: String, pillId: String) -> Bool {
         // Check again right before answering the hook.
-        guard let pending = AppState.shared.pendingQuestion else {
+        guard HookServer.shared.hasRealPendingQuestion,
+              let pending = AppState.shared.pendingQuestion, pending.pillId == pillId else {
             log("answer arrived after the question was resolved, ignored")
-            return
+            return false
         }
         let payload = QuestionPayload(ask: pending)
         guard payload.fingerprint == fingerprint else {
             log("answer for an older question, ignored")
-            return
+            return false
         }
         guard let selections = QuestionPayload.decodeSelections(json), payload.accepts(selections) else {
             log("answer with unknown choices, ignored")
-            return
+            return false
         }
         log("answered from the iPhone")
         HookServer.shared.sendQuestionAnswers(AskQuestion.buildAnswers(questions: pending.questions, selections: selections))
+        return true
     }
 
     private func log(_ message: String) {
@@ -127,8 +131,9 @@ extension QuestionPayload {
         self.init(items: ask.questions.map { item in
             Item(question: item.question, header: item.header,
                  options: item.options.map { Option(label: $0.label, description: $0.description) },
-                 multiSelect: item.multiSelect)
-        })
+                 multiSelect: item.multiSelect, id: item.id, isOther: item.isOther, isSecret: item.isSecret)
+        }, pillId: ask.pillId, sessionId: ask.sessionId, threadId: ask.threadId,
+           turnId: ask.turnId, requestId: ask.requestId)
     }
 }
 #endif

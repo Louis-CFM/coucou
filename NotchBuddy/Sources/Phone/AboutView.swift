@@ -163,7 +163,7 @@ struct OnboardingView: View {
                         .foregroundStyle(.secondary)
                 }
                 step(1, "Coucou on your Mac",
-                     "Install Coucou for Mac (Mac App Store or the website) and set up its Claude Code hooks.",
+                     "Install Coucou for Mac (Mac App Store or the website) and set up hooks for your coding agents.",
                      icon: "laptopcomputer")
                 step(2, "Turn on the iPhone switch",
                      "On the Mac: Coucou Settings → General → iPhone → \"Show my agent sessions on my iPhone\".",
@@ -173,7 +173,7 @@ struct OnboardingView: View {
                      icon: "icloud")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Then, from here").font(.headline)
-                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer Claude's questions\n• See what Claude did, file by file\n• Write or dictate the next instruction, or ask Siri (GitHub version on the Mac)\n• Mochi in your Dynamic Island when your Mac is locked")
+                    Text("• Allow or deny a command, right from the Lock Screen\n• Answer your agents’ questions\n• See what your agents did, file by file\n• Write or dictate the next instruction, or ask Siri (GitHub version on the Mac)\n• Mochi in your Dynamic Island when your Mac is locked")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }

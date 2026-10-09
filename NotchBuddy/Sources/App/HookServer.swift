@@ -44,14 +44,37 @@ final class HookServer: @unchecked Sendable {
     private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
 
     /// True when a real nb-hook connection is holding the approval fd open.
-    @MainActor var hasRealPendingApproval: Bool { pendingApprovalFD >= 0 }
+    @MainActor var hasRealPendingApproval: Bool {
+        #if !APPSTORE
+        return pendingApprovalFD >= 0 || codexApproval != nil
+        #else
+        return pendingApprovalFD >= 0
+        #endif
+    }
     /// True when a real nb-hook connection is holding the question fd open.
-    @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
+    @MainActor var hasRealPendingQuestion: Bool {
+        #if !APPSTORE
+        return pendingQuestionFD >= 0 || codexQuestion != nil
+        #else
+        return pendingQuestionFD >= 0
+        #endif
+    }
     private var questionPillId: String = ""           // pill that owns the pending question
     private var questionSessionId: String = ""        // sessionId for the pending question (recap tracking)
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
+
+    #if !APPSTORE
+    private struct NativeRequest {
+        let id: Any
+        let method: String
+        let params: [String: Any]
+        let key: String
+    }
+    @MainActor private var codexApproval: NativeRequest?
+    @MainActor private var codexQuestion: NativeRequest?
+    #endif
 
     private init() {}
 
@@ -129,6 +152,19 @@ final class HookServer: @unchecked Sendable {
     /// Called by QuestionView. Sends answers JSON and cleans up.
     @MainActor
     func sendQuestionAnswers(_ answers: [String: Any]) {
+        #if !APPSTORE
+        if let request = codexQuestion {
+            guard AppState.shared.pendingQuestion?.requestId == request.key, isCurrentCodexRequest(request) else {
+                resolveCodexRequests(requestId: request.id)
+                return
+            }
+            codexQuestion = nil
+            try? CodexConnection.shared.respond(id: request.id, result: ["answers": answers])
+            if let thread = request.params["threadId"] as? String { RecapStore.shared.recordQuestionAnswered(sessionId: thread) }
+            dismissQuestionCard(note: "")
+            return
+        }
+        #endif
         // Only intercept a demo question — real questions always have a live fd.
         if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
             AppState.shared.pendingQuestion = nil
@@ -160,6 +196,9 @@ final class HookServer: @unchecked Sendable {
     /// Sends "ask" immediately to unblock nb-hook; does NOT navigate (view already changed).
     @MainActor
     func releaseQuestionFD() {
+        #if !APPSTORE
+        if codexQuestion != nil { sendQuestionAsk(); return }
+        #endif
         guard pendingQuestionFD >= 0 else { return }
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
@@ -175,6 +214,17 @@ final class HookServer: @unchecked Sendable {
     /// Called by QuestionView "Reply in terminal" button.
     @MainActor
     func sendQuestionAsk() {
+        #if !APPSTORE
+        if let request = codexQuestion {
+            codexQuestion = nil
+            try? CodexConnection.shared.respond(id: request.id, result: ["answers": [:]])
+            let thread = request.params["threadId"] as? String ?? ""
+            let turn = request.params["turnId"] as? String ?? ""
+            Task { _ = try? await CodexConnection.shared.request("turn/interrupt", params: ["threadId": thread, "turnId": turn]) }
+            dismissQuestionCard(note: "")
+            return
+        }
+        #endif
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
@@ -398,16 +448,22 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        #if !APPSTORE
+        if isCodexEvent, payload["coucou_managed"] as? Bool != true,
+           CodexEventAdapter.shared.isManagedHookSession(sessionId) { return }
+        #endif
         let focused = state.focusId == agentId
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
-        let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
+        let recapSessionId = payload["coucou_managed"] as? Bool == true
+            ? (payload["thread_id"] as? String ?? sessionId)
+            : (sessionId == "unknown" || sessionId.isEmpty)
             ? "\(agentId)+\(cwd)"
             : sessionId
 
         #if PHONE_LINK
         // The iPhone's "last turn" (prompt, actions, diffs, answer).
-        if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
+        if !isExternalAgent, payload["coucou_managed"] as? Bool != true { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
         #endif
 
         // While a permission request is pending, dismiss when the resolving event arrives,
@@ -446,11 +502,17 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        if ["Stop", "StopFailure", "SessionEnd", "Interrupt"].contains(name),
+           let current = state.tasks.first(where: { $0.id == agentId })?.sessionId,
+           current != sessionId { return }
+        if !isExternalAgent, !["SessionEnd", "Interrupt", "Stop"].contains(name) {
+            upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, payload: payload, hostApp: hostApp)
+        }
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, payload: payload, hostApp: hostApp) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
@@ -464,7 +526,7 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, payload: payload, hostApp: hostApp) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
@@ -482,7 +544,7 @@ final class HookServer: @unchecked Sendable {
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, payload: payload, hostApp: hostApp) }
             state.updateTask(id: agentId, state: .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = localizedStep(tool: tool, input: input)
@@ -490,15 +552,17 @@ final class HookServer: @unchecked Sendable {
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
-            state.updateTask(id: agentId, state: .working)
-            // Live diff for Edit / MultiEdit / Write
+            let response = payload["tool_response"] as? [String: Any] ?? [:]
+            let failed = isCodexEvent && ((response["exit_code"] as? Int ?? response["exitCode"] as? Int ?? 0) != 0
+                || response["success"] as? Bool == false || response["status"] as? String == "failed")
+            state.updateTask(id: agentId, state: failed ? .error : .working)
+            if failed { appendStep(id: agentId, step: String(localized: "codex.command-failed", defaultValue: "Command failed")); break }
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
-                let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
-                appendStep(id: agentId, step: step)
-                RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+            let diffs = diffTool == "apply_patch" ? DiffEngine.fromCodexPatch(diffInput["command"] as? String ?? "")
+                : buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId).map { [$0] } ?? []
+            for diff in diffs {
+                recordCodexDiff(diff, pillId: agentId, sessionId: recapSessionId)
             }
 
         case "PostToolUseFailure":
@@ -517,6 +581,8 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "Stop":
+            let finishStamp = Date()
+            if let index = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[index].lastEventAt = finishStamp }
             state.updateTask(id: agentId, state: .finished)
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
@@ -535,6 +601,9 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                guard let task = AppState.shared.tasks.first(where: { $0.id == agentId }),
+                      task.lastEventAt == finishStamp, task.state == .finished,
+                      isExternalAgent || task.sessionId == sessionId else { return }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -658,6 +727,17 @@ final class HookServer: @unchecked Sendable {
 
     @MainActor
     private func processPermissionRequest(fd: Int32, payload: [String: Any]) {
+        #if !APPSTORE
+        let nativeMirror = payload["coucou_agent"] as? String == "codex"
+            && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
+        if nativeMirror || codexApproval != nil || codexQuestion != nil {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+        #endif
         let state = AppState.shared
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
@@ -761,10 +841,10 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, payload: payload, hostApp: terminalHost?.bundleId)
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
-                                              command: command, inputKey: inputKey, pillId: pillId)
+                                              command: command, inputKey: inputKey, pillId: pillId, requestId: UUID().uuidString)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -818,6 +898,19 @@ final class HookServer: @unchecked Sendable {
     /// Called by ApprovalView buttons. Writes the decision to the waiting nb-hook and cleans up.
     @MainActor
     func sendApprovalDecision(_ decision: String) {
+        #if !APPSTORE
+        if let request = codexApproval {
+            guard AppState.shared.pendingApproval?.requestId == request.key, isCurrentCodexRequest(request) else {
+                resolveCodexRequests(requestId: request.id)
+                return
+            }
+            codexApproval = nil
+            replyNativeApproval(request, decision: decision)
+            RecapStore.shared.recordDecision(pillId: "agent_codex", decision: decision)
+            dismissApprovalCard(note: "")
+            return
+        }
+        #endif
         // Only intercept a demo card — a real card has a live fd (pendingApprovalFD >= 0).
         if DemoEngine.shared.isActive,
            AppState.shared.pendingApproval?.sessionId == "demo_session",
@@ -871,10 +964,188 @@ final class HookServer: @unchecked Sendable {
         state.view = state.tasks.isEmpty ? .empty : .overview
     }
 
+    #if !APPSTORE
+    @MainActor
+    func receiveCodexEvent(name: String, payload: [String: Any]) {
+        processEvent(name: name, payload: payload)
+    }
+
+    @MainActor
+    func receiveCodexRequest(method: String, params: [String: Any], id: Any) {
+        guard let threadId = params["threadId"] as? String,
+              CodexChatService.shared.owns(threadId: threadId) else {
+            try? CodexConnection.shared.reject(id: id, message: "This request has no Coucou-owned thread.")
+            return
+        }
+        guard let turnId = params["turnId"] as? String,
+              let task = AppState.shared.tasks.first(where: { $0.id == "agent_codex" }),
+              task.codexManaged, task.codexThreadId == threadId, task.codexTurnId == turnId else {
+            try? CodexConnection.shared.reject(id: id, message: "The original Codex turn is no longer active.")
+            return
+        }
+        let key = Self.nativeRequestKey(id)
+        if method == "item/tool/requestUserInput" {
+            guard !hasRealPendingQuestion, !hasRealPendingApproval,
+                  let question = AskQuestion.parseCodex(params, requestId: key) else {
+                try? CodexConnection.shared.respond(id: id, result: ["answers": [:]])
+                return
+            }
+            codexQuestion = NativeRequest(id: id, method: method, params: params, key: key)
+            questionPillId = "agent_codex"
+            questionSessionId = threadId
+            let state = AppState.shared
+            state.pendingQuestion = question
+            state.updateTask(id: "agent_codex", state: .question)
+            state.focusId = "agent_codex"
+            state.isPinned = true
+            expandIfNeeded(to: .question)
+            SoundEngine.shared.play("approval")
+        } else if ["item/commandExecution/requestApproval", "item/fileChange/requestApproval", "item/permissions/requestApproval"].contains(method) {
+            let request = NativeRequest(id: id, method: method, params: params, key: key)
+            let permissions = params["permissions"] as? [String: Any] ?? params["additionalPermissions"] as? [String: Any] ?? [:]
+            let fileSystem = permissions["fileSystem"] as? [String: Any] ?? [:]
+            let wantsWrite = method == "item/fileChange/requestApproval"
+                || !(fileSystem["write"] as? [String] ?? []).isEmpty
+                || (fileSystem["entries"] as? [[String: Any]] ?? []).contains { $0["access"] as? String == "write" }
+            let unconstrainedCommand = method == "item/commandExecution/requestApproval"
+                && !(params["additionalPermissions"] is [String: Any])
+            if (wantsWrite || unconstrainedCommand || Self.codexPermissionsMayWrite(permissions)), !CodexChatService.shared.allowsProjectWrites(threadId: threadId) {
+                replyNativeApproval(request, decision: "deny")
+                return
+            }
+            guard !hasRealPendingApproval, !hasRealPendingQuestion else { replyNativeApproval(request, decision: "deny"); return }
+            codexApproval = request
+            let available = (params["availableDecisions"] as? [Any] ?? []).compactMap { $0 as? String }
+            let mixedRules = Self.codexApprovalRules(params["availableDecisions"] as? [Any] ?? [])
+            let ruleLabels = mixedRules.map { rule -> String in
+                if let amendment = rule["acceptWithExecpolicyAmendment"] as? [String: Any],
+                   let prefix = amendment["execpolicy_amendment"] as? [String] {
+                    return String(format: String(localized: "approval.command-rule %@", defaultValue: "Remember command prefix: %@"), prefix.joined(separator: " "))
+                }
+                if let wrapper = rule["applyNetworkPolicyAmendment"] as? [String: Any],
+                   let network = wrapper["network_policy_amendment"] as? [String: Any] {
+                    return String(format: String(localized: "approval.network-rule %@ %@", defaultValue: "Remember network rule: %@ %@"), network["action"] as? String ?? "", network["host"] as? String ?? "")
+                }
+                return String(localized: "approval.unsupported-rule", defaultValue: "Unsupported rule — decline this request")
+            }
+            let detail: String
+            if method == "item/permissions/requestApproval",
+               let permissions = params["permissions"], let data = try? JSONSerialization.data(withJSONObject: permissions, options: [.prettyPrinted, .sortedKeys]) {
+                detail = String(data: data, encoding: .utf8) ?? "Permissions"
+            } else {
+                detail = params["command"] as? String ?? params["reason"] as? String ?? "File changes"
+            }
+            let state = AppState.shared
+            state.pendingApproval = ApprovalInfo(sessionId: threadId, tool: method, command: detail,
+                inputKey: key, pillId: "agent_codex", allowsSession: available.contains("acceptForSession"),
+                requestId: key, threadId: threadId, turnId: params["turnId"] as? String, ruleLabels: ruleLabels)
+            state.updateTask(id: "agent_codex", state: .approval)
+            state.focusId = "agent_codex"
+            state.isPinned = true
+            expandIfNeeded(to: .approval)
+            SoundEngine.shared.play("approval")
+        } else {
+            try? CodexConnection.shared.reject(id: id, message: "Coucou does not support this Codex request. Use the original tool.")
+        }
+    }
+
+    private static func nativeRequestKey(_ id: Any) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: [id]), let text = String(data: data, encoding: .utf8) else { return "" }
+        return text
+    }
+
+    private static func codexApprovalRules(_ available: [Any]) -> [[String: Any]] {
+        available.compactMap { value in
+            guard let rule = value as? [String: Any], rule.count == 1 else { return nil }
+            if let amendment = rule["acceptWithExecpolicyAmendment"] as? [String: Any], amendment.count == 1,
+               let prefix = amendment["execpolicy_amendment"] as? [String], !prefix.isEmpty,
+               prefix.allSatisfy({ !$0.isEmpty }) { return rule }
+            if let wrapper = rule["applyNetworkPolicyAmendment"] as? [String: Any], wrapper.count == 1,
+               let network = wrapper["network_policy_amendment"] as? [String: Any], network.count == 2,
+               let host = network["host"] as? String, !host.isEmpty,
+               ["allow", "deny"].contains(network["action"] as? String ?? "") { return rule }
+            return nil
+        }
+    }
+
+    /// Unknown permission shapes cannot extend a read-only thread.
+    private static func codexPermissionsMayWrite(_ permissions: [String: Any]) -> Bool {
+        guard Set(permissions.keys).isSubset(of: ["fileSystem", "network"]) else { return true }
+        guard let value = permissions["fileSystem"], !(value is NSNull) else { return false }
+        guard let fileSystem = value as? [String: Any],
+              Set(fileSystem.keys).isSubset(of: ["entries", "read", "write", "globScanMaxDepth"]) else { return true }
+        if let write = fileSystem["write"], !(write is NSNull) {
+            guard let paths = write as? [String], paths.isEmpty else { return true }
+        }
+        if let entries = fileSystem["entries"], !(entries is NSNull) {
+            guard let entries = entries as? [[String: Any]],
+                  entries.allSatisfy({ ["read", "deny"].contains($0["access"] as? String ?? "") }) else { return true }
+        }
+        return false
+    }
+
+    @MainActor
+    private func isCurrentCodexRequest(_ request: NativeRequest) -> Bool {
+        guard let thread = request.params["threadId"] as? String, !thread.isEmpty,
+              let turn = request.params["turnId"] as? String, !turn.isEmpty,
+              CodexChatService.shared.owns(threadId: thread), CodexChatService.shared.turnId == turn,
+              let task = AppState.shared.tasks.first(where: { $0.id == "agent_codex" }) else { return false }
+        return task.codexManaged && task.codexThreadId == thread && task.codexTurnId == turn
+    }
+
+    @MainActor
+    private func replyNativeApproval(_ request: NativeRequest, decision: String) {
+        let result: [String: Any]
+        if request.method == "item/permissions/requestApproval" {
+            result = ["permissions": decision == "allow" ? (request.params["permissions"] as? [String: Any] ?? [:]) : [:], "scope": "turn"]
+        } else {
+            let available = request.params["availableDecisions"] as? [Any]
+            let rules = Self.codexApprovalRules(available ?? [])
+            if decision.hasPrefix("rule:"), let index = Int(decision.dropFirst(5)), index >= 0,
+               index < rules.count {
+                result = ["decision": rules[index]]
+            } else {
+                let allowed = available?.compactMap { $0 as? String }
+                var value = decision == "allow" ? "accept" : decision == "session" ? "acceptForSession" : "decline"
+                if let allowed, !allowed.contains(value) { value = allowed.contains("decline") ? "decline" : "cancel" }
+                result = ["decision": value]
+            }
+        }
+        try? CodexConnection.shared.respond(id: request.id, result: result)
+    }
+
+    @MainActor
+    func resolveCodexRequests(threadId: String? = nil, requestId: Any? = nil) {
+        func matches(_ request: NativeRequest) -> Bool {
+            if let requestId { return request.key == Self.nativeRequestKey(requestId) }
+            return threadId == nil || request.params["threadId"] as? String == threadId
+        }
+        if let request = codexApproval, matches(request) {
+            codexApproval = nil
+            if AppState.shared.pendingApproval?.requestId == request.key { dismissApprovalCard(note: "") }
+        }
+        if let request = codexQuestion, matches(request) {
+            codexQuestion = nil
+            if AppState.shared.pendingQuestion?.requestId == request.key { dismissQuestionCard(note: "") }
+        }
+    }
+    #endif
+
     // MARK: - Question request
 
     @MainActor
     private func processQuestionRequest(fd: Int32, parsed: AskQuestion, payload: [String: Any]) {
+        #if !APPSTORE
+        let nativeMirror = payload["coucou_agent"] as? String == "codex"
+            && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
+        if nativeMirror || codexApproval != nil || codexQuestion != nil {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+        #endif
         let state = AppState.shared
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
@@ -932,9 +1203,13 @@ final class HookServer: @unchecked Sendable {
             ? "\(pillId)+\(cwd)"
             : sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, payload: payload, hostApp: terminalHost?.bundleId)
         state.updateTask(id: pillId, state: .question)
-        state.pendingQuestion = parsed
+        var identified = parsed
+        identified.pillId = pillId
+        identified.sessionId = sessionId
+        identified.requestId = UUID().uuidString
+        state.pendingQuestion = identified
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -977,13 +1252,32 @@ final class HookServer: @unchecked Sendable {
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "") {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", payload: [String: Any] = [:], hostApp: String? = nil) {
         let state = AppState.shared
+        let sessionBundleId = SessionTarget.bundleId(payload: payload) ?? hostApp
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             state.tasks[idx].name = projectName
-            if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            state.tasks[idx].lastEventAt = Date()
             if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
-            if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
+            let sid = payload["session_id"] as? String ?? payload["conversation_id"] as? String
+            if let sid, sid != state.tasks[idx].sessionId {
+                state.tasks[idx].sessionId = sid
+                state.tasks[idx].sessionBundleId = nil
+                state.tasks[idx].sessionTerminalId = nil
+                state.tasks[idx].codexThreadId = nil
+                state.tasks[idx].codexTurnId = nil
+                state.tasks[idx].codexRolloutPath = nil
+                state.tasks[idx].codexManaged = false
+            }
+            if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+            if let bundle = sessionBundleId { state.tasks[idx].sessionBundleId = bundle }
+            if let terminal = payload["iterm_session_id"] as? String { state.tasks[idx].sessionTerminalId = terminal }
+            if payload["coucou_managed"] as? Bool == true {
+                state.tasks[idx].codexRolloutPath = payload["rollout_path"] as? String
+                state.tasks[idx].codexManaged = true
+                state.tasks[idx].codexThreadId = payload["thread_id"] as? String
+                state.tasks[idx].codexTurnId = payload["turn_id"] as? String
+            }
             return
         }
         // Transient: create and insert after the main pill
@@ -991,9 +1285,15 @@ final class HookServer: @unchecked Sendable {
         let color = def?.color ?? "#C0C4CC"
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
-                             state: .idle, steps: [], source: source, isIntegration: true)
+                             state: .idle, steps: [], source: source, isIntegration: true, sessionCwd: cwd.isEmpty ? nil : cwd,
+                             sessionId: payload["session_id"] as? String ?? payload["conversation_id"] as? String,
+                             codexThreadId: payload["thread_id"] as? String,
+                             codexTurnId: payload["turn_id"] as? String,
+                             codexRolloutPath: payload["rollout_path"] as? String,
+                             codexManaged: payload["coucou_managed"] as? Bool ?? false,
+                             sessionBundleId: sessionBundleId,
+                             sessionTerminalId: payload["iterm_session_id"] as? String, lastEventAt: Date())
         if id == "integration_claude" { task.hostApp = hostApp }
-        if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {
@@ -1001,6 +1301,13 @@ final class HookServer: @unchecked Sendable {
         }
         if state.focusId == nil { state.focusId = id }
         state.syncMode()
+    }
+
+    @MainActor
+    func recordCodexDiff(_ diff: FileDiff, pillId: String = "agent_codex", sessionId: String) {
+        let index = AppState.shared.appendSessionDiff(diff, for: pillId)
+        appendStep(id: pillId, step: String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: index))
+        RecapStore.shared.recordFileDiff(sessionId: sessionId, path: diff.path, added: diff.added, removed: diff.removed)
     }
 
     // MARK: - Badge helpers
@@ -1201,6 +1508,47 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Outdated hook detection
+
+    /// Read back the configured relay. App Store callers must supply a panel-authorized URL.
+    static func claudeHooksInstalled(settingsURL selectedURL: URL? = nil) -> Bool {
+        #if APPSTORE
+        guard let settingsURL = selectedURL else { return false }
+        let scriptPath = settingsURL.deletingLastPathComponent().appendingPathComponent("coucou/nb-hook").path
+        #else
+        let settingsURL = selectedURL ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        let scriptPath = hookScriptPath
+        #endif
+        guard FileManager.default.isExecutableFile(atPath: scriptPath),
+              let data = try? Data(contentsOf: settingsURL),
+              let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let hooks = settings["hooks"] as? [String: Any] else { return false }
+        let required = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse",
+                        "PostToolUseFailure", "PermissionRequest", "Notification", "Stop", "StopFailure",
+                        "SubagentStart", "SubagentStop"]
+        func usesRelay(_ hook: [String: Any]) -> Bool {
+            guard hook["type"] as? String == "command", let command = hook["command"] as? String else { return false }
+            let prefixes = ["\"\(scriptPath)\"", "/bin/sh \"\(scriptPath)\""]
+            return prefixes.contains { command == $0 || command.hasPrefix($0 + " ") }
+        }
+        let complete = required.allSatisfy { event in
+            (hooks[event] as? [[String: Any]] ?? []).contains { group in
+                (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
+                    guard usesRelay(hook) else { return false }
+                    return event != "PermissionRequest" || (hook["timeout"] as? Int ?? 0) >= 120
+                }
+            }
+        }
+        let question = (hooks["PreToolUse"] as? [[String: Any]] ?? []).contains { group in
+            group["matcher"] as? String == "AskUserQuestion" &&
+            (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
+                guard let command = hook["command"] as? String else { return false }
+                return usesRelay(hook) &&
+                    command.contains("--ask") && (hook["timeout"] as? Int ?? 0) >= 130
+            }
+        }
+        return complete && question
+    }
 
     /// Returns true if settings.json has a Coucou hook that needs updating:
     /// either a PermissionRequest hook with timeout < 120s, or the AskUserQuestion
@@ -1844,6 +2192,8 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Codex hook installer  (#if !APPSTORE only)
 
+    static let codexRequiredHookEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest", "PostToolUse", "Stop", "SubagentStart", "SubagentStop", "Interrupt", "SessionEnd"]
+
     static var codexHooksURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
     }
@@ -1909,18 +2259,10 @@ final class HookServer: @unchecked Sendable {
         let base = hookBase()
         // Events, timeouts in seconds (Codex format).
         // PermissionRequest uses 120s + a statusMessage shown in the Codex UI while waiting.
-        let events: [(String, Int, String?)] = [
-            ("SessionStart",    10,  nil),
-            ("UserPromptSubmit", 10, nil),
-            ("PreToolUse",      10,  nil),
-            ("PermissionRequest", 120, "Waiting for your answer in the notch (Coucou)"),
-            ("PostToolUse",     10,  nil),
-            ("Stop",            10,  nil),
-            ("SubagentStart",   10,  nil),
-            ("SubagentStop",    10,  nil),
-            ("Interrupt",        3,  nil),
-            ("SessionEnd",       3,  nil),
-        ]
+        let events: [(String, Int, String?)] = Self.codexRequiredHookEvents.map { event in
+            (event, event == "PermissionRequest" ? 120 : ["Interrupt", "SessionEnd"].contains(event) ? 3 : 10,
+             event == "PermissionRequest" ? "Waiting for your answer in the notch (Coucou)" : nil)
+        }
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout, statusMsg) in events {
             if let raw = hooks[event], !(raw is [[String: Any]]) {
@@ -3274,6 +3616,7 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
+    payload.setdefault('originator', env.get('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', ''))
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
@@ -3580,6 +3923,7 @@ def main():
         payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
+    payload.setdefault('originator', env.get('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', ''))
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))

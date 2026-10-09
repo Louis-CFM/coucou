@@ -121,7 +121,30 @@ final class AppState: ObservableObject {
 
     // In-chat provider + model — picked via the model selector in the prompt view
     @Published var chatProvider: ChatProvider = .anthropic {
-        didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
+        didSet {
+            UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider")
+            if oldValue != chatProvider, oldValue == .codex || chatProvider == .codex {
+                #if !APPSTORE
+                CodexChatService.shared.reset()
+                #endif
+                chatHistory = []
+                ClaudeService.shared.clearConversation()
+            }
+        }
+    }
+    @Published var codexChatBusy: Bool = false
+    @Published var codexProjectPath: String = ""
+    @Published var codexCanWrite: Bool = false {
+        didSet { if oldValue != codexCanWrite { resetIdleCodexChat() } }
+    }
+    @Published var codexSearchMode: String = "cached" {
+        didSet { if oldValue != codexSearchMode { resetIdleCodexChat() } }
+    }
+    @Published var codexModel: String = "" {
+        didSet {
+            UserDefaults.standard.set(codexModel, forKey: "codexModel")
+            if oldValue != codexModel { resetIdleCodexChat() }
+        }
     }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
         didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
@@ -142,6 +165,23 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
+    #if !APPSTORE
+    func selectCodexProject(_ path: String) {
+        guard !codexChatBusy, let valid = try? CodexChatService.validatedProject(path), codexProjectPath != valid else { return }
+        CodexChatService.shared.reset()
+        chatHistory = []
+        codexProjectPath = valid
+    }
+    #endif
+
+    private func resetIdleCodexChat() {
+        #if !APPSTORE
+        guard !codexChatBusy else { return }
+        CodexChatService.shared.reset()
+        if chatProvider == .codex { chatHistory = [] }
+        #endif
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -157,6 +197,21 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        #if !APPSTORE
+        if provider == .codex {
+            loadingProviderModels.insert(provider)
+            providerModelFetchError.removeValue(forKey: provider)
+            Task {
+                defer { loadingProviderModels.remove(provider) }
+                do {
+                    let models = try await CodexChatService.shared.models()
+                    fetchedProviderModels[provider] = models
+                    if !models.contains(where: { $0.id == codexModel }) { codexModel = models.first?.id ?? "" }
+                } catch { providerModelFetchError[provider] = error.localizedDescription }
+            }
+            return
+        }
+        #endif
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -204,7 +259,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .codex, .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -224,7 +279,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .codex, .ollama, .lmstudio: break
                 }
             }
         }
@@ -236,6 +291,7 @@ final class AppState: ObservableObject {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
+        case .codex:     return codexModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
         }
@@ -444,23 +500,13 @@ final class AppState: ObservableObject {
     // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
     @Published var planRelayInstalled: Bool = false
     // Transient — reset when island closes or view changes
+    @Published var planDetailProvider: String = "claude"
     @Published var showingPlanDetail: Bool = false
 
     // Codex plan gauge (from `codex app-server`) — fetched when the pill shows
     @Published var showCodexPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showCodexPlanInNotch, forKey: "showCodexPlanInNotch") }
     }
-    @Published var codexPlanUsage: CodexPlanUsage? = nil
-    // Which card showingPlanDetail opens
-    @Published var planDetailIsCodex: Bool = false
-
-    func refreshCodexPlanUsage() {
-        if let u = codexPlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
-        Task {
-            if let u = await CodexPlanGauge.fetch() { codexPlanUsage = u }
-        }
-    }
-
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
@@ -478,6 +524,10 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        #if APPSTORE
+        if chatProvider == .codex { chatProvider = .openai }
+        #endif
+        codexModel = ud.string(forKey: "codexModel") ?? ""
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
@@ -728,13 +778,13 @@ struct VercelDeployment: Identifiable {
     let branch: String?
 
     var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
+    var statusLabel: String { isSuccess ? String(localized: "Ready") : (state == "CANCELED" ? String(localized: "Canceled") : String(localized: "Error")) }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 
@@ -753,10 +803,10 @@ struct ResendEmail: Identifiable {
     }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
     var isDelivered: Bool { lastEvent == "delivered" }
 }
@@ -782,10 +832,10 @@ struct StripePayment: Identifiable, Equatable {
     var isSuccess: Bool { status == "succeeded" }
     var timeAgo: String {
         let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60    { return String(localized: "plan.just-now") }
+        if diff < 3600  { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 
@@ -829,10 +879,10 @@ struct NotionPage: Identifiable {
 
     var timeAgo: String {
         let diff = Date().timeIntervalSince(lastEditedAt)
-        if diff < 60 { return "now" }
-        if diff < 3600 { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
+        if diff < 60 { return String(localized: "time.now") }
+        if diff < 3600 { return String(format: String(localized: "time.minutes %lld"), Int(diff/60)) }
+        if diff < 86400 { return String(format: String(localized: "time.hours %lld"), Int(diff/3600)) }
+        return String(format: String(localized: "time.days %lld"), Int(diff/86400))
     }
 }
 
