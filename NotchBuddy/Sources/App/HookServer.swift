@@ -291,7 +291,10 @@ final class HookServer: @unchecked Sendable {
 
         guard !raw.isEmpty,
               let payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
-            sendLine(fd: fd, text: #"{"ok":true}"#)
+            // Over the 1 MB cap or not JSON — possibly a permission request we
+            // could not read. "ask" is explicit no-decision; plain event senders
+            // ignore the reply either way.
+            sendLine(fd: fd, text: #"{"ok":true,"permissionDecision":"ask"}"#)
             close(fd)
             return
         }
@@ -413,7 +416,7 @@ final class HookServer: @unchecked Sendable {
         // While a permission request is pending, dismiss when the resolving event arrives,
         // then continue normal processing. Only skip normal processing when unresolved.
         if let pending = state.pendingApproval, agentId == pending.pillId,
-           pending.sessionId != "demo_session" {
+           pending.sessionId != "demo_session", pending.sessionId != "unknown" {
             let handledNote: String
             switch pending.pillId {
             case "agent_cursor":  handledNote = "Handled in Cursor."
@@ -442,7 +445,10 @@ final class HookServer: @unchecked Sendable {
                 }
             default: break
             }
-            if !resolved { return }
+            // Only the pending session is held while its card is up — events
+            // from other sessions of the same pill (a second Claude Code
+            // window) must still create and update their state normally.
+            if !resolved && sessionId == pending.sessionId { return }
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
@@ -535,12 +541,17 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // A newer event may already have moved the pill past .finished —
+                // pulling a live session back to idle, or dropping its pill,
+                // would lie about it. The badge belongs to the finished moment
+                // either way.
+                let stillFinished = AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .finished
                 if isExternalAgent {
-                    AppState.shared.removeTask(id: agentId)
-                } else {
+                    if stillFinished { AppState.shared.removeTask(id: agentId) }
+                } else if stillFinished {
                     AppState.shared.updateTask(id: agentId, state: .idle)
-                    self.clearPillBadge(id: agentId)
                 }
+                self.clearPillBadge(id: agentId)
             }
 
         case "StopFailure":
