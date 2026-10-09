@@ -203,6 +203,34 @@ body {
   transition: opacity 0.2s ease-in-out;
 }
 
+/* Clock in the compact island (Settings → Clock). */
+#clock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 12.5px var(--font);
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out;
+}
+
+/* Keep it light: 0 % CPU when the island is hidden. Folded or hidden, the
+   views are invisible but still in the page, and an animation with no end — a
+   shimmering line, a pulsing dot, a turning ring — would go on being computed
+   for nobody. They all stop, and pick up when the island unfolds. */
+#content.away * {
+  animation-play-state: paused !important;
+}
+
 #header {
   height: 34px;
   flex: 0 0 34px;
@@ -405,6 +433,15 @@ body {
 
 .overview > .right {
   flex: 1 1 auto;
+}
+
+.overview.solo > .left {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.overview.solo > .right {
+  display: none;
 }
 
 .card-body {
@@ -781,6 +818,16 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: text;
+}
+
+.desc {
+  font: 400 11.5px var(--font);
+  color: var(--dim-2);
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .stack {

@@ -438,6 +438,18 @@ test("the card names the most specific thing the tool carries", () => {
   assert.equal(target(undefined, undefined), "Tool");
 });
 
+test("a permission request keeps the tool's own explanation, when it carries one", () => {
+  State.pendingApproval = null;
+  ask("r1", { tool_input: { command: "npm publish", description: "Publish the package to the registry" } });
+  assert.equal(State.pendingApproval.description, "Publish the package to the registry");
+  State.pendingApproval = null;
+  ask("r2", { tool_input: { command: "ls", description: "   " } });
+  assert.equal(State.pendingApproval.description, undefined);
+  State.pendingApproval = null;
+  ask("r3", { tool_input: { command: "ls" } });
+  assert.equal(State.pendingApproval.description, undefined);
+});
+
 test("a request behind another pill comes to the front, and that pill comes back after (Mac #120)", () => {
   State.setFocus("integration_n8n");
   ask("r1");

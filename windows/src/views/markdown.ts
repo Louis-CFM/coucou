@@ -264,3 +264,9 @@ function render(block: Block): HTMLElement {
 export function renderMarkdown(into: HTMLElement, markdown: string) {
   into.replaceChildren(...parseMarkdown(markdown).map(render));
 }
+
+/** Inline Markdown only (bold, `code`, links…), for compact one-line surfaces. */
+export function renderInline(into: HTMLElement, text: string) {
+  into.replaceChildren();
+  appendInline(into, parseInline(text));
+}

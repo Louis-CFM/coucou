@@ -505,6 +505,18 @@
    "id": "Pemakaian paket Claude",
    "cs": "Využití plánu Claude"
   },
+  "Clock": {
+   "zh-Hans": "时钟",
+   "hi": "घड़ी",
+   "es": "Reloj",
+   "ar": "الساعة",
+   "fr": "Horloge",
+   "bn": "ঘড়ি",
+   "pt-BR": "Relógio",
+   "ru": "Часы",
+   "id": "Jam",
+   "cs": "Hodiny"
+  },
   "Close the island": {
    "zh-Hans": "关闭岛",
    "hi": "आइलैंड बंद करें",
@@ -973,6 +985,18 @@
    "id": "Email terkirim ke {recipient}.",
    "cs": "E-mail odeslán na {recipient}."
   },
+  "Editor command": {
+   "zh-Hans": "编辑器命令",
+   "hi": "एडिटर कमांड",
+   "es": "Comando del editor",
+   "ar": "أمر المحرر",
+   "fr": "Commande de l'éditeur",
+   "bn": "এডিটর কমান্ড",
+   "pt-BR": "Comando do editor",
+   "ru": "Команда редактора",
+   "id": "Perintah editor",
+   "cs": "Příkaz editoru"
+  },
   "Enter the server address first.": {
    "zh-Hans": "请先输入服务器地址。",
    "hi": "पहले सर्वर का पता दर्ज करें।",
@@ -1440,6 +1464,18 @@
    "ru": "Основной инструмент",
    "id": "Alat utama",
    "cs": "Hlavní nástroj"
+  },
+  "Minimize": {
+   "zh-Hans": "最小化",
+   "hi": "छोटा करें",
+   "es": "Minimizar",
+   "ar": "تصغير",
+   "fr": "Réduire",
+   "bn": "ছোট করুন",
+   "pt-BR": "Minimizar",
+   "ru": "Свернуть",
+   "id": "Kecilkan",
+   "cs": "Minimalizovat"
   },
   "Meeting": {
    "zh-Hans": "会议",
@@ -3361,6 +3397,18 @@
    "id": "settings.json: {what} bertipe tak terduga — Coucou tidak menyentuhnya.",
    "cs": "settings.json: {what} má neočekávaný typ — Coucou se ho nedotkl."
   },
+  "time and date in the island while it rests": {
+   "zh-Hans": "岛停靠时显示时间和日期",
+   "hi": "आइलैंड रुका होने पर उसमें समय और तारीख़",
+   "es": "hora y fecha en la isla mientras descansa",
+   "ar": "الوقت والتاريخ في الشريط أثناء توقفه",
+   "fr": "l'heure et la date dans l'île au repos",
+   "bn": "আইল্যান্ড বিশ্রামে থাকলে তার মধ্যে সময় ও তারিখ",
+   "pt-BR": "hora e data na ilha enquanto ela descansa",
+   "ru": "время и дата на острове, пока он сложен",
+   "id": "waktu dan tanggal di pulau saat diam",
+   "cs": "čas a datum v ostrůvku, když je zavřený"
+  },
   "unknown": {
    "zh-Hans": "未知",
    "hi": "अज्ञात",
@@ -3597,6 +3645,18 @@
    "ru": "Нет API-ключа {name}. Добавьте его в настройках.",
    "id": "Kunci API {name} tidak ada. Tambahkan di Pengaturan.",
    "cs": "Chybí API klíč {name}. Přidejte ho v Nastavení."
+  },
+  "{provider} is searching…": {
+   "zh-Hans": "{provider} 正在搜索…",
+   "hi": "{provider} खोज रहा है…",
+   "es": "{provider} está buscando…",
+   "ar": "{provider} يبحث…",
+   "fr": "{provider} recherche…",
+   "bn": "{provider} খুঁজছে…",
+   "pt-BR": "{provider} está pesquisando…",
+   "ru": "{provider} ищет…",
+   "id": "{provider} sedang mencari…",
+   "cs": "{provider} hledá…"
   },
   "{name} rate limit reached (429): {detail}": {
    "zh-Hans": "{name} 已达到速率限制（429）：{detail}",

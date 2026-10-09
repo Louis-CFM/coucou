@@ -48,6 +48,8 @@ export interface ApprovalInfo {
   pillId: string;
   tool: string;
   command: string;
+  /** The tool's own one-line explanation (Codex sends tool_input.description). */
+  description?: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
 }
@@ -151,6 +153,10 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Custom editor executable to open projects (e.g. "cursor", "zed", "code"). */
+  editor?: string | null;
+  /** Time and date in the island while it rests compact. */
+  showClock: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -179,6 +185,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  editor: null,
+  showClock: false,
 };
 
 type Listener = () => void;

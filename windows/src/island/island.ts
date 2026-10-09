@@ -3,6 +3,7 @@
 
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { wipe } from "../core/canvas";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -58,6 +59,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  private clock!: HTMLElement;
+  private clockTimer: number | null = null;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -181,6 +184,7 @@ export class Island {
         // Sessions from the Claude desktop app live there, not in a terminal.
         if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
+        this.collapse();
       },
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
@@ -194,9 +198,10 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-        else if (task.id === "integration_claude" || task.sessionId) {
-          void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
+        if (task.id === CLAUDE_DESKTOP_ID || task.id === "integration_claude" || task.sessionId) {
+          if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+          else void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
+          this.collapse();
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
@@ -275,6 +280,7 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.clock = h("div", { id: "clock" });
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -309,6 +315,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      this.clock,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -759,7 +766,13 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Centred on a whole pixel of the screen. `translateX(-50%)` put the island
+    // on a fraction of one for as long as its width was animating, and whatever
+    // was painted then in a layer of its own — a scrolling list, say — kept
+    // that fraction once the island had settled: its text stayed smeared until
+    // it was drawn again.
+    const dpr = window.devicePixelRatio || 1;
+    this.islandEl.style.transform = `translateX(${-Math.round((w / 2) * dpr) / dpr}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -1185,7 +1198,7 @@ export class Island {
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    wipe(ctx);
     ctx.save();
     this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
@@ -1226,6 +1239,10 @@ export class Island {
 
     const live = expanded && !greetingActive;
     this.contentEl.style.opacity = live ? "1" : "0";
+    // Folded or hidden, the views are out of sight but still in the page: what
+    // moves in them on its own stops (see #content.away), and picks up when the
+    // island unfolds.
+    this.contentEl.classList.toggle("away", !expanded);
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
@@ -1260,6 +1277,8 @@ export class Island {
     }
 
     // Compact mini grid
+    this.syncClock();
+
     const showGrid = State.mode === "compact";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
@@ -1279,11 +1298,37 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
+  /** Time and date in the compact island, refreshed only while it is shown. */
+  private syncClock() {
+    const on = State.settings.showClock && State.mode === "compact";
+    this.clock.style.opacity = on ? "1" : "0";
+    if (on && this.clockTimer == null) {
+      const tick = () => {
+        const now = new Date();
+        const time = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        const date = now.toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+        this.clock.textContent = `${time}  ·  ${date}`;
+      };
+      tick();
+      // Re-arm on the minute boundary, then every minute: cheap and never late.
+      const toNextMinute = 60_000 - (Date.now() % 60_000) + 50;
+      this.clockTimer = window.setTimeout(() => {
+        tick();
+        this.clockTimer = window.setInterval(tick, 60_000);
+      }, toNextMinute);
+    } else if (!on && this.clockTimer != null) {
+      window.clearTimeout(this.clockTimer);
+      window.clearInterval(this.clockTimer);
+      this.clockTimer = null;
+    }
+  }
+
   /** Applies settings coming from Rust at boot. */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.setKeepPetit(State.settings.showClock, this.wasInIsland);
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
   }

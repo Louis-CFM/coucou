@@ -490,6 +490,9 @@ function handleHook(island: Island, payload: HookPayload) {
         pillId: agentId,
         tool,
         command: approvalTarget(tool, input),
+        ...(typeof input.description === "string" && input.description.trim()
+          ? { description: input.description.trim() }
+          : {}),
         ...(questions ? { questions } : {}),
       });
       // The relay's short ack window closes in 800 ms; everything below this

@@ -3,6 +3,7 @@
 // a quick little hand, then comes back and settles in the compact island.
 // Everything is laid out in the same 640×150 reference space as on macOS.
 
+import { wipe } from "../core/canvas";
 import { closeCurve } from "../core/anim";
 import { Sound } from "../core/sound";
 import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
@@ -651,7 +652,7 @@ export class Greeting {
     if (!this.fired && t >= T.end && this.tc >= T.autoLeave) this.fire();
 
     const p = greetingPose(t, this.tc);
-    x.clearRect(0, 0, GREETING_W, GREETING_H);
+    wipe(x);
 
     if (p.card > 0) {
       x.save();

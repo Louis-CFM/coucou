@@ -13,10 +13,12 @@ import { buildChoose, buildMail, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
+import { providerDef } from "../core/providers";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { renderInline } from "./markdown";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -115,6 +117,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const minimizeBtn = h(
+    "button",
+    { title: tl("Minimize"), "aria-label": tl("Minimize"), onclick: () => actions.collapse() },
+    svg(ICONS.chevronUp, 14, { stroke: 2.4 }),
+  );
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
   const codexPill = buildPlanPill(true);
@@ -130,7 +137,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -146,6 +153,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      // Hidden while an approval is pending: the card stays until it is answered.
+      minimizeBtn.style.display = State.isPinned ? "none" : "";
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
@@ -392,6 +401,8 @@ function buildOverview(actions: ViewActions): ViewHost {
       shownSelection = State.cardSelection;
 
       const others = State.otherTasks.slice(0, 4);
+      // No other pill to show: the focused card takes the whole width.
+      el.classList.toggle("solo", others.length === 0);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -481,7 +492,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: tl("Drop a file or window, or ask me anything.") }),
     ),
     h("div", { class: "grow" }),
-    btn(tl("Ask Claude"), "primary", () => actions.setView("prompt")),
+    btn(tl("Ask"), "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
@@ -507,19 +518,37 @@ function foldButton(actions: ViewActions): HTMLElement {
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
+  const desc = h("div", { class: "desc" });
   const row = h("div", { class: "actions" });
   const el = h("div", { class: "view" },
-    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
+    card("amber", stack(116, 16, who, code, desc, row), foldButton(actions)));
   let rowKey = "";
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const decide = (d: "allow" | "deny") => {
+    if (!State.pendingApproval || State.pendingApproval.requestId !== shownFor) return;
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
+  const guarded = (d: "allow" | "deny") => () => decide(d);
+
+  // Y / N only ever reach the page while the island itself has keyboard focus —
+  // there is no global shortcut, so typing "y" in another window can never
+  // answer a permission request.
+  window.addEventListener("keydown", (e) => {
+    if (State.view !== "approval" || !State.pendingApproval) return;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as { tagName?: string; isContentEditable?: boolean } | null;
+    if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+    const key = e.key.toLowerCase();
+    if (key !== "y" && key !== "n") return;
+    e.preventDefault();
+    decide(key === "y" ? "allow" : "deny");
+  });
+
   return {
     el,
     sync() {
@@ -534,6 +563,11 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
+      // Codex explains its commands (tool_input.description): what is being
+      // authorised, under the command itself.
+      const d = State.pendingApproval?.description?.trim() ?? "";
+      desc.textContent = d;
+      desc.style.display = d ? "" : "none";
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
@@ -691,7 +725,8 @@ function buildFinished(actions: ViewActions): ViewHost {
       who.append(agentWho(State.focusTask, agent ? t("finished") : t("Claude Code finished")));
       // The final message, else the last step that is not a diff (FinishedView).
       const task = State.focusTask;
-      title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || t("Session finished");
+      if (task?.finalLine) renderInline(title, task.finalLine);
+      else title.textContent = (task && lastTextStep(task.steps)) || t("Session finished");
       // Sessions from the Claude desktop app live there, not in a terminal.
       const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");
       const span = open.firstElementChild as HTMLElement;
@@ -801,6 +836,25 @@ function buildPlaceholder(title: Msg, sub: string): ViewHost {
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
 
+/** "… is searching" names whichever provider the chat is actually using. */
+function buildSearching(): ViewHost {
+  const title = h("div", { class: "title" });
+  const body = h(
+    "div",
+    { class: "stack", style: "padding:0 18px 0 118px" },
+    title,
+    h("div", { class: "sub" }),
+  );
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() {
+      title.textContent = t("{provider} is searching…", {
+        provider: providerDef(State.settings.chatProvider).name,
+      });
+    },
+  };
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 export function buildViews(
@@ -825,7 +879,7 @@ export function buildViews(
   map.set("wardrobe", buildWardrobe(actions));
   map.set("mail", buildMail(actions));
   // Not in the Windows v1: window attach + web result.
-  map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
+  map.set("searching", buildSearching());
   map.set("result", buildPlaceholder(tl("Result"), ""));
   return map;
 }

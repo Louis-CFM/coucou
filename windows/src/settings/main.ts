@@ -911,6 +911,16 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const editor = h("input", {
+    type: "text",
+    placeholder: "code (or $VISUAL / $EDITOR)",
+    value: settings.editor ?? "",
+  }) as HTMLInputElement;
+  editor.addEventListener("change", () => {
+    settings.editor = editor.value.trim() || null;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -957,6 +967,16 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Auto-close") }),
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Editor command") }),
+      editor,
+      h("span", { class: "hint", text: "e.g. cursor, zed, code" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Clock") }),
+      toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
+      h("span", { class: "hint", text: t("time and date in the island while it rests") }),
     ),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
