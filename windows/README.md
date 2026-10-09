@@ -518,6 +518,19 @@ What changes on Linux:
   `COUCOU_X11=0` keeps the native Wayland window, `COUCOU_DOCK=0` makes it a
   utility window instead of a dock. `COUCOU_LAYER_SHELL=0` forces the regular
   window anywhere.
+- **A panel above the island**: where there is no layer-shell, the island is an
+  ordinary window the window manager places where it is told, and GNOME draws
+  its top bar *above* every window — so a window flush with the screen edge has
+  its header row (home, chat, the gear and the speaker) behind that bar, and only
+  the body of the island shows. Coucou reads the bar's height from
+  `_NET_WORKAREA` on the X11 root window, the work area the compositor leaves
+  once its panels are subtracted, and starts the island exactly where the bar
+  ends. Mutter keeps that property current, so a taller bar (a larger
+  text-scaling factor, Dash-to-Panel's `panel-size`) is followed on the next
+  open, and a panel at the bottom or none at all gets no margin at all.
+  `COUCOU_TOP_MARGIN`, in logical pixels, overrides the measured value when you
+  want a gap. A layer-shell compositor needs none of this: there the compositor
+  anchors the island over the panel, as on the Mac.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland

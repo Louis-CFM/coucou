@@ -311,7 +311,10 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    // Without a layer-shell the island is an ordinary window the window manager
+    // places where it is told, so it can be pushed below a top panel that would
+    // otherwise draw over it (GNOME). Zero on a layer-shell compositor.
+    let y = mp.y + (platform::island_top_margin(scale) * scale).round() as i32;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao

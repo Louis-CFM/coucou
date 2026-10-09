@@ -350,6 +350,13 @@ pub fn set_pointer_watch(_active: bool) {}
 /// `set_position` already places a Win32 window on the right display.
 pub fn pin_to_monitor(_win: &WebviewWindow, _x: i32, _y: i32) {}
 
+/// Nothing to make room for: Windows has no panel drawn above every window, so
+/// the island belongs flush with the top edge. See the Linux twin, where GNOME
+/// draws its top bar over the window.
+pub fn island_top_margin(_scale: f64) -> f64 {
+    0.0
+}
+
 // ── Session windows ("Open terminal") ─────────────────────────────────────────
 //
 // See session_window.rs: the relay's ancestors lead to the terminal or editor
