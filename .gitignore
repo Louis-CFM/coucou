@@ -18,3 +18,4 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+/result
