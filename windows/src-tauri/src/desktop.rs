@@ -83,7 +83,7 @@ pub mod logic {
 
     /// Island panel, logical pixels: dropping Nova on it brings him home.
     pub const HOME_ZONE_W: f64 = crate::island::PANEL_W;
-    pub const HOME_ZONE_H: f64 = crate::island::PANEL_H;
+    pub const HOME_ZONE_H: f64 = 320.0; // Keep the desktop return zone unchanged.
 
     /// Hit test of the round body inside the square window (window-local).
     pub fn is_over_body(local: (f64, f64), size: f64) -> bool {
