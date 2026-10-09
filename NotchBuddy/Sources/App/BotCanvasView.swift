@@ -13,7 +13,7 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden)) { timeline in
+        TimelineView(.animation(paused: state.mode == .hidden && state.volumeHUD == nil)) { timeline in
             Canvas { context, size in
                 let now = timeline.date.timeIntervalSinceReferenceDate
                 let dtRaw = min(0.05, now - engine.lastTime)
@@ -117,6 +117,16 @@ struct BotCanvasView: View {
                 engine.locks.remove("morph")
                 engine.morph = 0
             }
+        }
+        // Volume key: hop, with eyes that follow the level.
+        .onChange(of: state.volumeHUD?.bump) { _, bump in
+            guard bump != nil, let hud = state.volumeHUD else { return }
+            let eye: EyeShape? = hud.muted ? .line
+                : hud.level <= 0.001 ? .closed
+                : hud.level >= 0.999 ? .wide
+                : hud.level > 0.66 ? .happy
+                : nil
+            engine.volumeHop(eye: eye)
         }
         .onReceive(NotificationCenter.default.publisher(for: .triggerEmote)) { notif in
             if let emote = notif.object as? BotEmote {

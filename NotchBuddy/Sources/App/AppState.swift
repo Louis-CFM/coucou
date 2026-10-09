@@ -32,6 +32,9 @@ final class AppState: ObservableObject {
     // Desktop Mochi: true while Mochi lives on the desktop instead of the notch
     @Published var mochiOnDesktop: Bool = false
 
+    // Volume HUD out of the notch while the volume changes (nil = not shown)
+    @Published var volumeHUD: VolumeHUDState? = nil
+
     // Mouse tracking
     var mousePosition: CGPoint = .zero
     var lastMouseMove: Date = .now
@@ -454,6 +457,11 @@ final class AppState: ObservableObject {
     // Which card showingPlanDetail opens
     @Published var planDetailIsCodex: Bool = false
 
+    // System volume in the notch (SystemVolume) — persisted
+    @Published var volumeInNotch: Bool = true {
+        didSet { UserDefaults.standard.set(volumeInNotch, forKey: "volumeInNotch") }
+    }
+
     func refreshCodexPlanUsage() {
         if let u = codexPlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
         Task {
@@ -510,6 +518,7 @@ final class AppState: ObservableObject {
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
+        if let v = ud.object(forKey: "volumeInNotch") as? Bool { volumeInNotch = v }
         planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 

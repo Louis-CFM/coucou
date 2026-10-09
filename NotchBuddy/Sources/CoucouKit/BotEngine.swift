@@ -172,6 +172,7 @@ let BotStates: [BotState: BotStateCfg] = [
 final class BotEngine: ObservableObject {
     var isMini: Bool = false
     var bodyColor: CGColor? = nil    // override for mini bots
+    var inkColor: CGColor? = nil     // eye colour override (dark, sleeping bots in the volume meter)
 
     // Animation state (mirrors prototype 's' object)
     var yaw:    CGFloat = 0
@@ -478,6 +479,42 @@ final class BotEngine: ObservableObject {
         default:
             miniNextBehavior = CACurrentMediaTime() + 3.0 + Double.random(in: 0...2.0)
         }
+    }
+
+    // MARK: - Volume hop
+
+    /// A volume key was pressed: a quick hop, with `eye` held for a moment
+    /// (nil = back to normal eyes). Happy and wide eyes blush.
+    func volumeHop(eye: EyeShape?) {
+        let now = CACurrentMediaTime()
+        if let eye {
+            eyeOverride = eye
+            eyeOverrideUntil = now + 1.6
+        } else if eyeOverrideUntil != .greatestFiniteMagnitude {
+            eyeOverride = nil
+            eyeOverrideUntil = 0
+        }
+        if eye == .happy || eye == .wide {
+            anim("blush", keys: [
+                TweenKey(target: 0.8, duration: 160,  ease: Ease.out),
+                TweenKey(target: 0.8, duration: 1100, ease: Ease.lin),
+                TweenKey(target: 0,   duration: 300,  ease: Ease.inOut),
+            ])
+        }
+        anim("oy", keys: [
+            TweenKey(target: -0.45, duration: 110, ease: Ease.out),
+            TweenKey(target: 0,     duration: 280, ease: Ease.back),
+        ])
+        anim("sy", keys: [
+            TweenKey(target: 1.08, duration: 110, ease: Ease.out),
+            TweenKey(target: 0.9,  duration: 150, ease: Ease.inOut),
+            TweenKey(target: 1,    duration: 180, ease: Ease.back),
+        ])
+        anim("sx", keys: [
+            TweenKey(target: 0.95, duration: 110, ease: Ease.out),
+            TweenKey(target: 1.08, duration: 150, ease: Ease.inOut),
+            TweenKey(target: 1,    duration: 180, ease: Ease.back),
+        ])
     }
 
     func doRoll(duration: CGFloat, turns: CGFloat) {
@@ -1300,7 +1337,8 @@ final class BotEngine: ObservableObject {
     }
 
     private func drawEyeShape(ctx: inout GraphicsContext, shape: EyeShape, w: CGFloat, h: CGFloat, open: CGFloat, sd: CGFloat, R: CGFloat) {
-        let ink = isMini ? Color(cgColor: MochiConst.miniInk) : Color(cgColor: MochiConst.ink)
+        let ink = inkColor.map { Color(cgColor: $0) }
+            ?? (isMini ? Color(cgColor: MochiConst.miniInk) : Color(cgColor: MochiConst.ink))
         let now = CGFloat(CACurrentMediaTime())
 
         switch shape {
