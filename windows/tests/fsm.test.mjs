@@ -19,6 +19,7 @@ afterEach(() => mock.timers.reset());
 const seconds = (n) => mock.timers.tick(n * 1000);
 
 test("starts hidden and opens on the greeting at launch", () => {
+  assert.equal(fsm.showCompactIsland, true);
   assert.equal(fsm.state, "hidden");
   fsm.launch();
   assert.equal(fsm.state, "coucou");
@@ -32,6 +33,14 @@ test("the greeting collapses to the compact island 0.6 s after it ends", () => {
   assert.equal(fsm.state, "coucou");
   seconds(0.1);
   assert.equal(fsm.state, "petit");
+});
+
+test("with the compact island disabled, the greeting returns to hidden", () => {
+  fsm.showCompactIsland = false;
+  fsm.launch();
+  fsm.greetComplete();
+  seconds(0.6);
+  assert.equal(fsm.state, "hidden");
 });
 
 test("a hovered greeting stays for 10 s, whatever the animation does", () => {
@@ -51,11 +60,25 @@ test("leaving the greeting collapses it at once", () => {
   assert.equal(fsm.state, "petit");
 });
 
+test("leaving the greeting hides it when the compact island is disabled", () => {
+  fsm.showCompactIsland = false;
+  fsm.launch();
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  assert.equal(fsm.state, "hidden");
+});
+
 test("the mouse wakes a hidden island, which stays while it is hovered", () => {
   fsm.mouseEntered();
   assert.equal(fsm.state, "petit");
   seconds(600);
   assert.equal(fsm.state, "petit");
+});
+
+test("with the compact island disabled, the wake strip hover opens the island", () => {
+  fsm.showCompactIsland = false;
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "home");
 });
 
 test("the compact island hides 60 s after the mouse leaves", () => {
@@ -73,6 +96,45 @@ test("coming back before the 60 s are up cancels the hide", () => {
   seconds(59);
   fsm.mouseEntered();
   seconds(600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("disabling compact visibility hides an ordinary compact island immediately", () => {
+  fsm.reveal();
+  assert.equal(fsm.state, "petit");
+  fsm.showCompactIsland = false;
+  assert.equal(fsm.state, "hidden");
+  seconds(600);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("disabling compact visibility preserves an expanded interaction and its timer", () => {
+  fsm.forceHome();
+  fsm.mouseLeft();
+  seconds(5);
+  fsm.showCompactIsland = false;
+  assert.equal(fsm.state, "home");
+  seconds(10);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("disabling compact visibility does not override an active greeting or pinned card", () => {
+  fsm.launch();
+  fsm.showCompactIsland = false;
+  assert.equal(fsm.state, "coucou");
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.showCompactIsland = true;
+  fsm.showCompactIsland = false;
+  assert.equal(fsm.state, "petit");
+});
+
+test("restoring compact visibility restores ordinary reveal policy", () => {
+  fsm.showCompactIsland = false;
+  fsm.reveal();
+  fsm.showCompactIsland = true;
+  fsm.reveal();
   assert.equal(fsm.state, "petit");
 });
 
@@ -96,6 +158,14 @@ test("the open island collapses 15 s after the mouse leaves", () => {
   assert.equal(fsm.state, "petit");
 });
 
+test("with the compact island disabled, ordinary auto-close goes to hidden", () => {
+  fsm.showCompactIsland = false;
+  fsm.forceHome();
+  fsm.mouseLeft();
+  seconds(15);
+  assert.equal(fsm.state, "hidden");
+});
+
 test("coming back to the open island cancels the collapse", () => {
   fsm.forceHome();
   fsm.mouseLeft();
@@ -108,6 +178,15 @@ test("coming back to the open island cancels the collapse", () => {
 test("a pinned island stays open when the mouse leaves", () => {
   fsm.forceHome();
   fsm.pinned = true;
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "home");
+});
+
+test("disabling compact visibility never suppresses a pinned approval or question", () => {
+  fsm.showCompactIsland = false;
+  fsm.pinned = true;
+  fsm.forceHome();
   fsm.mouseLeft();
   seconds(600);
   assert.equal(fsm.state, "home");
@@ -126,6 +205,13 @@ test("reveal shows the compact island from hidden and hides it again after 60 s"
   assert.equal(fsm.state, "petit");
   seconds(60);
   assert.equal(fsm.state, "hidden");
+});
+
+test("with the compact island disabled, ordinary activity does not reveal it", () => {
+  fsm.showCompactIsland = false;
+  fsm.reveal();
+  assert.equal(fsm.state, "hidden");
+  assert.deepEqual(transitions, []);
 });
 
 test("reveal leaves an island that is already showing alone", () => {
@@ -149,6 +235,13 @@ test("an explicit close goes to the compact island and cancels the collapse", ()
   assert.equal(fsm.state, "petit");
   seconds(600);
   assert.equal(fsm.state, "petit");
+});
+
+test("with the compact island disabled, an explicit close goes to hidden", () => {
+  fsm.showCompactIsland = false;
+  fsm.forceHome();
+  fsm.forcePetit();
+  assert.equal(fsm.state, "hidden");
 });
 
 test("forceHidden hides from any state", () => {
@@ -300,6 +393,43 @@ test("a folded card keeps the compact island on screen until it is answered", ()
   assert.equal(fsm.state, "petit");
   fsm.mouseLeft();
   seconds(60);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("a folded unanswered card keeps its compact attention affordance when compact resting is disabled", () => {
+  fsm.showCompactIsland = false;
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("resolving a folded card hides its compact exception immediately when compact resting is disabled", () => {
+  fsm.showCompactIsland = false;
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.pinned = false;
+  assert.equal(fsm.state, "hidden");
+  // Island.dropPin additionally reports mouseLeft when the cursor is outside;
+  // that must not re-arm a stale compact timer after the immediate hide.
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("resolving a folded card keeps the default compact hide delay", () => {
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.pinned = false;
+  assert.equal(fsm.state, "petit");
+  fsm.mouseLeft();
+  seconds(59);
+  assert.equal(fsm.state, "petit");
+  seconds(1);
   assert.equal(fsm.state, "hidden");
 });
 
