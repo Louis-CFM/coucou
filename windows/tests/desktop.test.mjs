@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BODY_RADIUS_FRACTION, DesktopMochiController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
-  agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
+  agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, mochiMoving, pointerDistance,
   shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
 } from "../src/mochi/desktop-logic.ts";
 
@@ -128,6 +128,22 @@ test("X11 drag: screen delta, in physical pixels", () => {
     windowDragTopLeft({ x: 1000, y: 600 }, { x: 520, y: 310 }, { x: 500, y: 300 }, 2),
     { x: 1040, y: 620 },
   );
+});
+
+// ── mochiMoving (the island stays put while he travels) ───────────────────────
+
+test("mochiMoving: at rest in the island or on the desktop, the island may move", () => {
+  assert.equal(mochiMoving(false, false, "home"), false);
+  assert.equal(mochiMoving(false, true, "onDesktop"), false);
+  assert.equal(mochiMoving(false, false, "atNotchForAlert"), false);
+});
+
+test("mochiMoving: carried, flying or about to fly, the island stays put", () => {
+  assert.equal(mochiMoving(true, false, "home"), true, "carried out of the island");
+  assert.equal(mochiMoving(false, true, "home"), true, "sent home by a double click: phase is home before the flight");
+  assert.equal(mochiMoving(false, true, "flyingOut"), true);
+  assert.equal(mochiMoving(false, true, "retracting"), true);
+  assert.equal(mochiMoving(false, true, "alertResolvedDuringRetract"), true);
 });
 
 // ── Life cycle ────────────────────────────────────────────────────────────────

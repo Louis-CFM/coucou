@@ -65,6 +65,14 @@ export function pruneMiniBots() {
   }
 }
 
+/** The page's pixel density changed (the window moved to another display): every canvas gets its pixel size again. */
+export function resizeMiniBots() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const mb of live.values()) {
+    mb.canvas.width = mb.canvas.height = Math.round(mb.cssSize * dpr);
+  }
+}
+
 export function syncMiniBotStates(tasks: AgentTask[]) {
   for (const mb of live.values()) {
     const task = tasks.find((t) => t.id === mb.taskId);

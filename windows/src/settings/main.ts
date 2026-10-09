@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type PlacementInfo, type ShortcutsReport } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -594,6 +594,8 @@ type LocalId = "ollama" | "lmstudio" | "custom";
 
 /** Redraws the local models section after a change made elsewhere (the island). */
 let localRedraw: (() => void) | null = null;
+/** Shows in "Island lives on" whether the island was placed by hand (island-placed event). */
+let placementShow: ((p: PlacementInfo | null) => void) | null = null;
 
 const LOCAL: Record<LocalId, { name: string; usual: string }> = {
   ollama: { name: "Ollama", usual: "http://127.0.0.1:11434" },
@@ -913,6 +915,15 @@ function generalSection(): HTMLElement {
     h("option", { value: "cursor", text: t("Display under the cursor") }),
   );
   screen.value = settings.screen;
+  // Placed by hand (src-tauri/src/island/placement.rs): the list says so, and picking a display puts it back at the top centre.
+  const placed = h("option", { value: "", text: t("Where you left it") }) as HTMLOptionElement;
+  let listed = settings.screen; // what the list shows when the island has no spot of its own
+  const showListed = () => {
+    screen.value = listed;
+    if (!screen.value) screen.value = "primary";
+  };
+  const moveHint = h("div", { class: "hint", text: t("Drag the small island, or the empty part of the open island's top bar, to put it anywhere on any display. To bring it back, drop it at the top centre, double-click that bar, or pick a display above.") });
+  moveHint.style.display = "none";
   void Bridge.listMonitors().then((list) => {
     for (const m of list ?? []) screen.append(h("option", { value: m.key, text: m.label }));
     // Set again now the option exists. A display saved under an older key (moved,
@@ -921,17 +932,28 @@ function generalSection(): HTMLElement {
     const saved = settings.screen;
     const [place, name] = saved.split("|");
     const keys = (list ?? []).map((m) => m.key);
-    screen.value =
+    listed =
       keys.find((k) => k === saved) ??
       (saved.startsWith("at:") ? keys.find((k) => k.split("|")[0] === place) : undefined) ??
       (name ? keys.find((k) => k.split("|")[1] === name) : undefined) ??
       saved;
-    if (!screen.value) screen.value = "primary";
+    if (!placed.isConnected) showListed();
   });
   screen.addEventListener("change", () => {
-    settings.screen = screen.value;
-    void save();
+    if (!screen.value) return; // the placed-by-hand entry is not a display
+    const byHand = placed.isConnected;
+    settings.screen = listed = screen.value;
+    // The same display as before: save_settings sees no change and would keep the spot.
+    void save().then(() => { if (byHand) void Bridge.islandResetPosition(); });
   });
+  placementShow = (p) => {
+    moveHint.style.display = p?.capable ? "" : "none"; // hidden on Linux and outside Tauri
+    const byHand = p?.mode === "docked" || p?.mode === "floating";
+    if (byHand === placed.isConnected) return;
+    if (byHand) { screen.prepend(placed); screen.value = ""; }
+    else { placed.remove(); showListed(); }
+  };
+  void Bridge.islandPlacement().then((p) => placementShow?.(p));
 
   return h(
     "section",
@@ -958,6 +980,7 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Island lives on") }),
       screen,
     ),
+    moveHint,
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
@@ -1303,6 +1326,7 @@ async function main() {
   await render();
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
+  void onEvent<PlacementInfo>("island-placed", (p) => placementShow?.(p));
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
@@ -1355,6 +1379,7 @@ async function render() {
 
   declaredViews.length = 0;
   localRedraw = null;
+  placementShow = null;
   shortcutsListener = null;
   clear(root);
   root.append(

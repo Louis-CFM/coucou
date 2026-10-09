@@ -179,6 +179,15 @@ export type DesktopPhase =
   /** In the island, showing the alert; back out once it is answered. */
   | "atNotchForAlert";
 
+/**
+ * Mochi is between the island and the desktop: carried out of the island, flying (including the trip
+ * home asked for by a double-click, where the phase turns "home" before the flight), or about to leave
+ * for an alert. The island must not move: his flights aim at where it was when they started (desktop.rs).
+ */
+export function mochiMoving(carrying: boolean, onDesktop: boolean, phase: DesktopPhase): boolean {
+  return carrying || (onDesktop && phase !== "onDesktop");
+}
+
 /** Everything the life cycle does to the world, injected so it can be tested. */
 export interface DesktopPorts {
   /**

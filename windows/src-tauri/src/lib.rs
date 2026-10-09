@@ -92,6 +92,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
+        // Where the island was dropped is island/placement.rs's to say, and picking a
+        // display puts it back at the top centre.
+        settings.island_spot = if screen_changed { None } else { current.island_spot.clone() };
         *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -146,6 +149,11 @@ fn language_changed(app: &AppHandle) {
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
+    // Carried by the cursor (island/placement.rs): the end of the drag applies this flag, on this same
+    // main thread. Without this early return, set_active(false) would park the poll mid-drag.
+    if shared.gate.free.dragging() {
+        return;
+    }
     island::apply_geometry(&app, &pref, collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
@@ -676,6 +684,9 @@ pub fn run() {
             focus_window,
             reposition,
             list_monitors,
+            island::placement::island_placement,
+            island::placement::island_drag_begin,
+            island::placement::island_reset_position,
             open_url,
             open_in_vscode,
             open_session,

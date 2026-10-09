@@ -9,7 +9,7 @@ import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { desktopDances } from "../core/spotify";
 import {
-  DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
+  DESKTOP_EVENTS, DesktopMochiController, alertActive, mochiMoving, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 
@@ -24,6 +24,8 @@ export interface DesktopHost {
   wardrobeFromDesktop(): void;
   /** Three pokes on the desktop Mochi. */
   dizzyFromDesktop(): void;
+  /** Resolves once the island stands still (no drag in progress). */
+  islandStill(): Promise<void>;
 }
 
 export class DesktopLink {
@@ -42,8 +44,15 @@ export class DesktopLink {
   constructor(host: DesktopHost) {
     this.host = host;
     this.controller = new DesktopMochiController({
-      flyOut: async (anywhere) => (await Bridge.desktopFlyOut(anywhere)) ?? false,
-      flyHome: async (forget) => (await Bridge.desktopFlyHome(forget)) ?? true,
+      // A flight reads where the island is only once (desktop.rs): wait until it has landed.
+      flyOut: async (anywhere) => {
+        await this.host.islandStill();
+        return (await Bridge.desktopFlyOut(anywhere)) ?? false;
+      },
+      flyHome: async (forget) => {
+        await this.host.islandStill();
+        return (await Bridge.desktopFlyHome(forget)) ?? true;
+      },
       setAway: (away) => {
         State.mochiOnDesktop = away;
         State.notify();
@@ -62,6 +71,11 @@ export class DesktopLink {
   /** False where windows can't be placed (GNOME on Wayland): he stays in the island. */
   get supported(): boolean {
     return this.mode !== "off";
+  }
+
+  /** Mochi is between the island and the desktop: the island does not move. */
+  get moving(): boolean {
+    return mochiMoving(this.carrying, State.mochiOnDesktop, this.controller.phase);
   }
 
   async init() {

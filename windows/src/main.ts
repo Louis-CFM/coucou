@@ -1,7 +1,7 @@
 // Entry point: boot the bridge, wire the island, start the greeting.
 
 import "./style.css";
-import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
+import { Bridge, IS_TAURI, onEvent, type PlacementInfo } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
@@ -79,6 +79,11 @@ async function main() {
   });
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
+  await onEvent<PlacementInfo>("island-placed", (p) => island.setPlacement(p));
+  await onEvent<null>("island-drag-end", () => island.endWindowDrag());
+  // Asked once the listeners are in place: the apply_geometry at startup may have announced earlier.
+  const placement = await Bridge.islandPlacement();
+  if (placement) island.setPlacement(placement);
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {

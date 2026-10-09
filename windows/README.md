@@ -57,6 +57,7 @@ You can also [build it yourself](#build-it-yourself).
 | Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
+| Drag the small island, or the empty part of the open island's top bar | Moves the whole island, onto any display. Dropped near the top edge it sticks to it; anywhere else it stays where you leave it, with a small capsule to find it while hidden. Drop it at the top centre, double-click the bar, or pick a display in **Settings → General → Island lives on** to put it back |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
@@ -395,8 +396,9 @@ own window.
 
 ## What's different from the Mac version
 
-- No notch, so the island lives at the top centre of the screen and retracts into
-  the top edge instead of hiding in a notch.
+- No notch, so the island lives at the top centre of the screen (or wherever you
+  drag it, on Windows) and retracts into the top edge (a small capsule when you
+  left it lower down) instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
@@ -486,6 +488,9 @@ own window.
 
 The same app builds for Linux: everything that differs lives in
 `src-tauri/src/platform/`, and the relay's transport in `hook/src/unix.rs`.
+
+Moving the island is Windows-only for now: Linux gives no global cursor position
+to carry the window with, and a layer-shell island ignores where it is asked to go.
 
 ```bash
 sudo apt install build-essential pkg-config \
