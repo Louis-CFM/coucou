@@ -773,8 +773,12 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  // Nothing to enter: the music pills read the player (D-Bus on Linux, the
+  // media controls on Windows — see core/pills.ts).
+  { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_media", name: "Now Playing", color: "#A78BFA", fields: [],
+    hint: N_("Any app that plays: a browser tab, VLC, Media Player…") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -845,11 +849,11 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
-    if (def.id === "integration_spotify") {
-      // As on the Mac's row: said only when there is no Spotify to launch.
+    if (def.id === "integration_spotify" || def.id === "integration_music") {
+      // As on the Mac's row: said only when there is no player to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
       rows.append(hint);
-      void Bridge.spotifyInstalled().then((ok) => {
+      void Bridge.spotifyInstalled(def.id).then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }

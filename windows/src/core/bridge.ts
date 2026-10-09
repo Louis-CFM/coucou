@@ -211,7 +211,7 @@ export const Bridge = {
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
 
-  // ── Spotify (src-tauri/src/spotify.rs, Linux) ─────────────────────────────
+  // ── Music (src-tauri/src/spotify.rs: Linux MPRIS, Windows media controls) ──
   /** Reads the player again (the card came on screen) and reports it. */
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
@@ -219,8 +219,8 @@ export const Bridge = {
     call<boolean>("spotify_control", { action, value: value ?? null }),
   /** Brings Spotify forward or starts it; without it, its download page. */
   spotifyOpen: () => call<boolean>("spotify_open"),
-  /** Whether there is a Spotify to launch (Settings). */
-  spotifyInstalled: () => call<boolean>("spotify_installed"),
+  /** Whether there is a player to launch for this music pill (Settings). */
+  spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

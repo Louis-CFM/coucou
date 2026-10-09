@@ -3,12 +3,21 @@
 // SpotifyController.swift, NowPlayingViews.swift and the Mac's dance rules
 // (BotCanvasView, DesktopMochi.swift).
 //
-// Windows has no music source yet: nothing ever reports a track there, so
-// nothing plays and Mochi never dances, through the same code.
+// On Windows the same state comes from the system media controls
+// (media_win.rs) for three pills: Apple Music, Spotify and Now Playing (any
+// app). `source` says which pill the player belongs to.
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 
 export const SPOTIFY_ID = "integration_spotify";
+export const APPLE_MUSIC_ID = "integration_music";
+export const NOW_PLAYING_ID = "integration_media";
+/** The pills the music card and pill stand for. */
+export const MUSIC_IDS: readonly string[] = [SPOTIFY_ID, APPLE_MUSIC_ID, NOW_PLAYING_ID];
+
+export function isMusicPill(id: string | null | undefined): boolean {
+  return id != null && MUSIC_IDS.includes(id);
+}
 /** SpotifyController.green. */
 export const SPOTIFY_GREEN = "#1DB954";
 
@@ -24,6 +33,10 @@ export interface SpotifyTrack {
 }
 
 export interface SpotifyState {
+  /** The pill this player shows on (one of MUSIC_IDS). */
+  source: string;
+  /** The player's name on Windows ("Apple Music", "Edge"…), "" on Linux. */
+  app: string;
   /** Spotify is running. */
   running: boolean;
   /** There is a Spotify to launch. */
@@ -40,7 +53,7 @@ export interface SpotifyState {
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
-  running: false, installed: false, track: null, playing: false,
+  source: SPOTIFY_ID, app: "", running: false, installed: false, track: null, playing: false,
   position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
 };
 
@@ -94,9 +107,24 @@ export function volumeLevel(volume: number): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-/** Music is playing on a declared Spotify pill. */
+/** Music is playing on a declared music pill. */
 export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[]): boolean {
-  return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
+  return s.playing && s.track != null && activeIntegrations.includes(s.source ?? SPOTIFY_ID);
+}
+
+/** The colour the card and its controls wear: the playing pill's. */
+export const MUSIC_COLORS: Record<string, string> = {
+  [SPOTIFY_ID]: SPOTIFY_GREEN, [APPLE_MUSIC_ID]: "#FA2D48", [NOW_PLAYING_ID]: "#A78BFA",
+};
+
+export function musicAccent(s: SpotifyState = Spotify.state): string {
+  return MUSIC_COLORS[s.source] ?? SPOTIFY_GREEN;
+}
+
+/** "Spotify", "Apple Music", or the app that plays ("Edge"). */
+export function playerName(s: SpotifyState = Spotify.state): string {
+  if (s.app) return s.app;
+  return s.source === APPLE_MUSIC_ID ? "Apple Music" : s.source === NOW_PLAYING_ID ? "Now Playing" : "Spotify";
 }
 
 /** The states Mochi dances in; the rest (an alert, an error, sleep) win. */
@@ -115,7 +143,7 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  return o.mode === "expanded" && o.view === "overview" && isMusicPill(o.focusId);
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

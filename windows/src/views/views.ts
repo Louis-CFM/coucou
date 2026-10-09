@@ -22,7 +22,7 @@ import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
-import { SPOTIFY_ID } from "../core/spotify";
+import { isMusicPill } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -198,7 +198,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
   const spotifyCard = buildSpotifyCard();
-  let spotifyPill: SpotifyPillHost | null = null;
+  let musicPills: SpotifyPillHost[] = [];
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -356,7 +356,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
-      } else if (task && task.id === SPOTIFY_ID) {
+      } else if (task && isMusicPill(task.id)) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
           clear(leftBody);
@@ -394,18 +394,19 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
-        spotifyPill = null;
+        musicPills = [];
         for (const t of others) {
-          if (t.id === SPOTIFY_ID) {
-            spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
-            pills.append(spotifyPill.el);
+          if (isMusicPill(t.id)) {
+            const mp = buildSpotifyPill(t, () => actions.setFocus(t.id));
+            musicPills.push(mp);
+            pills.append(mp.el);
           } else {
             pills.append(buildPill(t, actions));
           }
         }
         pruneMiniBots();
       }
-      spotifyPill?.sync();
+      for (const mp of musicPills) mp.sync();
     },
   };
 }

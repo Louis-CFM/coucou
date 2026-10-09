@@ -29,6 +29,10 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+#[cfg(windows)]
+mod media_win;
+#[cfg(windows)]
+mod audio;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;

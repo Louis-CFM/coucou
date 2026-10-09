@@ -11,7 +11,7 @@ import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State, type AgentTask } from "../core/state";
 import {
-  SPOTIFY_GREEN, SPOTIFY_ID, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
+  Spotify, currentArtwork, formatTime, isAd, musicAccent, playerName, spotifyPosition, volumeLevel, withPlaying,
   type SpotifyTrack,
 } from "../core/spotify";
 import { createMiniBot } from "../mochi/minibots";
@@ -113,7 +113,7 @@ function pillButton(color: string, icon: string, onClick: () => void): HTMLEleme
  */
 export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPillHost {
   const color = task.color;
-  const mini = createMiniBot(task, 24, () => State.spotifyPlaying);
+  const mini = createMiniBot(task, 24, () => State.spotifyPlaying && Spotify.state.source === task.id);
   const label = h("span", { class: "lbl", text: task.name });
   const playBtn = pillButton(color, ICONS.play, togglePlay);
   const nextBtn = pillButton(color, ICONS.forward, () => void Bridge.spotifyControl("next"));
@@ -124,7 +124,8 @@ export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPil
   let playing: boolean | null = null;
 
   const sync = () => {
-    const s = Spotify.state;
+    const mine = Spotify.state.source === task.id;
+    const s = mine ? Spotify.state : { ...Spotify.state, track: null, playing: false };
     const current = State.tasks.find((x) => x.id === task.id);
     const name = current?.name ?? task.name;
     if (label.textContent !== name) label.textContent = name;
@@ -235,7 +236,7 @@ class NowPlayingBar {
     this.el.classList.toggle("active", active);
     const pct = `${this.fraction * 100}%`;
     this.fill.style.width = pct;
-    this.fill.style.background = active ? SPOTIFY_GREEN : "#C5C8CD";
+    this.fill.style.background = active ? musicAccent() : "#C5C8CD";
     this.knob.style.left = `clamp(0px, calc(${pct} - 4.5px), calc(100% - 9px))`;
   }
 }
@@ -254,7 +255,8 @@ export interface SpotifyCardHost {
 
 /** SpotifyCardView: now playing, or the idle card (not playing / not installed). */
 export function buildSpotifyCard(): SpotifyCardHost {
-  const green = SPOTIFY_GREEN;
+  // The playing pill's colour, repainted when the player changes.
+  let green = musicAccent();
 
   // Now playing: artwork row, progress row, controls row.
   const art = h("div", { class: "np-art" });
@@ -265,9 +267,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
   art.addEventListener("click", () => void Bridge.spotifyOpen());
   const title = h("span", { class: "np-title" });
   const subtitle = h("div", { class: "np-sub" });
+  const titleDot = dot(green, 6);
   const head = h("div", { class: "np-head" },
     art,
-    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, dot(green, 6), title), subtitle),
+    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, titleDot, title), subtitle),
   );
 
   let dragFraction: number | null = null;
@@ -312,8 +315,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
   const idleAction = h("button", { class: "link-btn", style: `color:${green}d9` });
   idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
   const idleSub = h("span");
+  const idleHeadDot = dot(green, 7);
+  const idleName = h("b", { text: playerName() });
   const idleEl = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
+    h("div", { class: "int-head" }, idleHeadDot, idleName, idleSub),
     h("div", { class: "int-status" }, idleDot, idleText),
     h("div", { class: "int-actions" }, idleAction),
   );
@@ -365,7 +370,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
     } else if (isAd(track)) {
       title.textContent = t("Advertisement");
     }
-    art.title = track.album ? t("{0} — open Spotify", { 0: track.album }) : t("Open Spotify");
+    art.title = t("Open {0}", { 0: playerName(s) });
     const cover = currentArtwork(s);
     if (cover) {
       if (artImg.getAttribute("src") !== cover) artImg.setAttribute("src", cover);
@@ -404,16 +409,33 @@ export function buildSpotifyCard(): SpotifyCardHost {
   }
 
   function syncIdle() {
-    const installed = Spotify.state.installed || Spotify.state.running;
+    const s = Spotify.state;
+    const installed = s.installed || s.running;
+    const name = playerName(s);
+    if (idleName.textContent !== name) idleName.textContent = name;
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
-    idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
-    idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
-    idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
+    idleText.textContent = installed ? t("Not playing") : t("{0} not installed", { 0: name });
+    // Now Playing has no app of its own to open.
+    idleAction.style.display = s.source === "integration_media" ? "none" : "";
+    idleAction.textContent = installed ? t("Open {0}", { 0: name }) : t("Get {0}", { 0: name });
+    idleSub.textContent = t(pillDefinition(s.source)?.subtitle ?? N_("Integration"));
+  }
+
+  /** The accent follows the player: green Spotify, red Apple Music, violet Now Playing. */
+  function syncAccent() {
+    const accent = musicAccent();
+    if (accent === green) return;
+    green = accent;
+    titleDot.style.background = green;
+    idleHeadDot.style.background = green;
+    artNote.style.color = `${green}b3`;
+    idleAction.style.color = `${green}d9`;
   }
 
   return {
     el,
     sync() {
+      syncAccent();
       const track = Spotify.state.track;
       const want = track ? "playing" : "idle";
       if (want !== showing) {

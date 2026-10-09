@@ -3360,6 +3360,50 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Open {0}": {
+   "zh-Hans": "打开 {0}",
+   "hi": "{0} खोलें",
+   "es": "Abrir {0}",
+   "ar": "فتح {0}",
+   "fr": "Ouvrir {0}",
+   "bn": "{0} খুলুন",
+   "pt-BR": "Abrir {0}",
+   "ru": "Открыть {0}",
+   "id": "Buka {0}"
+  },
+  "Get {0}": {
+   "zh-Hans": "获取 {0}",
+   "hi": "{0} पाएँ",
+   "es": "Obtener {0}",
+   "ar": "احصل على {0}",
+   "fr": "Obtenir {0}",
+   "bn": "{0} নিন",
+   "pt-BR": "Obter {0}",
+   "ru": "Установить {0}",
+   "id": "Dapatkan {0}"
+  },
+  "{0} not installed": {
+   "zh-Hans": "未安装 {0}",
+   "hi": "{0} इंस्टॉल नहीं है",
+   "es": "{0} no está instalado",
+   "ar": "{0} غير مثبّت",
+   "fr": "{0} n'est pas installé",
+   "bn": "{0} ইনস্টল করা নেই",
+   "pt-BR": "{0} não está instalado",
+   "ru": "{0} не установлен",
+   "id": "{0} belum terpasang"
+  },
+  "Any app that plays: a browser tab, VLC, Media Player…": {
+   "zh-Hans": "任何正在播放的应用：浏览器标签页、VLC、媒体播放器…",
+   "hi": "कोई भी ऐप जो चल रहा हो: ब्राउज़र टैब, VLC, मीडिया प्लेयर…",
+   "es": "Cualquier app que reproduzca: una pestaña del navegador, VLC, Reproductor multimedia…",
+   "ar": "أي تطبيق يشغّل الصوت: علامة تبويب في المتصفح، VLC، مشغّل الوسائط…",
+   "fr": "Toute app qui joue : un onglet du navigateur, VLC, le Lecteur multimédia…",
+   "bn": "যে কোনো অ্যাপ যা বাজায়: ব্রাউজার ট্যাব, VLC, মিডিয়া প্লেয়ার…",
+   "pt-BR": "Qualquer app que toque: uma aba do navegador, VLC, Media Player…",
+   "ru": "Любое приложение, которое играет: вкладка браузера, VLC, Медиаплеер…",
+   "id": "Aplikasi apa pun yang memutar: tab browser, VLC, Media Player…"
   }
  }
 }
