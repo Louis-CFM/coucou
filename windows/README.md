@@ -217,6 +217,35 @@ turned into `src/i18n/strings.json` by `node scripts/gen-strings.mjs`), plus
 the English text; a string missing in a language shows in English. The Rust
 side (tray, errors) embeds the same two files.
 
+## Task mode
+
+The **Task** chip next to the chat's model button hands the next message to
+Claude Code itself: Coucou runs `claude -p` headlessly in a project folder you
+pick from the dropdown beside the chip — no terminal anywhere, and no API key:
+tasks ride your Claude plan, like the CLI. The session shows in the island
+through the hooks like any other (steps, diffs, approval cards), and the final
+answer comes back to the chat as Markdown.
+
+- **Where tasks run** — the dropdown lists the subfolders of **Settings… →
+  Task projects** (your home folder until you set one). The folder picked last
+  is preselected.
+- **What a task may do** — read-only tools (Read, Glob, Grep) are always
+  allowed, so a task can read docs outside its project. Writing and running
+  commands ask: an approval card in the island with the hooks installed, a
+  safe deny otherwise — a task can fail, but never acts without a click.
+- **Where answers land** — with **Settings… → Task outputs** set (an Obsidian
+  vault folder works well), Coucou saves every finished answer there as a
+  dated Markdown note with `task:`/`project:`/`date:` front matter, and the
+  task is asked to deliver reports as **Typst** files there too (compiled with
+  `typst compile` when installed). Empty: reports go to `reports/` in the
+  project.
+- **On a finished bubble** — **Open folder** opens the project's `reports/`
+  (or the project), and **Follow up** continues that task's Claude session
+  (`--resume`) in the same folder: the next message keeps its context instead
+  of starting over.
+- At most three tasks run at once; a running bubble has a **Cancel** that ends
+  the whole process tree, and a 30-minute watchdog ends a stuck one.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
