@@ -64,15 +64,26 @@ test("the defaults are the same on both sides of the bridge", () => {
   );
 });
 
+test("the descriptions the Wayland portal shows are the labels Settings shows", () => {
+  const rust = readFileSync(new URL("../src-tauri/src/shortcuts.rs", import.meta.url), "utf8");
+  const rows = Object.fromEntries(
+    [...rust.matchAll(/^\s*"(\w+)" => n_\("([^"]+)"\),/gm)].map(([, id, text]) => [id, text]),
+  );
+  assert.deepEqual(rows, Object.fromEntries(SHORTCUTS.map((d) => [d.id, SHORTCUT_TEXT[d.id]])));
+});
+
 // testEnabledByDefault
-test("only the island toggle is off by default; the two not ported yet are reserved", () => {
+test("only the island toggle is off by default; the one not ported yet is reserved", () => {
   for (const d of SHORTCUTS) {
     assert.equal(d.enabledByDefault, d.id !== "toggleIsland", d.id);
-    assert.equal(d.ported, !["attachFrontWindow", "desktopToggle"].includes(d.id), d.id);
+    assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
-    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "wardrobeToggle",
+    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
+    "wardrobeToggle",
   ]);
+  // The Mac's ⌃⌥D, on the same letter.
+  assert.equal(SHORTCUTS.find((d) => d.id === "desktopToggle").defaultKeys, "Ctrl+Alt+D");
 });
 
 // ── Parsing and formatting (testCarbonModifiers, testDisplayString, testKeyCodeToString) ──
@@ -237,6 +248,29 @@ test("Ctrl stands in for ⌘ inside the island", () => {
   assert.ok(ISLAND_SHORTCUTS.length >= 6);
 });
 
+test("Ctrl+↓ ↑ walk a card's list, Ctrl+O opens, Ctrl+E is the overview's diff", () => {
+  const ctx = { view: "overview", inTextField: false };
+  const ctrl = (key, code = "") => press({ key, code, ctrlKey: true });
+  assert.deepEqual(islandKeyAction(ctrl("ArrowDown", "ArrowDown"), ctx), { kind: "list", delta: 1 });
+  assert.deepEqual(islandKeyAction(ctrl("ArrowUp", "ArrowUp"), ctx), { kind: "list", delta: -1 });
+  assert.deepEqual(islandKeyAction(ctrl("o", "KeyO"), ctx), { kind: "openSelection" });
+  assert.deepEqual(islandKeyAction(ctrl("e", "KeyE"), ctx), { kind: "diff" });
+  // The key labelled E on any layout, and Ctrl+Shift+E is something else.
+  assert.deepEqual(islandKeyAction(ctrl("E", "KeyE"), ctx), { kind: "diff" });
+  assert.equal(islandKeyAction(press({ key: "E", code: "KeyE", ctrlKey: true, shiftKey: true }), ctx), null);
+  // ⌘E only means something in the overview, where the diff opens.
+  assert.equal(islandKeyAction(ctrl("e", "KeyE"), { view: "prompt", inTextField: true }), null);
+  // In the chat field Ctrl+↑ ↓ keep moving by paragraph.
+  assert.equal(islandKeyAction(ctrl("ArrowDown", "ArrowDown"), { view: "prompt", inTextField: true }), null);
+  // Settings lists them in the Mac's order (ShortcutLogic.islandShortcuts).
+  assert.deepEqual(ISLAND_SHORTCUTS.map((s) => s.keys).slice(0, 5), [
+    "Ctrl+→ / Ctrl+←", "Ctrl+1 – Ctrl+9", "Ctrl+↓ / Ctrl+↑", "Ctrl+O", "Ctrl+E",
+  ]);
+  assert.equal(SHORTCUT_TEXT.island.navItems, "Navigate list items");
+  assert.equal(SHORTCUT_TEXT.island.open, "Open selected item");
+  assert.equal(SHORTCUT_TEXT.island.diff, "Open / close current diff");
+});
+
 // ── What the island does ──────────────────────────────────────────────────────
 
 let did;
@@ -248,7 +282,11 @@ const host = {
   setPinned: (on) => did.push(`pin:${on}`),
   takeKeyboard: () => did.push("keyboard"),
   wardrobeAnywhere: () => did.push("wardrobe"),
+  canLeaveIsland: () => desktopSupported,
+  flyOutOrHome: () => did.push("desktop"),
+  viewCommand: (c) => did.push(`view:${c}`),
 };
+let desktopSupported = true;
 const resume = () => did.push("resume");
 // The island listens on `window`, which here is the bare global object.
 const listeners = [];
@@ -267,6 +305,10 @@ beforeEach(() => {
   State.stateOverride = null;
   State.chatHistory = [];
   State.settings = { ...DEFAULT_SETTINGS };
+  State.mochiOnDesktop = false;
+  State.cardSelection = null;
+  State.cardItemCount = 0;
+  desktopSupported = true;
   State.loadIntegrationTasks();
 });
 
@@ -403,8 +445,32 @@ test("mute flips the sound, saves it, and Mochi reacts", () => {
   assert.deepEqual(did, ["emote:annoyed", "emote:happy"]);
 });
 
+test("the desktop shortcut sends Mochi out, lifting Pause, and brings him home", () => {
+  runGlobalShortcut(host, "desktopToggle", resume);
+  assert.deepEqual(did, ["resume", "desktop"]);
+  // Out there already: home, and Pause stays as it is.
+  did = [];
+  State.mochiOnDesktop = true;
+  runGlobalShortcut(host, "desktopToggle", resume);
+  assert.deepEqual(did, ["desktop"]);
+  assert.deepEqual(calls, []);
+});
+
+test("where Mochi can't leave the island (GNOME on Wayland), he says so", () => {
+  desktopSupported = false;
+  runGlobalShortcut(host, "desktopToggle", resume);
+  assert.deepEqual(did, ["emote:annoyed"]);
+});
+
+test("the desktop shortcut arrives like the others, and runs from the command line", () => {
+  emit("shortcut", "desktopToggle");
+  assert.deepEqual(did, ["resume", "desktop"]);
+  const rust = readFileSync(new URL("../src-tauri/src/shortcuts.rs", import.meta.url), "utf8");
+  assert.match(rust, /from_args\(&args\(&\["coucou", "--shortcut", "desktopToggle"\]\)\), Some\("desktopToggle"\)/);
+});
+
 test("actions that aren't the island's do nothing here", () => {
-  for (const id of ["wardrobeToggle", "attachFrontWindow", "desktopToggle", "nonsense"]) {
+  for (const id of ["wardrobeToggle", "attachFrontWindow", "nonsense"]) {
     runGlobalShortcut(host, id, resume);
   }
   assert.deepEqual(did, []);
@@ -436,4 +502,42 @@ test("island keys: pills by number, new chat, settings, pin", () => {
   State.pendingApproval = { requestId: "r1", sessionId: "s", pillId: "integration_claude", tool: "Bash", command: "ls" };
   runIslandKey(host, { kind: "pin" });
   assert.deepEqual(did, ["setView:overview", "setView:overview", "setView:prompt", "pin:true"]);
+});
+
+test("island keys: the highlight walks the list on screen, Ctrl+O opens it, Ctrl+E the diff", () => {
+  // No list on screen: nothing to walk, nothing to open.
+  runIslandKey(host, { kind: "list", delta: 1 });
+  assert.equal(State.cardSelection, null);
+  runIslandKey(host, { kind: "openSelection" });
+  assert.deepEqual(did, []);
+
+  // A GitHub list of three: from the top, clamped at the bottom (ShortcutLogic.navigate).
+  State.cardItemCount = 3;
+  runIslandKey(host, { kind: "list", delta: 1 });
+  assert.equal(State.cardSelection, 0);
+  for (let i = 0; i < 4; i++) runIslandKey(host, { kind: "list", delta: 1 });
+  assert.equal(State.cardSelection, 2);
+  runIslandKey(host, { kind: "list", delta: -1 });
+  assert.equal(State.cardSelection, 1);
+  runIslandKey(host, { kind: "openSelection" });
+  assert.deepEqual(did, ["view:openSelection"]);
+
+  // Starting from nothing, ↑ picks the last row.
+  State.cardSelection = null;
+  runIslandKey(host, { kind: "list", delta: -1 });
+  assert.equal(State.cardSelection, 2);
+
+  // Another view is on screen: the overview's list isn't walked.
+  State.view = "prompt";
+  runIslandKey(host, { kind: "list", delta: -1 });
+  assert.equal(State.cardSelection, 2);
+  State.view = "overview";
+
+  // Another pill drops the highlight, as cyclePill / switchToPill do.
+  runIslandKey(host, { kind: "pill", number: 1 });
+  assert.equal(State.cardSelection, null);
+
+  did = [];
+  runIslandKey(host, { kind: "diff" });
+  assert.deepEqual(did, ["view:toggleDiff"]);
 });

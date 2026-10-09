@@ -25,10 +25,11 @@ export const PILL_CATEGORIES: { id: PillCategory; title: string }[] = [
  * Whether the pill does anything on this build:
  * - `yes`: works on Windows and Linux;
  * - `windows`: Windows only (the app behind it has no Linux build);
+ * - `linux`: Linux only (what drives it is Linux's: Spotify through MPRIS);
  * - `soon`: can be declared, shows "Coming soon" (macOS has it, this build not yet);
  * - `no`: macOS only, never offered here.
  */
-export type PillSupport = "yes" | "windows" | "soon" | "no";
+export type PillSupport = "yes" | "windows" | "linux" | "soon" | "no";
 
 /** What makes the pill connected. */
 export type PillConnect =
@@ -129,6 +130,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).
+  // Windows has nothing to read it from yet.
+  { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
@@ -146,7 +151,7 @@ export function pillDefinition(id: string): PillDefinition | undefined {
 }
 
 function offeredOn(def: PillDefinition, os: HostOs): boolean {
-  return def.support === "yes" || def.support === "soon" || (def.support === "windows" && os === "windows");
+  return def.support === "yes" || def.support === "soon" || def.support === os;
 }
 
 /** The pills this build offers, in catalog order. */

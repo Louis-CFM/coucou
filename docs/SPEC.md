@@ -110,7 +110,7 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 | `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)*, Copilot CLI *(GitHub only)*, Muse Code *(GitHub only)*, OpenCode *(GitHub only)*, Amp *(GitHub only)*, Hermes *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio | Chat | — |
-| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)* | Integration | — |
+| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)*, Spotify *(GitHub only)* | Integration | — |
 
 Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, Copilot CLI `#818CF8`, Muse Code `#38BDF8`, OpenCode `#4ADE80`, Amp `#F59E0B`, Hermes `#C084FC`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
 

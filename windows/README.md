@@ -51,7 +51,7 @@ You can also [build it yourself](#build-it-yourself).
 | What you do | What happens |
 |---|---|
 | Move the mouse to the very top-centre of the screen | Mochi peeks out |
-| Click the small island | It opens |
+| Click the small island | It opens. With **Settings → General → Open on hover**, resting the pointer on it is enough, and it folds again shortly after the pointer leaves (click inside to keep it open) |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
@@ -60,6 +60,7 @@ You can also [build it yourself](#build-it-yourself).
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
+| Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
 | Tray icon | Open, Weekly recap, Wardrobe…, Settings…, Pause, Quit |
 | `Ctrl+Alt+Space` | Opens the chat, from any app |
 | `Ctrl+Alt+A` | Jumps to the waiting permission or question |
@@ -67,8 +68,11 @@ You can also [build it yourself](#build-it-yourself).
 | `Ctrl+Alt+→` / `Ctrl+Alt+←` | Next / previous pill |
 | `Ctrl+Alt+S` | Mutes or unmutes Mochi |
 | `Ctrl+Alt+G` | Opens the wardrobe |
+| `Ctrl+Alt+D` | Sends Mochi to the desktop, or brings him home |
 | `Ctrl+Alt+N` | Opens and closes the island (off until you turn it on) |
 | In the open island: `Ctrl+→` `Ctrl+←`, `Ctrl+1`–`Ctrl+9` | Switch pills |
+| In the open island: `Ctrl+↓` `Ctrl+↑`, `Ctrl+O` | Walk the open GitHub list, open the highlighted row |
+| In the open island: `Ctrl+E` | Opens the latest edit's diff, or closes the diff |
 | In the open island: `Ctrl+Enter`, `Ctrl+K` | Send, start a new chat |
 | In the open island: `Ctrl+,`, `Ctrl+P` | Settings, keep the island open |
 
@@ -92,7 +96,9 @@ for one, puts `ą` on `AltGr+A` and `ś` on `AltGr+S`. The recorder refuses such
 a combination too.
 
 Older Intel graphics drivers rotate the screen on `Ctrl+Alt+←` / `→`; if yours
-still does, those two show up as *In use*.
+still does, those two show up as *In use*. On Linux, Xfce and MATE keep
+`Ctrl+Alt+D` to show the desktop, so there **Send Mochi to the desktop** shows
+up as *In use* until you give it other keys.
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a question from Claude Code shows its options to
@@ -397,11 +403,16 @@ own window.
   process to the terminal or editor that runs it. A session in a classic
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
-  as it does when `code` is on your `PATH` and nothing was found.
-- No global keyboard shortcuts yet: a waiting card is folded with its **⌃** or
-  `Esc` in the island, and reopened by clicking the island or Open in the tray.
+  as it does when `code` is on your `PATH` and nothing was found. Linux walks
+  the same tree; what it can bring forward depends on the desktop (see Linux).
+- Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
+  X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
+  [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
+  the island, and reopened by clicking the island, Open in the tray or **Go to
+  alert**.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out.
+  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
+  nothing to read it from yet.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -427,19 +438,21 @@ own window.
   never the file itself. Counts and diffs come from Claude Code's Edit,
   MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
   Claude Desktop); other agents' edits show as plain steps.
-- The GitHub lists are clicked, not walked with the arrow keys, and there is no
-  iPhone to keep fetching them while the pill is off.
+- There is no iPhone to keep fetching the GitHub lists while the pill is off.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
   Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
-  terminal" here. Not in this version: sending Mochi to the desktop from the
-  keyboard (drag him out instead) and attaching the front window (their ids are
-  kept for later), moving through a card's
-  list (`⌘↑` `⌘↓` `⌘O`) and the diff (`⌘E`). The island only reads its own
-  shortcuts while it has the keyboard: in the chat, or after a global shortcut
-  opened it. **Go to alert** brings up any agent's waiting card on its own pill;
-  **Toggle the island** folds a waiting card rather than dropping it, like `Esc`
-  in the island.
+  terminal" here. Not in this version: attaching the front window (its id is
+  kept for later). The island only reads its own shortcuts while it has the
+  keyboard: in the chat, or after a global shortcut opened it. `Ctrl+↓`
+  `Ctrl+↑` `Ctrl+O` walk the GitHub lists, as on the Mac, and the highlighted
+  row scrolls into view where the Mac's three-row list doesn't follow it; in the
+  chat field `Ctrl+↑` `Ctrl+↓` keep moving the cursor. **Go to alert** brings
+  up any agent's waiting card on its own pill; **Toggle the island** folds a
+  waiting card rather than dropping it, like `Esc` in the island. **Send Mochi
+  to the desktop** (`Ctrl+Alt+D`, the Mac's `⌃⌥D`)
+  flies him to his spot, or to the bottom-right corner when that spot was on a
+  display that is gone; pressed again, he flies home.
 - Weekly recap:
   - Sharing happens inside the island instead of a separate panel, and Save
     writes straight into Pictures (or Downloads) instead of asking where. There
@@ -462,9 +475,10 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop doesn't dance: there is no music integration to dance
-  to. Dropping him on a window doesn't attach it to the chat, and the Mac's
-  ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
+- Mochi on the desktop dances only on Linux, to Spotify; on Windows there is
+  no music integration to dance to yet. While he dances he stays awake (the
+  Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
+  to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse
   move, which wakes him and gives the rest back to the desktop.
 
@@ -514,25 +528,54 @@ What changes on Linux:
   (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
   that display; on X11 it is an ordinary always-on-top window that goes
   anywhere. **GNOME on Wayland** has no layer-shell and lets no app place its
-  own window, so there Mochi can't leave the island: dragging him does nothing.
+  own window, so there Mochi can't leave the island: dragging him does nothing,
+  and the desktop shortcut only makes him grumble.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user. Every other agent uses the same relay, single-quoted
   for `sh`, and its config under `~` (see Supported agents). A config that is a
   symlink (dotfiles) is written through to its target, with its permissions
   kept.
-- **Global shortcuts** are X11 key grabs, so they work in an X11 session.
+- **Global shortcuts** are X11 key grabs in an X11 session.
   On X11, AltGr is a modifier of its own and never clashes with `Ctrl+Alt`;
   combinations the desktop already uses (GNOME's `Ctrl+Alt+T` terminal and
-  `Ctrl+Alt+←`/`→` workspace switching) show up as *In use*. Wayland has no
-  key grabs — the GlobalShortcuts portal isn't supported yet — so nothing is
-  registered there, and **Settings → Shortcuts** lists commands to bind in your
-  desktop's own keyboard settings instead:
+  `Ctrl+Alt+←`/`→` workspace switching) show up as *In use*.
+  Wayland has no key grabs, so there Coucou hands its shortcuts to the desktop
+  through the XDG **GlobalShortcuts portal** (`xdg-desktop-portal`, with a
+  backend that has it: KDE Plasma 6, GNOME 48+, Hyprland, COSMIC…). Each
+  shortcut goes with its description and your keys as the preferred trigger;
+  the desktop may show its own window to confirm them or to pick other keys,
+  and it has the last word: a shortcut it already knows keeps the keys it was
+  given there, and you change them in the desktop's own shortcut settings.
+  **Settings → Shortcuts** says the shortcuts are registered with the desktop,
+  shows next to each one the keys the desktop reports (*Desktop: …*), and flags
+  one it left out. Changing or turning off a shortcut in Coucou binds the new
+  set in a new portal session. Coucou names itself `fr.louisraille.coucou` to
+  the portal where the portal allows it (`xdg-desktop-portal` 1.19+); a
+  desktop that wants an app name may otherwise refuse.
+  Where there is no such portal, or the desktop refuses, nothing is registered
+  and **Settings → Shortcuts** lists commands to bind in your
+  desktop's own keyboard settings instead (they are shown with the portal too,
+  for any shortcut that doesn't work):
   `coucou --shortcut openChat` (or the AppImage's path) runs the action in the
   Coucou that is already open. The ids are `toggleIsland`, `openChat`,
-  `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle` and
-  `wardrobeToggle`.
+  `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle`,
+  `desktopToggle` and `wardrobeToggle`.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Spotify** (Settings → Integrations) is read over MPRIS, Spotify's D-Bus
+  interface on the session bus: the pill shows the track and plays, pauses
+  or skips on hover, the card has the cover, the progress bar (drag to
+  seek), shuffle, previous, next, repeat and the volume, and Mochi dances
+  while it plays — in the compact island, on the Spotify card, on the pill
+  and on the desktop. Nothing is polled: one thread waits on the bus for
+  Spotify's own signals while the pill is declared, and stops when it isn't.
+  **Open Spotify** brings it forward or starts `spotify` from your `PATH`,
+  else the Flatpak (`com.spotify.Client`) or the Snap; without one, **Get
+  Spotify** opens its download page. Covers come from Spotify's image CDN
+  (or a local track's file) and are fetched by Coucou itself, not the page.
+  Spotify builds that don't report the position over MPRIS show the bar
+  from where the track started; the Mac's Automation prompt has no
+  equivalent here.
 - **Plan usage**: the status line relay is `~/.local/share/coucou/bin/coucou-hook
   --statusline` and runs your previous status line with `/bin/sh -c`, like Claude
   Code. Codex is found on `$PATH`, in `~/.local/bin`, npm's global prefix, Volta,
@@ -553,7 +596,20 @@ What changes on Linux:
   where it is missing, the island says so and Save still works.
 - What the Windows build leaves out, this one does too: sending a file by
   email and dragging Mochi onto a window.
-- **Open terminal** opens the folder in VS Code: Wayland lets no app bring
-  another app's window forward, and X11 would need a window-manager client this
-  build doesn't carry.
+- **Open terminal** walks up from the relay through `/proc` (stopping at
+  systemd, logins, ssh, session managers and panels, and at any process of
+  another user) to the terminal or editor the session runs in, then brings its
+  window forward — the one titled after the session's folder if it has several:
+  - **X11** (any desktop): EWMH — the window whose `_NET_WM_PID` is the nearest
+    ancestor gets a `_NET_ACTIVE_WINDOW` request, on its workspace. A terminal
+    that doesn't set `_NET_WM_PID` (some old `xterm` builds) isn't found.
+  - **KDE Plasma on Wayland**: a few lines of KWin script, loaded over D-Bus
+    from `$XDG_RUNTIME_DIR`, activate the window by process ID and are unloaded
+    right after; Plasma 5 and 6.
+  - **kitty**, anywhere: its tab is selected too when remote control listens on
+    a socket (`allow_remote_control` and `listen_on` in kitty.conf).
+  - **GNOME on Wayland** and other Wayland compositors let no app bring another
+    app's native window forward (an XWayland one, such as VS Code's by default,
+    still can be). There, and for a session under tmux, screen or ssh, whose
+    terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.

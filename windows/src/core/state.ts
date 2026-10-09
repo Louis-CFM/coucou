@@ -11,6 +11,8 @@ import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
+import { pillColor } from "./pill-colors";
+import { Spotify, musicPlaying } from "./spotify";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -79,10 +81,10 @@ export interface SearchResult {
   note?: string;
 }
 
-/** A fresh, idle task for a catalog pill. */
-function taskFor(def: PillDefinition, name = def.name): AgentTask {
+/** A fresh, idle task for a catalog pill, in the colour the user gave it if any. */
+function taskFor(def: PillDefinition, colors: unknown, name = def.name): AgentTask {
   return {
-    id: def.id, name, color: def.color, state: "idle", stepIndex: 0, steps: [],
+    id: def.id, name, color: pillColor(def.id, def.color, colors), state: "idle", stepIndex: 0, steps: [],
     source: def.source, isIntegration: true,
   };
 }
@@ -99,6 +101,8 @@ export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
+  /** Hovering the island opens it all the way (off: hovering only peeks). */
+  openOnHover: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -132,6 +136,12 @@ export interface Settings {
    */
   mochiOutfit: string;
   /**
+   * A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB").
+   * Empty means the catalog's colours; read it through core/pill-colors.ts.
+   * Same key and values as the Mac's "pillColors".
+   */
+  pillColors: Record<string, string>;
+  /**
    * Interface language: "" follows the system (when Coucou has its language,
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
@@ -147,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
+  openOnHover: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -166,6 +177,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customUrl: "",
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
+  pillColors: {},
   language: "",
 };
 
@@ -221,6 +233,10 @@ class AppState {
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
+  /** Ctrl+↑ / Ctrl+↓: the highlighted row of the card's list (AppState.cardSelection). */
+  cardSelection: number | null = null;
+  /** Rows in the list on screen, 0 when there is none (AppState.cardItemCount). */
+  cardItemCount = 0;
   /**
    * Mochi is out of the island — on the desktop, flying, or being dragged
    * there — so the island's own Mochi is hidden (AppState.mochiOnDesktop).
@@ -255,6 +271,11 @@ class AppState {
 
   get effectiveState(): BotStateName {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
+  }
+
+  /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
+  get spotifyPlaying(): boolean {
+    return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
   }
 
   get otherTasks(): AgentTask[] {
@@ -379,9 +400,14 @@ class AppState {
     for (const def of availablePills(this.os)) {
       const shouldLoad = def.id === d.mainPill || d.activeIntegrations.includes(def.id);
       const idx = this.tasks.findIndex((t) => t.id === def.id);
-      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def));
+      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors));
       const busy = idx >= 0 && (this.tasks[idx].state !== "idle" || this.tasks[idx].steps.length > 0);
       if (!shouldLoad && idx >= 0 && !busy) this.tasks.splice(idx, 1);
+    }
+    // A colour picked in Settings reaches the pills that are already up.
+    for (const t of this.tasks) {
+      const def = pillDefinition(t.id);
+      if (def) t.color = pillColor(def.id, def.color, this.settings.pillColors);
     }
     this.tasks = orderPills(this.tasks, d.mainPill);
     if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = d.mainPill;
@@ -424,7 +450,7 @@ class AppState {
     if (this.tasks.some((t) => t.id === id)) return;
     const def = pillDefinition(id);
     this.insertAfterMain({
-      id, name, color: def?.color ?? color,
+      id, name, color: def ? pillColor(def.id, def.color, this.settings.pillColors) : color,
       state: "idle", stepIndex: 0, steps: [],
       source: "agent", isIntegration: false,
     });
@@ -440,7 +466,7 @@ class AppState {
     if (!t) {
       const def = pillDefinition(id);
       if (!def) return null;
-      t = taskFor(def, name);
+      t = taskFor(def, this.settings.pillColors, name);
       this.insertAfterMain(t);
     }
     t.name = name;
