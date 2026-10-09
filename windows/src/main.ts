@@ -112,6 +112,17 @@ async function main() {
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
 
+  // Resume from sleep: timers freeze with the machine, so a jump in wall-clock
+  // between ticks means the box slept (the Mac's NSWorkspace.didWake). One
+  // timestamp a minute; Recap.check self-gates, so a late background tick only
+  // costs a prefs lookup.
+  let lastTick = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastTick > 5 * 60_000) checkRecap();
+    lastTick = now;
+  }, 60_000);
+
   island.launch();
 
   // In a plain browser there is no wake strip behind the cursor: make the whole

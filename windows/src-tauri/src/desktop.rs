@@ -221,6 +221,8 @@ struct Inner {
     overlay: bool,
     /// Top-left corner, in the mode's space.
     pos: (f64, f64),
+    /// Where a desktop drag began: a drop on a window sends him back there.
+    drag_origin: Option<(f64, f64)>,
     /// Layer mode: logical size of the display he lives on.
     display: Option<(f64, f64)>,
     /// Poll mode: the click-through state last applied.
@@ -246,6 +248,8 @@ impl Desktop {
 struct Dropped {
     from: Source,
     home: bool,
+    /// Set when the drop landed on a window: the island attaches it to the chat.
+    context: Option<platform::WindowContext>,
 }
 
 #[derive(Serialize, Clone)]
@@ -590,19 +594,29 @@ fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64
     }
 }
 
-/// The drop, wherever it came from: home if it is over the island's panel,
-/// otherwise his new spot.
+/// The drop, wherever it came from: home if it is over the island's panel, an
+/// attach if it is over a window (he goes back where the drag began and the
+/// island picks the window up as chat context — the Mac's WindowContextCapture
+/// drop), otherwise his new spot.
 async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source) {
     let s = side(app, d);
     let center = (pos.0 + s / 2.0, pos.1 + s / 2.0);
     let home = island_anchor(app, d)
         .map(|(cx, top, scale)| logic::home_zone(cx, top, scale).contains(center))
         .unwrap_or(false);
-    {
+    // Poll and Window are the modes where `center` is a real screen coordinate;
+    // a layer surface keeps its own display-local space.
+    let attached = if home || !matches!(d.mode, DesktopMode::Poll | DesktopMode::Window) {
+        None
+    } else {
+        platform::window_context_at(center.0, center.1)
+    };
+    let origin = {
         let mut i = d.inner.lock().unwrap();
         i.carry = None;
-        i.landed = !home;
-    }
+        i.landed = !home && (attached.is_none() || from == Source::Desktop);
+        i.drag_origin.take()
+    };
     if home {
         if from == Source::Island {
             // Back where he came from: he simply reappears in the island.
@@ -611,6 +625,29 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
             // The island page flies him home (and forgets the spot).
             refresh(app, d);
         }
+    } else if let Some(context) = attached {
+        match from {
+            // Dragged out of the island onto a window: home is where he was.
+            Source::Island => hide(app, d),
+            // Picked up from his spot: straight back, like the Mac's setFrameOrigin.
+            Source::Desktop => {
+                if let Some(origin) = origin {
+                    place(app, d, origin);
+                }
+                refresh(app, d);
+            }
+        }
+        let _ = app.emit_to(
+            island::WINDOW_LABEL,
+            "desktop-mochi-dropped",
+            Dropped {
+                from,
+                // An island drag that attached went home.
+                home: from == Source::Island,
+                context: Some(context),
+            },
+        );
+        return;
     } else {
         let spot = logic::settle(pos, &displays(app, d), SIZE, MARGIN);
         refresh(app, d);
@@ -619,7 +656,11 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
         }
         remember_spot(app, d, spot, true);
     }
-    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
+    let _ = app.emit_to(
+        island::WINDOW_LABEL,
+        "desktop-mochi-dropped",
+        Dropped { from, home, context: None },
+    );
 }
 
 // ── Poll (Windows) ────────────────────────────────────────────────────────────
@@ -742,10 +783,11 @@ pub async fn desktop_mochi_carry_end(app: AppHandle, x: f64, y: f64) {
 pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     let pos = {
-        let i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock().unwrap();
         if !i.landed || i.carry.is_some() {
             return None;
         }
+        i.drag_origin = Some(i.pos);
         i.pos
     };
     // A drag takes over from a snap still settling him.

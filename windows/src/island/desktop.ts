@@ -24,6 +24,8 @@ export interface DesktopHost {
   wardrobeFromDesktop(): void;
   /** Three pokes on the desktop Mochi. */
   dizzyFromDesktop(): void;
+  /** Dropped on a window: the island expands to the chat with it as context. */
+  attachContext(ctx: { appName: string; title: string }): void;
 }
 
 export class DesktopLink {
@@ -70,9 +72,11 @@ export class DesktopLink {
     this.mode = info.mode;
     this.controller.enabled = info.onDesktop;
 
-    await onEvent<{ from: "island" | "desktop"; home: boolean }>(DESKTOP_EVENTS.dropped, (e) =>
-      this.onDropped(e.from, e.home),
-    );
+    await onEvent<{
+      from: "island" | "desktop";
+      home: boolean;
+      context: { appName: string; title: string } | null;
+    }>(DESKTOP_EVENTS.dropped, (e) => this.onDropped(e.from, e.home, e.context));
     await onEvent<null>(DESKTOP_EVENTS.home, () => void this.controller.flyHome());
     await onEvent<null>(DESKTOP_EVENTS.wardrobe, () => this.host.wardrobeFromDesktop());
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
@@ -141,7 +145,24 @@ export class DesktopLink {
     void Bridge.desktopCarryEnd(x, y);
   }
 
-  private onDropped(from: "island" | "desktop", home: boolean) {
+  private onDropped(
+    from: "island" | "desktop",
+    home: boolean,
+    context: { appName: string; title: string } | null,
+  ) {
+    // Dropped on a window: it becomes the chat's context, like the Mac's
+    // drop-attach — approve chime, a happy blink, the prompt open.
+    if (context) {
+      State.promptContext = {
+        kind: "window",
+        appName: context.appName,
+        title: context.title,
+      };
+      Sound.play("approve");
+      void emitToWindow(WINDOW, DESKTOP_EVENTS.emote, { emote: "happy", duration: 0.6 });
+      this.host.attachContext(context);
+      State.notify();
+    }
     if (from === "island") {
       this.carrying = false;
       if (home) {

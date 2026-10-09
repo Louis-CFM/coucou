@@ -190,7 +190,7 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
 
 /// True when `path` is a regular file directly inside `dir`, both resolved
 /// (no `..`, no symlink pointing out of it).
-fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
+pub(crate) fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
     let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
     file.parent() == Some(dir.as_path())
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
