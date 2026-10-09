@@ -15,7 +15,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
   // Copied from NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID is a
   // contract value, and a colour or subtitle that drifts is a visible bug.
   const mac = [
-    ["integration_claude", "VS Code", "#F5F6F8", "workspace", "Integration"],
+    ["integration_claude", "Claude Code", "#F5F6F8", "workspace", "Integration"],
     ["agent_cursor", "Cursor", "#C0C4CC", "workspace", "Integration"],
     ["agent_antigravity", "Antigravity", "#E879F9", "workspace", "Integration"],
     ["agent_codex", "Codex", "#2DD4BF", "workspace", "Integration"],
@@ -52,7 +52,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
 
 test("the pills Windows always had keep their IDs, names, colours and sources", () => {
   const shipped = [
-    ["integration_claude", "VS Code", "#F5F6F8", "claudeCode"],
+    ["integration_claude", "Claude Code", "#F5F6F8", "claudeCode"],
     ["integration_resend", "Resend", "#22C55E", "n8n"],
     ["integration_n8n", "n8n", "#F29B38", "n8n"],
     ["integration_vercel", "Vercel", "#7C5CFF", "n8n"],

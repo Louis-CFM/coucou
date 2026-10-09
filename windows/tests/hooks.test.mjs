@@ -62,7 +62,7 @@ test("a paused island hands a permission request straight back to the terminal",
 test("a paused island ignores every other event", () => {
   State.paused = true;
   hook({ hook_event_name: "SessionStart", cwd: "C:\\Users\\me\\proj" });
-  assert.equal(task().name, "VS Code");
+  assert.equal(task().name, "Claude Code");
   assert.deepEqual(asked, []);
   assert.deepEqual(calls, []);
 });
@@ -144,7 +144,7 @@ test("a notification is a rate limit, a question, or nothing", () => {
 test("an unknown event changes nothing", () => {
   hook({ hook_event_name: "SomethingNew", cwd: "/p" });
   assert.equal(task().state, "idle");
-  assert.equal(task().name, "VS Code");
+  assert.equal(task().name, "Claude Code");
   assert.deepEqual(asked, []);
 });
 
@@ -189,7 +189,7 @@ test("the end of a session puts the pill back as it was", () => {
   hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", tool_name: "Bash", tool_input: { command: "ls" } });
   hook({ hook_event_name: "SessionEnd", cwd: "/p/proj" });
   assert.equal(task().state, "idle");
-  assert.equal(task().name, "VS Code");
+  assert.equal(task().name, "Claude Code");
   assert.deepEqual(task().steps, []);
 });
 
@@ -217,7 +217,7 @@ test("a tagged agent gets its own pill next to Claude Code's", () => {
   assert.deepEqual(agent.steps, ["Runs · ls"]);
   assert.match(agent.color, /^#[0-9A-F]{6}$/);
   // Claude Code's own pill is not the one that moved.
-  assert.equal(task().name, "VS Code");
+  assert.equal(task().name, "Claude Code");
   assert.equal(task().state, "idle");
 });
 
@@ -353,9 +353,13 @@ test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac 
   assert.equal(desktop.color, "#D97757");
   assert.equal(desktop.sessionId, "d1");
   assert.equal(task().state, "idle");
-  // Its permission requests are answered in the app, as on macOS.
-  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash" });
-  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+  // Its permission requests are answered in the app, as on macOS: the request
+  // came through Claude Code's own hooks, so the relay can answer it.
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "d1", coucou_agent: "claude-desktop", tool_name: "Bash", tool_input: { command: "npm test" } });
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "r1" }]);
+  assert.equal(State.pendingApproval?.pillId, "agent_claude-desktop");
+  assert.equal(State.pendingApproval?.command, "Bash · npm test");
 });
 
 // ── Main tool and Cursor ──────────────────────────────────────────────────────

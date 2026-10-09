@@ -476,9 +476,10 @@ function handleHook(island: Island, payload: HookPayload) {
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
       // Claude Code asking a question is not a permission to grant: the island
-      // shows the options and sends back the one that was picked. Only Claude
-      // Code asks questions this way.
-      const questions = isExternalAgent ? null : askedQuestions(tool, input);
+      // shows the options and sends back the one that was picked. Claude
+      // Desktop asks through the same hook payload; other agents don't.
+      const questions =
+        isExternalAgent && validAgent !== "claude-desktop" ? null : askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on
