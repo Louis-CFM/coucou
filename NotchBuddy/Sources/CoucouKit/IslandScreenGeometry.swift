@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Resting island dimensions, using a physical notch only when the screen has one.
@@ -27,6 +28,24 @@ struct IslandScreenGeometry {
             width = Self.noNotchWidth
             height = min(Self.noNotchHeight, menuBarHeight)
         }
+    }
+}
+
+/// Opt-in: on a screen without a notch, the resting bar fades out until the pointer comes near.
+enum RestingBarAutoHide {
+    /// How far around the bar the pointer brings it back.
+    static let revealMarginX: CGFloat = 60
+    static let revealMarginY: CGFloat = 16
+
+    static func revealZone(around bar: CGRect) -> CGRect {
+        bar.insetBy(dx: -revealMarginX, dy: -revealMarginY)
+    }
+
+    /// Only the resting bar hides: an open or compact island, or one held by an
+    /// approval or a drag, always stays visible.
+    static func isVisible(enabled: Bool, hasNotch: Bool, isResting: Bool,
+                          isHeld: Bool, pointerNear: Bool) -> Bool {
+        !enabled || hasNotch || !isResting || isHeld || pointerNear
     }
 }
 

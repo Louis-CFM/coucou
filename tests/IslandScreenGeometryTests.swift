@@ -48,6 +48,23 @@ enum IslandScreenGeometryTests {
             precondition(compact.miniGridCenterX == 200)
             precondition(compact.miniGridScale * 28 <= height - 4)
         }
-        print("Island screen geometry and resting layout: 13 cases passed")
+        // Resting bar auto-hide: hides only a resting bar, on a screen without a notch, when enabled.
+        func visible(enabled: Bool = true, hasNotch: Bool = false, isResting: Bool = true,
+                     isHeld: Bool = false, pointerNear: Bool = false) -> Bool {
+            RestingBarAutoHide.isVisible(enabled: enabled, hasNotch: hasNotch, isResting: isResting,
+                                         isHeld: isHeld, pointerNear: pointerNear)
+        }
+        precondition(!visible())
+        precondition(visible(enabled: false))
+        precondition(visible(hasNotch: true))
+        precondition(visible(isResting: false))
+        precondition(visible(isHeld: true))
+        precondition(visible(pointerNear: true))
+        let bar = CGRect(x: 320, y: 536, width: 80, height: 24)
+        let zone = RestingBarAutoHide.revealZone(around: bar)
+        precondition(zone.contains(CGPoint(x: 300, y: 530)))    // approaching from below-left
+        precondition(!zone.contains(CGPoint(x: 200, y: 536)))   // far to the side
+        precondition(!zone.contains(CGPoint(x: 360, y: 500)))   // well below the menu bar
+        print("Island screen geometry, resting layout and auto-hide: 22 cases passed")
     }
 }

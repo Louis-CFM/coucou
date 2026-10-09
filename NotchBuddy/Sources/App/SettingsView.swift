@@ -351,6 +351,8 @@ struct SettingsView: View {
                     }
                 }
                 .frame(maxWidth: 360)
+                Toggle("Hide the bar until the pointer comes near", isOn: $state.autoHideRestingBar)
+                    .help("On a screen without a notch, the resting bar fades out and comes back when the pointer nears the top center. It stays visible while Mochi is working or needs you.")
                 Text("On a screen without a notch, Mochi sits in a small bar at the top. Follow the mouse moves it to your cursor's screen while it is closed.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
