@@ -2108,12 +2108,12 @@ async fn poll_gitlab(app: AppHandle) {
 /// The configured instance, without a trailing slash. Only http(s): the value
 /// ends up in requests and in the browser.
 pub fn youtrack_base() -> Result<String, String> {
-    let raw = secrets::get("youtrack-url").ok_or("Set the YouTrack URL in Settings → Integrations")?;
+    let raw = secrets::get("youtrack-url").ok_or_else(|| crate::i18n::t("Set the YouTrack URL in Settings → Integrations"))?;
     let base = raw.trim().trim_end_matches('/').to_string();
     if base.starts_with("https://") || base.starts_with("http://") {
         Ok(base)
     } else {
-        Err("The YouTrack URL must start with https://".into())
+        Err(crate::i18n::t("The YouTrack URL must start with https://"))
     }
 }
 
@@ -2189,13 +2189,16 @@ fn youtrack_fresh(
         // then, or changed. Who did it — the reporter or the last to update it —
         // decides whether it is: the user's own doing is not.
         if let Some(seen) = seen.filter(|&seen| updated > seen) {
-            let (verb, who) = if created > seen { ("Created", "reporter") } else { ("Updated", "updater") };
+            let who = if created > seen { "reporter" } else { "updater" };
             let (login, name) = youtrack_who(issue, who);
             if me.is_empty() || login != me {
-                let label = if name.is_empty() {
-                    format!("{verb}: {id} {summary}")
-                } else {
-                    format!("{verb} by {name}: {id} {summary}")
+                let title = format!("{id} {summary}");
+                let vars = [("name", name.as_str()), ("title", title.as_str())];
+                let label = match (created > seen, name.is_empty()) {
+                    (true, true) => crate::i18n::tf("Created: {title}", &vars),
+                    (true, false) => crate::i18n::tf("Created by {name}: {title}", &vars),
+                    (false, true) => crate::i18n::tf("Updated: {title}", &vars),
+                    (false, false) => crate::i18n::tf("Updated by {name}: {title}", &vars),
                 };
                 fresh.push(json!({ "label": label, "url": url, "success": true, "at": now_ms(), "issue": id }));
             }
@@ -2252,20 +2255,20 @@ fn youtrack_changes(activities: &[Value], me: &str) -> std::collections::HashMap
             "CustomFieldCategory" => match (removed.is_empty(), added.is_empty()) {
                 (false, false) => format!("{field}: {removed} → {added}"),
                 (true, false) => format!("{field}: {added}"),
-                (false, true) => format!("{field}: {removed} → none"),
+                (false, true) => crate::i18n::tf("{field}: {old} → none", &[("field", &field), ("old", &removed)]),
                 (true, true) => continue,
             },
             "CommentsCategory" => match (removed.is_empty(), added.is_empty()) {
-                (true, false) => format!("Comment: “{added}”"),
-                (false, true) => "Comment deleted".into(),
-                _ => "Comment edited".into(),
+                (true, false) => crate::i18n::tf("Comment: “{text}”", &[("text", &added)]),
+                (false, true) => crate::i18n::t("Comment deleted"),
+                _ => crate::i18n::t("Comment edited"),
             },
-            "SummaryCategory" => "Title changed".into(),
-            "DescriptionCategory" => "Description edited".into(),
-            "AttachmentsCategory" if !added.is_empty() => format!("Attached {added}"),
-            "AttachmentsCategory" => format!("Attachment removed: {removed}"),
-            "LinksCategory" if !added.is_empty() => format!("Linked to {added}"),
-            "LinksCategory" => format!("Unlinked from {removed}"),
+            "SummaryCategory" => crate::i18n::t("Title changed"),
+            "DescriptionCategory" => crate::i18n::t("Description edited"),
+            "AttachmentsCategory" if !added.is_empty() => crate::i18n::tf("Attached {name}", &[("name", &added)]),
+            "AttachmentsCategory" => crate::i18n::tf("Attachment removed: {name}", &[("name", &removed)]),
+            "LinksCategory" if !added.is_empty() => crate::i18n::tf("Linked to {issue}", &[("issue", &added)]),
+            "LinksCategory" => crate::i18n::tf("Unlinked from {issue}", &[("issue", &removed)]),
             _ => continue,
         };
         let lines = out.entry(issue).or_default();
@@ -2318,14 +2321,15 @@ fn youtrack_value(v: &Value, period: bool) -> String {
     if line.chars().count() > 80 { format!("{}…", line.chars().take(79).collect::<String>()) } else { line }
 }
 
-/// Minutes as hours and minutes: "45m", "2h", "1h 30m". Not in days: how many
+/// Minutes as hours and minutes: "45 min", "2 h", "1 h 30 min". Not in days: how many
 /// hours a day makes is the instance's own setting, which a token can't read.
 fn youtrack_duration(minutes: i64) -> String {
-    let (h, m) = (minutes / 60, minutes % 60);
-    match (h, m) {
-        (0, m) => format!("{m}m"),
-        (h, 0) => format!("{h}h"),
-        (h, m) => format!("{h}h {m}m"),
+    use crate::i18n::tf;
+    let (h, m) = ((minutes / 60).to_string(), (minutes % 60).to_string());
+    match (minutes / 60, minutes % 60) {
+        (0, _) => tf("{minutes} min", &[("minutes", &m)]),
+        (_, 0) => tf("{hours} h", &[("hours", &h)]),
+        _ => tf("{hours} h {minutes} min", &[("hours", &h), ("minutes", &m)]),
     }
 }
 
@@ -2361,21 +2365,21 @@ async fn youtrack_get(
         .send()
         .await
         // Without the URL: a self-hosted address is the user's business, not the log's.
-        .map_err(|e| (0, format!("No connection: {}", e.without_url())))?;
+        .map_err(|e| (0, crate::i18n::tf("No connection: {error}", &[("error", &e.without_url().to_string())])))?;
     let code = response.status().as_u16();
     if !response.status().is_success() {
-        return Err((code, status_error(code, "This token can't read YouTrack (403)")));
+        return Err((code, status_error(code, &crate::i18n::t("This token can't read YouTrack (403)"))));
     }
     // A wrong path often lands on an HTML page with a 200.
     response
         .json::<Value>()
         .await
-        .map_err(|_| (code, "Unexpected answer from YouTrack — check the URL".into()))
+        .map_err(|_| (code, crate::i18n::t("Unexpected answer from YouTrack — check the URL")))
 }
 
 /// The first request's error: a 404 there means the URL is not YouTrack's.
 fn youtrack_error((code, error): (u16, String)) -> String {
-    if code == 404 { "Not a YouTrack address (404) — check the URL".into() } else { error }
+    if code == 404 { crate::i18n::t("Not a YouTrack address (404) — check the URL") } else { error }
 }
 
 /// The signed-in user's login, which also proves the URL and the token.
@@ -2383,7 +2387,7 @@ async fn youtrack_me(http: &reqwest::Client, base: &str, token: &str) -> Result<
     let me = youtrack_get(http, base, token, "users/me", &[("fields", "login")]).await.map_err(youtrack_error)?;
     Some(s(&me, "login"))
         .filter(|l| !l.is_empty())
-        .ok_or_else(|| "Unexpected answer from YouTrack — check the URL".into())
+        .ok_or_else(|| crate::i18n::t("Unexpected answer from YouTrack — check the URL"))
 }
 
 async fn poll_youtrack(app: AppHandle) {
@@ -2396,7 +2400,7 @@ async fn poll_youtrack(app: AppHandle) {
         Err(e) => return fail(e),
     };
     let Some(query_id) = youtrack_query_id() else {
-        return fail("Choose a saved search in Settings → Integrations".into());
+        return fail(crate::i18n::t("Choose a saved search in Settings → Integrations"));
     };
     let http = client();
     let me = match youtrack_me(&http, &base, &token).await {
@@ -2406,7 +2410,7 @@ async fn poll_youtrack(app: AppHandle) {
 
     let saved = match youtrack_get(&http, &base, &token, &format!("savedQueries/{query_id}"), &[("fields", "name,query")]).await {
         Ok(v) => v,
-        Err((404, _)) => return fail("The saved search is gone — choose another in Settings".into()),
+        Err((404, _)) => return fail(crate::i18n::t("The saved search is gone — choose another in Settings")),
         Err((_, e)) => return fail(e),
     };
     let name = s(&saved, "name");
@@ -2420,7 +2424,7 @@ async fn poll_youtrack(app: AppHandle) {
     ];
     let issues = match youtrack_get(&http, &base, &token, "issues", &params).await {
         Ok(v) => v.as_array().cloned().unwrap_or_default(),
-        Err((400, _)) => return fail("YouTrack can't run this saved search (400)".into()),
+        Err((400, _)) => return fail(crate::i18n::t("YouTrack can't run this saved search (400)")),
         Err((_, e)) => return fail(e),
     };
 
@@ -2505,7 +2509,7 @@ pub struct YoutrackSearches {
 }
 
 pub async fn youtrack_saved_searches() -> Result<YoutrackSearches, String> {
-    let token = secrets::get("youtrack-token").ok_or("Save the token first")?;
+    let token = secrets::get("youtrack-token").ok_or_else(|| crate::i18n::t("Save the token first"))?;
     let base = youtrack_base()?;
     let http = client();
     let me = youtrack_me(&http, &base, &token).await?;
@@ -3215,7 +3219,7 @@ mod youtrack_tests {
         points["field"] = json!({ "name": "Story points", "customField": { "fieldType": { "id": "integer" } } });
         let changes = youtrack_changes(&[change, estimate, points], "me");
         let texts: Vec<&str> = changes["P-1"].iter().map(|l| l["text"].as_str().unwrap()).collect();
-        assert_eq!(texts, vec!["Spent time: 45m → 1h 30m", "Estimation: 8h", "Story points: 3 → 5"]);
-        assert_eq!(youtrack_duration(120), "2h");
+        assert_eq!(texts, vec!["Spent time: 45 min → 1 h 30 min", "Estimation: 8 h", "Story points: 3 → 5"]);
+        assert_eq!(youtrack_duration(120), "2 h");
     }
 }

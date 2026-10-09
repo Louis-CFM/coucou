@@ -884,7 +884,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_youtrack", name: "YouTrack", color: "#FF318C",
     fields: [
       { key: "youtrack-url", label: N_("Instance URL"), placeholder: "https://youtrack.example.com", secret: false },
-      { key: "youtrack-token", label: "Permanent token", placeholder: "perm:…", secret: true },
+      { key: "youtrack-token", label: N_("Permanent token"), placeholder: "perm:…", secret: true },
     ],
     extra: youtrackSearchRow },
 ];
@@ -896,7 +896,7 @@ const INTEGRATIONS: IntegrationDef[] = [
  */
 function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
   const select = h("select", { style: "flex:1 1 auto;min-width:0" }) as HTMLSelectElement;
-  const reload = h("button", { text: "Reload" });
+  const reload = h("button", { text: t("Reload") });
   const dotEl = statusDot(false);
   const hint = h("div", { class: "hint" });
 
@@ -909,7 +909,7 @@ function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
   async function load() {
     hint.textContent = "";
     if (!present["youtrack-url"] || !present["youtrack-token"]) {
-      placeholder("Save the URL and the token first");
+      placeholder(t("Save the URL and the token first"));
       dotEl.style.background = "#f4505e";
       return;
     }
@@ -917,10 +917,10 @@ function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
     try {
       const { searches, selected } = await Bridge.youtrackSavedSearches();
       clear(select);
-      select.append(h("option", { value: "", text: searches.length ? "Choose a saved search…" : "No saved search yet" }));
+      select.append(h("option", { value: "", text: searches.length ? t("Choose a saved search…") : t("No saved search yet") }));
       const groups: [string, typeof searches][] = [
         [t("Yours"), searches.filter((s) => s.mine)],
-        ["Shared with you", searches.filter((s) => !s.mine)],
+        [t("Shared with you"), searches.filter((s) => !s.mine)],
       ];
       for (const [label, list] of groups) {
         if (!list.length) continue;
@@ -931,10 +931,10 @@ function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
       const found = selected != null && searches.some((s) => s.id === selected);
       select.value = found ? selected : "";
       select.disabled = searches.length === 0;
-      if (selected && !found) hint.textContent = "The saved search Coucou followed is gone. Choose another one.";
+      if (selected && !found) hint.textContent = t("The saved search Coucou followed is gone. Choose another one.");
       dotEl.style.background = found ? "#22c55e" : "#f4505e";
     } catch (err) {
-      placeholder("Couldn't load the saved searches");
+      placeholder(t("Couldn't load the saved searches"));
       hint.textContent = String(err).replace(/^Error:\s*/, "");
       dotEl.style.background = "#f5a524";
     }
@@ -961,7 +961,7 @@ function youtrackSearchRow(present: Record<string, boolean>): HTMLElement {
   void load();
   return h("div", { style: "display:flex;flex-direction:column;gap:4px" },
     h("div", { class: "row" },
-      h("label", { style: "min-width:104px", text: "Saved search" }),
+      h("label", { style: "min-width:104px", text: t("Saved search") }),
       select, reload, dotEl,
     ),
     hint,

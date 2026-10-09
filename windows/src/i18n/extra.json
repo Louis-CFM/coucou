@@ -8429,6 +8429,433 @@
       "id": {
         "other": "{count} pembaruan YouTrack"
       }
+    },
+    "Permanent token": {
+      "zh-Hans": "永久令牌",
+      "hi": "स्थायी टोकन",
+      "es": "Token permanente",
+      "ar": "رمز دائم",
+      "fr": "Jeton permanent",
+      "bn": "স্থায়ী টোকেন",
+      "pt-BR": "Token permanente",
+      "ru": "Постоянный токен",
+      "id": "Token permanen"
+    },
+    "Reload": {
+      "zh-Hans": "重新加载",
+      "hi": "फिर से लोड करें",
+      "es": "Recargar",
+      "ar": "إعادة التحميل",
+      "fr": "Recharger",
+      "bn": "আবার লোড করুন",
+      "pt-BR": "Recarregar",
+      "ru": "Обновить",
+      "id": "Muat ulang"
+    },
+    "Choose a saved search…": {
+      "zh-Hans": "选择一个已保存的搜索…",
+      "hi": "कोई सहेजी गई खोज चुनें…",
+      "es": "Elige una búsqueda guardada…",
+      "ar": "اختر بحثًا محفوظًا…",
+      "fr": "Choisissez une recherche enregistrée…",
+      "bn": "একটি সংরক্ষিত খোঁজ বেছে নিন…",
+      "pt-BR": "Escolha uma busca salva…",
+      "ru": "Выберите сохранённый поиск…",
+      "id": "Pilih pencarian tersimpan…"
+    },
+    "No saved search yet": {
+      "zh-Hans": "还没有已保存的搜索",
+      "hi": "अभी कोई सहेजी गई खोज नहीं",
+      "es": "Aún no hay búsquedas guardadas",
+      "ar": "لا يوجد بحث محفوظ بعد",
+      "fr": "Aucune recherche enregistrée pour l'instant",
+      "bn": "এখনও কোনো সংরক্ষিত খোঁজ নেই",
+      "pt-BR": "Nenhuma busca salva ainda",
+      "ru": "Сохранённых поисков пока нет",
+      "id": "Belum ada pencarian tersimpan"
+    },
+    "Shared with you": {
+      "zh-Hans": "与你共享",
+      "hi": "आपके साथ साझा",
+      "es": "Compartidas contigo",
+      "ar": "مشتركة معك",
+      "fr": "Partagées avec vous",
+      "bn": "আপনার সাথে শেয়ার করা",
+      "pt-BR": "Compartilhadas com você",
+      "ru": "Доступные вам",
+      "id": "Dibagikan dengan Anda"
+    },
+    "The saved search Coucou followed is gone. Choose another one.": {
+      "zh-Hans": "Coucou 关注的已保存搜索不存在了，请另选一个。",
+      "hi": "Coucou जिस सहेजी गई खोज को देख रहा था वह नहीं रही। कोई दूसरी चुनें।",
+      "es": "La búsqueda guardada que seguía Coucou ya no existe. Elige otra.",
+      "ar": "البحث المحفوظ الذي كان Coucou يتابعه لم يعد موجودًا. اختر بحثًا آخر.",
+      "fr": "La recherche enregistrée que suivait Coucou n'existe plus. Choisissez-en une autre.",
+      "bn": "Coucou যে সংরক্ষিত খোঁজটি অনুসরণ করছিল সেটি আর নেই। অন্য একটি বেছে নিন।",
+      "pt-BR": "A busca salva que o Coucou seguia não existe mais. Escolha outra.",
+      "ru": "Сохранённого поиска, за которым следил Coucou, больше нет. Выберите другой.",
+      "id": "Pencarian tersimpan yang diikuti Coucou sudah tidak ada. Pilih yang lain."
+    },
+    "Couldn't load the saved searches": {
+      "zh-Hans": "无法加载已保存的搜索",
+      "hi": "सहेजी गई खोजें लोड नहीं हो सकीं",
+      "es": "No se pudieron cargar las búsquedas guardadas",
+      "ar": "تعذّر تحميل عمليات البحث المحفوظة",
+      "fr": "Impossible de charger les recherches enregistrées",
+      "bn": "সংরক্ষিত খোঁজগুলো লোড করা যায়নি",
+      "pt-BR": "Não foi possível carregar as buscas salvas",
+      "ru": "Не удалось загрузить сохранённые поиски",
+      "id": "Tidak bisa memuat pencarian tersimpan"
+    },
+    "Saved search": {
+      "zh-Hans": "已保存的搜索",
+      "hi": "सहेजी गई खोज",
+      "es": "Búsqueda guardada",
+      "ar": "بحث محفوظ",
+      "fr": "Recherche enregistrée",
+      "bn": "সংরক্ষিত খোঁজ",
+      "pt-BR": "Busca salva",
+      "ru": "Сохранённый поиск",
+      "id": "Pencarian tersimpan"
+    },
+    "Open the search in YouTrack": {
+      "zh-Hans": "在 YouTrack 中打开此搜索",
+      "hi": "खोज को YouTrack में खोलें",
+      "es": "Abrir la búsqueda en YouTrack",
+      "ar": "افتح البحث في YouTrack",
+      "fr": "Ouvrir la recherche dans YouTrack",
+      "bn": "খোঁজটি YouTrack-এ খুলুন",
+      "pt-BR": "Abrir a busca no YouTrack",
+      "ru": "Открыть поиск в YouTrack",
+      "id": "Buka pencarian di YouTrack"
+    },
+    "{count}+ issues": {
+      "zh-Hans": "{count}+ 个问题",
+      "hi": "{count}+ इश्यू",
+      "es": "{count}+ incidencias",
+      "ar": "{count}+ مشكلة",
+      "fr": "{count}+ tickets",
+      "bn": "{count}+ ইস্যু",
+      "pt-BR": "{count}+ issues",
+      "ru": "{count}+ задач",
+      "id": "{count}+ isu"
+    },
+    "{count} issues": {
+      "zh-Hans": {
+        "other": "{count} 个问题"
+      },
+      "hi": {
+        "one": "{count} इश्यू",
+        "other": "{count} इश्यू"
+      },
+      "es": {
+        "one": "{count} incidencia",
+        "other": "{count} incidencias"
+      },
+      "ar": {
+        "zero": "{count} مشكلات",
+        "one": "مشكلة واحدة",
+        "two": "مشكلتان",
+        "few": "{count} مشكلات",
+        "many": "{count} مشكلة",
+        "other": "{count} مشكلة"
+      },
+      "fr": {
+        "one": "{count} ticket",
+        "other": "{count} tickets"
+      },
+      "bn": {
+        "one": "{count}টি ইস্যু",
+        "other": "{count}টি ইস্যু"
+      },
+      "pt-BR": {
+        "one": "{count} issue",
+        "other": "{count} issues"
+      },
+      "ru": {
+        "one": "{count} задача",
+        "few": "{count} задачи",
+        "many": "{count} задач",
+        "other": "{count} задачи"
+      },
+      "id": {
+        "other": "{count} isu"
+      }
+    },
+    "updated by {name}": {
+      "zh-Hans": "由 {name} 更新",
+      "hi": "{name} ने अपडेट किया",
+      "es": "actualizada por {name}",
+      "ar": "حدّثه {name}",
+      "fr": "mis à jour par {name}",
+      "bn": "{name} আপডেট করেছেন",
+      "pt-BR": "atualizada por {name}",
+      "ru": "обновил {name}",
+      "id": "diperbarui oleh {name}"
+    },
+    "Nothing in this search": {
+      "zh-Hans": "此搜索中没有内容",
+      "hi": "इस खोज में कुछ नहीं",
+      "es": "Nada en esta búsqueda",
+      "ar": "لا شيء في هذا البحث",
+      "fr": "Rien dans cette recherche",
+      "bn": "এই খোঁজে কিছু নেই",
+      "pt-BR": "Nada nesta busca",
+      "ru": "В этом поиске пусто",
+      "id": "Tidak ada apa pun di pencarian ini"
+    },
+    "Set the YouTrack URL in Settings → Integrations": {
+      "zh-Hans": "请在 设置 → 集成 中填写 YouTrack 地址",
+      "hi": "सेटिंग्स → इंटीग्रेशन में YouTrack URL डालें",
+      "es": "Indica la URL de YouTrack en Ajustes → Integraciones",
+      "ar": "اضبط عنوان YouTrack في الإعدادات ← التكاملات",
+      "fr": "Renseignez l'URL YouTrack dans Réglages → Intégrations",
+      "bn": "সেটিংস → ইন্টিগ্রেশনে YouTrack URL দিন",
+      "pt-BR": "Defina a URL do YouTrack em Ajustes → Integrações",
+      "ru": "Укажите URL YouTrack в Настройки → Интеграции",
+      "id": "Atur URL YouTrack di Pengaturan → Integrasi"
+    },
+    "The YouTrack URL must start with https://": {
+      "zh-Hans": "YouTrack 地址必须以 https:// 开头",
+      "hi": "YouTrack URL https:// से शुरू होना चाहिए",
+      "es": "La URL de YouTrack debe empezar por https://",
+      "ar": "يجب أن يبدأ عنوان YouTrack بـ https://",
+      "fr": "L'URL YouTrack doit commencer par https://",
+      "bn": "YouTrack URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
+      "pt-BR": "A URL do YouTrack deve começar com https://",
+      "ru": "URL YouTrack должен начинаться с https://",
+      "id": "URL YouTrack harus diawali https://"
+    },
+    "Created: {title}": {
+      "zh-Hans": "已创建：{title}",
+      "hi": "बनाया गया: {title}",
+      "es": "Creada: {title}",
+      "ar": "أُنشئ: {title}",
+      "fr": "Créé : {title}",
+      "bn": "তৈরি হয়েছে: {title}",
+      "pt-BR": "Criada: {title}",
+      "ru": "Создано: {title}",
+      "id": "Dibuat: {title}"
+    },
+    "Created by {name}: {title}": {
+      "zh-Hans": "{name} 创建了：{title}",
+      "hi": "{name} ने बनाया: {title}",
+      "es": "Creada por {name}: {title}",
+      "ar": "أنشأه {name}: {title}",
+      "fr": "Créé par {name} : {title}",
+      "bn": "{name} তৈরি করেছেন: {title}",
+      "pt-BR": "Criada por {name}: {title}",
+      "ru": "Создал {name}: {title}",
+      "id": "Dibuat oleh {name}: {title}"
+    },
+    "Updated: {title}": {
+      "zh-Hans": "已更新：{title}",
+      "hi": "अपडेट हुआ: {title}",
+      "es": "Actualizada: {title}",
+      "ar": "تم التحديث: {title}",
+      "fr": "Mis à jour : {title}",
+      "bn": "আপডেট হয়েছে: {title}",
+      "pt-BR": "Atualizada: {title}",
+      "ru": "Обновлено: {title}",
+      "id": "Diperbarui: {title}"
+    },
+    "{field}: {old} → none": {
+      "zh-Hans": "{field}：{old} → 无",
+      "hi": "{field}: {old} → कुछ नहीं",
+      "es": "{field}: {old} → ninguno",
+      "ar": "{field}: {old} ← لا شيء",
+      "fr": "{field} : {old} → aucun",
+      "bn": "{field}: {old} → কিছু না",
+      "pt-BR": "{field}: {old} → nenhum",
+      "ru": "{field}: {old} → нет",
+      "id": "{field}: {old} → tidak ada"
+    },
+    "Comment deleted": {
+      "zh-Hans": "评论已删除",
+      "hi": "टिप्पणी हटाई गई",
+      "es": "Comentario eliminado",
+      "ar": "حُذف التعليق",
+      "fr": "Commentaire supprimé",
+      "bn": "মন্তব্য মুছে ফেলা হয়েছে",
+      "pt-BR": "Comentário excluído",
+      "ru": "Комментарий удалён",
+      "id": "Komentar dihapus"
+    },
+    "Comment edited": {
+      "zh-Hans": "评论已编辑",
+      "hi": "टिप्पणी संपादित की गई",
+      "es": "Comentario editado",
+      "ar": "عُدّل التعليق",
+      "fr": "Commentaire modifié",
+      "bn": "মন্তব্য সম্পাদিত",
+      "pt-BR": "Comentário editado",
+      "ru": "Комментарий изменён",
+      "id": "Komentar diedit"
+    },
+    "Title changed": {
+      "zh-Hans": "标题已更改",
+      "hi": "शीर्षक बदला गया",
+      "es": "Título cambiado",
+      "ar": "تغيّر العنوان",
+      "fr": "Titre modifié",
+      "bn": "শিরোনাম বদলানো হয়েছে",
+      "pt-BR": "Título alterado",
+      "ru": "Заголовок изменён",
+      "id": "Judul diubah"
+    },
+    "Description edited": {
+      "zh-Hans": "描述已编辑",
+      "hi": "विवरण संपादित किया गया",
+      "es": "Descripción editada",
+      "ar": "عُدّل الوصف",
+      "fr": "Description modifiée",
+      "bn": "বিবরণ সম্পাদিত",
+      "pt-BR": "Descrição editada",
+      "ru": "Описание изменено",
+      "id": "Deskripsi diedit"
+    },
+    "Attached {name}": {
+      "zh-Hans": "附加了 {name}",
+      "hi": "{name} संलग्न किया",
+      "es": "Adjuntado {name}",
+      "ar": "أُرفق {name}",
+      "fr": "Pièce jointe : {name}",
+      "bn": "{name} সংযুক্ত করা হয়েছে",
+      "pt-BR": "Anexado {name}",
+      "ru": "Прикреплён {name}",
+      "id": "Melampirkan {name}"
+    },
+    "Attachment removed: {name}": {
+      "zh-Hans": "附件已移除：{name}",
+      "hi": "अटैचमेंट हटाया गया: {name}",
+      "es": "Adjunto eliminado: {name}",
+      "ar": "أُزيل المرفق: {name}",
+      "fr": "Pièce jointe retirée : {name}",
+      "bn": "সংযুক্তি সরানো হয়েছে: {name}",
+      "pt-BR": "Anexo removido: {name}",
+      "ru": "Вложение удалено: {name}",
+      "id": "Lampiran dihapus: {name}"
+    },
+    "Linked to {issue}": {
+      "zh-Hans": "已关联到 {issue}",
+      "hi": "{issue} से जोड़ा गया",
+      "es": "Vinculada a {issue}",
+      "ar": "رُبط بـ {issue}",
+      "fr": "Lié à {issue}",
+      "bn": "{issue}-এর সাথে যুক্ত",
+      "pt-BR": "Vinculada a {issue}",
+      "ru": "Связано с {issue}",
+      "id": "Ditautkan ke {issue}"
+    },
+    "Unlinked from {issue}": {
+      "zh-Hans": "已取消与 {issue} 的关联",
+      "hi": "{issue} से अलग किया गया",
+      "es": "Desvinculada de {issue}",
+      "ar": "أُلغي الربط بـ {issue}",
+      "fr": "Délié de {issue}",
+      "bn": "{issue} থেকে বিচ্ছিন্ন",
+      "pt-BR": "Desvinculada de {issue}",
+      "ru": "Связь с {issue} удалена",
+      "id": "Tautan ke {issue} dilepas"
+    },
+    "{minutes} min": {
+      "zh-Hans": "{minutes} 分钟",
+      "hi": "{minutes} मि.",
+      "es": "{minutes} min",
+      "ar": "{minutes} د",
+      "fr": "{minutes} min",
+      "bn": "{minutes} মি.",
+      "pt-BR": "{minutes} min",
+      "ru": "{minutes} мин",
+      "id": "{minutes} mnt"
+    },
+    "{hours} h": {
+      "zh-Hans": "{hours} 小时",
+      "hi": "{hours} घं.",
+      "es": "{hours} h",
+      "ar": "{hours} س",
+      "fr": "{hours} h",
+      "bn": "{hours} ঘ.",
+      "pt-BR": "{hours} h",
+      "ru": "{hours} ч",
+      "id": "{hours} j"
+    },
+    "This token can't read YouTrack (403)": {
+      "zh-Hans": "此令牌无法读取 YouTrack（403）",
+      "hi": "यह टोकन YouTrack नहीं पढ़ सकता (403)",
+      "es": "Este token no puede leer YouTrack (403)",
+      "ar": "لا يستطيع هذا الرمز قراءة YouTrack (403)",
+      "fr": "Ce jeton ne peut pas lire YouTrack (403)",
+      "bn": "এই টোকেন YouTrack পড়তে পারে না (403)",
+      "pt-BR": "Este token não consegue ler o YouTrack (403)",
+      "ru": "Этот токен не может читать YouTrack (403)",
+      "id": "Token ini tidak bisa membaca YouTrack (403)"
+    },
+    "Unexpected answer from YouTrack — check the URL": {
+      "zh-Hans": "YouTrack 返回了意外的响应 — 请检查地址",
+      "hi": "YouTrack से अनपेक्षित जवाब — URL जाँचें",
+      "es": "Respuesta inesperada de YouTrack — revisa la URL",
+      "ar": "رد غير متوقع من YouTrack — تحقق من العنوان",
+      "fr": "Réponse inattendue de YouTrack — vérifiez l'URL",
+      "bn": "YouTrack থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
+      "pt-BR": "Resposta inesperada do YouTrack — verifique a URL",
+      "ru": "Неожиданный ответ YouTrack — проверьте URL",
+      "id": "Jawaban tak terduga dari YouTrack — periksa URL-nya"
+    },
+    "Not a YouTrack address (404) — check the URL": {
+      "zh-Hans": "不是 YouTrack 地址（404）— 请检查地址",
+      "hi": "यह YouTrack पता नहीं है (404) — URL जाँचें",
+      "es": "No es una dirección de YouTrack (404) — revisa la URL",
+      "ar": "ليس عنوان YouTrack (404) — تحقق من العنوان",
+      "fr": "Ce n'est pas une adresse YouTrack (404) — vérifiez l'URL",
+      "bn": "এটি YouTrack ঠিকানা নয় (404) — URL দেখুন",
+      "pt-BR": "Não é um endereço do YouTrack (404) — verifique a URL",
+      "ru": "Это не адрес YouTrack (404) — проверьте URL",
+      "id": "Bukan alamat YouTrack (404) — periksa URL-nya"
+    },
+    "Choose a saved search in Settings → Integrations": {
+      "zh-Hans": "请在 设置 → 集成 中选择一个已保存的搜索",
+      "hi": "सेटिंग्स → इंटीग्रेशन में कोई सहेजी गई खोज चुनें",
+      "es": "Elige una búsqueda guardada en Ajustes → Integraciones",
+      "ar": "اختر بحثًا محفوظًا في الإعدادات ← التكاملات",
+      "fr": "Choisissez une recherche enregistrée dans Réglages → Intégrations",
+      "bn": "সেটিংস → ইন্টিগ্রেশনে একটি সংরক্ষিত খোঁজ বেছে নিন",
+      "pt-BR": "Escolha uma busca salva em Ajustes → Integrações",
+      "ru": "Выберите сохранённый поиск в Настройки → Интеграции",
+      "id": "Pilih pencarian tersimpan di Pengaturan → Integrasi"
+    },
+    "The saved search is gone — choose another in Settings": {
+      "zh-Hans": "已保存的搜索不存在了 — 请在设置中另选一个",
+      "hi": "सहेजी गई खोज नहीं रही — सेटिंग्स में कोई दूसरी चुनें",
+      "es": "La búsqueda guardada ya no existe — elige otra en Ajustes",
+      "ar": "البحث المحفوظ لم يعد موجودًا — اختر غيره في الإعدادات",
+      "fr": "La recherche enregistrée n'existe plus — choisissez-en une autre dans les Réglages",
+      "bn": "সংরক্ষিত খোঁজটি আর নেই — সেটিংসে অন্য একটি বেছে নিন",
+      "pt-BR": "A busca salva não existe mais — escolha outra em Ajustes",
+      "ru": "Сохранённого поиска больше нет — выберите другой в настройках",
+      "id": "Pencarian tersimpan sudah tidak ada — pilih yang lain di Pengaturan"
+    },
+    "YouTrack can't run this saved search (400)": {
+      "zh-Hans": "YouTrack 无法执行此已保存的搜索（400）",
+      "hi": "YouTrack यह सहेजी गई खोज नहीं चला सकता (400)",
+      "es": "YouTrack no puede ejecutar esta búsqueda guardada (400)",
+      "ar": "لا يستطيع YouTrack تشغيل هذا البحث المحفوظ (400)",
+      "fr": "YouTrack ne peut pas exécuter cette recherche enregistrée (400)",
+      "bn": "YouTrack এই সংরক্ষিত খোঁজ চালাতে পারছে না (400)",
+      "pt-BR": "O YouTrack não consegue executar esta busca salva (400)",
+      "ru": "YouTrack не может выполнить этот сохранённый поиск (400)",
+      "id": "YouTrack tidak bisa menjalankan pencarian tersimpan ini (400)"
+    },
+    "Save the token first": {
+      "zh-Hans": "请先保存令牌",
+      "hi": "पहले टोकन सहेजें",
+      "es": "Guarda primero el token",
+      "ar": "احفظ الرمز أولًا",
+      "fr": "Enregistrez d'abord le jeton",
+      "bn": "আগে টোকেন সংরক্ষণ করুন",
+      "pt-BR": "Salve primeiro o token",
+      "ru": "Сначала сохраните токен",
+      "id": "Simpan token dulu"
     }
   }
 }

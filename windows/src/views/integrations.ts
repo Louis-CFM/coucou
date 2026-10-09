@@ -131,7 +131,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Open YouTrack",
+        text: t("Open {name}", { name: "YouTrack" }),
         onclick: () => void Bridge.openYoutrack(),
       }),
     );
@@ -493,12 +493,12 @@ function youtrackCard(): HTMLElement {
     "button",
     {
       class: "int-total int-review",
-      title: "Open the search in YouTrack",
+      title: t("Open the search in YouTrack"),
       onclick: () => void Bridge.openYoutrack(`/issues?q=${encodeURIComponent(query)}`),
     },
     h("span", {
       style: count > 0 ? "color:#FF318C" : "color:var(--dim-3)",
-      text: `${count}${d.capped ? "+" : ""} ${count === 1 ? "issue" : "issues"}`,
+      text: d.capped ? t("{count}+ issues", { count }) : tn("{count} issue", "{count} issues", count),
     }),
   );
 
@@ -513,7 +513,7 @@ function youtrackCard(): HTMLElement {
   }
   for (const i of arr("integration_youtrack", "issues")) {
     if (told.has(String(i.id))) continue;
-    const tip = [i.id, i.by ? `updated by ${String(i.by)}` : ""].filter(Boolean).join(" · ");
+    const tip = [i.id, i.by ? t("updated by {name}", { name: String(i.by) }) : ""].filter(Boolean).join(" · ");
     rows.append(linkRow(i.resolved ? "#6B7079" : "#FF318C", false, i.url, tip,
       h("span", { class: "int-name", style: "flex:0 1 auto", text: String(i.summary ?? "") }),
       // An id is short and useless cut: the summary gives way instead.
@@ -522,9 +522,9 @@ function youtrackCard(): HTMLElement {
     ));
     shown++;
   }
-  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing in this search" }));
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: t("Nothing in this search") }));
   keepScroll(rows, "integration_youtrack");
-  const kind = String(d.queryName ?? "") || "Saved search";
+  const kind = String(d.queryName ?? "") || t("Saved search");
   return h("div", { class: "int-card youtrack" }, header("#FF318C", "YouTrack", kind, extra), rows);
 }
 
