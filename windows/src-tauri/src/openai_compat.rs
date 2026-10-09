@@ -40,8 +40,21 @@ pub const PROVIDERS: &[Provider] = &[
         models_path: "models",
         default_model: "gpt-4o",
         not_chat: &[
-            "embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat", "codex",
-            "computer-use", "transcribe", "image", "sora", "babbage", "davinci", "instruct",
+            "embed",
+            "tts",
+            "whisper",
+            "dall-e",
+            "audio",
+            "realtime",
+            "moderat",
+            "codex",
+            "computer-use",
+            "transcribe",
+            "image",
+            "sora",
+            "babbage",
+            "davinci",
+            "instruct",
         ],
         max_tokens_field: "max_completion_tokens",
     },
@@ -93,10 +106,16 @@ fn user_message(first: bool, context: Option<&ChatContext>, query: &str) -> Valu
                 image = Some(part);
                 prefix = format!("File: {name}\n\n");
             }
-            Some(FilePart::Text(body)) => prefix = format!("File: {name}\nFile contents:\n{body}\n\n"),
+            Some(FilePart::Text(body)) => {
+                prefix = format!("File: {name}\nFile contents:\n{body}\n\n")
+            }
             None => prefix = format!("File: {name}\n\n"),
         },
-        Some(ChatContext::Window { app_name, title, url }) => {
+        Some(ChatContext::Window {
+            app_name,
+            title,
+            url,
+        }) => {
             prefix = format!("{}\n\n", chat::window_line(app_name, title, url.as_deref()));
         }
         None => {}
@@ -104,7 +123,9 @@ fn user_message(first: bool, context: Option<&ChatContext>, query: &str) -> Valu
     let text = format!("{prefix}{query}");
     match image {
         None => json!({ "role": "user", "content": text }),
-        Some(part) => json!({ "role": "user", "content": [part, { "type": "text", "text": text }] }),
+        Some(part) => {
+            json!({ "role": "user", "content": [part, { "type": "text", "text": text }] })
+        }
     }
 }
 
@@ -141,12 +162,18 @@ fn status_error(p: &Provider, status: u16, detail: &str) -> String {
             "{name} rejected the API key ({status}). Check it in Settings.",
             &[("name", p.name), ("status", &status.to_string())],
         ),
-        402 => tf("{name}: not enough credits (402). {detail}", &[("name", p.name), ("detail", detail)]),
+        402 => tf(
+            "{name}: not enough credits (402). {detail}",
+            &[("name", p.name), ("detail", detail)],
+        ),
         404 => tf(
             "{name}: model not found (404). Pick another one above the chat box. {detail}",
             &[("name", p.name), ("detail", detail)],
         ),
-        429 => tf("{name} rate limit reached (429): {detail}", &[("name", p.name), ("detail", detail)]),
+        429 => tf(
+            "{name} rate limit reached (429): {detail}",
+            &[("name", p.name), ("detail", detail)],
+        ),
         _ => format!("{} {status}: {detail}", p.name),
     }
 }
@@ -159,9 +186,17 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get(p.key).ok_or_else(|| tf("{name} API key missing. Add it in Settings.", &[("name", p.name)]))?;
+    let key = secrets::get(p.key).ok_or_else(|| {
+        tf(
+            "{name} API key missing. Add it in Settings.",
+            &[("name", p.name)],
+        )
+    })?;
     if model.is_empty() {
-        return Err(tf("Pick a {name} model above the chat box.", &[("name", p.name)]));
+        return Err(tf(
+            "Pick a {name} model above the chat box.",
+            &[("name", p.name)],
+        ));
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
@@ -177,15 +212,24 @@ pub async fn send(
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
-        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        let body = net::read_capped(response, net::MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
+    let json: Value = serde_json::from_slice(&bytes)
+        .map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
     let text = reply_text(p, &json)?;
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
-    chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);
+    chat.commit(
+        &turn,
+        user,
+        json!({ "role": "assistant", "content": text }),
+        &plain,
+        &text,
+    );
     Ok(ChatReply { text })
 }
 
@@ -201,7 +245,9 @@ pub async fn models(p: &Provider, key: &str) -> Result<Vec<ModelInfo>, String> {
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
-        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        let body = net::read_capped(response, net::MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
@@ -210,7 +256,11 @@ pub async fn models(p: &Provider, key: &str) -> Result<Vec<ModelInfo>, String> {
 }
 
 fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
-    let items = json.get("data").and_then(Value::as_array).cloned().unwrap_or_default();
+    let items = json
+        .get("data")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
     let mut models: Vec<(ModelInfo, i64, bool)> = items
         .iter()
         .filter(|m| {
@@ -230,7 +280,11 @@ fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
             let created = m.get("created").and_then(Value::as_i64).unwrap_or(0);
             let free = p.id == "openrouter" && is_free(m, &id);
             let name = m.get("name").and_then(Value::as_str).unwrap_or(&id);
-            let label = if free && !name.to_lowercase().contains("(free)") { format!("{name} (free)") } else { name.to_string() };
+            let label = if free && !name.to_lowercase().contains("(free)") {
+                format!("{name} (free)")
+            } else {
+                name.to_string()
+            };
             Some((ModelInfo { id, label }, created, free))
         })
         .collect();
@@ -239,7 +293,8 @@ fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
         "openai" => models.sort_by_key(|m| std::cmp::Reverse(m.1)),
         // Free models first, then by name.
         "openrouter" => models.sort_by(|a, b| {
-            b.2.cmp(&a.2).then_with(|| a.0.label.to_lowercase().cmp(&b.0.label.to_lowercase()))
+            b.2.cmp(&a.2)
+                .then_with(|| a.0.label.to_lowercase().cmp(&b.0.label.to_lowercase()))
         }),
         _ => {}
     }
@@ -282,7 +337,9 @@ fn file_part(path: &str) -> Option<FilePart> {
         }
         let bytes = std::fs::read(path).ok()?;
         let url = format!("data:{media};base64,{}", crate::claude::base64_for(&bytes));
-        return Some(FilePart::Image(json!({ "type": "image_url", "image_url": { "url": url } })));
+        return Some(FilePart::Image(
+            json!({ "type": "image_url", "image_url": { "url": url } }),
+        ));
     }
     if ext == "pdf" || len > MAX_INLINE_TEXT {
         return None;
@@ -300,14 +357,24 @@ mod tests {
 
     #[test]
     fn the_table_points_at_each_providers_own_api_and_key() {
-        assert_eq!(url(p("openai"), "chat/completions").unwrap().as_str(), "https://api.openai.com/v1/chat/completions");
+        assert_eq!(
+            url(p("openai"), "chat/completions").unwrap().as_str(),
+            "https://api.openai.com/v1/chat/completions"
+        );
         assert_eq!(
             url(p("google"), "chat/completions").unwrap().as_str(),
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         );
-        assert_eq!(url(p("openrouter"), "models").unwrap().as_str(), "https://openrouter.ai/api/v1/models");
+        assert_eq!(
+            url(p("openrouter"), "models").unwrap().as_str(),
+            "https://openrouter.ai/api/v1/models"
+        );
         for prov in PROVIDERS {
-            assert!(crate::secrets::KNOWN_KEYS.contains(&prov.key), "{}", prov.key);
+            assert!(
+                crate::secrets::KNOWN_KEYS.contains(&prov.key),
+                "{}",
+                prov.key
+            );
             assert!(prov.base_url.starts_with("https://"));
         }
         assert!(provider("anthropic").is_none());
@@ -316,7 +383,10 @@ mod tests {
 
     #[test]
     fn the_request_is_system_then_history_then_the_new_turn() {
-        let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
+        let history = vec![
+            json!({"role":"user","content":"a"}),
+            json!({"role":"assistant","content":"b"}),
+        ];
         let user = user_message(false, None, "c");
         assert_eq!(user, json!({"role":"user","content":"c"}));
         let body = request_body(p("google"), "gemini-x", "sys", &history, &user);
@@ -339,7 +409,10 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let txt = dir.join("notes.txt");
         std::fs::write(&txt, "hello").unwrap();
-        let ctx = ChatContext::File { name: "notes.txt".into(), path: txt.to_string_lossy().into() };
+        let ctx = ChatContext::File {
+            name: "notes.txt".into(),
+            path: txt.to_string_lossy().into(),
+        };
         assert_eq!(
             user_message(true, Some(&ctx), "sum up")["content"],
             "File: notes.txt\nFile contents:\nhello\n\nsum up"
@@ -348,21 +421,43 @@ mod tests {
 
         let png = dir.join("pic.png");
         std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
-        let ctx = ChatContext::File { name: "pic.png".into(), path: png.to_string_lossy().into() };
+        let ctx = ChatContext::File {
+            name: "pic.png".into(),
+            path: png.to_string_lossy().into(),
+        };
         let msg = user_message(true, Some(&ctx), "what is it?");
         let parts = msg["content"].as_array().unwrap();
         assert_eq!(parts[0]["type"], "image_url");
-        assert!(parts[0]["image_url"]["url"].as_str().unwrap().starts_with("data:image/png;base64,"));
-        assert_eq!(parts[1], json!({"type":"text","text":"File: pic.png\n\nwhat is it?"}));
+        assert!(parts[0]["image_url"]["url"]
+            .as_str()
+            .unwrap()
+            .starts_with("data:image/png;base64,"));
+        assert_eq!(
+            parts[1],
+            json!({"type":"text","text":"File: pic.png\n\nwhat is it?"})
+        );
 
         let pdf = dir.join("doc.pdf");
         std::fs::write(&pdf, "%PDF").unwrap();
-        let ctx = ChatContext::File { name: "doc.pdf".into(), path: pdf.to_string_lossy().into() };
-        assert_eq!(user_message(true, Some(&ctx), "q")["content"], "File: doc.pdf\n\nq");
+        let ctx = ChatContext::File {
+            name: "doc.pdf".into(),
+            path: pdf.to_string_lossy().into(),
+        };
+        assert_eq!(
+            user_message(true, Some(&ctx), "q")["content"],
+            "File: doc.pdf\n\nq"
+        );
         let _ = std::fs::remove_dir_all(dir);
 
-        let ctx = ChatContext::Window { app_name: "Code".into(), title: "x".into(), url: None };
-        assert_eq!(user_message(true, Some(&ctx), "q")["content"], "Context — App: Code, Window: x\n\nq");
+        let ctx = ChatContext::Window {
+            app_name: "Code".into(),
+            title: "x".into(),
+            url: None,
+        };
+        assert_eq!(
+            user_message(true, Some(&ctx), "q")["content"],
+            "Context — App: Code, Window: x\n\nq"
+        );
     }
 
     #[test]
@@ -370,15 +465,24 @@ mod tests {
         let ok = json!({"choices":[{"message":{"role":"assistant","content":"  Hi!  "}}]});
         assert_eq!(reply_text(p("openai"), &ok).unwrap(), "Hi!");
         let failed = json!({"error":{"message":"upstream down"}});
-        assert_eq!(reply_text(p("openrouter"), &failed).unwrap_err(), "OpenRouter: upstream down");
-        assert_eq!(reply_text(p("google"), &json!({"choices":[]})).unwrap_err(), "No response text.");
+        assert_eq!(
+            reply_text(p("openrouter"), &failed).unwrap_err(),
+            "OpenRouter: upstream down"
+        );
+        assert_eq!(
+            reply_text(p("google"), &json!({"choices":[]})).unwrap_err(),
+            "No response text."
+        );
     }
 
     #[test]
     fn status_errors_say_what_to_do() {
         assert!(status_error(p("openai"), 401, "x").contains("rejected the API key"));
         assert!(status_error(p("openrouter"), 402, "x").contains("credits"));
-        assert_eq!(status_error(p("google"), 500, "boom"), "Google AI 500: boom");
+        assert_eq!(
+            status_error(p("google"), 500, "boom"),
+            "Google AI 500: boom"
+        );
     }
 
     #[test]
@@ -390,7 +494,10 @@ mod tests {
             {"id":"whisper-1","created":400},
             {"id":"dall-e-3","created":500}
         ]});
-        let ids: Vec<_> = parse_models(p("openai"), &openai).into_iter().map(|m| m.id).collect();
+        let ids: Vec<_> = parse_models(p("openai"), &openai)
+            .into_iter()
+            .map(|m| m.id)
+            .collect();
         assert_eq!(ids, vec!["gpt-5-mini", "gpt-4o"]);
 
         let google = json!({"data":[
@@ -399,7 +506,10 @@ mod tests {
             {"id":"gemini-2.5-pro"},
             {"id":"models/imagen-3.0"}
         ]});
-        let ids: Vec<_> = parse_models(p("google"), &google).into_iter().map(|m| m.id).collect();
+        let ids: Vec<_> = parse_models(p("google"), &google)
+            .into_iter()
+            .map(|m| m.id)
+            .collect();
         assert_eq!(ids, vec!["gemini-2.0-flash", "gemini-2.5-pro"]);
 
         let openrouter = json!({"data":[

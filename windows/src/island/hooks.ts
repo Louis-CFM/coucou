@@ -8,7 +8,8 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
-import { State, type AskedQuestion } from "../core/state";
+import { State, type AgentTask, type AskedQuestion } from "../core/state";
+import type { IslandMode, IslandViewName } from "../core/layout";
 import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
@@ -35,13 +36,103 @@ function dropPendingCard(island: Island): void {
 
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
+const stopSessions = new Map<string, string>();
+
+const finishedQueue: AgentTask[] = [];
+let finishedTimer: number | null = null;
+let finishedReturn: { mode: IslandMode; view: IslandViewName } | null = null;
+
+function restoreFinishedIsland(island: Island, hideFolded = true) {
+  const previous = finishedReturn;
+  finishedReturn = null;
+  if (!previous) return;
+  if (State.mode === "expanded" && State.view === "finished") {
+    if (previous.mode === "hidden") island.hide();
+    else if (previous.mode === "compact") island.collapse();
+    else island.setView(previous.view);
+  } else if (hideFolded && State.mode === "compact" && previous.mode === "hidden") {
+    island.hide();
+  }
+}
+
+function showFinished(island: Island, answer: AgentTask) {
+  State.finishedPopup = answer;
+  State.setPillBadge(answer.id, null);
+  if (State.mode === "expanded") island.setView("finished");
+  else island.alert("finished");
+  State.notify();
+  finishedTimer = window.setTimeout(() => {
+    finishedTimer = null;
+    // A user-selected view, pill, hover, drag or permission takes priority.
+    if (State.finishedPopup !== answer || !island.canAutoPopup()) {
+      finishedQueue.length = 0;
+      finishedReturn = null;
+      return;
+    }
+    const next = finishedQueue.shift();
+    if (next) showFinished(island, next);
+    else {
+      restoreFinishedIsland(island);
+      State.finishedPopup = null;
+      State.notify();
+    }
+  }, Math.max(0, State.settings.autoCloseInterval) * 1000);
+}
+
+function notifyFinished(island: Island, task: AgentTask) {
+  if (!island.canAutoPopup()) {
+    State.setPillBadge(task.id, "finished");
+    return;
+  }
+  // The Stop cleanup can remove a dynamic pill before its queued turn arrives.
+  const answer = { ...task, steps: [...task.steps] };
+  if (finishedTimer != null) {
+    finishedQueue.push(answer);
+    State.setPillBadge(task.id, "finished");
+    return;
+  }
+  finishedReturn = { mode: State.mode, view: State.view };
+  showFinished(island, answer);
+}
+
+function supersedeFinished(island: Island, id: string) {
+  for (let i = finishedQueue.length - 1; i >= 0; i--) {
+    if (finishedQueue[i].id === id) finishedQueue.splice(i, 1);
+  }
+  if (State.finishedPopup?.id !== id) return;
+  const canContinue = island.canAutoPopup();
+  if (finishedTimer != null) window.clearTimeout(finishedTimer);
+  finishedTimer = null;
+  State.finishedPopup = null;
+  if (finishedQueue.length && canContinue) showFinished(island, finishedQueue.shift()!);
+  else {
+    finishedQueue.length = 0;
+    restoreFinishedIsland(island, false);
+    State.notify();
+  }
+}
 
 function cancelStopTimer(id: string): boolean {
   const timer = stopTimers.get(id);
   if (timer == null) return false;
   window.clearTimeout(timer);
   stopTimers.delete(id);
+  stopSessions.delete(id);
   return true;
+}
+
+function scheduleStopCleanup(id: string, isExternalAgent: boolean, sessionId: string) {
+  cancelStopTimer(id);
+  stopSessions.set(id, sessionId);
+  stopTimers.set(id, window.setTimeout(() => {
+    stopTimers.delete(id);
+    stopSessions.delete(id);
+    if (isExternalAgent) State.removeTask(id);
+    else {
+      State.updateTask(id, "idle");
+      State.setPillBadge(id, null);
+    }
+  }, 5200));
 }
 
 /** Events after which a pending permission request of the same session is moot. */
@@ -227,10 +318,17 @@ function recordDiff(agentId: string, payload: HookPayload) {
 export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
-  void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  return onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
 }
 
 function handleHook(island: Island, payload: HookPayload) {
+  // User navigation or a permission card may dismiss the popup between hooks.
+  if (finishedTimer != null && State.finishedPopup === null) {
+    window.clearTimeout(finishedTimer);
+    finishedTimer = null;
+    finishedQueue.length = 0;
+    finishedReturn = null;
+  }
   // Account-wide numbers from the status line relay, not part of any session:
   // keep the latest, nothing else (no reveal, no sound), paused or not.
   if (payload.hook_event_name === "StatusLine") {
@@ -261,6 +359,20 @@ function handleHook(island: Island, payload: HookPayload) {
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
 
+  // Both Antigravity apps share one pill; only the latest conversation owns its steps.
+  if (validAgent === "antigravity") {
+    const current = State.tasks.find((task) => task.id === agentId);
+    if (sessionId && current?.sessionId && current.sessionId !== sessionId) {
+      if (name !== "UserPromptSubmit") return;
+      current.steps = [];
+      current.stepIndex = 0;
+      delete current.stepSeq;
+      current.finalLine = null;
+      current.pillBadge = null;
+      State.clearSessionDiffs(agentId);
+    }
+  }
+
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
     if (State.mode === "expanded") {
@@ -290,6 +402,7 @@ function handleHook(island: Island, payload: HookPayload) {
    * badge that timer was going to clear goes now.
    */
   const supersedeStop = () => {
+    supersedeFinished(island, agentId);
     if (cancelStopTimer(agentId)) State.setPillBadge(agentId, null);
   };
 
@@ -316,6 +429,7 @@ function handleHook(island: Island, payload: HookPayload) {
   switch (name) {
     case "SessionStart":
       ensurePill();
+      supersedeFinished(island, agentId);
       clearFinalLine(agentId);
       // Hermes through its gateway says where the session comes from.
       if (validAgent === "hermes" && payload.platform && payload.platform !== "cli") {
@@ -330,9 +444,11 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
-      // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      // User input is not agent output; use the ticker's neutral activity label.
+      State.appendStep(agentId, "…");
+      if (focused && State.mode === "expanded" && State.view === "finished") {
+        island.setView(State.defaultView());
+      }
       surface("overview", false);
       break;
     }
@@ -386,34 +502,31 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      const current = State.tasks.find((x) => x.id === agentId);
+      if (sessionId && current?.sessionId && sessionId !== current.sessionId) break;
+      if (!current) ensurePill();
+      const finalText = toOneLine(payload.last_assistant_message ?? payload.message ?? "");
+      // A repeated Stop for the same turn must not replay sound or popup.
+      if (current?.state === "finished" && stopTimers.has(agentId) &&
+        stopSessions.get(agentId) === sessionId &&
+        (current.finalLine ?? "") === finalText) {
+        scheduleStopCleanup(agentId, isExternalAgent, sessionId);
+        break;
+      }
       State.updateTask(agentId, "finished");
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other
       // agents report their last words the same way (Hermes, Codex) or as
       // `message`.
-      const finalText = toOneLine(payload.last_assistant_message ?? payload.message ?? "");
       if (finalText) {
         State.appendStep(agentId, finalText);
-        const t = State.tasks.find((x) => x.id === agentId);
-        if (t) t.finalLine = finalText;
       }
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t) t.finalLine = finalText || null;
       Sound.play("finish");
-      // A card waiting for an answer is never covered by another alert.
-      if (focused && !State.pendingApproval) surface("finished", true);
-      else State.setPillBadge(agentId, "finished");
-      cancelStopTimer(agentId);
-      stopTimers.set(
-        agentId,
-        window.setTimeout(() => {
-          stopTimers.delete(agentId);
-          if (isExternalAgent) {
-            State.removeTask(agentId);
-          } else {
-            State.updateTask(agentId, "idle");
-            State.setPillBadge(agentId, null);
-          }
-        }, 5200),
-      );
+      // The answer card is tied to the sender, not the Main Tool or focused pill.
+      if (t) notifyFinished(island, t);
+      scheduleStopCleanup(agentId, isExternalAgent, sessionId);
       break;
     }
 

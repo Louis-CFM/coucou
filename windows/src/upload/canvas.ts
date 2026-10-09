@@ -173,15 +173,17 @@ export class UploadCanvas {
   // ── Scene ─────────────────────────────────────────────────────────────────
 
   private drawScene(ctx: CanvasRenderingContext2D, f: UploadFrame, wallTime: number) {
-    // Island background.
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    // The island's CSS surface stays visible throughout the upload sequence.
+    if (State.settings.islandAppearance === "original") {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    }
 
     // Card.
     ctx.save();
     rr(ctx, USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H, USC.CARD_R);
     ctx.clip();
-    ctx.fillStyle = "#0D0E10";
+    ctx.fillStyle = State.settings.islandAppearance === "original" ? "#0D0E10" : "rgba(31,33,38,0.82)";
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
     // Green glow, fanning up from the bottom edge of the card.

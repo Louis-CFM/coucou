@@ -59,6 +59,124 @@ pub enum Reply {
 #[derive(Default)]
 pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
+/// Non-permission events received before the island has installed its listener.
+#[derive(Default)]
+pub struct StartupEvents(Mutex<StartupQueue>);
+
+#[derive(Default)]
+struct StartupQueue {
+    ready: bool,
+    payloads: Vec<Value>,
+}
+
+impl StartupQueue {
+    fn push(&mut self, payload: Value) -> Option<Value> {
+        if self.ready || !buffers_at_startup(&payload) {
+            return Some(payload);
+        }
+        // ponytail: buffer 128 startup events; revisit if startup routinely exceeds this burst.
+        if self.payloads.len() < 128 {
+            self.payloads.push(payload);
+        }
+        None
+    }
+}
+
+fn buffers_at_startup(payload: &Value) -> bool {
+    let event = payload.get("hook_event_name").and_then(Value::as_str);
+    if matches!(event, Some("PermissionRequest" | "StatusLine")) {
+        return false;
+    }
+    match payload.get("coucou_agent").and_then(Value::as_str) {
+        None => true, // Untagged hooks belong to Claude Code.
+        Some(agent) => crate::auto_launch_trigger::supported(agent),
+    }
+}
+
+pub fn ready(app: &AppHandle) {
+    let events = app.state::<StartupEvents>();
+    let mut state = events.0.lock().unwrap();
+    state.ready = true;
+    for payload in state.payloads.drain(..) {
+        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+    }
+}
+
+fn emit_hook(app: &AppHandle, payload: Value) {
+    let events = app.state::<StartupEvents>();
+    let mut state = events.0.lock().unwrap();
+    if let Some(payload) = state.push(payload) {
+        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+    }
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+
+    #[test]
+    fn initial_events_survive_until_the_frontend_listener_is_ready() {
+        let mut queue = StartupQueue::default();
+        let prompt =
+            json!({"hook_event_name":"UserPromptSubmit","coucou_agent":"codex","session_id":"s1"});
+        let hermes =
+            json!({"hook_event_name":"SessionStart","coucou_agent":"hermes","session_id":"s2"});
+        let resumed = json!({"hook_event_name":"UserPromptSubmit","coucou_agent":"hermes","session_id":"s2","turn_id":"t2"});
+        let tool =
+            json!({"hook_event_name":"PreToolUse","coucou_agent":"hermes","session_id":"s2"});
+        let opencode = json!({"hook_event_name":"UserPromptSubmit","coucou_agent":"opencode","session_id":"s3","turn_id":"m1"});
+        let claude = json!({"hook_event_name":"UserPromptSubmit","session_id":"s4"});
+        let antigravity = json!({"hook_event_name":"UserPromptSubmit","coucou_agent":"antigravity","session_id":"s5"});
+        assert!(queue.push(prompt.clone()).is_none());
+        assert!(queue.push(hermes.clone()).is_none());
+        assert!(queue.push(resumed.clone()).is_none());
+        assert!(queue.push(tool.clone()).is_none());
+        assert!(queue.push(opencode.clone()).is_none());
+        assert!(queue.push(claude.clone()).is_none());
+        assert!(queue.push(antigravity.clone()).is_none());
+        queue.ready = true;
+        assert_eq!(
+            queue.payloads.drain(..).collect::<Vec<_>>(),
+            vec![
+                prompt,
+                hermes,
+                resumed,
+                tool.clone(),
+                opencode,
+                claude,
+                antigravity
+            ]
+        );
+        assert_eq!(queue.push(tool.clone()), Some(tool));
+        assert!(queue.payloads.is_empty());
+    }
+
+    #[test]
+    fn a_failed_webview_cannot_grow_the_startup_queue_without_limit() {
+        let mut queue = StartupQueue::default();
+        for event in 0..200 {
+            queue.push(json!({"coucou_agent":"hermes", "sequence":event}));
+        }
+        assert_eq!(queue.payloads.len(), 128);
+        assert_eq!(queue.payloads[0]["sequence"], 0);
+    }
+
+    #[test]
+    fn permissions_and_other_integrations_keep_their_immediate_delivery() {
+        let mut queue = StartupQueue::default();
+        for payload in [
+            json!({"coucou_agent":"codex", "hook_event_name":"PermissionRequest"}),
+            json!({"coucou_agent":"hermes", "hook_event_name":"PermissionRequest"}),
+            json!({"hook_event_name":"PermissionRequest"}),
+            json!({"hook_event_name":"StatusLine"}),
+            json!({"coucou_agent":"cursor", "hook_event_name":"SessionStart"}),
+        ] {
+            assert_eq!(queue.push(payload.clone()), Some(payload));
+        }
+        assert!(queue.payloads.is_empty());
+    }
+}
+
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
@@ -109,7 +227,9 @@ pub fn start(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         let Some(path) = crate::platform::relay_socket_path() else {
-            log::line("no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive");
+            log::line(
+                "no private runtime directory ($XDG_RUNTIME_DIR) — Claude Code hooks are inactive",
+            );
             return;
         };
         // A socket file left behind by a crash answers nothing and can go. One
@@ -195,7 +315,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
+    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else {
+        return;
+    };
     if !payload.is_object() {
         return;
     }
@@ -207,6 +329,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
+    crate::auto_quit::observe(&app, &payload);
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -215,12 +338,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         if event != "StatusLine" {
             log::line(format!("hook {event}"));
         }
-        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+        emit_hook(&app, payload);
         pipe.finish();
         return;
     }
 
-    let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+    let id = format!(
+        "{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
     let (tx, mut rx) = mpsc::channel::<Reply>(4);
     {
         let pending = app.state::<Pending>();
@@ -250,7 +377,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 /// a permission request always is (it waits for us), a quick event may already
 /// have exited, and then a later event of the session tries again.
 fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
-    let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
+    let Some(session) = payload.get("session_id").and_then(Value::as_str) else {
+        return;
+    };
     if event == "SessionEnd" {
         session_window::forget(session);
         return;
@@ -258,7 +387,9 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     if session_window::known(session) {
         return;
     }
-    let Some(relay) = pipe.client_pid() else { return };
+    let Some(relay) = pipe.client_pid() else {
+        return;
+    };
     let ancestors = crate::platform::process_ancestors(relay);
     // No ancestors: the relay was already gone, so try again next time. Some,
     // but none with a window (a classic console): settled, VS Code it is.
@@ -283,7 +414,9 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
         Ok(None) => return None,
         Err(_) => {
-            log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
+            log::line(format!(
+                "hook id={id} island never acknowledged — terminal takes over"
+            ));
             return None;
         }
     }
@@ -306,14 +439,22 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
 
 /// The log says a question was answered, never with what.
 fn loggable(decision: &str) -> &str {
-    if decision.starts_with('{') { "a question" } else { decision }
+    if decision.starts_with('{') {
+        "a question"
+    } else {
+        decision
+    }
 }
 
 fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
     let sender = {
         let pending = app.state::<Pending>();
         let mut map = pending.0.lock().unwrap();
-        if keep { map.get(request_id).cloned() } else { map.remove(request_id) }
+        if keep {
+            map.get(request_id).cloned()
+        } else {
+            map.remove(request_id)
+        }
     };
     match sender {
         Some(tx) => {
@@ -348,7 +489,11 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
 /// Called when an option is picked for a question Claude Code asked. `answers`
 /// maps each question's text to the chosen label, which is the shape
 /// AskUserQuestion takes them in.
-pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<String, serde_json::Value>) {
+pub fn answer_question(
+    app: &AppHandle,
+    request_id: &str,
+    answers: &HashMap<String, serde_json::Value>,
+) {
     log::line(format!("decision id={request_id} answered a question"));
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();

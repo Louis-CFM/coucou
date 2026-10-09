@@ -6,10 +6,11 @@ use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
 use ::windows::core::{BOOL, PWSTR};
-use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
+use ::windows::Foundation::TypedEventHandler;
+use ::windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL, HWND, LPARAM, POINT};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use ::windows::Win32::System::Diagnostics::ToolHelp::{
@@ -21,13 +22,17 @@ use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, GetKeyboardLayoutList, MapVirtualKeyExW, ToUnicodeEx, HKL, MAPVK_VK_TO_VSC,
-    VK_CONTROL, VK_LBUTTON, VK_MENU, VK_SHIFT,
+    VK_CONTROL, VK_LBUTTON, VK_LCONTROL, VK_MENU, VK_RCONTROL, VK_RMENU, VK_SHIFT,
 };
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
     GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
     SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW,
+};
+use ::windows::UI::{
+    Color,
+    ViewManagement::{UIColorType, UISettings},
 };
 
 use super::LocalTime;
@@ -108,8 +113,8 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
 }
 
 pub fn open_url(url: &str) {
-    let _ = no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url]))
-        .spawn();
+    let _ =
+        no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url])).spawn();
 }
 
 pub fn reveal_folder(path: &str) {
@@ -138,7 +143,11 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
 /// Rust quotes the one fixed argument safely for a `.cmd` (see find_on_path).
 pub fn codex_candidates() -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
-    let var = |k: &str| std::env::var_os(k).map(PathBuf::from).filter(|p| p.is_absolute());
+    let var = |k: &str| {
+        std::env::var_os(k)
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+    };
     if let Some(appdata) = var("APPDATA") {
         out.push(appdata.join("npm").join("codex.cmd"));
     }
@@ -207,7 +216,12 @@ extern "system" {
 
 #[link(name = "netapi32")]
 extern "system" {
-    fn NetUserGetInfo(server: *const u16, user: *const u16, level: u32, buffer: *mut *mut u8) -> u32;
+    fn NetUserGetInfo(
+        server: *const u16,
+        user: *const u16,
+        level: u32,
+        buffer: *mut *mut u8,
+    ) -> u32;
     fn NetApiBufferFree(buffer: *mut core::ffi::c_void) -> u32;
 }
 
@@ -217,7 +231,9 @@ const NAME_DISPLAY: i32 = 3;
 /// The account's display name ("Louis Raille"): the directory's for a domain
 /// or Entra account, else the local account's "Full name", else nothing.
 pub fn user_full_name() -> Option<String> {
-    directory_display_name().or_else(local_full_name).filter(|n| !n.trim().is_empty())
+    directory_display_name()
+        .or_else(local_full_name)
+        .filter(|n| !n.trim().is_empty())
 }
 
 fn directory_display_name() -> Option<String> {
@@ -275,6 +291,78 @@ pub fn left_button_down() -> bool {
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
 
+/// Reads Ctrl across applications without registering or consuming a shortcut.
+pub fn control_down() -> bool {
+    let down = |key| unsafe { (GetAsyncKeyState(key) as u16 & 0x8000) != 0 };
+    down(VK_RCONTROL.0 as i32) || (down(VK_LCONTROL.0 as i32) && !down(VK_RMENU.0 as i32))
+}
+
+fn accent_rgb(color: ::windows::core::Result<Color>) -> Option<[u8; 3]> {
+    color.ok().filter(|c| c.A > 0).map(|c| [c.R, c.G, c.B])
+}
+
+pub fn accent_color() -> Option<[u8; 3]> {
+    accent_rgb(UISettings::new().and_then(|ui| ui.GetColorValue(UIColorType::Accent)))
+}
+
+struct AccentWatcher(UISettings, i64);
+
+impl Drop for AccentWatcher {
+    fn drop(&mut self) {
+        let _ = self.0.RemoveColorValuesChanged(self.1);
+    }
+}
+
+pub fn watch_accent_color(app: &AppHandle) {
+    let Ok(ui) = UISettings::new() else { return };
+    let handle = app.clone();
+    let handler = TypedEventHandler::new(move |sender: ::windows::core::Ref<UISettings>, _| {
+        let color = sender
+            .as_ref()
+            .and_then(|ui| accent_rgb(ui.GetColorValue(UIColorType::Accent)));
+        let _ = handle.emit("accent-color-changed", color);
+        Ok(())
+    });
+    match ui.ColorValuesChanged(&handler) {
+        Ok(token) => {
+            app.manage(AccentWatcher(ui, token));
+        }
+        Err(err) => crate::log::line(format!("accent color watch: {err}")),
+    }
+}
+
+#[cfg(test)]
+mod accent_tests {
+    use super::*;
+
+    #[test]
+    fn reads_system_accent_and_falls_back_when_unavailable() {
+        let native = UISettings::new().and_then(|ui| ui.GetColorValue(UIColorType::Accent));
+        let expected = accent_rgb(native);
+        eprintln!("Windows accent RGB: {expected:?}");
+        assert_eq!(accent_color(), expected);
+        assert_eq!(
+            accent_rgb(Ok(Color {
+                A: 255,
+                R: 255,
+                G: 220,
+                B: 12
+            })),
+            Some([255, 220, 12])
+        );
+        assert_eq!(
+            accent_rgb(Ok(Color {
+                A: 0,
+                R: 0,
+                G: 0,
+                B: 0
+            })),
+            None
+        );
+        assert_eq!(accent_rgb(Err(::windows::core::Error::empty())), None);
+    }
+}
+
 // ── Island window ─────────────────────────────────────────────────────────────
 
 fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
@@ -297,7 +385,9 @@ fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
 ///
 /// Cheap and idempotent, so it is simply re-run whenever a drag might be starting.
 pub fn unblock_webview_drops(app: &AppHandle) {
-    let Some(win) = app.get_webview_window("settings") else { return };
+    let Some(win) = app.get_webview_window("settings") else {
+        return;
+    };
     let Some(hwnd) = hwnd_of(&win) else { return };
     unsafe {
         let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
@@ -366,14 +456,20 @@ pub fn pipe_client_pid(handle: RawHandle) -> Option<u32> {
 fn process_table() -> HashMap<u32, Proc> {
     let mut out = HashMap::new();
     unsafe {
-        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return out };
+        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else {
+            return out;
+        };
         let mut entry = PROCESSENTRY32W {
             dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
             ..Default::default()
         };
         let mut more = Process32FirstW(snapshot, &mut entry).is_ok();
         while more {
-            let len = entry.szExeFile.iter().position(|c| *c == 0).unwrap_or(entry.szExeFile.len());
+            let len = entry
+                .szExeFile
+                .iter()
+                .position(|c| *c == 0)
+                .unwrap_or(entry.szExeFile.len());
             out.insert(
                 entry.th32ProcessID,
                 Proc {
@@ -407,7 +503,11 @@ fn top_windows() -> Vec<(isize, u32, String)> {
             let mut text = [0u16; 512];
             let len = GetWindowTextW(hwnd, &mut text);
             if len > 0 {
-                list.push((hwnd.0 as isize, pid, String::from_utf16_lossy(&text[..len as usize])));
+                list.push((
+                    hwnd.0 as isize,
+                    pid,
+                    String::from_utf16_lossy(&text[..len as usize]),
+                ));
             }
         }
         true.into()
@@ -422,7 +522,9 @@ fn top_windows() -> Vec<(isize, u32, String)> {
 /// The first of `pids` that owns a window.
 pub fn first_with_window(pids: &[u32]) -> Option<u32> {
     let windows = top_windows();
-    pids.iter().copied().find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
+    pids.iter()
+        .copied()
+        .find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
 }
 
 fn bring_forward(raw: isize) -> bool {
@@ -466,8 +568,12 @@ pub fn open_claude_desktop() -> bool {
     if focus_app("claude.exe") {
         return true;
     }
-    let Some(base) = std::env::var_os("LOCALAPPDATA") else { return false };
-    let exe = PathBuf::from(base).join("AnthropicClaude").join("claude.exe");
+    let Some(base) = std::env::var_os("LOCALAPPDATA") else {
+        return false;
+    };
+    let exe = PathBuf::from(base)
+        .join("AnthropicClaude")
+        .join("claude.exe");
     exe.is_file() && Command::new(exe).spawn().is_ok()
 }
 

@@ -34,7 +34,8 @@ pub fn inbox_dir() -> PathBuf {
 const DROP_VALID_FOR: Duration = Duration::from_secs(120);
 const DROP_MAX_PENDING: usize = 64;
 
-static DROPPED: std::sync::Mutex<Vec<(String, std::time::Instant)>> = std::sync::Mutex::new(Vec::new());
+static DROPPED: std::sync::Mutex<Vec<(String, std::time::Instant)>> =
+    std::sync::Mutex::new(Vec::new());
 
 /// Records paths that came from a real drop.
 pub fn allow_dropped<I: IntoIterator<Item = String>>(paths: I) {
@@ -64,11 +65,17 @@ fn take_dropped(path: &str) -> bool {
 
 pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     if !take_dropped(source) {
-        return Err(crate::i18n::t("Only files dropped on the island can be added."));
+        return Err(crate::i18n::t(
+            "Only files dropped on the island can be added.",
+        ));
     }
     let src = Path::new(source);
-    let meta = std::fs::metadata(src)
-        .map_err(|e| crate::i18n::tf("Cannot read {path}: {error}", &[("path", source), ("error", &e.to_string())]))?;
+    let meta = std::fs::metadata(src).map_err(|e| {
+        crate::i18n::tf(
+            "Cannot read {path}: {error}",
+            &[("path", source), ("error", &e.to_string())],
+        )
+    })?;
     if meta.is_dir() {
         return Err(crate::i18n::t("Folders can't be dropped yet."));
     }
@@ -84,8 +91,14 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
 
     let mut dest = dir.join(&name);
     if dest.exists() {
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = src
+            .extension()
+            .map(|s| format!(".{}", s.to_string_lossy()))
+            .unwrap_or_default();
         for i in 2..1000 {
             let candidate = dir.join(format!("{stem} ({i}){ext}"));
             if !candidate.exists() {
@@ -95,7 +108,8 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         }
     }
 
-    std::fs::copy(src, &dest).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
+    std::fs::copy(src, &dest)
+        .map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
     // three years ago would arrive already older than the sweep window and be
     // deleted on the spot. The inbox ages from when *we* copied it.
@@ -115,12 +129,20 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
 /// with the time it landed, so this really is the age of the copy and not the
 /// age of whatever the user happened to drag in.
 fn sweep(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     let now = SystemTime::now();
     for entry in entries.flatten() {
         let Ok(meta) = entry.metadata() else { continue };
-        let Ok(copied) = meta.modified() else { continue };
-        if now.duration_since(copied).map(|age| age > KEEP_FOR).unwrap_or(false) {
+        let Ok(copied) = meta.modified() else {
+            continue;
+        };
+        if now
+            .duration_since(copied)
+            .map(|age| age > KEEP_FOR)
+            .unwrap_or(false)
+        {
             let _ = std::fs::remove_file(entry.path());
         }
     }

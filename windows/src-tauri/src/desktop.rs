@@ -21,7 +21,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
+};
 
 use crate::island::{self, PollGate};
 use crate::platform::{self, DesktopMode, MouseShape};
@@ -96,20 +99,30 @@ pub mod logic {
     /// Keeps a window of side `size` inside `work`, `margin` from each edge.
     pub fn clamp_origin(origin: (f64, f64), size: f64, work: Rect, margin: f64) -> (f64, f64) {
         (
-            origin.0.max(work.x + margin).min(work.x + work.w - size - margin),
-            origin.1.max(work.y + margin).min(work.y + work.h - size - margin),
+            origin
+                .0
+                .max(work.x + margin)
+                .min(work.x + work.w - size - margin),
+            origin
+                .1
+                .max(work.y + margin)
+                .min(work.y + work.h - size - margin),
         )
     }
 
     /// The display whose frame holds `p`, or else the one whose centre is closest.
     pub fn display_near(p: (f64, f64), displays: &[Display]) -> Option<Display> {
-        displays.iter().copied().find(|d| d.frame.contains(p)).or_else(|| {
-            displays.iter().copied().min_by(|a, b| {
-                let da = dist2(p, a.work.center());
-                let db = dist2(p, b.work.center());
-                da.total_cmp(&db)
+        displays
+            .iter()
+            .copied()
+            .find(|d| d.frame.contains(p))
+            .or_else(|| {
+                displays.iter().copied().min_by(|a, b| {
+                    let da = dist2(p, a.work.center());
+                    let db = dist2(p, b.work.center());
+                    da.total_cmp(&db)
+                })
             })
-        })
     }
 
     fn dist2(a: (f64, f64), b: (f64, f64)) -> f64 {
@@ -119,7 +132,9 @@ pub mod logic {
     /// Where a window dropped with its top-left at `origin` settles: inside the
     /// work area of the display under its centre (or the nearest one).
     pub fn settle(origin: (f64, f64), displays: &[Display], size: f64, margin: f64) -> (f64, f64) {
-        let Some(first) = displays.first() else { return origin };
+        let Some(first) = displays.first() else {
+            return origin;
+        };
         let half = size * first.scale / 2.0;
         let Some(d) = display_near((origin.0 + half, origin.1 + half), displays) else {
             return origin;
@@ -237,7 +252,12 @@ pub struct Desktop {
 
 impl Desktop {
     fn new(mode: DesktopMode) -> Self {
-        Self { mode, gate: PollGate::new(), inner: Mutex::new(Inner::default()), flight: AtomicU64::new(0) }
+        Self {
+            mode,
+            gate: PollGate::new(Default::default()),
+            inner: Mutex::new(Inner::default()),
+            flight: AtomicU64::new(0),
+        }
     }
 }
 
@@ -268,7 +288,11 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
 }
 
 fn body_disc() -> MouseShape {
-    MouseShape::Disc { cx: SIZE / 2.0, cy: SIZE / 2.0, r: SIZE * logic::BODY_RADIUS_FRACTION }
+    MouseShape::Disc {
+        cx: SIZE / 2.0,
+        cy: SIZE / 2.0,
+        r: SIZE * logic::BODY_RADIUS_FRACTION,
+    }
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -348,16 +372,32 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
 fn displays(app: &AppHandle, d: &Desktop) -> Vec<Display> {
     if d.mode == DesktopMode::Layer {
         let (w, h) = d.inner.lock().unwrap().display.unwrap_or((1920.0, 1080.0));
-        let frame = Rect { x: 0.0, y: 0.0, w, h };
-        return vec![Display { frame, work: frame, scale: 1.0 }];
+        let frame = Rect {
+            x: 0.0,
+            y: 0.0,
+            w,
+            h,
+        };
+        return vec![Display {
+            frame,
+            work: frame,
+            scale: 1.0,
+        }];
     }
-    let Ok(monitors) = app.available_monitors() else { return Vec::new() };
+    let Ok(monitors) = app.available_monitors() else {
+        return Vec::new();
+    };
     monitors
         .iter()
         .map(|m| {
             let (p, s, wa) = (m.position(), m.size(), m.work_area());
             Display {
-                frame: Rect { x: p.x as f64, y: p.y as f64, w: s.width as f64, h: s.height as f64 },
+                frame: Rect {
+                    x: p.x as f64,
+                    y: p.y as f64,
+                    w: s.width as f64,
+                    h: s.height as f64,
+                },
                 work: Rect {
                     x: wa.position.x as f64,
                     y: wa.position.y as f64,
@@ -388,7 +428,9 @@ fn side(app: &AppHandle, d: &Desktop) -> f64 {
     if d.mode == DesktopMode::Layer {
         return SIZE;
     }
-    SIZE * window(app).and_then(|w| w.scale_factor().ok()).unwrap_or(1.0)
+    SIZE * window(app)
+        .and_then(|w| w.scale_factor().ok())
+        .unwrap_or(1.0)
 }
 
 /// Asks the GTK main thread for the island's display (layer mode), and waits.
@@ -398,7 +440,9 @@ fn refresh_layer_display(app: &AppHandle, d: &Desktop) {
     if d.mode != DesktopMode::Layer {
         return;
     }
-    let (Some(island), Some(mochi)) = (island::window(app), window(app)) else { return };
+    let (Some(island), Some(mochi)) = (island::window(app), window(app)) else {
+        return;
+    };
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let _ = tx.send(platform::layer_display(&island, &mochi));
@@ -435,7 +479,10 @@ fn place(app: &AppHandle, d: &Desktop, pos: (f64, f64)) {
     let Some(win) = window(app) else { return };
     match d.mode {
         DesktopMode::Poll | DesktopMode::Window => {
-            let _ = win.set_position(PhysicalPosition::new(pos.0.round() as i32, pos.1.round() as i32));
+            let _ = win.set_position(PhysicalPosition::new(
+                pos.0.round() as i32,
+                pos.1.round() as i32,
+            ));
         }
         DesktopMode::Layer => {
             let _ = app.run_on_main_thread(move || platform::set_layer_margins(&win, pos.0, pos.1));
@@ -500,7 +547,13 @@ fn refresh(app: &AppHandle, d: &Desktop) {
             MouseShape::Empty
         } else if i.overlay {
             MouseShape::Whole
-        } else if matches!(i.carry, Some(Carry { from: Source::Island, .. })) {
+        } else if matches!(
+            i.carry,
+            Some(Carry {
+                from: Source::Island,
+                ..
+            })
+        ) {
             MouseShape::Empty
         } else {
             body_disc()
@@ -549,7 +602,9 @@ async fn fly(app: &AppHandle, d: &Desktop, to: (f64, f64), ms: u64, ease: fn(f64
 
 /// Saves what changed about him in the preferences.
 fn remember(app: &AppHandle, change: impl FnOnce(&mut settings::DesktopMochiPref)) {
-    let Some(shared) = app.try_state::<crate::Shared>() else { return };
+    let Some(shared) = app.try_state::<crate::Shared>() else {
+        return;
+    };
     let snapshot = {
         let mut s = shared.settings.lock().unwrap();
         change(&mut s.desktop_mochi);
@@ -564,7 +619,11 @@ fn remember_spot(app: &AppHandle, d: &Desktop, pos: (f64, f64), on_desktop: bool
     let space = d.mode.space().to_string();
     remember(app, |p| {
         p.on_desktop = on_desktop;
-        p.spot = Some(DesktopSpot { x: pos.0, y: pos.1, space });
+        p.spot = Some(DesktopSpot {
+            x: pos.0,
+            y: pos.1,
+            space,
+        });
     });
 }
 
@@ -572,7 +631,9 @@ fn remember_spot(app: &AppHandle, d: &Desktop, pos: (f64, f64), on_desktop: bool
 /// that is no longer connected.
 fn target_spot(app: &AppHandle, d: &Desktop) -> Option<(f64, f64)> {
     let all = displays(app, d);
-    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock().unwrap().desktop_mochi.spot.clone());
+    let saved = app
+        .try_state::<crate::Shared>()
+        .and_then(|s| s.settings.lock().unwrap().desktop_mochi.spot.clone());
     match saved {
         Some(spot) if spot.space == d.mode.space() => {
             logic::restore_spot((spot.x, spot.y), &all, SIZE, MARGIN)
@@ -616,7 +677,11 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
         }
         remember_spot(app, d, spot, true);
     }
-    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
+    let _ = app.emit_to(
+        island::WINDOW_LABEL,
+        "desktop-mochi-dropped",
+        Dropped { from, home },
+    );
 }
 
 // ── Poll (Windows) ────────────────────────────────────────────────────────────
@@ -630,7 +695,9 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
         while d.gate.is_active() {
             std::thread::sleep(Duration::from_millis(TICK_MS));
             let Some(win) = window(&app) else { continue };
-            let Some((cx, cy)) = platform::cursor_physical() else { continue };
+            let Some((cx, cy)) = platform::cursor_physical() else {
+                continue;
+            };
             let carry = d.inner.lock().unwrap().carry;
 
             if let Some(c) = carry {
@@ -645,7 +712,9 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                     d.inner.lock().unwrap().carry = None;
                     let app2 = app.clone();
                     let d2 = d.clone();
-                    tauri::async_runtime::spawn(async move { finish_drop(&app2, &d2, pos, c.from).await });
+                    tauri::async_runtime::spawn(async move {
+                        finish_drop(&app2, &d2, pos, c.from).await
+                    });
                 }
                 continue;
             }
@@ -654,9 +723,14 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                 continue;
             }
 
-            let Ok(origin) = win.outer_position() else { continue };
+            let Ok(origin) = win.outer_position() else {
+                continue;
+            };
             let scale = win.scale_factor().unwrap_or(1.0);
-            let local = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
+            let local = (
+                (cx - origin.x as f64) / scale,
+                (cy - origin.y as f64) / scale,
+            );
             let accept = logic::is_over_body(local, SIZE);
             {
                 let mut i = d.inner.lock().unwrap();
@@ -667,7 +741,13 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
             }
             if (local.0 - last.0).abs() >= 1.0 || (local.1 - last.1).abs() >= 1.0 {
                 last = local;
-                let _ = win.emit("desktop-cursor", Cursor { x: local.0, y: local.1 });
+                let _ = win.emit(
+                    "desktop-cursor",
+                    Cursor {
+                        x: local.0,
+                        y: local.1,
+                    },
+                );
             }
         }
     });
@@ -681,7 +761,10 @@ pub fn desktop_mochi_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> Deskt
         .try_state::<crate::Shared>()
         .map(|s| s.settings.lock().unwrap().desktop_mochi.on_desktop)
         .unwrap_or(false);
-    DesktopInfo { mode: desktop.mode.as_str(), on_desktop: on_desktop && desktop.mode != DesktopMode::Off }
+    DesktopInfo {
+        mode: desktop.mode.as_str(),
+        on_desktop: on_desktop && desktop.mode != DesktopMode::Off,
+    }
 }
 
 /// Dragging Mochi out of the island: the window appears under the pointer
@@ -701,7 +784,10 @@ pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     };
     let Some(center) = center else { return false };
     d.flight.fetch_add(1, Ordering::SeqCst);
-    d.inner.lock().unwrap().carry = Some(Carry { grab: (s / 2.0, s / 2.0), from: Source::Island });
+    d.inner.lock().unwrap().carry = Some(Carry {
+        grab: (s / 2.0, s / 2.0),
+        from: Source::Island,
+    });
     show(&app, &d, (center.0 - s / 2.0, center.1 - s / 2.0));
     true
 }
@@ -753,7 +839,10 @@ pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
             let (cx, cy) = platform::cursor_physical()?;
             let origin = win.outer_position().ok()?;
             let grab = (cx - origin.x as f64, cy - origin.y as f64);
-            d.inner.lock().unwrap().carry = Some(Carry { grab, from: Source::Desktop });
+            d.inner.lock().unwrap().carry = Some(Carry {
+                grab,
+                from: Source::Desktop,
+            });
             refresh(&app, &d);
         }
         DesktopMode::Layer => {
@@ -817,7 +906,9 @@ pub async fn desktop_mochi_fly_out(app: AppHandle) -> bool {
         remember(&app, |p| p.on_desktop = false);
         return false;
     };
-    let Some((cx, top, scale)) = island_anchor(&app, &d) else { return false };
+    let Some((cx, top, scale)) = island_anchor(&app, &d) else {
+        return false;
+    };
     let start = logic::island_spot(cx, top, SIZE, scale);
     {
         let mut i = d.inner.lock().unwrap();
@@ -897,44 +988,111 @@ mod tests {
     fn is_over_body() {
         let s = 120.0;
         let r = s * BODY_RADIUS_FRACTION; // 28.8
-        assert!(super::logic::is_over_body((60.0, 60.0), s), "center must be inside body");
-        assert!(super::logic::is_over_body((60.0 + r - 0.5, 60.0), s), "inside radius must hit");
-        assert!(!super::logic::is_over_body((60.0 + r + 0.5, 60.0), s), "outside radius must miss");
-        assert!(!super::logic::is_over_body((0.0, 0.0), s), "corner must miss");
+        assert!(
+            super::logic::is_over_body((60.0, 60.0), s),
+            "center must be inside body"
+        );
+        assert!(
+            super::logic::is_over_body((60.0 + r - 0.5, 60.0), s),
+            "inside radius must hit"
+        );
+        assert!(
+            !super::logic::is_over_body((60.0 + r + 0.5, 60.0), s),
+            "outside radius must miss"
+        );
+        assert!(
+            !super::logic::is_over_body((0.0, 0.0), s),
+            "corner must miss"
+        );
         let diag = r / 2f64.sqrt() - 0.5;
-        assert!(super::logic::is_over_body((60.0 + diag, 60.0 + diag), s), "diagonal inside must hit");
-        assert!(super::logic::is_over_body((60.0 - diag, 60.0 + diag), s), "every quadrant");
+        assert!(
+            super::logic::is_over_body((60.0 + diag, 60.0 + diag), s),
+            "diagonal inside must hit"
+        );
+        assert!(
+            super::logic::is_over_body((60.0 - diag, 60.0 + diag), s),
+            "every quadrant"
+        );
     }
 
     #[test]
     fn clamp_origin_keeps_him_inside_the_work_area() {
         // A 1440×900 display with a 40 px taskbar at the bottom.
-        let work = Rect { x: 0.0, y: 0.0, w: 1440.0, h: 860.0 };
+        let work = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 1440.0,
+            h: 860.0,
+        };
         let (s, m) = (120.0, 24.0);
-        assert_eq!(clamp_origin((600.0, 400.0), s, work, m), (600.0, 400.0), "in-bounds origin must be unchanged");
-        assert_eq!(clamp_origin((-50.0, 400.0), s, work, m).0, work.x + m, "too-left");
-        assert_eq!(clamp_origin((2000.0, 400.0), s, work, m).0, work.x + work.w - s - m, "too-right");
-        assert_eq!(clamp_origin((400.0, -50.0), s, work, m).1, work.y + m, "too-high");
-        assert_eq!(clamp_origin((400.0, 2000.0), s, work, m).1, work.y + work.h - s - m, "too-low: above the taskbar");
+        assert_eq!(
+            clamp_origin((600.0, 400.0), s, work, m),
+            (600.0, 400.0),
+            "in-bounds origin must be unchanged"
+        );
+        assert_eq!(
+            clamp_origin((-50.0, 400.0), s, work, m).0,
+            work.x + m,
+            "too-left"
+        );
+        assert_eq!(
+            clamp_origin((2000.0, 400.0), s, work, m).0,
+            work.x + work.w - s - m,
+            "too-right"
+        );
+        assert_eq!(
+            clamp_origin((400.0, -50.0), s, work, m).1,
+            work.y + m,
+            "too-high"
+        );
+        assert_eq!(
+            clamp_origin((400.0, 2000.0), s, work, m).1,
+            work.y + work.h - s - m,
+            "too-low: above the taskbar"
+        );
     }
 
     fn two_displays() -> Vec<Display> {
         // A 1920×1080 laptop at 100 %, and a 4K monitor at 200 % on its right,
         // physical pixels; both with a 48 px taskbar at the bottom.
-        let a = Rect { x: 0.0, y: 0.0, w: 1920.0, h: 1080.0 };
-        let b = Rect { x: 1920.0, y: -200.0, w: 3840.0, h: 2160.0 };
+        let a = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 1920.0,
+            h: 1080.0,
+        };
+        let b = Rect {
+            x: 1920.0,
+            y: -200.0,
+            w: 3840.0,
+            h: 2160.0,
+        };
         vec![
-            Display { frame: a, work: Rect { h: 1032.0, ..a }, scale: 1.0 },
-            Display { frame: b, work: Rect { h: 2064.0, ..b }, scale: 2.0 },
+            Display {
+                frame: a,
+                work: Rect { h: 1032.0, ..a },
+                scale: 1.0,
+            },
+            Display {
+                frame: b,
+                work: Rect { h: 2064.0, ..b },
+                scale: 2.0,
+            },
         ]
     }
 
     #[test]
     fn a_spot_on_a_connected_display_is_kept() {
         let d = two_displays();
-        assert_eq!(restore_spot((800.0, 600.0), &d, 120.0, 24.0), Some((800.0, 600.0)));
+        assert_eq!(
+            restore_spot((800.0, 600.0), &d, 120.0, 24.0),
+            Some((800.0, 600.0))
+        );
         // On the second display, sized in its own scale.
-        assert_eq!(restore_spot((3000.0, 1000.0), &d, 120.0, 24.0), Some((3000.0, 1000.0)));
+        assert_eq!(
+            restore_spot((3000.0, 1000.0), &d, 120.0, 24.0),
+            Some((3000.0, 1000.0))
+        );
     }
 
     #[test]
@@ -963,9 +1121,15 @@ mod tests {
     fn a_drop_settles_on_the_display_under_him() {
         let d = two_displays();
         // Dropped against the right edge of the laptop: stays on the laptop.
-        assert_eq!(settle((1800.0, 500.0), &d, 120.0, 24.0), (1920.0 - 120.0 - 24.0, 500.0));
+        assert_eq!(
+            settle((1800.0, 500.0), &d, 120.0, 24.0),
+            (1920.0 - 120.0 - 24.0, 500.0)
+        );
         // His centre already over the next display: he moves onto it.
-        assert_eq!(settle((1870.0, 500.0), &d, 120.0, 24.0), (1920.0 + 48.0, 500.0));
+        assert_eq!(
+            settle((1870.0, 500.0), &d, 120.0, 24.0),
+            (1920.0 + 48.0, 500.0)
+        );
         // Dropped in the gap above the laptop, next to the taller monitor:
         // nearest display.
         let (x, y) = settle((1000.0, -150.0), &d, 120.0, 24.0);
@@ -975,8 +1139,14 @@ mod tests {
     #[test]
     fn first_visit_is_the_bottom_right_corner() {
         let d = two_displays();
-        assert_eq!(default_spot(&d[0], 120.0, 24.0), (1920.0 - 144.0, 1032.0 - 144.0));
-        assert_eq!(default_spot(&d[1], 120.0, 24.0), (1920.0 + 3840.0 - 288.0, -200.0 + 2064.0 - 288.0));
+        assert_eq!(
+            default_spot(&d[0], 120.0, 24.0),
+            (1920.0 - 144.0, 1032.0 - 144.0)
+        );
+        assert_eq!(
+            default_spot(&d[1], 120.0, 24.0),
+            (1920.0 + 3840.0 - 288.0, -200.0 + 2064.0 - 288.0)
+        );
     }
 
     #[test]
@@ -984,9 +1154,15 @@ mod tests {
         // Island centred on a 1920 px display at 150 %.
         let zone = home_zone(960.0, 0.0, 1.5);
         assert!(zone.contains((960.0, 10.0)), "on the island");
-        assert!(zone.contains((960.0 - 359.0 * 1.5, 300.0 * 1.5)), "inside the panel");
+        assert!(
+            zone.contains((960.0 - 359.0 * 1.5, 300.0 * 1.5)),
+            "inside the panel"
+        );
         assert!(!zone.contains((960.0, 330.0 * 1.5)), "below the panel");
-        assert!(!zone.contains((100.0, 10.0)), "top-left corner of the screen");
+        assert!(
+            !zone.contains((100.0, 10.0)),
+            "top-left corner of the screen"
+        );
     }
 
     #[test]

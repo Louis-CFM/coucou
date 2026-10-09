@@ -24,7 +24,12 @@ fn wants_json(agent: &str) -> bool {
 /// The line to print for `event` from `agent`, given the island's `decision`
 /// (`None`: nobody clicked) and, for Claude Code's AskUserQuestion, the
 /// question as it was asked.
-pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
+pub fn stdout(
+    agent: &str,
+    event: &str,
+    decision: Option<&str>,
+    question: Option<&Value>,
+) -> Option<String> {
     if event != "PermissionRequest" {
         return wants_json(agent).then(|| "{}".to_string());
     }
@@ -40,7 +45,9 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
             };
             match word {
                 Some(word) => Some(json!({ "permissionDecision": word }).to_string()),
-                None if agent == "copilot" => Some(json!({ "permissionDecision": "ask" }).to_string()),
+                None if agent == "copilot" => {
+                    Some(json!({ "permissionDecision": "ask" }).to_string())
+                }
                 None => None,
             }
         }
@@ -97,18 +104,29 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
 /// (Claude Code 2.1.136+ takes the list, as the Mac sends it). Same rule as
 /// `QuestionPayload.accepts` on macOS.
 fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
-    let Some(items) = question.get("questions").and_then(|q| q.as_array()) else { return false };
+    let Some(items) = question.get("questions").and_then(|q| q.as_array()) else {
+        return false;
+    };
     if items.is_empty() || items.len() != answers.len() {
         return false;
     }
     items.iter().all(|item| {
-        let Some(text) = item.get("question").and_then(|q| q.as_str()) else { return false };
+        let Some(text) = item.get("question").and_then(|q| q.as_str()) else {
+            return false;
+        };
         let labels: Vec<&str> = item
             .get("options")
             .and_then(|o| o.as_array())
-            .map(|opts| opts.iter().filter_map(|o| o.get("label").and_then(|l| l.as_str())).collect())
+            .map(|opts| {
+                opts.iter()
+                    .filter_map(|o| o.get("label").and_then(|l| l.as_str()))
+                    .collect()
+            })
             .unwrap_or_default();
-        let multi = item.get("multiSelect").and_then(|m| m.as_bool()).unwrap_or(false);
+        let multi = item
+            .get("multiSelect")
+            .and_then(|m| m.as_bool())
+            .unwrap_or(false);
         match answers.get(text) {
             Some(Value::String(pick)) if !multi => labels.contains(&pick.as_str()),
             Some(Value::Array(picks)) if multi => {
@@ -116,7 +134,9 @@ fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
                 let mut seen = picks.clone();
                 seen.sort_unstable();
                 seen.dedup();
-                !picks.is_empty() && seen.len() == picks.len() && picks.iter().all(|p| labels.contains(p))
+                !picks.is_empty()
+                    && seen.len() == picks.len()
+                    && picks.iter().all(|p| labels.contains(p))
             }
             _ => false,
         }
@@ -128,20 +148,44 @@ mod tests {
     use super::*;
 
     const AGENTS: &[&str] = &[
-        "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "opencode", "amp",
-        "hermes", "claude-desktop", "my-tool",
+        "",
+        "gemini",
+        "antigravity",
+        "cursor",
+        "codex",
+        "copilot",
+        "muse",
+        "opencode",
+        "amp",
+        "hermes",
+        "claude-desktop",
+        "my-tool",
     ];
     const EVENTS: &[&str] = &[
-        "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure",
-        "PermissionRequest", "Notification", "Stop", "StopFailure", "SessionEnd", "Interrupt",
-        "SubagentStart", "SubagentStop", "",
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PermissionRequest",
+        "Notification",
+        "Stop",
+        "StopFailure",
+        "SessionEnd",
+        "Interrupt",
+        "SubagentStart",
+        "SubagentStop",
+        "",
     ];
 
     /// Whatever a reply says, does it let anything through?
     fn allows(out: &str) -> bool {
         let v: Value = serde_json::from_str(out).expect("every reply is JSON");
         let text = v.to_string();
-        text.contains("allow") || v.get("decision").is_some() || v.get("permission").is_some() || v.get("continue").is_some()
+        text.contains("allow")
+            || v.get("decision").is_some()
+            || v.get("permission").is_some()
+            || v.get("continue").is_some()
     }
 
     #[test]
@@ -149,12 +193,18 @@ mod tests {
         for agent in AGENTS {
             for event in EVENTS {
                 if let Some(out) = stdout(agent, event, None, None) {
-                    assert!(!allows(&out), "{agent:?} {event} printed {out} with nobody clicking");
+                    assert!(
+                        !allows(&out),
+                        "{agent:?} {event} printed {out} with nobody clicking"
+                    );
                 }
                 // A decline, a timeout or garbage from the app is no decision either.
                 for not_a_decision in ["", "ask", "maybe", "{\"permissionDecision\":\"allow\"}"] {
                     if let Some(out) = stdout(agent, event, Some(not_a_decision), None) {
-                        assert!(!allows(&out), "{agent:?} {event} {not_a_decision:?} printed {out}");
+                        assert!(
+                            !allows(&out),
+                            "{agent:?} {event} {not_a_decision:?} printed {out}"
+                        );
                     }
                 }
             }
@@ -170,7 +220,11 @@ mod tests {
                 }
             }
             let out = stdout(agent, "PermissionRequest", Some("allow"), None);
-            assert_eq!(out.as_deref().is_some_and(allows), takes_decisions(agent), "{agent:?}: {out:?}");
+            assert_eq!(
+                out.as_deref().is_some_and(allows),
+                takes_decisions(agent),
+                "{agent:?}: {out:?}"
+            );
         }
     }
 
@@ -179,19 +233,37 @@ mod tests {
         let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
         let deny = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#;
         for agent in ["", "codex"] {
-            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), allow);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None).unwrap(), allow);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), deny);
+            assert_eq!(
+                stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(),
+                allow
+            );
+            assert_eq!(
+                stdout(agent, "PermissionRequest", Some("always"), None).unwrap(),
+                allow
+            );
+            assert_eq!(
+                stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(),
+                deny
+            );
             assert_eq!(stdout(agent, "PermissionRequest", None, None), None);
             assert_eq!(stdout(agent, "PreToolUse", None, None), None);
         }
         for agent in ["copilot", "muse"] {
-            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), r#"{"permissionDecision":"allow"}"#);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), r#"{"permissionDecision":"deny"}"#);
+            assert_eq!(
+                stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(),
+                r#"{"permissionDecision":"allow"}"#
+            );
+            assert_eq!(
+                stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(),
+                r#"{"permissionDecision":"deny"}"#
+            );
             assert_eq!(stdout(agent, "PreToolUse", None, None).unwrap(), "{}");
         }
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
-        assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
+        assert_eq!(
+            stdout("copilot", "PermissionRequest", None, None).unwrap(),
+            r#"{"permissionDecision":"ask"}"#
+        );
         assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
         // Gemini CLI and Antigravity read "{}" as "no opinion" — Antigravity's
         // PreToolUse included: the tool is never allowed on Coucou's say-so.
@@ -205,7 +277,10 @@ mod tests {
             assert_eq!(stdout("cursor", event, None, None), None);
         }
         // Hermes approvals are not supported: its decisions are never relayed.
-        assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
+        assert_eq!(
+            stdout("hermes", "PermissionRequest", Some("allow"), None),
+            None
+        );
     }
 
     #[test]
@@ -214,7 +289,9 @@ mod tests {
             decision_json("allow", None).unwrap(),
             r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#
         );
-        assert!(decision_json("always", None).unwrap().contains(r#""behavior":"allow""#));
+        assert!(decision_json("always", None)
+            .unwrap()
+            .contains(r#""behavior":"allow""#));
     }
 
     #[test]
@@ -230,14 +307,26 @@ mod tests {
         let question = json!({
             "questions": [{ "question": "Which one?", "options": [{ "label": "A" }, { "label": "B" }] }]
         });
-        let out = stdout("", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).unwrap();
+        let out = stdout(
+            "",
+            "PermissionRequest",
+            Some(r#"{"answers":{"Which one?":"B"}}"#),
+            Some(&question),
+        )
+        .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         let decision = &v["hookSpecificOutput"]["decision"];
         assert_eq!(decision["behavior"], "allow");
         assert_eq!(decision["updatedInput"]["questions"], question["questions"]);
         assert_eq!(decision["updatedInput"]["answers"]["Which one?"], "B");
         // Only Claude Code asks questions: an answer for anyone else is nothing.
-        assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).is_none());
+        assert!(stdout(
+            "codex",
+            "PermissionRequest",
+            Some(r#"{"answers":{"Which one?":"B"}}"#),
+            Some(&question)
+        )
+        .is_none());
     }
 
     #[test]
@@ -257,13 +346,21 @@ mod tests {
               "options": [{ "label": "Tests" }, { "label": "Docs" }, { "label": "Lint" }] }
         ]});
         let ok = |a: &str| decision_json(a, Some(&q)).is_some();
-        assert!(ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Docs"]}}"#));
+        assert!(ok(
+            r#"{"answers":{"Which one?":"A","Extras?":["Tests","Docs"]}}"#
+        ));
         assert!(!ok(r#"{"answers":{"Which one?":"C","Extras?":["Tests"]}}"#));
-        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests"],"Other?":"x"}}"#));
+        assert!(!ok(
+            r#"{"answers":{"Which one?":"A","Extras?":["Tests"],"Other?":"x"}}"#
+        ));
         assert!(!ok(r#"{"answers":{"Which one?":"A"}}"#));
-        assert!(!ok(r#"{"answers":{"Which one?":["A"],"Extras?":["Tests"]}}"#));
+        assert!(!ok(
+            r#"{"answers":{"Which one?":["A"],"Extras?":["Tests"]}}"#
+        ));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":"Tests"}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":[]}}"#));
-        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#));
+        assert!(!ok(
+            r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#
+        ));
     }
 }

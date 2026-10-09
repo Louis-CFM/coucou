@@ -12,7 +12,9 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 10] = [
+    "en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id",
+];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -25,8 +27,12 @@ fn table() -> &'static Table {
         let mut out = Table::new();
         // extra.json goes last: it wins where both have a string.
         for source in [MAC, EXTRA] {
-            let Ok(Value::Object(root)) = serde_json::from_str::<Value>(source) else { continue };
-            let Some(Value::Object(strings)) = root.get("strings") else { continue };
+            let Ok(Value::Object(root)) = serde_json::from_str::<Value>(source) else {
+                continue;
+            };
+            let Some(Value::Object(strings)) = root.get("strings") else {
+                continue;
+            };
             for (key, entry) in strings {
                 if let Value::Object(langs) = entry {
                     out.insert(key.clone(), langs.clone());
@@ -48,7 +54,11 @@ fn state() -> &'static RwLock<Current> {
     STATE.get_or_init(|| {
         let system = env_languages();
         let resolved = resolve("", &system);
-        RwLock::new(Current { picked: String::new(), system, resolved })
+        RwLock::new(Current {
+            picked: String::new(),
+            system,
+            resolved,
+        })
     })
 }
 
@@ -56,7 +66,11 @@ fn state() -> &'static RwLock<Current> {
 fn env_languages() -> Vec<String> {
     let mut out = Vec::new();
     if let Ok(list) = std::env::var("LANGUAGE") {
-        out.extend(list.split(':').filter(|s| !s.is_empty()).map(str::to_string));
+        out.extend(
+            list.split(':')
+                .filter(|s| !s.is_empty())
+                .map(str::to_string),
+        );
     }
     for name in ["LC_ALL", "LC_MESSAGES", "LANG"] {
         if let Ok(v) = std::env::var(name) {
@@ -77,13 +91,20 @@ pub fn resolve(picked: &str, system: &[String]) -> &'static str {
     }
     for raw in system {
         // "fr_FR.UTF-8" → "fr-fr"
-        let tag = raw.split('.').next().unwrap_or("").replace('_', "-").to_lowercase();
+        let tag = raw
+            .split('.')
+            .next()
+            .unwrap_or("")
+            .replace('_', "-")
+            .to_lowercase();
         let base = tag.split('-').next().unwrap_or("");
         if base.is_empty() {
             continue;
         }
         if base == "zh" {
-            let traditional = ["zh-hant", "zh-tw", "zh-hk", "zh-mo"].iter().any(|p| tag.starts_with(p));
+            let traditional = ["zh-hant", "zh-tw", "zh-hk", "zh-mo"]
+                .iter()
+                .any(|p| tag.starts_with(p));
             if traditional {
                 continue;
             }
@@ -153,7 +174,11 @@ fn plural_category(lang: &str, n: u64) -> &'static str {
     match lang {
         "zh-Hans" | "id" => "other",
         "fr" | "pt-BR" | "hi" | "bn" => {
-            if n <= 1 { "one" } else { "other" }
+            if n <= 1 {
+                "one"
+            } else {
+                "other"
+            }
         }
         "ru" => {
             let (m10, m100) = (n % 10, n % 100);
@@ -174,7 +199,11 @@ fn plural_category(lang: &str, n: u64) -> &'static str {
             _ => "other",
         },
         _ => {
-            if n == 1 { "one" } else { "other" }
+            if n == 1 {
+                "one"
+            } else {
+                "other"
+            }
         }
     }
 }
@@ -205,7 +234,9 @@ pub fn tf(key: &str, vars: &[(&str, &str)]) -> String {
     let lang = current();
     let text = match lookup_in(lang, key) {
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(forms)) => pick_plural(forms, "other").unwrap_or_else(|| key.to_string()),
+        Some(Value::Object(forms)) => {
+            pick_plural(forms, "other").unwrap_or_else(|| key.to_string())
+        }
         _ => key.to_string(),
     };
     interpolate(&text, vars)
@@ -223,7 +254,13 @@ pub fn tn(one: &str, other: &str, count: u64, vars: &[(&str, &str)]) -> String {
         Some(Value::String(s)) => Some(s.clone()),
         _ => None,
     };
-    let text = text.unwrap_or_else(|| if count == 1 { one.to_string() } else { other.to_string() });
+    let text = text.unwrap_or_else(|| {
+        if count == 1 {
+            one.to_string()
+        } else {
+            other.to_string()
+        }
+    });
     interpolate(&text, &all)
 }
 
@@ -255,7 +292,10 @@ mod tests {
         assert_eq!(t("Allow"), "Autoriser");
         // From extra.json.
         assert_eq!(t("Open Coucou"), "Ouvrir Coucou");
-        assert_eq!(t("A string nobody translated"), "A string nobody translated");
+        assert_eq!(
+            t("A string nobody translated"),
+            "A string nobody translated"
+        );
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Ouvrir Vercel");
         set_for_test("en");
         assert_eq!(t("Allow"), "Allow");
@@ -265,11 +305,43 @@ mod tests {
     #[test]
     fn plurals_follow_the_language() {
         set_for_test("en");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ Connected · 1 model");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 3, &[]), "✓ Connected · 3 models");
+        assert_eq!(
+            tn(
+                "✓ Connected · {count} model",
+                "✓ Connected · {count} models",
+                1,
+                &[]
+            ),
+            "✓ Connected · 1 model"
+        );
+        assert_eq!(
+            tn(
+                "✓ Connected · {count} model",
+                "✓ Connected · {count} models",
+                3,
+                &[]
+            ),
+            "✓ Connected · 3 models"
+        );
         set_for_test("es");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ Conectado · 1 modelo");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 4, &[]), "✓ Conectado · 4 modelos");
+        assert_eq!(
+            tn(
+                "✓ Connected · {count} model",
+                "✓ Connected · {count} models",
+                1,
+                &[]
+            ),
+            "✓ Conectado · 1 modelo"
+        );
+        assert_eq!(
+            tn(
+                "✓ Connected · {count} model",
+                "✓ Connected · {count} models",
+                4,
+                &[]
+            ),
+            "✓ Conectado · 4 modelos"
+        );
         assert_eq!(plural_category("ru", 21), "one");
         assert_eq!(plural_category("ru", 23), "few");
         assert_eq!(plural_category("ru", 25), "many");
@@ -279,8 +351,12 @@ mod tests {
 
     #[test]
     fn every_extra_string_has_every_language() {
-        let Value::Object(root) = serde_json::from_str::<Value>(EXTRA).unwrap() else { panic!() };
-        let Some(Value::Object(strings)) = root.get("strings") else { panic!("no strings") };
+        let Value::Object(root) = serde_json::from_str::<Value>(EXTRA).unwrap() else {
+            panic!()
+        };
+        let Some(Value::Object(strings)) = root.get("strings") else {
+            panic!("no strings")
+        };
         for (key, entry) in strings {
             for lang in LANGUAGES.iter().filter(|l| **l != "en") {
                 assert!(entry.get(*lang).is_some(), "{key:?} has no {lang}");

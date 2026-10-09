@@ -18,9 +18,9 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
 use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
+use crate::i18n::{t, tf};
 use crate::island::WINDOW_LABEL;
 use crate::settings::Settings;
-use crate::i18n::{t, tf};
 use crate::{net, secrets};
 
 /// Credential store entry of the key of the user's own OpenAI-compatible server.
@@ -60,9 +60,14 @@ fn may_carry_key(url: &Url) -> bool {
 pub fn set_custom_key(typed_url: &str, key: &str) -> Result<(), String> {
     let url = net::normalise_server_url(typed_url)?;
     if !may_carry_key(&url) {
-        return Err(t("A key is only sent over https, or to a server on this computer."));
+        return Err(t(
+            "A key is only sent over https, or to a server on this computer.",
+        ));
     }
-    let bound = BoundKey { url: url.as_str().trim_end_matches('/').to_string(), key: key.trim().to_string() };
+    let bound = BoundKey {
+        url: url.as_str().trim_end_matches('/').to_string(),
+        key: key.trim().to_string(),
+    };
     let value = serde_json::to_string(&bound).map_err(|e| e.to_string())?;
     secrets::set(CUSTOM_KEY, &value)
 }
@@ -94,12 +99,24 @@ pub fn server(settings: &Settings, id: &str) -> Option<Server> {
         "ollama" => ("ollama", "Ollama", &settings.ollama_url, None),
         "lmstudio" => ("lmstudio", "LM Studio", &settings.lmstudio_url, None),
         "custom" => {
-            let key = net::normalise_server_url(&settings.custom_url).ok().and_then(|u| custom_key_for(&u));
-            ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, key)
+            let key = net::normalise_server_url(&settings.custom_url)
+                .ok()
+                .and_then(|u| custom_key_for(&u));
+            (
+                "custom",
+                crate::i18n::n_("OpenAI-compatible server"),
+                &settings.custom_url,
+                key,
+            )
         }
         _ => return None,
     };
-    Some(Server { id, name, url: url.clone(), key })
+    Some(Server {
+        id,
+        name,
+        url: url.clone(),
+        key,
+    })
 }
 
 /// The usual address of a server on this machine; none for "custom". Ollama's
@@ -122,12 +139,18 @@ fn bearer(key: Option<&str>) -> String {
 }
 
 fn unreachable(url: &Url) -> String {
-    tf("Cannot reach {url}. Is the server running?", &[("url", url.as_str().trim_end_matches('/'))])
+    tf(
+        "Cannot reach {url}. Is the server running?",
+        &[("url", url.as_str().trim_end_matches('/'))],
+    )
 }
 
 fn base_url(server: &Server) -> Result<Url, String> {
     if server.url.trim().is_empty() {
-        return Err(tf("Connect {name} in Settings → Local models first.", &[("name", &t(server.name))]));
+        return Err(tf(
+            "Connect {name} in Settings → Local models first.",
+            &[("name", &t(server.name))],
+        ));
     }
     net::normalise_server_url(&server.url)
 }
@@ -145,9 +168,17 @@ pub struct Connected {
 /// Settings → Local models → Connect: does the server answer, and which models
 /// does it have? An empty address means the usual one on this machine.
 pub async fn connect(id: &str, typed: &str) -> Result<Connected, String> {
-    let raw = if typed.trim().is_empty() { usual_address(id).unwrap_or_default() } else { typed.to_string() };
+    let raw = if typed.trim().is_empty() {
+        usual_address(id).unwrap_or_default()
+    } else {
+        typed.to_string()
+    };
     let url = net::normalise_server_url(&raw)?;
-    let key = if id == "custom" { custom_key_for(&url) } else { None };
+    let key = if id == "custom" {
+        custom_key_for(&url)
+    } else {
+        None
+    };
     let models = list(&url, key.as_deref()).await?;
     Ok(Connected {
         url: url.as_str().trim_end_matches('/').to_string(),
@@ -161,9 +192,18 @@ pub async fn models(server: &Server) -> Result<Vec<ModelInfo>, String> {
     let url = base_url(server)?;
     let models = list(&url, server.key.as_deref()).await?;
     if models.is_empty() {
-        return Err(tf("No models yet. Download one in {name} first.", &[("name", &t(server.name))]));
+        return Err(tf(
+            "No models yet. Download one in {name} first.",
+            &[("name", &t(server.name))],
+        ));
     }
-    Ok(models.into_iter().map(|id| ModelInfo { label: id.clone(), id }).collect())
+    Ok(models
+        .into_iter()
+        .map(|id| ModelInfo {
+            label: id.clone(),
+            id,
+        })
+        .collect())
 }
 
 /// `GET /v1/models`, chat models only, or why the server can't be reached.
@@ -175,7 +215,9 @@ async fn list(base: &Url, key: Option<&str>) -> Result<Vec<String>, String> {
         .await
         .map_err(|_| unreachable(base))?;
     if matches!(response.status().as_u16(), 401 | 403) {
-        return Err(t("The server refused the key. Check it, then connect again."));
+        return Err(t(
+            "The server refused the key. Check it, then connect again.",
+        ));
     }
     if !response.status().is_success() {
         return Err(unreachable(base));
@@ -202,10 +244,21 @@ fn parse_models(body: &Value) -> Option<Vec<String>> {
 /// What a dropped file adds to the first message: text inline (cut), anything
 /// else by name only.
 fn file_note(name: &str, path: &str) -> String {
-    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-    let binary = matches!(ext.as_str(), "pdf" | "jpg" | "jpeg" | "png" | "gif" | "webp");
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let binary = matches!(
+        ext.as_str(),
+        "pdf" | "jpg" | "jpeg" | "png" | "gif" | "webp"
+    );
     // Read no more than the inline limit can use (4 bytes per character at most).
-    let text = if binary { None } else { read_prefix(path, MAX_INLINE_CHARS * 4) };
+    let text = if binary {
+        None
+    } else {
+        read_prefix(path, MAX_INLINE_CHARS * 4)
+    };
     match text {
         Some(text) if !text.is_empty() => {
             let mut body: String = text.chars().take(MAX_INLINE_CHARS).collect();
@@ -223,7 +276,11 @@ fn file_note(name: &str, path: &str) -> String {
 fn read_prefix(path: &str, limit: usize) -> Option<String> {
     use std::io::Read;
     let mut bytes = Vec::new();
-    std::fs::File::open(path).ok()?.take(limit as u64).read_to_end(&mut bytes).ok()?;
+    std::fs::File::open(path)
+        .ok()?
+        .take(limit as u64)
+        .read_to_end(&mut bytes)
+        .ok()?;
     match String::from_utf8(bytes) {
         Ok(text) => Some(text),
         Err(e) if e.utf8_error().error_len().is_none() => {
@@ -239,8 +296,15 @@ fn read_prefix(path: &str, limit: usize) -> Option<String> {
 fn user_text(first: bool, context: Option<&ChatContext>, query: &str) -> String {
     match context.filter(|_| first) {
         Some(ChatContext::File { name, path }) => format!("{}\n\n{query}", file_note(name, path)),
-        Some(ChatContext::Window { app_name, title, url }) => {
-            format!("{}\n\n{query}", chat::window_line(app_name, title, url.as_deref()))
+        Some(ChatContext::Window {
+            app_name,
+            title,
+            url,
+        }) => {
+            format!(
+                "{}\n\n{query}",
+                chat::window_line(app_name, title, url.as_deref())
+            )
         }
         None => query.to_string(),
     }
@@ -267,7 +331,8 @@ pub async fn send(
         return Err(t("Pick a model above the chat box first."));
     }
     let turn = chat.begin(server.id);
-    let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
+    let user =
+        json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
     let body = request_body(model, &chat::system_prompt(false), &turn.history, &user);
 
     let answer = stream(&base, server.key.as_deref(), model, &body, |visible| {
@@ -278,7 +343,13 @@ pub async fn send(
         return Err(t("No response text."));
     }
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
-    chat.commit(&turn, user, json!({ "role": "assistant", "content": answer }), &plain, &answer);
+    chat.commit(
+        &turn,
+        user,
+        json!({ "role": "assistant", "content": answer }),
+        &plain,
+        &answer,
+    );
     Ok(ChatReply { text: answer })
 }
 
@@ -296,7 +367,9 @@ fn parse_sse_line(line: &str) -> Option<Result<String, String>> {
     if let Some(msg) = json.pointer("/error/message").and_then(Value::as_str) {
         return Some(Err(msg.to_string()));
     }
-    json.pointer("/choices/0/delta/content")?.as_str().map(|s| Ok(s.to_string()))
+    json.pointer("/choices/0/delta/content")?
+        .as_str()
+        .map(|s| Ok(s.to_string()))
 }
 
 /// Removes finished `<think>…</think>` blocks (reasoning models such as DeepSeek-R1).
@@ -304,7 +377,9 @@ fn filter_thinking_blocks(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("<think>") {
-        let Some(len) = rest[start..].find("</think>") else { break };
+        let Some(len) = rest[start..].find("</think>") else {
+            break;
+        };
         out.push_str(&rest[..start]);
         rest = &rest[start + len + "</think>".len()..];
     }
@@ -342,17 +417,28 @@ async fn stream(
 
     let status = reply.status();
     if status.as_u16() == 404 {
-        return Err(tf("{model} isn't installed. Pick another model above the chat box.", &[("model", model)]));
+        return Err(tf(
+            "{model} isn't installed. Pick another model above the chat box.",
+            &[("model", model)],
+        ));
     }
     if !status.is_success() {
-        let body = net::read_capped(reply, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        let body = net::read_capped(reply, net::MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
         let detail = net::error_detail(&body);
-        return Err(if detail.is_empty() { format!("HTTP {}", status.as_u16()) } else { detail });
+        return Err(if detail.is_empty() {
+            format!("HTTP {}", status.as_u16())
+        } else {
+            detail
+        });
     }
 
     let mut accumulated = String::new();
     let mut pending = Vec::<u8>::new();
-    let mut last = Instant::now().checked_sub(DELTA_INTERVAL).unwrap_or_else(Instant::now);
+    let mut last = Instant::now()
+        .checked_sub(DELTA_INTERVAL)
+        .unwrap_or_else(Instant::now);
     while let Some(chunk) = reply.chunk().await.map_err(|_| unreachable(base))? {
         pending.extend_from_slice(&chunk);
         // Whole lines only: a chunk may end in the middle of one, or of a character.
@@ -388,7 +474,11 @@ mod tests {
     use crate::net::tests::serve_once;
 
     fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
-        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(f)
     }
 
     fn url(s: &str) -> Url {
@@ -404,29 +494,57 @@ mod tests {
         assert_eq!(parse_sse_line("data: [DONE]"), None);
         assert_eq!(parse_sse_line(""), None);
         assert_eq!(parse_sse_line(": keep-alive"), None);
-        assert_eq!(parse_sse_line(r#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#), None);
-        assert_eq!(parse_sse_line(r#"data: {"choices":[{"delta":{"content":null,"reasoning_content":"x"}}]}"#), None);
+        assert_eq!(
+            parse_sse_line(r#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#),
+            None
+        );
+        assert_eq!(
+            parse_sse_line(
+                r#"data: {"choices":[{"delta":{"content":null,"reasoning_content":"x"}}]}"#
+            ),
+            None
+        );
         assert_eq!(parse_sse_line("data: not json"), None);
-        assert_eq!(parse_sse_line(r#"data: {"error":{"message":"out of memory"}}"#), Some(Err("out of memory".into())));
+        assert_eq!(
+            parse_sse_line(r#"data: {"error":{"message":"out of memory"}}"#),
+            Some(Err("out of memory".into()))
+        );
     }
 
     #[test]
     fn finished_thinking_blocks_go_and_an_open_one_hides_what_follows() {
-        assert_eq!(filter_thinking_blocks("<think>hmm</think>\n\nThe answer."), "The answer.");
-        assert_eq!(filter_thinking_blocks("a<think>x</think>b<think>y</think>c"), "abc");
+        assert_eq!(
+            filter_thinking_blocks("<think>hmm</think>\n\nThe answer."),
+            "The answer."
+        );
+        assert_eq!(
+            filter_thinking_blocks("a<think>x</think>b<think>y</think>c"),
+            "abc"
+        );
         assert_eq!(filter_thinking_blocks("plain"), "plain");
         // Streaming: nothing of an unfinished block shows.
         assert_eq!(progressive_filter("Sure. <think>let me think"), "Sure.");
         assert_eq!(progressive_filter("<think>still thinking"), "");
-        assert_eq!(progressive_filter("<think>done</think>Visible <think>again"), "Visible");
+        assert_eq!(
+            progressive_filter("<think>done</think>Visible <think>again"),
+            "Visible"
+        );
         // A tag that is only half written is not a block yet.
         assert_eq!(progressive_filter("text <thi"), "text <thi");
     }
 
     #[test]
     fn the_request_streams_with_system_history_and_the_new_turn() {
-        let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
-        let body = request_body("llama3.2", "sys", &history, &json!({"role":"user","content":"c"}));
+        let history = vec![
+            json!({"role":"user","content":"a"}),
+            json!({"role":"assistant","content":"b"}),
+        ];
+        let body = request_body(
+            "llama3.2",
+            "sys",
+            &history,
+            &json!({"role":"user","content":"c"}),
+        );
         assert_eq!(body["stream"], true);
         assert_eq!(body["model"], "llama3.2");
         assert_eq!(body["messages"].as_array().unwrap().len(), 4);
@@ -444,36 +562,68 @@ mod tests {
     fn a_server_that_is_not_connected_says_so() {
         let s = Settings::default();
         let ollama = server(&s, "ollama").unwrap();
-        assert_eq!(base_url(&ollama).unwrap_err(), "Connect Ollama in Settings → Local models first.");
+        assert_eq!(
+            base_url(&ollama).unwrap_err(),
+            "Connect Ollama in Settings → Local models first."
+        );
         assert!(server(&s, "openai").is_none());
-        assert_eq!(usual_address("lmstudio").as_deref(), Some("http://127.0.0.1:1234"));
+        assert_eq!(
+            usual_address("lmstudio").as_deref(),
+            Some("http://127.0.0.1:1234")
+        );
         assert_eq!(usual_address("custom"), None);
     }
 
     #[test]
     fn the_model_list_leaves_out_embedding_models_and_says_when_nothing_answers() {
         let body = br#"{"data":[{"id":"llama3.2"},{"id":"nomic-embed-text"},{"id":"BGE-large"},{"id":"qwen2.5-coder"}]}"#;
-        let u = serve_once("200 OK", &format!("Content-Length: {}\r\n", body.len()), body.to_vec());
-        assert_eq!(block_on(list(&url(&u), None)).unwrap(), vec!["llama3.2", "qwen2.5-coder"]);
+        let u = serve_once(
+            "200 OK",
+            &format!("Content-Length: {}\r\n", body.len()),
+            body.to_vec(),
+        );
+        assert_eq!(
+            block_on(list(&url(&u), None)).unwrap(),
+            vec!["llama3.2", "qwen2.5-coder"]
+        );
 
-        let u = serve_once("500 Internal Server Error", "Content-Length: 2\r\n", b"{}".to_vec());
-        assert!(block_on(list(&url(&u), None)).unwrap_err().starts_with("Cannot reach"));
+        let u = serve_once(
+            "500 Internal Server Error",
+            "Content-Length: 2\r\n",
+            b"{}".to_vec(),
+        );
+        assert!(block_on(list(&url(&u), None))
+            .unwrap_err()
+            .starts_with("Cannot reach"));
         let u = serve_once("200 OK", "Content-Length: 8\r\n", b"not json".to_vec());
-        assert!(block_on(list(&url(&u), None)).unwrap_err().starts_with("Cannot reach"));
-        assert!(block_on(list(&url("http://127.0.0.1:1"), None)).unwrap_err().starts_with("Cannot reach"));
+        assert!(block_on(list(&url(&u), None))
+            .unwrap_err()
+            .starts_with("Cannot reach"));
+        assert!(block_on(list(&url("http://127.0.0.1:1"), None))
+            .unwrap_err()
+            .starts_with("Cannot reach"));
         let u = serve_once("401 Unauthorized", "Content-Length: 2\r\n", b"{}".to_vec());
-        assert!(block_on(list(&url(&u), Some("bad"))).unwrap_err().contains("refused the key"));
+        assert!(block_on(list(&url(&u), Some("bad")))
+            .unwrap_err()
+            .contains("refused the key"));
     }
 
     #[test]
     fn connect_cleans_a_pasted_address_and_reports_whether_it_is_this_machine() {
         let body = br#"{"data":[{"id":"m"}]}"#;
-        let u = serve_once("200 OK", &format!("Content-Length: {}\r\n", body.len()), body.to_vec());
+        let u = serve_once(
+            "200 OK",
+            &format!("Content-Length: {}\r\n", body.len()),
+            body.to_vec(),
+        );
         let c = block_on(connect("lmstudio", &format!("{u}/v1/"))).unwrap();
         assert_eq!(c.url, u);
         assert_eq!(c.models, vec!["m"]);
         assert!(c.loopback);
-        assert_eq!(block_on(connect("custom", " ")).unwrap_err(), "Enter the server address first.");
+        assert_eq!(
+            block_on(connect("custom", " ")).unwrap_err(),
+            "Enter the server address first."
+        );
         assert!(block_on(connect("custom", "file:///etc")).is_err());
     }
 
@@ -492,24 +642,51 @@ mod tests {
             body.push_str(&format!("data: {e}\n\n"));
         }
         body.push_str("data: [DONE]\n\n");
-        let u = serve_once("200 OK", "Content-Type: text/event-stream\r\n", body.into_bytes());
+        let u = serve_once(
+            "200 OK",
+            "Content-Type: text/event-stream\r\n",
+            body.into_bytes(),
+        );
         let mut seen = Vec::new();
         let answer = block_on(stream(&url(&u), None, "m", &json!({}), |v| seen.push(v))).unwrap();
-        assert_eq!(answer, "## Answer\n\n- **item 1**\n```python\nprint('hello')\n```");
+        assert_eq!(
+            answer,
+            "## Answer\n\n- **item 1**\n```python\nprint('hello')\n```"
+        );
         assert_eq!(seen.last().unwrap(), &answer);
-        assert!(seen.iter().all(|v| !v.contains("step") && !v.contains("internal")));
+        assert!(seen
+            .iter()
+            .all(|v| !v.contains("step") && !v.contains("internal")));
     }
 
     #[test]
     fn stream_errors_say_what_happened() {
         let u = serve_once("404 Not Found", "Content-Length: 2\r\n", b"{}".to_vec());
-        let err = block_on(stream(&url(&u), None, "unknown-model", &json!({}), |_| {})).unwrap_err();
-        assert_eq!(err, "unknown-model isn't installed. Pick another model above the chat box.");
+        let err =
+            block_on(stream(&url(&u), None, "unknown-model", &json!({}), |_| {})).unwrap_err();
+        assert_eq!(
+            err,
+            "unknown-model isn't installed. Pick another model above the chat box."
+        );
         let body = br#"{"error":{"message":"context too long"}}"#;
-        let u = serve_once("400 Bad Request", &format!("Content-Length: {}\r\n", body.len()), body.to_vec());
-        assert_eq!(block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(), "context too long");
-        let u = serve_once("200 OK", "", b"data: {\"error\":{\"message\":\"crashed\"}}\n".to_vec());
-        assert_eq!(block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(), "crashed");
+        let u = serve_once(
+            "400 Bad Request",
+            &format!("Content-Length: {}\r\n", body.len()),
+            body.to_vec(),
+        );
+        assert_eq!(
+            block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(),
+            "context too long"
+        );
+        let u = serve_once(
+            "200 OK",
+            "",
+            b"data: {\"error\":{\"message\":\"crashed\"}}\n".to_vec(),
+        );
+        assert_eq!(
+            block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(),
+            "crashed"
+        );
     }
 
     #[test]
@@ -526,13 +703,18 @@ mod tests {
         let txt = dir.join("notes.txt");
         std::fs::write(&txt, "é".repeat(MAX_INLINE_CHARS + 500)).unwrap();
         let note = file_note("notes.txt", txt.to_str().unwrap());
-        let body = note.strip_prefix("File: notes.txt\nFile contents:\n").expect("inline text");
+        let body = note
+            .strip_prefix("File: notes.txt\nFile contents:\n")
+            .expect("inline text");
         let body = body.strip_suffix("\n[truncated]").expect("marked as cut");
         assert_eq!(body.chars().count(), MAX_INLINE_CHARS);
 
         let small = dir.join("small.md");
         std::fs::write(&small, "# hi").unwrap();
-        assert_eq!(file_note("small.md", small.to_str().unwrap()), "File: small.md\nFile contents:\n# hi");
+        assert_eq!(
+            file_note("small.md", small.to_str().unwrap()),
+            "File: small.md\nFile contents:\n# hi"
+        );
 
         let png = dir.join("pic.png");
         std::fs::write(&png, "not really a picture").unwrap();
@@ -540,21 +722,38 @@ mod tests {
         assert_eq!(file_note("gone.txt", "/no/such/file"), "File: gone.txt");
         let bin = dir.join("blob.bin");
         std::fs::write(&bin, [0xff, 0xfe, 0x00, 0x80]).unwrap();
-        assert_eq!(file_note("blob.bin", bin.to_str().unwrap()), "File: blob.bin");
+        assert_eq!(
+            file_note("blob.bin", bin.to_str().unwrap()),
+            "File: blob.bin"
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
     fn the_custom_key_only_goes_to_the_address_it_was_entered_for() {
         let url = |u: &str| net::normalise_server_url(u).unwrap();
-        let stored = serde_json::to_string(&BoundKey { url: "https://llm.example.com".into(), key: "sk-1".into() }).unwrap();
-        assert_eq!(key_for(&stored, &url("https://llm.example.com")).as_deref(), Some("sk-1"));
+        let stored = serde_json::to_string(&BoundKey {
+            url: "https://llm.example.com".into(),
+            key: "sk-1".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            key_for(&stored, &url("https://llm.example.com")).as_deref(),
+            Some("sk-1")
+        );
         assert_eq!(key_for(&stored, &url("https://attacker.example")), None);
         assert_eq!(key_for(&stored, &url("http://llm.example.com")), None);
         // A plain string (the page can write one through secret_set) binds nothing.
         assert_eq!(key_for("sk-raw", &url("https://llm.example.com")), None);
-        let local = serde_json::to_string(&BoundKey { url: "http://127.0.0.1:8080".into(), key: "k".into() }).unwrap();
-        assert_eq!(key_for(&local, &url("http://127.0.0.1:8080")).as_deref(), Some("k"));
+        let local = serde_json::to_string(&BoundKey {
+            url: "http://127.0.0.1:8080".into(),
+            key: "k".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            key_for(&local, &url("http://127.0.0.1:8080")).as_deref(),
+            Some("k")
+        );
         assert!(!may_carry_key(&url("http://192.168.1.20:8080")));
     }
 }

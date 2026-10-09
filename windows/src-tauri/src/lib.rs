@@ -2,6 +2,12 @@
 
 mod agent_hooks;
 mod agents;
+#[cfg(windows)]
+mod auto_launch;
+#[path = "../../shared/auto_launch_trigger.rs"]
+#[allow(dead_code)] // The relay also compiles the policy, including key validation.
+mod auto_launch_trigger;
+mod auto_quit;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -35,7 +41,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use chat::{Chat, ChatContext, ChatReply, ModelInfo};
 use files::DroppedFile;
@@ -59,6 +65,8 @@ pub struct BootInfo {
     /// False where the OS has no global cursor (Wayland): the page then reports
     /// the cursor from its own mouse events.
     cursor_poll: bool,
+    click_through: bool,
+    accent_color: Option<[u8; 3]>,
 }
 
 #[tauri::command]
@@ -75,29 +83,52 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         hook_path: settings::hook_exe_path().to_string_lossy().to_string(),
         cursor_poll: platform::CURSOR_POLL,
+        click_through: shared.gate.click_through.lock().unwrap().enabled,
+        accent_color: platform::accent_color(),
     }
 }
 
 #[tauri::command]
+fn hooks_ready(app: AppHandle) {
+    pipe::ready(&app);
+}
+
+#[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
+    let (screen_changed, autostart_changed, shortcuts_changed, click_through_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
+        let click_through_changed =
+            current.click_through_shortcut != settings.click_through_shortcut;
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
         *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+        (
+            screen_changed,
+            autostart_changed,
+            shortcuts_changed,
+            click_through_changed,
+        )
     };
     let settings = shared.settings.lock().unwrap().clone();
+    auto_quit::configure(
+        &app,
+        settings.auto_quit_when_agents_finish,
+        settings.auto_quit_delay_minutes,
+    );
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
     if autostart_changed {
         let manager = app.autolaunch();
-        let result = if settings.autostart { manager.enable() } else { manager.disable() };
+        let result = if settings.autostart {
+            manager.enable()
+        } else {
+            manager.disable()
+        };
         if let Err(err) = result {
             eprintln!("[coucou] autostart: {err}");
         }
@@ -107,8 +138,11 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
-    if shortcuts_changed {
-        shortcuts::apply(&app, &settings.shortcuts);
+    if click_through_changed {
+        island::change_click_through_method(&app, &shared.gate, settings.click_through_shortcut);
+    }
+    if shortcuts_changed || click_through_changed {
+        shortcuts::apply(&app, &settings.shortcuts, settings.click_through_shortcut);
     }
     if i18n::set_picked(&settings.language) {
         language_changed(&app);
@@ -141,6 +175,13 @@ fn language_changed(app: &AppHandle) {
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
+    if collapsed {
+        let mut state = shared.gate.click_through.lock().unwrap();
+        if state.enabled {
+            state.enabled = false;
+            let _ = app.emit("click-through-changed", false);
+        }
+    }
     island::apply_geometry(&app, &pref, collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
@@ -151,7 +192,13 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
 fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
-    shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    let rect = island::IslandRect {
+        x,
+        y,
+        w: width,
+        h: height,
+    };
+    shared.gate.set_rect(rect);
     // Without the cursor poll the input region is the click-through: it follows the island.
     if !platform::CURSOR_POLL {
         island::refresh_click_through(&app, &shared.gate);
@@ -160,7 +207,9 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
 
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
-    let Some(win) = island::window(&app) else { return };
+    let Some(win) = island::window(&app) else {
+        return;
+    };
     platform::set_activating(&win, focused);
     if focused {
         let _ = win.set_focus();
@@ -227,7 +276,10 @@ fn open_in_vscode(path: Option<String>) -> bool {
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
-        let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
+        let folder = path
+            .as_deref()
+            .map(session_window::folder_name)
+            .unwrap_or_default();
         if platform::focus_process_window(owner, folder) {
             return true;
         }
@@ -255,7 +307,9 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
-    let Some(file) = diff_file(&path) else { return false };
+    let Some(file) = diff_file(&path) else {
+        return false;
+    };
     if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
         cmd.arg(file);
@@ -384,7 +438,10 @@ fn status_line_apply(
 /// shows. Off the main thread: it can take a few seconds.
 #[tauri::command]
 async fn codex_plan_usage() -> Option<serde_json::Value> {
-    tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
+    tauri::async_runtime::spawn_blocking(codex_plan::read)
+        .await
+        .ok()
+        .flatten()
 }
 
 #[tauri::command]
@@ -440,7 +497,10 @@ async fn chat_send(
 /// The models a provider offers, for the picker in the chat view. Only asked
 /// once the user picked that provider, and only with its key or address.
 #[tauri::command]
-async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
+async fn chat_models(
+    shared: State<'_, Shared>,
+    provider: String,
+) -> Result<Vec<ModelInfo>, String> {
     let settings = shared.settings.lock().unwrap().clone();
     chat::models(&settings, &provider).await
 }
@@ -543,8 +603,8 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     if suspended {
         shortcuts::suspend(&app);
     } else {
-        let stored = shared.settings.lock().unwrap().shortcuts.clone();
-        shortcuts::apply(&app, &stored);
+        let settings = shared.settings.lock().unwrap().clone();
+        shortcuts::apply(&app, &settings.shortcuts, settings.click_through_shortcut);
     }
 }
 
@@ -618,10 +678,14 @@ pub fn run() {
     platform::prepare_environment();
     let loaded = settings::load();
     i18n::set_picked(&loaded.language);
-    let gate = Arc::new(PollGate::new());
+    let gate = Arc::new(PollGate::new(loaded.click_through_shortcut));
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            #[cfg(windows)]
+            if argv.iter().any(|arg| arg == auto_launch::LAUNCH_ARG) {
+                return;
+            }
             // `coucou --shortcut <action>`: what a desktop's own keyboard
             // settings run where we can't listen for keys ourselves (Wayland).
             match shortcuts::from_args(&argv) {
@@ -631,23 +695,19 @@ pub fn run() {
                 }
             }
         }))
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None));
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ));
     // Where no global shortcut can work, the plugin isn't even started.
     if platform::global_shortcuts_blocked().is_none() {
         builder = builder.plugin(shortcuts::plugin());
     }
-
-    builder
-        .manage(Shared {
-            settings: Mutex::new(loaded.clone()),
-            gate: gate.clone(),
-        })
-        .manage(Pending::default())
-        .manage(Chat::default())
-        .manage(shortcuts::Registry::default())
-        .manage(recap::load())
-        .invoke_handler(tauri::generate_handler![
+    macro_rules! app_handler {
+        ($($test:path),* $(,)?) => {
+            tauri::generate_handler![
             boot,
+            hooks_ready,
             save_settings,
             set_system_languages,
             set_collapsed,
@@ -661,6 +721,7 @@ pub fn run() {
             open_claude_desktop,
             open_file_in_vscode,
             quit_app,
+            auto_quit::auto_quit_confirm,
             hooks_status,
             agent_hooks_status,
             hooks_preview,
@@ -710,9 +771,37 @@ pub fn run() {
             desktop::desktop_mochi_fly_out,
             desktop::desktop_mochi_fly_home,
             desktop::desktop_mochi_set_asleep,
-        ])
+            $($test,)*
+            ]
+        };
+    }
+    #[cfg(debug_assertions)]
+    let builder = builder.invoke_handler(app_handler![
+        auto_quit::test_advance,
+        auto_quit::test_event,
+        auto_quit::test_status,
+        auto_quit::test_hide_settings,
+    ]);
+    #[cfg(not(debug_assertions))]
+    let builder = builder.invoke_handler(app_handler![]);
+
+    builder
+        .manage(Shared {
+            settings: Mutex::new(loaded.clone()),
+            gate: gate.clone(),
+        })
+        .manage(Pending::default())
+        .manage(auto_quit::AutoQuit::default())
+        .manage(pipe::StartupEvents::default())
+        .manage(Chat::default())
+        .manage(shortcuts::Registry::default())
+        .manage(recap::load())
         .setup(move |app| {
             let handle = app.handle().clone();
+            #[cfg(windows)]
+            if let Err(err) = auto_launch::register(&handle) {
+                log::line(format!("cannot register agent auto-launch: {err}"));
+            }
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
@@ -723,7 +812,10 @@ pub fn run() {
                 // Where Tauri takes the drop itself (Linux), its paths are the
                 // ones ingest_file may copy (files.rs).
                 win.on_window_event(|event| {
-                    if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                    if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop {
+                        paths, ..
+                    }) = event
+                    {
                         files::allow_dropped(paths.iter().map(|p| p.to_string_lossy().to_string()));
                     }
                 });
@@ -742,15 +834,34 @@ pub fn run() {
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
-            log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            log::line(format!(
+                "--- Coucou {} started ---",
+                env!("CARGO_PKG_VERSION")
+            ));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
+            auto_quit::configure(
+                &handle,
+                loaded.auto_quit_when_agents_finish,
+                loaded.auto_quit_delay_minutes,
+            );
             integrations::start(handle.clone());
-            shortcuts::apply(&handle, &loaded.shortcuts);
+            shortcuts::apply(&handle, &loaded.shortcuts, loaded.click_through_shortcut);
+            platform::watch_accent_color(&handle);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Coucou");
+        .build(tauri::generate_context!())
+        .expect("error while running Coucou")
+        .run(|_app, _event| {
+            #[cfg(windows)]
+            match _event {
+                tauri::RunEvent::ExitRequested { code, .. } => {
+                    auto_launch::diagnostic(format!("app_exit_requested code={code:?}"))
+                }
+                tauri::RunEvent::Exit => auto_launch::diagnostic("app_exit"),
+                _ => {}
+            }
+        });
 }
 
 #[cfg(test)]

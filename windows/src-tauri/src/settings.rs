@@ -16,6 +16,8 @@ pub struct Settings {
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
+    pub island_appearance: IslandAppearance,
+    pub click_through_shortcut: ClickThroughShortcut,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -23,6 +25,10 @@ pub struct Settings {
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
+    pub auto_launch_with_agents: bool,
+    pub auto_quit_when_agents_finish: bool,
+    #[serde(deserialize_with = "auto_quit_delay_minutes")]
+    pub auto_quit_delay_minutes: u8,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
@@ -63,6 +69,23 @@ pub struct Settings {
     pub desktop_mochi: DesktopMochiPref,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IslandAppearance {
+    #[default]
+    Original,
+    #[serde(alias = "glassmorphism")]
+    WindowsDarkFrosted,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClickThroughShortcut {
+    #[default]
+    HoldCtrl,
+    CtrlAltD,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DesktopMochiPref {
@@ -90,6 +113,8 @@ impl Default for Settings {
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
+            island_appearance: IslandAppearance::Original,
+            click_through_shortcut: ClickThroughShortcut::HoldCtrl,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -100,6 +125,9 @@ impl Default for Settings {
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
             autostart: false,
+            auto_launch_with_agents: false,
+            auto_quit_when_agents_finish: false,
+            auto_quit_delay_minutes: 10,
             hooks_installed: false,
             model: default_model(),
             show_plan_in_notch: false,
@@ -116,6 +144,16 @@ impl Default for Settings {
             desktop_mochi: DesktopMochiPref::default(),
         }
     }
+}
+
+fn auto_quit_delay_minutes<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<u8, D::Error> {
+    let value = Value::deserialize(deserializer)?;
+    Ok(match value.as_u64() {
+        Some(minutes @ (5 | 10 | 15 | 30 | 60)) => minutes as u8,
+        _ => 10,
+    })
 }
 
 pub use crate::platform::{config_dir, local_dir};
@@ -211,7 +249,10 @@ fn load_from(path: &Path) -> Settings {
         Ok(bytes) => bytes,
         Err(err) if err.kind() == ErrorKind::NotFound => return Settings::default(),
         Err(err) => {
-            note(format!("can't read {}: {err} — using the defaults", path.display()));
+            note(format!(
+                "can't read {}: {err} — using the defaults",
+                path.display()
+            ));
             protect(path);
             return Settings::default();
         }
@@ -224,7 +265,10 @@ fn load_from(path: &Path) -> Settings {
                 copy.display()
             )),
             Err(err) => {
-                note(format!("{} is not usable and could not be copied: {err}", path.display()));
+                note(format!(
+                    "{} is not usable and could not be copied: {err}",
+                    path.display()
+                ));
                 protect(path);
             }
         }
@@ -250,14 +294,21 @@ fn keep_what_was_not_loaded(path: &Path) -> std::io::Result<()> {
     match std::fs::read(path) {
         Ok(bytes) => {
             let copy = set_aside(path, "unread", &bytes)?;
-            note(format!("{} was never loaded — kept as {}", path.display(), copy.display()));
+            note(format!(
+                "{} was never loaded — kept as {}",
+                path.display(),
+                copy.display()
+            ));
         }
         // Gone since: nothing is left to protect.
         Err(err) if err.kind() == ErrorKind::NotFound => {}
         Err(err) => {
             return Err(std::io::Error::new(
                 err.kind(),
-                format!("{} still can't be read, so it is left as it is: {err}", path.display()),
+                format!(
+                    "{} still can't be read, so it is left as it is: {err}",
+                    path.display()
+                ),
             ));
         }
     }
@@ -288,7 +339,11 @@ fn same_copy(path: &Path, kind: &str, bytes: &[u8]) -> Option<PathBuf> {
         .ok()?
         .filter_map(Result::ok)
         .filter(|entry| entry.file_name().to_string_lossy().starts_with(&prefix))
-        .filter(|entry| entry.metadata().is_ok_and(|m| m.len() == bytes.len() as u64))
+        .filter(|entry| {
+            entry
+                .metadata()
+                .is_ok_and(|m| m.len() == bytes.len() as u64)
+        })
         .map(|entry| entry.path())
         .find(|copy| std::fs::read(copy).is_ok_and(|held| held == bytes))
 }
@@ -311,7 +366,11 @@ fn set_aside_as(
             0 => path.with_file_name(&base),
             n => path.with_file_name(format!("{base}-{n}")),
         };
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&copy) {
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&copy)
+        {
             Ok(mut file) => {
                 let written = write(&mut file, bytes);
                 drop(file);
@@ -324,7 +383,10 @@ fn set_aside_as(
             Err(err) => return Err(err),
         }
     }
-    Err(std::io::Error::new(ErrorKind::AlreadyExists, format!("too many copies named {base}")))
+    Err(std::io::Error::new(
+        ErrorKind::AlreadyExists,
+        format!("too many copies named {base}"),
+    ))
 }
 
 /// Writes `bytes` to `file` and waits until they are on the disk.
@@ -369,11 +431,16 @@ mod tests {
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
+  "islandAppearance": "windowsDarkFrosted",
+  "clickThroughShortcut": "ctrlAltD",
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
   "autostart": true,
+  "autoLaunchWithAgents": true,
+  "autoQuitWhenAgentsFinish": true,
+  "autoQuitDelayMinutes": 30,
   "hooksInstalled": true,
   "model": "some-model",
   "showPlanInNotch": true,
@@ -415,8 +482,8 @@ mod tests {
 
     /// A fresh directory of our own, and the settings.json it will hold.
     fn scratch(name: &str) -> (PathBuf, PathBuf) {
-        let dir = std::env::temp_dir()
-            .join(format!("coucou-settings-{name}-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("coucou-settings-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("settings.json");
@@ -504,7 +571,11 @@ mod tests {
         assert_eq!(loaded.desktop_mochi, DesktopMochiPref::default());
         assert_eq!(loaded.model, "some-model");
 
-        let loaded = parse(&custom_with("desktopMochi", Some(json!({ "onDesktop": true })))).unwrap();
+        let loaded = parse(&custom_with(
+            "desktopMochi",
+            Some(json!({ "onDesktop": true })),
+        ))
+        .unwrap();
         assert!(loaded.desktop_mochi.on_desktop);
         assert_eq!(loaded.desktop_mochi.spot, None);
     }
@@ -517,7 +588,12 @@ mod tests {
         assert_eq!(loaded.mochi_outfit, "topHat");
         // The language too: "" (follow the system) when absent, as it comes otherwise.
         assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
-        assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
+        assert_eq!(
+            parse(&custom_with("language", Some(json!("xx"))))
+                .unwrap()
+                .language,
+            "xx"
+        );
     }
 
     #[test]
@@ -606,7 +682,11 @@ mod tests {
     #[cfg(windows)]
     fn locked(path: &Path) -> std::fs::File {
         use std::os::windows::fs::OpenOptionsExt;
-        std::fs::OpenOptions::new().read(true).share_mode(0).open(path).unwrap()
+        std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(path)
+            .unwrap()
     }
 
     #[cfg(windows)]
@@ -699,7 +779,13 @@ mod tests {
             Err(std::io::Error::other("the disk is full"))
         }
         let (dir, file) = scratch("half");
-        let copy = set_aside_as(&file, "corrupt", "20260102-030405", b"all of it", half_then_fail);
+        let copy = set_aside_as(
+            &file,
+            "corrupt",
+            "20260102-030405",
+            b"all of it",
+            half_then_fail,
+        );
         assert!(copy.is_err());
         assert!(names(&dir).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
@@ -725,8 +811,14 @@ mod tests {
         std::os::unix::fs::symlink(&real, &file).unwrap();
 
         save_to(&file, &Settings::default()).unwrap();
-        assert!(std::fs::symlink_metadata(&file).unwrap().file_type().is_symlink());
-        assert_eq!(shown(&parse(&std::fs::read(&real).unwrap()).unwrap()), defaults());
+        assert!(std::fs::symlink_metadata(&file)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(
+            shown(&parse(&std::fs::read(&real).unwrap()).unwrap()),
+            defaults()
+        );
         assert_eq!(names(&dir), ["dotfiles-settings.json", "settings.json"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -741,22 +833,172 @@ mod tests {
     }
 
     #[test]
+    fn auto_launch_is_opt_in_and_independent_of_windows_startup() {
+        assert!(!Settings::default().auto_launch_with_agents);
+        assert!(
+            !parse(br#"{"autostart":true}"#)
+                .unwrap()
+                .auto_launch_with_agents
+        );
+        let invalid = parse(br#"{"autoLaunchWithAgents":"true","soundEnabled":false}"#).unwrap();
+        assert!(!invalid.auto_launch_with_agents);
+        assert!(!invalid.sound_enabled);
+        let (dir, file) = scratch("auto-launch");
+        for auto_launch in [true, false] {
+            for autostart in [true, false] {
+                let mut settings: Settings = serde_json::from_str(CUSTOM).unwrap();
+                settings.auto_launch_with_agents = auto_launch;
+                settings.autostart = autostart;
+                save_to(&file, &settings).unwrap();
+                let reloaded = load_from(&file);
+                assert_eq!(shown(&reloaded), shown(&settings));
+                #[cfg(windows)]
+                assert_eq!(crate::auto_launch::enabled_for_test(&file), auto_launch);
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn auto_quit_is_opt_in_persistent_and_independent() {
+        assert!(!Settings::default().auto_quit_when_agents_finish);
+        assert!(
+            !parse(br#"{"autoLaunchWithAgents":true}"#)
+                .unwrap()
+                .auto_quit_when_agents_finish
+        );
+        assert!(
+            !parse(br#"{"autoQuitWhenAgentsFinish":"true"}"#)
+                .unwrap()
+                .auto_quit_when_agents_finish
+        );
+        let (dir, file) = scratch("auto-quit");
+        for enabled in [true, false] {
+            for launch in [true, false] {
+                for startup in [true, false] {
+                    let mut settings = Settings::default();
+                    settings.auto_quit_when_agents_finish = enabled;
+                    settings.auto_launch_with_agents = launch;
+                    settings.autostart = startup;
+                    save_to(&file, &settings).unwrap();
+                    assert_eq!(shown(&load_from(&file)), shown(&settings));
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn auto_quit_delay_defaults_validates_and_survives_restart() {
+        assert_eq!(Settings::default().auto_quit_delay_minutes, 10);
+        assert_eq!(
+            parse(CUSTOM.as_bytes()).unwrap().auto_quit_delay_minutes,
+            30
+        );
+        assert_eq!(
+            parse(&custom_with("autoQuitDelayMinutes", None))
+                .unwrap()
+                .auto_quit_delay_minutes,
+            10
+        );
+        let (dir, file) = scratch("auto-quit-delay");
+        for minutes in [5, 10, 15, 30, 60] {
+            let mut settings: Settings = serde_json::from_str(CUSTOM).unwrap();
+            settings.auto_quit_delay_minutes = minutes;
+            save_to(&file, &settings).unwrap();
+            assert_eq!(load_from(&file).auto_quit_delay_minutes, minutes);
+            assert_eq!(shown(&load_from(&file)), shown(&settings));
+        }
+        for bad in [
+            json!(0),
+            json!(4),
+            json!(61),
+            json!(-5),
+            json!(10.5),
+            json!("5"),
+            Value::Null,
+        ] {
+            let loaded = parse(&custom_with("autoQuitDelayMinutes", Some(bad))).unwrap();
+            assert_eq!(loaded.auto_quit_delay_minutes, 10);
+            assert!(loaded.auto_quit_when_agents_finish);
+            assert!(loaded.auto_launch_with_agents);
+            assert_eq!(loaded.active_integrations, ["integration_notion"]);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn click_through_method_and_appearance_survive_restart() {
+        let (dir, file) = scratch("island-preferences");
+        assert_eq!(
+            Settings::default().click_through_shortcut,
+            ClickThroughShortcut::HoldCtrl
+        );
+        for method in [
+            ClickThroughShortcut::HoldCtrl,
+            ClickThroughShortcut::CtrlAltD,
+        ] {
+            for appearance in [
+                IslandAppearance::Original,
+                IslandAppearance::WindowsDarkFrosted,
+            ] {
+                let settings = Settings {
+                    click_through_shortcut: method,
+                    island_appearance: appearance,
+                    ..Settings::default()
+                };
+                save_to(&file, &settings).unwrap();
+                let restarted = load_from(&file);
+                assert_eq!(restarted.click_through_shortcut, method);
+                assert_eq!(restarted.island_appearance, appearance);
+            }
+        }
+        let migrated = parse(br#"{"islandAppearance":"glassmorphism"}"#).unwrap();
+        assert_eq!(
+            migrated.island_appearance,
+            IslandAppearance::WindowsDarkFrosted
+        );
+        assert_eq!(
+            migrated.click_through_shortcut,
+            ClickThroughShortcut::HoldCtrl
+        );
+        let invalid = parse(br#"{"clickThroughShortcut":"custom","islandAppearance":"missing","soundEnabled":false}"#).unwrap();
+        assert_eq!(
+            invalid.click_through_shortcut,
+            ClickThroughShortcut::HoldCtrl
+        );
+        assert_eq!(invalid.island_appearance, IslandAppearance::Original);
+        assert!(!invalid.sound_enabled);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn the_file_holds_the_camel_case_keys_the_front_end_uses() {
         let (dir, file) = scratch("keys");
         save_to(&file, &Settings::default()).unwrap();
         let written: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
-        let keys: Vec<&str> = written.as_object().unwrap().keys().map(String::as_str).collect();
+        let keys: Vec<&str> = written
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
         assert_eq!(
             keys,
             [
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",
+                "islandAppearance",
+                "clickThroughShortcut",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
                 "screen",
                 "autostart",
+                "autoLaunchWithAgents",
+                "autoQuitWhenAgentsFinish",
+                "autoQuitDelayMinutes",
                 "hooksInstalled",
                 "model",
                 "showPlanInNotch",

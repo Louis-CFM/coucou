@@ -104,7 +104,11 @@ pub struct Prefs {
 
 impl Default for Prefs {
     fn default() -> Self {
-        Self { enabled: true, hide_projects: false, last_shown_week: String::new() }
+        Self {
+            enabled: true,
+            hide_projects: false,
+            last_shown_week: String::new(),
+        }
     }
 }
 
@@ -119,7 +123,12 @@ struct History {
 
 impl Default for History {
     fn default() -> Self {
-        Self { schema_version: 1, turns: Vec::new(), decisions: Vec::new(), prefs: Prefs::default() }
+        Self {
+            schema_version: 1,
+            turns: Vec::new(),
+            decisions: Vec::new(),
+            prefs: Prefs::default(),
+        }
     }
 }
 
@@ -300,7 +309,8 @@ impl Recap {
         if self.requests.len() >= MAX_REQUESTS {
             self.requests.clear();
         }
-        self.requests.insert(request_id.to_string(), agent_id(payload));
+        self.requests
+            .insert(request_id.to_string(), agent_id(payload));
     }
 
     /// The request was handed back to the terminal: nothing to record.
@@ -322,7 +332,11 @@ impl Recap {
             "deny" => "deny",
             _ => return,
         };
-        self.history.decisions.push(Decision { agent, date: now, decision: word.to_string() });
+        self.history.decisions.push(Decision {
+            agent,
+            date: now,
+            decision: word.to_string(),
+        });
         self.prune(now);
         self.save();
     }
@@ -330,8 +344,20 @@ impl Recap {
     /// Everything from `since` on (Unix seconds).
     pub fn view(&self, since: i64) -> HistoryView {
         HistoryView {
-            turns: self.history.turns.iter().filter(|t| t.start >= since).cloned().collect(),
-            decisions: self.history.decisions.iter().filter(|d| d.date >= since).cloned().collect(),
+            turns: self
+                .history
+                .turns
+                .iter()
+                .filter(|t| t.start >= since)
+                .cloned()
+                .collect(),
+            decisions: self
+                .history
+                .decisions
+                .iter()
+                .filter(|d| d.date >= since)
+                .cloned()
+                .collect(),
             prefs: self.history.prefs.clone(),
         }
     }
@@ -423,8 +449,15 @@ fn read_history(path: &Path) -> History {
         t.year, t.month, t.day, t.hour, t.minute, t.second
     ));
     match std::fs::rename(path, &aside) {
-        Ok(()) => note(format!("{} was not usable — kept as {}", path.display(), aside.display())),
-        Err(err) => note(format!("{} was not usable and could not be set aside: {err}", path.display())),
+        Ok(()) => note(format!(
+            "{} was not usable — kept as {}",
+            path.display(),
+            aside.display()
+        )),
+        Err(err) => note(format!(
+            "{} was not usable and could not be set aside: {err}",
+            path.display()
+        )),
     }
     History::default()
 }
@@ -434,8 +467,8 @@ fn write_history(path: &Path, history: &History) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         platform::ensure_private_dir(dir)?;
     }
-    let json = serde_json::to_vec(history)
-        .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    let json =
+        serde_json::to_vec(history).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -477,7 +510,9 @@ fn agent_id(payload: &Value) -> String {
     let valid = !raw.is_empty()
         && raw.len() <= 24
         && raw != "claude"
-        && raw.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+        && raw
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
     if valid {
         format!("agent_{raw}")
     } else if text(payload, "term_editor") == "cursor" {
@@ -506,7 +541,10 @@ fn project_name(cwd: &str) -> String {
 }
 
 fn clean_name(raw: &str) -> String {
-    raw.chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect()
+    raw.chars()
+        .filter(|c| !c.is_control())
+        .take(MAX_NAME_CHARS)
+        .collect()
 }
 
 /// The file an Edit, MultiEdit or Write touched, with lines added and removed.
@@ -521,8 +559,14 @@ fn file_change(tool: &str, input: &Value) -> Option<(String, u32, u32)> {
         "MultiEdit" => {
             let edits = input.get("edits").and_then(Value::as_array)?;
             edits.iter().fold((0u32, 0u32), |(a, r), edit| {
-                let old = edit.get("old_string").and_then(Value::as_str).unwrap_or_default();
-                let new = edit.get("new_string").and_then(Value::as_str).unwrap_or_default();
+                let old = edit
+                    .get("old_string")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                let new = edit
+                    .get("new_string")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
                 let (da, dr) = line_diff(old, new);
                 (a.saturating_add(da), r.saturating_add(dr))
             })
@@ -545,7 +589,10 @@ fn split_lines(text: &str) -> Vec<&str> {
     if text.is_empty() {
         return Vec::new();
     }
-    let mut lines: Vec<&str> = text.split('\n').map(|l| l.strip_suffix('\r').unwrap_or(l)).collect();
+    let mut lines: Vec<&str> = text
+        .split('\n')
+        .map(|l| l.strip_suffix('\r').unwrap_or(l))
+        .collect();
     if lines.last() == Some(&"") {
         lines.pop();
     }
@@ -569,7 +616,11 @@ pub fn line_diff(old: &str, new: &str) -> (u32, u32) {
     let mut row = vec![0usize; b.len() + 1];
     for x in &a {
         for (j, y) in b.iter().enumerate() {
-            row[j + 1] = if x == y { prev[j] + 1 } else { prev[j + 1].max(row[j]) };
+            row[j + 1] = if x == y {
+                prev[j] + 1
+            } else {
+                prev[j + 1].max(row[j])
+            };
         }
         std::mem::swap(&mut prev, &mut row);
     }
@@ -579,7 +630,13 @@ pub fn line_diff(old: &str, new: &str) -> (u32, u32) {
 
 fn is_week_key(week: &str) -> bool {
     week.len() == 10
-        && week.bytes().enumerate().all(|(i, b)| if i == 4 || i == 7 { b == b'-' } else { b.is_ascii_digit() })
+        && week.bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
 }
 
 // ── Saving the shared image ───────────────────────────────────────────────────
@@ -628,9 +685,17 @@ const PNG_SIGNATURE: &[u8] = &[0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1A, b'\n'
 /// is taken. An existing file is never replaced.
 fn write_unique(dir: &Path, stem: &str, bytes: &[u8]) -> std::io::Result<PathBuf> {
     for n in 1..1000 {
-        let name = if n == 1 { format!("{stem}.png") } else { format!("{stem} ({n}).png") };
+        let name = if n == 1 {
+            format!("{stem}.png")
+        } else {
+            format!("{stem} ({n}).png")
+        };
         let path = dir.join(name);
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
             Ok(mut file) => {
                 let written = file.write_all(bytes).and_then(|()| file.sync_all());
                 drop(file);
@@ -644,7 +709,10 @@ fn write_unique(dir: &Path, stem: &str, bytes: &[u8]) -> std::io::Result<PathBuf
             Err(err) => return Err(err),
         }
     }
-    Err(std::io::Error::new(ErrorKind::AlreadyExists, "too many recap images with this name"))
+    Err(std::io::Error::new(
+        ErrorKind::AlreadyExists,
+        "too many recap images with this name",
+    ))
 }
 
 /// The PNG the page rendered, checked and written to the first pictures folder
@@ -653,7 +721,8 @@ fn save_png(dirs: &[PathBuf], data: &str, week: &str) -> Result<PathBuf, String>
     if data.len() > MAX_PNG_BYTES / 3 * 4 + 64 {
         return Err(crate::i18n::t("The image is too large."));
     }
-    let bytes = decode_base64(data).ok_or_else(|| crate::i18n::t("The image could not be read."))?;
+    let bytes =
+        decode_base64(data).ok_or_else(|| crate::i18n::t("The image could not be read."))?;
     if !bytes.starts_with(PNG_SIGNATURE) {
         return Err(crate::i18n::t("The image could not be read."));
     }
@@ -666,8 +735,12 @@ fn save_png(dirs: &[PathBuf], data: &str, week: &str) -> Result<PathBuf, String>
     } else {
         "Coucou weekly recap".to_string()
     };
-    write_unique(dir, &stem, &bytes)
-        .map_err(|err| crate::i18n::tf("Could not save the image: {error}", &[("error", &err.to_string())]))
+    write_unique(dir, &stem, &bytes).map_err(|err| {
+        crate::i18n::tf(
+            "Could not save the image: {error}",
+            &[("error", &err.to_string())],
+        )
+    })
 }
 
 // ── Tauri glue ────────────────────────────────────────────────────────────────
@@ -681,11 +754,17 @@ impl Store {
 }
 
 fn now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 pub fn load() -> Store {
-    Store(Mutex::new(Recap::load(platform::local_dir().join("recap.json"), now())))
+    Store(Mutex::new(Recap::load(
+        platform::local_dir().join("recap.json"),
+        now(),
+    )))
 }
 
 /// Called by the relay server for every hook event. An agent starting work is
@@ -694,7 +773,10 @@ pub fn observe(app: &AppHandle, payload: &Value) {
     if let Some(store) = app.try_state::<Store>() {
         store.lock().observe(payload, now());
     }
-    if matches!(text(payload, "hook_event_name"), "SessionStart" | "UserPromptSubmit") {
+    if matches!(
+        text(payload, "hook_event_name"),
+        "SessionStart" | "UserPromptSubmit"
+    ) {
         let _ = app.emit_to(WINDOW_LABEL, "recap-check", ());
     }
 }
@@ -759,7 +841,11 @@ pub fn recap_save_png(store: State<Store>, data: String, week: String) -> Result
 /// Opens the folder of the image saved last — never a path from the page.
 #[tauri::command]
 pub fn recap_reveal_saved(store: State<Store>) {
-    let dir = store.lock().last_saved.as_ref().and_then(|p| p.parent().map(Path::to_path_buf));
+    let dir = store
+        .lock()
+        .last_saved
+        .as_ref()
+        .and_then(|p| p.parent().map(Path::to_path_buf));
     if let Some(dir) = dir {
         platform::reveal_folder(&dir.to_string_lossy());
     }
@@ -800,30 +886,67 @@ mod tests {
         let dir = scratch("turn");
         let file = dir.join("recap.json");
         let mut r = Recap::load(file.clone(), T0);
-        r.observe(&event("UserPromptSubmit", "s1", json!({ "prompt": "secret plan" })), T0);
-        r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "Bash", "tool_input": { "command": "rm -rf /tmp/x" } })), T0 + 10);
-        r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "Read" })), T0 + 20);
-        r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "AskUserQuestion" })), T0 + 25);
+        r.observe(
+            &event("UserPromptSubmit", "s1", json!({ "prompt": "secret plan" })),
+            T0,
+        );
+        r.observe(
+            &event(
+                "PreToolUse",
+                "s1",
+                json!({ "tool_name": "Bash", "tool_input": { "command": "rm -rf /tmp/x" } }),
+            ),
+            T0 + 10,
+        );
+        r.observe(
+            &event("PreToolUse", "s1", json!({ "tool_name": "Read" })),
+            T0 + 20,
+        );
+        r.observe(
+            &event(
+                "PreToolUse",
+                "s1",
+                json!({ "tool_name": "AskUserQuestion" }),
+            ),
+            T0 + 25,
+        );
         r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Edit", "tool_input": {
             "file_path": "/home/me/code/coucou/a.rs", "old_string": "a\nb\nc", "new_string": "a\nB\nc\nd" } })), T0 + 30);
-        r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Write", "tool_input": {
-            "file_path": "/home/me/code/coucou/b.rs", "content": "one\ntwo\nthree\n" } })), T0 + 40);
-        r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Edit", "tool_input": {
-            "file_path": "/home/me/code/coucou/a.rs", "old_string": "x", "new_string": "y" } })), T0 + 50);
+        r.observe(
+            &event(
+                "PostToolUse",
+                "s1",
+                json!({ "tool_name": "Write", "tool_input": {
+            "file_path": "/home/me/code/coucou/b.rs", "content": "one\ntwo\nthree\n" } }),
+            ),
+            T0 + 40,
+        );
+        r.observe(
+            &event(
+                "PostToolUse",
+                "s1",
+                json!({ "tool_name": "Edit", "tool_input": {
+            "file_path": "/home/me/code/coucou/a.rs", "old_string": "x", "new_string": "y" } }),
+            ),
+            T0 + 50,
+        );
         r.observe(&event("Stop", "s1", json!({})), T0 + HOUR);
 
         let view = r.view(0);
-        assert_eq!(view.turns, vec![Turn {
-            agent: "integration_claude".into(),
-            project: "coucou".into(),
-            start: T0,
-            end: T0 + HOUR,
-            files_changed: 2,
-            lines_added: 2 + 3 + 1,
-            lines_removed: 1 + 1,
-            commands_run: 1,
-            questions: 1,
-        }]);
+        assert_eq!(
+            view.turns,
+            vec![Turn {
+                agent: "integration_claude".into(),
+                project: "coucou".into(),
+                start: T0,
+                end: T0 + HOUR,
+                files_changed: 2,
+                lines_added: 2 + 3 + 1,
+                lines_removed: 1 + 1,
+                commands_run: 1,
+                questions: 1,
+            }]
+        );
 
         // Only counts and names reach the disk.
         let written = std::fs::read_to_string(&file).unwrap();
@@ -839,13 +962,33 @@ mod tests {
         let dir = scratch("sessions");
         let mut r = Recap::load(dir.join("recap.json"), T0);
         r.observe(&event("UserPromptSubmit", "a", json!({})), T0);
-        r.observe(&event("UserPromptSubmit", "b", json!({ "coucou_agent": "gemini", "cwd": "C:\\Users\\me\\side-project\\" })), T0 + 60);
-        r.observe(&event("PreToolUse", "b", json!({ "coucou_agent": "gemini", "tool_name": "run_shell_command" })), T0 + 70);
+        r.observe(
+            &event(
+                "UserPromptSubmit",
+                "b",
+                json!({ "coucou_agent": "gemini", "cwd": "C:\\Users\\me\\side-project\\" }),
+            ),
+            T0 + 60,
+        );
+        r.observe(
+            &event(
+                "PreToolUse",
+                "b",
+                json!({ "coucou_agent": "gemini", "tool_name": "run_shell_command" }),
+            ),
+            T0 + 70,
+        );
         r.observe(&event("Stop", "a", json!({})), T0 + 120);
-        r.observe(&event("Stop", "b", json!({ "coucou_agent": "gemini" })), T0 + 180);
+        r.observe(
+            &event("Stop", "b", json!({ "coucou_agent": "gemini" })),
+            T0 + 180,
+        );
         let turns = r.view(0).turns;
         assert_eq!(turns.len(), 2);
-        assert_eq!((turns[0].agent.as_str(), turns[0].commands_run), ("integration_claude", 0));
+        assert_eq!(
+            (turns[0].agent.as_str(), turns[0].commands_run),
+            ("integration_claude", 0)
+        );
         assert_eq!(turns[1].agent, "agent_gemini");
         assert_eq!(turns[1].project, "side-project");
         assert_eq!(turns[1].commands_run, 1);
@@ -854,8 +997,17 @@ mod tests {
 
     #[test]
     fn invalid_or_reserved_agent_tags_fall_back_to_claude_code() {
-        for tag in ["claude", "Gemini", "has space", "a-very-long-agent-name-over-24"] {
-            assert_eq!(agent_id(&json!({ "coucou_agent": tag })), "integration_claude", "{tag}");
+        for tag in [
+            "claude",
+            "Gemini",
+            "has space",
+            "a-very-long-agent-name-over-24",
+        ] {
+            assert_eq!(
+                agent_id(&json!({ "coucou_agent": tag })),
+                "integration_claude",
+                "{tag}"
+            );
         }
         assert_eq!(agent_id(&json!({ "coucou_agent": "codex" })), "agent_codex");
     }
@@ -863,10 +1015,19 @@ mod tests {
     #[test]
     fn a_turn_counts_for_the_pill_it_showed_on() {
         // Claude Code in Cursor's terminal is the Cursor pill, as in hooks.ts.
-        assert_eq!(agent_id(&json!({ "term_editor": "cursor" })), "agent_cursor");
+        assert_eq!(
+            agent_id(&json!({ "term_editor": "cursor" })),
+            "agent_cursor"
+        );
         // An explicit agent wins over the terminal it runs in.
-        assert_eq!(agent_id(&json!({ "coucou_agent": "claude-desktop", "term_editor": "cursor" })), "agent_claude-desktop");
-        assert_eq!(agent_id(&json!({ "coucou_agent": "copilot" })), "agent_copilot");
+        assert_eq!(
+            agent_id(&json!({ "coucou_agent": "claude-desktop", "term_editor": "cursor" })),
+            "agent_claude-desktop"
+        );
+        assert_eq!(
+            agent_id(&json!({ "coucou_agent": "copilot" })),
+            "agent_copilot"
+        );
         assert_eq!(agent_id(&json!({})), "integration_claude");
     }
 
@@ -875,7 +1036,10 @@ mod tests {
         let dir = scratch("stale");
         let mut r = Recap::load(dir.join("recap.json"), T0);
         r.observe(&event("UserPromptSubmit", "s1", json!({})), T0);
-        r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "Bash" })), T0 + 600);
+        r.observe(
+            &event("PreToolUse", "s1", json!({ "tool_name": "Bash" })),
+            T0 + 600,
+        );
         // Next event, from another session, three hours later.
         r.observe(&event("UserPromptSubmit", "s2", json!({})), T0 + 3 * HOUR);
         let turns = r.view(0).turns;
@@ -896,8 +1060,14 @@ mod tests {
         r.forget_request("r4");
         let d = r.view(0).decisions;
         assert_eq!(d.len(), 2);
-        assert_eq!((d[0].agent.as_str(), d[0].decision.as_str()), ("agent_codex", "allow"));
-        assert_eq!((d[1].agent.as_str(), d[1].decision.as_str()), ("integration_claude", "deny"));
+        assert_eq!(
+            (d[0].agent.as_str(), d[0].decision.as_str()),
+            ("agent_codex", "allow")
+        );
+        assert_eq!(
+            (d[1].agent.as_str(), d[1].decision.as_str()),
+            ("integration_claude", "deny")
+        );
         assert!(r.requests.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -911,14 +1081,28 @@ mod tests {
         let edge = T0 - WINDOW_SECS;
         for start in [old, edge, T0 - HOUR] {
             r.history.turns.push(Turn {
-                agent: "integration_claude".into(), project: "p".into(), start, end: start + 60,
-                files_changed: 0, lines_added: 0, lines_removed: 0, commands_run: 0, questions: 0,
+                agent: "integration_claude".into(),
+                project: "p".into(),
+                start,
+                end: start + 60,
+                files_changed: 0,
+                lines_added: 0,
+                lines_removed: 0,
+                commands_run: 0,
+                questions: 0,
             });
         }
-        r.history.decisions.push(Decision { agent: "integration_claude".into(), date: old, decision: "allow".into() });
+        r.history.decisions.push(Decision {
+            agent: "integration_claude".into(),
+            date: old,
+            decision: "allow".into(),
+        });
         r.prune(T0);
         r.save();
-        assert_eq!(r.view(0).turns.iter().map(|t| t.start).collect::<Vec<_>>(), [edge, T0 - HOUR]);
+        assert_eq!(
+            r.view(0).turns.iter().map(|t| t.start).collect::<Vec<_>>(),
+            [edge, T0 - HOUR]
+        );
         assert!(r.view(0).decisions.is_empty());
         // Loading later prunes again.
         let later = Recap::load(file, T0 + 2 * HOUR);
@@ -932,21 +1116,34 @@ mod tests {
         let mut r = Recap::load(dir.join("recap.json"), T0);
         for i in 0..(MAX_TURNS as i64 + 5) {
             r.history.turns.push(Turn {
-                agent: "a".into(), project: "p".into(), start: T0 - i, end: T0,
-                files_changed: 0, lines_added: 0, lines_removed: 0, commands_run: 0, questions: 0,
+                agent: "a".into(),
+                project: "p".into(),
+                start: T0 - i,
+                end: T0,
+                files_changed: 0,
+                lines_added: 0,
+                lines_removed: 0,
+                commands_run: 0,
+                questions: 0,
             });
         }
         r.prune(T0);
         assert_eq!(r.history.turns.len(), MAX_TURNS);
         // The oldest went.
-        assert_eq!(r.history.turns.first().unwrap().start, T0 - MAX_TURNS as i64 + 1);
+        assert_eq!(
+            r.history.turns.first().unwrap().start,
+            T0 - MAX_TURNS as i64 + 1
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn names_are_cut_short_and_cleaned() {
         let long = "x".repeat(200);
-        assert_eq!(project_name(&format!("/a/{long}")).chars().count(), MAX_NAME_CHARS);
+        assert_eq!(
+            project_name(&format!("/a/{long}")).chars().count(),
+            MAX_NAME_CHARS
+        );
         assert_eq!(project_name("/a/b\u{7}c/"), "bc");
         assert_eq!(project_name(""), "");
         assert_eq!(project_name("C:\\work\\korus"), "korus");
@@ -963,7 +1160,13 @@ mod tests {
         let big_new = "l\n".repeat(1500);
         assert_eq!(line_diff(&big_old, &big_new), (1500, 3000));
         assert_eq!(file_change("Read", &json!({ "file_path": "/x" })), None);
-        assert_eq!(file_change("Edit", &json!({ "file_path": "/x", "old_string": "a", "new_string": "a" })), None);
+        assert_eq!(
+            file_change(
+                "Edit",
+                &json!({ "file_path": "/x", "old_string": "a", "new_string": "a" })
+            ),
+            None
+        );
         let multi = json!({ "file_path": "/x", "edits": [
             { "old_string": "a", "new_string": "b" }, { "old_string": "", "new_string": "c\nd" } ] });
         assert_eq!(file_change("MultiEdit", &multi), Some(("/x".into(), 3, 1)));
@@ -982,7 +1185,14 @@ mod tests {
         r.clear();
         assert!(r.view(0).turns.is_empty());
         let reloaded = Recap::load(file.clone(), T0);
-        assert_eq!(reloaded.prefs(), &Prefs { enabled: true, hide_projects: true, last_shown_week: "2026-10-05".into() });
+        assert_eq!(
+            reloaded.prefs(),
+            &Prefs {
+                enabled: true,
+                hide_projects: true,
+                last_shown_week: "2026-10-05".into()
+            }
+        );
 
         r.set_enabled(false);
         r.observe(&event("UserPromptSubmit", "s", json!({})), T0);
@@ -1001,8 +1211,10 @@ mod tests {
         let mut r = Recap::load(file.clone(), T0);
         assert!(r.view(0).turns.is_empty());
         let names = |d: &Path| -> Vec<String> {
-            let mut n: Vec<String> = std::fs::read_dir(d).unwrap()
-                .map(|e| e.unwrap().file_name().to_string_lossy().to_string()).collect();
+            let mut n: Vec<String> = std::fs::read_dir(d)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+                .collect();
             n.sort();
             n
         };
@@ -1022,7 +1234,10 @@ mod tests {
 
     #[test]
     fn base64_round_trips_and_rejects_junk() {
-        assert_eq!(decode_base64("data:image/png;base64,aGVsbG8=").unwrap(), b"hello");
+        assert_eq!(
+            decode_base64("data:image/png;base64,aGVsbG8=").unwrap(),
+            b"hello"
+        );
         assert_eq!(decode_base64("aGk=").unwrap(), b"hi");
         assert_eq!(decode_base64("YWJj").unwrap(), b"abc");
         assert!(decode_base64("a$b").is_none());

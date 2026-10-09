@@ -20,7 +20,10 @@ pub const MAX_ERROR_BODY: usize = 64 * 1024;
 /// True for an address that is this machine: `localhost`, 127.0.0.0/8, ::1,
 /// and the unspecified addresses (0.0.0.0, ::), which connect to this machine.
 pub fn is_loopback_host(host: &str) -> bool {
-    let host = host.trim_start_matches('[').trim_end_matches(']').to_ascii_lowercase();
+    let host = host
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_ascii_lowercase();
     if host == "localhost" || host.ends_with(".localhost") {
         return true;
     }
@@ -49,8 +52,13 @@ pub fn normalise_server_url(raw: &str) -> Result<Url, String> {
     if raw.is_empty() {
         return Err(t("Enter the server address first."));
     }
-    let with_scheme = if raw.contains("://") { raw.to_string() } else { format!("http://{raw}") };
-    let mut url = Url::parse(&with_scheme).map_err(|_| tf("Not a valid address: {address}", &[("address", raw)]))?;
+    let with_scheme = if raw.contains("://") {
+        raw.to_string()
+    } else {
+        format!("http://{raw}")
+    };
+    let mut url = Url::parse(&with_scheme)
+        .map_err(|_| tf("Not a valid address: {address}", &[("address", raw)]))?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err(t("The address must start with http:// or https://."));
     }
@@ -77,7 +85,11 @@ pub fn normalise_server_url(raw: &str) -> Result<Url, String> {
 
 /// `base` + `tail`, with exactly one slash between them.
 pub fn join(base: &Url, tail: &str) -> String {
-    format!("{}/{}", base.as_str().trim_end_matches('/'), tail.trim_start_matches('/'))
+    format!(
+        "{}/{}",
+        base.as_str().trim_end_matches('/'),
+        tail.trim_start_matches('/')
+    )
 }
 
 /// The Messages endpoint for an Anthropic-compatible gateway given in
@@ -90,7 +102,11 @@ pub fn anthropic_endpoint(raw: &str) -> Result<Url, String> {
     match url.scheme() {
         "https" => {}
         "http" if is_loopback_url(&url) => {}
-        "http" => return Err(format!("{VAR} must use https:// (plain http only to this computer).")),
+        "http" => {
+            return Err(format!(
+                "{VAR} must use https:// (plain http only to this computer)."
+            ))
+        }
         _ => return Err(format!("{VAR} must start with https://.")),
     }
     if !url.username().is_empty() || url.password().is_some() || url.host_str().is_none() {
@@ -127,7 +143,11 @@ pub async fn read_capped(mut response: reqwest::Response, limit: usize) -> Resul
         return Err(t("The server's answer is too large."));
     }
     let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))? {
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?
+    {
         if body.len() + chunk.len() > limit {
             return Err(t("The server's answer is too large."));
         }
@@ -173,10 +193,29 @@ pub(crate) mod tests {
 
     #[test]
     fn loopback_hosts_are_recognised_and_others_are_not() {
-        for host in ["localhost", "LOCALHOST", "app.localhost", "127.0.0.1", "127.8.9.1", "::1", "[::1]", "0.0.0.0", "[::]", "::ffff:127.0.0.1"] {
+        for host in [
+            "localhost",
+            "LOCALHOST",
+            "app.localhost",
+            "127.0.0.1",
+            "127.8.9.1",
+            "::1",
+            "[::1]",
+            "0.0.0.0",
+            "[::]",
+            "::ffff:127.0.0.1",
+        ] {
             assert!(is_loopback_host(host), "{host}");
         }
-        for host in ["example.com", "192.168.1.10", "10.0.0.2", "localhost.example.com", "[2001:db8::1]", "128.0.0.1", ""] {
+        for host in [
+            "example.com",
+            "192.168.1.10",
+            "10.0.0.2",
+            "localhost.example.com",
+            "[2001:db8::1]",
+            "128.0.0.1",
+            "",
+        ] {
             assert!(!is_loopback_host(host), "{host}");
         }
     }
@@ -184,13 +223,25 @@ pub(crate) mod tests {
     #[test]
     fn a_pasted_server_address_is_cleaned_up() {
         let n = |s: &str| normalise_server_url(s).map(|u| u.to_string());
-        assert_eq!(n("  http://localhost:11434/  ").unwrap(), "http://127.0.0.1:11434/");
-        assert_eq!(n("http://localhost:11434/v1").unwrap(), "http://127.0.0.1:11434/");
-        assert_eq!(n("http://127.0.0.1:1234/v1/").unwrap(), "http://127.0.0.1:1234/");
+        assert_eq!(
+            n("  http://localhost:11434/  ").unwrap(),
+            "http://127.0.0.1:11434/"
+        );
+        assert_eq!(
+            n("http://localhost:11434/v1").unwrap(),
+            "http://127.0.0.1:11434/"
+        );
+        assert_eq!(
+            n("http://127.0.0.1:1234/v1/").unwrap(),
+            "http://127.0.0.1:1234/"
+        );
         assert_eq!(n("localhost:11434/api").unwrap(), "http://127.0.0.1:11434/");
         assert_eq!(n("0.0.0.0:11434").unwrap(), "http://127.0.0.1:11434/");
         assert_eq!(n("http://[::1]:8000").unwrap(), "http://127.0.0.1:8000/");
-        assert_eq!(n("https://llm.example.com/proxy/v1?x=1#y").unwrap(), "https://llm.example.com/proxy");
+        assert_eq!(
+            n("https://llm.example.com/proxy/v1?x=1#y").unwrap(),
+            "https://llm.example.com/proxy"
+        );
         assert_eq!(n("gpu-box.lan:8000").unwrap(), "http://gpu-box.lan:8000/");
     }
 
@@ -207,21 +258,48 @@ pub(crate) mod tests {
     #[test]
     fn join_puts_one_slash_between_base_and_path() {
         let base = normalise_server_url("http://127.0.0.1:11434").unwrap();
-        assert_eq!(join(&base, "/v1/models"), "http://127.0.0.1:11434/v1/models");
+        assert_eq!(
+            join(&base, "/v1/models"),
+            "http://127.0.0.1:11434/v1/models"
+        );
         let base = Url::parse("https://api.openai.com/v1").unwrap();
-        assert_eq!(join(&base, "chat/completions"), "https://api.openai.com/v1/chat/completions");
+        assert_eq!(
+            join(&base, "chat/completions"),
+            "https://api.openai.com/v1/chat/completions"
+        );
     }
 
     #[test]
     fn the_anthropic_gateway_is_taken_as_a_base_url_and_must_be_https() {
         let e = |s: &str| anthropic_endpoint(s).map(|u| u.to_string());
-        assert_eq!(e("https://gw.example.com").unwrap(), "https://gw.example.com/v1/messages");
-        assert_eq!(e("https://gw.example.com/").unwrap(), "https://gw.example.com/v1/messages");
-        assert_eq!(e("https://gw.example.com/anthropic").unwrap(), "https://gw.example.com/anthropic/v1/messages");
-        assert_eq!(e("https://gw.example.com/v1").unwrap(), "https://gw.example.com/v1/messages");
-        assert_eq!(e("https://gw.example.com/v1/messages/").unwrap(), "https://gw.example.com/v1/messages");
-        assert_eq!(e(" http://localhost:4000 ").unwrap(), "http://localhost:4000/v1/messages");
-        assert_eq!(e("http://127.0.0.1:4000/v1").unwrap(), "http://127.0.0.1:4000/v1/messages");
+        assert_eq!(
+            e("https://gw.example.com").unwrap(),
+            "https://gw.example.com/v1/messages"
+        );
+        assert_eq!(
+            e("https://gw.example.com/").unwrap(),
+            "https://gw.example.com/v1/messages"
+        );
+        assert_eq!(
+            e("https://gw.example.com/anthropic").unwrap(),
+            "https://gw.example.com/anthropic/v1/messages"
+        );
+        assert_eq!(
+            e("https://gw.example.com/v1").unwrap(),
+            "https://gw.example.com/v1/messages"
+        );
+        assert_eq!(
+            e("https://gw.example.com/v1/messages/").unwrap(),
+            "https://gw.example.com/v1/messages"
+        );
+        assert_eq!(
+            e(" http://localhost:4000 ").unwrap(),
+            "http://localhost:4000/v1/messages"
+        );
+        assert_eq!(
+            e("http://127.0.0.1:4000/v1").unwrap(),
+            "http://127.0.0.1:4000/v1/messages"
+        );
         assert!(e("http://gw.example.com").is_err());
         assert!(e("ftp://gw.example.com").is_err());
         assert!(e("https://me:secret@gw.example.com").is_err());
@@ -230,8 +308,14 @@ pub(crate) mod tests {
 
     #[test]
     fn error_details_come_from_the_usual_places() {
-        assert_eq!(error_detail(br#"{"error":{"message":"bad key"}}"#), "bad key");
-        assert_eq!(error_detail(br#"{"error":"model 'x' not found"}"#), "model 'x' not found");
+        assert_eq!(
+            error_detail(br#"{"error":{"message":"bad key"}}"#),
+            "bad key"
+        );
+        assert_eq!(
+            error_detail(br#"{"error":"model 'x' not found"}"#),
+            "model 'x' not found"
+        );
         assert_eq!(error_detail(br#"[{"error":{"message":"quota"}}]"#), "quota");
         assert_eq!(error_detail(b"  plain text  "), "plain text");
         assert_eq!(error_detail("x".repeat(500).as_bytes()).len(), 200);
@@ -262,14 +346,23 @@ pub(crate) mod tests {
     }
 
     fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
-        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(f)
     }
 
     #[test]
     fn a_body_past_the_ceiling_is_refused_with_or_without_a_length() {
         let get = |url: String| async move {
             let url = Url::parse(&url).unwrap();
-            let response = client(&url, Duration::from_secs(5)).unwrap().get(url).send().await.unwrap();
+            let response = client(&url, Duration::from_secs(5))
+                .unwrap()
+                .get(url)
+                .send()
+                .await
+                .unwrap();
             read_capped(response, 1000).await
         };
         // Declared length too large.

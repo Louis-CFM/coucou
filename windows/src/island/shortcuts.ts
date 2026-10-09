@@ -110,8 +110,8 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       break;
     }
 
-    // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
-    // attachFrontWindow / desktopToggle aren't in this version.
+    // wardrobeToggle never comes this way (Rust sends `open-wardrobe`);
+    // attachFrontWindow remains reserved.
     default:
       break;
   }

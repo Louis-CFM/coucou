@@ -23,14 +23,20 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 
 Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)**
 (Windows Installer) or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)**,
-always the newest version, and run it. It installs for the current user only — no admin prompt.
+always the newest version, and run it. The .exe installs for the current user only, with no admin prompt; the .msi may ask for admin rights.
 
-The installer is not code-signed yet, so Windows SmartScreen may say "Windows
-protected your PC": click **More info → Run anyway**. Microsoft Defender once
-flagged the installer by mistake (`Trojan:Win32/Wacatac.H!ml`, a machine-learning
-false positive); Microsoft reviewed it and removed the detection. If Defender
-still blocks it on your PC, update its definitions (`Update-MpSignature` in
-PowerShell) and try again.
+**Windows will show a warning the first time — that's expected.** The installer isn't code-signed yet, so SmartScreen doesn't know the publisher:
+
+1. A **"Windows protected your PC"** screen appears, with *Publisher: Unknown publisher*.
+2. Click **More info** (*Informations complémentaires* in French). This reveals a **Run anyway** button.
+3. Click **Run anyway** (*Exécuter quand même*). The installer starts normally.
+
+This is only because the app isn't signed with a paid certificate yet. Coucou is open source, and Microsoft Defender scans the installer as clean.
+
+Microsoft Defender once flagged the installer by mistake (`Trojan:Win32/Wacatac.H!ml`,
+a machine-learning false positive); Microsoft reviewed it and removed the detection.
+If Defender still blocks it on your PC, update its definitions (`Update-MpSignature`
+in PowerShell) and try again.
 
 You can also [build it yourself](#build-it-yourself).
 

@@ -126,9 +126,22 @@ fn pr_basics(node: &Value) -> Option<(String, String, String, String, i64, bool)
     let number = node.get("number")?.as_i64()?;
     let title = str_at(node, "title")?.to_string();
     let url = str_at(node, "url")?.to_string();
-    let repo = node.get("repository").and_then(|r| str_at(r, "nameWithOwner"))?.to_string();
-    let is_draft = node.get("isDraft").and_then(Value::as_bool).unwrap_or(false);
-    Some((format!("{repo}#{number}"), title, url, repo, number, is_draft))
+    let repo = node
+        .get("repository")
+        .and_then(|r| str_at(r, "nameWithOwner"))?
+        .to_string();
+    let is_draft = node
+        .get("isDraft")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    Some((
+        format!("{repo}#{number}"),
+        title,
+        url,
+        repo,
+        number,
+        is_draft,
+    ))
 }
 
 fn nodes<'a>(parent: Option<&'a Value>) -> &'a [Value] {
@@ -144,12 +157,18 @@ impl GitHubPulse {
     pub fn parse(root: &Value, now_ms: u64) -> Option<Self> {
         let data = root.get("data")?.as_object()?;
         let viewer = data.get("viewer")?.as_object()?;
-        let login = viewer.get("login").and_then(Value::as_str).unwrap_or("").to_string();
+        let login = viewer
+            .get("login")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
 
         // My pull requests, first occurrence of an id wins.
         let mut my_prs: Vec<GitHubPr> = Vec::new();
         for node in nodes(viewer.get("pullRequests")) {
-            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else { continue };
+            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else {
+                continue;
+            };
             if my_prs.iter().any(|p| p.id == id) {
                 continue;
             }
@@ -180,16 +199,23 @@ impl GitHubPulse {
         // Default-branch CI of the recently pushed repos, archived ones left out.
         let mut main_ci: Vec<GitHubRepoCi> = Vec::new();
         for node in nodes(viewer.get("repositories")) {
-            if node.get("isArchived").and_then(Value::as_bool).unwrap_or(false) {
+            if node
+                .get("isArchived")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
                 continue;
             }
-            let (Some(repo), Some(url)) = (str_at(node, "nameWithOwner"), str_at(node, "url")) else {
+            let (Some(repo), Some(url)) = (str_at(node, "nameWithOwner"), str_at(node, "url"))
+            else {
                 continue;
             };
             let Some(branch_ref) = node.get("defaultBranchRef").filter(|b| b.is_object()) else {
                 continue;
             };
-            let Some(branch) = str_at(branch_ref, "name") else { continue };
+            let Some(branch) = str_at(branch_ref, "name") else {
+                continue;
+            };
             let target = branch_ref.get("target");
             let ci_raw = target
                 .and_then(|t| t.get("statusCheckRollup"))
@@ -207,7 +233,9 @@ impl GitHubPulse {
         // Pull requests waiting for my review.
         let mut to_review: Vec<GitHubPr> = Vec::new();
         for node in nodes(data.get("reviewRequested")) {
-            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else { continue };
+            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else {
+                continue;
+            };
             if to_review.iter().any(|p| p.id == id) {
                 continue;
             }
@@ -224,7 +252,13 @@ impl GitHubPulse {
             });
         }
 
-        Some(GitHubPulse { login, my_prs, to_review, main_ci, fetched_at: now_ms })
+        Some(GitHubPulse {
+            login,
+            my_prs,
+            to_review,
+            main_ci,
+            fetched_at: now_ms,
+        })
     }
 
     /// True when a PR's CI or a default branch is still running — the next poll
@@ -252,14 +286,22 @@ impl GitHubPulse {
             match prev {
                 Some(prev) if prev.head_sha == pr.head_sha => {
                     if pr.ci == CiState::Failure && prev.ci != CiState::Failure {
-                        out.push(GitHubEvent::CiFailed { pr_id: pr.id.clone() });
+                        out.push(GitHubEvent::CiFailed {
+                            pr_id: pr.id.clone(),
+                        });
                     } else if pr.ci == CiState::Success && prev.ci == CiState::Pending {
-                        out.push(GitHubEvent::CiPassed { pr_id: pr.id.clone() });
+                        out.push(GitHubEvent::CiPassed {
+                            pr_id: pr.id.clone(),
+                        });
                     }
                 }
                 _ => match pr.ci {
-                    CiState::Success => out.push(GitHubEvent::CiPassed { pr_id: pr.id.clone() }),
-                    CiState::Failure => out.push(GitHubEvent::CiFailed { pr_id: pr.id.clone() }),
+                    CiState::Success => out.push(GitHubEvent::CiPassed {
+                        pr_id: pr.id.clone(),
+                    }),
+                    CiState::Failure => out.push(GitHubEvent::CiFailed {
+                        pr_id: pr.id.clone(),
+                    }),
                     _ => {}
                 },
             }
@@ -274,13 +316,17 @@ impl GitHubPulse {
                 _ => repo.ci == CiState::Failure,
             };
             if failed {
-                out.push(GitHubEvent::MainFailed { repo: repo.repo.clone() });
+                out.push(GitHubEvent::MainFailed {
+                    repo: repo.repo.clone(),
+                });
             }
         }
 
         for pr in &new.to_review {
             if !old.to_review.iter().any(|p| p.id == pr.id) {
-                out.push(GitHubEvent::ReviewRequested { pr_id: pr.id.clone() });
+                out.push(GitHubEvent::ReviewRequested {
+                    pr_id: pr.id.clone(),
+                });
             }
         }
 
@@ -340,7 +386,9 @@ impl GitHubActivity {
 
         let mut weeks = Vec::new();
         for week in weeks_raw {
-            let Some(days_raw) = week.get("contributionDays").and_then(Value::as_array) else { continue };
+            let Some(days_raw) = week.get("contributionDays").and_then(Value::as_array) else {
+                continue;
+            };
             let days: Vec<ContributionDay> = days_raw
                 .iter()
                 .filter_map(|d| {
@@ -356,7 +404,11 @@ impl GitHubActivity {
                 weeks.push(days);
             }
         }
-        Some(GitHubActivity { total, weeks, fetched_at: now_ms })
+        Some(GitHubActivity {
+            total,
+            weeks,
+            fetched_at: now_ms,
+        })
     }
 }
 
@@ -420,7 +472,10 @@ query {
 /// Number of GraphQL errors in a response, for the log (never their text: it
 /// can quote the query, not secrets, but there is no need for it).
 pub fn graphql_error_count(root: &Value) -> usize {
-    root.get("errors").and_then(Value::as_array).map(Vec::len).unwrap_or(0)
+    root.get("errors")
+        .and_then(Value::as_array)
+        .map(Vec::len)
+        .unwrap_or(0)
 }
 
 // ── Tests (GitHubPulseTests.swift, GitHubActivityTests.swift) ────────────────
@@ -502,7 +557,13 @@ mod tests {
     }
 
     fn repo(name: &str, ci: CiState, sha: Option<&str>) -> GitHubRepoCi {
-        GitHubRepoCi { repo: name.into(), url: String::new(), branch: "main".into(), ci, head_sha: sha.map(str::to_string) }
+        GitHubRepoCi {
+            repo: name.into(),
+            url: String::new(),
+            branch: "main".into(),
+            ci,
+            head_sha: sha.map(str::to_string),
+        }
     }
 
     #[test]
@@ -591,7 +652,12 @@ mod tests {
         old.my_prs = vec![pr("r/p#1", CiState::Pending, None)];
         let mut new = old.clone();
         new.my_prs[0].ci = CiState::Success;
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#1".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::CiPassed {
+                pr_id: "r/p#1".into()
+            }]
+        );
     }
 
     #[test]
@@ -600,7 +666,12 @@ mod tests {
         old.my_prs = vec![pr("r/p#2", CiState::Success, None)];
         let mut new = old.clone();
         new.my_prs[0].ci = CiState::Failure;
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiFailed { pr_id: "r/p#2".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::CiFailed {
+                pr_id: "r/p#2".into()
+            }]
+        );
     }
 
     #[test]
@@ -609,7 +680,10 @@ mod tests {
         old.main_ci = vec![repo("a/b", CiState::Success, None)];
         let mut new = old.clone();
         new.main_ci[0].ci = CiState::Failure;
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::MainFailed { repo: "a/b".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::MainFailed { repo: "a/b".into() }]
+        );
     }
 
     #[test]
@@ -632,10 +706,15 @@ mod tests {
         new.to_review = vec![review.clone()];
         assert_eq!(
             GitHubPulse::events(Some(&old), &new),
-            vec![GitHubEvent::ReviewRequested { pr_id: "o/r#7".into() }]
+            vec![GitHubEvent::ReviewRequested {
+                pr_id: "o/r#7".into()
+            }]
         );
         old.to_review = vec![review];
-        assert!(GitHubPulse::events(Some(&old), &new).is_empty(), "already known");
+        assert!(
+            GitHubPulse::events(Some(&old), &new).is_empty(),
+            "already known"
+        );
     }
 
     #[test]
@@ -648,7 +727,13 @@ mod tests {
         passed.ci = CiState::Success;
         new.my_prs = vec![passed];
         let events = GitHubPulse::events(Some(&old), &new);
-        assert_eq!(events.iter().filter(|e| matches!(e, GitHubEvent::CiPassed { .. })).count(), 1);
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| matches!(e, GitHubEvent::CiPassed { .. }))
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -656,7 +741,12 @@ mod tests {
         let old = empty_pulse();
         let mut new = old.clone();
         new.my_prs = vec![pr("r/p#10", CiState::Success, Some("abc111"))];
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#10".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::CiPassed {
+                pr_id: "r/p#10".into()
+            }]
+        );
     }
 
     #[test]
@@ -674,7 +764,12 @@ mod tests {
         let mut new = old.clone();
         new.my_prs[0].ci = CiState::Failure;
         new.my_prs[0].head_sha = Some("sha-new".into());
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiFailed { pr_id: "r/p#12".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::CiFailed {
+                pr_id: "r/p#12".into()
+            }]
+        );
     }
 
     #[test]
@@ -684,7 +779,12 @@ mod tests {
         old.my_prs = vec![pr("r/p#14", CiState::Success, Some("one"))];
         let mut new = old.clone();
         new.my_prs[0].head_sha = Some("two".into());
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#14".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::CiPassed {
+                pr_id: "r/p#14".into()
+            }]
+        );
     }
 
     #[test]
@@ -702,7 +802,10 @@ mod tests {
         let mut new = old.clone();
         new.main_ci[0].ci = CiState::Failure;
         new.main_ci[0].head_sha = Some("sha-new".into());
-        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::MainFailed { repo: "a/b".into() }]);
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::MainFailed { repo: "a/b".into() }]
+        );
     }
 
     #[test]
@@ -712,17 +815,25 @@ mod tests {
         assert!(!is_stale(Some(now), now, 60));
         assert!(!is_stale(Some(now - 60_000), now, 60));
         assert!(is_stale(Some(now - 61_000), now, 60));
-        assert!(!is_stale(Some(now + 5_000), now, 60), "clock skew is not stale");
+        assert!(
+            !is_stale(Some(now + 5_000), now, 60),
+            "clock skew is not stale"
+        );
     }
 
     #[test]
     fn events_serialise_for_the_island() {
-        let v = serde_json::to_value(GitHubEvent::CiFailed { pr_id: "a/b#1".into() }).unwrap();
+        let v = serde_json::to_value(GitHubEvent::CiFailed {
+            pr_id: "a/b#1".into(),
+        })
+        .unwrap();
         assert_eq!(v, json!({"kind": "ciFailed", "prId": "a/b#1"}));
         let v = serde_json::to_value(GitHubEvent::MainFailed { repo: "a/b".into() }).unwrap();
         assert_eq!(v, json!({"kind": "mainFailed", "repo": "a/b"}));
         let p = serde_json::to_value(GitHubPulse::parse(&valid_pulse(), 7).unwrap()).unwrap();
-        assert!(p.get("myPRs").is_some() && p.get("toReview").is_some() && p.get("mainCI").is_some());
+        assert!(
+            p.get("myPRs").is_some() && p.get("toReview").is_some() && p.get("mainCI").is_some()
+        );
         assert_eq!(p["myPRs"][0]["isDraft"], json!(false));
         assert_eq!(p["myPRs"][0]["headSha"], json!("aaa"));
         assert_eq!(p["myPRs"][0]["ci"], json!("success"));
@@ -782,7 +893,10 @@ mod tests {
             "totalContributions": 1,
             "weeks": [{"contributionDays": [day("2026-03-01", 1, "EXTRA_SPECIAL", 0)]}]
         }}}}});
-        assert_eq!(GitHubActivity::parse(&root, 0).unwrap().weeks[0][0].level, 0);
+        assert_eq!(
+            GitHubActivity::parse(&root, 0).unwrap().weeks[0][0].level,
+            0
+        );
     }
 
     #[test]

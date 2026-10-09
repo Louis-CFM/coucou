@@ -29,8 +29,16 @@ pub struct Proc {
 /// at the top of every process tree. Reaching one of them means the terminal
 /// window was not an ancestor (a classic console window belongs to conhost).
 const TREE_TOPS: &[&str] = &[
-    "explorer.exe", "services.exe", "wininit.exe", "winlogon.exe", "svchost.exe",
-    "smss.exe", "csrss.exe", "system", "sihost.exe", "userinit.exe",
+    "explorer.exe",
+    "services.exe",
+    "wininit.exe",
+    "winlogon.exe",
+    "svchost.exe",
+    "smss.exe",
+    "csrss.exe",
+    "system",
+    "sihost.exe",
+    "userinit.exe",
 ];
 
 /// How far up we look. A session sits a handful of levels below its window.
@@ -44,7 +52,9 @@ pub fn ancestors(procs: &HashMap<u32, Proc>, start: u32) -> Vec<u32> {
     let mut seen = vec![start];
     let mut current = start;
     while out.len() < MAX_DEPTH {
-        let Some(proc) = procs.get(&current) else { break };
+        let Some(proc) = procs.get(&current) else {
+            break;
+        };
         let parent = proc.parent;
         if parent == 0 || seen.contains(&parent) {
             break;
@@ -64,8 +74,14 @@ pub fn ancestors(procs: &HashMap<u32, Proc>, start: u32) -> Vec<u32> {
 /// Windows side walks `ancestors` itself (platform/windows.rs); this states the
 /// rule the tests pin down.
 #[cfg(test)]
-pub fn window_owner(procs: &HashMap<u32, Proc>, start: u32, has_window: impl Fn(u32) -> bool) -> Option<u32> {
-    ancestors(procs, start).into_iter().find(|pid| has_window(*pid))
+pub fn window_owner(
+    procs: &HashMap<u32, Proc>,
+    start: u32,
+    has_window: impl Fn(u32) -> bool,
+) -> Option<u32> {
+    ancestors(procs, start)
+        .into_iter()
+        .find(|pid| has_window(*pid))
 }
 
 /// Which of a process's windows to bring forward: the one whose title names
@@ -73,14 +89,21 @@ pub fn window_owner(procs: &HashMap<u32, Proc>, start: u32, has_window: impl Fn(
 pub fn pick_window<'a, W>(windows: &'a [(W, String)], folder: &str) -> Option<&'a W> {
     let folder = folder.to_lowercase();
     let named = (!folder.is_empty())
-        .then(|| windows.iter().find(|(_, title)| title.to_lowercase().contains(&folder)))
+        .then(|| {
+            windows
+                .iter()
+                .find(|(_, title)| title.to_lowercase().contains(&folder))
+        })
         .flatten();
     named.or_else(|| windows.first()).map(|(w, _)| w)
 }
 
 /// The last folder name of a path, either separator.
 pub fn folder_name(path: &str) -> &str {
-    path.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or_default()
+    path.trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default()
 }
 
 // ── Sessions seen so far ──────────────────────────────────────────────────────
@@ -98,7 +121,11 @@ pub const NO_WINDOW: u32 = 0;
 /// A session ID arrives in a hook payload: only what Claude Code sends (a
 /// UUID) is kept, at most 128 characters.
 fn valid_session(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 128 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 pub fn remember(session: &str, owner: u32) {
@@ -121,11 +148,17 @@ pub fn known(session: &str) -> bool {
 /// The process owning the session's window, if one was found.
 pub fn lookup(session: &str) -> Option<u32> {
     let list = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
-    list.iter().find(|(s, _)| s == session).map(|(_, pid)| *pid).filter(|pid| *pid != NO_WINDOW)
+    list.iter()
+        .find(|(s, _)| s == session)
+        .map(|(_, pid)| *pid)
+        .filter(|pid| *pid != NO_WINDOW)
 }
 
 pub fn forget(session: &str) {
-    SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+    SESSIONS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .retain(|(s, _)| s != session);
 }
 
 #[cfg(test)]
@@ -135,7 +168,15 @@ mod tests {
     fn tree(entries: &[(u32, u32, &str)]) -> HashMap<u32, Proc> {
         entries
             .iter()
-            .map(|(pid, parent, exe)| (*pid, Proc { parent: *parent, exe: exe.to_string() }))
+            .map(|(pid, parent, exe)| {
+                (
+                    *pid,
+                    Proc {
+                        parent: *parent,
+                        exe: exe.to_string(),
+                    },
+                )
+            })
             .collect()
     }
 
@@ -152,7 +193,10 @@ mod tests {
             (600, 500, "coucou-hook.exe"),
         ]);
         assert_eq!(ancestors(&procs, 600), [500, 400, 300, 200]);
-        assert_eq!(window_owner(&procs, 600, |pid| pid == 200 || pid == 100), Some(200));
+        assert_eq!(
+            window_owner(&procs, 600, |pid| pid == 200 || pid == 100),
+            Some(200)
+        );
     }
 
     #[test]

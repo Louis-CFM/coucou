@@ -28,7 +28,9 @@ struct FileDrop {
 }
 
 pub fn install(app: &AppHandle) {
-    let Some(win) = island::window(app) else { return };
+    let Some(win) = island::window(app) else {
+        return;
+    };
     let handle = app.clone();
     let result = win.with_webview(move |webview| unsafe {
         let core = match webview.controller().CoreWebView2() {
@@ -41,8 +43,12 @@ pub fn install(app: &AppHandle) {
         let handler = WebMessageReceivedEventHandler::create(Box::new(move |_, args| {
             let Some(args) = args else { return Ok(()) };
             // Tauri's own IPC messages come through here too; they carry no objects.
-            let Ok(args) = args.cast::<ICoreWebView2WebMessageReceivedEventArgs2>() else { return Ok(()) };
-            let Ok(objects) = args.AdditionalObjects() else { return Ok(()) };
+            let Ok(args) = args.cast::<ICoreWebView2WebMessageReceivedEventArgs2>() else {
+                return Ok(());
+            };
+            let Ok(objects) = args.AdditionalObjects() else {
+                return Ok(());
+            };
             let mut count = 0u32;
             objects.Count(&mut count)?;
             if count == 0 {
@@ -50,13 +56,22 @@ pub fn install(app: &AppHandle) {
             }
             let mut paths = Vec::new();
             for i in 0..count {
-                let Ok(file) = objects.GetValueAtIndex(i)?.cast::<ICoreWebView2File>() else { continue };
+                let Ok(file) = objects.GetValueAtIndex(i)?.cast::<ICoreWebView2File>() else {
+                    continue;
+                };
                 let mut path = PWSTR::null();
                 file.Path(&mut path)?;
                 paths.push(take_pwstr(path));
             }
             crate::files::allow_dropped(paths.iter().cloned());
-            let _ = handle.emit_to(WINDOW_LABEL, "file-drag", FileDrop { kind: "drop", paths });
+            let _ = handle.emit_to(
+                WINDOW_LABEL,
+                "file-drag",
+                FileDrop {
+                    kind: "drop",
+                    paths,
+                },
+            );
             Ok(())
         }));
         let mut token = 0i64;

@@ -62,7 +62,13 @@ pub fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(None),
-        Err(err) => Err(tf("Can't read {path}: {error}", &[("path", &path.display().to_string()), ("error", &err.to_string())])),
+        Err(err) => Err(tf(
+            "Can't read {path}: {error}",
+            &[
+                ("path", &path.display().to_string()),
+                ("error", &err.to_string()),
+            ],
+        )),
     }
 }
 
@@ -70,7 +76,9 @@ pub fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
 /// empty object; a UTF-8 BOM (PowerShell 5, Notepad) is stripped. Anything
 /// else that is not a JSON object is refused.
 pub fn parse_json(bytes: Option<&[u8]>, label: &str) -> Result<Value, String> {
-    let Some(bytes) = bytes else { return Ok(json!({})) };
+    let Some(bytes) = bytes else {
+        return Ok(json!({}));
+    };
     let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
     if text.iter().all(u8::is_ascii_whitespace) {
         return Ok(json!({}));
@@ -103,7 +111,11 @@ pub fn json_edit<'a>(
             text
         });
         // A file that is not there yet shows as all additions.
-        let before = if bytes.is_some() { pretty(&current) } else { String::new() };
+        let before = if bytes.is_some() {
+            pretty(&current)
+        } else {
+            String::new()
+        };
         Ok(Change { before, after })
     })
 }
@@ -117,13 +129,18 @@ pub fn text_edit<'a>(
     Box::new(move |bytes| {
         let current = match bytes {
             None => None,
-            Some(b) => Some(
-                std::str::from_utf8(b)
-                    .map_err(|_| tf("{file} isn't UTF-8 text — Coucou won't touch it.", &[("file", &label)]))?,
-            ),
+            Some(b) => Some(std::str::from_utf8(b).map_err(|_| {
+                tf(
+                    "{file} isn't UTF-8 text — Coucou won't touch it.",
+                    &[("file", &label)],
+                )
+            })?),
         };
         let after = change(current)?;
-        Ok(Change { before: current.unwrap_or_default().to_string(), after })
+        Ok(Change {
+            before: current.unwrap_or_default().to_string(),
+            after,
+        })
     })
 }
 
@@ -193,7 +210,9 @@ pub fn preview(edits: &[FileEdit]) -> Result<Plan, String> {
 pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String> {
     let wanted: Vec<&str> = expected.split(':').collect();
     if wanted.len() != edits.len() {
-        return Err(t("The preview is out of date. Nothing was written — review the new diff."));
+        return Err(t(
+            "The preview is out of date. Nothing was written — review the new diff.",
+        ));
     }
     let mut planned = Vec::new();
     for (file, want) in edits.iter().zip(wanted) {
@@ -211,27 +230,41 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
     let mut backups = Vec::new();
     for (file, current, _) in &planned {
         if let Some(bytes) = current {
-            let copy = back_up(&file.path, bytes)
-                .map_err(|e| {
-                    tf(
-                        "Backup of {path} failed, nothing was written: {error}",
-                        &[("path", &file.path.display().to_string()), ("error", &e.to_string())],
-                    )
-                })?;
+            let copy = back_up(&file.path, bytes).map_err(|e| {
+                tf(
+                    "Backup of {path} failed, nothing was written: {error}",
+                    &[
+                        ("path", &file.path.display().to_string()),
+                        ("error", &e.to_string()),
+                    ],
+                )
+            })?;
             backups.push(copy);
         }
     }
 
     for (file, current, after) in planned {
         match after {
-            Some(text) => replace(&file.path, text.as_bytes())
-                .map_err(|e| {
-                    tf("Write to {path} failed: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
-                })?,
-            None if current.is_some() => std::fs::remove_file(resolve_link(&file.path))
-                .map_err(|e| {
-                    tf("Could not remove {path}: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
-                })?,
+            Some(text) => replace(&file.path, text.as_bytes()).map_err(|e| {
+                tf(
+                    "Write to {path} failed: {error}",
+                    &[
+                        ("path", &file.path.display().to_string()),
+                        ("error", &e.to_string()),
+                    ],
+                )
+            })?,
+            None if current.is_some() => {
+                std::fs::remove_file(resolve_link(&file.path)).map_err(|e| {
+                    tf(
+                        "Could not remove {path}: {error}",
+                        &[
+                            ("path", &file.path.display().to_string()),
+                            ("error", &e.to_string()),
+                        ],
+                    )
+                })?
+            }
             None => {}
         }
     }
@@ -284,7 +317,10 @@ fn back_up(path: &Path, bytes: &[u8]) -> std::io::Result<PathBuf> {
             Err(err) => return Err(err),
         }
     }
-    Err(std::io::Error::new(ErrorKind::AlreadyExists, "too many backups this second"))
+    Err(std::io::Error::new(
+        ErrorKind::AlreadyExists,
+        "too many backups this second",
+    ))
 }
 
 fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
@@ -323,7 +359,9 @@ pub fn write_like(temp: &Path, original: &Path, bytes: &[u8]) -> std::io::Result
 
 /// The file a symlinked config points at (on Windows too), else `path` itself.
 fn resolve_link(path: &Path) -> std::path::PathBuf {
-    let is_link = std::fs::symlink_metadata(path).map(|m| m.file_type().is_symlink()).unwrap_or(false);
+    let is_link = std::fs::symlink_metadata(path)
+        .map(|m| m.file_type().is_symlink())
+        .unwrap_or(false);
     if is_link {
         std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
     } else {
@@ -454,7 +492,9 @@ pub mod tests {
             path: path.to_path_buf(),
             edit: json_edit("test.json".into(), |v| {
                 if v.get("hooks").is_some_and(|h| !h.is_object()) {
-                    return Err("\"hooks\" has an unexpected type — Coucou has not touched it.".into());
+                    return Err(
+                        "\"hooks\" has an unexpected type — Coucou has not touched it.".into(),
+                    );
                 }
                 let mut next = v.clone();
                 next["ours"] = json!(true);
@@ -464,7 +504,10 @@ pub mod tests {
     }
 
     fn remove_file_edit(path: &Path) -> Vec<FileEdit<'static>> {
-        vec![FileEdit { path: path.to_path_buf(), edit: json_edit("test.json".into(), |_| Ok(None)) }]
+        vec![FileEdit {
+            path: path.to_path_buf(),
+            edit: json_edit("test.json".into(), |_| Ok(None)),
+        }]
     }
 
     #[test]
@@ -577,7 +620,9 @@ pub mod tests {
         let path = dir.join("deep").join("er").join("hooks.json");
         let plan = preview(&add_ours(&path)).unwrap();
         assert_eq!(plan.backup, "");
-        assert!(apply(&add_ours(&path), &plan.fingerprint).unwrap().is_empty());
+        assert!(apply(&add_ours(&path), &plan.fingerprint)
+            .unwrap()
+            .is_empty());
         let after: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(after, json!({ "ours": true }));
         let _ = std::fs::remove_dir_all(&dir);
@@ -632,7 +677,10 @@ pub mod tests {
         std::os::unix::fs::symlink(&real, &link).unwrap();
 
         let backups = apply(&add_ours(&link), &fingerprint(b"{}")).unwrap();
-        assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+        assert!(std::fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink());
         let v: Value = serde_json::from_slice(&std::fs::read(&real).unwrap()).unwrap();
         assert_eq!(v["ours"], true);
         let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;

@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, type AccentColor } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -165,7 +165,7 @@ export class Island {
         if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
       },
       openTerminal: () => {
-        const task = State.focusTask;
+        const task = State.displayTask;
         // Sessions from the Claude desktop app live there, not in a terminal.
         if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
@@ -376,6 +376,7 @@ export class Island {
 
   expand(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    if (view !== "finished") State.finishedPopup = null;
     if (view !== "overview") closePlanCard();
     State.view = view;
     if (State.mode !== "expanded") this.setMode("expanded");
@@ -386,6 +387,7 @@ export class Island {
 
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
+    if (view !== "finished") State.finishedPopup = null;
     if (view !== "overview") closePlanCard();
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
@@ -408,6 +410,7 @@ export class Island {
       return;
     }
     State.isPinned = false;
+    State.finishedPopup = null;
     this.fsm.pinned = false;
     // Drive the state machine rather than the mode: setting the mode behind its
     // back left it thinking the island was still open, and a click on the compact
@@ -417,9 +420,46 @@ export class Island {
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
+    const answer = view === "finished" ? State.finishedPopup : null;
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
+    // The home transition first opens its default view; retain the Stop snapshot.
+    if (answer) State.finishedPopup = answer;
     this.expand(view);
+  }
+
+  /** Automatic answers may use the island only while no one is interacting with it. */
+  canAutoPopup(): boolean {
+    return !this.wasInIsland && !this.desktop.carrying && !State.fileDragOver &&
+      !State.pendingApproval && !State.isPinned &&
+      (State.mode !== "expanded" || State.view === "overview" ||
+        (State.view === "finished" && State.finishedPopup !== null));
+  }
+
+  canAutoQuit(): boolean {
+    return this.autoQuitBlocker() === null;
+  }
+
+  autoQuitBlocker(): string | null {
+    // Chat is kept in memory: retain even a hidden conversation until the user clears it.
+    if (State.chatHistory.length) return "chat_history";
+    if (Array.from(this.root.querySelectorAll<HTMLInputElement>(".chat-input"))
+      .some((input) => input.value.length > 0 || input === document.activeElement)) return "chat_draft";
+    if (State.pendingApproval) return "permission";
+    if (State.finishedPopup) return "popup";
+    if (State.mode === "expanded" && State.view === "prompt") return "chat_open";
+    if (State.mode === "expanded") return "expanded";
+    if (this.wasInIsland) return "hover";
+    if (this.desktop.carrying || State.fileDragOver || State.droppedFile) return "drag";
+    if (this.uploadActive) return "upload";
+    if (State.promptContext || State.stateOverride) return "active_view";
+    if (State.isPinned) return "pinned";
+    if (performance.now() - State.lastActivity < 30_000) return "recent_activity";
+    return null;
+  }
+
+  hide() {
+    this.fsm.forceHidden();
   }
 
   reveal() {
@@ -988,17 +1028,22 @@ export class Island {
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
-      const color = botGlowColor(State.effectiveState);
+      const color = botGlowColor(this.botState);
       this.botGlow.style.display = "block";
       this.botGlow.style.width = `${d * 2.2}px`;
       this.botGlow.style.height = `${d * 2.2}px`;
       this.botGlow.style.left = `${this.botCx.value - d * 1.1}px`;
       this.botGlow.style.top = `${this.botCy.value - d * 1.1}px`;
       this.botGlow.style.background = `radial-gradient(circle, ${color} 0%, transparent 62%)`;
-      this.botGlow.style.opacity = String(botGlowOpacity(State.effectiveState));
+      this.botGlow.style.opacity = String(botGlowOpacity(this.botState));
     } else {
       this.botGlow.style.display = "none";
     }
+  }
+
+  private get botState() {
+    return State.view === "finished" && State.finishedPopup
+      ? State.finishedPopup.state : State.effectiveState;
   }
 
   private drawBot(dt: number) {
@@ -1020,12 +1065,13 @@ export class Island {
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
-    const focus = State.focusTask;
+    const task = State.displayTask;
+    const popup = State.view === "finished" && State.finishedPopup !== null;
     // While a plan card is open Mochi wears the plan's colour, like its pill.
     this.engine.bodyColor = planCardOpen()
       ? hexToRGB(openPlanColor())
-      : focus?.isIntegration
-        ? hexToRGB(focus.color)
+      : task && (task.isIntegration || popup)
+        ? hexToRGB(task.color)
         : null;
     this.engine.particleOverhang = BOT_OVERHANG;
     this.engine.lookX = this.lookX();
@@ -1039,15 +1085,13 @@ export class Island {
         this.engine.slotHVel = 0;
       }
     }
-    // Only the main Mochi is dressed — the one of the main tool's pill (Settings →
-    // Active pills): a focused integration pill shows its own colours, unless
-    // the wardrobe is open (BotCanvasView.showOutfit, macOS).
-    // In the wardrobe the hovered outfit swaps in at once, without the drop-in.
+    // Only the main pill's Mochi is dressed; a popup uses its sender's identity.
+    // Swap immediately for popups so the previous agent's outfit cannot flash.
     const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
-    const mainFocused = State.focusId == null || State.focusId === State.mainPillId;
-    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
+    const mainFocused = task?.id === State.mainPillId || (task == null && State.focusId == null);
+    const showOutfit = mainFocused || (!popup && (State.mode !== "expanded" || inWardrobe));
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
-    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe && !popup);
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
@@ -1138,15 +1182,25 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    this.engine.setState(this.botState);
   }
 
   /** Applies settings coming from Rust at boot. */
   applySettings() {
+    this.root.dataset.appearance = State.settings.islandAppearance;
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     State.notify();
+  }
+
+  setClickThrough(enabled: boolean) {
+    this.root.dataset.clickThrough = String(enabled);
+  }
+
+  setAccentColor(color: AccentColor | null) {
+    if (color) this.root.style.setProperty("--windows-accent", color.join(", "));
+    else this.root.style.removeProperty("--windows-accent");
   }
 
   get panelSize() {

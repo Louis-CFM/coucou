@@ -9,7 +9,7 @@
 use std::time::{Duration, Instant};
 
 use windows::core::PWSTR;
-use windows::Win32::Foundation::{CloseHandle, HANDLE, LocalFree, HLOCAL};
+use windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL};
 use windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
 use windows::Win32::System::Pipes::GetNamedPipeServerProcessId;
@@ -39,7 +39,11 @@ pub fn connect() -> Option<std::fs::File> {
     let path = pipe_path();
     let deadline = Instant::now() + CONNECT_TIMEOUT;
     loop {
-        match std::fs::OpenOptions::new().read(true).write(true).open(&path) {
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+        {
             Ok(file) => {
                 let handle = HANDLE(file.as_raw_handle());
                 // Somebody else's server on our pipe name gets nothing from us.
@@ -66,7 +70,9 @@ pub fn current_user_sid() -> Option<String> {
 /// cannot vouch for costs one hook event, while trusting it could hand another
 /// account on this machine the contents of every tool call.
 pub fn pipe_server_is_same_user(handle: HANDLE) -> bool {
-    let Some(mine) = current_user_sid() else { return false };
+    let Some(mine) = current_user_sid() else {
+        return false;
+    };
     unsafe {
         let mut pid = 0u32;
         if GetNamedPipeServerProcessId(handle, &mut pid).is_err() || pid == 0 {

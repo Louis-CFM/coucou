@@ -6,7 +6,7 @@ import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
-  ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
+  CLICK_THROUGH_CHOICES, CLICK_THROUGH_TOGGLE, ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
@@ -28,11 +28,14 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+let saving: Promise<unknown> = Promise.resolve();
 
 const root = document.getElementById("settings-root")!;
 
-async function save() {
-  await Bridge.saveSettings(settings);
+function save() {
+  const snapshot = structuredClone(settings);
+  saving = saving.then(() => Bridge.saveSettings(snapshot));
+  return saving;
 }
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
@@ -854,6 +857,17 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 // ── General section ───────────────────────────────────────────────────────────
 
 function generalSection(): HTMLElement {
+  const appearance = h("select", { "aria-label": t("Island Appearance") }) as HTMLSelectElement;
+  appearance.append(
+    h("option", { value: "original", text: t("Original Coucou") }),
+    h("option", { value: "windowsDarkFrosted", text: t("Windows Dark Frosted") }),
+  );
+  appearance.value = settings.islandAppearance;
+  appearance.addEventListener("change", () => {
+    settings.islandAppearance = appearance.value as Settings["islandAppearance"];
+    void save();
+  });
+
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -915,6 +929,9 @@ function generalSection(): HTMLElement {
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
     h("div", { class: "row" },
+      h("label", { text: t("Island Appearance") }), appearance,
+    ),
+    h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,
     ),
@@ -922,8 +939,62 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
+    autoLaunchRow(),
+    ...autoQuitRows(),
     ...recapRows(),
     languageRow(),
+  );
+}
+
+function autoQuitRows(): HTMLElement[] {
+  const delay = h("select", { id: "auto-quit-delay" });
+  for (const minutes of [5, 10, 15, 30, 60]) {
+    delay.append(h("option", { value: String(minutes), text: t("{n} minutes", { n: minutes }) }));
+  }
+  delay.value = String(settings.autoQuitDelayMinutes);
+  delay.disabled = !settings.autoQuitWhenAgentsFinish;
+  delay.addEventListener("change", () => {
+    settings.autoQuitDelayMinutes = Number(delay.value);
+    void save();
+  });
+  const control = toggle(settings.autoQuitWhenAgentsFinish, (v) => {
+    settings.autoQuitWhenAgentsFinish = v;
+    delay.disabled = !v;
+    void save();
+  });
+  control.id = "auto-quit-enabled";
+  control.setAttribute("aria-label", t("Auto-quit when agents finish"));
+  control.setAttribute("aria-pressed", String(settings.autoQuitWhenAgentsFinish));
+  control.setAttribute("aria-describedby", "auto-quit-description");
+  control.addEventListener("click", () => control.setAttribute("aria-pressed", String(settings.autoQuitWhenAgentsFinish)));
+  return [
+    h("div", { class: "row" },
+      h("div", { style: "flex:1;min-width:0" },
+        h("label", { text: t("Auto-quit when agents finish") }),
+        h("div", { class: "hint", id: "auto-quit-description", text: t("Automatically quit Coucou after all coding agent sessions have ended.") }),
+      ), control,
+    ),
+    h("div", { class: "row" },
+      h("label", { for: "auto-quit-delay", text: t("Quit after") }), delay,
+    ),
+  ];
+}
+
+function autoLaunchRow(): HTMLElement {
+  const control = toggle(settings.autoLaunchWithAgents, (v) => {
+    settings.autoLaunchWithAgents = v;
+    void save();
+  });
+  control.id = "auto-launch-enabled";
+  control.setAttribute("aria-label", t("Auto-launch with agents"));
+  control.setAttribute("aria-pressed", String(settings.autoLaunchWithAgents));
+  control.setAttribute("aria-describedby", "auto-launch-description");
+  control.addEventListener("click", () => control.setAttribute("aria-pressed", String(settings.autoLaunchWithAgents)));
+  return h("div", { class: "row" },
+    h("div", { style: "flex:1;min-width:0" },
+      h("label", { text: t("Auto-launch with agents") }),
+      h("div", { class: "hint", id: "auto-launch-description", text: t("Automatically open Coucou when a connected coding agent starts working.") }),
+    ), control,
   );
 }
 
@@ -975,6 +1046,8 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
   const list = h("div", { class: "shortcut-list" });
   const feedback = h("div", {});
   const blockedNote = h("div", {});
+  const methodList = h("fieldset", { class: "click-through-choices" });
+  let savingMethod = false;
 
   let stopRecording: (() => void) | null = null;
 
@@ -1052,8 +1125,30 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
   }
 
   function draw() {
+    reset.disabled = savingMethod;
+    clear(methodList);
+    methodList.append(h("legend", { class: "subhead", text: t("Click-Through Shortcut") }));
+    for (const choice of CLICK_THROUGH_CHOICES) {
+      const radio = h("input", { type: "radio", name: "click-through-shortcut", value: choice.value }) as HTMLInputElement;
+      radio.checked = settings.clickThroughShortcut === choice.value;
+      radio.disabled = savingMethod;
+      radio.addEventListener("change", async () => {
+        if (!radio.checked || savingMethod) return;
+        stopRecording?.();
+        settings.clickThroughShortcut = choice.value;
+        savingMethod = true;
+        draw();
+        try { await save(); } finally { savingMethod = false; draw(); }
+      });
+      const tag = choice.value === "ctrlAltD" && radio.checked ? tagFor(CLICK_THROUGH_TOGGLE[0], new Set()) : null;
+      methodList.append(h("label", { class: "click-through-choice" }, radio,
+        h("span", {}, h("span", { class: "choice-title", text: t(choice.label) }),
+          h("span", { class: "hint", text: t(choice.description) })),
+        ...(tag ? [tag] : []),
+      ));
+    }
     clear(list);
-    const dups = duplicates(activeKeys(settings.shortcuts));
+    const dups = duplicates(activeKeys(settings.shortcuts, settings.clickThroughShortcut));
     for (const d of SHORTCUTS) {
       if (!d.ported) continue;
       const binding = effective(d, settings.shortcuts);
@@ -1098,11 +1193,12 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     onclick: () => {
       stopRecording?.();
       settings.shortcuts = {};
+      settings.clickThroughShortcut = "holdCtrl";
       clear(feedback);
       void save();
       draw();
     },
-  });
+  }) as HTMLButtonElement;
 
   // The events are listened to once (see main); only the section on screen redraws.
   shortcutsListener = {
@@ -1121,6 +1217,7 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     {},
     h("h2", {}, h("span", { text: SHORTCUTS_UI.title })),
     h("div", { class: "hint", text: SHORTCUTS_UI.hint }),
+    methodList,
     h("div", { class: "subhead", text: SHORTCUTS_UI.global }),
     list,
     blockedNote,

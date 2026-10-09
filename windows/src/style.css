@@ -57,6 +57,17 @@ body {
   inset: 0;
 }
 
+#root[data-click-through="true"] {
+  opacity: 0.35;
+}
+
+#root[data-appearance="windowsDarkFrosted"] {
+  --card: rgba(34, 36, 41, 0.82);
+  --card-flat: rgba(25, 27, 31, 0.84);
+  --tab-on: rgba(var(--windows-accent, 72, 76, 84), 0.12);
+  --hairline: rgba(255, 255, 255, 0.08);
+}
+
 /* Invisible strip that wakes the island when it is hidden. */
 #wake-strip {
   position: fixed;
@@ -79,6 +90,73 @@ body {
   overflow: visible;
   will-change: width, height, transform;
 }
+
+#root[data-appearance="windowsDarkFrosted"] #island {
+  background: linear-gradient(145deg, rgba(var(--windows-accent, 72, 76, 84), 0.07), transparent 58%), rgba(28, 30, 34, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3), 0 2px 7px rgba(0, 0, 0, 0.14), inset 0 1px rgba(255, 255, 255, 0.18), inset 0 -1px rgba(8, 9, 12, 0.34);
+  background-clip: padding-box;
+}
+
+#root[data-appearance="windowsDarkFrosted"] #island::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.07), transparent 18%, transparent 85%, rgba(var(--windows-accent, 72, 76, 84), 0.035));
+  pointer-events: none;
+}
+
+#root[data-appearance="windowsDarkFrosted"] .md-pre,
+#root[data-appearance="windowsDarkFrosted"] .picker {
+  background: rgba(25, 27, 31, 0.88);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+#root[data-appearance="windowsDarkFrosted"] .header-actions .plan-pill {
+  background: rgba(27, 29, 33, 0.82);
+  box-shadow: inset 0 1px rgba(var(--windows-accent, 72, 76, 84), 0.08);
+}
+
+/* ponytail: this filters WebView content only; desktop blur needs a separately validated native surface. */
+@supports (backdrop-filter: blur(6px)) {
+  #root[data-appearance="windowsDarkFrosted"] .card,
+  #root[data-appearance="windowsDarkFrosted"] .picker {
+    backdrop-filter: blur(6px);
+  }
+}
+
+#root[data-click-through="true"] {
+  --card: #141518;
+  --card-flat: #0e0f11;
+  --tab-on: #1d1f23;
+  --hairline: rgba(255, 255, 255, 0.035);
+}
+
+#root[data-click-through="true"] #island {
+  background: #000;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+#root[data-click-through="true"] #island::before {
+  display: none;
+}
+
+#root[data-click-through="true"] :is(.card, .picker, .md-pre, .header-actions .plan-pill) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  background: var(--card-flat);
+}
+
+#root[data-click-through="true"] .card.wash::after {
+  display: none;
+}
+
+#root[data-click-through="true"] #bot-glow { visibility: hidden; }
 
 #island-clip {
   position: absolute;
@@ -663,7 +741,7 @@ body {
   z-index: 1;
   height: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: 28px;
   gap: 4px;
   align-content: center;
@@ -672,32 +750,30 @@ body {
 
 .pill {
   position: relative;
+  min-width: 0;
   height: 28px;
+  padding: 0 16px 0 7px;
   border-radius: 999px;
   background: var(--card-flat);
   border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
+  gap: 12px;
   cursor: default;
   transition: transform 0.2s cubic-bezier(0.3, 1.2, 0.4, 1), background 0.18s, border-color 0.18s,
     box-shadow 0.18s, filter 0.18s;
 }
 
-.pill .mini {
-  margin-left: 7px;
-}
-
 .pill .lbl {
-  position: absolute;
-  left: 0;
-  right: 0;
+  flex: 1;
+  min-width: 0;
   text-align: center;
   font: 600 10px var(--font);
+  line-height: 1.2;
   color: var(--dim-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
   pointer-events: none;
 }
 

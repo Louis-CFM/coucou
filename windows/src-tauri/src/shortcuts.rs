@@ -15,7 +15,7 @@
 //
 //   Ctrl+Alt+Space   open the chat           Ctrl+Alt+→ / ←  next / previous pill
 //   Ctrl+Alt+A       waiting permission      Ctrl+Alt+S      mute Mochi
-//   Ctrl+Alt+T       open the terminal       Ctrl+Alt+G      wardrobe
+//   Ctrl+Alt+T       open the terminal       Ctrl+Alt+W      wardrobe
 //   Ctrl+Alt+N       open / close the island (off by default, as on the Mac)
 //
 // ⌃⌥[ and ⌃⌥] became the arrows (brackets are AltGr characters almost
@@ -25,6 +25,7 @@
 // layouts actually installed (platform::ctrl_alt_types) and left unregistered,
 // flagged in Settings, when it types a character. The same table lives in
 // src/core/shortcuts.ts; tests/shortcuts.test.mjs keeps the two in step.
+// Wardrobe's requested W default is refused on ABNT2, where AltGr+W types ?.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::str::FromStr;
@@ -35,6 +36,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcut, Modifiers, Shortcut, ShortcutState};
 
 use crate::island::WINDOW_LABEL;
+use crate::settings::ClickThroughShortcut;
 
 /// One global action, as on the Mac (`ShortcutAction`). The ids are the Mac's
 /// raw values and are stored in settings.json: never rename one.
@@ -49,7 +51,12 @@ pub struct ActionDef {
 }
 
 const fn action(id: &'static str, keys: &'static str, on: bool, ported: bool) -> ActionDef {
-    ActionDef { id, default_keys: keys, enabled_by_default: on, ported }
+    ActionDef {
+        id,
+        default_keys: keys,
+        enabled_by_default: on,
+        ported,
+    }
 }
 
 /// Same order as `ShortcutAction.allCases`.
@@ -63,10 +70,10 @@ pub const ACTIONS: &[ActionDef] = &[
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
     action("muteToggle", "Ctrl+Alt+S", true, true),
-    // Mochi on the desktop is not in this version.
-    action("desktopToggle", "Ctrl+Alt+D", true, false),
-    action("wardrobeToggle", "Ctrl+Alt+G", true, true),
+    action("wardrobeToggle", "Ctrl+Alt+W", true, true),
 ];
+
+const CLICK_THROUGH_TOGGLE: ActionDef = action("clickThroughToggle", "Ctrl+Alt+D", true, true);
 
 pub fn find(id: &str) -> Option<&'static ActionDef> {
     ACTIONS.iter().find(|a| a.id == id)
@@ -83,7 +90,10 @@ pub struct Binding {
 
 impl Default for Binding {
     fn default() -> Self {
-        Self { keys: String::new(), enabled: true }
+        Self {
+            keys: String::new(),
+            enabled: true,
+        }
     }
 }
 
@@ -92,6 +102,12 @@ pub type Bindings = BTreeMap<String, Binding>;
 
 /// The binding in force for `def`: the stored one, or the default.
 pub fn effective(def: &ActionDef, stored: &Bindings) -> Binding {
+    if def.id == CLICK_THROUGH_TOGGLE.id {
+        return Binding {
+            keys: def.default_keys.to_string(),
+            enabled: true,
+        };
+    }
     stored.get(def.id).cloned().unwrap_or_else(|| Binding {
         keys: def.default_keys.to_string(),
         enabled: def.enabled_by_default,
@@ -178,13 +194,15 @@ pub fn is_altgr_like(shortcut: &Shortcut) -> bool {
 pub fn character_vk(code: Code) -> Option<u16> {
     use Code::*;
     let letters = [
-        KeyA, KeyB, KeyC, KeyD, KeyE, KeyF, KeyG, KeyH, KeyI, KeyJ, KeyK, KeyL, KeyM, KeyN,
-        KeyO, KeyP, KeyQ, KeyR, KeyS, KeyT, KeyU, KeyV, KeyW, KeyX, KeyY, KeyZ,
+        KeyA, KeyB, KeyC, KeyD, KeyE, KeyF, KeyG, KeyH, KeyI, KeyJ, KeyK, KeyL, KeyM, KeyN, KeyO,
+        KeyP, KeyQ, KeyR, KeyS, KeyT, KeyU, KeyV, KeyW, KeyX, KeyY, KeyZ,
     ];
     if let Some(i) = letters.iter().position(|c| *c == code) {
         return Some(0x41 + i as u16);
     }
-    let digits = [Digit0, Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8, Digit9];
+    let digits = [
+        Digit0, Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8, Digit9,
+    ];
     if let Some(i) = digits.iter().position(|c| *c == code) {
         return Some(0x30 + i as u16);
     }
@@ -212,12 +230,21 @@ pub fn character_vk(code: Code) -> Option<u16> {
 pub fn plan(
     stored: &Bindings,
     types: impl Fn(&Shortcut) -> Option<String>,
+    method: ClickThroughShortcut,
 ) -> Vec<(&'static ActionDef, Result<Shortcut, ActionStatus>)> {
     let mut seen = HashSet::new();
-    ACTIONS
-        .iter()
+    (method == ClickThroughShortcut::CtrlAltD)
+        .then_some(&CLICK_THROUGH_TOGGLE)
+        .into_iter()
+        .chain(ACTIONS.iter())
         .map(|def| {
-            let refuse = |status, typed| Err(ActionStatus { id: def.id, status, typed });
+            let refuse = |status, typed| {
+                Err(ActionStatus {
+                    id: def.id,
+                    status,
+                    typed,
+                })
+            };
             let binding = effective(def, stored);
             let outcome = if !def.ported {
                 refuse(Status::NotPorted, None)
@@ -258,7 +285,9 @@ pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
             if event.state != ShortcutState::Pressed {
                 return;
             }
-            let Some(registry) = app.try_state::<Registry>() else { return };
+            let Some(registry) = app.try_state::<Registry>() else {
+                return;
+            };
             let action = registry.by_id.lock().unwrap().get(&shortcut.id()).copied();
             if let Some(action) = action {
                 dispatch(app, action);
@@ -270,10 +299,18 @@ pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 /// Hands an action to the island.
 pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     crate::log::line(format!("shortcut {action}"));
-    if action == "wardrobeToggle" {
-        let _ = app.emit_to(WINDOW_LABEL, "open-wardrobe", ());
-    } else {
-        let _ = app.emit_to(WINDOW_LABEL, "shortcut", action.to_string());
+    match action {
+        "clickThroughToggle" => {
+            if let Some(shared) = app.try_state::<crate::Shared>() {
+                crate::island::toggle_click_through(app, &shared.gate);
+            }
+        }
+        "wardrobeToggle" => {
+            let _ = app.emit_to(WINDOW_LABEL, "open-wardrobe", ());
+        }
+        _ => {
+            let _ = app.emit_to(WINDOW_LABEL, "shortcut", action.to_string());
+        }
     }
 }
 
@@ -292,19 +329,21 @@ fn release<R: Runtime>(app: &AppHandle<R>) {
 /// Registers the shortcuts in `stored` in place of the current ones, and
 /// tells the settings window how each one went. Never fails: a shortcut that
 /// can't be had is reported, not fatal.
-pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
+pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings, method: ClickThroughShortcut) {
     release(app);
     let blocked = crate::platform::global_shortcuts_blocked();
     let gs = app.try_state::<GlobalShortcut<R>>();
 
     let mut by_id = HashMap::new();
     let mut report = Vec::new();
-    for (def, outcome) in plan(stored, typed_character) {
+    for (def, outcome) in plan(stored, typed_character, method) {
         let status = match outcome {
             Err(status) => status,
-            Ok(_) if blocked.is_some() || gs.is_none() => {
-                ActionStatus { id: def.id, status: Status::Unsupported, typed: None }
-            }
+            Ok(_) if blocked.is_some() || gs.is_none() => ActionStatus {
+                id: def.id,
+                status: Status::Unsupported,
+                typed: None,
+            },
             Ok(shortcut) => {
                 // No lock of ours is held here: the plugin calls our handler
                 // with its own lock taken, on the thread that registers.
@@ -320,7 +359,11 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
                     }
                     None => Status::Unsupported,
                 };
-                ActionStatus { id: def.id, status, typed: None }
+                ActionStatus {
+                    id: def.id,
+                    status,
+                    typed: None,
+                }
             }
         };
         report.push(status);
@@ -379,9 +422,16 @@ fn typed_character(shortcut: &Shortcut) -> Option<String> {
 mod tests {
     use super::*;
 
-    const MAC_IDS: [&str; 10] = [
-        "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
-        "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+    const ACTION_IDS: [&str; 9] = [
+        "toggleIsland",
+        "openChat",
+        "goToAlert",
+        "jumpToTerminal",
+        "attachFrontWindow",
+        "nextPill",
+        "prevPill",
+        "muteToggle",
+        "wardrobeToggle",
     ];
 
     fn never(_: &Shortcut) -> Option<String> {
@@ -390,9 +440,9 @@ mod tests {
 
     // testDefaultsExhaustive
     #[test]
-    fn every_mac_action_has_a_default_and_keeps_its_id() {
+    fn every_action_has_a_default_and_keeps_its_id() {
         let ids: Vec<_> = ACTIONS.iter().map(|a| a.id).collect();
-        assert_eq!(ids, MAC_IDS);
+        assert_eq!(ids, ACTION_IDS);
     }
 
     // testAllDefaultsHaveModifier
@@ -401,7 +451,11 @@ mod tests {
         for def in ACTIONS {
             let shortcut = parse(def.default_keys)
                 .unwrap_or_else(|| panic!("{} default does not parse", def.id));
-            assert!(is_altgr_like(&shortcut), "{} default is not Ctrl+Alt", def.id);
+            assert!(
+                is_altgr_like(&shortcut),
+                "{} default is not Ctrl+Alt",
+                def.id
+            );
         }
     }
 
@@ -410,7 +464,11 @@ mod tests {
     fn no_two_defaults_share_a_combination() {
         let mut seen = HashSet::new();
         for def in ACTIONS {
-            assert!(seen.insert(parse(def.default_keys).unwrap().id()), "{} duplicates", def.id);
+            assert!(
+                seen.insert(parse(def.default_keys).unwrap().id()),
+                "{} duplicates",
+                def.id
+            );
         }
     }
 
@@ -418,15 +476,20 @@ mod tests {
     #[test]
     fn only_the_island_toggle_is_off_by_default() {
         for def in ACTIONS {
-            assert_eq!(def.enabled_by_default, def.id != "toggleIsland", "{}", def.id);
+            assert_eq!(
+                def.enabled_by_default,
+                def.id != "toggleIsland",
+                "{}",
+                def.id
+            );
         }
     }
 
     #[test]
     fn the_actions_not_ported_yet_are_reserved_not_registered() {
-        let plan = plan(&Bindings::new(), never);
+        let plan = plan(&Bindings::new(), never, ClickThroughShortcut::HoldCtrl);
         for (def, outcome) in plan {
-            let reserved = matches!(def.id, "attachFrontWindow" | "desktopToggle");
+            let reserved = def.id == "attachFrontWindow";
             assert_eq!(def.ported, !reserved);
             match outcome {
                 Ok(_) => assert!(def.ported && def.enabled_by_default, "{}", def.id),
@@ -439,7 +502,10 @@ mod tests {
     #[test]
     fn parsing_needs_a_modifier_and_a_known_key() {
         assert!(parse("").is_none());
-        assert!(parse("A").is_none(), "a bare key would take A from every app");
+        assert!(
+            parse("A").is_none(),
+            "a bare key would take A from every app"
+        );
         assert!(parse("Shift+A").is_none(), "so would Shift+A");
         assert!(parse("Ctrl+Escape").is_none());
         assert!(parse("Ctrl+Alt+Nope").is_none());
@@ -449,9 +515,14 @@ mod tests {
         assert!(s.mods.contains(Modifiers::CONTROL | Modifiers::ALT));
         assert!(!s.mods.contains(Modifiers::SHIFT));
         let all = parse("Ctrl+Alt+Shift+Super+K").unwrap();
-        assert!(all.mods.contains(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT | Modifiers::SUPER));
+        assert!(all
+            .mods
+            .contains(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT | Modifiers::SUPER));
         // Case and spelling don't change the combination.
-        assert_eq!(parse("ctrl+alt+right").unwrap().id(), parse("Control+Alt+ArrowRight").unwrap().id());
+        assert_eq!(
+            parse("ctrl+alt+right").unwrap().id(),
+            parse("Control+Alt+ArrowRight").unwrap().id()
+        );
     }
 
     #[test]
@@ -478,23 +549,40 @@ mod tests {
     #[test]
     fn a_combination_used_twice_is_registered_once() {
         let mut stored = Bindings::new();
-        let same = Binding { keys: "Ctrl+Alt+A".into(), enabled: true };
+        let same = Binding {
+            keys: "Ctrl+Alt+A".into(),
+            enabled: true,
+        };
         stored.insert("jumpToTerminal".into(), same.clone());
-        let plan = plan(&stored, never);
+        let plan = plan(&stored, never, ClickThroughShortcut::HoldCtrl);
         let alert = plan.iter().find(|(d, _)| d.id == "goToAlert").unwrap();
         let term = plan.iter().find(|(d, _)| d.id == "jumpToTerminal").unwrap();
         assert!(alert.1.is_ok());
         assert_eq!(term.1.as_ref().unwrap_err().status, Status::Duplicate);
 
         // Same key, other modifiers: not a duplicate.
-        stored.insert("jumpToTerminal".into(), Binding { keys: "Ctrl+Shift+A".into(), enabled: true });
-        let plan = super::plan(&stored, never);
-        assert!(plan.iter().all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland"));
+        stored.insert(
+            "jumpToTerminal".into(),
+            Binding {
+                keys: "Ctrl+Shift+A".into(),
+                enabled: true,
+            },
+        );
+        let plan = super::plan(&stored, never, ClickThroughShortcut::HoldCtrl);
+        assert!(plan
+            .iter()
+            .all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland"));
 
         // A disabled action doesn't hold its keys.
-        stored.insert("goToAlert".into(), Binding { keys: "Ctrl+Alt+A".into(), enabled: false });
+        stored.insert(
+            "goToAlert".into(),
+            Binding {
+                keys: "Ctrl+Alt+A".into(),
+                enabled: false,
+            },
+        );
         stored.insert("jumpToTerminal".into(), same);
-        let plan = super::plan(&stored, never);
+        let plan = super::plan(&stored, never, ClickThroughShortcut::HoldCtrl);
         let term = plan.iter().find(|(d, _)| d.id == "jumpToTerminal").unwrap();
         assert!(term.1.is_ok());
     }
@@ -502,7 +590,7 @@ mod tests {
     #[test]
     fn a_combination_that_types_a_character_is_not_registered() {
         let euro = |s: &Shortcut| (s.key == Code::KeyA).then(|| "ą".to_string());
-        let plan = plan(&Bindings::new(), euro);
+        let plan = plan(&Bindings::new(), euro, ClickThroughShortcut::HoldCtrl);
         let alert = plan.iter().find(|(d, _)| d.id == "goToAlert").unwrap();
         let refused = alert.1.as_ref().unwrap_err();
         assert_eq!(refused.status, Status::TypesCharacter);
@@ -512,15 +600,33 @@ mod tests {
     #[test]
     fn stored_bindings_override_the_defaults_and_the_rest_fall_back() {
         let mut stored = Bindings::new();
-        stored.insert("openChat".into(), Binding { keys: "Ctrl+Shift+K".into(), enabled: true });
-        stored.insert("muteToggle".into(), Binding { keys: String::new(), enabled: true });
+        stored.insert(
+            "openChat".into(),
+            Binding {
+                keys: "Ctrl+Shift+K".into(),
+                enabled: true,
+            },
+        );
+        stored.insert(
+            "muteToggle".into(),
+            Binding {
+                keys: String::new(),
+                enabled: true,
+            },
+        );
         let chat = effective(find("openChat").unwrap(), &stored);
         assert_eq!(chat.keys, "Ctrl+Shift+K");
         let alert = effective(find("goToAlert").unwrap(), &stored);
-        assert_eq!(alert, Binding { keys: "Ctrl+Alt+A".into(), enabled: true });
+        assert_eq!(
+            alert,
+            Binding {
+                keys: "Ctrl+Alt+A".into(),
+                enabled: true
+            }
+        );
         let toggle = effective(find("toggleIsland").unwrap(), &stored);
         assert!(!toggle.enabled);
-        let plan = plan(&stored, never);
+        let plan = plan(&stored, never, ClickThroughShortcut::HoldCtrl);
         let mute = plan.iter().find(|(d, _)| d.id == "muteToggle").unwrap();
         assert_eq!(mute.1.as_ref().unwrap_err().status, Status::Off);
     }
@@ -529,23 +635,122 @@ mod tests {
     #[test]
     fn bindings_round_trip_through_json() {
         let mut stored = Bindings::new();
-        stored.insert("openChat".into(), Binding { keys: "Ctrl+Alt+K".into(), enabled: false });
+        stored.insert(
+            "openChat".into(),
+            Binding {
+                keys: "Ctrl+Alt+K".into(),
+                enabled: false,
+            },
+        );
         let json = serde_json::to_string(&stored).unwrap();
-        assert_eq!(json, r#"{"openChat":{"keys":"Ctrl+Alt+K","enabled":false}}"#);
+        assert_eq!(
+            json,
+            r#"{"openChat":{"keys":"Ctrl+Alt+K","enabled":false}}"#
+        );
         assert_eq!(serde_json::from_str::<Bindings>(&json).unwrap(), stored);
         // A hand-edited entry without `enabled` stays on.
-        let partial: Bindings = serde_json::from_str(r#"{"openChat":{"keys":"Ctrl+Alt+K"}}"#).unwrap();
+        let partial: Bindings =
+            serde_json::from_str(r#"{"openChat":{"keys":"Ctrl+Alt+K"}}"#).unwrap();
         assert!(partial["openChat"].enabled);
     }
 
     #[test]
     fn the_command_line_names_an_action() {
         let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "openChat"])), Some("openChat"));
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "wardrobeToggle"])), Some("wardrobeToggle"));
+        assert_eq!(
+            from_args(&args(&["coucou", "--shortcut", "openChat"])),
+            Some("openChat")
+        );
+        assert_eq!(
+            from_args(&args(&["coucou", "--shortcut", "wardrobeToggle"])),
+            Some("wardrobeToggle")
+        );
         assert_eq!(from_args(&args(&["coucou", "--shortcut"])), None);
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "rm -rf"])), None);
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), None);
+        assert_eq!(
+            from_args(&args(&["coucou", "--shortcut", "desktopToggle"])),
+            None
+        );
         assert_eq!(from_args(&args(&["coucou"])), None);
+    }
+
+    #[test]
+    fn fixed_click_through_is_exclusive_and_cannot_be_customized() {
+        let mut stored = Bindings::new();
+        stored.insert(
+            "clickThroughToggle".into(),
+            Binding {
+                keys: "Ctrl+Shift+Q".into(),
+                enabled: false,
+            },
+        );
+        stored.insert(
+            "desktopToggle".into(),
+            Binding {
+                keys: "Ctrl+Alt+D".into(),
+                enabled: true,
+            },
+        );
+        let hold = plan(&stored, never, ClickThroughShortcut::HoldCtrl);
+        assert!(hold
+            .iter()
+            .all(|(def, _)| def.id != CLICK_THROUGH_TOGGLE.id));
+        let toggle = plan(&stored, never, ClickThroughShortcut::CtrlAltD);
+        assert_eq!(toggle[0].0.id, CLICK_THROUGH_TOGGLE.id);
+        assert_eq!(toggle[0].1.as_ref().unwrap(), &parse("Ctrl+Alt+D").unwrap());
+        assert_eq!(
+            toggle
+                .iter()
+                .filter(|(def, _)| def.id == CLICK_THROUGH_TOGGLE.id)
+                .count(),
+            1
+        );
+        stored.insert(
+            "openChat".into(),
+            Binding {
+                keys: "Ctrl+Alt+D".into(),
+                enabled: true,
+            },
+        );
+        let toggle = plan(&stored, never, ClickThroughShortcut::CtrlAltD);
+        let chat = toggle.iter().find(|(def, _)| def.id == "openChat").unwrap();
+        assert_eq!(chat.1.as_ref().unwrap_err().status, Status::Duplicate);
+        let hold = plan(&stored, never, ClickThroughShortcut::HoldCtrl);
+        assert!(hold
+            .iter()
+            .find(|(def, _)| def.id == "openChat")
+            .unwrap()
+            .1
+            .is_ok());
+    }
+
+    #[test]
+    fn wardrobe_uses_w_and_preserves_altgr_typing_and_custom_keys() {
+        assert_eq!(find("wardrobeToggle").unwrap().default_keys, "Ctrl+Alt+W");
+        let types = |s: &Shortcut| (s.key == Code::KeyW).then(|| "?".to_string());
+        let defaults = plan(&Bindings::new(), types, ClickThroughShortcut::HoldCtrl);
+        let wardrobe = defaults
+            .iter()
+            .find(|(def, _)| def.id == "wardrobeToggle")
+            .unwrap();
+        assert_eq!(
+            wardrobe.1.as_ref().unwrap_err().status,
+            Status::TypesCharacter
+        );
+        let mut stored = Bindings::new();
+        stored.insert(
+            "wardrobeToggle".into(),
+            Binding {
+                keys: "Ctrl+Shift+G".into(),
+                enabled: true,
+            },
+        );
+        let customized = plan(&stored, types, ClickThroughShortcut::HoldCtrl);
+        assert!(customized
+            .iter()
+            .find(|(def, _)| def.id == "wardrobeToggle")
+            .unwrap()
+            .1
+            .is_ok());
     }
 }

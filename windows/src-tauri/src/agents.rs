@@ -83,7 +83,8 @@ fn sh_quote(s: &str) -> String {
 
 /// A path no Windows shell would split or interpret.
 fn is_plain(path: &str) -> bool {
-    path.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '\\' | ':' | '.' | '_' | '-'))
+    path.chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '\\' | ':' | '.' | '_' | '-'))
 }
 
 // ── Agents ────────────────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ impl Agent {
         Self::ALL.iter().copied().find(|a| a.id() == id)
     }
 
-    /// The files this agent's install touches, under `home`.
+    /// The files this agent's install touches, under its resolved home.
     fn files(self, home: &Path) -> Vec<PathBuf> {
         match self {
             Agent::Gemini => vec![home.join(".gemini").join("settings.json")],
@@ -145,10 +146,18 @@ impl Agent {
             Agent::Copilot => vec![home.join(".copilot").join("hooks").join("coucou.json")],
             Agent::Muse => vec![home.join(".config").join("muse").join("settings.json")],
             // OpenCode and Amp read ~/.config on Windows too.
-            Agent::OpenCode => vec![home.join(".config").join("opencode").join("plugins").join("coucou.js")],
-            Agent::Amp => vec![home.join(".config").join("amp").join("plugins").join("coucou.ts")],
+            Agent::OpenCode => vec![home
+                .join(".config")
+                .join("opencode")
+                .join("plugins")
+                .join("coucou.js")],
+            Agent::Amp => vec![home
+                .join(".config")
+                .join("amp")
+                .join("plugins")
+                .join("coucou.ts")],
             Agent::Hermes => {
-                let dir = home.join(".hermes").join("plugins").join("coucou");
+                let dir = home.join("plugins").join("coucou");
                 vec![dir.join("__init__.py"), dir.join("plugin.yaml")]
             }
         }
@@ -158,12 +167,19 @@ impl Agent {
     fn edits(self, home: &Path, relay: &Relay, install: bool) -> Vec<FileEdit<'static>> {
         let files = self.files(home);
         if let Some(contents) = self.plugin(relay) {
-            return files.into_iter().zip(contents).map(|(path, text)| plugin_edit(path, text, install)).collect();
+            return files
+                .into_iter()
+                .zip(contents)
+                .map(|(path, text)| plugin_edit(path, text, install))
+                .collect();
         }
         let path = files[0].clone();
         let label = path.display().to_string();
         let change = self.json_change(relay, install);
-        vec![FileEdit { path, edit: config_file::json_edit(label, change) }]
+        vec![FileEdit {
+            path,
+            edit: config_file::json_edit(label, change),
+        }]
     }
 
     /// For an agent that loads a plugin rather than running hook commands, the
@@ -174,7 +190,10 @@ impl Agent {
         match self {
             Agent::OpenCode => Some(vec![OPENCODE_PLUGIN.replace("{HOOK}", &hook)]),
             Agent::Amp => Some(vec![AMP_PLUGIN.replace("{HOOK}", &hook)]),
-            Agent::Hermes => Some(vec![HERMES_PLUGIN.replace("{HOOK}", &hook), HERMES_PLUGIN_YAML.to_string()]),
+            Agent::Hermes => Some(vec![
+                HERMES_PLUGIN.replace("{HOOK}", &hook),
+                HERMES_PLUGIN_YAML.to_string(),
+            ]),
             _ => None,
         }
     }
@@ -189,7 +208,8 @@ impl Agent {
                 let commands: Vec<(String, String, u64)> = GEMINI_EVENTS
                     .iter()
                     .map(|(event, said, timeout)| {
-                        let command = relay.command(Shell::PowerShell, &format!("--agent gemini {said}"));
+                        let command =
+                            relay.command(Shell::PowerShell, &format!("--agent gemini {said}"));
                         (event.to_string(), command, *timeout)
                     })
                     .collect();
@@ -214,7 +234,9 @@ impl Agent {
             (Agent::Copilot, true) => {
                 let entries: Vec<(String, Value)> = COPILOT_EVENTS
                     .iter()
-                    .map(|(event, timeout)| (event.to_string(), copilot_entry(relay, event, *timeout)))
+                    .map(|(event, timeout)| {
+                        (event.to_string(), copilot_entry(relay, event, *timeout))
+                    })
                     .collect();
                 Box::new(move |v| copilot_install(v, &entries).map(Some))
             }
@@ -230,9 +252,11 @@ impl Agent {
                 Box::new(move |v| muse_install(v, &commands).map(Some))
             }
             // Plugins are whole files (see `plugin`), never merged into JSON.
-            (Agent::OpenCode | Agent::Amp | Agent::Hermes, _) => {
-                Box::new(|_| Err(crate::i18n::t("This agent takes a plugin, not hook entries.")))
-            }
+            (Agent::OpenCode | Agent::Amp | Agent::Hermes, _) => Box::new(|_| {
+                Err(crate::i18n::t(
+                    "This agent takes a plugin, not hook entries.",
+                ))
+            }),
         }
     }
 
@@ -258,7 +282,12 @@ impl Agent {
             Agent::Copilot => json()
                 .get("hooks")
                 .and_then(Value::as_object)
-                .is_some_and(|h| h.values().filter_map(Value::as_array).flatten().any(copilot_entry_is_ours)),
+                .is_some_and(|h| {
+                    h.values()
+                        .filter_map(Value::as_array)
+                        .flatten()
+                        .any(copilot_entry_is_ours)
+                }),
             Agent::Muse => groups_have_ours(&json(), "muse"),
             Agent::OpenCode | Agent::Amp | Agent::Hermes => false,
         }
@@ -328,15 +357,19 @@ fn find(id: &str) -> Result<Agent, String> {
 }
 
 pub fn list() -> Vec<AgentStatus> {
-    let home = platform::home_dir();
     let hook_ready = settings::hook_exe_path().exists();
     Agent::ALL
         .iter()
         .map(|&a| AgentStatus {
             id: a.id(),
             name: a.name(),
-            installed: a.installed(&home),
-            path: a.files(&home).iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"),
+            installed: a.installed(&agent_home(a)),
+            path: a
+                .files(&agent_home(a))
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>()
+                .join("\n"),
             hook_ready,
             approvals: a.approvals(),
             note: a.note(),
@@ -346,16 +379,52 @@ pub fn list() -> Vec<AgentStatus> {
 
 pub fn preview(id: &str, install: bool) -> Result<Plan, String> {
     let agent = find(id)?;
-    config_file::preview(&agent.edits(&platform::home_dir(), &Relay::current(), install))
+    config_file::preview(&agent.edits(&agent_home(agent), &Relay::current(), install))
 }
 
 /// Only ever called from an explicit click. Returns the backups taken, one per line.
 pub fn apply(id: &str, install: bool, fingerprint: &str) -> Result<String, String> {
     let agent = find(id)?;
-    apply_in(agent, &platform::home_dir(), &Relay::current(), install, fingerprint)
+    apply_in(
+        agent,
+        &agent_home(agent),
+        &Relay::current(),
+        install,
+        fingerprint,
+    )
 }
 
-fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint: &str) -> Result<String, String> {
+fn agent_home(agent: Agent) -> PathBuf {
+    let home = platform::home_dir();
+    if agent != Agent::Hermes {
+        return home;
+    }
+    // ponytail: custom profiles need the same absolute HERMES_HOME in Coucou's environment.
+    hermes_home(
+        &home,
+        std::env::var_os("HERMES_HOME").map(PathBuf::from),
+        if cfg!(windows) {
+            std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+        } else {
+            None
+        },
+    )
+}
+
+fn hermes_home(home: &Path, configured: Option<PathBuf>, local: Option<PathBuf>) -> PathBuf {
+    configured
+        .filter(|p| p.is_absolute())
+        .or_else(|| local.filter(|p| p.is_absolute()).map(|p| p.join("hermes")))
+        .unwrap_or_else(|| home.join(".hermes"))
+}
+
+fn apply_in(
+    agent: Agent,
+    home: &Path,
+    relay: &Relay,
+    install: bool,
+    fingerprint: &str,
+) -> Result<String, String> {
     let backups = config_file::apply(&agent.edits(home, relay, install), fingerprint)?;
     // Hermes loads every folder under plugins/: an empty `coucou` one goes too.
     if agent == Agent::Hermes && !install {
@@ -363,13 +432,20 @@ fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint
             let _ = std::fs::remove_dir(dir);
         }
     }
-    Ok(backups.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"))
+    Ok(backups
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join("\n"))
 }
 
 // ── Shared JSON helpers ───────────────────────────────────────────────────────
 
 fn unexpected(what: &str) -> String {
-    crate::i18n::tf("{what} has an unexpected type — Coucou has not touched it.", &[("what", what)])
+    crate::i18n::tf(
+        "{what} has an unexpected type — Coucou has not touched it.",
+        &[("what", what)],
+    )
 }
 
 /// `root[key]` as an object to edit: absent is empty, anything else is refused.
@@ -410,8 +486,11 @@ fn without_ours_in_groups(groups: &[Value], agent: &str) -> Vec<Value> {
             let Some(inner) = group.get("hooks").and_then(Value::as_array) else {
                 return Some(group.clone());
             };
-            let kept: Vec<Value> =
-                inner.iter().filter(|h| !is_our_command(h.get("command"), agent)).cloned().collect();
+            let kept: Vec<Value> = inner
+                .iter()
+                .filter(|h| !is_our_command(h.get("command"), agent))
+                .cloned()
+                .collect();
             if kept.len() == inner.len() {
                 return Some(group.clone());
             }
@@ -479,11 +558,21 @@ fn groups_have_ours(root: &Value, agent: &str) -> bool {
             || group
                 .get("hooks")
                 .and_then(Value::as_array)
-                .is_some_and(|inner| inner.iter().any(|h| is_our_command(h.get("command"), agent)))
+                .is_some_and(|inner| {
+                    inner
+                        .iter()
+                        .any(|h| is_our_command(h.get("command"), agent))
+                })
     };
     root.get("hooks")
         .and_then(Value::as_object)
-        .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(ours))
+        .is_some_and(|hooks| {
+            hooks
+                .values()
+                .filter_map(Value::as_array)
+                .flatten()
+                .any(ours)
+        })
 }
 
 // ── Gemini CLI — ~/.gemini/settings.json ──────────────────────────────────────
@@ -533,7 +622,10 @@ fn antigravity_block(relay: &Relay) -> Value {
     };
     let mut block = Map::new();
     for event in ANTIGRAVITY_TOOL_EVENTS {
-        block.insert((*event).into(), json!([{ "matcher": "*", "hooks": [handler(event)] }]));
+        block.insert(
+            (*event).into(),
+            json!([{ "matcher": "*", "hooks": [handler(event)] }]),
+        );
     }
     for event in ANTIGRAVITY_LIFECYCLE_EVENTS {
         block.insert((*event).into(), json!([handler(event)]));
@@ -584,7 +676,9 @@ const CURSOR_EVENTS: &[&str] = &[
 ];
 
 fn cursor_install(root: &Value, command: &str) -> Result<Value, String> {
-    let events = CURSOR_EVENTS.iter().map(|e| (e.to_string(), json!({ "command": command })));
+    let events = CURSOR_EVENTS
+        .iter()
+        .map(|e| (e.to_string(), json!({ "command": command })));
     let mut root = groups_install(root, "cursor", events)?;
     root.entry("version").or_insert(json!(1));
     Ok(Value::Object(root))
@@ -655,7 +749,9 @@ fn copilot_entry(relay: &Relay, event: &str, timeout: u64) -> Value {
 }
 
 fn copilot_entry_is_ours(entry: &Value) -> bool {
-    ["bash", "powershell", "command"].iter().any(|k| is_our_command(entry.get(*k), "copilot"))
+    ["bash", "powershell", "command"]
+        .iter()
+        .any(|k| is_our_command(entry.get(*k), "copilot"))
 }
 
 fn copilot_install(root: &Value, entries: &[(String, Value)]) -> Result<Value, String> {
@@ -747,9 +843,10 @@ fn plugin_edit(path: PathBuf, content: String, install: bool) -> FileEdit<'stati
     let label = path.display().to_string();
     let name = label.clone();
     let edit = config_file::text_edit(label, move |current| match (install, current) {
-        (_, Some(text)) if !is_our_plugin(text) => {
-            Err(crate::i18n::tf("{name} wasn't written by Coucou — Coucou has not touched it.", &[("name", &name.to_string())]))
-        }
+        (_, Some(text)) if !is_our_plugin(text) => Err(crate::i18n::tf(
+            "{name} wasn't written by Coucou — Coucou has not touched it.",
+            &[("name", &name.to_string())],
+        )),
         (true, _) => Ok(Some(content.clone())),
         (false, _) => Ok(None),
     });
@@ -785,6 +882,15 @@ function forward(hook_event_name, payload) {
 
 export const CoucouPlugin = async ({ directory } = {}) => ({
   event: async ({ event }) => {
+    if (event?.type === 'message.updated' && event.properties?.info?.role === 'user') {
+      const info = event.properties.info;
+      forward('UserPromptSubmit', {
+        session_id: info.sessionID || '',
+        turn_id: info.id || '',
+        cwd: directory || '',
+      });
+      return;
+    }
     const hook_event_name = EVENT_MAP[event?.type];
     if (!hook_event_name) return;
     const props = event.properties || {};
@@ -850,15 +956,17 @@ export default function (amp: any): void {
 const HERMES_PLUGIN: &str = r#"# Coucou plugin for Hermes Agent — generated by Coucou.
 # Session and tool events go to Coucou's relay (coucou-hook), fire-and-forget:
 # Hermes never waits on it, and keeps every approval decision to itself.
-import json, os, subprocess, threading
+import json, logging, os, subprocess, threading
 
 HOOK = {HOOK}
 _current_session_id = ''
+_reported_failure = False
 
 
-def _fire(fields):
+def _fire(fields, finalize=False):
     """Non-blocking: start the relay and return at once. Reaps it in a thread."""
     def _run():
+        global _reported_failure
         try:
             extra = {'start_new_session': True} if os.name != 'nt' else {
                 'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
@@ -866,10 +974,14 @@ def _fire(fields):
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
             p.stdin.write(json.dumps(fields).encode() + b'\n')
             p.stdin.close()
-            p.wait(timeout=5)
-        except Exception:
-            pass
-    threading.Thread(target=_run, daemon=True).start()
+            if not finalize:
+                p.wait(timeout=5)
+        except Exception as exc:
+            if not _reported_failure:
+                _reported_failure = True
+                logging.getLogger(__name__).warning('Coucou relay failed (%s)', type(exc).__name__)
+    # Python joins this short-lived writer on exit; the relay itself remains detached.
+    threading.Thread(target=_run, daemon=not finalize).start()
 
 
 def register(ctx):
@@ -880,6 +992,12 @@ def register(ctx):
         platform = kwargs.get('platform', 'cli') or 'cli'
         _fire({'hook_event_name': 'SessionStart', 'session_id': sid, 'platform': platform})
 
+    def pre_llm_call(**kwargs):
+        # Hermes skips on_session_start when resuming a session with a stored prompt.
+        _fire({'hook_event_name': 'UserPromptSubmit',
+               'session_id': kwargs.get('session_id', ''),
+               'turn_id': kwargs.get('turn_id', '')})
+
     def on_session_end(**kwargs):
         # Stop comes from post_llm_call, which has the last answer.
         if kwargs.get('interrupted'):
@@ -889,6 +1007,13 @@ def register(ctx):
         _fire({'hook_event_name': 'Stop',
                'session_id': kwargs.get('session_id', '') or _current_session_id,
                'last_assistant_message': kwargs.get('assistant_response', '')})
+
+    def on_session_finalize(**kwargs):
+        # This is the lifetime boundary; on_session_end is only the end of a turn.
+        sid = kwargs.get('session_id', '')
+        if sid:
+            _fire({'hook_event_name': 'SessionEnd', 'session_id': sid,
+                   'coucou_lifecycle': 'finalize'}, finalize=True)
 
     def pre_tool_call(**kwargs):
         _fire({'hook_event_name': 'PreToolUse',
@@ -910,8 +1035,10 @@ def register(ctx):
                               'description': kwargs.get('description', '')}})
 
     ctx.register_hook('on_session_start', on_session_start)
+    ctx.register_hook('pre_llm_call', pre_llm_call)
     ctx.register_hook('on_session_end', on_session_end)
     ctx.register_hook('post_llm_call', post_llm_call)
+    ctx.register_hook('on_session_finalize', on_session_finalize)
     ctx.register_hook('pre_tool_call', pre_tool_call)
     ctx.register_hook('post_tool_call', post_tool_call)
     ctx.register_hook('pre_approval_request', pre_approval_request)
@@ -928,11 +1055,17 @@ mod tests {
     use crate::config_file::tests::scratch;
 
     fn linux() -> Relay {
-        Relay { exe: "/home/me/.local/share/coucou/bin/coucou-hook".into(), windows: false }
+        Relay {
+            exe: "/home/me/.local/share/coucou/bin/coucou-hook".into(),
+            windows: false,
+        }
     }
 
     fn windows(exe: &str) -> Relay {
-        Relay { exe: exe.into(), windows: true }
+        Relay {
+            exe: exe.into(),
+            windows: true,
+        }
     }
 
     const WIN: &str = r"C:\Users\me\AppData\Local\Coucou\bin\coucou-hook.exe";
@@ -984,10 +1117,16 @@ mod tests {
             format!("& '{WIN}' --agent gemini Stop")
         );
         // A plain path is left bare, so cmd and PowerShell both run it.
-        assert_eq!(w.command(Shell::Cmd, "--agent cursor"), format!("{WIN} --agent cursor"));
+        assert_eq!(
+            w.command(Shell::Cmd, "--agent cursor"),
+            format!("{WIN} --agent cursor")
+        );
 
         let spaced = windows(WIN_SPACE);
-        assert_eq!(spaced.command(Shell::Cmd, "x"), format!("\"{WIN_SPACE}\" x"));
+        assert_eq!(
+            spaced.command(Shell::Cmd, "x"),
+            format!("\"{WIN_SPACE}\" x")
+        );
         assert_eq!(
             spaced.command(Shell::PowerShell, "x"),
             r"& 'C:\Users\Jane O''Neil\AppData\Local\Coucou\bin\coucou-hook.exe' x"
@@ -1005,7 +1144,12 @@ mod tests {
     fn every_agent_id_is_a_valid_pill_name() {
         for agent in Agent::ALL {
             let id = agent.id();
-            assert!(id.len() <= 24 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'));
+            assert!(
+                id.len() <= 24
+                    && id
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            );
             assert_eq!(Agent::from_id(id), Some(*agent));
         }
         assert!(find("claude").is_err());
@@ -1024,14 +1168,33 @@ mod tests {
         let cmd = before_tool[1]["hooks"][0]["command"].as_str().unwrap();
         assert!(cmd.ends_with("--agent gemini PreToolUse"), "{cmd}");
         assert!(installed["hooks"]["AfterModel"].is_null());
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         let _ = std::fs::remove_dir_all(home);
     }
 
     #[test]
     fn installing_twice_leaves_one_entry_per_event() {
-        let once = gemini_install(&json!({}), &[("BeforeTool".into(), "'x/coucou-hook' --agent gemini PreToolUse".into(), 5000)]).unwrap();
-        let twice = gemini_install(&once, &[("BeforeTool".into(), "'y/coucou-hook' --agent gemini PreToolUse".into(), 5000)]).unwrap();
+        let once = gemini_install(
+            &json!({}),
+            &[(
+                "BeforeTool".into(),
+                "'x/coucou-hook' --agent gemini PreToolUse".into(),
+                5000,
+            )],
+        )
+        .unwrap();
+        let twice = gemini_install(
+            &once,
+            &[(
+                "BeforeTool".into(),
+                "'y/coucou-hook' --agent gemini PreToolUse".into(),
+                5000,
+            )],
+        )
+        .unwrap();
         assert_eq!(twice["hooks"]["BeforeTool"].as_array().unwrap().len(), 1);
     }
 
@@ -1046,10 +1209,17 @@ mod tests {
                     Agent::Antigravity => &[r#"{"coucou":"nope"}"#],
                     _ => &[r#"{"hooks":"nope"}"#, r#"{"hooks":[1]}"#],
                 };
-                for odd in shaped.iter().copied().chain(["[1,2]", "{ broken", "\"text\""]) {
+                for odd in shaped
+                    .iter()
+                    .copied()
+                    .chain(["[1,2]", "{ broken", "\"text\""])
+                {
                     std::fs::write(&file, odd).unwrap();
                     let edits = agent.edits(&home, &linux(), true);
-                    assert!(config_file::preview(&edits).is_err(), "{agent:?} accepted {odd}");
+                    assert!(
+                        config_file::preview(&edits).is_err(),
+                        "{agent:?} accepted {odd}"
+                    );
                     assert_eq!(std::fs::read_to_string(&file).unwrap(), odd);
                 }
             }
@@ -1061,18 +1231,27 @@ mod tests {
     fn antigravity_gets_its_own_named_group_and_nothing_else_changes() {
         let existing = r#"{"my-guard":{"PreToolUse":[{"matcher":"run_command","hooks":[{"command":"/bin/guard"}]}]}}"#;
         let (home, installed, removed) = round_trip(Agent::Antigravity, Some(existing));
-        assert_eq!(installed["my-guard"]["PreToolUse"][0]["matcher"], "run_command");
+        assert_eq!(
+            installed["my-guard"]["PreToolUse"][0]["matcher"],
+            "run_command"
+        );
         let ours = &installed["coucou"];
         for event in ANTIGRAVITY_TOOL_EVENTS {
             assert_eq!(ours[event][0]["matcher"], "*");
             let cmd = ours[event][0]["hooks"][0]["command"].as_str().unwrap();
-            assert!(cmd.ends_with(&format!("--agent antigravity {event}")), "{cmd}");
+            assert!(
+                cmd.ends_with(&format!("--agent antigravity {event}")),
+                "{cmd}"
+            );
         }
         for event in ANTIGRAVITY_LIFECYCLE_EVENTS {
             assert_eq!(ours[event][0]["timeout"], 10);
             assert!(ours[event][0]["command"].as_str().unwrap().contains(MARKER));
         }
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         let _ = std::fs::remove_dir_all(home);
     }
 
@@ -1086,9 +1265,15 @@ mod tests {
     #[test]
     fn on_windows_antigravity_runs_the_relay_path_quoted_only_when_needed() {
         let block = antigravity_block(&windows(WIN));
-        assert_eq!(block["Stop"][0]["command"], format!("{WIN} --agent antigravity Stop"));
+        assert_eq!(
+            block["Stop"][0]["command"],
+            format!("{WIN} --agent antigravity Stop")
+        );
         let block = antigravity_block(&windows(WIN_SPACE));
-        assert_eq!(block["Stop"][0]["command"], format!("\"{WIN_SPACE}\" --agent antigravity Stop"));
+        assert_eq!(
+            block["Stop"][0]["command"],
+            format!("\"{WIN_SPACE}\" --agent antigravity Stop")
+        );
     }
 
     #[test]
@@ -1097,12 +1282,29 @@ mod tests {
         let (home, installed, removed) = round_trip(Agent::Cursor, Some(existing));
         assert_eq!(installed["version"], 1);
         for event in CURSOR_EVENTS {
-            let last = installed["hooks"][event].as_array().unwrap().last().unwrap().clone();
-            assert!(last["command"].as_str().unwrap().ends_with("--agent cursor"), "{event}");
+            let last = installed["hooks"][event]
+                .as_array()
+                .unwrap()
+                .last()
+                .unwrap()
+                .clone();
+            assert!(
+                last["command"]
+                    .as_str()
+                    .unwrap()
+                    .ends_with("--agent cursor"),
+                "{event}"
+            );
         }
         assert_eq!(installed["hooks"]["stop"][0]["command"], "./notify.sh");
-        assert_eq!(installed["hooks"]["afterFileEdit"][0]["command"], "./format.sh");
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            installed["hooks"]["afterFileEdit"][0]["command"],
+            "./format.sh"
+        );
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         let _ = std::fs::remove_dir_all(home);
     }
 
@@ -1121,21 +1323,42 @@ mod tests {
         let (home, installed, removed) = round_trip(Agent::Codex, Some(existing));
         assert_eq!(installed["description"], "mine");
         for (event, timeout) in CODEX_EVENTS {
-            let ours = installed["hooks"][event].as_array().unwrap().last().unwrap()["hooks"][0].clone();
+            let ours = installed["hooks"][event]
+                .as_array()
+                .unwrap()
+                .last()
+                .unwrap()["hooks"][0]
+                .clone();
             assert_eq!(ours["timeout"], *timeout, "{event}");
-            assert!(ours["command"].as_str().unwrap().ends_with("--agent codex"), "{event}");
-            assert_eq!(ours.get("statusMessage").is_some(), *event == "PermissionRequest");
+            assert!(
+                ours["command"].as_str().unwrap().ends_with("--agent codex"),
+                "{event}"
+            );
+            assert_eq!(
+                ours.get("statusMessage").is_some(),
+                *event == "PermissionRequest"
+            );
         }
         assert_eq!(installed["hooks"]["PreToolUse"][0]["matcher"], "Bash");
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         assert!(Agent::Codex.approvals());
         let _ = std::fs::remove_dir_all(home);
     }
 
     #[test]
     fn on_windows_codex_gets_a_command_cmd_can_run() {
-        let after = codex_install(&json!({}), &windows(WIN_SPACE).command(Shell::Cmd, "--agent codex")).unwrap();
-        assert_eq!(after["hooks"]["Stop"][0]["hooks"][0]["command"], format!("\"{WIN_SPACE}\" --agent codex"));
+        let after = codex_install(
+            &json!({}),
+            &windows(WIN_SPACE).command(Shell::Cmd, "--agent codex"),
+        )
+        .unwrap();
+        assert_eq!(
+            after["hooks"]["Stop"][0]["hooks"][0]["command"],
+            format!("\"{WIN_SPACE}\" --agent codex")
+        );
     }
 
     #[test]
@@ -1145,7 +1368,10 @@ mod tests {
         for (event, timeout) in COPILOT_EVENTS {
             let entry = &installed["hooks"][event][0];
             assert_eq!(entry["timeoutSec"], *timeout);
-            assert!(entry["bash"].as_str().unwrap().ends_with(&format!("--agent copilot {event}")));
+            assert!(entry["bash"]
+                .as_str()
+                .unwrap()
+                .ends_with(&format!("--agent copilot {event}")));
             // No PowerShell line on Linux.
             assert!(entry.get("powershell").is_none());
         }
@@ -1157,15 +1383,24 @@ mod tests {
     fn copilot_keeps_what_someone_else_added_to_the_file() {
         let existing = r#"{"version":1,"hooks":{"sessionStart":[{"type":"command","bash":"echo hi","timeoutSec":5}]}}"#;
         let (home, installed, removed) = round_trip(Agent::Copilot, Some(existing));
-        assert_eq!(installed["hooks"]["sessionStart"].as_array().unwrap().len(), 2);
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            installed["hooks"]["sessionStart"].as_array().unwrap().len(),
+            2
+        );
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         let _ = std::fs::remove_dir_all(home);
     }
 
     #[test]
     fn on_windows_copilot_gets_a_powershell_line_too() {
         let entry = copilot_entry(&windows(WIN), "preToolUse", 10);
-        assert_eq!(entry["powershell"], format!("& '{WIN}' --agent copilot preToolUse"));
+        assert_eq!(
+            entry["powershell"],
+            format!("& '{WIN}' --agent copilot preToolUse")
+        );
         assert_eq!(
             entry["bash"],
             "\"C:/Users/me/AppData/Local/Coucou/bin/coucou-hook.exe\" --agent copilot preToolUse"
@@ -1176,9 +1411,15 @@ mod tests {
     fn muse_hooks_use_milliseconds_and_a_schema_version_for_a_new_file() {
         let (home, installed, removed) = round_trip(Agent::Muse, None);
         assert_eq!(installed["schema_version"], 1);
-        assert_eq!(installed["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"], 120_000);
+        assert_eq!(
+            installed["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"],
+            120_000
+        );
         assert_eq!(installed["hooks"]["PreToolUse"][0]["matcher"], "*");
-        assert!(installed["hooks"]["Stop"][0]["hooks"][0]["command"].as_str().unwrap().ends_with("--agent muse Stop"));
+        assert!(installed["hooks"]["Stop"][0]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .ends_with("--agent muse Stop"));
         // Only Coucou's hooks go; the file and its schema_version stay.
         assert_eq!(removed.unwrap(), json!({ "schema_version": 1 }));
         let _ = std::fs::remove_dir_all(home);
@@ -1186,13 +1427,20 @@ mod tests {
         let existing = r#"{"model":"m","hooks":{"Stop":[{"matcher":"*","hooks":[{"type":"command","command":"say done"}]}]}}"#;
         let (home, installed, removed) = round_trip(Agent::Muse, Some(existing));
         assert!(installed.get("schema_version").is_none());
-        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert_eq!(
+            removed.unwrap(),
+            serde_json::from_str::<Value>(existing).unwrap()
+        );
         let _ = std::fs::remove_dir_all(home);
     }
 
     #[test]
     fn only_codex_copilot_and_muse_take_approvals() {
-        let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
+        let with: Vec<&str> = Agent::ALL
+            .iter()
+            .filter(|a| a.approvals())
+            .map(|a| a.id())
+            .collect();
         assert_eq!(with, ["codex", "copilot", "muse"]);
     }
 
@@ -1207,11 +1455,22 @@ mod tests {
             let main = std::fs::read_to_string(&agent.files(&home)[0]).unwrap();
             // The relay itself, at this machine's path, as a string literal: no
             // shell, no macOS path.
-            assert!(main.contains(r#""/home/me/.local/share/coucou/bin/coucou-hook""#), "{agent:?}");
-            assert!(!main.contains("/bin/sh") && !main.contains("nb-hook"), "{agent:?}");
-            assert!(main.contains(&format!("'--agent', '{}'", agent.id())), "{agent:?}");
+            assert!(
+                main.contains(r#""/home/me/.local/share/coucou/bin/coucou-hook""#),
+                "{agent:?}"
+            );
+            assert!(
+                !main.contains("/bin/sh") && !main.contains("nb-hook"),
+                "{agent:?}"
+            );
+            assert!(
+                main.contains(&format!("'--agent', '{}'", agent.id())),
+                "{agent:?}"
+            );
             // Never a verdict for the agent.
-            assert!(!main.contains("action: 'allow'") && !main.contains("register_approval_transport"));
+            assert!(
+                !main.contains("action: 'allow'") && !main.contains("register_approval_transport")
+            );
 
             let plan = config_file::preview(&agent.edits(&home, &relay, false)).unwrap();
             apply_in(agent, &home, &relay, false, &plan.fingerprint).unwrap();
@@ -1224,17 +1483,42 @@ mod tests {
     }
 
     #[test]
-    fn a_plugin_file_coucou_did_not_write_is_left_alone() {
-        let home = scratch("plugin-foreign");
+    fn opencode_upgrade_previews_and_backs_up_the_installed_plugin() {
+        let home = scratch("opencode-upgrade");
         let file = Agent::OpenCode.files(&home)[0].clone();
+        let old = "// Coucou plugin for OpenCode — generated by Coucou.\n// session.created only\n";
         std::fs::create_dir_all(file.parent().unwrap()).unwrap();
-        std::fs::write(&file, "export const Mine = async () => ({});\n").unwrap();
-        for install in [true, false] {
-            let err = config_file::preview(&Agent::OpenCode.edits(&home, &linux(), install)).unwrap_err();
-            assert!(err.contains("wasn't written by Coucou"), "{err}");
-        }
-        assert_eq!(std::fs::read_to_string(&file).unwrap(), "export const Mine = async () => ({});\n");
+        std::fs::write(&file, old).unwrap();
+        let relay = linux();
+        let plan = config_file::preview(&Agent::OpenCode.edits(&home, &relay, true)).unwrap();
+        assert!(plan.diff.contains("message.updated"));
+        assert!(!plan.backup.is_empty());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), old);
+        apply_in(Agent::OpenCode, &home, &relay, true, &plan.fingerprint).unwrap();
+        assert!(std::fs::read_to_string(&file)
+            .unwrap()
+            .contains("message.updated"));
+        assert_eq!(std::fs::read_to_string(plan.backup.trim()).unwrap(), old);
         let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn a_plugin_file_coucou_did_not_write_is_left_alone() {
+        for agent in [Agent::OpenCode, Agent::Hermes] {
+            let home = scratch(&format!("plugin-foreign-{}", agent.id()));
+            let file = agent.files(&home)[0].clone();
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(&file, "custom plugin, never overwrite\n").unwrap();
+            for install in [true, false] {
+                let err = config_file::preview(&agent.edits(&home, &linux(), install)).unwrap_err();
+                assert!(err.contains("wasn't written by Coucou"), "{err}");
+            }
+            assert_eq!(
+                std::fs::read_to_string(&file).unwrap(),
+                "custom plugin, never overwrite\n"
+            );
+            let _ = std::fs::remove_dir_all(home);
+        }
     }
 
     #[test]
@@ -1245,6 +1529,34 @@ mod tests {
         assert!(literal.contains(r"C:\\Users\\Jane O'Neil"));
         // plugin.yaml is ours too, so removing it is allowed.
         assert!(is_our_plugin(&plugins[1]));
+    }
+
+    #[test]
+    fn hermes_uses_the_windows_data_dir_or_an_explicit_profile() {
+        let home = Path::new("C:/Users/me");
+        let local = PathBuf::from("C:/Users/me/AppData/Local");
+        #[cfg(windows)]
+        {
+            assert_eq!(
+                hermes_home(home, None, Some(local.clone())),
+                local.join("hermes")
+            );
+            assert_eq!(
+                hermes_home(home, Some(PathBuf::from("relative")), Some(local.clone())),
+                local.join("hermes")
+            );
+            let custom = PathBuf::from("D:/Hermes profile");
+            assert_eq!(hermes_home(home, Some(custom.clone()), Some(local)), custom);
+        }
+        assert_eq!(hermes_home(home, None, None), home.join(".hermes"));
+        let plugin = Agent::Hermes.plugin(&windows(WIN)).unwrap().remove(0);
+        assert!(plugin.contains("ctx.register_hook('on_session_start', on_session_start)"));
+        assert!(plugin.contains("ctx.register_hook('pre_llm_call', pre_llm_call)"));
+        assert!(plugin.contains("'hook_event_name': 'SessionStart', 'session_id': sid"));
+        assert!(plugin.contains("'hook_event_name': 'UserPromptSubmit'"));
+        assert!(plugin.contains("'turn_id': kwargs.get('turn_id', '')"));
+        assert!(!plugin.contains("kwargs.get('user_message'"));
+        assert!(plugin.contains("'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)"));
     }
 
     #[test]

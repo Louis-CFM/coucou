@@ -38,7 +38,9 @@ fn endpoint() -> Result<Url, String> {
     static ENDPOINT: OnceLock<Result<Url, String>> = OnceLock::new();
     ENDPOINT
         .get_or_init(|| {
-            let raw = std::env::var(BASE_URL_VAR).ok().filter(|v| !v.trim().is_empty());
+            let raw = std::env::var(BASE_URL_VAR)
+                .ok()
+                .filter(|v| !v.trim().is_empty());
             let resolved = match raw {
                 None => Ok(Url::parse(DEFAULT_ENDPOINT).expect("valid default endpoint")),
                 Some(raw) => net::anthropic_endpoint(&raw),
@@ -77,7 +79,11 @@ fn user_content(first: bool, context: Option<&ChatContext>, query: &str) -> Vec<
                 }
                 content.push(json!({ "type": "text", "text": format!("File: {name}") }));
             }
-            Some(ChatContext::Window { app_name, title, url }) => {
+            Some(ChatContext::Window {
+                app_name,
+                title,
+                url,
+            }) => {
                 let line = chat::window_line(app_name, title, url.as_deref());
                 content.push(json!({ "type": "text", "text": line }));
             }
@@ -147,7 +153,8 @@ pub async fn send(
     let endpoint = endpoint()?;
 
     let turn = chat.begin(chat::ANTHROPIC);
-    let user = json!({ "role": "user", "content": user_content(turn.first, context.as_ref(), &query) });
+    let user =
+        json!({ "role": "user", "content": user_content(turn.first, context.as_ref(), &query) });
     let body = request_body(model, &chat::system_prompt(true), &turn.history, &user);
 
     let response = call(&endpoint, &key, &body).await?;
@@ -156,7 +163,13 @@ pub async fn send(
     // Store the whole content — tool_use / tool_result blocks included — so the
     // next turn has the right context.
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
-    chat.commit(&turn, user, json!({ "role": "assistant", "content": blocks }), &plain, &text);
+    chat.commit(
+        &turn,
+        user,
+        json!({ "role": "assistant", "content": blocks }),
+        &plain,
+        &text,
+    );
     Ok(ChatReply { text })
 }
 
@@ -175,11 +188,14 @@ async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> 
     let status = response.status();
     if !status.is_success() {
         // Surface the API's own message, which is what makes a bad key obvious.
-        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        let body = net::read_capped(response, net::MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
         return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))
+    serde_json::from_slice(&bytes)
+        .map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))
 }
 
 /// The models on the user's Anthropic account, newest first, as the API lists them.
@@ -194,7 +210,9 @@ pub async fn models(key: &str) -> Result<Vec<ModelInfo>, String> {
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
-        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        let body = net::read_capped(response, net::MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
         return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
@@ -209,7 +227,11 @@ fn parse_models(json: &Value) -> Vec<ModelInfo> {
         .flatten()
         .filter_map(|m| {
             let id = m.get("id")?.as_str()?.to_string();
-            let label = m.get("display_name").and_then(Value::as_str).unwrap_or(&id).to_string();
+            let label = m
+                .get("display_name")
+                .and_then(Value::as_str)
+                .unwrap_or(&id)
+                .to_string();
             Some(ModelInfo { id, label })
         })
         .collect()
@@ -259,12 +281,24 @@ fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         out.push(TABLE[(n >> 18) as usize & 63] as char);
         out.push(TABLE[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { TABLE[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { TABLE[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            TABLE[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -285,26 +319,38 @@ mod tests {
     }
 
     fn texts(parts: &[&str]) -> Vec<Value> {
-        parts.iter().map(|t| json!({ "type": "text", "text": t })).collect()
+        parts
+            .iter()
+            .map(|t| json!({ "type": "text", "text": t }))
+            .collect()
     }
 
     #[test]
     fn every_text_block_is_kept_in_order_without_added_separators() {
-        assert_eq!(response_text(&texts(&["Simple answer."])).as_deref(), Some("Simple answer."));
+        assert_eq!(
+            response_text(&texts(&["Simple answer."])).as_deref(),
+            Some("Simple answer.")
+        );
         let content = vec![
             json!({"type":"text","text":"I'll look that up.\n"}),
             json!({"type":"server_tool_use","id":"srvtoolu_01","name":"web_search","input":{"query":"test"}}),
             json!({"type":"web_search_tool_result","tool_use_id":"srvtoolu_01","content":[]}),
             json!({"type":"text","text":"The answer is 42."}),
         ];
-        assert_eq!(response_text(&content).as_deref(), Some("I'll look that up.\nThe answer is 42."));
+        assert_eq!(
+            response_text(&content).as_deref(),
+            Some("I'll look that up.\nThe answer is 42.")
+        );
         // An empty leading block does not hide the answer.
         let content = vec![
             json!({"type":"text","text":""}),
             json!({"type":"web_search_tool_result","tool_use_id":"b","content":[]}),
             json!({"type":"text","text":"Here is the actual answer."}),
         ];
-        assert_eq!(response_text(&content).as_deref(), Some("Here is the actual answer."));
+        assert_eq!(
+            response_text(&content).as_deref(),
+            Some("Here is the actual answer.")
+        );
         // Citations split a sentence across blocks: no newline is inserted.
         assert_eq!(
             response_text(&texts(&["Paris is the ", "capital", " of France."])).as_deref(),
@@ -316,7 +362,10 @@ mod tests {
             json!({"type":"web_search_tool_result","tool_use_id":"a","content":[{"type":"web_search_result","title":"Page","text":"Leak"}]}),
         ];
         assert_eq!(response_text(&content).as_deref(), Some("Answer."));
-        assert_eq!(response_text(&[json!({"type":"server_tool_use","id":"x"})]), None);
+        assert_eq!(
+            response_text(&[json!({"type":"server_tool_use","id":"x"})]),
+            None
+        );
         assert_eq!(response_text(&texts(&["", "  \n"])), None);
     }
 
@@ -324,17 +373,30 @@ mod tests {
     fn a_refusal_or_an_empty_answer_is_an_error() {
         let refusal = json!({"stop_reason":"refusal","stop_details":{"explanation":"Not this."},"content":[]});
         assert_eq!(interpret(&refusal).unwrap_err(), "Not this.");
-        assert_eq!(interpret(&json!({"stop_reason":"refusal"})).unwrap_err(), "Claude declined this one.");
-        assert_eq!(interpret(&json!({"id":"x"})).unwrap_err(), "Unexpected API response.");
-        assert_eq!(interpret(&json!({"content":[]})).unwrap_err(), "No response text.");
-        let (blocks, text) = interpret(&json!({"content":[{"type":"text","text":" Hi "}]})).unwrap();
+        assert_eq!(
+            interpret(&json!({"stop_reason":"refusal"})).unwrap_err(),
+            "Claude declined this one."
+        );
+        assert_eq!(
+            interpret(&json!({"id":"x"})).unwrap_err(),
+            "Unexpected API response."
+        );
+        assert_eq!(
+            interpret(&json!({"content":[]})).unwrap_err(),
+            "No response text."
+        );
+        let (blocks, text) =
+            interpret(&json!({"content":[{"type":"text","text":" Hi "}]})).unwrap();
         assert_eq!(text, "Hi");
         assert_eq!(blocks.len(), 1);
     }
 
     #[test]
     fn the_request_carries_history_web_search_and_the_new_turn_last() {
-        let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
+        let history = vec![
+            json!({"role":"user","content":"a"}),
+            json!({"role":"assistant","content":"b"}),
+        ];
         let user = json!({"role":"user","content":[{"type":"text","text":"c"}]});
         let body = request_body("claude-x", "sys", &history, &user);
         assert_eq!(body["model"], "claude-x");
@@ -347,28 +409,56 @@ mod tests {
 
     #[test]
     fn context_is_sent_with_the_first_turn_only() {
-        let ctx = ChatContext::Window { app_name: "Edge".into(), title: "Docs".into(), url: Some("https://x.dev".into()) };
+        let ctx = ChatContext::Window {
+            app_name: "Edge".into(),
+            title: "Docs".into(),
+            url: Some("https://x.dev".into()),
+        };
         let first = user_content(true, Some(&ctx), "q");
         assert_eq!(first.len(), 2);
-        assert_eq!(first[0]["text"], "Context — App: Edge, Window: Docs, URL: https://x.dev");
-        assert_eq!(user_content(false, Some(&ctx), "q"), vec![json!({"type":"text","text":"q"})]);
+        assert_eq!(
+            first[0]["text"],
+            "Context — App: Edge, Window: Docs, URL: https://x.dev"
+        );
+        assert_eq!(
+            user_content(false, Some(&ctx), "q"),
+            vec![json!({"type":"text","text":"q"})]
+        );
         // A file that cannot be read still names itself.
-        let ctx = ChatContext::File { name: "gone.pdf".into(), path: "/no/such/gone.pdf".into() };
-        assert_eq!(user_content(true, Some(&ctx), "q")[0]["text"], "File: gone.pdf");
+        let ctx = ChatContext::File {
+            name: "gone.pdf".into(),
+            path: "/no/such/gone.pdf".into(),
+        };
+        assert_eq!(
+            user_content(true, Some(&ctx), "q")[0]["text"],
+            "File: gone.pdf"
+        );
     }
 
     #[test]
     fn the_model_list_sits_next_to_the_messages_endpoint() {
         let url = Url::parse(DEFAULT_ENDPOINT).unwrap();
-        assert_eq!(models_endpoint(&url).as_str(), "https://api.anthropic.com/v1/models?limit=100");
+        assert_eq!(
+            models_endpoint(&url).as_str(),
+            "https://api.anthropic.com/v1/models?limit=100"
+        );
         let url = net::anthropic_endpoint("https://gw.example.com/anthropic").unwrap();
-        assert_eq!(models_endpoint(&url).as_str(), "https://gw.example.com/anthropic/v1/models?limit=100");
+        assert_eq!(
+            models_endpoint(&url).as_str(),
+            "https://gw.example.com/anthropic/v1/models?limit=100"
+        );
         let list = json!({"data":[{"id":"claude-opus-5","display_name":"Claude Opus 5"},{"id":"claude-x"},{"nope":1}]});
         assert_eq!(
             parse_models(&list),
             vec![
-                ModelInfo { id: "claude-opus-5".into(), label: "Claude Opus 5".into() },
-                ModelInfo { id: "claude-x".into(), label: "claude-x".into() },
+                ModelInfo {
+                    id: "claude-opus-5".into(),
+                    label: "Claude Opus 5".into()
+                },
+                ModelInfo {
+                    id: "claude-x".into(),
+                    label: "claude-x".into()
+                },
             ]
         );
     }

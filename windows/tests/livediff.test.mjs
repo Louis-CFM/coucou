@@ -11,7 +11,8 @@ import { parseDiffStep } from "../src/core/diff.ts";
 
 const CLAUDE = "integration_claude";
 
-const island = { alert() {}, setView() {}, reveal() {}, dropPin() {} };
+const island = { alert() {}, setView() {}, reveal() {}, dropPin() {}, collapse() {}, hide() {},
+  canAutoPopup: () => !State.pendingApproval && !State.isPinned };
 registerHookHandlers(island);
 
 const hook = (payload) => emit("hook", payload);
@@ -37,6 +38,7 @@ beforeEach(() => {
   State.paused = false;
   State.isPinned = false;
   State.pendingApproval = null;
+  State.finishedPopup = null;
   State.settings = { ...DEFAULT_SETTINGS };
   State.loadIntegrationTasks();
 });
@@ -138,7 +140,7 @@ test("Stop falls back to `message`, and adds nothing when both are empty", () =>
   hook({ hook_event_name: "UserPromptSubmit", prompt: "again" });
   hook({ hook_event_name: "Stop", last_assistant_message: "\n\n---\n" });
   assert.equal(task().finalLine, null);
-  assert.equal(task().steps.at(-1), "again");
+  assert.equal(task().steps.at(-1), "…");
 });
 
 test("a long final message is kept to 200 characters", () => {

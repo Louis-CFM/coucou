@@ -10,9 +10,12 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
+use tauri::{
+    AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, Runtime, WebviewWindow,
+};
 
 use crate::platform::{self, cursor_physical, left_button_down};
+use crate::settings::ClickThroughShortcut;
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
 pub const PANEL_W: f64 = 720.0;
@@ -26,6 +29,59 @@ pub const WINDOW_LABEL: &str = "island";
 /// Margin around the island that still counts as "on the island", in logical px.
 /// Wider than the macOS 6 pt because a click must never be swallowed.
 const HIT_MARGIN: f64 = 14.0;
+
+fn held_click_through(ctrl_down: bool, collapsed: bool, on_island: bool) -> bool {
+    ctrl_down && !collapsed && on_island
+}
+
+pub struct ClickThroughState {
+    method: ClickThroughShortcut,
+    pub enabled: bool,
+    wait_for_ctrl_release: bool,
+}
+
+impl ClickThroughState {
+    fn new(method: ClickThroughShortcut) -> Self {
+        Self {
+            method,
+            enabled: false,
+            wait_for_ctrl_release: false,
+        }
+    }
+
+    fn set_method(&mut self, method: ClickThroughShortcut) {
+        self.method = method;
+        self.enabled = false;
+        // Switching methods must leave the mouse usable even if Ctrl is still held.
+        self.wait_for_ctrl_release = true;
+    }
+
+    fn poll(&mut self, ctrl_down: bool, collapsed: bool, on_island: bool) -> bool {
+        if !ctrl_down {
+            self.wait_for_ctrl_release = false;
+        }
+        if self.method == ClickThroughShortcut::HoldCtrl {
+            self.enabled =
+                !self.wait_for_ctrl_release && held_click_through(ctrl_down, collapsed, on_island);
+        }
+        if collapsed {
+            self.enabled = false;
+        }
+        self.enabled
+    }
+
+    fn toggle(&mut self) -> Option<bool> {
+        if self.method != ClickThroughShortcut::CtrlAltD {
+            return None;
+        }
+        self.enabled = !self.enabled;
+        Some(self.enabled)
+    }
+
+    fn accept_mouse(&self, on_island: bool, dragging: bool) -> bool {
+        !self.enabled && (on_island || dragging)
+    }
+}
 
 #[derive(Serialize, Clone)]
 pub struct CursorPayload {
@@ -58,17 +114,19 @@ pub struct PollGate {
     active: Mutex<bool>,
     cv: Condvar,
     pub collapsed: AtomicBool,
+    pub click_through: Mutex<ClickThroughState>,
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
 }
 
 impl PollGate {
-    pub fn new() -> Self {
+    pub fn new(method: ClickThroughShortcut) -> Self {
         Self {
             active: Mutex::new(false),
             cv: Condvar::new(),
             collapsed: AtomicBool::new(true),
+            click_through: Mutex::new(ClickThroughState::new(method)),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
         }
@@ -76,11 +134,6 @@ impl PollGate {
 
     pub fn set_rect(&self, rect: IslandRect) {
         *self.rect.lock().unwrap() = rect;
-    }
-
-    /// Forces the next poll tick to re-apply the flag (after a window resize).
-    pub fn forget_ignore_state(&self) {
-        self.ignoring.store(false, Ordering::Relaxed);
     }
 
     pub fn set_active(&self, on: bool) {
@@ -119,7 +172,10 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
 fn logical_origin(m: &Monitor) -> (i32, i32) {
     let scale = m.scale_factor();
     let p = m.position();
-    ((p.x as f64 / scale).round() as i32, (p.y as f64 / scale).round() as i32)
+    (
+        (p.x as f64 / scale).round() as i32,
+        (p.y as f64 / scale).round() as i32,
+    )
 }
 
 /// One entry of the "Island lives on" list in Settings.
@@ -130,7 +186,9 @@ pub struct MonitorChoice {
 }
 
 pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
-    let Ok(monitors) = app.available_monitors() else { return Vec::new() };
+    let Ok(monitors) = app.available_monitors() else {
+        return Vec::new();
+    };
     monitors
         .iter()
         .map(|m| {
@@ -168,7 +226,14 @@ struct DisplayId {
 impl DisplayId {
     /// `at:<x>,<y>` stays first, so a preference saved before still matches.
     fn key(&self) -> String {
-        format!("at:{},{}|{}|{}x{}", self.x, self.y, self.name.replace('|', " "), self.w, self.h)
+        format!(
+            "at:{},{}|{}|{}x{}",
+            self.x,
+            self.y,
+            self.name.replace('|', " "),
+            self.w,
+            self.h
+        )
     }
 }
 
@@ -205,7 +270,10 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
             return Some(i);
         }
         if let Some((w, h)) = size {
-            if let Some(i) = displays.iter().position(|d| d.name == name && d.w == w && d.h == h) {
+            if let Some(i) = displays
+                .iter()
+                .position(|d| d.name == name && d.w == w && d.h == h)
+            {
                 return Some(i);
             }
         }
@@ -243,7 +311,13 @@ mod display_tests {
     use super::*;
 
     fn d(name: &str, x: i32, y: i32, w: i32, h: i32) -> DisplayId {
-        DisplayId { name: name.into(), x, y, w, h }
+        DisplayId {
+            name: name.into(),
+            x,
+            y,
+            w,
+            h,
+        }
     }
 
     #[test]
@@ -253,7 +327,10 @@ mod display_tests {
         let key = dell.key();
         assert_eq!(pick_display(&key, &[lap.clone(), dell.clone()]), Some(1));
         // Rearranged: the Dell moved to the left of the laptop.
-        let moved = [d("eDP-1", 2560, 0, 1920, 1200), d("DELL U2720Q", 0, 0, 2560, 1440)];
+        let moved = [
+            d("eDP-1", 2560, 0, 1920, 1200),
+            d("DELL U2720Q", 0, 0, 2560, 1440),
+        ];
         assert_eq!(pick_display(&key, &moved), Some(1));
         // Resolution changed, still the only Dell.
         let rescaled = [lap.clone(), d("DELL U2720Q", 1920, 0, 1920, 1080)];
@@ -274,7 +351,10 @@ mod display_tests {
     fn preferences_saved_before_still_match() {
         let lap = d("eDP-1", 0, 0, 1920, 1200);
         let ext = d("HDMI-1", 1920, 0, 1920, 1080);
-        assert_eq!(pick_display("at:1920,0", &[lap.clone(), ext.clone()]), Some(1));
+        assert_eq!(
+            pick_display("at:1920,0", &[lap.clone(), ext.clone()]),
+            Some(1)
+        );
         assert_eq!(pick_display("primary", &[lap, ext]), None);
         assert_eq!(pick_display("at:nonsense", &[]), None);
     }
@@ -294,20 +374,32 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
                 scale,
             }
         }
-        None => ScreenInfo { x: 0.0, y: 0.0, width: 1920.0, height: 1080.0, scale: 1.0 },
+        None => ScreenInfo {
+            x: 0.0,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+            scale: 1.0,
+        },
     }
 }
 
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
-    let Some(m) = target_monitor(app, pref) else { return };
+    let Some(m) = target_monitor(app, pref) else {
+        return;
+    };
 
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lw, lh) = if collapsed {
+        (STRIP_W, STRIP_H)
+    } else {
+        (PANEL_W, PANEL_H)
+    };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
@@ -339,7 +431,13 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     let m = target_monitor(app, &pref)?;
     let p = m.position();
     let size = m.size();
-    Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
+    Some((
+        p.x,
+        p.y,
+        size.width,
+        size.height,
+        m.scale_factor().to_bits(),
+    ))
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
@@ -353,10 +451,15 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // Without a cursor to read (Linux) the loop only watches the display
         // layout, and twice a second is plenty for that: waking at 60 Hz just to
         // find no cursor costs CPU for nothing.
-        let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
+        let (period, screen_every) = if platform::CURSOR_POLL {
+            (16, 30)
+        } else {
+            (500, 1)
+        };
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
+            let mut last_click_through = gate.click_through.lock().unwrap().enabled;
             let mut ticks: u32 = 0;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(period));
@@ -379,20 +482,19 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 }
 
                 let Some(win) = window(&app) else { continue };
-                let Ok(origin) = win.outer_position() else { continue };
+                let Ok(origin) = win.outer_position() else {
+                    continue;
+                };
                 let scale = win.scale_factor().unwrap_or(1.0);
-                let Some((cx, cy)) = cursor_physical() else { continue };
+                let Some((cx, cy)) = cursor_physical() else {
+                    continue;
+                };
                 let x = (cx - origin.x as f64) / scale;
                 let y = (cy - origin.y as f64) / scale;
                 let size = match win.inner_size() {
                     Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
                     Err(_) => (PANEL_W, PANEL_H),
                 };
-                if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
-                    continue;
-                }
-                last = (x, y);
-
                 // Click-through: the window only takes the mouse over the island
                 // shape. A small entry margin means the flag is already off by the
                 // time a moving cursor reaches a button.
@@ -402,6 +504,18 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     && x <= r.x + r.w + HIT_MARGIN
                     && y >= r.y - HIT_MARGIN
                     && y <= r.y + r.h + HIT_MARGIN;
+
+                #[cfg(windows)]
+                let ctrl_down = platform::control_down();
+                #[cfg(not(windows))]
+                let ctrl_down = false;
+                let mut state = gate.click_through.lock().unwrap();
+                let before = state.enabled;
+                let click_through =
+                    state.poll(ctrl_down, gate.collapsed.load(Ordering::Relaxed), on_island);
+                if before != click_through {
+                    let _ = app.emit("click-through-changed", click_through);
+                }
 
                 // A file being dragged has to be able to find us. WS_EX_TRANSPARENT
                 // — what click-through is on Windows — hides the window from
@@ -415,21 +529,30 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 let down = left_button_down();
                 if down && !was_down {
                     let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                    let _ =
+                        app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
                 }
                 was_down = down;
 
-                let dragging = down
-                    && x >= 0.0
-                    && x <= size.0
-                    && y >= 0.0
-                    && y <= size.1;
+                let dragging = down && x >= 0.0 && x <= size.0 && y >= 0.0 && y <= size.1;
 
-                let accept = on_island || dragging;
+                let accept = state.accept_mouse(on_island, dragging);
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
-                    gate.ignoring.store(!accept, Ordering::Relaxed);
-                    let _ = win.set_ignore_cursor_events(!accept);
+                    match win.set_ignore_cursor_events(!accept) {
+                        Ok(()) => gate.ignoring.store(!accept, Ordering::Relaxed),
+                        Err(err) => crate::log::line(format!("click-through: {err}")),
+                    }
                 }
+                drop(state);
+
+                if (x - last.0).abs() < 1.0
+                    && (y - last.1).abs() < 1.0
+                    && click_through == last_click_through
+                {
+                    continue;
+                }
+                last = (x, y);
+                last_click_through = click_through;
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
@@ -443,12 +566,18 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 /// tick decides from the cursor. Without it (Linux) the input region is set to
 /// the island itself, or to the whole wake strip while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
-    if platform::CURSOR_POLL {
-        set_ignore_cursor(app, false);
-        gate.forget_ignore_state();
+    let state = gate.click_through.lock().unwrap();
+    let Some(win) = window(app) else { return };
+    if platform::CURSOR_POLL || state.enabled {
+        match win.set_ignore_cursor_events(state.enabled) {
+            Ok(()) => gate.ignoring.store(state.enabled, Ordering::Relaxed),
+            Err(err) => crate::log::line(format!("click-through refresh: {err}")),
+        }
+        if state.enabled && !platform::CURSOR_POLL {
+            platform::set_input_region(&win, Some((0.0, 0.0, 0.0, 0.0)));
+        }
         return;
     }
-    let Some(win) = window(app) else { return };
     let region = if gate.collapsed.load(Ordering::Relaxed) {
         // The wake strip itself, never "the whole window": if the window ever
         // fails to shrink to the strip, the rest of it must not swallow clicks
@@ -470,8 +599,72 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     platform::set_input_region(&win, region);
 }
 
-pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
-    if let Some(win) = window(app) {
-        let _ = win.set_ignore_cursor_events(ignore);
+pub fn change_click_through_method<R: Runtime>(
+    app: &AppHandle<R>,
+    gate: &PollGate,
+    method: ClickThroughShortcut,
+) {
+    let mut state = gate.click_through.lock().unwrap();
+    state.set_method(method);
+    if let Some(win) = app.get_webview_window(WINDOW_LABEL) {
+        match win.set_ignore_cursor_events(false) {
+            Ok(()) => gate.ignoring.store(false, Ordering::Relaxed),
+            Err(err) => crate::log::line(format!("click-through reset: {err}")),
+        }
+    }
+    let _ = app.emit("click-through-changed", false);
+}
+
+pub fn toggle_click_through<R: Runtime>(app: &AppHandle<R>, gate: &PollGate) {
+    let mut state = gate.click_through.lock().unwrap();
+    if gate.collapsed.load(Ordering::Relaxed) {
+        return;
+    }
+    let Some(enabled) = state.toggle() else {
+        return;
+    };
+    if let Some(win) = app.get_webview_window(WINDOW_LABEL) {
+        match win.set_ignore_cursor_events(enabled) {
+            Ok(()) => gate.ignoring.store(enabled, Ordering::Relaxed),
+            Err(err) => crate::log::line(format!("click-through toggle: {err}")),
+        }
+    }
+    let _ = app.emit("click-through-changed", enabled);
+}
+
+#[cfg(test)]
+mod click_through_tests {
+    use super::*;
+
+    #[test]
+    fn ctrl_only_passes_clicks_while_over_a_visible_island() {
+        assert!(held_click_through(true, false, true));
+        assert!(!held_click_through(false, false, true));
+        assert!(!held_click_through(true, false, false));
+        assert!(!held_click_through(true, true, true));
+    }
+
+    #[test]
+    fn switching_methods_restores_the_mouse_and_ignores_the_old_trigger() {
+        let mut state = ClickThroughState::new(ClickThroughShortcut::HoldCtrl);
+        assert!(state.poll(true, false, true));
+        assert!(!state.accept_mouse(true, true));
+        state.set_method(ClickThroughShortcut::CtrlAltD);
+        assert!(state.accept_mouse(true, false));
+        assert!(!state.poll(true, false, true));
+        assert_eq!(state.toggle(), Some(true));
+        assert!(state.poll(false, false, false));
+        assert_eq!(state.toggle(), Some(false));
+        assert!(state.accept_mouse(true, false));
+        state.toggle();
+        state.set_method(ClickThroughShortcut::HoldCtrl);
+        assert!(state.accept_mouse(true, false));
+        assert_eq!(state.toggle(), None);
+        assert!(!state.poll(true, false, true));
+        assert!(!state.poll(false, false, true));
+        assert!(state.poll(true, false, true));
+        assert!(!state.poll(false, false, true));
+        assert!(state.accept_mouse(true, false));
+        assert!(!state.poll(true, true, true));
     }
 }

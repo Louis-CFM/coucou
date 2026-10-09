@@ -54,6 +54,9 @@ class FakeElement {
   get children() {
     return this.childNodes.filter((n) => n.nodeType === 1);
   }
+  get firstElementChild() {
+    return this.children[0] ?? null;
+  }
   get firstChild() {
     return this.childNodes[0] ?? null;
   }

@@ -311,6 +311,37 @@ select option {
 
 /* Shortcuts section */
 
+.click-through-choices {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.click-through-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.click-through-choice input {
+  margin-top: 3px;
+  accent-color: #c7cbd2;
+  flex: 0 0 auto;
+}
+
+.click-through-choice > span:first-of-type {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.choice-title { font-size: 12.5px; color: var(--ink); }
+
 .subhead {
   font: 600 11px var(--font);
   color: var(--dim-2);

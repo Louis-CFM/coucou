@@ -14,7 +14,6 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 
-
 /// Port of `coucouHooksPresent(inSettings:)` (ClaudeHookDetection.swift): true
 /// when a parsed `~/.claude/settings.json` routes Claude Code's SessionStart
 /// events to Coucou. The command text is what tells: Coucou's relay here is
@@ -29,13 +28,16 @@ pub fn claude_hooks_present(settings: &Value) -> bool {
         return false;
     };
     groups.iter().any(|group| {
-        group.get("hooks").and_then(Value::as_array).is_some_and(|hooks| {
-            hooks.iter().any(|hook| {
-                hook.get("command")
-                    .and_then(Value::as_str)
-                    .is_some_and(|c| c.contains("NotchBuddy") || c.contains("coucou"))
+        group
+            .get("hooks")
+            .and_then(Value::as_array)
+            .is_some_and(|hooks| {
+                hooks.iter().any(|hook| {
+                    hook.get("command")
+                        .and_then(Value::as_str)
+                        .is_some_and(|c| c.contains("NotchBuddy") || c.contains("coucou"))
+                })
             })
-        })
     })
 }
 
@@ -44,7 +46,10 @@ fn read_json(path: &PathBuf) -> Value {
     std::fs::read(path)
         .ok()
         .and_then(|bytes| {
-            let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes).to_vec();
+            let text = bytes
+                .strip_prefix(&[0xEF, 0xBB, 0xBF])
+                .unwrap_or(&bytes)
+                .to_vec();
             serde_json::from_slice(&text).ok()
         })
         .unwrap_or(Value::Null)

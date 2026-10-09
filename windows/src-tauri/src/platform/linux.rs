@@ -73,7 +73,11 @@ pub fn picture_dirs() -> Vec<PathBuf> {
 /// xdg-user-dirs writes are understood: "$HOME/…" and an absolute path.
 fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
     let line = text.lines().map(str::trim).find(|l| l.starts_with(key))?;
-    let value = line.strip_prefix(key)?.trim_start().strip_prefix('=')?.trim();
+    let value = line
+        .strip_prefix(key)?
+        .trim_start()
+        .strip_prefix('=')?
+        .trim();
     let value = value.strip_prefix('"')?.strip_suffix('"')?;
     let path = match value.strip_prefix("$HOME") {
         Some(rest) => home.join(rest.trim_start_matches('/')),
@@ -160,7 +164,12 @@ fn dpi_scale_for(gsettings_output: &str) -> Option<String> {
     if !(0.5..=3.0).contains(&factor) || (factor - 1.0).abs() < 0.01 {
         return None;
     }
-    Some(format!("{:.4}", 1.0 / factor).trim_end_matches('0').trim_end_matches('.').to_string())
+    Some(
+        format!("{:.4}", 1.0 / factor)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string(),
+    )
 }
 
 pub fn local_time() -> LocalTime {
@@ -222,11 +231,19 @@ pub fn user_full_name() -> Option<String> {
         let mut pwd: libc::passwd = std::mem::zeroed();
         let mut result: *mut libc::passwd = std::ptr::null_mut();
         let mut buf = vec![0 as libc::c_char; 16 * 1024];
-        let rc = libc::getpwuid_r(libc::getuid(), &mut pwd, buf.as_mut_ptr(), buf.len(), &mut result);
+        let rc = libc::getpwuid_r(
+            libc::getuid(),
+            &mut pwd,
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut result,
+        );
         if rc != 0 || result.is_null() || pwd.pw_gecos.is_null() {
             return None;
         }
-        let gecos = std::ffi::CStr::from_ptr(pwd.pw_gecos).to_string_lossy().into_owned();
+        let gecos = std::ffi::CStr::from_ptr(pwd.pw_gecos)
+            .to_string_lossy()
+            .into_owned();
         let name = gecos.split(',').next().unwrap_or("").trim().to_string();
         (!name.is_empty()).then_some(name)
     }
@@ -288,15 +305,22 @@ pub fn open_claude_desktop() -> bool {
 pub fn codex_candidates() -> Vec<PathBuf> {
     let home = home_dir();
     let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
-    for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"] {
+    for dir in [
+        ".local/bin",
+        ".npm-global/bin",
+        ".volta/bin",
+        ".bun/bin",
+        ".local/share/pnpm",
+    ] {
         out.push(home.join(dir).join("codex"));
     }
     out.push(PathBuf::from("/usr/local/bin/codex"));
     out.push(PathBuf::from("/usr/bin/codex"));
     let nvm = home.join(".nvm/versions/node");
     if let Ok(entries) = std::fs::read_dir(&nvm) {
-        let mut versions: Vec<String> =
-            entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
+        let mut versions: Vec<String> = entries
+            .filter_map(|e| e.ok()?.file_name().into_string().ok())
+            .collect();
         versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
         out.extend(versions.iter().map(|v| nvm.join(v).join("bin/codex")));
     }
@@ -313,6 +337,11 @@ pub fn codex_candidates() -> Vec<PathBuf> {
 /// Nothing polls the cursor here: the page reports it over the island, and the
 /// input region decides click-through (see the top of this file).
 pub const CURSOR_POLL: bool = false;
+
+pub fn accent_color() -> Option<[u8; 3]> {
+    None
+}
+pub fn watch_accent_color(_: &tauri::AppHandle) {}
 
 pub fn cursor_physical() -> Option<(f64, f64)> {
     None
@@ -346,7 +375,10 @@ mod layer {
         pub fn gtk_layer_set_layer(window: *mut GtkWindow, layer: c_int);
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
         pub fn gtk_layer_set_margin(window: *mut GtkWindow, edge: c_int, margin: c_int);
-        pub fn gtk_layer_set_monitor(window: *mut GtkWindow, monitor: *mut gtk::gdk::ffi::GdkMonitor);
+        pub fn gtk_layer_set_monitor(
+            window: *mut GtkWindow,
+            monitor: *mut gtk::gdk::ffi::GdkMonitor,
+        );
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
     }
@@ -354,7 +386,9 @@ mod layer {
 
 /// COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
 fn layer_shell_wanted() -> bool {
-    std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true)
+    std::env::var("COUCOU_LAYER_SHELL")
+        .map(|v| v != "0")
+        .unwrap_or(true)
 }
 
 /// True once the island window is a layer-shell surface.
@@ -403,7 +437,9 @@ pub fn make_non_activating(win: &WebviewWindow) {
             // On X11 a Dock is kept above everything and is the only kind of
             // window, besides the desktop, that "show desktop" leaves alone.
             // COUCOU_DOCK=0 falls back to a utility window.
-            let dock = std::env::var("COUCOU_DOCK").map(|v| v != "0").unwrap_or(true);
+            let dock = std::env::var("COUCOU_DOCK")
+                .map(|v| v != "0")
+                .unwrap_or(true);
             gw.set_type_hint(if dock {
                 gtk::gdk::WindowTypeHint::Dock
             } else {
@@ -516,7 +552,13 @@ fn start_pointer_watch() {
             // pull the island back to "inside".
             let _ = win.emit("pointer-inside", now_inside);
             if !now_inside {
-                let _ = win.emit("cursor", crate::island::CursorPayload { x: -10_000.0, y: -10_000.0 });
+                let _ = win.emit(
+                    "cursor",
+                    crate::island::CursorPayload {
+                        x: -10_000.0,
+                        y: -10_000.0,
+                    },
+                );
             }
         }
         gtk::glib::ControlFlow::Continue
@@ -555,7 +597,11 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     // refuses focus until we say otherwise — on a layer surface too.
     gw.set_accept_focus(activating);
     if LAYER_SURFACE.load(Ordering::Relaxed) {
-        let mode = if activating { layer::KEYBOARD_ON_DEMAND } else { layer::KEYBOARD_NONE };
+        let mode = if activating {
+            layer::KEYBOARD_ON_DEMAND
+        } else {
+            layer::KEYBOARD_NONE
+        };
         unsafe { layer::gtk_layer_set_keyboard_mode(gtk_window_ptr(&gw), mode) };
     }
 }
@@ -572,7 +618,9 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
     match rect {
         None => gw.input_shape_combine_region(None),
         Some((x, y, w, h)) => {
-            let Some(gdk_window) = gw.window() else { return };
+            let Some(gdk_window) = gw.window() else {
+                return;
+            };
             let region = gtk::cairo::Region::create_rectangle(&gtk::cairo::RectangleInt::new(
                 x.floor() as i32,
                 y.floor() as i32,
@@ -644,7 +692,9 @@ static MOCHI_SHAPE: Mutex<super::MouseShape> = Mutex::new(super::MouseShape::Emp
 /// Sets the window up for `mode` before it is ever shown. False means it can't
 /// be used (a layer surface can't be made from a window already shown).
 pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
-    let Ok(gw) = win.gtk_window() else { return false };
+    let Ok(gw) = win.gtk_window() else {
+        return false;
+    };
     gw.set_accept_focus(false);
     match mode {
         super::DesktopMode::Layer => {
@@ -706,7 +756,9 @@ fn apply_mouse_shape(gw: &impl IsA<gtk::Widget>, shape: super::MouseShape) {
         gw.input_shape_combine_region(None);
         return;
     }
-    let Some(gdk_window) = gw.window() else { return };
+    let Some(gdk_window) = gw.window() else {
+        return;
+    };
     match shape {
         super::MouseShape::Whole => {}
         super::MouseShape::Empty => {
@@ -789,7 +841,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&base);
         let dir = base.join("runtime");
         std::fs::create_dir_all(&dir).unwrap();
-        let set = |mode| std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
+        let set =
+            |mode| std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
 
         set(0o700);
         assert!(is_private_dir(&dir));
@@ -848,12 +901,24 @@ mod tests {
     fn the_pictures_folder_comes_from_user_dirs() {
         let home = Path::new("/home/me");
         let text = "# written by xdg-user-dirs-update\nXDG_DESKTOP_DIR=\"$HOME/Desktop\"\nXDG_PICTURES_DIR=\"$HOME/Images\"\n";
-        assert_eq!(xdg_user_dir(text, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/home/me/Images")));
+        assert_eq!(
+            xdg_user_dir(text, "XDG_PICTURES_DIR", home),
+            Some(PathBuf::from("/home/me/Images"))
+        );
         let absolute = "XDG_PICTURES_DIR=\"/data/pics\"";
-        assert_eq!(xdg_user_dir(absolute, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/data/pics")));
+        assert_eq!(
+            xdg_user_dir(absolute, "XDG_PICTURES_DIR", home),
+            Some(PathBuf::from("/data/pics"))
+        );
         // "$HOME/" means the folder is disabled; relative paths are not paths.
-        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"$HOME/\"", "XDG_PICTURES_DIR", home), None);
-        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
+        assert_eq!(
+            xdg_user_dir("XDG_PICTURES_DIR=\"$HOME/\"", "XDG_PICTURES_DIR", home),
+            None
+        );
+        assert_eq!(
+            xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home),
+            None
+        );
         assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
     }
 }

@@ -14,6 +14,8 @@ import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
+export type IslandAppearance = "original" | "windowsDarkFrosted";
+export type ClickThroughShortcut = "holdCtrl" | "ctrlAltD";
 
 export interface AgentTask {
   id: string;
@@ -99,6 +101,8 @@ export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
+  islandAppearance: IslandAppearance;
+  clickThroughShortcut: ClickThroughShortcut;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -107,6 +111,9 @@ export interface Settings {
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
   autostart: boolean;
+  autoLaunchWithAgents: boolean;
+  autoQuitWhenAgentsFinish: boolean;
+  autoQuitDelayMinutes: number;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
@@ -147,6 +154,8 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
+  islandAppearance: "original",
+  clickThroughShortcut: "holdCtrl",
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -154,6 +163,9 @@ export const DEFAULT_SETTINGS: Settings = {
   mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
   autostart: false,
+  autoLaunchWithAgents: false,
+  autoQuitWhenAgentsFinish: false,
+  autoQuitDelayMinutes: 10,
   hooksInstalled: false,
   model: "claude-opus-5",
   showPlanInNotch: false,
@@ -182,6 +194,8 @@ class AppState {
 
   tasks: AgentTask[] = [];
   focusId: string | null = null;
+  /** The answer currently shown by an automatic Stop popup, independent of focus. */
+  finishedPopup: AgentTask | null = null;
 
   stateOverride: BotStateName | null = null;
 
@@ -253,6 +267,10 @@ class AppState {
     return this.tasks.find((t) => t.id === this.focusId) ?? this.tasks[0] ?? null;
   }
 
+    get displayTask(): AgentTask | null {
+      return this.finishedPopup ?? this.focusTask;
+  }
+
   get effectiveState(): BotStateName {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
@@ -265,6 +283,7 @@ class AppState {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     this.focusId = id;
+    this.finishedPopup = null;
     this.showingPlanDetail = false;
     t.pillBadge = null;
     this.notify();

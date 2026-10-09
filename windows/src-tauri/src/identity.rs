@@ -10,8 +10,12 @@ const MAX_FULL_NAME_CHARS: usize = 32;
 /// Resolved once: the account name cannot change while the app runs.
 pub fn first_name() -> Option<&'static str> {
     static NAME: OnceLock<Option<String>> = OnceLock::new();
-    NAME.get_or_init(|| crate::platform::user_full_name().as_deref().and_then(first_name_from))
-        .as_deref()
+    NAME.get_or_init(|| {
+        crate::platform::user_full_name()
+            .as_deref()
+            .and_then(first_name_from)
+    })
+    .as_deref()
 }
 
 /// "Théodore Riant" gives "Théodore"; a login handle such as "theodoreriant"
@@ -19,7 +23,10 @@ pub fn first_name() -> Option<&'static str> {
 /// a greeting with no name at all.
 pub fn first_name_from(full_name: &str) -> Option<String> {
     let full = full_name.trim();
-    if full.is_empty() || full.chars().count() > MAX_FULL_NAME_CHARS || looks_like_login_handle(full) {
+    if full.is_empty()
+        || full.chars().count() > MAX_FULL_NAME_CHARS
+        || looks_like_login_handle(full)
+    {
         return None;
     }
     let first = full.split(' ').find(|p| !p.is_empty())?;
@@ -45,9 +52,15 @@ mod tests {
 
     #[test]
     fn a_real_full_name_gives_its_first_word() {
-        assert_eq!(first_name_from("Théodore Riant").as_deref(), Some("Théodore"));
+        assert_eq!(
+            first_name_from("Théodore Riant").as_deref(),
+            Some("Théodore")
+        );
         assert_eq!(first_name_from("  Louis Raille ").as_deref(), Some("Louis"));
-        assert_eq!(first_name_from("Jean-Luc Picard").as_deref(), Some("Jean-Luc"));
+        assert_eq!(
+            first_name_from("Jean-Luc Picard").as_deref(),
+            Some("Jean-Luc")
+        );
         assert_eq!(first_name_from("O'Brien Miles").as_deref(), Some("O'Brien"));
         assert_eq!(first_name_from("Louis").as_deref(), Some("Louis"));
         assert_eq!(first_name_from("Zoë").as_deref(), Some("Zoë"));
@@ -55,7 +68,16 @@ mod tests {
 
     #[test]
     fn login_handles_and_odd_names_give_nothing() {
-        for name in ["", "   ", "theodoreriant", "t.riant2", "Louis2", "louis_r", "me@example", "Admin_01"] {
+        for name in [
+            "",
+            "   ",
+            "theodoreriant",
+            "t.riant2",
+            "Louis2",
+            "louis_r",
+            "me@example",
+            "Admin_01",
+        ] {
             assert_eq!(first_name_from(name), None, "{name}");
         }
         // A first word that is not a name.

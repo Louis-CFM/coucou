@@ -54,7 +54,9 @@ const ARG_ALIASES: &[(&str, &str)] = &[
 ];
 
 fn non_empty_str<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
-    map.get(key).and_then(Value::as_str).filter(|s| !s.is_empty())
+    map.get(key)
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
 }
 
 /// Fills `tool_name`, `tool_input`, `session_id` and `cwd` from wherever the
@@ -98,11 +100,16 @@ pub fn fields(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Option<String>
     }
 
     if non_empty_str(map, "session_id").is_none() {
-        let sid = ["conversationId", "conversation_id", "sessionId", "GEMINI_SESSION_ID"]
-            .iter()
-            .find_map(|k| non_empty_str(map, k))
-            .map(str::to_string)
-            .or_else(|| env("GEMINI_SESSION_ID").filter(|s| !s.is_empty()));
+        let sid = [
+            "conversationId",
+            "conversation_id",
+            "sessionId",
+            "GEMINI_SESSION_ID",
+        ]
+        .iter()
+        .find_map(|k| non_empty_str(map, k))
+        .map(str::to_string)
+        .or_else(|| env("GEMINI_SESSION_ID").filter(|s| !s.is_empty()));
         if let Some(sid) = sid {
             map.insert("session_id".into(), Value::String(sid));
         }
@@ -110,11 +117,18 @@ pub fn fields(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Option<String>
 
     if non_empty_str(map, "cwd").is_none() {
         // Copilot: workdir. Gemini CLI / Antigravity: workspacePaths. Cursor: workspace_roots.
-        let cwd = non_empty_str(map, "workdir").map(str::to_string).or_else(|| {
-            ["workspacePaths", "workspace_roots"].iter().find_map(|k| {
-                map.get(*k)?.as_array()?.first()?.as_str().filter(|s| !s.is_empty()).map(str::to_string)
-            })
-        });
+        let cwd = non_empty_str(map, "workdir")
+            .map(str::to_string)
+            .or_else(|| {
+                ["workspacePaths", "workspace_roots"].iter().find_map(|k| {
+                    map.get(*k)?
+                        .as_array()?
+                        .first()?
+                        .as_str()
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_string)
+                })
+            });
         if let Some(cwd) = cwd {
             map.insert("cwd".into(), Value::String(cwd));
         }
@@ -178,7 +192,13 @@ mod tests {
             assert_eq!(event(raw), canonical, "{raw}");
         }
         // Claude Code's own names, and anything unknown, pass through.
-        for same in ["PreToolUse", "PermissionRequest", "Stop", "Interrupt", "somethingNew"] {
+        for same in [
+            "PreToolUse",
+            "PermissionRequest",
+            "Stop",
+            "Interrupt",
+            "somethingNew",
+        ] {
             assert_eq!(event(same), same);
         }
     }
@@ -243,13 +263,17 @@ mod tests {
     #[test]
     fn gemini_session_comes_from_the_environment_last() {
         let mut m = obj(json!({}));
-        fields(&mut m, &|k| (k == "GEMINI_SESSION_ID").then(|| "g-7".to_string()));
+        fields(&mut m, &|k| {
+            (k == "GEMINI_SESSION_ID").then(|| "g-7".to_string())
+        });
         assert_eq!(m["session_id"], "g-7");
     }
 
     #[test]
     fn odd_shapes_are_ignored_not_trusted() {
-        let mut m = obj(json!({ "toolCall": "nope", "toolArgs": "not json", "workspacePaths": "x", "tool": 3 }));
+        let mut m = obj(
+            json!({ "toolCall": "nope", "toolArgs": "not json", "workspacePaths": "x", "tool": 3 }),
+        );
         fields(&mut m, &no_env);
         assert!(!m.contains_key("tool_name"));
         assert!(!m.contains_key("tool_input"));
@@ -258,10 +282,16 @@ mod tests {
 
     #[test]
     fn a_stop_with_an_error_status_is_a_failure() {
-        assert_eq!(refine("Stop", &obj(json!({ "status": "error" }))), "StopFailure");
+        assert_eq!(
+            refine("Stop", &obj(json!({ "status": "error" }))),
+            "StopFailure"
+        );
         for status in ["completed", "aborted"] {
             assert_eq!(refine("Stop", &obj(json!({ "status": status }))), "Stop");
         }
-        assert_eq!(refine("PreToolUse", &obj(json!({ "status": "error" }))), "PreToolUse");
+        assert_eq!(
+            refine("PreToolUse", &obj(json!({ "status": "error" }))),
+            "PreToolUse"
+        );
     }
 }

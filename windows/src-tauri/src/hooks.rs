@@ -14,12 +14,12 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
-use serde_json::{json, Map, Value};
-use tauri::{AppHandle, Manager};
 use crate::agents::{self, Shell};
 use crate::config_file::{self, FileEdit};
 use crate::{platform, settings};
+use serde::Serialize;
+use serde_json::{json, Map, Value};
+use tauri::{AppHandle, Manager};
 
 /// Every event the island reacts to, with the hook timeout written to settings.json.
 /// PermissionRequest waits for a human, so it gets the decision timeout + 10 s.
@@ -101,7 +101,9 @@ fn entry_is_ours(entry: &Value) -> bool {
 /// The status line in settings.json is Coucou's relay (old installs wrote
 /// `coucou-hook StatusLine`, new ones `coucou-hook --statusline`; both match).
 fn status_line_is_ours(v: &Value) -> bool {
-    v.get("command").and_then(Value::as_str).is_some_and(|c| c.contains(MARKER))
+    v.get("command")
+        .and_then(Value::as_str)
+        .is_some_and(|c| c.contains(MARKER))
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched. A
@@ -137,7 +139,10 @@ fn merged(existing: &Value) -> Result<Value, String> {
 }
 
 fn unexpected(what: &str) -> String {
-    crate::i18n::tf("settings.json: {what} has an unexpected type — Coucou has not touched it.", &[("what", what)])
+    crate::i18n::tf(
+        "settings.json: {what} has an unexpected type — Coucou has not touched it.",
+        &[("what", what)],
+    )
 }
 
 /// Settings with every Coucou entry removed, and nothing else changed.
@@ -152,8 +157,7 @@ fn without_ours(existing: &Value) -> Result<Value, String> {
     for (event, value) in hooks {
         match value.as_array() {
             Some(list) => {
-                let kept: Vec<Value> =
-                    list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
+                let kept: Vec<Value> = list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
                 if !kept.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
@@ -175,7 +179,11 @@ fn edits(install: bool) -> Vec<FileEdit<'static>> {
     vec![FileEdit {
         path: settings_path(),
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            if install { merged(current).map(Some) } else { without_ours(current).map(Some) }
+            if install {
+                merged(current).map(Some)
+            } else {
+                without_ours(current).map(Some)
+            }
         }),
     }]
 }
@@ -225,7 +233,10 @@ fn plan_to_preview(plan: config_file::Plan) -> HookPreview {
 /// changed in between is refused rather than overwritten (see config_file).
 pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let backups = config_file::apply(&edits(install), fingerprint)?;
-    Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
+    Ok(backups
+        .first()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default())
 }
 
 // ── Status line (plan usage) ──────────────────────────────────────────────────
@@ -244,7 +255,9 @@ pub fn status_line_previous_path() -> PathBuf {
 
 fn read_status_line_previous() -> Option<Value> {
     let bytes = std::fs::read(status_line_previous_path()).ok()?;
-    serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object)
+    serde_json::from_slice::<Value>(&bytes)
+        .ok()
+        .filter(Value::is_object)
 }
 
 /// True when the `statusLine` in settings.json is Coucou's relay.
@@ -255,9 +268,16 @@ pub fn plan_relay_installed(settings: &Value) -> bool {
 /// `statusLine` as it reads after installing or removing the relay. `None`: the
 /// key goes. Installing swaps only `command`, so `padding`, `refreshInterval`
 /// and the rest of the user's status line stay as they were.
-fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&Value>) -> Option<Value> {
+fn status_line_after(
+    existing: Option<&Value>,
+    install: bool,
+    previous: Option<&Value>,
+) -> Option<Value> {
     if install {
-        let mut sl = existing.filter(|v| v.is_object()).cloned().unwrap_or_else(|| json!({}));
+        let mut sl = existing
+            .filter(|v| v.is_object())
+            .cloned()
+            .unwrap_or_else(|| json!({}));
         let obj = sl.as_object_mut().expect("an object");
         obj.entry("type").or_insert_with(|| json!("command"));
         obj.insert("command".into(), json!(hook_command("--statusline")));
@@ -269,7 +289,11 @@ fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&
     }
 }
 
-fn status_line_settings(current: &Value, install: bool, previous: Option<&Value>) -> Result<Value, String> {
+fn status_line_settings(
+    current: &Value,
+    install: bool,
+    previous: Option<&Value>,
+) -> Result<Value, String> {
     let mut root = current.as_object().cloned().unwrap_or_default();
     // A statusLine that is not an object is something we do not understand:
     // refuse rather than replace it.
@@ -287,14 +311,21 @@ fn status_line_edits(install: bool, previous: Option<Value>) -> Vec<FileEdit<'st
     vec![FileEdit {
         path: settings_path(),
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            Ok(Some(status_line_settings(current, install, previous.as_ref())?))
+            Ok(Some(status_line_settings(
+                current,
+                install,
+                previous.as_ref(),
+            )?))
         }),
     }]
 }
 
 /// The diff the user has to look at before the relay goes in or out.
 pub fn status_line_preview(install: bool) -> Result<HookPreview, String> {
-    Ok(plan_to_preview(config_file::preview(&status_line_edits(install, read_status_line_previous()))?))
+    Ok(plan_to_preview(config_file::preview(&status_line_edits(
+        install,
+        read_status_line_previous(),
+    ))?))
 }
 
 /// Installs or removes the relay, after the same backup and fingerprint checks as
@@ -304,7 +335,10 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     let before = config_file::read(&settings_path())
         .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json"))?;
     let previous = read_status_line_previous();
-    let own = before.get("statusLine").filter(|v| !status_line_is_ours(v)).cloned();
+    let own = before
+        .get("statusLine")
+        .filter(|v| !status_line_is_ours(v))
+        .cloned();
     let saved = match (install, own.as_ref()) {
         (true, Some(own)) => {
             save_status_line_previous(own).map_err(|_| {
@@ -327,7 +361,10 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
         _ => {}
     }
     let backups = result?;
-    Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
+    Ok(backups
+        .first()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default())
 }
 
 fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
@@ -358,7 +395,10 @@ pub fn ensure_hook_exe(app: &AppHandle) {
     }
 
     let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(p) = app.path().resolve(platform::HOOK_EXE, tauri::path::BaseDirectory::Resource) {
+    if let Ok(p) = app
+        .path()
+        .resolve(platform::HOOK_EXE, tauri::path::BaseDirectory::Resource)
+    {
         candidates.push(p);
     }
     if let Ok(exe) = std::env::current_exe() {
@@ -430,7 +470,10 @@ mod tests {
     fn the_hooks_leave_the_status_line_alone() {
         let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line" } });
         assert_eq!(merged(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
-        assert_eq!(without_ours(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
+        assert_eq!(
+            without_ours(&theirs).unwrap()["statusLine"],
+            theirs["statusLine"]
+        );
         assert!(merged(&json!({})).unwrap().get("statusLine").is_none());
     }
 
@@ -461,12 +504,21 @@ mod tests {
         let ours = status_line_settings(&json!({}), true, None).unwrap();
 
         // There was one before: it comes back exactly.
-        assert_eq!(status_line_settings(&ours, false, Some(&previous)).unwrap()["statusLine"], previous);
+        assert_eq!(
+            status_line_settings(&ours, false, Some(&previous)).unwrap()["statusLine"],
+            previous
+        );
         // There was none: the key goes.
-        assert!(status_line_settings(&ours, false, None).unwrap().get("statusLine").is_none());
+        assert!(status_line_settings(&ours, false, None)
+            .unwrap()
+            .get("statusLine")
+            .is_none());
         // The user changed it since: not ours, so untouched.
         let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/other" } });
-        assert_eq!(status_line_settings(&theirs, false, Some(&previous)).unwrap()["statusLine"], theirs["statusLine"]);
+        assert_eq!(
+            status_line_settings(&theirs, false, Some(&previous)).unwrap()["statusLine"],
+            theirs["statusLine"]
+        );
         // A statusLine we do not understand is refused, never replaced.
         assert!(status_line_settings(&json!({ "statusLine": "echo hi" }), true, None).is_err());
     }
@@ -494,7 +546,9 @@ mod tests {
 
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(
-            pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("someone-elses-tool.exe")),
+            pre.iter().any(|e| serde_json::to_string(e)
+                .unwrap()
+                .contains("someone-elses-tool.exe")),
             "another tool's hook was dropped"
         );
         assert!(pre.iter().any(entry_is_ours), "our own hook was not added");
@@ -504,7 +558,15 @@ mod tests {
         // by count: another test points HOME elsewhere meanwhile, which moves
         // the relay path.)
         let twice = merged(&after).unwrap();
-        assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
+        assert_eq!(
+            twice["hooks"]["PreToolUse"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|e| entry_is_ours(e))
+                .count(),
+            1
+        );
 
         // And removing ours puts it back exactly as it was.
         let cleaned = without_ours(&after).unwrap();
@@ -536,7 +598,10 @@ mod tests {
         std::env::set_var(platform::HOME_VAR, &tmp);
 
         let path = settings_path();
-        assert!(path.starts_with(&tmp), "the test must not touch the real home");
+        assert!(
+            path.starts_with(&tmp),
+            "the test must not touch the real home"
+        );
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
         let original = r#"{"model":"claude-opus-5","theme":"dark","tui":{"x":1},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"other-tool.exe"}]}]}}"#;
@@ -546,7 +611,10 @@ mod tests {
 
         // Install.
         let plan = preview(true).expect("a BOM must not stop the preview");
-        assert!(plan.diff.contains("coucou-hook"), "the diff must show what changes");
+        assert!(
+            plan.diff.contains("coucou-hook"),
+            "the diff must show what changes"
+        );
         let backup = write(true, &plan.fingerprint).expect("install should succeed");
 
         // The backup holds the original bytes, BOM and all.
@@ -558,7 +626,9 @@ mod tests {
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["tui"]["x"], 1);
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
-        assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
+        assert!(pre
+            .iter()
+            .any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
         assert!(status().installed);
 
         // A file that moved since the preview is refused, and left alone.

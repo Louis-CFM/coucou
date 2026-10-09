@@ -9,6 +9,16 @@ license.workspace = true
 name = "coucou-hook"
 path = "src/main.rs"
 
+[[test]]
+name = "auto_launch_process"
+path = "tests/auto_launch_process.rs"
+harness = false
+
+[[test]]
+name = "auto_launch_relay"
+path = "tests/auto_launch_relay.rs"
+harness = false
+
 [dependencies]
 serde_json = "1"
 
@@ -21,6 +31,9 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_Threading",
 ] }
+
+[target.'cfg(windows)'.dev-dependencies]
+windows = { version = "0.61", features = ["Win32_System_JobObjects", "Win32_Storage_FileSystem", "Win32_System_IO"] }
 
 # The socket syscalls and peer credentials the Linux transport needs.
 [target.'cfg(target_os = "linux")'.dependencies]

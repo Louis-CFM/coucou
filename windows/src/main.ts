@@ -1,7 +1,7 @@
 // Entry point: boot the bridge, wire the island, start the greeting.
 
 import "./style.css";
-import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
+import { Bridge, IS_TAURI, onEvent, type AccentColor } from "./core/bridge";
 import { Sound } from "./core/sound";
 import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
@@ -23,10 +23,22 @@ async function main() {
   void Sound.preload();
 
   const island = new Island(root);
+  let clickThroughEvent: boolean | undefined;
+  await onEvent<boolean>("click-through-changed", (enabled) => {
+    clickThroughEvent = enabled;
+    island.setClickThrough(enabled);
+  });
+  let accentEvent: AccentColor | null | undefined;
+  await onEvent<AccentColor | null>("accent-color-changed", (color) => {
+    accentEvent = color;
+    island.setAccentColor(color);
+  });
 
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+    island.setClickThrough(clickThroughEvent ?? boot.clickThrough);
+    island.setAccentColor(accentEvent === undefined ? boot.accentColor : accentEvent);
   }
   // A language change redraws the island in place: the texts given as tl(…)
   // relabel themselves (views/dom.ts) and the views redraw the rest on this
@@ -77,7 +89,6 @@ async function main() {
   });
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
-
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     const previousMain = State.mainPillId;
@@ -90,7 +101,11 @@ async function main() {
     void refreshConfigured();
   });
 
-  registerHookHandlers(island);
+  await registerHookHandlers(island);
+  await onEvent<number>("auto-quit-check", (ticket) => {
+    const reason = !State.settings.autoQuitWhenAgentsFinish ? "disabled" : island.autoQuitBlocker();
+    void Bridge.autoQuitConfirm(ticket, reason !== null, reason ?? undefined);
+  });
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
 
@@ -101,6 +116,7 @@ async function main() {
   await onEvent<null>("recap-check", checkRecap);
 
   island.launch();
+  await Bridge.hooksReady();
 
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.

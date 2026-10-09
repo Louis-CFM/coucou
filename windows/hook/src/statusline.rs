@@ -51,7 +51,7 @@ pub fn run() -> ! {
         .map(|line| {
             let (tx, rx) = mpsc::channel();
             std::thread::spawn(move || {
-                let _ = tx.send(talk(&line, false));
+                let _ = tx.send(talk(&line, false, None));
             });
             rx
         });
@@ -89,7 +89,11 @@ pub fn payload(map: &serde_json::Map<String, serde_json::Value>) -> Option<Strin
 fn previous_command() -> Option<String> {
     let path = std::env::current_exe().ok()?.with_file_name(PREVIOUS_FILE);
     let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
-    saved.get("command")?.as_str().filter(|c| !c.trim().is_empty()).map(str::to_string)
+    saved
+        .get("command")?
+        .as_str()
+        .filter(|c| !c.trim().is_empty())
+        .map(str::to_string)
 }
 
 /// The shell Claude Code runs a status line command with.
@@ -108,7 +112,9 @@ fn shell(command: &str) -> Option<Command> {
 fn shell(command: &str) -> Option<Command> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let bash = git_bash_candidates(|k| std::env::var_os(k), |p| p.is_file()).into_iter().next()?;
+    let bash = git_bash_candidates(|k| std::env::var_os(k), |p| p.is_file())
+        .into_iter()
+        .next()?;
     let mut c = Command::new(bash);
     c.args(["-c", command]).creation_flags(CREATE_NO_WINDOW);
     Some(c)
@@ -128,7 +134,9 @@ fn git_bash_candidates(
     if let Some(p) = var("CLAUDE_CODE_GIT_BASH_PATH").filter(|p| !p.is_empty()) {
         out.push(PathBuf::from(p));
     }
-    let path_dirs: Vec<PathBuf> = var("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+    let path_dirs: Vec<PathBuf> = var("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
     // …\Git\cmd\git.exe, …\Git\bin\git.exe or …\Git\mingw64\bin\git.exe.
     for dir in path_dirs.iter().filter(|d| exists(&d.join("git.exe"))) {
         if let Some(root) = dir.parent() {
@@ -144,7 +152,13 @@ fn git_bash_candidates(
         }
     }
     if let Some(dir) = var("LOCALAPPDATA").filter(|p| !p.is_empty()) {
-        out.push(PathBuf::from(dir).join("Programs").join("Git").join("bin").join("bash.exe"));
+        out.push(
+            PathBuf::from(dir)
+                .join("Programs")
+                .join("Git")
+                .join("bin")
+                .join("bash.exe"),
+        );
     }
     for dir in &path_dirs {
         let windows_own = dir.components().any(|c| {
@@ -247,8 +261,18 @@ mod tests {
     #[test]
     fn without_limits_nothing_is_sent() {
         // API-key users get no rate_limits.
-        assert!(payload(serde_json::json!({ "session_id": "s1" }).as_object().unwrap()).is_none());
-        assert!(payload(serde_json::json!({ "rate_limits": "x" }).as_object().unwrap()).is_none());
+        assert!(payload(
+            serde_json::json!({ "session_id": "s1" })
+                .as_object()
+                .unwrap()
+        )
+        .is_none());
+        assert!(payload(
+            serde_json::json!({ "rate_limits": "x" })
+                .as_object()
+                .unwrap()
+        )
+        .is_none());
     }
 
     #[cfg(unix)]
@@ -285,7 +309,10 @@ mod tests {
     }
 
     fn env(pairs: &[(&str, OsString)]) -> impl Fn(&str) -> Option<OsString> {
-        let map: HashMap<String, OsString> = pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
+        let map: HashMap<String, OsString> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect();
         move |k| map.get(k).cloned()
     }
 
@@ -309,7 +336,10 @@ mod tests {
         let all = git_bash_candidates(
             env(&[
                 ("CLAUDE_CODE_GIT_BASH_PATH", "/override/bash.exe".into()),
-                ("PATH", path_var(&["/wsl/System32", "/git/cmd", "/msys/usr/bin"])),
+                (
+                    "PATH",
+                    path_var(&["/wsl/System32", "/git/cmd", "/msys/usr/bin"]),
+                ),
                 ("ProgramFiles", "/pf".into()),
             ]),
             exists,
@@ -330,7 +360,10 @@ mod tests {
 
         // A missing override falls through to git.exe's own install.
         let found = git_bash_candidates(
-            env(&[("CLAUDE_CODE_GIT_BASH_PATH", "/nope/bash.exe".into()), ("PATH", path_var(&["/git/cmd"]))]),
+            env(&[
+                ("CLAUDE_CODE_GIT_BASH_PATH", "/nope/bash.exe".into()),
+                ("PATH", path_var(&["/git/cmd"])),
+            ]),
             exists,
         );
         assert_eq!(found, vec![PathBuf::from("/git/bin/bash.exe")]);

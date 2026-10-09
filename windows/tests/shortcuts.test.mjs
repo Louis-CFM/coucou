@@ -7,22 +7,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calls, emit, sent } from "./tauri.mjs";
 import {
-  ALTGR_CHARACTERS, ISLAND_SHORTCUTS, KEY_NAMES, SHORTCUTS, SHORTCUT_TEXT, activeKeys, altGrClashes,
+  ALTGR_CHARACTERS, CLICK_THROUGH_CHOICES, CLICK_THROUGH_TOGGLE, ISLAND_SHORTCUTS, KEY_NAMES, SHORTCUTS, SHORTCUT_TEXT, activeKeys, altGrClashes,
   cyclePill, displayKeys, duplicates, effective, formatKeys, islandKeyAction, navigate, normalizeKeys,
   parseKeys, pillByNumber, recordPress,
 } from "../src/core/shortcuts.ts";
 import { registerShortcutHandlers, runGlobalShortcut, runIslandKey } from "../src/island/shortcuts.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
-const MAC_IDS = [
+const ACTION_IDS = [
   "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
-  "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+  "nextPill", "prevPill", "muteToggle", "wardrobeToggle",
 ];
 
 // ── Defaults (testDefaultsExhaustive, testAllDefaultsHaveModifier, testNoDefaultDuplicates) ──
 
-test("every Mac action has a default, in the Mac's order, with its Mac id", () => {
-  assert.deepEqual(SHORTCUTS.map((d) => d.id), MAC_IDS);
+test("every active action has a default and a label", () => {
+  assert.deepEqual(SHORTCUTS.map((d) => d.id), ACTION_IDS);
   for (const d of SHORTCUTS) assert.ok(SHORTCUT_TEXT[d.id], `${d.id} has no label`);
 });
 
@@ -39,12 +39,12 @@ test("no two defaults share a combination", () => {
   assert.deepEqual(duplicates(SHORTCUTS.map((d) => [d.id, d.defaultKeys])), new Set());
 });
 
-test("no default types a character with AltGr on the checked European layouts", () => {
+test("Wardrobe W reports its AltGr clash; other defaults remain safe on the checked layouts", () => {
   for (const layout of ["French (AZERTY)", "German (QWERTZ)", "Spanish", "Italian", "Portuguese", "Brazilian (ABNT2)"]) {
     assert.ok(ALTGR_CHARACTERS[layout], layout);
   }
   for (const d of SHORTCUTS) {
-    assert.deepEqual(altGrClashes(d.defaultKeys), [], `${d.id} = ${d.defaultKeys}`);
+    assert.deepEqual(altGrClashes(d.defaultKeys), d.id === "wardrobeToggle" ? ["Brazilian (ABNT2)"] : [], `${d.id} = ${d.defaultKeys}`);
   }
   // The Mac's own letters would not have been safe.
   assert.deepEqual(altGrClashes("Ctrl+Alt+M"), ["German (QWERTZ)"]);
@@ -52,6 +52,22 @@ test("no default types a character with AltGr on the checked European layouts", 
   assert.ok(altGrClashes("Ctrl+Alt+0").includes("French (AZERTY)"));
   // Not Ctrl+Alt: not AltGr.
   assert.deepEqual(altGrClashes("Ctrl+Shift+E"), []);
+});
+
+test("click-through has two fixed choices and reserves D only in toggle mode", () => {
+  assert.equal(DEFAULT_SETTINGS.clickThroughShortcut, "holdCtrl");
+  assert.deepEqual(CLICK_THROUGH_CHOICES.map((choice) => choice.value), ["holdCtrl", "ctrlAltD"]);
+  assert.ok(CLICK_THROUGH_CHOICES.every((choice) => choice.description));
+  assert.ok(!SHORTCUTS.some((def) => def.id === CLICK_THROUGH_TOGGLE[0]));
+  const stored = { clickThroughToggle: { keys: "Ctrl+Shift+Q", enabled: false }, openChat: { keys: "Ctrl+Alt+D", enabled: true } };
+  const hold = activeKeys(stored, "holdCtrl");
+  assert.ok(!hold.some(([id]) => id === CLICK_THROUGH_TOGGLE[0]));
+  const toggle = activeKeys(stored, "ctrlAltD");
+  assert.deepEqual(toggle[0], [...CLICK_THROUGH_TOGGLE]);
+  assert.equal(toggle.filter(([id]) => id === CLICK_THROUGH_TOGGLE[0]).length, 1);
+  assert.ok(duplicates(toggle).has("openChat"));
+  assert.ok(!duplicates(hold).has("openChat"));
+  assert.equal(SHORTCUTS.find((def) => def.id === "wardrobeToggle").defaultKeys, "Ctrl+Alt+W");
 });
 
 test("the defaults are the same on both sides of the bridge", () => {
@@ -65,14 +81,16 @@ test("the defaults are the same on both sides of the bridge", () => {
 });
 
 // testEnabledByDefault
-test("only the island toggle is off by default; the two not ported yet are reserved", () => {
+test("only the island toggle is off by default; the front-window action stays reserved", () => {
   for (const d of SHORTCUTS) {
     assert.equal(d.enabledByDefault, d.id !== "toggleIsland", d.id);
-    assert.equal(d.ported, !["attachFrontWindow", "desktopToggle"].includes(d.id), d.id);
+    assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
     "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "wardrobeToggle",
   ]);
+  assert.deepEqual(activeKeys({ desktopToggle: { keys: "Ctrl+Alt+D", enabled: true } }).map(([id]) => id),
+    activeKeys({}).map(([id]) => id));
 });
 
 // ── Parsing and formatting (testCarbonModifiers, testDisplayString, testKeyCodeToString) ──
@@ -404,7 +422,7 @@ test("mute flips the sound, saves it, and Mochi reacts", () => {
 });
 
 test("actions that aren't the island's do nothing here", () => {
-  for (const id of ["wardrobeToggle", "attachFrontWindow", "desktopToggle", "nonsense"]) {
+  for (const id of ["wardrobeToggle", "attachFrontWindow", "clickThroughToggle", "nonsense"]) {
     runGlobalShortcut(host, id, resume);
   }
   assert.deepEqual(did, []);

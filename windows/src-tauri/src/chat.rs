@@ -20,8 +20,15 @@ pub const ANTHROPIC: &str = "anthropic";
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ChatContext {
-    File { name: String, path: String },
-    Window { app_name: String, title: String, url: Option<String> },
+    File {
+        name: String,
+        path: String,
+    },
+    Window {
+        app_name: String,
+        title: String,
+        url: Option<String>,
+    },
 }
 
 #[derive(Serialize)]
@@ -75,7 +82,10 @@ impl Chat {
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
-        *c = Conversation { epoch, ..Default::default() };
+        *c = Conversation {
+            epoch,
+            ..Default::default()
+        };
     }
 
     /// Starts a turn with `provider`, converting the history if another
@@ -97,15 +107,24 @@ impl Chat {
     /// Records a finished turn: the user message and the answer in the
     /// provider's format, and their plain text. Only a successful turn is
     /// recorded, so the history always matches what the model saw.
-    pub fn commit(&self, turn: &Turn, user: Value, assistant: Value, user_text: &str, answer: &str) {
+    pub fn commit(
+        &self,
+        turn: &Turn,
+        user: Value,
+        assistant: Value,
+        user_text: &str,
+        answer: &str,
+    ) {
         let mut c = self.inner.lock().unwrap();
         if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
             return;
         }
         c.native.push(user);
         c.native.push(assistant);
-        c.plain.push(json!({ "role": "user", "content": user_text }));
-        c.plain.push(json!({ "role": "assistant", "content": answer }));
+        c.plain
+            .push(json!({ "role": "user", "content": user_text }));
+        c.plain
+            .push(json!({ "role": "assistant", "content": answer }));
     }
 }
 
@@ -120,8 +139,11 @@ pub fn system_prompt(web_search: bool) -> String {
 
 fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
     let opening = match first_name {
-        Some(name) => format!("You are Mochi, {name}'s personal AI assistant living at the top of their screen."),
-        None => "You are Mochi, a personal AI assistant living at the top of the user's screen.".to_string(),
+        Some(name) => format!(
+            "You are Mochi, {name}'s personal AI assistant living at the top of their screen."
+        ),
+        None => "You are Mochi, a personal AI assistant living at the top of the user's screen."
+            .to_string(),
     };
     let abilities = if web_search {
         "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
@@ -148,8 +170,15 @@ pub fn window_line(app_name: &str, title: &str, url: Option<&str>) -> String {
 pub fn plain_question(first: bool, context: Option<&ChatContext>, query: &str) -> String {
     match context.filter(|_| first) {
         Some(ChatContext::File { name, .. }) => format!("File: {name}\n\n{query}"),
-        Some(ChatContext::Window { app_name, title, url }) => {
-            format!("{}\n\n{query}", window_line(app_name, title, url.as_deref()))
+        Some(ChatContext::Window {
+            app_name,
+            title,
+            url,
+        }) => {
+            format!(
+                "{}\n\n{query}",
+                window_line(app_name, title, url.as_deref())
+            )
         }
         None => query.to_string(),
     }
@@ -161,7 +190,11 @@ pub fn plain_question(first: bool, context: Option<&ChatContext>, query: &str) -
 pub fn model_for(settings: &Settings, provider: &str) -> String {
     if provider == ANTHROPIC {
         let m = settings.model.trim();
-        return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
+        return if m.is_empty() {
+            claude::DEFAULT_MODEL.to_string()
+        } else {
+            m.to_string()
+        };
     }
     settings
         .chat_models
@@ -180,7 +213,9 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
         ChatContext::File { name, path } => {
             let inbox = crate::files::inbox_dir();
             if !is_inside(&inbox, std::path::Path::new(&path)) {
-                return Err(crate::i18n::t("Only a file dropped on the island can be sent with a question."));
+                return Err(crate::i18n::t(
+                    "Only a file dropped on the island can be sent with a question.",
+                ));
             }
             Ok(ChatContext::File { name, path })
         }
@@ -191,9 +226,13 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
 /// True when `path` is a regular file directly inside `dir`, both resolved
 /// (no `..`, no symlink pointing out of it).
 fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
-    let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
+    let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else {
+        return false;
+    };
     file.parent() == Some(dir.as_path())
-        && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
+        && std::fs::symlink_metadata(&file)
+            .map(|m| m.is_file())
+            .unwrap_or(false)
 }
 
 /// One chat turn with the provider chosen in the settings.
@@ -245,7 +284,12 @@ mod tests {
     fn turn_texts(history: &[Value]) -> Vec<(String, Value)> {
         history
             .iter()
-            .map(|m| (m["role"].as_str().unwrap().to_string(), m["content"].clone()))
+            .map(|m| {
+                (
+                    m["role"].as_str().unwrap().to_string(),
+                    m["content"].clone(),
+                )
+            })
             .collect()
     }
 
@@ -258,7 +302,13 @@ mod tests {
         // A failed turn records nothing: the next one is still the first.
         let t = chat.begin("anthropic");
         assert!(t.first);
-        chat.commit(&t, json!({"role":"user","content":[{"type":"text","text":"hi"}]}), json!({"role":"assistant","content":[{"type":"text","text":"hello"}]}), "hi", "hello");
+        chat.commit(
+            &t,
+            json!({"role":"user","content":[{"type":"text","text":"hi"}]}),
+            json!({"role":"assistant","content":[{"type":"text","text":"hello"}]}),
+            "hi",
+            "hello",
+        );
         let t = chat.begin("anthropic");
         assert!(!t.first);
         assert_eq!(t.history.len(), 2);
@@ -274,23 +324,40 @@ mod tests {
             {"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":[]},
             {"type":"text","text":"Found it."}
         ]);
-        chat.commit(&t, json!({"role":"user","content":[{"type":"text","text":"look"}]}), json!({"role":"assistant","content":blocks}), "look", "Found it.");
+        chat.commit(
+            &t,
+            json!({"role":"user","content":[{"type":"text","text":"look"}]}),
+            json!({"role":"assistant","content":blocks}),
+            "look",
+            "Found it.",
+        );
 
         let t = chat.begin("openai");
         assert!(!t.first);
         assert_eq!(
             turn_texts(&t.history),
-            vec![("user".into(), json!("look")), ("assistant".into(), json!("Found it."))]
+            vec![
+                ("user".into(), json!("look")),
+                ("assistant".into(), json!("Found it."))
+            ]
         );
         let raw = serde_json::to_string(&t.history).unwrap();
         assert!(!raw.contains("web_search"), "{raw}");
 
         // And back: Claude gets the plain turns too, including OpenAI's answer.
-        chat.commit(&t, json!({"role":"user","content":"more"}), json!({"role":"assistant","content":"Sure."}), "more", "Sure.");
+        chat.commit(
+            &t,
+            json!({"role":"user","content":"more"}),
+            json!({"role":"assistant","content":"Sure."}),
+            "more",
+            "Sure.",
+        );
         let t = chat.begin("anthropic");
         assert_eq!(t.history.len(), 4);
         assert_eq!(t.history[3], json!({"role":"assistant","content":"Sure."}));
-        assert!(!serde_json::to_string(&t.history).unwrap().contains("web_search"));
+        assert!(!serde_json::to_string(&t.history)
+            .unwrap()
+            .contains("web_search"));
     }
 
     #[test]
@@ -298,42 +365,77 @@ mod tests {
         let chat = Chat::default();
         let t = chat.begin("openai");
         chat.reset();
-        chat.commit(&t, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
+        chat.commit(
+            &t,
+            json!({"role":"user","content":"q"}),
+            json!({"role":"assistant","content":"a"}),
+            "q",
+            "a",
+        );
         assert!(chat.begin("openai").first);
 
         let t = chat.begin("openai");
         let _other = chat.begin("google");
-        chat.commit(&t, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
+        chat.commit(
+            &t,
+            json!({"role":"user","content":"q"}),
+            json!({"role":"assistant","content":"a"}),
+            "q",
+            "a",
+        );
         assert!(chat.begin("google").first);
     }
 
     #[test]
     fn the_prompt_greets_by_first_name_and_claims_web_search_only_for_claude() {
         let p = system_prompt_for(Some("Louis"), true);
-        assert!(p.starts_with("You are Mochi, Louis's personal AI assistant living at the top of their screen."));
+        assert!(p.starts_with(
+            "You are Mochi, Louis's personal AI assistant living at the top of their screen."
+        ));
         assert!(p.contains("web search access"));
         assert!(p.contains("light Markdown"));
         let p = system_prompt_for(None, false);
-        assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
+        assert!(p.starts_with(
+            "You are Mochi, a personal AI assistant living at the top of the user's screen."
+        ));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
     }
 
     #[test]
     fn context_goes_with_the_first_question_only() {
-        let file = ChatContext::File { name: "a.txt".into(), path: "/x/a.txt".into() };
-        assert_eq!(plain_question(true, Some(&file), "why?"), "File: a.txt\n\nwhy?");
+        let file = ChatContext::File {
+            name: "a.txt".into(),
+            path: "/x/a.txt".into(),
+        };
+        assert_eq!(
+            plain_question(true, Some(&file), "why?"),
+            "File: a.txt\n\nwhy?"
+        );
         assert_eq!(plain_question(false, Some(&file), "why?"), "why?");
-        let win = ChatContext::Window { app_name: "Code".into(), title: "main.rs".into(), url: None };
-        assert_eq!(plain_question(true, Some(&win), "q"), "Context — App: Code, Window: main.rs\n\nq");
-        assert_eq!(window_line("Edge", "Docs", Some("https://x.dev")), "Context — App: Edge, Window: Docs, URL: https://x.dev");
+        let win = ChatContext::Window {
+            app_name: "Code".into(),
+            title: "main.rs".into(),
+            url: None,
+        };
+        assert_eq!(
+            plain_question(true, Some(&win), "q"),
+            "Context — App: Code, Window: main.rs\n\nq"
+        );
+        assert_eq!(
+            window_line("Edge", "Docs", Some("https://x.dev")),
+            "Context — App: Edge, Window: Docs, URL: https://x.dev"
+        );
     }
 
     #[test]
     fn the_model_comes_from_the_settings_or_the_provider_default() {
         let mut s = Settings::default();
         assert_eq!(model_for(&s, "anthropic"), claude::DEFAULT_MODEL);
-        assert_eq!(model_for(&s, "openai"), openai_compat::provider("openai").unwrap().default_model);
+        assert_eq!(
+            model_for(&s, "openai"),
+            openai_compat::provider("openai").unwrap().default_model
+        );
         assert_eq!(model_for(&s, "ollama"), "");
         s.chat_models.insert("openai".into(), " gpt-x ".into());
         s.chat_models.insert("ollama".into(), "llama3.2".into());

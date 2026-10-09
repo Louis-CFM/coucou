@@ -58,7 +58,10 @@ pub fn read() -> Option<Value> {
 
     let exe = platform::codex_candidates().into_iter().next()?;
     let mut cmd = Command::new(&exe);
-    cmd.arg("app-server").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
+    cmd.arg("app-server")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
     // An npm install is a `#!/usr/bin/env node` script (or a .cmd calling node):
     // its own folder first on PATH, as the Mac does, so it finds its Node.
     if let Some(dir) = exe.parent() {
@@ -109,7 +112,10 @@ pub fn first_answer(reader: impl BufRead) -> Option<Value> {
     let mut line = Vec::new();
     loop {
         line.clear();
-        let n = (&mut reader).take(MAX_LINE as u64 + 1).read_until(b'\n', &mut line).ok()?;
+        let n = (&mut reader)
+            .take(MAX_LINE as u64 + 1)
+            .read_until(b'\n', &mut line)
+            .ok()?;
         if n == 0 {
             return None;
         }
@@ -117,7 +123,9 @@ pub fn first_answer(reader: impl BufRead) -> Option<Value> {
         if total > MAX_TOTAL || line.len() > MAX_LINE {
             return None;
         }
-        let Ok(message) = serde_json::from_slice::<Value>(&line) else { continue };
+        let Ok(message) = serde_json::from_slice::<Value>(&line) else {
+            continue;
+        };
         if message.get("id").and_then(Value::as_i64) == Some(2) {
             return message.get("result").filter(|r| r.is_object()).cloned();
         }
@@ -142,14 +150,22 @@ pub fn compare_versions(a: &str, b: &str) -> Ordering {
         let mut digits = false;
         for c in s.chars() {
             if c.is_ascii_digit() != digits && !cur.is_empty() {
-                out.push(if digits { Ok(cur.parse().unwrap_or(u64::MAX)) } else { Err(cur.clone()) });
+                out.push(if digits {
+                    Ok(cur.parse().unwrap_or(u64::MAX))
+                } else {
+                    Err(cur.clone())
+                });
                 cur.clear();
             }
             digits = c.is_ascii_digit();
             cur.push(c);
         }
         if !cur.is_empty() {
-            out.push(if digits { Ok(cur.parse().unwrap_or(u64::MAX)) } else { Err(cur) });
+            out.push(if digits {
+                Ok(cur.parse().unwrap_or(u64::MAX))
+            } else {
+                Err(cur)
+            });
         }
         out
     }
@@ -175,11 +191,15 @@ mod tests {
     #[test]
     fn the_answer_to_the_question_is_picked_out_of_the_conversation() {
         let stream = concat!(
-            r#"{"id":1,"result":{"userAgent":"codex"}}"#, "\n",
+            r#"{"id":1,"result":{"userAgent":"codex"}}"#,
+            "\n",
             "not json at all\n",
-            r#"{"method":"account/updated","params":{}}"#, "\n",
-            r#"{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":12.5,"resetsAt":1900000000}}}}"#, "\n",
-            r#"{"id":3,"result":{}}"#, "\n",
+            r#"{"method":"account/updated","params":{}}"#,
+            "\n",
+            r#"{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":12.5,"resetsAt":1900000000}}}}"#,
+            "\n",
+            r#"{"id":3,"result":{}}"#,
+            "\n",
         );
         let result = first_answer(stream.as_bytes()).unwrap();
         assert_eq!(result["rateLimits"]["primary"]["usedPercent"], 12.5);
@@ -187,11 +207,15 @@ mod tests {
 
     #[test]
     fn an_error_a_closed_stream_or_a_flood_is_no_answer() {
-        assert!(first_answer(r#"{"id":2,"error":{"message":"not signed in"}}"#.as_bytes()).is_none());
+        assert!(
+            first_answer(r#"{"id":2,"error":{"message":"not signed in"}}"#.as_bytes()).is_none()
+        );
         assert!(first_answer(r#"{"id":1,"result":{}}"#.as_bytes()).is_none());
         assert!(first_answer(&b""[..]).is_none());
         let huge = "x".repeat(MAX_LINE + 10);
-        assert!(first_answer(format!("{huge}\n{}\n", r#"{"id":2,"result":{}}"#).as_bytes()).is_none());
+        assert!(
+            first_answer(format!("{huge}\n{}\n", r#"{"id":2,"result":{}}"#).as_bytes()).is_none()
+        );
         // Many short lines add up too.
         let chatter = format!("{}\n", "y".repeat(1000)).repeat(MAX_TOTAL / 1000 + 10);
         assert!(first_answer(chatter.as_bytes()).is_none());

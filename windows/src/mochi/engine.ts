@@ -480,7 +480,7 @@ export class BotEngine {
    * in (350 ms) and Mochi does a little squash — BotEngine.setOutfit on macOS.
    */
   setOutfit(next: Outfit, animated = true) {
-    if (next === this.outfitTarget) return;
+    if (next === this.outfitTarget && (animated || !this.tweens.has("outfitPresence"))) return;
     this.outfitTarget = next;
     this.tweens.delete("outfitPresence");
     this.locks.delete("outfitPresence");
