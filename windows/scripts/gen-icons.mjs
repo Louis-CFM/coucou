@@ -1,4 +1,4 @@
-// Draws Mochi into the PNG/ICO set Tauri needs. No dependencies: the icons are
+// Draws Nova into the PNG/ICO set Tauri needs. No dependencies: the icons are
 // rasterised here and encoded with node:zlib, so the app icon stays "drawn in
 // code" like the character itself.
 //
@@ -11,19 +11,20 @@ import { fileURLToPath } from "node:url";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "src-tauri", "icons");
 
-// ── Mochi ─────────────────────────────────────────────────────────────────────
+// ── Nova ─────────────────────────────────────────────────────────────────────
 
-const BASE_TOP = [255, 250, 245]; // #FFFAF5
-const BASE_BOTTOM = [221, 204, 191]; // #DDCCBF
-const INK = [26, 20, 18]; // #1A1412
+const BASE_TOP = [98, 239, 211]; // #62EFD3
+const BASE_BOTTOM = [14, 133, 136]; // #0E8588
+const INK = [10, 39, 49]; // #0A2731
 const RIM = [0, 0, 0];
 
 const SS = 4; // supersampling factor
 
 /** Superellipse (exponent 2.7) test in body-local coordinates. */
 function insideBody(x, y, rx, ry) {
-  const n = 2.7;
-  return Math.pow(Math.abs(x / rx), n) + Math.pow(Math.abs(y / ry), n) <= 1;
+  const nx = Math.abs(x / rx);
+  const ny = Math.abs(y / ry);
+  return nx * nx + ny * ny <= 1 && nx + ny <= 1.35;
 }
 
 function insidePill(x, y, w, h) {
@@ -35,7 +36,7 @@ function insidePill(x, y, w, h) {
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 }
 
-function renderMochi(size) {
+function renderNova(size) {
   const px = new Uint8Array(size * size * 4);
   const R = size * 0.34;
   const rx = R * 1.14;
@@ -69,8 +70,8 @@ function renderMochi(size) {
           if (!insideBody(px0, py0, rx, ry)) continue;
           bodyHits++;
           if (
-            insidePill(px0 + ex, py0 - ey, ew, eh) ||
-            insidePill(px0 - ex, py0 - ey, ew, eh)
+            insidePill(px0 + ex, py0 - ey, ew * 1.4, eh * 0.7) ||
+            insidePill(px0 - ex, py0 - ey, ew * 1.4, eh * 0.7)
           ) {
             eyeHits++;
           }
@@ -182,7 +183,7 @@ function encodeICO(entries) {
 
 mkdirSync(OUT, { recursive: true });
 
-const png = (size) => encodePNG(size, renderMochi(size));
+const png = (size) => encodePNG(size, renderNova(size));
 
 const files = {
   "32x32.png": png(32),

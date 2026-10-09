@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something isn't working
+about: Report a Nova Windows issue
 labels: bug
 ---
 
@@ -10,8 +10,8 @@ labels: bug
 
 **How to reproduce**
 
-**macOS version**
+**Windows 11 version and display scaling**
 
-**Mac model**
+**Nova version and installer/portable build**
 
-**Coucou version**
+Do not include API keys or other secrets in logs or screenshots.

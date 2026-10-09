@@ -1,9 +1,4 @@
-// SoundEngine — port of SoundEngine.swift.
-// The 29 WAVs are the macOS app's own files (see SOUNDS_DIR in vite.config.ts);
-// they are served at /sounds/<name>.wav. Default volume 0.12, slider range 0–0.2,
-// exactly like the Mac player, and several sounds may overlap.
-// A file of the user's own in the sounds folder (src-tauri/src/sounds.rs)
-// replaces a sound; one that doesn't decode falls back to the built-in one.
+// Optional user-supplied audio; Nova ships no bundled sounds.
 
 import { Bridge } from "./bridge";
 
@@ -70,14 +65,8 @@ class SoundEngine {
             /* not a format this webview decodes: the built-in sound stays */
           }
         }
-        try {
-          const res = await fetch(`/sounds/${name}.wav`);
-          if (!res.ok) return;
-          const buf = await ctx.decodeAudioData(await res.arrayBuffer());
-          this.buffers.set(name, buf);
-        } catch {
-          /* a missing sound must never break the island */
-        }
+        // Nova ships no upstream audio. Missing custom sounds are intentionally silent.
+        this.buffers.delete(name);
       }),
     );
     this.customized = customized;

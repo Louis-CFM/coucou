@@ -1,12 +1,12 @@
-// A colour of your own for each pill's Mochi — the pure half, port of
-// NotchBuddy/Sources/CoucouKit/PillColors.swift. The catalog (./pills.ts) keeps
+// A colour of your own for each pill's Nova — the pure half, port of
+// Nova/Sources/NovaKit/PillColors.swift. The catalog (./pills.ts) keeps
 // every default; the `pillColors` preference holds only what the user changed,
 // by pill ID, so an empty one paints the island exactly as the catalog says.
 
 /**
  * What the palette offers, in the order it is shown. Every colour is one the
  * catalog already uses, and all of them stay readable on the island's black
- * with Mochi's dark eyes — which a free colour picker could not promise.
+ * with Nova's dark eyes — which a free colour picker could not promise.
  * Same list as PillColors.palette on macOS.
  */
 export const PILL_PALETTE: readonly string[] = [

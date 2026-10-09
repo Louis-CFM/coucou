@@ -1,15 +1,15 @@
-// Mochi on the desktop: the pure logic and the life cycle (src/mochi/desktop-logic.ts).
-// The first half mirrors tests/DesktopMochiTests.swift; the geometry of the
+// Nova on the desktop: the pure logic and the life cycle (src/nova/desktop-logic.ts).
+// The first half mirrors tests/DesktopNovaTests.swift; the geometry of the
 // window itself (clamping, saved spots, the island's home zone) is tested in
 // src-tauri/src/desktop.rs, where it lives.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BODY_RADIUS_FRACTION, DesktopMochiController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
+  BODY_RADIUS_FRACTION, DesktopNovaController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
   agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
   shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
-} from "../src/mochi/desktop-logic.ts";
+} from "../src/nova/desktop-logic.ts";
 
 // ── shouldSleep ───────────────────────────────────────────────────────────────
 
@@ -76,17 +76,17 @@ test("gaze signs across a real arrangement of screens", () => {
     const g = gaze(topDown(bot, top), topDown(mouse, top));
     return [sign(g.lookX), sign(g.lookY)];
   };
-  // Mochi in the island at the top of the external screen above.
+  // Nova in the island at the top of the external screen above.
   const islandOnTop = { x: 780, y: 2422 - 16 };
   assert.deepEqual(look(islandOnTop, { x: 1400, y: 100 }), [1, -1], "cursor on the MacBook below-right");
   assert.deepEqual(look(islandOnTop, { x: -1000, y: 0 }), [-1, -1], "cursor on the portrait screen");
-  assert.deepEqual(look(islandOnTop, { x: 780, y: 2500 }), [0, 1], "cursor above Mochi");
-  // Mochi on the desktop of the portrait screen, cursor on the external screen above.
+  assert.deepEqual(look(islandOnTop, { x: 780, y: 2500 }), [0, 1], "cursor above Nova");
+  // Nova on the desktop of the portrait screen, cursor on the external screen above.
   const panelMin = topDown({ x: -700, y: -200 + 120 }, top); // AppKit minY is the bottom edge
   const desktopOnLeft = lookOrigin(panelMin.x, panelMin.y, 120);
   const mouseAbove = topDown({ x: 1000, y: 2000 }, top);
   assert.ok(mouseAbove.x > desktopOnLeft.x && mouseAbove.y < desktopOnLeft.y,
-    "desktop Mochi looks right and up at a cursor on another screen");
+    "desktop Nova looks right and up at a cursor on another screen");
   const g = gaze(desktopOnLeft, mouseAbove);
   assert.ok(g.lookX > 0 && g.lookY > 0);
 });
@@ -177,7 +177,7 @@ function world({ alert = false, flyOutOk = true } = {}) {
       later: (fn, ms) => timers.push({ fn, ms }),
     },
   };
-  w.c = new DesktopMochiController(w.port);
+  w.c = new DesktopNovaController(w.port);
   return w;
 }
 
@@ -190,7 +190,7 @@ test("launch: flies out to his spot only if he lives on the desktop", async () =
   w.c.enabled = true;
   void w.c.launchFlyIfNeeded();
   assert.equal(w.c.phase, "flyingOut");
-  assert.equal(w.away, true, "the island's Mochi hides as he leaves");
+  assert.equal(w.away, true, "the island's Nova hides as he leaves");
   await w.land();
   assert.equal(w.c.phase, "onDesktop");
 });
@@ -237,7 +237,7 @@ test("alert on the desktop: surprised, flies to the island, comes back once answ
   assert.ok(w.log.includes("home-keep"), "he keeps his spot");
   await w.land();
   assert.equal(w.c.phase, "atNotchForAlert");
-  assert.equal(w.away, false, "the island's Mochi shows the alert");
+  assert.equal(w.away, false, "the island's Nova shows the alert");
   assert.ok(w.log.includes("reveal"));
   assert.equal(w.c.enabled, true);
 
@@ -394,7 +394,7 @@ test("a finished task gets a happy jump, only on the desktop", () => {
   const w = world();
   w.c.updateState("working");
   w.c.updateState("finished");
-  assert.ok(!w.log.includes("emote:happy"), "home: the island's Mochi celebrates");
+  assert.ok(!w.log.includes("emote:happy"), "home: the island's Nova celebrates");
   w.c.installed();
   w.log.length = 0;
   w.c.updateState("working");

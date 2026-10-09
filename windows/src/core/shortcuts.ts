@@ -26,8 +26,8 @@ export const SHORTCUT_TEXT = {
   attachFrontWindow: N_("Attach the front window to the chat"),
   nextPill: N_("Next pill"),
   prevPill: N_("Previous pill"),
-  muteToggle: N_("Mute or unmute Mochi"),
-  desktopToggle: N_("Send Mochi to the desktop"),
+  muteToggle: N_("Mute or unmute Nova"),
+  desktopToggle: N_("Send Nova to the desktop"),
   wardrobeToggle: N_("Open the wardrobe"),
   island: {
     nextPrev: N_("Next or previous pill"),
@@ -296,7 +296,7 @@ export function duplicates(entries: Iterable<[string, string]>): Set<string> {
   return dups;
 }
 
-/** The (id, keys) pairs Coucou would register with `stored`. */
+/** The (id, keys) pairs Nova would register with `stored`. */
 export function activeKeys(stored: Bindings | undefined): [string, string][] {
   return SHORTCUTS.filter((d) => d.ported)
     .map((d) => [d.id, effective(d, stored)] as const)

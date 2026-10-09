@@ -16,7 +16,7 @@ const {
   onLanguageChange, resolveLanguage, setLanguage, t, tl, tn, weekdayShort,
 } = await import("../src/i18n/i18n.ts");
 const { h, relabel, liveTextCount } = await import("../src/views/dom.ts");
-const { generate, convertFormat } = await import("../scripts/gen-strings.mjs");
+const { convertFormat } = await import("../scripts/string-format.mjs");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const WINDOWS = join(here, "..");
@@ -49,7 +49,7 @@ test("English is the key itself, other languages come from either table", () => 
 test("a string nobody translated falls back to its English text", () => {
   inLanguage("ru", () => {
     assert.equal(t("Some brand new sentence."), "Some brand new sentence.");
-    assert.equal(t("Hello {name}", { name: "Mochi" }), "Hello Mochi");
+    assert.equal(t("Hello {name}", { name: "Nova" }), "Hello Nova");
   });
 });
 
@@ -101,7 +101,7 @@ test("labels() tables and dates read in the current language", () => {
 
 // ── Choosing the language ─────────────────────────────────────────────────────
 
-test("System follows the system's language when Coucou has it, else English", () => {
+test("System follows the system's language when Nova has it, else English", () => {
   assert.equal(resolveLanguage("", ["fr-FR", "en-US"]), "fr");
   assert.equal(resolveLanguage("", ["de-DE", "es-MX"]), "es");
   assert.equal(resolveLanguage("", ["pt-PT"]), "pt-BR");
@@ -149,9 +149,9 @@ test("a language change relabels what was built, in place, and says so once", ()
 
 // ── The tables ────────────────────────────────────────────────────────────────
 
-test("strings.json is what the generator makes of the Mac's catalog", () => {
-  const catalog = JSON.parse(readFileSync(join(WINDOWS, "../NotchBuddy/Resources/Localizable.xcstrings"), "utf8"));
-  assert.deepEqual(generate(catalog), MAC);
+test("standalone strings.json declares every supported language and a nonempty catalog", () => {
+  assert.deepEqual(MAC.languages, LANGUAGE_CODES);
+  assert.ok(Object.keys(MAC.strings).length > 0);
 });
 
 test("the generator turns format specifiers into placeholders", () => {
@@ -250,7 +250,7 @@ test("lookup() answers from the merged tables", () => {
 // upload canvas or the recap that is exactly a translated string, and is not
 // the argument of t() / tl() / tn() / N_(), is English that would stay English.
 
-const CHECKED = ["src/views", "src/settings", "src/island", "src/upload", "src/recap", "src/mochi/wardrobe.ts", "src/main.ts"];
+const CHECKED = ["src/views", "src/settings", "src/island", "src/upload", "src/recap", "src/nova/wardrobe.ts", "src/main.ts"];
 /** Literals that are a translated word but are values in the code, not text on screen. */
 const NOT_TEXT = new Set([
   "file", // the kind of a chat context: { kind: "file" }

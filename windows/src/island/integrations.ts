@@ -23,7 +23,7 @@ export function registerIntegrationHandlers(island: Island) {
 /**
  * AppState.handleGitHubEvents: the loudest event sets the badge — only while the
  * GitHub pill isn't the one on screen — and plays its sound. Unlike the other
- * integrations it leaves Mochi's state alone and the badge stays until the pill
+ * integrations it leaves Nova's state alone and the badge stays until the pill
  * is focused, as on macOS.
  */
 export function handleGitHubAlerts(events: GitHubEvent[]) {

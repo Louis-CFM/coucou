@@ -633,7 +633,7 @@ mod linux {
         if on {
             let generation = SHARED.lock().unwrap().generation;
             let spawned = std::thread::Builder::new()
-                .name("coucou-spotify".into())
+                .name("nova-spotify".into())
                 .spawn(move || listen(out, generation));
             if let Err(err) = spawned {
                 crate::log::line(format!("spotify: no listener thread: {err}"));
@@ -997,7 +997,7 @@ mod linux {
                 Ok(mut child) => {
                     // Reaped when it exits, so it never lingers as a zombie.
                     let _ = std::thread::Builder::new()
-                        .name("coucou-spotify-child".into())
+                        .name("nova-spotify-child".into())
                         .spawn(move || {
                             let _ = child.wait();
                         });
@@ -1159,7 +1159,7 @@ mod linux {
         }
 
         /// End to end against a fake Spotify on a private session bus:
-        /// `dbus-run-session -- cargo test -p coucou --lib spotify -- --ignored`
+        /// `dbus-run-session -- cargo test -p nova --lib spotify -- --ignored`
         #[test]
         #[ignore]
         fn the_listener_follows_and_drives_a_fake_spotify_over_the_session_bus() {

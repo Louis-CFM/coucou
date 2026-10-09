@@ -1,4 +1,4 @@
-// A colour of the user's own for each pill's Mochi (src/core/pill-colors.ts),
+// A colour of the user's own for each pill's Nova (src/core/pill-colors.ts),
 // and how the app state paints with it. Mirrors tests/PillColorsTests.swift so
 // every platform reads the same preference the same way.
 

@@ -21,7 +21,7 @@ import { onLanguageChange, t, tl, type Msg } from "../i18n/i18n";
 const T = {
   get title() { return t("Weekly recap"); },
   get noActivity() { return t("No activity last week"); },
-  get noActivitySub() { return t("Coucou counts your agent sessions as they happen — check back next Monday."); },
+  get noActivitySub() { return t("Nova counts your agent sessions as they happen — check back next Monday."); },
   get coding() { return t("coding"); },
   get session() { return t("session"); },
   get sessions() { return t("sessions"); },

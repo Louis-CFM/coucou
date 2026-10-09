@@ -37,7 +37,7 @@ pub fn home_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
-/// How the desktop Mochi's window can be placed and clicked on this system.
+/// How the desktop Nova's window can be placed and clicked on this system.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DesktopMode {
     /// Windows: placed anywhere, and a cursor poll drives click-through, the
@@ -51,7 +51,7 @@ pub enum DesktopMode {
     /// with margins.
     Layer,
     /// Wayland without layer-shell (GNOME): no way to put a window where the
-    /// user dropped it, so Mochi stays in the island.
+    /// user dropped it, so Nova stays in the island.
     Off,
 }
 
@@ -77,7 +77,7 @@ impl DesktopMode {
     }
 }
 
-/// Which part of the desktop Mochi's window takes the mouse.
+/// Which part of the desktop Nova's window takes the mouse.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(windows, allow(dead_code))]
 pub enum MouseShape {
@@ -85,6 +85,6 @@ pub enum MouseShape {
     Empty,
     /// The whole window (while he is being dragged across the screen).
     Whole,
-    /// A disc, in window-logical pixels: Mochi's body.
+    /// A disc, in window-logical pixels: Nova's body.
     Disc { cx: f64, cy: f64, r: f64 },
 }

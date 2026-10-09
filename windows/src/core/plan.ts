@@ -7,7 +7,7 @@
 // Codex: the numbers come from the Codex CLI itself (`codex app-server`,
 // `account/rateLimits/read`, the source of Codex's /status), asked by the app
 // when the pill shows. Nothing is read from any credentials, nothing is fetched
-// by Coucou itself.
+// by Nova itself.
 
 export interface PlanWindow {
   /** 0–100, clamped. */

@@ -1,9 +1,11 @@
 ---
 name: Feature request
-about: A new idea for Mochi
+about: Suggest a Nova improvement
 labels: enhancement
 ---
 
-**What would you like Mochi to do?**
+**What problem would this solve?**
 
-**Why would it be useful?**
+**What would you like to happen?**
+
+**Which existing engine feature could be surfaced rather than rebuilt?**
