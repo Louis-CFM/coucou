@@ -331,6 +331,18 @@ fn resolve_link(path: &Path) -> std::path::PathBuf {
     }
 }
 
+/// `write_like`, but only onto a fresh name: a same-user process that planted
+/// a symlink named like our temp file must not redirect the write.
+fn write_new(temp: &Path, original: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let mut file = options.open(temp)?;
+    write_whole(&mut file, bytes)?;
+    keep_mode(&file, original)
+}
+
 /// Replaces `path` with `bytes`: written beside it and renamed over it, so a
 /// crash or a full disk leaves the original intact rather than half a file.
 fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
@@ -343,10 +355,18 @@ fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let path = resolved.as_path();
 
     let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let temp = path.with_file_name(format!("{name}.coucou-{}", std::process::id()));
-    let result = write_like(&temp, path, bytes).and_then(|()| std::fs::rename(&temp, path));
-    if result.is_err() {
-        let _ = std::fs::remove_file(&temp);
+    let mut result: std::io::Result<()> = Err(ErrorKind::AlreadyExists.into());
+    for n in 0..100u32 {
+        let temp = path.with_file_name(format!("{name}.coucou-{}-{n}", std::process::id()));
+        result = match write_new(&temp, path, bytes) {
+            Ok(()) => std::fs::rename(&temp, path),
+            Err(err) if err.kind() == ErrorKind::AlreadyExists => continue,
+            Err(err) => Err(err),
+        };
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temp);
+        }
+        return result;
     }
     result
 }
@@ -358,6 +378,12 @@ pub fn unified_diff(before: &str, after: &str) -> String {
     let a: Vec<&str> = before.lines().collect();
     let b: Vec<&str> = after.lines().collect();
     let (n, m) = (a.len(), b.len());
+    // The LCS table is n×m usizes — enough for any real config, but a
+    // pathological file (minified JSON, a generated hooks.json) must not
+    // allocate gigabytes on a synchronous command path.
+    if n.saturating_mul(m) > 4_000_000 {
+        return t("The files differ.").into();
+    }
 
     let mut lcs = vec![vec![0usize; m + 1]; n + 1];
     for i in (0..n).rev() {

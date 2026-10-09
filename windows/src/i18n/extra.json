@@ -2245,6 +2245,17 @@
    "ru": "Файл удаляется.",
    "id": "File dihapus."
   },
+  "The files differ.": {
+   "zh-Hans": "文件内容不同。",
+   "hi": "फ़ाइलें अलग हैं।",
+   "es": "Los archivos difieren.",
+   "ar": "الملفات مختلفة.",
+   "fr": "Les fichiers diffèrent.",
+   "bn": "ফাইলগুলো আলাদা।",
+   "pt-BR": "Os arquivos são diferentes.",
+   "ru": "Файлы различаются.",
+   "id": "File berbeda."
+  },
   "The image could not be read.": {
    "zh-Hans": "无法读取图片。",
    "hi": "छवि पढ़ी नहीं जा सकी।",
