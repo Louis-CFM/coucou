@@ -71,6 +71,9 @@ pub struct Settings {
     pub task_projects_root: String,
     /// …and the project folder picked last, preselected next time.
     pub task_last_project: String,
+    /// Folders typed into the dropdown's "Other…" (any path, dotted ones
+    /// included), newest first, so they stay offered. Capped by the chat.
+    pub task_recent_dirs: Vec<String>,
     /// Where finished tasks also land: the answer as a Markdown note, the
     /// reports as Typst files ("" = only in the project). An Obsidian vault
     /// folder works well here.
@@ -138,6 +141,7 @@ impl Default for Settings {
             language: String::new(),
             task_projects_root: String::new(),
             task_last_project: String::new(),
+            task_recent_dirs: Vec::new(),
             task_outputs_dir: String::new(),
             editor_command: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
@@ -419,6 +423,7 @@ mod tests {
   "language": "pt-BR",
   "taskProjectsRoot": "/home/me/projects",
   "taskLastProject": "/home/me/projects/shop",
+  "taskRecentDirs": ["/home/me/.dotfiles"],
   "taskOutputsDir": "/home/me/vault/outputs",
   "editorCommand": "kitty -e nvim",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
@@ -826,6 +831,7 @@ mod tests {
                 "language",
                 "taskProjectsRoot",
                 "taskLastProject",
+                "taskRecentDirs",
                 "taskOutputsDir",
                 "editorCommand",
                 "desktopMochi",

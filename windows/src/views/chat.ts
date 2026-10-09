@@ -39,7 +39,12 @@ const STRINGS = {
   followUp: N_("Follow up"),
   openFolder: N_("Open folder"),
   placeholderFollowUp: N_("Follow up — continues the same task…"),
+  otherFolder: N_("Other…"),
+  typePath: N_("Full path of a folder — Enter to use it, Esc to go back"),
 };
+
+/** "Other…" keeps this many typed folders on the list. */
+const MAX_RECENT_DIRS = 8;
 
 let nextId = 1;
 
@@ -274,7 +279,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   let taskMode = false;
   const taskBtn = h("button", { class: "task-btn", title: tl(STRINGS.taskHint), text: tl(STRINGS.task) });
   const dirSelect = h("select", { class: "task-dir", title: tl(STRINGS.taskProject) }) as HTMLSelectElement;
-  const modelRow = h("div", { class: "model-row" }, taskBtn, dirSelect, modelBtn);
+  // "Other…": the select steps aside for a text field taking any full path,
+  // dotted folders included; Enter keeps it (and remembers it), Esc goes back.
+  const dirInput = h("input", {
+    type: "text",
+    class: "task-dir task-dir-input",
+    placeholder: tl(STRINGS.typePath),
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  const modelRow = h("div", { class: "model-row" }, taskBtn, dirSelect, dirInput, modelBtn);
 
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
@@ -293,16 +306,61 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
 
+  function dirOption(path: string): HTMLOptionElement {
+    const name = path.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || path;
+    return h("option", { value: path, text: name, title: path }) as HTMLOptionElement;
+  }
+
   async function loadProjects() {
-    const dirs = (await Bridge.taskProjects()) ?? [];
-    clear(dirSelect);
-    for (const path of dirs) {
-      const name = path.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || path;
-      dirSelect.append(h("option", { value: path, text: name, title: path }));
+    const fromRoot = (await Bridge.taskProjects()) ?? [];
+    const dirs = [...fromRoot];
+    for (const recent of State.settings.taskRecentDirs) {
+      if (!dirs.includes(recent)) dirs.push(recent);
     }
+    clear(dirSelect);
+    for (const path of dirs) dirSelect.append(dirOption(path));
+    dirSelect.append(h("option", { value: "__other__", text: t(STRINGS.otherFolder) }));
     const last = State.settings.taskLastProject;
     if (last && dirs.includes(last)) dirSelect.value = last;
   }
+
+  /** The typed folder goes to the top of the list and is remembered. */
+  function commitTypedDir() {
+    const typed = dirInput.value.trim().replace(/[/\\]+$/, "");
+    if (!typed) return;
+    dirInput.classList.remove("on");
+    dirSelect.classList.add("on");
+    const existing = Array.from(dirSelect.options).find((o) => o.value === typed);
+    if (!existing) dirSelect.prepend(dirOption(typed));
+    dirSelect.value = typed;
+    const recents = [typed, ...State.settings.taskRecentDirs.filter((d) => d !== typed)];
+    State.settings = { ...State.settings, taskRecentDirs: recents.slice(0, MAX_RECENT_DIRS) };
+    saveSettings();
+    input.focus();
+  }
+
+  dirSelect.addEventListener("change", () => {
+    if (dirSelect.value !== "__other__") return;
+    dirSelect.classList.remove("on");
+    dirInput.classList.add("on");
+    dirInput.value = "";
+    dirInput.focus();
+  });
+
+  dirInput.addEventListener("keydown", (e) => {
+    const key = (e as KeyboardEvent).key;
+    if (key === "Enter") {
+      e.preventDefault();
+      commitTypedDir();
+    } else if (key === "Escape") {
+      e.preventDefault();
+      dirInput.classList.remove("on");
+      dirSelect.classList.add("on");
+      if (dirSelect.value === "__other__") dirSelect.selectedIndex = 0;
+      input.focus();
+    }
+    e.stopPropagation(); // Escape closes the island, not the field
+  });
 
   // A follow-up in flight: the next task resumes this bubble's session.
   let followUpTarget: ChatMessage | null = null;
@@ -327,6 +385,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     Sound.play("pop");
     taskBtn.classList.toggle("on", taskMode);
     dirSelect.classList.toggle("on", taskMode);
+    dirInput.classList.remove("on");
     input.placeholder = t(
       taskMode ? STRINGS.placeholderTask
       : State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext,
@@ -379,8 +438,12 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   async function submitTask(query: string) {
     const target = followUpTarget;
     followUpTarget = null;
-    const dir = target?.taskDir ?? dirSelect.value;
-    if (!dir) {
+    let dir = target?.taskDir ?? dirSelect.value;
+    if (dir === "__other__") {
+      commitTypedDir();
+      dir = dirSelect.value;
+    }
+    if (!dir || dir === "__other__") {
       State.noteMessage = t(STRINGS.noProject);
       State.view = "note";
       State.notify();

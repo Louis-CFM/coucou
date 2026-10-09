@@ -947,6 +947,17 @@
    "ru": "Отовсюду",
    "id": "Dari mana saja"
   },
+  "Full path of a folder — Enter to use it, Esc to go back": {
+   "zh-Hans": "文件夹的完整路径 — Enter 使用，Esc 返回",
+   "hi": "फ़ोल्डर का पूरा पथ — उपयोग के लिए Enter, वापस जाने के लिए Esc",
+   "es": "Ruta completa de una carpeta — Enter para usarla, Esc para volver",
+   "ar": "المسار الكامل لمجلد — Enter لاستخدامه، Esc للرجوع",
+   "fr": "Chemin complet d'un dossier — Entrée pour l'utiliser, Échap pour revenir",
+   "bn": "ফোল্ডারের পূর্ণ পথ — ব্যবহার করতে Enter, ফিরতে Esc",
+   "pt-BR": "Caminho completo de uma pasta — Enter para usar, Esc para voltar",
+   "ru": "Полный путь к папке — Enter, чтобы использовать, Esc — назад",
+   "id": "Jalur lengkap folder — Enter untuk memakai, Esc untuk kembali"
+  },
   "Go to pill 1 to 9": {
    "zh-Hans": "前往第 1 至 9 个标签",
    "hi": "टैब 1 से 9 पर जाएँ",

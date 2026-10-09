@@ -463,16 +463,20 @@ fn task_spawn(
     dir: String,
     resume: Option<String>,
 ) -> Result<u64, String> {
-    // Settings → Task outputs, "~/" written out so the spawn sees a full path.
-    let outputs = {
-        let raw = shared.settings.lock().unwrap().task_outputs_dir.trim().to_string();
-        match raw.strip_prefix("~/") {
-            Some(rest) => Some(platform::home_dir().join(rest).to_string_lossy().to_string()),
-            None if raw.is_empty() => None,
-            None => Some(raw),
+    // "~/" written out so the spawn sees full paths — the folder dropdown's
+    // "Other…" takes a typed path, and people type "~".
+    let expand = |raw: &str| -> String {
+        match raw.trim().strip_prefix("~/") {
+            Some(rest) => platform::home_dir().join(rest).to_string_lossy().to_string(),
+            None => raw.trim().to_string(),
         }
     };
-    task_runner::spawn(app, &tasks, prompt, dir, resume, outputs)
+    let outputs = {
+        let raw = shared.settings.lock().unwrap().task_outputs_dir.clone();
+        let raw = expand(&raw);
+        (!raw.is_empty()).then_some(raw)
+    };
+    task_runner::spawn(app, &tasks, prompt, expand(&dir), resume, outputs)
 }
 
 /// The folder button on a finished task's bubble.

@@ -1223,6 +1223,11 @@ input[type="range"]::-webkit-slider-thumb {
   display: inline-block;
 }
 
+.task-dir-input {
+  width: 210px;
+  max-width: 210px;
+}
+
 .task-cancel,
 .task-action {
   align-self: center;

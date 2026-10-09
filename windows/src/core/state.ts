@@ -158,6 +158,8 @@ export interface Settings {
   taskProjectsRoot: string;
   /** The project folder picked last in the chat's Task mode. */
   taskLastProject: string;
+  /** Folders typed into "Other…" (any path, dotted too), newest first. */
+  taskRecentDirs: string[];
   /** Where finished tasks also land (answer as Markdown, reports as Typst); "" = project only. */
   taskOutputsDir: string;
   /** Command that opens a session's folder or file ("" = VS Code, `code`). */
@@ -197,6 +199,7 @@ export const DEFAULT_SETTINGS: Settings = {
   language: "",
   taskProjectsRoot: "",
   taskLastProject: "",
+  taskRecentDirs: [],
   taskOutputsDir: "",
   editorCommand: "",
 };
