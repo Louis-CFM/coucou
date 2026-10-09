@@ -22,7 +22,7 @@ test("the ids and key names match the Rust side and the Mac", () => {
 
 test("Claude's model is the existing setting; the others are kept per provider", () => {
   assert.equal(activeModel(settings()), "claude-opus-5");
-  assert.equal(activeModel(settings({ chatProvider: "google" })), "gemini-2.0-flash");
+  assert.equal(activeModel(settings({ chatProvider: "google" })), "gemini-3.8-flash");
   assert.equal(activeModel(settings({ chatProvider: "ollama" })), "");
   let s = withModel(settings({ chatProvider: "openai" }), "openai", "gpt-5-mini");
   assert.equal(activeModel(s), "gpt-5-mini");
@@ -43,8 +43,8 @@ test("model servers show in the picker once connected, or while in use", () => {
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {
   const google = providerDef("google");
-  assert.equal(pickModel(google, ["gemini-2.5-pro", "gemini-2.0-flash"], "gemini-2.5-pro"), "gemini-2.5-pro");
-  assert.equal(pickModel(google, ["gemini-2.5-pro", "gemini-2.5-flash"], "gone"), "gemini-2.5-flash");
+  assert.equal(pickModel(google, ["gemini-2.5-pro", "gemini-3.8-flash"], "gemini-2.5-pro"), "gemini-2.5-pro");
+  assert.equal(pickModel(google, ["gemini-2.5-pro", "gemini-3.8-flash"], "gone"), "gemini-3.8-flash");
   assert.equal(pickModel(providerDef("openai"), ["gpt-4o", "gpt-5-mini"], "gone"), "gpt-5-mini");
   assert.equal(pickModel(providerDef("ollama"), ["llama3.2", "qwen"], ""), "llama3.2");
   assert.equal(pickModel(providerDef("openrouter"), ["a/b", "openrouter/auto"], "gone"), "openrouter/auto");

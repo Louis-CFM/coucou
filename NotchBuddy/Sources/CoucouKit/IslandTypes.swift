@@ -102,7 +102,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var defaultModel: String {
         switch self {
         case .anthropic: "claude-sonnet-4-6"
-        case .google:    "gemini-2.0-flash"
+        case .google:    "gemini-3.8-flash"
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
