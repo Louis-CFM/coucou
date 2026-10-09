@@ -69,6 +69,12 @@ export const ICONS = {
   repeat: "M4 11.5V10a3 3 0 0 1 3-3h13.5M17.6 4.1 20.5 7l-2.9 2.9M20 12.5V14a3 3 0 0 1-3 3H3.5M6.4 19.9 3.5 17l2.9-2.9",
   // music.note
   musicNote: "M12.2 3.6h1.7c.3 2.3 1.8 3.5 4.2 4.6l-.6 1.6c-1.4-.5-2.7-1.2-3.6-2.1v9.5a3.3 3.3 0 1 1-1.7-2.88V3.6z",
+  // person.fill
+  person: "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 10c-4.4 0-8 2.2-8 5v1.5h16V19c0-2.8-3.6-5-8-5z",
+  // envelope (stroked)
+  envelope: "M2.5 5.5h19v13h-19zM2.5 6.5l9.5 7 9.5-7",
+  // mic.fill — capsule, ring and stand as one filled shape
+  mic: "M12 1.6a3.4 3.4 0 0 1 3.4 3.4v5.4a3.4 3.4 0 0 1-6.8 0V5a3.4 3.4 0 0 1 3.4-3.4zM4.9 10.1h2a5.1 5.1 0 0 0 10.2 0h2a7.1 7.1 0 0 1-6.15 7.05v1.85h2.55v1.8H8.5V19h2.55v-1.85A7.1 7.1 0 0 1 4.9 10.1z",
   // speaker.slash.fill / speaker.wave.1-3.fill (stroked, the body outlined round)
   volume0: "M3.5 9.5h3L11 5.8v12.4l-4.5-3.7h-3zM15 9.5l5 5M20 9.5l-5 5",
   volume1: "M3.5 9.5h3L11 5.8v12.4l-4.5-3.7h-3zM14.5 9.6a3.4 3.4 0 0 1 0 4.8",

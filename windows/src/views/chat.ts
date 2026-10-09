@@ -22,6 +22,12 @@ const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
   placeholderNext: N_("Continue…"),
   send: N_("Send"),
+  dictate: N_("Dictate"),
+  listening: N_("Listening…"),
+  noSpeech: N_("Speech recognition isn't available."),
+  noMic: N_("The microphone isn't available."),
+  noSpeechNet: N_("Dictation needs an internet connection."),
+  noSpeechLang: N_("Speech recognition isn't set up for this language."),
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
@@ -211,7 +217,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  const mic = h("button", { class: "mic-btn", title: tl(STRINGS.dictate), style: "display:none" }, svg(ICONS.mic, 11)) as HTMLButtonElement;
+  void Bridge.dictationSupported().then((ok) => {
+    mic.style.display = ok ? "" : "none";
+  });
+  const bar = h("div", { class: "chat-bar" }, input, mic, send);
 
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
@@ -278,12 +288,19 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
+    const pc = State.promptContext;
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      State.chatHistory.length === 1 && pc
+        ? pc.kind === "window"
+          ? { kind: "window", appName: pc.appName, title: pc.title, url: pc.url }
+          : pc.path
+            ? { kind: "file", name: pc.name, path: pc.path }
+            : null
+        : null;
 
     try {
       const reply = await Bridge.chatSend(query, context);
+      if (context) State.promptContext = null; // consumed: rides the first turn only
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
@@ -316,11 +333,64 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     e.stopPropagation(); // Escape closes the island, not the chat
   });
 
+  // Dictation — one tap starts the session, the next commits what was heard;
+  // each finished phrase lands at the caret, like the Mac's prefix+transcript.
+  let listening = false;
+  function drawMic() {
+    mic.classList.toggle("listening", listening);
+    mic.title = listening ? t(STRINGS.listening) : t(STRINGS.dictate);
+    mic.disabled = sending;
+  }
+  mic.addEventListener("click", () => {
+    if (listening) {
+      listening = false;
+      drawMic();
+      void Bridge.dictationStop();
+      return;
+    }
+    void Bridge.dictationStart()
+      .then(() => {
+        listening = true;
+        drawMic();
+        input.focus();
+      })
+      .catch(() => {
+        State.noteMessage = t(STRINGS.noSpeech);
+        State.view = "note";
+        Sound.play("error");
+        State.notify();
+      });
+  });
+  void onEvent<{ text: string }>("dictation-line", (e) => {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const piece = (start > 0 && !/\s$/.test(input.value.slice(0, start)) ? " " : "") + e.text + " ";
+    input.setRangeText(piece, start, end, "end");
+  });
+  void onEvent<null>("dictation-end", () => {
+    listening = false;
+    drawMic();
+  });
+  void onEvent<{ code: string }>("dictation-error", (e) => {
+    const msg =
+      e.code === "mic"
+        ? t(STRINGS.noMic)
+        : e.code === "net"
+          ? t(STRINGS.noSpeechNet)
+          : e.code === "language"
+            ? t(STRINGS.noSpeechLang)
+            : t(STRINGS.noSpeech);
+    State.noteMessage = msg;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  });
+
   return {
     el,
     sync() {
-      const file = State.droppedFile;
-      const wantChip = file?.name ?? "";
+      const pc = State.promptContext;
+      const wantChip = pc ? (pc.kind === "window" ? pc.appName : pc.name) : "";
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
@@ -341,8 +411,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      input.placeholder = listening
+        ? t(STRINGS.listening)
+        : t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
       input.disabled = sending;
+      mic.disabled = sending;
     },
     focus() {
       input.focus();

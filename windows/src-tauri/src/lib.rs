@@ -7,6 +7,7 @@ mod claude;
 mod codex_plan;
 mod config_file;
 mod desktop;
+mod dictation;
 mod files;
 mod github;
 mod hooks;
@@ -490,6 +491,19 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// Sends the dropped file through Resend — MailView.sendViaResend on the Mac.
+/// The island already checked the keys exist; the Result carries a stable
+/// error code ("no-key" / "no-from" / "too-big" / "http-…"), not a sentence.
+#[tauri::command]
+async fn resend_send(
+    to: String,
+    subject: String,
+    body: String,
+    path: Option<String>,
+) -> Result<(), String> {
+    integrations::resend_send(&to, &subject, &body, path.as_deref()).await
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -665,6 +679,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(dictation::Dictation::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
@@ -703,6 +718,10 @@ pub fn run() {
             local_set_key,
             chat_reset,
             ingest_file,
+            resend_send,
+            dictation::dictation_supported,
+            dictation::dictation_start,
+            dictation::dictation_stop,
             secret_present,
             secret_set,
             secret_clear,

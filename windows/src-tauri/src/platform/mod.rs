@@ -20,6 +20,16 @@ mod linux_focus;
 #[cfg(target_os = "linux")]
 pub use self::linux_focus::{focus_session_window, process_ancestors, window_owners};
 
+/// What the island learns about the window Mochi was dropped on — the Mac's
+/// `PromptContext.window`. No `url`: browsers keep it behind UI Automation,
+/// far too much machinery for a chat-context hint.
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowContext {
+    pub app_name: String,
+    pub title: String,
+}
+
 /// Wall-clock time in the user's time zone, for log lines and backup names.
 pub struct LocalTime {
     pub year: u32,

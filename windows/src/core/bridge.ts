@@ -156,6 +156,20 @@ export const Bridge = {
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /**
+   * Sends the dropped file through Resend. Rejects with a stable code —
+   * "no-key" / "no-from" / "too-big" / "http-…" — the view maps it to words.
+   */
+  resendSend: (to: string, subject: string, body: string, path: string | null) =>
+    callOrThrow<void>("resend_send", { to, subject, body, path }),
+  // ── Dictation (Windows.Media.SpeechRecognition) ────────────────────────────
+  /** False on Linux: the chat bar hides the mic. */
+  dictationSupported: () => call<boolean>("dictation_supported"),
+  /** Starts the continuous session; lines arrive as `dictation-line` events. */
+  dictationStart: () => callOrThrow<void>("dictation_start"),
+  /** Commits what was heard so far; the session also ends itself on silence. */
+  dictationStop: () => call<void>("dictation_stop"),
+
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),

@@ -119,6 +119,7 @@ export class Island {
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      attachContext: () => this.expand("prompt"),
     });
     this.build();
     this.wireFsm();
@@ -196,6 +197,15 @@ export class Island {
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
+      },
+      // The mail sheet's send ending — sent or draft handed to the mail app:
+      // the Mac's wink, the send chime, the note, then back to the usual view.
+      mailDone: (note) => {
+        Sound.play("send");
+        this.engine.triggerEmote("wink");
+        State.noteMessage = note;
+        this.setView("note");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
       },
       decide: (d) => {
         const req = State.pendingApproval;
@@ -1159,15 +1169,16 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // The chat and the mail sheet are the only views with text fields, so they
+    // are the only times the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
-      this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      const wasField = this.lastSyncedView === "prompt" || this.lastSyncedView === "mail";
+      const active = State.view;
+      this.lastSyncedView = active;
+      if (active === "prompt" || active === "mail") {
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
+        window.setTimeout(() => this.views.get(active)?.focus?.(), 120);
+      } else if (wasField) {
         void Bridge.focusWindow(false);
       }
     }
