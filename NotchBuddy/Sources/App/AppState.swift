@@ -73,6 +73,29 @@ final class AppState: ObservableObject {
     @Published var mochiOutfitSelection: Outfit = .auto {
         didSet { Outfit.stored = mochiOutfitSelection }
     }
+    // A colour of the user's own for each pill's Mochi (pill id → "#RRGGBB") — persisted.
+    // Empty means the catalog's colours. PillDefinition.color reads the stored value, so
+    // what is built from the catalog follows on its own; the tasks already on the island
+    // hold a copy of their colour and are repainted here.
+    @Published var pillColors: [String: String] = [:] {
+        didSet {
+            PillColors.stored = pillColors
+            var repainted = tasks
+            var changed = false
+            for i in repainted.indices {
+                guard let def = PillCatalog.definition(for: repainted[i].id),
+                      repainted[i].color != def.color else { continue }
+                repainted[i].color = def.color
+                changed = true
+            }
+            if changed { tasks = repainted }
+        }
+    }
+    /// Picks a colour for a pill's Mochi; nil, or the pill's own catalog colour, goes back to the default.
+    func setPillColor(_ id: String, _ hex: String?) {
+        guard let def = PillCatalog.definition(for: id) else { return }
+        pillColors = PillColors.picking(hex, for: id, catalogColor: def.defaultColor, in: pillColors)
+    }
     // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
     var wardrobePreviewOutfit: Outfit? = nil
     // Per-day seasonal cache — avoids recomputing Easter and date math on every frame
@@ -299,6 +322,10 @@ final class AppState: ObservableObject {
     @Published var noteMessage: String? = nil
 
     // Auto-close delay — persisted
+    // Hovering the island opens it (folds shortly after the pointer leaves) — persisted, off by default
+    @Published var openOnHover: Bool = false {
+        didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -493,6 +520,7 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
         mochiOutfitSelection = Outfit.stored
+        pillColors = PillColors.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
@@ -507,6 +535,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
+        if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }

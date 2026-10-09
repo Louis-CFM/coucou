@@ -295,6 +295,46 @@ select option {
   font-size: 12.5px;
 }
 
+/* The dot of a pill's row opens the colour palette (see ./colors.ts). The dot
+   itself is unchanged. */
+.color-dot {
+  cursor: pointer;
+}
+
+.color-dot:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.palette {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.palette .swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.palette .swatch.on {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink);
+}
+
+.palette .reset {
+  padding: 3px 10px;
+  font-size: 11.5px;
+}
+
 .pill-row.full .name {
   color: var(--dim-2);
 }

@@ -11,6 +11,7 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
@@ -20,8 +21,11 @@ import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
+import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
+import { SPOTIFY_ID } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
+import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -58,6 +62,8 @@ export interface ViewHost {
   focus?(): void;
   /** Called every frame while the view is on screen. True = needs another frame. */
   tick?(nowMs: number): boolean | void;
+  /** Ctrl+O / Ctrl+E while the view is on screen (island/shortcuts.ts). */
+  command?(command: ViewCommand): void;
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
@@ -189,6 +195,10 @@ function buildOverview(actions: ViewActions): ViewHost {
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
+  // Spotify's card and pill are kept and updated in place: the progress bar
+  // runs on, and a slider being dragged must not be rebuilt under the pointer.
+  const spotifyCard = buildSpotifyCard();
+  let spotifyPill: SpotifyPillHost | null = null;
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -198,8 +208,10 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | null = null;
   let cardKey = "";
+  /** The list row highlighted at the last sync, to scroll only when it moves. */
+  let shownSelection: number | null = null;
 
   // Leaving the overview or folding the island closes the diff, as on macOS.
   State.subscribe(() => {
@@ -255,6 +267,26 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (mode !== "ticker") return false;
       ticker.tick(nowMs);
       return ticker.animating;
+    },
+    command(command) {
+      if (command === "openSelection") {
+        // Ctrl+O: what a click on the highlighted row does.
+        if (mode !== "card" || State.cardSelection == null) return;
+        openRow(listRows(leftBody)[State.cardSelection]);
+        return;
+      }
+      // Ctrl+E (⌘E, islandToggleDiff): closes the diff that is open, else
+      // opens the focused pill's latest edit.
+      if (activeDiffId != null) {
+        closeDiff();
+        return;
+      }
+      const task = State.focusTask;
+      const diffs = task ? State.sessionDiffs.get(task.id) : undefined;
+      const last = diffs?.[diffs.length - 1];
+      if (last?.id == null) return;
+      activeDiffId = last.id;
+      State.notify();
     },
     sync() {
       const task = State.focusTask;
@@ -324,10 +356,19 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
+      } else if (task && task.id === SPOTIFY_ID) {
+        // Its own card for every state: playing, idle, not installed.
+        if (mode !== "spotify") {
+          clear(leftBody);
+          leftBody.append(spotifyCard.el);
+          mode = "spotify";
+          cardKey = "";
+        }
+        spotifyCard.sync();
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
-          language(), task.id, detailOpen, task.state, task.steps.join("|"),
+          language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
         ].join("~");
@@ -341,14 +382,30 @@ function buildOverview(actions: ViewActions): ViewHost {
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
+      // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
+      const rows = mode === "card" ? listRows(leftBody) : [];
+      State.cardItemCount = rows.length;
+      if (State.cardSelection != null && State.cardSelection >= rows.length) State.cardSelection = null;
+      highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
+      shownSelection = State.cardSelection;
+
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
+      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
-        for (const t of others) pills.append(buildPill(t, actions));
+        spotifyPill = null;
+        for (const t of others) {
+          if (t.id === SPOTIFY_ID) {
+            spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
+            pills.append(spotifyPill.el);
+          } else {
+            pills.append(buildPill(t, actions));
+          }
+        }
         pruneMiniBots();
       }
+      spotifyPill?.sync();
     },
   };
 }

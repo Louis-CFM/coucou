@@ -9,7 +9,7 @@ import Foundation
 struct AgentTask {
     var id = ""
     var codexManaged = false
-    var sessionAppBundleId: String?
+    var sessionBundleId: String?
     var sessionCwd: String?
 }
 enum ChatProvider { case codex }
@@ -25,7 +25,8 @@ enum IslandView { case prompt, note }
     class OpenConfiguration { var activates = false }
     var apps = ["com.openai.codex": URL(fileURLWithPath: "/Applications/Renamed Codex.app"),
                 "com.microsoft.VSCode": URL(fileURLWithPath: "/Applications/Code.app"),
-                "com.anthropic.claudefordesktop": URL(fileURLWithPath: "/Applications/Claude.app")]
+                "com.anthropic.claudefordesktop": URL(fileURLWithPath: "/Applications/Claude.app"),
+                "com.todesktop.230313mzl4w4u92": URL(fileURLWithPath: "/Applications/Cursor.app")]
     var opened: URL?
     var project: URL?
     func urlForApplication(withBundleIdentifier id: String) -> URL? { apps[id] }
@@ -45,13 +46,19 @@ enum IslandView { case prompt, note }
         assert(SessionTarget.bundleId(payload: ["coucou_agent":"codex", "originator":"codex_cli_rs"]) == nil)
         assert(SessionTarget.bundleId(payload: ["coucou_agent":"claude", "originator":"Codex Desktop"]) == nil)
         assert(SessionTarget.bundleId(payload: ["coucou_agent":"codex", "term_program":"vscode"]) == "com.microsoft.VSCode")
+        assert(SessionTarget.bundleId(payload: ["coucou_agent":"codex", "term_program":"warpterminal"]) == "dev.warp.Warp-Stable")
+        assert(SessionTarget.bundleId(payload: ["coucou_agent":"claude", "bundle_id":"com.cmuxterm.app", "term_program":"ghostty"]) == "com.cmuxterm.app")
         let workspace = NSWorkspace.shared
-        SessionTarget.open(AgentTask(sessionAppBundleId: SessionTarget.bundleId(payload: desktop)))
+        SessionTarget.open(AgentTask(sessionBundleId: SessionTarget.bundleId(payload: desktop)))
         assert(workspace.opened == workspace.apps["com.openai.codex"] && workspace.project == nil)
-        SessionTarget.open(AgentTask(sessionAppBundleId: "com.microsoft.VSCode", sessionCwd: "/project with spaces"))
+        SessionTarget.open(AgentTask(sessionBundleId: "com.microsoft.VSCode", sessionCwd: "/project with spaces"))
         assert(workspace.opened == workspace.apps["com.microsoft.VSCode"] && workspace.project?.path == "/project with spaces")
         SessionTarget.open(AgentTask(id: "agent_claude-desktop"))
         assert(workspace.opened == workspace.apps["com.anthropic.claudefordesktop"])
+        SessionTarget.open(AgentTask(id: "agent_cursor"))
+        assert(workspace.opened == workspace.apps["com.todesktop.230313mzl4w4u92"])
+        SessionTarget.open(AgentTask(id: "integration_claude"))
+        assert(workspace.opened == workspace.apps["com.microsoft.VSCode"])
         workspace.opened = nil
         SessionTarget.open(AgentTask(codexManaged: true))
         assert(AppState.shared.view == .prompt && workspace.opened == nil)
@@ -61,7 +68,15 @@ enum IslandView { case prompt, note }
     }
 }
 SWIFT
-swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/Check.swift" -o "$task_tmp/check"
+# Exercise the shipped host table, excluding its unrelated AppKit activation method.
+python3 - "$task_tmp/ClaudeHost.swift" <<'HOSTPY'
+from pathlib import Path
+import sys
+source = Path("NotchBuddy/Sources/App/ClaudeHost.swift").read_text()
+pure = source.split("    /// Brings the session's terminal forward", 1)[0]
+Path(sys.argv[1]).write_text(pure.replace("import AppKit", "import Foundation", 1) + "}\n")
+HOSTPY
+swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/ClaudeHost.swift" "$task_tmp/Check.swift" -o "$task_tmp/check"
 "$task_tmp/check"
 
 # Compile the real Swift string literals, then exercise both relays without a socket or user configuration.

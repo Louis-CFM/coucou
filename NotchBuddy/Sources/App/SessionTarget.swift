@@ -11,7 +11,14 @@ enum SessionTarget {
             state.view = .prompt
             return
         }
-        let sourceBundleId = task.sessionAppBundleId ?? (task.id == "agent_claude-desktop" ? "com.anthropic.claudefordesktop" : nil)
+        let defaultBundleId: String?
+        switch task.id {
+        case "integration_claude": defaultBundleId = "com.microsoft.VSCode"
+        case "agent_cursor": defaultBundleId = "com.todesktop.230313mzl4w4u92"
+        case "agent_claude-desktop": defaultBundleId = "com.anthropic.claudefordesktop"
+        default: defaultBundleId = nil
+        }
+        let sourceBundleId = task.sessionBundleId ?? defaultBundleId
         guard let bundleId = sourceBundleId,
               let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
             state.noteMessage = String(localized: "session.host-unavailable", defaultValue: "The session's source app is unknown or unavailable. Open it from your editor.")
@@ -39,12 +46,10 @@ enum SessionTarget {
             return "com.openai.codex"
         }
         if let bundle = payload["bundle_id"] as? String, !bundle.isEmpty { return bundle }
-        switch (payload["term_program"] as? String ?? "").lowercased() {
+        let termProgram = payload["term_program"] as? String ?? ""
+        if let host = ClaudeHost.terminal(termProgram: termProgram, bundleId: "") { return host.bundleId }
+        switch termProgram.lowercased() {
         case "vscode": return "com.microsoft.VSCode"
-        case "apple_terminal": return "com.apple.Terminal"
-        case "iterm.app": return "com.googlecode.iterm2"
-        case "ghostty": return "com.mitchellh.ghostty"
-        case "kitty": return "net.kovidgoyal.kitty"
         case "codex": return "com.openai.codex"
         default: return nil
         }

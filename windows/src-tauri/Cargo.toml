@@ -50,3 +50,10 @@ libc = "0.2"
 # The GTK that Tauri already runs on, to reach its window for layer-shell and
 # the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
 gtk = "0.18"
+# libdbus, which keyring's Secret Service already links, so nothing new is
+# downloaded: Wayland global shortcuts through the XDG GlobalShortcuts portal
+# (portal.rs), the Spotify pill over MPRIS (spotify.rs) and "Open terminal"
+# through KWin's scripting (platform/linux_focus.rs).
+dbus = "0.9.12"
+# EWMH on X11 for "Open terminal", already in the tree (global-hotkey).
+x11rb = { version = "0.13", default-features = false }

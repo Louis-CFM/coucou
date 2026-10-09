@@ -52,12 +52,16 @@ struct BotCanvasView: View {
                 // Compute shouldDance per-frame (no observer lag)
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard AppState.shared.musicPlaying else { return false }
-                    guard AppState.shared.activeIntegrations.contains("integration_music") else { return false }
+                    let active = AppState.shared.activeIntegrations
+                    let music = AppState.shared.musicPlaying && active.contains("integration_music")
+                    let spotify = SpotifyController.shared.isPlaying && active.contains(SpotifyController.pillId)
+                    guard music || spotify else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     guard allowed.contains(state.effectiveState) else { return false }
                     if state.mode == .compact { return true }
-                    return state.mode == .expanded && state.view == .overview && state.focusId == "integration_music"
+                    guard state.mode == .expanded && state.view == .overview else { return false }
+                    return (music && state.focusId == "integration_music")
+                        || (spotify && state.focusId == SpotifyController.pillId)
                     #else
                     return false
                     #endif
@@ -224,6 +228,11 @@ struct MiniBotCanvasView: View {
         }
         .onChange(of: task.state) { _, newState in
             engine.setState(newState)
+        }
+        // The colour is set once, when the engine is made: a colour picked in
+        // Settings has to reach a mini Mochi that is already on screen.
+        .onChange(of: task.color) { _, newColor in
+            engine.bodyColor = cgColorFromHex(newColor)
         }
         .onAppear {
             engine.setState(task.state, force: true)

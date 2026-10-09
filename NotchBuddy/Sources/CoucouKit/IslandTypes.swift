@@ -69,13 +69,13 @@ struct AgentTask: Identifiable, Equatable {
     var codexTurnId: String? = nil
     var codexRolloutPath: String? = nil
     var codexManaged: Bool = false
-    var sessionAppBundleId: String? = nil
+    var sessionBundleId: String? = nil
     var sessionTerminalId: String? = nil
     var lastEventAt: Date? = nil
     var sessionOriginLabel: String {
         if codexManaged { return "Codex · Coucou" }
         let host: String
-        switch sessionAppBundleId {
+        switch sessionBundleId {
         case "com.microsoft.VSCode": host = "VS Code"
         case "com.microsoft.VSCodeInsiders": host = "VS Code Insiders"
         case "com.vscodium": host = "VSCodium"
@@ -85,11 +85,19 @@ struct AgentTask: Identifiable, Equatable {
         case "com.googlecode.iterm2": host = "iTerm2"
         case "com.mitchellh.ghostty": host = "Ghostty"
         case "net.kovidgoyal.kitty": host = "kitty"
+        case "com.cmuxterm.app": host = "cmux"
+        case "com.stablyai.orca": host = "Orca"
+        case "dev.warp.Warp-Stable", "dev.warp.Warp-Preview": host = "Warp"
+        case "com.github.wez.wezterm": host = "WezTerm"
+        case "org.alacritty": host = "Alacritty"
+        case "co.zeit.hyper": host = "Hyper"
+        case "dev.zed.Zed": host = "Zed"
         default: return id == "agent_codex" ? "Codex" : name
         }
         return id == "agent_codex" && host != "Codex Desktop" ? "Codex · \(host)" : host
     }
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
+    var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
 }
 
 enum AgentSource: Equatable {

@@ -261,22 +261,8 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
 
 // ── Session windows ("Open terminal") ─────────────────────────────────────────
 //
-// Wayland lets no app raise another app's window, and X11 would need a window
-// manager protocol client this build does not carry, so "Open terminal" opens
-// the folder in VS Code here, as before. There is no Claude desktop app for
-// Linux either.
-
-pub fn process_ancestors(_pid: u32) -> Vec<u32> {
-    Vec::new()
-}
-
-pub fn first_with_window(_pids: &[u32]) -> Option<u32> {
-    None
-}
-
-pub fn focus_process_window(_pid: u32, _folder: &str) -> bool {
-    false
-}
+// Finding and raising a session's window lives in linux_focus.rs. There is no
+// Claude desktop app for Linux.
 
 pub fn open_claude_desktop() -> bool {
     false
@@ -588,10 +574,10 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
 
 /// Global shortcuts are X11 key grabs. A Wayland session has no such thing: a
 /// grab made through XWayland only sees keys typed into other X11 windows, so
-/// it would look registered and never fire. The XDG GlobalShortcuts portal is
-/// the Wayland way and isn't wired up yet, so on Wayland nothing is registered
-/// and Settings explains how to bind `coucou --shortcut <id>` in the desktop's
-/// own keyboard settings instead.
+/// it would look registered and never fire. On Wayland the shortcuts go to the
+/// desktop through the XDG GlobalShortcuts portal instead (portal.rs), and
+/// where there is none Settings explains how to bind `coucou --shortcut <id>`
+/// in the desktop's own keyboard settings.
 pub fn global_shortcuts_blocked() -> Option<&'static str> {
     let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
     let wayland = set("WAYLAND_DISPLAY")

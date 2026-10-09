@@ -135,11 +135,15 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    // Active pills: the pill whose colour palette is open, if any
+    @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
+    @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
+    @State private var customSoundCount = SoundEngine.shared.customized.count
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -298,12 +302,32 @@ struct SettingsView: View {
                         .frame(width: 36, alignment: .trailing)
                         .monospacedDigit()
                 }
+                HStack(spacing: 8) {
+                    Button("Open sounds folder") { SoundEngine.shared.revealCustomFolder() }
+                    Button("Reload sounds") {
+                        SoundEngine.shared.reload()
+                        customSoundCount = SoundEngine.shared.customized.count
+                        SoundEngine.shared.play("pop")
+                    }
+                    if customSoundCount > 0 {
+                        Text(String(format: String(localized: "%lld custom"), Int64(customSoundCount)))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .disabled(!state.soundEnabled)
+                Text("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(6)
         }
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
+                Toggle("Open on hover", isOn: $state.openOnHover)
+                    .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)
@@ -573,6 +597,11 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                 }
                 #endif
+                Toggle("Answer questions and permissions from terminal sessions in the notch", isOn: $terminalCardsEnabled)
+                Text("Off: sessions in Warp, Terminal, iTerm… show in the notch, but their questions and permission requests are asked in the terminal. On: the notch shows them first, and the terminal waits until you answer there or close the island (up to 2 min).")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 #if !APPSTORE
                 if showDiff {
@@ -1943,6 +1972,7 @@ struct SettingsView: View {
             if def.id == "agent_muse"          && !HookServer.museHooksInstalled()       { return String(localized: "Hooks not installed") }
             if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
             if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
+            if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return String(localized: "Not installed") }
             #endif
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
@@ -1957,9 +1987,31 @@ struct SettingsView: View {
             return nil
         }()
         HStack(spacing: 8) {
-            Circle()
-                .fill(Color(hex: def.color))
-                .frame(width: 10, height: 10)
+            // The dot is the row's colour control: it looks as it always did,
+            // and a click opens the palette.
+            Button {
+                colorPalettePill = def.id
+            } label: {
+                Circle()
+                    .fill(Color(hex: def.color))
+                    .frame(width: 10, height: 10)
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Color"))
+            .accessibilityLabel(Text(def.name + " · " + String(localized: "Color")))
+            .popover(isPresented: Binding(
+                get: { colorPalettePill == def.id },
+                set: { open in if !open && colorPalettePill == def.id { colorPalettePill = nil } }
+            ), arrowEdge: .bottom) {
+                PillColorPalette(
+                    current: def.color,
+                    isCustom: state.pillColors[def.id] != nil,
+                    pick: { hex in
+                        state.setPillColor(def.id, hex)
+                        colorPalettePill = nil
+                    }
+                )
+            }
             Text(def.name)
                 .font(.system(size: 12))
                 .foregroundColor(atMax ? .secondary : .primary)
@@ -1982,6 +2034,48 @@ struct SettingsView: View {
                 .disabled(atMax)
             }
         }
+    }
+}
+
+// MARK: - Pill colour palette (Active pills, opened from a row's dot)
+
+private struct PillColorPalette: View {
+    /// The colour the pill is painted with now.
+    let current: String
+    /// The user picked it: "Default" is offered, to go back to the catalog's.
+    let isCustom: Bool
+    /// nil = back to the catalog's colour.
+    let pick: (String?) -> Void
+
+    var body: some View {
+        let now = PillColors.normalized(current)
+        HStack(spacing: 7) {
+            ForEach(PillColors.palette, id: \.self) { hex in
+                Button {
+                    pick(hex)
+                } label: {
+                    Circle()
+                        .fill(Color(hex: hex))
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.primary, lineWidth: 1.5)
+                                .padding(-3)
+                                .opacity(hex == now ? 1 : 0)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(hex))
+            }
+            if isCustom {
+                Button(String(localized: "Default")) {
+                    pick(nil)
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 }
 
