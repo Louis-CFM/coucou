@@ -2,7 +2,7 @@ name: Nova Windows
 on:
   workflow_dispatch:
   push:
-    branches: [main, nova/taller-chat]
+    branches: [main, nova/themes-classic]
     paths: ['windows/**', '.github/workflows/windows.yml']
 permissions:
   contents: read
@@ -54,12 +54,12 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: Nova-Windows-taller-chat-installer
+          name: Nova-Windows-themes-classic-installer
           path: windows/release/Nova-Windows-setup.exe
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: Nova-Windows-taller-chat-portable
+          name: Nova-Windows-themes-classic-portable
           path: |
             windows/target/release/nova.exe
             windows/target/release/nova-hook.exe

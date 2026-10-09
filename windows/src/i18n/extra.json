@@ -3360,6 +3360,83 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Appearance": {
+   "zh-Hans": "外观",
+   "hi": "दिखावट",
+   "es": "Apariencia",
+   "ar": "المظهر",
+   "fr": "Apparence",
+   "bn": "চেহারা",
+   "pt-BR": "Aparência",
+   "ru": "Внешний вид",
+   "id": "Tampilan"
+  },
+  "Theme": {
+   "zh-Hans": "主题",
+   "hi": "थीम",
+   "es": "Tema",
+   "ar": "السمة",
+   "fr": "Thème",
+   "bn": "থিম",
+   "pt-BR": "Tema",
+   "ru": "Тема",
+   "id": "Tema"
+  },
+  "Light": {
+   "zh-Hans": "浅色",
+   "hi": "हल्का",
+   "es": "Claro",
+   "ar": "فاتح",
+   "fr": "Clair",
+   "bn": "হালকা",
+   "pt-BR": "Claro",
+   "ru": "Светлая",
+   "id": "Terang"
+  },
+  "Dark": {
+   "zh-Hans": "深色",
+   "hi": "गहरा",
+   "es": "Oscuro",
+   "ar": "داكن",
+   "fr": "Sombre",
+   "bn": "গাঢ়",
+   "pt-BR": "Escuro",
+   "ru": "Тёмная",
+   "id": "Gelap"
+  },
+  "Switch to light mode": {
+   "zh-Hans": "切换到浅色模式",
+   "hi": "लाइट मोड पर जाएँ",
+   "es": "Cambiar al modo claro",
+   "ar": "التبديل إلى الوضع الفاتح",
+   "fr": "Passer en mode clair",
+   "bn": "হালকা মোডে যান",
+   "pt-BR": "Mudar para o modo claro",
+   "ru": "Переключить на светлую тему",
+   "id": "Beralih ke mode terang"
+  },
+  "Switch to dark mode": {
+   "zh-Hans": "切换到深色模式",
+   "hi": "डार्क मोड पर जाएँ",
+   "es": "Cambiar al modo oscuro",
+   "ar": "التبديل إلى الوضع الداكن",
+   "fr": "Passer en mode sombre",
+   "bn": "গাঢ় মোডে যান",
+   "pt-BR": "Mudar para o modo escuro",
+   "ru": "Переключить на тёмную тему",
+   "id": "Beralih ke mode gelap"
+  },
+  "Quit Nova": {
+   "zh-Hans": "退出 Nova",
+   "hi": "Nova बंद करें",
+   "es": "Salir de Nova",
+   "ar": "إغلاق Nova",
+   "fr": "Quitter Nova",
+   "bn": "Nova বন্ধ করুন",
+   "pt-BR": "Sair do Nova",
+   "ru": "Закрыть Nova",
+   "id": "Keluar dari Nova"
   }
  }
 }

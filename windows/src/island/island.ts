@@ -12,6 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { applyTheme } from "../core/theme";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../nova/engine";
 import { Greeting } from "../nova/greeting";
@@ -1197,6 +1198,7 @@ export class Island {
 
   /** Applies settings coming from Rust at boot. */
   applySettings() {
+    applyTheme(State.settings.theme);
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;

@@ -1,0 +1,13 @@
+import { test, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { installFakeDom } from './fakedom.mjs';
+import { calls } from './tauri.mjs';
+const dom=installFakeDom();document.documentElement=dom.root();
+const { applyTheme, nextTheme, normalizeTheme }=await import('../src/core/theme.ts');
+const { buildAppearanceControls }=await import('../src/views/appearance.ts');
+const { DEFAULT_SETTINGS, State }=await import('../src/core/state.ts');
+beforeEach(()=>{State.settings={...DEFAULT_SETTINGS};calls.length=0;document.documentElement.dataset.theme='dark';});
+test('old or invalid appearance defaults to dark',()=>{for(const v of [undefined,null,'system','bad',42])assert.equal(normalizeTheme(v),'dark');assert.equal(DEFAULT_SETTINGS.theme,'dark');});
+test('light appearance updates only the root theme attribute',()=>{assert.equal(applyTheme('light'),'light');assert.equal(document.documentElement.dataset.theme,'light');assert.equal(applyTheme('dark'),'dark');assert.equal(document.documentElement.dataset.theme,'dark');});
+test('switching toggles both directions and saves the preference',()=>{const c=buildAppearanceControls();c.toggle.fire('click');assert.equal(State.settings.theme,'light');assert.equal(document.documentElement.dataset.theme,'light');assert.equal(c.toggle.getAttribute('aria-pressed'),'true');assert.equal(calls.at(-1)[0],'save_settings');assert.equal(calls.at(-1)[1].settings.theme,'light');c.toggle.fire('click');assert.equal(State.settings.theme,'dark');assert.equal(nextTheme('dark'),'light');assert.equal(nextTheme('light'),'dark');});
+test('top-right cross quits the app rather than collapsing the chat',()=>{const c=buildAppearanceControls();assert.equal(c.quit.getAttribute('aria-label'),'Quit Nova');c.quit.fire('click');assert.equal(calls.at(-1)[0],'quit_app');assert.ok(!calls.some(x=>x[0]==='set_collapsed'));});

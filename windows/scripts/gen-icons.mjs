@@ -13,18 +13,17 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "src-tauri", "ic
 
 // ── Nova ─────────────────────────────────────────────────────────────────────
 
-const BASE_TOP = [98, 239, 211]; // #62EFD3
-const BASE_BOTTOM = [14, 133, 136]; // #0E8588
-const INK = [10, 39, 49]; // #0A2731
+const BASE_TOP = [255, 250, 245]; // #FFFAF5
+const BASE_BOTTOM = [221, 204, 191]; // #DDCCBF
+const INK = [26, 20, 18]; // #1A1412
 const RIM = [0, 0, 0];
 
 const SS = 4; // supersampling factor
 
 /** Superellipse (exponent 2.7) test in body-local coordinates. */
 function insideBody(x, y, rx, ry) {
-  const nx = Math.abs(x / rx);
-  const ny = Math.abs(y / ry);
-  return nx * nx + ny * ny <= 1 && nx + ny <= 1.35;
+  const n = 2.7;
+  return Math.pow(Math.abs(x / rx), n) + Math.pow(Math.abs(y / ry), n) <= 1;
 }
 
 function insidePill(x, y, w, h) {
@@ -70,8 +69,8 @@ function renderNova(size) {
           if (!insideBody(px0, py0, rx, ry)) continue;
           bodyHits++;
           if (
-            insidePill(px0 + ex, py0 - ey, ew * 1.4, eh * 0.7) ||
-            insidePill(px0 - ex, py0 - ey, ew * 1.4, eh * 0.7)
+            insidePill(px0 + ex, py0 - ey, ew, eh) ||
+            insidePill(px0 - ex, py0 - ey, ew, eh)
           ) {
             eyeHits++;
           }

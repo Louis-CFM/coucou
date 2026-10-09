@@ -10,6 +10,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { applyTheme, normalizeTheme } from "../core/theme";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -30,6 +31,19 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+let themePicker: HTMLSelectElement | null = null;
+
+function appearanceSection(): HTMLElement {
+  themePicker = h("select", { "aria-label": t("Theme") }) as HTMLSelectElement;
+  themePicker.append(h("option", { value: "dark", text: t("Dark") }), h("option", { value: "light", text: t("Light") }));
+  themePicker.value = normalizeTheme(settings.theme);
+  themePicker.addEventListener("change", () => {
+    settings.theme = normalizeTheme(themePicker!.value);
+    applyTheme(settings.theme);
+    void save();
+  });
+  return h("section", {}, h("h2", { text: t("Appearance") }), h("div", { class: "row" }, h("label", { text: t("Theme") }), themePicker));
+}
 
 const root = document.getElementById("settings-root")!;
 
@@ -1295,6 +1309,7 @@ async function main() {
     version = boot.version;
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
+  applyTheme(settings.theme);
   applyDirection();
   onLanguageChange(() => {
     applyDirection();
@@ -1306,6 +1321,8 @@ async function main() {
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
+    applyTheme(settings.theme);
+    if (themePicker) themePicker.value = normalizeTheme(settings.theme);
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
@@ -1359,6 +1376,7 @@ async function render() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Nova" }), h("span", { class: "version", text: version })),
+    appearanceSection(),
     claudeSection(status),
     agentsSection(agents),
     planSection(status),

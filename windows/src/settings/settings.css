@@ -427,3 +427,26 @@ select option {
 html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
   direction: ltr;
 }
+
+/* Uses the same saved theme as the island. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #252830; --dim: #5b626d; --dim-2: #68717d;
+  --bg: #f6f7f9; --card: #fff; --hairline: rgba(35,40,48,.15);
+  --green: #168243; --red: #b82837; --amber: #95610c;
+}
+[data-theme="light"] button { background: #e9edf2; }
+[data-theme="light"] button:hover:not(:disabled) { background: #dce2ea; }
+[data-theme="light"] button.primary { background: #252830; color: #fff; }
+[data-theme="light"] button.primary:hover:not(:disabled) { background: #404650; }
+[data-theme="light"] button.danger { background: #ffebed; color: #a82132; }
+[data-theme="light"] :is(input[type="number"],input[type="text"],input[type="password"],select,.diff) { background: #f4f6f9; color: var(--ink); }
+[data-theme="light"] select option { background: #fff; color: #252830; }
+[data-theme="light"] :is(input:focus,select:focus) { border-color: #7d8b9d; }
+[data-theme="light"] .switch { background: #b9c2ce; }
+[data-theme="light"] .switch.on { background: var(--green); }
+[data-theme="light"] input[type="range"] { background: #b9c2ce; }
+[data-theme="light"] input[type="range"]::-webkit-slider-thumb { background: #4c5869; }
+[data-theme="light"] :is(.diff .add,.notice.ok) { color: #146e36; }
+[data-theme="light"] :is(.diff .del,.notice.err) { color: #a82132; }
+[data-theme="light"] .notice.warn { color: #83520d; }

@@ -13,6 +13,8 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    /// Island and settings appearance; older settings keep the dark default.
+    pub theme: String,
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
@@ -95,6 +97,7 @@ fn default_model() -> String {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            theme: "dark".into(),
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
@@ -377,6 +380,7 @@ mod tests {
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".
     const CUSTOM: &str = r##"{
+  "theme": "light",
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
@@ -763,6 +767,12 @@ mod tests {
     }
 
     #[test]
+    fn a_missing_theme_keeps_the_old_dark_appearance() {
+        assert_eq!(parse(&custom_with("theme", None)).unwrap().theme, "dark");
+        assert_eq!(parse(&custom_with("theme", Some(json!("light")))).unwrap().theme, "light");
+    }
+
+    #[test]
     fn every_field_survives_a_save_and_a_load() {
         let (dir, file) = scratch("round-trip");
         let settings: Settings = serde_json::from_str(CUSTOM).unwrap();
@@ -780,6 +790,7 @@ mod tests {
         assert_eq!(
             keys,
             [
+                "theme",
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",

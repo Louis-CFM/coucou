@@ -98,6 +98,8 @@ export interface IntegrationInfo {
 }
 
 export interface Settings {
+  /** Persisted island and settings appearance. */
+  theme: "light" | "dark";
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
@@ -154,6 +156,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  theme: "dark",
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,

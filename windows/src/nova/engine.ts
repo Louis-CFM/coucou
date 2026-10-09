@@ -1,4 +1,4 @@
-// Nova — direct port of Nova/Sources/App/BotEngine.swift to Canvas 2D.
+// Nova — direct port of NotchBuddy/Sources/App/BotEngine.swift to Canvas 2D.
 // Same constants, same tweens, same easings, same particles. The only intentional
 // difference is the `happy`/`wink` eye arc, which follows the prototype
 // (design/prototype/notch-buddy.html, the visual source of truth) — the Swift
@@ -67,9 +67,9 @@ const EYE_W = 0.25;
 const EYE_H = 0.27;
 const EYE_SP = 0.37;
 const EYE_P = -0.12;
-const BASE_TOP: RGB = [0.384, 0.937, 0.827]; // #62EFD3
-const BASE_BOTTOM: RGB = [0.055, 0.522, 0.533]; // #0E8588
-const INK = "rgb(10,39,49)"; // #0A2731
+const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
+const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
+const INK = "rgb(26,20,18)"; // #1A1412
 const MINI_INK = "rgb(16,19,26)"; // #10131A
 
 const C = {
@@ -372,7 +372,7 @@ export class BotEngine {
     this.anim("roll", [[Math.PI * 2 * turns, durationMs, Ease.inOut]], () => { this.roll = 0; });
   }
 
-  /** Peek wave — the "nova". Timings from BotEngine.greet(). */
+  /** Peek wave — the "coucou". Timings from BotEngine.greet(). */
   greet() {
     const t = now();
     const tok = ++this.greetToken;
@@ -831,7 +831,7 @@ export class BotEngine {
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {
     const n = 72;
-    // Chamfered diamond: geometry only; morph timings and dynamics are preserved.
+    const expN = 2.0 / 2.7;
     const tw = R * 1.0;
     const th = R * 0.94;
     const tr = R * 0.42;
@@ -841,9 +841,8 @@ export class BotEngine {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const radius = Math.min(1, 1.35 / (Math.abs(ca) + Math.abs(sa)));
-      const px0 = rx * ca * radius;
-      const py0 = ry * sa * radius;
+      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
+      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
       let px = px0;
       let py = py0;
       if (m >= 0.005) {
@@ -967,7 +966,7 @@ export class BotEngine {
         break;
       case "pill": {
         const hh = Math.max(h * this.open, w * 0.3);
-        roundRectPath(x, -w * 0.7, -hh * 0.35, w * 1.4, hh * 0.7, w * 0.16);
+        roundRectPath(x, -w / 2, -hh / 2, w, hh, Math.min(w / 2, hh / 2));
         x.fill();
         break;
       }
@@ -1036,7 +1035,7 @@ export class BotEngine {
       case "wink":
         if (sd < 0) {
           const hh = Math.max(h * this.open, w * 0.3);
-          roundRectPath(x, -w * 0.7, -hh * 0.35, w * 1.4, hh * 0.7, w * 0.16);
+          roundRectPath(x, -w / 2, -hh / 2, w, hh, Math.min(w / 2, hh / 2));
           x.fill();
         } else {
           x.lineWidth = w * 0.5;
