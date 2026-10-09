@@ -85,9 +85,12 @@ test("auto dresses for the season, any other choice is worn as is", () => {
 });
 
 test("the stored values are the Mac's, in the wardrobe's order", () => {
+  // graduationCap, headphones and flower are ahead of the Mac: its wardrobe
+  // reads them as "auto" until MochiWardrobe.swift gains them too.
   assert.deepEqual([...OUTFIT_SELECTIONS], [
     "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
     "bow", "scarf", "witchHat", "pumpkin", "santaHat", "bunnyEars",
+    "graduationCap", "headphones", "flower",
   ]);
   for (const sel of OUTFIT_SELECTIONS) assert.ok(OUTFIT_LABELS[sel], `${sel} has a label`);
 });

@@ -938,6 +938,174 @@ function bunnyEars(ctx: Ctx, H: Head) {
   }
 }
 
+// ── Graduation cap (the tassel swings on the spring lag) ─────────────────────
+
+function graduationCap(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
+  const s = 1.03;
+  const yEdge = 0.55;
+  const yTop = 0.98;
+  const d = 1.32;
+
+  // shadow on the head under the cap
+  ctx.save();
+  ctx.clip(body);
+  ctx.clip(capClip(H, yEdge - 0.12, 1));
+  ctx.fillStyle = "rgba(20,25,45,0.12)";
+  fillAll(ctx, H);
+  ctx.restore();
+
+  // skull cap
+  ctx.save();
+  ctx.clip(capClip(H, yEdge, s));
+  ctx.fillStyle = lin(ctx, H.rx * 0.4, -H.ry * 1.05, -H.rx * 0.5, -H.ry * 0.2, [[0, "#334155"], [1, "#0F172A"]]);
+  ctx.fill(bodyOutline(H.rx * s, H.ry * s));
+  ctx.restore();
+
+  // mortarboard: a flat diamond (corners front, back, left, right), with a
+  // slab of thickness under it
+  const corners: Vec3[] = [[0, yTop, d], [d, yTop, 0], [0, yTop, -d], [-d, yTop, 0]];
+  const quad = corners.map((c) => proj(H, c));
+  const drop = H.ry * 0.07;
+  const slab = new Path2D();
+  quad.forEach((q, i) => (i ? slab.lineTo(q.x, q.y + drop) : slab.moveTo(q.x, q.y + drop)));
+  slab.closePath();
+  ctx.fillStyle = "#0B1222";
+  ctx.fill(slab);
+  const board = new Path2D();
+  quad.forEach((q, i) => (i ? board.lineTo(q.x, q.y) : board.moveTo(q.x, q.y)));
+  board.closePath();
+  ctx.fillStyle = lin(ctx, quad[3].x, quad[0].y - H.ry * 0.3, quad[1].x, quad[0].y + H.ry * 0.1, [
+    [0, "#3E4C66"], [0.5, "#1E293B"], [1, "#101826"],
+  ]);
+  ctx.fill(board);
+  if (!simple) {
+    ctx.save();
+    ctx.clip(board);
+    ctx.fillStyle = rad(ctx, quad[0].x - H.rx * 0.2, quad[0].y - H.ry * 0.1, 0, H.R * 0.9, [
+      [0, "rgba(255,255,255,0.14)"], [1, "rgba(255,255,255,0)"],
+    ]);
+    ctx.fill(board);
+    ctx.restore();
+  }
+
+  // button, cord and tassel — the tassel hangs over the right corner and
+  // swings with the spring
+  const btn = proj(H, [0, yTop + 0.03, 0]);
+  const corner = quad[1];
+  const sway = H.physDx * H.rx * 0.22;
+  const end = { x: corner.x + sway * 1.3 + H.rx * 0.04, y: corner.y + H.ry * (0.52 + H.physDy * 0.1) };
+  ctx.strokeStyle = "#FBBF24";
+  ctx.lineWidth = H.R * 0.045;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(btn.x, btn.y);
+  ctx.quadraticCurveTo((btn.x + corner.x) / 2, Math.min(btn.y, corner.y) - H.ry * 0.03, corner.x, corner.y);
+  ctx.quadraticCurveTo(corner.x + sway * 0.6, corner.y + H.ry * 0.26, end.x, end.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(btn.x, btn.y, H.R * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = rad(ctx, btn.x - 1, btn.y - 1, 0, H.R * 0.09, [[0, "#FDE68A"], [1, "#D97706"]]);
+  ctx.fill();
+  // the tuft
+  const tw = H.R * 0.13;
+  const th = H.R * 0.26;
+  ctx.save();
+  ctx.translate(end.x, end.y);
+  ctx.rotate(sway / Math.max(1, H.rx) * 0.8);
+  roundRect(ctx, -tw / 2, 0, tw, th, tw * 0.3);
+  ctx.fillStyle = lin(ctx, -tw / 2, 0, tw / 2, th, [[0, "#FCD34D"], [1, "#B45309"]]);
+  ctx.fill();
+  roundRect(ctx, -tw * 0.62, -tw * 0.3, tw * 1.24, tw * 0.55, tw * 0.2);
+  ctx.fillStyle = "#F59E0B";
+  ctx.fill();
+  if (!simple) {
+    ctx.strokeStyle = "rgba(120,53,15,0.45)";
+    ctx.lineWidth = tw * 0.16;
+    for (const fx of [-tw * 0.25, 0, tw * 0.25]) {
+      ctx.beginPath();
+      ctx.moveTo(fx, th * 0.3);
+      ctx.lineTo(fx, th * 0.92);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// ── Headphones ────────────────────────────────────────────────────────────────
+
+function headphones(ctx: Ctx, H: Head, simple: boolean) {
+  // band over the crown: a circle in the head's x–y plane, so it turns with him
+  const band: P3[] = [];
+  for (let i = 0; i <= 40; i++) {
+    const a = -1.42 + (i / 40) * 2.84;
+    band.push(proj(H, [Math.sin(a) * 1.14, Math.cos(a) * 1.14, 0]));
+  }
+  ctx.lineCap = "round";
+  polyline(ctx, band);
+  ctx.strokeStyle = "#111827";
+  ctx.lineWidth = H.R * 0.16;
+  ctx.stroke();
+  // cushion under the top of the band
+  polyline(ctx, band.slice(12, 29));
+  ctx.strokeStyle = "#374151";
+  ctx.lineWidth = H.R * 0.09;
+  ctx.stroke();
+
+  // cups, pinned where the band ends
+  for (const sd of [-1, 1]) {
+    const q = proj(H, [sd * 1.1, -0.04, 0]);
+    const rx = H.R * 0.26;
+    const ry = H.R * 0.34;
+    ctx.save();
+    ctx.translate(q.x, q.y);
+    ctx.rotate(sd * 0.12 + H.yaw * 0.15);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = lin(ctx, -rx, -ry, rx, ry, [[0, "#1F2937"], [1, "#0B0F17"]]);
+    ctx.fill();
+    if (!simple) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx * 0.62, ry * 0.62, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(96,165,250,0.85)";
+      ctx.lineWidth = H.R * 0.035;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(-rx * 0.3, -ry * 0.35, rx * 0.22, ry * 0.18, -0.4, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ── Flower (tucked like the bow, on the other side) ───────────────────────────
+
+function flower(ctx: Ctx, H: Head) {
+  const a = proj(H, surf(0.86, -0.55, 1.02));
+  if (a.z < -0.2) return;
+  const s = H.R * 0.2;
+  const sq = Math.max(0.45, Math.cos(-0.55 + H.yaw));
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  ctx.rotate(-0.25 + H.yaw * 0.3);
+  ctx.scale(sq, 1);
+  for (let k = 0; k < 5; k++) {
+    const th = (k / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.save();
+    ctx.rotate(th);
+    ctx.beginPath();
+    ctx.ellipse(s * 0.62, 0, s * 0.52, s * 0.34, 0, 0, Math.PI * 2);
+    ctx.fillStyle = lin(ctx, s * 0.1, 0, s * 1.1, 0, [[0, "#FFD6E8"], [1, "#FF8CC6"]]);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.beginPath();
+  ctx.arc(0, 0, s * 0.34, 0, Math.PI * 2);
+  ctx.fillStyle = rad(ctx, -s * 0.08, -s * 0.1, 0, s * 0.45, [[0, "#FDE68A"], [1, "#F59E0B"]]);
+  ctx.fill();
+  ctx.restore();
+}
+
 // ── Layers and transitions ────────────────────────────────────────────────────
 
 let scratch: HTMLCanvasElement | null = null;
@@ -976,8 +1144,10 @@ function withLayer(ctx: Ctx, alpha: number, fn: (c: Ctx) => void) {
 }
 
 /** Glasses, bow, scarf and pumpkin are on the face: behind the head once it has turned away. */
-const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", "pumpkin"]);
-const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat"]);
+const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", "pumpkin", "flower"]);
+const HATS: ReadonlySet<Outfit> = new Set([
+  "beanie", "santaHat", "partyHat", "crown", "witchHat", "graduationCap", "headphones",
+]);
 
 export interface OutfitState {
   /** 0 = gone, 1 = fully on. Animated by the engine. */
@@ -997,6 +1167,7 @@ function drawFace(ctx: Ctx, outfit: Outfit, H: Head, body: Path2D, simple: boole
     case "scarf": scarf(ctx, H); break;
     case "pumpkin": pumpkin(ctx, H, body, simple); break;
     case "bow": bow(ctx, H); break;
+    case "flower": flower(ctx, H); break;
     default: break;
   }
 }
@@ -1055,7 +1226,7 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
     ctx.translate(0, (1 - p) * 0.25 * H.ry);
   } else if (outfit === "scarf") {
     ctx.translate(0, (1 - p) * 0.3 * H.ry);
-  } else if (outfit === "bow") {
+  } else if (outfit === "bow" || outfit === "flower") {
     ctx.scale(Math.max(0.001, posP), Math.max(0.001, posP));
   }
   withLayer(ctx, alpha, (l) => {
@@ -1065,6 +1236,8 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
       case "partyHat": partyHat(l, H, simple); break;
       case "crown": crownFront(l, H, body, simple); break;
       case "witchHat": witchHatFront(l, H, body); break;
+      case "graduationCap": graduationCap(l, H, body, simple); break;
+      case "headphones": headphones(l, H, simple); break;
       default: drawFace(l, outfit, H, body, simple);
     }
   });

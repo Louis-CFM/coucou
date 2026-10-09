@@ -892,6 +892,17 @@
    "ru": "Файл",
    "id": "File"
   },
+  "Flower": {
+   "zh-Hans": "小花",
+   "hi": "फूल",
+   "es": "Flor",
+   "ar": "زهرة",
+   "fr": "Fleur",
+   "bn": "ফুল",
+   "pt-BR": "Flor",
+   "ru": "Цветок",
+   "id": "Bunga"
+  },
   "Folders can't be dropped yet.": {
    "zh-Hans": "暂时还不能拖放文件夹。",
    "hi": "फ़ोल्डर अभी नहीं छोड़े जा सकते।",
@@ -980,6 +991,17 @@
    "ru": "Перейти к ожидающему разрешению или вопросу",
    "id": "Buka izin atau pertanyaan yang menunggu"
   },
+  "Graduation cap": {
+   "zh-Hans": "学位帽",
+   "hi": "ग्रेजुएशन कैप",
+   "es": "Birrete",
+   "ar": "قبعة التخرج",
+   "fr": "Toque de diplômé",
+   "bn": "গ্র্যাজুয়েশন ক্যাপ",
+   "pt-BR": "Capelo",
+   "ru": "Шапочка выпускника",
+   "id": "Topi wisuda"
+  },
   "Hand the next message to Claude Code as a task": {
    "zh-Hans": "把下一条消息作为任务交给 Claude Code",
    "hi": "अगला संदेश Claude Code को टास्क के रूप में सौंपें",
@@ -990,6 +1012,17 @@
    "pt-BR": "Entregar a próxima mensagem ao Claude Code como uma tarefa",
    "ru": "Передать следующее сообщение Claude Code как задачу",
    "id": "Serahkan pesan berikutnya ke Claude Code sebagai tugas"
+  },
+  "Headphones": {
+   "zh-Hans": "耳机",
+   "hi": "हेडफ़ोन",
+   "es": "Auriculares",
+   "ar": "سماعات رأس",
+   "fr": "Casque audio",
+   "bn": "হেডফোন",
+   "pt-BR": "Fones de ouvido",
+   "ru": "Наушники",
+   "id": "Headphone"
   },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
