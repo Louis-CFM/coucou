@@ -1,7 +1,7 @@
 //! The little bit of Win32 the relay needs: who we are, and who is on the other
 //! end of the pipe.
 //!
-//! Named pipes live in a machine-wide namespace, so `\\.\pipe\coucou-<name>` can
+//! Named pipes live in a machine-wide namespace, so `\\.\pipe\nova-<name>` can
 //! be created by *any* account that gets there first. Two defences, both cheap:
 //! the pipe name carries our SID, and once connected we check the server process
 //! really belongs to us before sending anything.
@@ -23,13 +23,13 @@ use crate::CONNECT_TIMEOUT;
 /// the one error worth retrying: the server exists and a slot will free up.
 const ERROR_PIPE_BUSY: i32 = 231;
 
-/// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
+/// `\\.\pipe\nova-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
 fn pipe_path() -> String {
     let key = current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
-    format!(r"\\.\pipe\coucou-{key}")
+    format!(r"\\.\pipe\nova-{key}")
 }
 
 /// Opens the pipe. Retries only while the server is busy: any other error means

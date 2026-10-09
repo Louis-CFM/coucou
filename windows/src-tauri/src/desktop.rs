@@ -1,6 +1,6 @@
-// Mochi on the desktop: his own small window, wherever the user dropped him.
-// Window side of DesktopMochi.swift, plus the geometry half of
-// DesktopMochiLogic.swift (`logic` below, with its tests).
+// Nova on the desktop: his own small window, wherever the user dropped him.
+// Window side of DesktopNova.swift, plus the geometry half of
+// DesktopNovaLogic.swift (`logic` below, with its tests).
 //
 // The island page runs his life cycle (src/island/desktop.ts): fly out, back to
 // the island for an alert, home. This file owns the window — where it is, which
@@ -27,13 +27,13 @@ use crate::island::{self, PollGate};
 use crate::platform::{self, DesktopMode, MouseShape};
 use crate::settings::{self, DesktopSpot};
 
-pub const LABEL: &str = "mochi";
+pub const LABEL: &str = "nova";
 
-/// Side of the square window, logical pixels (DesktopMochiLogic.panelSize).
+/// Side of the square window, logical pixels (DesktopNovaLogic.panelSize).
 pub const SIZE: f64 = 120.0;
-/// Kept between him and the edges of the work area (DesktopMochiLogic.clampMargin).
+/// Kept between him and the edges of the work area (DesktopNovaLogic.clampMargin).
 const MARGIN: f64 = 24.0;
-/// To and from the island (DesktopMochi.swift: 0.45 s, ease in-out).
+/// To and from the island (DesktopNova.swift: 0.45 s, ease in-out).
 const FLIGHT_MS: u64 = 450;
 /// Settling into his spot after a drop (0.25 s, with a little overshoot).
 const SNAP_MS: u64 = 250;
@@ -81,7 +81,7 @@ pub mod logic {
     /// Radius of the clickable body, as a fraction of the window side.
     pub const BODY_RADIUS_FRACTION: f64 = 0.24;
 
-    /// Island panel, logical pixels: dropping Mochi on it brings him home.
+    /// Island panel, logical pixels: dropping Nova on it brings him home.
     pub const HOME_ZONE_W: f64 = crate::island::PANEL_W;
     pub const HOME_ZONE_H: f64 = crate::island::PANEL_H;
 
@@ -163,7 +163,7 @@ pub mod logic {
         }
     }
 
-    /// Top-left corner of the window when Mochi sits in the island: centred
+    /// Top-left corner of the window when Nova sits in the island: centred
     /// under the top edge, where the flights start and end.
     pub fn island_spot(island_center_x: f64, island_top: f64, size: f64, scale: f64) -> (f64, f64) {
         (island_center_x - size * scale / 2.0, island_top)
@@ -288,7 +288,7 @@ pub fn setup(app: &AppHandle) {
             None => mode = DesktopMode::Off,
         }
     }
-    crate::log::line(format!("desktop Mochi: {}", mode.as_str()));
+    crate::log::line(format!("desktop Nova: {}", mode.as_str()));
     let desktop = Arc::new(Desktop::new(mode));
     app.manage(desktop.clone());
     // Nothing takes the mouse until he is out.
@@ -301,17 +301,17 @@ pub fn setup(app: &AppHandle) {
 fn page_url(app: &AppHandle) -> WebviewUrl {
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/mochi.html");
+        base.set_path("/nova.html");
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("mochi.html".into())
+    WebviewUrl::App("nova.html".into())
 }
 
 fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     let mut builder = WebviewWindowBuilder::new(app, LABEL, page_url(app))
         .additional_browser_args(crate::BROWSER_ARGS)
-        .title("Mochi")
+        .title("Nova")
         .inner_size(SIZE, SIZE)
         // GTK won't size a non-resizable window below its natural size (see
         // island::apply_geometry). Windows would grow resize borders instead.
@@ -336,7 +336,7 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     match built {
         Ok(win) => Some(win),
         Err(err) => {
-            crate::log::line(format!("desktop Mochi window failed: {err}"));
+            crate::log::line(format!("desktop Nova window failed: {err}"));
             None
         }
     }
@@ -398,10 +398,10 @@ fn refresh_layer_display(app: &AppHandle, d: &Desktop) {
     if d.mode != DesktopMode::Layer {
         return;
     }
-    let (Some(island), Some(mochi)) = (island::window(app), window(app)) else { return };
+    let (Some(island), Some(nova)) = (island::window(app), window(app)) else { return };
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
-        let _ = tx.send(platform::layer_display(&island, &mochi));
+        let _ = tx.send(platform::layer_display(&island, &nova));
     });
     if let Ok(Some(size)) = rx.recv_timeout(Duration::from_secs(1)) {
         d.inner.lock().unwrap().display = Some(size);
@@ -548,11 +548,11 @@ async fn fly(app: &AppHandle, d: &Desktop, to: (f64, f64), ms: u64, ease: fn(f64
 }
 
 /// Saves what changed about him in the preferences.
-fn remember(app: &AppHandle, change: impl FnOnce(&mut settings::DesktopMochiPref)) {
+fn remember(app: &AppHandle, change: impl FnOnce(&mut settings::DesktopNovaPref)) {
     let Some(shared) = app.try_state::<crate::Shared>() else { return };
     let snapshot = {
         let mut s = shared.settings.lock().unwrap();
-        change(&mut s.desktop_mochi);
+        change(&mut s.desktop_nova);
         s.clone()
     };
     if let Err(err) = settings::save(&snapshot) {
@@ -573,7 +573,7 @@ fn remember_spot(app: &AppHandle, d: &Desktop, pos: (f64, f64), on_desktop: bool
 /// with the desktop shortcut: then the first-visit corner.
 fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64)> {
     let all = displays(app, d);
-    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock().unwrap().desktop_mochi.spot.clone());
+    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock().unwrap().desktop_nova.spot.clone());
     // A fresh start in the corner of the island's display.
     let corner = || {
         let (cx, top, _) = island_anchor(app, d)?;
@@ -619,7 +619,7 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
         }
         remember_spot(app, d, spot, true);
     }
-    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
+    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-nova-dropped", Dropped { from, home });
 }
 
 // ── Poll (Windows) ────────────────────────────────────────────────────────────
@@ -679,19 +679,19 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
 // ── Commands ──────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn desktop_mochi_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> DesktopInfo {
+pub fn desktop_nova_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> DesktopInfo {
     let on_desktop = app
         .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().desktop_mochi.on_desktop)
+        .map(|s| s.settings.lock().unwrap().desktop_nova.on_desktop)
         .unwrap_or(false);
     DesktopInfo { mode: desktop.mode.as_str(), on_desktop: on_desktop && desktop.mode != DesktopMode::Off }
 }
 
-/// Dragging Mochi out of the island: the window appears under the pointer
+/// Dragging Nova out of the island: the window appears under the pointer
 /// (`x`, `y`: island-window client coordinates) and follows it — the cursor
-/// poll carries it on Windows, `desktop_mochi_carry` elsewhere.
+/// poll carries it on Windows, `desktop_nova_carry` elsewhere.
 #[tauri::command]
-pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
+pub async fn desktop_nova_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Off || window(&app).is_none() || d.inner.lock().unwrap().shown {
         return false;
@@ -709,9 +709,9 @@ pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     true
 }
 
-/// Linux: the pointer moved while Mochi is being dragged out of the island.
+/// Linux: the pointer moved while Nova is being dragged out of the island.
 #[tauri::command]
-pub async fn desktop_mochi_carry(app: AppHandle, x: f64, y: f64) {
+pub async fn desktop_nova_carry(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Poll || d.inner.lock().unwrap().carry.is_none() {
         return;
@@ -722,9 +722,9 @@ pub async fn desktop_mochi_carry(app: AppHandle, x: f64, y: f64) {
     }
 }
 
-/// Linux: the button went up while Mochi was being dragged out of the island.
+/// Linux: the button went up while Nova was being dragged out of the island.
 #[tauri::command]
-pub async fn desktop_mochi_carry_end(app: AppHandle, x: f64, y: f64) {
+pub async fn desktop_nova_carry_end(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Poll || d.inner.lock().unwrap().carry.is_none() {
         return;
@@ -736,10 +736,10 @@ pub async fn desktop_mochi_carry_end(app: AppHandle, x: f64, y: f64) {
     finish_drop(&app, &d, pos, Source::Island).await;
 }
 
-/// The page saw a drag start on Mochi. Returns his top-left corner in the
+/// The page saw a drag start on Nova. Returns his top-left corner in the
 /// mode's space, which the page needs to draw him in the overlay (layer mode).
 #[tauri::command]
-pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
+pub async fn desktop_nova_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     let pos = {
         let i = d.inner.lock().unwrap();
@@ -774,7 +774,7 @@ pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
 
 /// X11: the page moves the window during its drag (top-left, physical pixels).
 #[tauri::command]
-pub async fn desktop_mochi_drag_move(app: AppHandle, x: f64, y: f64) {
+pub async fn desktop_nova_drag_move(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Window && d.inner.lock().unwrap().landed {
         place(&app, &d, (x, y));
@@ -784,7 +784,7 @@ pub async fn desktop_mochi_drag_move(app: AppHandle, x: f64, y: f64) {
 /// Linux: the page's drag ended with the top-left corner at (`x`, `y`), in the
 /// mode's space. On Windows the poll sees the release itself.
 #[tauri::command]
-pub async fn desktop_mochi_drag_end(app: AppHandle, x: f64, y: f64) {
+pub async fn desktop_nova_drag_end(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Poll || !d.inner.lock().unwrap().landed {
         return;
@@ -810,14 +810,14 @@ pub async fn desktop_mochi_drag_end(app: AppHandle, x: f64, y: f64) {
 /// there so the next launch doesn't try again. `anywhere` (the desktop
 /// shortcut) lands him in the first-visit corner instead.
 #[tauri::command]
-pub async fn desktop_mochi_fly_out(app: AppHandle, anywhere: Option<bool>) -> bool {
+pub async fn desktop_nova_fly_out(app: AppHandle, anywhere: Option<bool>) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if d.mode == DesktopMode::Off || window(&app).is_none() {
         return false;
     }
     refresh_layer_display(&app, &d);
     let Some(target) = target_spot(&app, &d, anywhere.unwrap_or(false)) else {
-        crate::log::line("desktop Mochi: his spot is on a display that is gone — he stays home");
+        crate::log::line("desktop Nova: his spot is on a display that is gone — he stays home");
         remember(&app, |p| p.on_desktop = false);
         return false;
     };
@@ -844,7 +844,7 @@ pub async fn desktop_mochi_fly_out(app: AppHandle, anywhere: Option<bool>) -> bo
 /// click, drop on the island); without it he is only away for an alert and
 /// flies back out once it is answered.
 #[tauri::command]
-pub async fn desktop_mochi_fly_home(app: AppHandle, forget: bool) -> bool {
+pub async fn desktop_nova_fly_home(app: AppHandle, forget: bool) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     if !d.inner.lock().unwrap().shown {
         if forget {
@@ -878,7 +878,7 @@ pub async fn desktop_mochi_fly_home(app: AppHandle, forget: bool) -> bool {
 
 /// The page dozed off (or woke up). Asleep, nothing polls.
 #[tauri::command]
-pub fn desktop_mochi_set_asleep(app: AppHandle, desktop: State<Arc<Desktop>>, asleep: bool) {
+pub fn desktop_nova_set_asleep(app: AppHandle, desktop: State<Arc<Desktop>>, asleep: bool) {
     let changed = {
         let mut i = desktop.inner.lock().unwrap();
         let changed = i.asleep != asleep;
@@ -894,7 +894,7 @@ pub fn desktop_mochi_set_asleep(app: AppHandle, desktop: State<Arc<Desktop>>, as
 mod tests {
     use super::logic::*;
 
-    // Mirrors tests/DesktopMochiTests.swift (isOverBody, clampOrigin), in the
+    // Mirrors tests/DesktopNovaTests.swift (isOverBody, clampOrigin), in the
     // y-down coordinates every PC uses.
 
     #[test]

@@ -1,5 +1,5 @@
-// Mochi on the desktop, island side: runs his life cycle (the controller in
-// mochi/desktop-logic.ts) against the real app, tells the desktop window what
+// Nova on the desktop, island side: runs his life cycle (the controller in
+// nova/desktop-logic.ts) against the real app, tells the desktop window what
 // to show, and handles the drag out of the island. The window itself lives in
 // src-tauri/src/desktop.rs and draws him in src/desktop/main.ts.
 
@@ -9,28 +9,28 @@ import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { desktopDances } from "../core/spotify";
 import {
-  DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
-} from "../mochi/desktop-logic";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+  DESKTOP_EVENTS, DesktopNovaController, alertActive, type DesktopSnapshot,
+} from "../nova/desktop-logic";
+import { SeasonCache, parseOutfit } from "../nova/wardrobe";
 
-/** Label of the desktop Mochi's window (desktop.rs LABEL). */
-const WINDOW = "mochi";
+/** Label of the desktop Nova's window (desktop.rs LABEL). */
+const WINDOW = "nova";
 
 /** What the life cycle needs from the island. */
 export interface DesktopHost {
   /** Shows the island (compact) if it is hidden. */
   reveal(): void;
-  /** Right-click on the desktop Mochi: the wardrobe, or back. */
+  /** Right-click on the desktop Nova: the wardrobe, or back. */
   wardrobeFromDesktop(): void;
-  /** Three pokes on the desktop Mochi. */
+  /** Three pokes on the desktop Nova. */
   dizzyFromDesktop(): void;
 }
 
 export class DesktopLink {
   mode: DesktopMode = "off";
-  readonly controller: DesktopMochiController;
+  readonly controller: DesktopNovaController;
 
-  /** The pointer is dragging Mochi out of the island. */
+  /** The pointer is dragging Nova out of the island. */
   carrying = false;
 
   private seasons = new SeasonCache();
@@ -41,11 +41,11 @@ export class DesktopLink {
 
   constructor(host: DesktopHost) {
     this.host = host;
-    this.controller = new DesktopMochiController({
+    this.controller = new DesktopNovaController({
       flyOut: async (anywhere) => (await Bridge.desktopFlyOut(anywhere)) ?? false,
       flyHome: async (forget) => (await Bridge.desktopFlyHome(forget)) ?? true,
       setAway: (away) => {
-        State.mochiOnDesktop = away;
+        State.novaOnDesktop = away;
         State.notify();
       },
       emote: (emote: BotEmoteName, duration = 1.8) =>
@@ -102,20 +102,20 @@ export class DesktopLink {
 
   // ── Drag out of the island ──────────────────────────────────────────────────
 
-  /** Whether Mochi can be picked up from the island right now. */
+  /** Whether Nova can be picked up from the island right now. */
   canPickUp(): boolean {
-    return this.supported && !State.paused && !State.mochiOnDesktop && this.controller.phase === "home";
+    return this.supported && !State.paused && !State.novaOnDesktop && this.controller.phase === "home";
   }
 
   /** (x, y): the pointer, island-window coordinates. */
   pickUp(x: number, y: number) {
     this.carrying = true;
-    State.mochiOnDesktop = true;
+    State.novaOnDesktop = true;
     State.notify();
     void Bridge.desktopPickUp(x, y).then((ok) => {
       if (ok) return;
       this.carrying = false;
-      State.mochiOnDesktop = false;
+      State.novaOnDesktop = false;
       State.notify();
     });
   }
@@ -146,7 +146,7 @@ export class DesktopLink {
       this.carrying = false;
       if (home) {
         // Dropped back on the island: he is simply there again.
-        State.mochiOnDesktop = false;
+        State.novaOnDesktop = false;
         State.notify();
       } else {
         this.controller.installed();
@@ -167,7 +167,7 @@ export class DesktopLink {
   private push() {
     const snapshot: DesktopSnapshot = {
       state: State.effectiveState,
-      outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit)),
+      outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.novaOutfit)),
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
       paused: State.paused,

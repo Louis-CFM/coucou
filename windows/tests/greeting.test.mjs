@@ -1,19 +1,19 @@
-// The launch greeting (src/mochi/greeting.ts): Mochi must never be cut off by
+// The launch greeting (src/nova/greeting.ts): Nova must never be cut off by
 // the island while it grows, while he bounces and waves, or while it shrinks
 // back to the compact island.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GREETING_END, GREETING_W, greetingPose, mochiBounds } from "../src/mochi/greeting.ts";
+import { GREETING_END, GREETING_W, greetingPose, novaBounds } from "../src/nova/greeting.ts";
 import { Tracked } from "../src/core/anim.ts";
 import { COMPACT_W, NOTCH_H, NOTCH_W, VIEW_LAYOUTS } from "../src/core/layout.ts";
 
 const FRAME = 1 / 60;
 const SLACK = 0.5; // anti-aliasing
 
-/** Mochi's box against the island's, which is centred in the 640 px greeting canvas. */
+/** Nova's box against the island's, which is centred in the 640 px greeting canvas. */
 function assertInside(t, tc, w, h) {
-  const b = mochiBounds(greetingPose(t, tc));
+  const b = novaBounds(greetingPose(t, tc));
   if (!b) return;
   const left = GREETING_W / 2 - w / 2;
   const right = GREETING_W / 2 + w / 2;
@@ -46,11 +46,11 @@ function run(tc) {
   }
 }
 
-test("Mochi stays inside the island for the whole greeting", () => {
+test("Nova stays inside the island for the whole greeting", () => {
   run(Number.POSITIVE_INFINITY);
 });
 
-test("Mochi stays inside the island when the greeting is cut short", () => {
+test("Nova stays inside the island when the greeting is cut short", () => {
   for (let tc = 0.3; tc < GREETING_END + 0.4; tc += 0.1) run(tc);
 });
 
@@ -64,7 +64,7 @@ test("he slides to the side to wave, then comes back to the middle", () => {
   assert.equal(back.handL, 0);
 });
 
-test("he lands where the compact island's Mochi sits", () => {
+test("he lands where the compact island's Nova sits", () => {
   const end = greetingPose(10, 5);
   assert.equal(end.y, NOTCH_H / 2);
   assert.equal(end.x, GREETING_W / 2 - COMPACT_W / 2 + 40);

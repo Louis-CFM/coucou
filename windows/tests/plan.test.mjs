@@ -223,7 +223,7 @@ test("the Codex pill needs only its switch, on the overview", () => {
   assert.equal(codexPillVisible(), false);
 });
 
-test("an open card follows its pill, and Mochi wears that plan's colour", () => {
+test("an open card follows its pill, and Nova wears that plan's colour", () => {
   State.settings.showPlanInNotch = true;
   State.settings.planRelayInstalled = true;
   State.showingPlanDetail = true;

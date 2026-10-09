@@ -1,5 +1,5 @@
 {
-  "name": "coucou-windows",
+  "name": "nova-windows",
   "private": true,
   "version": "0.3.0",
   "type": "module",
@@ -10,8 +10,8 @@
     "test": "node --import ./tests/setup.mjs --test \"tests/**/*.test.mjs\"",
     "icons": "node scripts/gen-icons.mjs",
     "tauri": "tauri",
-    "predev": "cargo build --release -p coucou-hook",
-    "prebuild": "cargo build --release -p coucou-hook",
+    "predev": "cargo build --release -p nova-hook",
+    "prebuild": "cargo build --release -p nova-hook",
     "pack": "tauri build && node scripts/pack.mjs"
   },
   "devDependencies": {

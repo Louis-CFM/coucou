@@ -1,11 +1,11 @@
 // Codex plan usage — the same source as CodexPlanGauge.swift on the Mac.
 //
-// Coucou asks the Codex CLI itself: `codex app-server` (the JSON-RPC server
+// Nova asks the Codex CLI itself: `codex app-server` (the JSON-RPC server
 // behind Codex's /status) is started, asked `account/rateLimits/read`, and
-// stopped. Coucou makes no network call of its own and reads no credential:
+// stopped. Nova makes no network call of its own and reads no credential:
 // Codex answers with its own sign-in, exactly as /status does, and nothing is
 // installed or written. It runs only when the pill shows or is clicked, at most
-// once at a time, for 15 s at most, and is skipped while Coucou is paused.
+// once at a time, for 15 s at most, and is skipped while Nova is paused.
 
 use std::cmp::Ordering;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -27,7 +27,7 @@ const MAX_TOTAL: usize = 2 * 1024 * 1024;
 
 /// What the Mac sends: initialize, initialized, then the one question.
 const REQUESTS: &str = concat!(
-    r#"{"id":1,"method":"initialize","params":{"clientInfo":{"name":"coucou","version":"1"}}}"#,
+    r#"{"id":1,"method":"initialize","params":{"clientInfo":{"name":"nova","version":"1"}}}"#,
     "\n",
     r#"{"method":"initialized"}"#,
     "\n",
@@ -45,7 +45,7 @@ impl Drop for NotBusy {
 }
 
 /// The limits part of Codex's `account/rateLimits/read` answer, or `None` when
-/// Codex is not installed, not signed in, slow, already being asked, or Coucou
+/// Codex is not installed, not signed in, slow, already being asked, or Nova
 /// is paused. Blocking: call it off the main thread.
 pub fn read() -> Option<Value> {
     if crate::integrations::PAUSED.load(atomic::Ordering::Relaxed) {
