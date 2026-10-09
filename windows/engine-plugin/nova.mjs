@@ -9,7 +9,9 @@ const secretNames=['NOVA_PROVIDER_API_KEY','OPENCODE_SERVER_PASSWORD'];
 const ps=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
 const quote=s=>"'"+s.replaceAll("'","''")+"'";
 const protectedRoots=[path.join(process.env.APPDATA||'', 'Nova'),path.join(process.env.LOCALAPPDATA||'', 'Nova'),path.dirname(path.dirname(process.execPath))].map(p=>path.resolve(p).toLowerCase());
-async function protect(raw){if(typeof raw!=='string')return;let target=path.resolve(raw);let ancestor=target;while(true){try{const resolved=await realpath(ancestor);target=path.join(resolved,path.relative(ancestor,target));break;}catch{const parent=path.dirname(ancestor);if(parent===ancestor)break;ancestor=parent;}}const normalized=target.toLowerCase();if(protectedRoots.some(p=>normalized===p||normalized.startsWith(p+path.sep)))throw new Error('Nova credentials/runtime/install files are protected; use nova_history_search for approved chat recall');}
+async function canonical(raw){let target=path.resolve(raw);let ancestor=target;while(true){try{const resolved=await realpath(ancestor);target=path.join(resolved,path.relative(ancestor,target));break;}catch{const parent=path.dirname(ancestor);if(parent===ancestor)break;ancestor=parent;}}return target.toLowerCase();}
+let physicalRoots;
+async function protect(raw){if(typeof raw!=='string')return;const normalized=await canonical(raw);const roots=await(physicalRoots??=Promise.all(protectedRoots.map(canonical)));if(roots.some(p=>normalized===p||normalized.startsWith(p+path.sep)))throw new Error('Nova credentials/runtime/install files are protected; use nova_history_search for approved chat recall');}
 const prefix=`& ${quote(ps)} -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command `;
 
 export default async ()=>({
