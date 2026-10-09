@@ -78,6 +78,9 @@ enum ChatProvider: String, CaseIterable, Codable {
     case openai    = "openai"
     case ollama    = "ollama"
     case lmstudio  = "lmstudio"
+    /// A provider the user added (Settings → Chat → More providers); which one is
+    /// `AppState.activeCustomProviderID`. It has no pill and no fixed name or colour here.
+    case custom    = "custom"
 
     var displayName: String {
         switch self {
@@ -86,6 +89,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "OpenAI"
         case .ollama:    "Ollama"
         case .lmstudio:  "LM Studio"
+        case .custom:    "Custom"
         }
     }
 
@@ -96,6 +100,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "#10A37F"
         case .ollama:    "#FACC15"
         case .lmstudio:  "#A3E635"
+        case .custom:    "#9CA3AF"
         }
     }
 
@@ -106,6 +111,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
+        case .custom:    ""
         }
     }
 
@@ -116,6 +122,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "openai-api-key"
         case .ollama:    ""
         case .lmstudio:  ""
+        case .custom:    ""   // each custom provider names its own Keychain item
         }
     }
 
@@ -130,6 +137,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "ai_openai"
         case .ollama:    "ai_ollama"
         case .lmstudio:  "ai_lmstudio"
+        case .custom:    "ai_custom"
         }
     }
 

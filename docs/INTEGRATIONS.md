@@ -301,6 +301,60 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 ---
 
+## 5quater. Autres fournisseurs (compatibles OpenAI)
+
+**Plateforme** : macOS uniquement. Pas de pastille : les fournisseurs ajoutés apparaissent comme pastilles-puces dans le sélecteur de modèle (`ChatProvider.custom` + `AppState.activeCustomProviderID`).
+
+Tout serveur qui parle l'API de chat OpenAI (`GET {racine}/models`, `POST {racine}/chat/completions`, SSE) : OpenRouter, Groq, Mistral, DeepSeek, xAI, Together, Fireworks, llama.cpp, vLLM, Jan…
+
+### Ajouter
+
+Réglages → Chat → **More providers** → **Add provider** :
+
+- Recherche dans le catalogue embarqué (`NotchBuddy/Resources/providers.json`, snapshot de [models.dev](https://models.dev), licence MIT, ~190 fournisseurs). Choisir une entrée remplit le nom et l'URL.
+- Ou saisie libre d'un nom et d'une **racine d'API avec son chemin de version** (`https://api.groq.com/openai/v1`, `https://openrouter.ai/api/v1`…). Un `/chat/completions` ou `/models` collé en trop est retiré.
+- Clé d'API (sauf si « This server needs an API key » est décoché) → Keychain, compte `custom-ai-key-<id>`.
+- **Test and add** appelle `GET {racine}/models` : le fournisseur n'est ajouté que si la réponse est une liste de modèles. Les modèles d'embedding, audio, image et modération sont filtrés. Erreurs distinctes : clé refusée (401/403), pas une liste de modèles, injoignable.
+
+Le catalogue n'est **jamais** téléchargé par l'app. Un mainteneur le rafraîchit avec `python3 scripts/update-providers.py`.
+
+### Sécurité
+
+- `https://` obligatoire, sauf `http://` pour `localhost`, `127.0.0.1`, `::1`, `*.local` et les réseaux privés (10/8, 172.16/12, 192.168/16) : une clé ne circule jamais en clair sur Internet. La liste enregistrée est revérifiée au démarrage.
+- Les redirections ne sont pas suivies pour la liste de modèles : la clé n'atteint que l'hôte saisi.
+- Les fichiers joints ne sont jamais envoyés (seulement leur nom), comme pour Google et OpenAI.
+
+### Connected on this Mac (détection automatique)
+
+Réglages → Chat → **Connected on this Mac**. Le scan s'exécute au lancement de l'app, à l'ouverture de cette section (au plus une fois toutes les 30 s) et avec **Scan again**. Rien ne quitte la machine.
+
+- **Serveurs locaux** : `GET http://127.0.0.1:<port>/v1/models` (1,5 s max) sur les ports par défaut d'Ollama (11434), LM Studio (1234), llama.cpp (8080), vLLM (8000) et Jan (1337). Ollama et LM Studio remplissent leurs propres champs « Local models » (seulement s'ils sont vides) ; les autres deviennent des fournisseurs sans clé.
+- **Outils en ligne de commande déjà connectés** (macOS hors App Store) : Claude Code, GitHub Copilot CLI, Gemini CLI, Codex et opencode. Un outil connecté devient une puce dans le chat. Installé mais pas connecté : la liste l'indique en orange avec la marche à suivre.
+  - **Claude Code** : connexion lue avec `claude auth status --json`. Modèles : numéros exacts (Opus 5.5, Sonnet 5.5, Haiku 5.5, 4.5, 4.6…) et alias « always the latest ». Claude Code n'a pas de commande pour lister ses modèles : la liste est dans `CLIChatTools.claudeCode`, chaque identifiant a été essayé.
+  - **GitHub Copilot CLI** : connexion détectée sans dépenser de requête, avec un nom de modèle qui ne peut pas exister (`--model coucou-sign-in-check`) : connecté → « is not available », déconnecté → « No authentication information found ». Modèle : `auto` seulement (Copilot ne liste pas ses modèles hors session). Chaque message compte comme une requête premium du forfait Copilot.
+- **Ce que l'utilisateur retire reste retiré** : retirer un fournisseur ou déconnecter Ollama / LM Studio l'ajoute à `autoConnectDismissed` (UserDefaults) ; les scans automatiques l'ignorent. **Scan again** le ramène.
+- Les clés d'API (Anthropic, Google, OpenAI) restent possibles dans « Use an API key instead », repliée dès que quelque chose est connecté.
+
+#### Chat via un outil en ligne de commande
+
+Coucou lance la commande de l'outil, qui gère lui-même la connexion. Pour Claude Code : `claude -p --output-format stream-json --verbose --include-partial-messages --model <alias> --tools "" --no-session-persistence --setting-sources "" --strict-mcp-config --disable-slash-commands --system-prompt <prompt>`. Le prompt arrive sur stdin ; la conversation précédente est recopiée dedans (`CLIChatTools.transcript`). Coucou **ne lit jamais** le Keychain, les jetons ni les réglages de l'outil.
+
+- Aucun outil, aucun hook, aucun serveur MCP, rien écrit sur disque : la conversation n'apparaît pas comme une session d'agent dans l'island. Dossier de travail : un dossier temporaire vide.
+- Le modèle est validé contre la liste de l'outil avant d'être passé à la commande.
+- La conversation compte dans la limite du forfait de l'utilisateur ; pas de recherche web dans ce mode.
+- Copilot : `copilot -s --no-ask-user --available-tools --disable-builtin-mcps --output-format json --stream on --model auto`, prompt sur stdin ; pas d'option de prompt système, les consignes de Mochi ouvrent donc le prompt.
+- **Gemini CLI** : `gemini -p … -o stream-json --skip-trust --approval-mode default -e none`, conversation sur stdin. La connexion est détectée sans coût avec un modèle inexistant : « Please set an Auth method » → déconnecté ; `IneligibleTierError` → connecté mais Google refuse les comptes personnels ; `invalid authentication credentials` (401) → connexion expirée. La réponse elle-même n'a **jamais** été obtenue sur la machine d'essai (compte refusé puis connexion invalide) : le format `stream-json` vient de la documentation.
+- **Codex** (vérifié, codex-cli 0.162) : `codex login status` (« Logged in using ChatGPT ») puis `codex exec --json --skip-git-repo-check --sandbox read-only --ephemeral --ignore-user-config --ignore-rules -`, prompt sur stdin ; la réponse arrive en un seul événement `item.completed` / `agent_message`. Le binaire est cherché aussi dans l'extension ChatGPT de VS Code (`~/.vscode/extensions/openai.chatgpt-*/bin/macos-*/codex`).
+- **opencode** : `opencode auth list` puis `opencode run --format json <message>`, avec `OPENCODE_CONFIG_CONTENT` qui refuse `edit`, `bash` et `webfetch` (opencode s'exécute sans demander). Pas installé en ligne de commande (seulement l'app) : écrit d'après sa documentation, jamais lancé. La liste de connexion le marque **Not tested yet**, comme Gemini CLI.
+- **Antigravity (`agy`)** : pas encore pris en charge, sa commande de chat non interactive n'est pas connue.
+- Pour ajouter un outil : un `CLIChatTool` (avec son `Kind`) dans `CLIChatTools.all`, et ses arguments, sa vérification de connexion et son parseur de flux. Un outil dont la commande n'a pas été lancée par un auteur reste marqué `isVerified: false`.
+
+### Retrait
+
+**Remove** (avec confirmation) supprime le fournisseur et sa clé du Keychain. S'il était actif dans le chat, le chat revient sur Anthropic.
+
+---
+
 ## 6. Mail (app Mail du Mac)
 
 - Vue `mail` : À (obligatoire, validation d'adresse), Objet (prérempli : nom du fichier), Message (optionnel, une ligne).

@@ -1271,7 +1271,7 @@ struct PromptView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Circle()
-                                .fill(Color(hex: state.chatProvider.accentHex))
+                                .fill(Color(hex: state.chatAccentHex))
                                 .frame(width: 6, height: 6)
                             Text(state.activeChatModel)
                                 .font(.system(size: 10.5, weight: .medium))
@@ -1428,40 +1428,33 @@ struct ModelPickerView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Provider chips — wrap; hide local providers when not connected and not already active
             let visibleProviders = ChatProvider.allCases.filter { p in
+                if p == .custom   { return false }   // custom providers get their own chips below
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
-                return true
+                // Cloud providers: only the ones with a saved key (or the one in use).
+                return state.chatProvider == p || !(KeychainStore.shared.get(p.keychainKey) ?? "").isEmpty
             }
+            // Nothing is connected yet: show the cloud providers so there is a way to start.
+            let shownProviders = visibleProviders.isEmpty && state.customProviders.isEmpty
+                ? ChatProvider.allCases.filter { !$0.isLocal && $0 != .custom } : visibleProviders
             ChipFlowLayout(spacing: 6) {
-                ForEach(visibleProviders, id: \.self) { provider in
-                    Button {
+                ForEach(shownProviders, id: \.self) { provider in
+                    providerChip(name: provider.displayName, hex: provider.accentHex,
+                                 selected: state.chatProvider == provider) {
                         guard provider != state.chatProvider else { return }
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             state.chatProvider = provider
                         }
-                        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
-                        SoundEngine.shared.play("pop")
-                    } label: {
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(Color(hex: provider.accentHex))
-                                .frame(width: 7, height: 7)
-                            Text(provider.displayName)
-                                .font(.system(size: 12, weight: state.chatProvider == provider ? .semibold : .regular))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(state.chatProvider == provider
-                                    ? Color(hex: provider.accentHex).opacity(0.18)
-                                    : Color.white.opacity(0.06))
-                        .overlay(Capsule().stroke(
-                            state.chatProvider == provider
-                                ? Color(hex: provider.accentHex).opacity(0.5)
-                                : Color.white.opacity(0.1),
-                            lineWidth: 1))
-                        .clipShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                }
+                ForEach(state.customProviders) { custom in
+                    providerChip(name: custom.name, hex: custom.colorHex,
+                                 selected: state.chatProvider == .custom && state.activeCustomProviderID == custom.id) {
+                        guard !(state.chatProvider == .custom && state.activeCustomProviderID == custom.id) else { return }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            state.selectCustomProvider(custom.id)
+                        }
+                    }
                 }
             }
 
@@ -1474,20 +1467,46 @@ struct ModelPickerView: View {
         .padding(14)
         .background(Color(hex: "#16171B"))
         .onAppear {
-            // Force-refresh local providers every time the picker opens
-            if state.chatProvider.isLocal {
+            // Force-refresh local and custom providers every time the picker opens
+            if state.chatProvider.isLocal || state.chatProvider == .custom {
                 state.fetchedProviderModels[state.chatProvider] = nil
                 state.providerModelFetchError[state.chatProvider] = nil
             }
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
         .onChange(of: state.chatProvider) { _, provider in
-            if provider.isLocal {
+            if provider.isLocal || provider == .custom {
                 state.fetchedProviderModels[provider] = nil
                 state.providerModelFetchError[provider] = nil
             }
             state.fetchModelsIfNeeded(for: provider)
         }
+    }
+
+    /// One provider chip: the same capsule for built-in and custom providers.
+    private func providerChip(name: String, hex: String, selected: Bool,
+                              onSelect: @escaping () -> Void) -> some View {
+        Button {
+            guard !selected else { return }
+            onSelect()
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+            SoundEngine.shared.play("pop")
+        } label: {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color(hex: hex))
+                    .frame(width: 7, height: 7)
+                Text(name)
+                    .font(.system(size: 12, weight: selected ? .semibold : .regular))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(selected ? Color(hex: hex).opacity(0.18) : Color.white.opacity(0.06))
+            .overlay(Capsule().stroke(selected ? Color(hex: hex).opacity(0.5) : Color.white.opacity(0.1),
+                                      lineWidth: 1))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -1517,6 +1536,7 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .custom:    state.setActiveCustomModel(model.id)
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1525,19 +1545,19 @@ struct ModelPickerView: View {
                                 Text(model.label)
                                     .font(.system(size: 12))
                                     .foregroundColor(state.activeChatModel == model.id
-                                                     ? Color(hex: state.chatProvider.accentHex)
+                                                     ? Color(hex: state.chatAccentHex)
                                                      : Color(hex: "#C8CDD4"))
                                 Spacer()
                                 if state.activeChatModel == model.id {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(Color(hex: state.chatProvider.accentHex))
+                                        .foregroundColor(Color(hex: state.chatAccentHex))
                                 }
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
                             .background(state.activeChatModel == model.id
-                                        ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
+                                        ? Color(hex: state.chatAccentHex).opacity(0.1)
                                         : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
