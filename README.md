@@ -1,3 +1,17 @@
+> [!IMPORTANT]
+> ### Unofficial Coucou Windows Modification
+>
+> This fork includes a customized Windows version based on Coucou 0.2.0.
+>
+> **Modified branch:** [windows-mod-0.2.0](https://github.com/abdulazis06/coucou/tree/windows-mod-0.2.0)
+>
+> **Features:** Windows Dark Frosted theme, multi-agent Auto-Launch, configurable Auto-Quit, and improved agent monitoring.
+>
+> See the [Windows documentation](windows/README.md) for details and known limitations.
+>
+> This modification is unofficial and is not affiliated with the original developer. Download links to upstream releases do not provide this modified version.
+>
+---
 <div align="center">
 
 <img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">
