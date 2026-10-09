@@ -169,6 +169,7 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         .map(|m| m.trim().to_string())
         .filter(|m| !m.is_empty())
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
+        .or_else(|| (provider == crate::claude_cli::ID).then(|| crate::claude_cli::DEFAULT_MODEL.to_string()))
         .unwrap_or_default()
 }
 
@@ -210,6 +211,9 @@ pub async fn send(
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
     }
+    if provider == crate::claude_cli::ID {
+        return crate::claude_cli::send(app, chat, &model, query, context).await;
+    }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
     }
@@ -224,6 +228,9 @@ pub async fn send(
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
+    if provider == crate::claude_cli::ID {
+        return Ok(crate::claude_cli::models());
+    }
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
         return claude::models(&key).await;

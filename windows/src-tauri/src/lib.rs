@@ -29,6 +29,7 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod claude_cli;
 #[cfg(windows)]
 mod media_win;
 #[cfg(windows)]

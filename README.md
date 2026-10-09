@@ -25,6 +25,17 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 
 ---
 
+> ### This fork: Windows+
+>
+> A personal fork by [MithunSidhaarth](https://github.com/MithunSidhaarth) that pushes the Windows build further — all of it in `windows/`, on the `windows-plus` branch:
+>
+> - **Apple Music, Spotify and Now Playing pills** — any player on Windows (Apple Music, Spotify, browser tabs, VLC…) through the system media controls, with cover art, seek, shuffle and repeat.
+> - **Volume, brightness and battery in the island** — the volume keys show their level in the island instead of Windows' popup; brightness changes, charger plugged in / out and low battery too.
+> - **Chat with your Claude plan** — "Claude (your plan)" in the chat's model picker answers through the Claude Code CLI logged in with your Pro or Max account: no API key.
+> - **Clipboard history** in memory only (never on disk, password managers' copies skipped), and the Monday recap on wake from sleep.
+>
+> **Credits.** Coucou, Mochi, the icon, the sounds and every line this fork builds on are by **[Louis Raillé](https://github.com/Louis-CFM)** — [Louis-CFM/coucou](https://github.com/Louis-CFM/coucou). The code is MIT; the name, character, icon and sounds stay © Louis Raillé ([LICENSE-ASSETS.md](LICENSE-ASSETS.md)), so this fork is built and run for personal use and offered back upstream as pull requests — never published as a release under the Coucou name.
+
 ## Why
 
 Some studios showed off gorgeous notch companions… and never let anyone use them.

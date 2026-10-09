@@ -3536,6 +3536,39 @@
    "pt-BR": "Os últimos textos que você copiou, na pílula Prateleira. Só na memória, nunca no disco; o que os gerenciadores de senhas copiam nunca é guardado.",
    "ru": "Последние скопированные тексты — на пилюле «Полка». Хранятся только в памяти, никогда на диске; то, что копируют менеджеры паролей, не сохраняется.",
    "id": "Teks terakhir yang kamu salin, di pil Rak. Hanya disimpan di memori, tidak pernah di disk; yang disalin pengelola kata sandi tidak pernah disimpan."
+  },
+  "Claude (your plan)": {
+   "zh-Hans": "Claude（你的套餐）",
+   "hi": "Claude (आपका प्लान)",
+   "es": "Claude (tu plan)",
+   "ar": "Claude (خطتك)",
+   "fr": "Claude (votre forfait)",
+   "bn": "Claude (আপনার প্ল্যান)",
+   "pt-BR": "Claude (seu plano)",
+   "ru": "Claude (ваш тариф)",
+   "id": "Claude (paketmu)"
+  },
+  "Claude Code isn't installed. Install it from claude.com/code, run `claude` once and log in with your Claude account.": {
+   "zh-Hans": "未安装 Claude Code。请从 claude.com/code 安装，运行一次 `claude` 并用你的 Claude 账户登录。",
+   "hi": "Claude Code इंस्टॉल नहीं है। claude.com/code से इंस्टॉल करें, एक बार `claude` चलाएँ और अपने Claude खाते से लॉग इन करें।",
+   "es": "Claude Code no está instalado. Instálalo desde claude.com/code, ejecuta `claude` una vez e inicia sesión con tu cuenta de Claude.",
+   "ar": "Claude Code غير مثبّت. ثبّته من claude.com/code، وشغّل `claude` مرة واحدة وسجّل الدخول بحساب Claude.",
+   "fr": "Claude Code n'est pas installé. Installez-le depuis claude.com/code, lancez `claude` une fois et connectez-vous avec votre compte Claude.",
+   "bn": "Claude Code ইনস্টল করা নেই। claude.com/code থেকে ইনস্টল করুন, একবার `claude` চালান এবং আপনার Claude অ্যাকাউন্টে লগ ইন করুন।",
+   "pt-BR": "O Claude Code não está instalado. Instale em claude.com/code, execute `claude` uma vez e entre com sua conta Claude.",
+   "ru": "Claude Code не установлен. Установите его с claude.com/code, один раз запустите `claude` и войдите в аккаунт Claude.",
+   "id": "Claude Code belum terpasang. Pasang dari claude.com/code, jalankan `claude` sekali dan masuk dengan akun Claude kamu."
+  },
+  "Claude Code isn't logged in. Open a terminal, run `claude`, then type /login and sign in with your Claude account.": {
+   "zh-Hans": "Claude Code 尚未登录。打开终端，运行 `claude`，然后输入 /login 并用你的 Claude 账户登录。",
+   "hi": "Claude Code में लॉग इन नहीं है। टर्मिनल खोलें, `claude` चलाएँ, फिर /login लिखें और अपने Claude खाते से साइन इन करें।",
+   "es": "Claude Code no ha iniciado sesión. Abre una terminal, ejecuta `claude`, escribe /login e inicia sesión con tu cuenta de Claude.",
+   "ar": "لم يتم تسجيل الدخول إلى Claude Code. افتح الطرفية وشغّل `claude` ثم اكتب /login وسجّل الدخول بحساب Claude.",
+   "fr": "Claude Code n'est pas connecté. Ouvrez un terminal, lancez `claude`, tapez /login et connectez-vous avec votre compte Claude.",
+   "bn": "Claude Code-এ লগ ইন করা নেই। টার্মিনাল খুলুন, `claude` চালান, তারপর /login লিখে আপনার Claude অ্যাকাউন্টে সাইন ইন করুন।",
+   "pt-BR": "O Claude Code não está conectado. Abra um terminal, execute `claude`, digite /login e entre com sua conta Claude.",
+   "ru": "Claude Code не выполнил вход. Откройте терминал, запустите `claude`, введите /login и войдите в аккаунт Claude.",
+   "id": "Claude Code belum masuk. Buka terminal, jalankan `claude`, lalu ketik /login dan masuk dengan akun Claude kamu."
   }
  }
 }
