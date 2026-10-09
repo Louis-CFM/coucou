@@ -186,9 +186,9 @@ test("the pill wears the track's title, and its own name when nothing plays", ()
   assert.equal(spotifyTask().name, "Spotify");
   emit("spotify", playing());
   assert.equal(Spotify.state.track.title, "Get Lucky");
-  assert.equal(spotifyTask().name, "Get Lucky");
+  assert.equal(spotifyTask().name, "Spotify");
   emit("spotify", playing({ track: track({ id: "spotify:ad:1", title: "" }) }));
-  assert.equal(spotifyTask().name, "Advertisement");
+  assert.equal(spotifyTask().name, "Spotify");
   emit("spotify", { ...IDLE_SPOTIFY, running: true });
   assert.equal(spotifyTask().name, "Spotify");
 });

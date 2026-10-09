@@ -39,13 +39,12 @@ export function applySpotify(island: SpotifyHost, next: SpotifyState) {
   State.notify();
 }
 
-/** SpotifyController.syncTaskName: the track's title, else the pill's name. */
+/** SpotifyController.syncTaskName: on macOS/Linux it mutates task.name to track title,
+ * but the pill label in the grid must remain "Spotify". */
 export function syncPillName() {
   const task = State.tasks.find((x) => x.id === SPOTIFY_ID);
   if (!task) return;
-  const track = Spotify.state.track;
-  const title = isAd(track) ? t("Advertisement") : (track?.title ?? "");
-  const name = title || (pillDefinition(SPOTIFY_ID)?.name ?? "Spotify");
+  const name = pillDefinition(SPOTIFY_ID)?.name ?? "Spotify";
   if (task.name !== name) task.name = name;
 }
 
