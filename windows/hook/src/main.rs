@@ -58,6 +58,13 @@ const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
 /// 1 MiB the app reads from the pipe even once JSON-escaped.
 const MAX_DIFF_TOTAL: usize = 512 * 1024;
+/// Stdin is agent-controlled: buffer no more than this. Legit payloads are
+/// kilobytes; the rest would only ever be truncated away anyway.
+const MAX_STDIN: u64 = 16 * 1024 * 1024;
+/// The serialized event must stay under the app's 1 MiB pipe read. Truncation
+/// bounds string *values*; this bounds the whole line (keys, field count) and
+/// falls back to a minimal event rather than a line the app cuts mid-JSON.
+const MAX_LINE: usize = 900 * 1024;
 
 #[cfg(windows)]
 mod win;
@@ -105,7 +112,7 @@ fn main() {
     }
     let args = args();
     let mut raw = Vec::new();
-    let _ = std::io::stdin().read_to_end(&mut raw);
+    let _ = std::io::stdin().take(MAX_STDIN).read_to_end(&mut raw);
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
@@ -198,6 +205,19 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
+    if line.len() > MAX_LINE {
+        // Keys and field count escape truncate_strings, so the line can still
+        // be too long. Send what the island needs rather than bytes the app
+        // would cut mid-line and drop as invalid JSON.
+        let mut minimal = Map::new();
+        for key in ["hook_event_name", "session_id", "tool_name", "coucou_agent", "cwd"] {
+            if let Some(v) = payload.get(key) {
+                minimal.insert(key.into(), v.clone());
+            }
+        }
+        minimal.insert("coucou_truncated".into(), Value::Bool(true));
+        line = Value::Object(minimal).to_string();
+    }
     line.push('\n');
     Some(Event { line, name, question })
 }
@@ -350,7 +370,9 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
             Ok(0) => break,
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') {
+                // The biggest legit answer is an {"answers":{…}} line — a peer
+                // that keeps streaming is not one we wait on.
+                if buf.contains(&b'\n') || buf.len() > 64 * 1024 {
                     break;
                 }
             }
@@ -422,6 +444,25 @@ mod tests {
         assert!(v.get("coucou_agent").is_none());
         assert_eq!(v["cwd"], "/p");
         assert_eq!(v["tool_name"], "Bash");
+    }
+
+    #[test]
+    fn a_line_that_is_still_too_long_becomes_a_minimal_event() {
+        // Keys escape truncate_strings: a giant key name still forwards —
+        // as a minimal, well-formed event rather than a line the app drops.
+        let mut payload = Map::new();
+        payload.insert("hook_event_name".into(), serde_json::json!("PermissionRequest"));
+        payload.insert("session_id".into(), serde_json::json!("s1"));
+        payload.insert("tool_name".into(), serde_json::json!("Bash"));
+        payload.insert("k".repeat(MAX_LINE).into(), serde_json::json!("v"));
+        let raw = serde_json::to_vec(&payload).unwrap();
+        let args = Args { agent: String::new(), event: String::new() };
+        let ev = prepare(&raw, &args, &|_| None, "/tmp").expect("forwarded");
+        assert!(ev.line.len() < MAX_LINE);
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["hook_event_name"], "PermissionRequest");
+        assert_eq!(v["tool_name"], "Bash");
+        assert_eq!(v["coucou_truncated"], true);
     }
 
     #[test]

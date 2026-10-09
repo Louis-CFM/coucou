@@ -38,8 +38,9 @@ const DRAIN_GRACE: Duration = Duration::from_millis(200);
 const PREVIOUS_FILE: &str = "statusline-previous.json";
 
 pub fn run() -> ! {
+    // Agent-controlled stdin is bounded, like the event path in main.rs.
     let mut raw = Vec::new();
-    let _ = std::io::stdin().read_to_end(&mut raw);
+    let _ = std::io::Read::take(std::io::stdin(), 1024 * 1024).read_to_end(&mut raw);
     if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
         raw.drain(..3);
     }
