@@ -779,12 +779,24 @@ struct CursorCloudAgent: Identifiable, Equatable {
     let id: String
     let name: String
     let status: String          // "ACTIVE", "IDLE", "ARCHIVED"
-    let url: String
+    let url: String             // https://cursor.com/agents/…
     let latestRunId: String?
     let updatedAt: Date
+    /// Latest run status from Get A Run (`RUNNING`, `CREATING`, …), when fetched.
+    var runStatus: String? = nil
+    /// Short label for the card (e.g. "Running", truncated result).
+    var detail: String? = nil
 
     var isActive: Bool { status == "ACTIVE" }
+
+    /// Opens the agent in Cursor Desktop when the protocol is registered.
+    var appURL: String {
+        "cursor://anysphere.cursor-deeplink/background-agent?bcId=\(id)"
+    }
+
     var statusLabel: String {
+        if let detail, !detail.isEmpty { return detail }
+        if let runStatus { return Self.prettyRunStatus(runStatus) }
         switch status {
         case "ACTIVE": return "Active"
         case "IDLE":   return "Idle"
@@ -792,12 +804,25 @@ struct CursorCloudAgent: Identifiable, Equatable {
         default:       return status.capitalized
         }
     }
+
     var timeAgo: String {
         let diff = Date().timeIntervalSince(updatedAt)
         if diff < 60    { return "just now" }
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
+    }
+
+    static func prettyRunStatus(_ status: String) -> String {
+        switch status.uppercased() {
+        case "CREATING":  return "Starting"
+        case "RUNNING":   return "Running"
+        case "FINISHED":  return "Done"
+        case "ERROR":     return "Error"
+        case "CANCELLED", "CANCELED": return "Cancelled"
+        case "EXPIRED":   return "Expired"
+        default:          return status.capitalized
+        }
     }
 }
 

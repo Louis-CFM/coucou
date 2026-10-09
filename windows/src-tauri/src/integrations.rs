@@ -300,7 +300,7 @@ async fn poll_cursor_cloud(app: AppHandle) {
         return;
     }
     let json: Value = response.json().await.unwrap_or(json!({}));
-    let agents: Vec<Value> = json
+    let mut agents: Vec<Value> = json
         .get("items")
         .and_then(Value::as_array)
         .map(|list| {
@@ -322,11 +322,14 @@ async fn poll_cursor_cloud(app: AppHandle) {
                     } else {
                         url
                     };
+                    let app_url =
+                        format!("cursor://anysphere.cursor-deeplink/background-agent?bcId={id}");
                     Some(json!({
                         "id": id,
                         "name": name,
                         "status": status,
                         "url": url,
+                        "appUrl": app_url,
                         "latestRunId": a.get("latestRunId").and_then(Value::as_str),
                         "updatedAt": a.get("updatedAt").and_then(Value::as_str).unwrap_or(""),
                     }))
@@ -335,12 +338,54 @@ async fn poll_cursor_cloud(app: AppHandle) {
         })
         .unwrap_or_default();
 
-    let active: Vec<&Value> = agents
+    // Enrich up to 2 ACTIVE agents with Get A Run (status / short detail).
+    let http = client();
+    let active_idxs: Vec<usize> = agents
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| a.get("status").and_then(Value::as_str) == Some("ACTIVE"))
+        .map(|(i, _)| i)
+        .take(2)
+        .collect();
+    for i in active_idxs {
+        let Some(id) = agents[i].get("id").and_then(Value::as_str).map(str::to_string) else {
+            continue;
+        };
+        let Some(run_id) = agents[i]
+            .get("latestRunId")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        let run_url = format!("https://api.cursor.com/v1/agents/{id}/runs/{run_id}");
+        if let Ok(resp) = http
+            .get(&run_url)
+            .basic_auth(&key, None::<&str>)
+            .header("Accept", "application/json")
+            .send()
+            .await
+        {
+            if resp.status().is_success() {
+                if let Ok(run) = resp.json::<Value>().await {
+                    if let Some(status) = run.get("status").and_then(Value::as_str) {
+                        let detail = cursor_cloud_run_detail(
+                            status,
+                            run.get("result").and_then(Value::as_str),
+                        );
+                        if let Some(obj) = agents[i].as_object_mut() {
+                            obj.insert("runStatus".into(), json!(status));
+                            obj.insert("detail".into(), json!(detail));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let fingerprint = agents
         .iter()
         .filter(|a| a.get("status").and_then(Value::as_str) == Some("ACTIVE"))
-        .collect();
-    let fingerprint = active
-        .iter()
         .filter_map(|a| a.get("id").and_then(Value::as_str))
         .collect::<Vec<_>>()
         .join(",");
@@ -349,13 +394,16 @@ async fn poll_cursor_cloud(app: AppHandle) {
     // non-empty fingerprint (new ACTIVE work). Leaving ACTIVE is handled by a
     // separate “was-active” marker stored alongside.
     let event = if !fingerprint.is_empty() && is_new("cursor_cloud_active", &fingerprint) {
+        let lead = agents
+            .iter()
+            .find(|a| a.get("status").and_then(Value::as_str) == Some("ACTIVE"));
+        let label = lead
+            .and_then(|a| a.get("name").and_then(Value::as_str))
+            .unwrap_or("Cloud agent")
+            .to_string();
         Some(IntegrationEvent {
             success: true,
-            label: active
-                .first()
-                .and_then(|a| a.get("name").and_then(Value::as_str))
-                .unwrap_or("Cloud agent")
-                .to_string(),
+            label,
             detail: Some("ACTIVE".into()),
         })
     } else if fingerprint.is_empty() {
@@ -392,6 +440,35 @@ async fn poll_cursor_cloud(app: AppHandle) {
             event,
         },
     );
+}
+
+fn cursor_cloud_run_detail(run_status: &str, result: Option<&str>) -> String {
+    let pretty = match run_status.to_uppercase().as_str() {
+        "CREATING" => "Starting",
+        "RUNNING" => "Running",
+        "FINISHED" => "Done",
+        "ERROR" => "Error",
+        "CANCELLED" | "CANCELED" => "Cancelled",
+        "EXPIRED" => "Expired",
+        other => return other.to_string(),
+    };
+    let upper = run_status.to_uppercase();
+    if matches!(upper.as_str(), "FINISHED" | "ERROR") {
+        if let Some(text) = result {
+            if let Some(line) = text
+                .lines()
+                .map(str::trim)
+                .find(|l| !l.is_empty())
+            {
+                if line.chars().count() > 28 {
+                    let trimmed: String = line.chars().take(27).collect();
+                    return format!("{trimmed}…");
+                }
+                return line.to_string();
+            }
+        }
+    }
+    pretty.to_string()
 }
 
 // ── GitHub ────────────────────────────────────────────────────────────────────

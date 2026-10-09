@@ -3143,9 +3143,7 @@ struct CursorCloudCardView: View {
                     ForEach(Array(appState.cursorCloudAgents.prefix(3).enumerated()), id: \.element.id) { index, agent in
                         let accent = Color(hex: agent.isActive ? "#22C55E" : "#6B7079")
                         Button {
-                            if let url = URL(string: agent.url) {
-                                NSWorkspace.shared.open(url)
-                            }
+                            CursorCloudPoller.openAgent(agent)
                         } label: {
                             HStack(spacing: 5) {
                                 Circle().fill(accent).frame(width: 5, height: 5)
@@ -3157,7 +3155,9 @@ struct CursorCloudCardView: View {
                                 Text(agent.statusLabel)
                                     .font(.system(size: 10))
                                     .foregroundColor(accent)
-                                    .fixedSize()
+                                    .lineLimit(1).truncationMode(.tail)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .layoutPriority(0)
                                 Text(agent.timeAgo)
                                     .font(.system(size: 10))
                                     .foregroundColor(Color(hex: "#6B7079"))

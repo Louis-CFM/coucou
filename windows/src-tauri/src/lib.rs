@@ -182,7 +182,11 @@ fn list_monitors(app: AppHandle) -> Vec<island::MonitorChoice> {
 
 #[tauri::command]
 fn open_url(url: String) {
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
+    // http(s) for dashboards; cursor:// for Cloud Agent deeplinks into Cursor Desktop.
+    if !(url.starts_with("http://")
+        || url.starts_with("https://")
+        || url.starts_with("cursor://"))
+    {
         return;
     }
     platform::open_url(&url);

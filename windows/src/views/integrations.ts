@@ -274,6 +274,31 @@ function githubCard(): HTMLElement {
 
 // ── Cursor Cloud ──────────────────────────────────────────────────────────────
 
+function cursorCloudStatusLabel(a: Record<string, unknown>): string {
+  if (typeof a.detail === "string" && a.detail) return a.detail;
+  const run = typeof a.runStatus === "string" ? a.runStatus.toUpperCase() : "";
+  switch (run) {
+    case "CREATING":
+      return t("Starting");
+    case "RUNNING":
+      return t("Running");
+    case "FINISHED":
+      return t("Done");
+    case "ERROR":
+      return t("Error");
+    case "CANCELLED":
+    case "CANCELED":
+      return t("Cancelled");
+    case "EXPIRED":
+      return t("Expired");
+    default:
+      break;
+  }
+  if (a.status === "ACTIVE") return t("Active");
+  if (a.status === "IDLE") return t("Idle");
+  return String(a.status ?? "");
+}
+
 function cursorCloudCard(): HTMLElement {
   const agents = arr("integration_cursor_cloud", "agents");
   const rows = h("div", { class: "int-rows" });
@@ -283,15 +308,21 @@ function cursorCloudCard(): HTMLElement {
   agents.slice(0, 3).forEach((a, i) => {
     const active = a.status === "ACTIVE";
     const accent = active ? "#22C55E" : "#6B7079";
-    const status =
-      a.status === "ACTIVE" ? t("Active") : a.status === "IDLE" ? t("Idle") : String(a.status ?? "");
+    const status = cursorCloudStatusLabel(a);
     const name = h("span", { class: "int-name", text: String(a.name ?? "") });
     const label = h("span", { class: "int-ago", style: `color:${accent}`, text: status });
     const ago = h("span", { class: "int-ago", text: timeAgo(a.updatedAt) });
     const row = listRow(accent, i === 0, name, label, ago);
-    if (typeof a.url === "string" && a.url) {
+    // Prefer Cursor Desktop deeplink; fall back to the web agent page.
+    const target =
+      typeof a.appUrl === "string" && a.appUrl
+        ? String(a.appUrl)
+        : typeof a.url === "string"
+          ? String(a.url)
+          : "";
+    if (target) {
       row.style.cursor = "pointer";
-      row.onclick = () => void Bridge.openUrl(String(a.url));
+      row.onclick = () => void Bridge.openUrl(target);
     }
     rows.append(row);
   });

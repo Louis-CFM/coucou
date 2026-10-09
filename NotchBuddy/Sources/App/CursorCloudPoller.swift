@@ -1,8 +1,10 @@
+import AppKit
 import Foundation
 
 // MARK: - CursorCloudPoller
 // Polls Cursor Cloud Agents API every 30s for recent agents.
 // ACTIVE agents → working pill; transition out of ACTIVE → finished badge.
+// For up to 2 ACTIVE agents, also fetches Get A Run for a short “what it's doing” label.
 
 final class CursorCloudPoller: @unchecked Sendable {
     static let shared = CursorCloudPoller()
@@ -50,8 +52,9 @@ final class CursorCloudPoller: @unchecked Sendable {
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let rawList = json["items"] as? [[String: Any]] else { return }
 
-            let parsed = rawList.compactMap { self.parseAgent($0) }
+            var parsed = rawList.compactMap { self.parseAgent($0) }
                 .filter { $0.status != "ARCHIVED" }
+            parsed = self.enrichActiveRuns(agents: parsed, key: key)
             DispatchQueue.main.async { self.handleAgents(parsed) }
         }.resume()
     }
@@ -67,6 +70,74 @@ final class CursorCloudPoller: @unchecked Sendable {
                                 latestRunId: latestRunId, updatedAt: updatedAt)
     }
 
+    /// Fetches Get A Run for up to 2 ACTIVE agents (rate-limit friendly).
+    private func enrichActiveRuns(agents: [CursorCloudAgent], key: String) -> [CursorCloudAgent] {
+        var result = agents
+        let targets = result.indices.filter { result[$0].isActive && result[$0].latestRunId != nil }.prefix(2)
+        guard !targets.isEmpty else { return result }
+
+        let group = DispatchGroup()
+        let lock = NSLock()
+        for i in targets {
+            guard let runId = result[i].latestRunId else { continue }
+            let agentId = result[i].id
+            group.enter()
+            fetchRun(agentId: agentId, runId: runId, key: key) { status, resultText in
+                lock.lock()
+                if let status {
+                    result[i].runStatus = status
+                    result[i].detail = Self.detailLabel(runStatus: status, result: resultText)
+                }
+                lock.unlock()
+                group.leave()
+            }
+        }
+        _ = group.wait(timeout: .now() + 10)
+        return result
+    }
+
+    private func fetchRun(agentId: String, runId: String, key: String,
+                          done: @escaping (String?, String?) -> Void) {
+        guard let url = URL(string: "https://api.cursor.com/v1/agents/\(agentId)/runs/\(runId)") else {
+            done(nil, nil)
+            return
+        }
+        var req = URLRequest(url: url, timeoutInterval: 8)
+        let creds = Data("\(key):".utf8).base64EncodedString()
+        req.setValue("Basic \(creds)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        URLSession.shared.dataTask(with: req) { data, response, _ in
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard code == 200, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                done(nil, nil)
+                return
+            }
+            let status = json["status"] as? String
+            let result = json["result"] as? String
+            done(status, result)
+        }.resume()
+    }
+
+    private static func detailLabel(runStatus: String, result: String?) -> String {
+        let pretty = CursorCloudAgent.prettyRunStatus(runStatus)
+        // Terminal runs may include a short final reply — keep it tiny for the row.
+        if let result, !result.isEmpty,
+           runStatus.uppercased() == "FINISHED" || runStatus.uppercased() == "ERROR" {
+            let one = result
+                .split(whereSeparator: \.isNewline)
+                .map(String.init)
+                .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
+                ?? pretty
+            let trimmed = one.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.count > 28 {
+                return String(trimmed.prefix(27)) + "…"
+            }
+            return trimmed.isEmpty ? pretty : trimmed
+        }
+        return pretty
+    }
+
     private static func parseDate(_ raw: String?) -> Date? {
         guard let raw else { return nil }
         let fractional = ISO8601DateFormatter()
@@ -75,6 +146,12 @@ final class CursorCloudPoller: @unchecked Sendable {
         let plain = ISO8601DateFormatter()
         plain.formatOptions = [.withInternetDateTime]
         return plain.date(from: raw)
+    }
+
+    /// Prefer Cursor Desktop deeplink; fall back to the web agent URL.
+    static func openAgent(_ agent: CursorCloudAgent) {
+        if let app = URL(string: agent.appURL), NSWorkspace.shared.open(app) { return }
+        if let web = URL(string: agent.url) { NSWorkspace.shared.open(web) }
     }
 
     @MainActor
@@ -97,7 +174,11 @@ final class CursorCloudPoller: @unchecked Sendable {
         if !active.isEmpty {
             let lead = active[0]
             state.tasks[idx].state = .working
-            state.tasks[idx].steps = [lead.name]
+            if let detail = lead.detail, !detail.isEmpty {
+                state.tasks[idx].steps = ["\(lead.name) · \(detail)"]
+            } else {
+                state.tasks[idx].steps = [lead.name]
+            }
             let becameActive = hasLoadedOnce && fingerprint != lastActiveFingerprint
                 && !fingerprint.isEmpty
             if becameActive {
