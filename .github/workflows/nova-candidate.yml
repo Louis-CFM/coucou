@@ -5,7 +5,7 @@ on:
     paths: ['.nova/**', '.github/workflows/nova-candidate.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   windows-build:
     runs-on: windows-latest
@@ -98,3 +98,22 @@ jobs:
           name: Nova-clean-source-phase1
           path: ${{ runner.temp }}/Nova-source-phase1.zip
           if-no-files-found: error
+      - name: Publish reviewed source to an isolated source branch
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Workflow-file writes need separate permissions. Restore them here;
+          # the connected user will apply the reviewed Windows-only workflows.
+          git restore --worktree .github
+          Remove-Item -Recurse -Force .nova
+          git switch -c nova/source-phase1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: materialize reviewed Windows-only Nova Phase 1 source"
+          if ($LASTEXITCODE -ne 0) { throw 'Source commit failed' }
+          gh auth setup-git
+          git push origin HEAD:refs/heads/nova/source-phase1
+          if ($LASTEXITCODE -ne 0) { throw 'Source branch push failed; clean source artifact remains available' }
