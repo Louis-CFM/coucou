@@ -20,11 +20,15 @@ mod net;
 mod openai_compat;
 mod pipe;
 mod platform;
+#[cfg(target_os = "linux")]
+mod portal;
 mod recap;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod sounds;
+mod spotify;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -107,6 +111,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
+    spotify::sync(&app, &settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -222,17 +227,33 @@ fn open_in_vscode(path: Option<String>) -> bool {
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
-/// runs in, when it was found (Windows, see session_window.rs); otherwise opens
-/// the folder in VS Code, as before.
+/// runs in, when it was found (see session_window.rs); otherwise opens the
+/// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
-    if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
-        let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
-        if platform::focus_process_window(owner, folder) {
+    let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
+        return open_in_vscode(path);
+    };
+    let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
+    #[cfg(windows)]
+    {
+        if platform::focus_session_window(&owners, &folder) {
             return true;
         }
+        open_in_vscode(path)
     }
-    open_in_vscode(path)
+    // Linux asks the display server, KWin or the terminal, which can take a
+    // moment: never on the UI thread a sync command runs on. VS Code still
+    // opens when none of them could bring the window forward.
+    #[cfg(target_os = "linux")]
+    {
+        std::thread::spawn(move || {
+            if !platform::focus_session_window(&owners, &folder) {
+                open_in_vscode(path);
+            }
+        });
+        true
+    }
 }
 
 /// The Claude Desktop pill's target: the Claude app (Windows only — it has no
@@ -710,6 +731,14 @@ pub fn run() {
             desktop::desktop_mochi_fly_out,
             desktop::desktop_mochi_fly_home,
             desktop::desktop_mochi_set_asleep,
+            sounds::custom_sounds,
+            sounds::custom_sound,
+            sounds::reveal_sounds_folder,
+            sounds::reload_sounds,
+            spotify::spotify_refresh,
+            spotify::spotify_control,
+            spotify::spotify_open,
+            spotify::spotify_installed,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -746,6 +775,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

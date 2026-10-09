@@ -1,7 +1,10 @@
 // Global keyboard shortcuts — port of HotKeyCenter.swift + ShortcutLogic.swift.
 //
 // The shortcuts are registered from Rust through tauri-plugin-global-shortcut
-// (RegisterHotKey on Windows, XGrabKey on X11). A press is handed to the island
+// (RegisterHotKey on Windows, XGrabKey on X11). Wayland has no key grabs: there
+// they go to the desktop through the XDG GlobalShortcuts portal (portal.rs), and
+// where there is no such portal Settings lists `coucou --shortcut <id>` commands
+// to bind by hand. A press is handed to the island
 // as a `shortcut` event carrying the action id; the island does the rest, the
 // same way it handles the tray menu. The wardrobe is the exception: it goes out
 // as its own `open-wardrobe` event, which the wardrobe view listens to.
@@ -16,6 +19,7 @@
 //   Ctrl+Alt+Space   open the chat           Ctrl+Alt+→ / ←  next / previous pill
 //   Ctrl+Alt+A       waiting permission      Ctrl+Alt+S      mute Mochi
 //   Ctrl+Alt+T       open the terminal       Ctrl+Alt+G      wardrobe
+//   Ctrl+Alt+D       Mochi to the desktop, or home again (the Mac's ⌃⌥D)
 //   Ctrl+Alt+N       open / close the island (off by default, as on the Mac)
 //
 // ⌃⌥[ and ⌃⌥] became the arrows (brackets are AltGr characters almost
@@ -63,13 +67,33 @@ pub const ACTIONS: &[ActionDef] = &[
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
     action("muteToggle", "Ctrl+Alt+S", true, true),
-    // Mochi on the desktop is not in this version.
-    action("desktopToggle", "Ctrl+Alt+D", true, false),
+    action("desktopToggle", "Ctrl+Alt+D", true, true),
     action("wardrobeToggle", "Ctrl+Alt+G", true, true),
 ];
 
 pub fn find(id: &str) -> Option<&'static ActionDef> {
     ACTIONS.iter().find(|a| a.id == id)
+}
+
+/// What an action does, in English: the key of its label in Settings
+/// (SHORTCUT_TEXT in src/core/shortcuts.ts; tests/shortcuts.test.mjs keeps
+/// the two in step). The portal shows it in the desktop's own settings.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn description(id: &str) -> &'static str {
+    use crate::i18n::n_;
+    match id {
+        "toggleIsland" => n_("Open or close the island"),
+        "openChat" => n_("Open the chat"),
+        "goToAlert" => n_("Go to the waiting permission or question"),
+        "jumpToTerminal" => n_("Open the terminal"),
+        "attachFrontWindow" => n_("Attach the front window to the chat"),
+        "nextPill" => n_("Next pill"),
+        "prevPill" => n_("Previous pill"),
+        "muteToggle" => n_("Mute or unmute Mochi"),
+        "desktopToggle" => n_("Send Mochi to the desktop"),
+        "wardrobeToggle" => n_("Open the wardrobe"),
+        _ => "Coucou",
+    }
 }
 
 /// What the user chose for one action. An action missing from settings.json
@@ -119,6 +143,25 @@ pub enum Status {
     Unsupported,
     /// The action itself isn't in this version.
     NotPorted,
+    /// Wayland: handed to the desktop, which hasn't answered yet (it may be
+    /// showing its own dialog).
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    Pending,
+    /// Wayland: the desktop took the others but left this one out.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    Refused,
+}
+
+/// Wayland: where the GlobalShortcuts portal stands. Absent from the report
+/// wherever it isn't used (X11, Windows, or no portal).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub enum PortalState {
+    /// Asked; the desktop may be showing its own dialog.
+    Pending,
+    /// The desktop holds the shortcuts and says when one is pressed.
+    Active,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -129,6 +172,10 @@ pub struct ActionStatus {
     /// The character a `TypesCharacter` combination types.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub typed: Option<String>,
+    /// Wayland: the keys the desktop says run it, in its own words. It may
+    /// let the user pick other keys than the ones Coucou asked for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -140,6 +187,8 @@ pub struct Report {
     /// The command a desktop's own shortcut settings can run instead:
     /// `<this executable> --shortcut <action id>`.
     pub command: String,
+    /// Wayland: the shortcuts went to the desktop through its portal.
+    pub portal: Option<PortalState>,
 }
 
 /// What is registered right now: hot-key id → action id, plus the last report.
@@ -147,6 +196,9 @@ pub struct Report {
 pub struct Registry {
     by_id: Mutex<HashMap<u32, &'static str>>,
     report: Mutex<Vec<ActionStatus>>,
+    portal: Mutex<Option<PortalState>>,
+    #[cfg(target_os = "linux")]
+    wayland: Mutex<wayland::Link>,
 }
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
@@ -217,7 +269,7 @@ pub fn plan(
     ACTIONS
         .iter()
         .map(|def| {
-            let refuse = |status, typed| Err(ActionStatus { id: def.id, status, typed });
+            let refuse = |status, typed| Err(ActionStatus { id: def.id, status, typed, trigger: None });
             let binding = effective(def, stored);
             let outcome = if !def.ported {
                 refuse(Status::NotPorted, None)
@@ -295,15 +347,23 @@ fn release<R: Runtime>(app: &AppHandle<R>) {
 pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
     release(app);
     let blocked = crate::platform::global_shortcuts_blocked();
+    let plan = plan(stored, typed_character);
+    // Wayland: to the desktop's portal when there is one. Without one, as
+    // below: every shortcut unsupported, and Settings shows the commands to
+    // bind by hand.
+    #[cfg(target_os = "linux")]
+    if blocked == Some("wayland") && wayland::bind(app, stored, &plan) {
+        return;
+    }
     let gs = app.try_state::<GlobalShortcut<R>>();
 
     let mut by_id = HashMap::new();
     let mut report = Vec::new();
-    for (def, outcome) in plan(stored, typed_character) {
+    for (def, outcome) in plan {
         let status = match outcome {
             Err(status) => status,
             Ok(_) if blocked.is_some() || gs.is_none() => {
-                ActionStatus { id: def.id, status: Status::Unsupported, typed: None }
+                ActionStatus { id: def.id, status: Status::Unsupported, typed: None, trigger: None }
             }
             Ok(shortcut) => {
                 // No lock of ours is held here: the plugin calls our handler
@@ -320,7 +380,7 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
                     }
                     None => Status::Unsupported,
                 };
-                ActionStatus { id: def.id, status, typed: None }
+                ActionStatus { id: def.id, status, typed: None, trigger: None }
             }
         };
         report.push(status);
@@ -329,6 +389,7 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
     if let Some(registry) = app.try_state::<Registry>() {
         *registry.by_id.lock().unwrap() = by_id;
         *registry.report.lock().unwrap() = report;
+        *registry.portal.lock().unwrap() = None;
     }
     let _ = app.emit("shortcuts-status", status(app));
 }
@@ -338,17 +399,19 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
 /// running it.
 pub fn suspend<R: Runtime>(app: &AppHandle<R>) {
     release(app);
+    #[cfg(target_os = "linux")]
+    wayland::release(app);
 }
 
 pub fn status<R: Runtime>(app: &AppHandle<R>) -> Report {
-    let actions = app
-        .try_state::<Registry>()
-        .map(|r| r.report.lock().unwrap().clone())
-        .unwrap_or_default();
+    let registry = app.try_state::<Registry>();
+    let actions = registry.as_ref().map(|r| r.report.lock().unwrap().clone()).unwrap_or_default();
+    let portal = registry.as_ref().and_then(|r| *r.portal.lock().unwrap());
     Report {
         actions,
         blocked: crate::platform::global_shortcuts_blocked().map(str::to_string),
         command: format!("{} --shortcut", launch_command()),
+        portal,
     }
 }
 
@@ -373,6 +436,252 @@ fn typed_character(shortcut: &Shortcut) -> Option<String> {
     }
     let vk = character_vk(shortcut.key)?;
     crate::platform::ctrl_alt_types(vk, shortcut.mods.contains(Modifiers::SHIFT))
+}
+
+// ── Wayland: the GlobalShortcuts portal ───────────────────────────────────────
+
+/// Glue between `apply` and the portal thread (portal.rs). Each `bind` gets a
+/// new generation; an answer to an older one is dropped, so a slow desktop
+/// dialog can't overwrite what the latest settings asked for.
+#[cfg(target_os = "linux")]
+mod wayland {
+    use super::*;
+    use crate::portal::{self, Bound, Event, Wanted};
+
+    /// The portal thread, once started.
+    #[derive(Default)]
+    pub enum Link {
+        #[default]
+        NotStarted,
+        Running { handle: portal::Handle, gen: u64 },
+        /// No portal (or no session bus): today's commands instead, for the
+        /// rest of the run.
+        Gone,
+    }
+
+    /// Hands the planned shortcuts to the desktop. False when there is no
+    /// portal to hand them to; `apply` then carries on as before.
+    pub fn bind<R: Runtime>(
+        app: &AppHandle<R>,
+        stored: &Bindings,
+        plan: &[(&'static ActionDef, Result<Shortcut, ActionStatus>)],
+    ) -> bool {
+        let Some(registry) = app.try_state::<Registry>() else { return false };
+        // Held until the request is sent, so the thread's answer (on_event
+        // takes this lock too) always lands after the Pending report below.
+        let mut link = registry.wayland.lock().unwrap();
+        if matches!(*link, Link::Gone) {
+            return false;
+        }
+        let wanted: Vec<Wanted> = plan
+            .iter()
+            .filter(|(_, outcome)| outcome.is_ok())
+            .map(|(def, _)| Wanted {
+                    id: def.id.to_string(),
+                    description: crate::i18n::t(description(def.id)),
+                    trigger: portal::xdg_trigger(&effective(def, stored).keys),
+            })
+            .collect();
+        *registry.report.lock().unwrap() = plan
+            .iter()
+            .map(|(def, outcome)| match outcome {
+                Err(status) => status.clone(),
+                Ok(_) => ActionStatus { id: def.id, status: Status::Pending, typed: None, trigger: None },
+            })
+            .collect();
+        *registry.portal.lock().unwrap() = Some(PortalState::Pending);
+
+        if matches!(*link, Link::NotStarted) {
+            let events = app.clone();
+            *link = match portal::start(move |event| on_event(&events, event)) {
+                Some(handle) => Link::Running { handle, gen: 0 },
+                None => Link::Gone,
+            };
+        }
+        let Link::Running { handle, gen } = &mut *link else { return false };
+        *gen += 1;
+        if !handle.bind(*gen, wanted) {
+            *link = Link::Gone;
+            return false;
+        }
+        drop(link);
+        let _ = app.emit("shortcuts-status", status(app));
+        true
+    }
+
+    /// Gives the shortcuts back to the desktop while Settings records a new
+    /// one; the next `apply` binds them again.
+    pub fn release<R: Runtime>(app: &AppHandle<R>) {
+        let Some(registry) = app.try_state::<Registry>() else { return };
+        let mut link = registry.wayland.lock().unwrap();
+        if let Link::Running { handle, gen } = &mut *link {
+            *gen += 1;
+            handle.release();
+        }
+    }
+
+    /// What the portal thread says. Runs on that thread.
+    fn on_event<R: Runtime>(app: &AppHandle<R>, event: Event) {
+        let Some(registry) = app.try_state::<Registry>() else { return };
+        if let Event::Activated(id) = &event {
+            if let Some(def) = find(id).filter(|d| d.ported) {
+                dispatch(app, def.id);
+            }
+            return;
+        }
+        let mut link = registry.wayland.lock().unwrap();
+        let current = match &*link {
+            Link::Running { gen, .. } => *gen,
+            _ => 0,
+        };
+        {
+            let mut report = registry.report.lock().unwrap();
+            let mut portal = registry.portal.lock().unwrap();
+            match event {
+                Event::Bound { gen, shortcuts } if gen == current => {
+                    crate::log::line("shortcuts: registered with the desktop portal");
+                    mark_bound(&mut report, shortcuts.as_deref());
+                    *portal = Some(PortalState::Active);
+                }
+                Event::Changed { gen, shortcuts } if gen == current => mark_changed(&mut report, &shortcuts),
+                Event::Failed { gen, reason } if gen == current => {
+                    crate::log::line(format!("shortcuts: the desktop portal didn't take them: {reason}"));
+                    mark_failed(&mut report);
+                    *portal = None;
+                }
+                Event::Unavailable(reason) => {
+                    crate::log::line(format!("shortcuts: no portal, commands instead ({reason})"));
+                    *link = Link::Gone;
+                    mark_failed(&mut report);
+                    *portal = None;
+                }
+                _ => return,
+            }
+        }
+        drop(link);
+        let _ = app.emit("shortcuts-status", status(app));
+    }
+
+    fn handed_over(status: Status) -> bool {
+        matches!(status, Status::Pending | Status::Active | Status::Refused)
+    }
+
+    /// The desktop answered: each shortcut it lists is active, with its keys;
+    /// one it left out is refused. `None`: it didn't list them, so all are.
+    pub fn mark_bound(report: &mut [ActionStatus], shortcuts: Option<&[Bound]>) {
+        for st in report.iter_mut().filter(|st| handed_over(st.status)) {
+            let bound = match shortcuts {
+                None => Some(None),
+                Some(list) => list.iter().find(|b| b.id == st.id).map(|b| b.trigger.clone()),
+            };
+            match bound {
+                Some(trigger) => {
+                    st.status = Status::Active;
+                    st.trigger = trigger;
+                }
+                None => {
+                    st.status = Status::Refused;
+                    st.trigger = None;
+                }
+            }
+        }
+    }
+
+    /// The user gave some shortcuts other keys in the desktop's settings.
+    pub fn mark_changed(report: &mut [ActionStatus], shortcuts: &[Bound]) {
+        for st in report.iter_mut().filter(|st| handed_over(st.status)) {
+            if let Some(b) = shortcuts.iter().find(|b| b.id == st.id) {
+                st.status = Status::Active;
+                st.trigger = b.trigger.clone();
+            }
+        }
+    }
+
+    /// No portal after all: what a Wayland session showed before it.
+    pub fn mark_failed(report: &mut [ActionStatus]) {
+        for st in report.iter_mut().filter(|st| handed_over(st.status)) {
+            st.status = Status::Unsupported;
+            st.trigger = None;
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn report() -> Vec<ActionStatus> {
+            plan(&Bindings::new(), |_| None)
+                .into_iter()
+                .map(|(def, outcome)| match outcome {
+                    Err(status) => status,
+                    Ok(_) => ActionStatus { id: def.id, status: Status::Pending, typed: None, trigger: None },
+                })
+                .collect()
+        }
+
+        fn of<'a>(report: &'a [ActionStatus], id: &str) -> &'a ActionStatus {
+            report.iter().find(|s| s.id == id).unwrap()
+        }
+
+        fn bound(id: &str, trigger: Option<&str>) -> Bound {
+            Bound { id: id.into(), trigger: trigger.map(str::to_string) }
+        }
+
+        #[test]
+        fn the_desktop_answer_marks_each_shortcut() {
+            let mut r = report();
+            let answer = [bound("openChat", Some("Ctrl+Alt+Space")), bound("goToAlert", None)];
+            mark_bound(&mut r, Some(&answer));
+            assert_eq!(of(&r, "openChat").status, Status::Active);
+            assert_eq!(of(&r, "openChat").trigger.as_deref(), Some("Ctrl+Alt+Space"));
+            assert_eq!(of(&r, "goToAlert").status, Status::Active);
+            assert_eq!(of(&r, "goToAlert").trigger, None);
+            // Left out of the answer.
+            assert_eq!(of(&r, "muteToggle").status, Status::Refused);
+            assert_eq!(of(&r, "desktopToggle").status, Status::Refused);
+            // Never handed over: untouched.
+            assert_eq!(of(&r, "toggleIsland").status, Status::Off);
+            assert_eq!(of(&r, "attachFrontWindow").status, Status::NotPorted);
+        }
+
+        #[test]
+        fn an_answer_without_a_list_takes_them_all() {
+            let mut r = report();
+            mark_bound(&mut r, None);
+            assert!(r.iter().all(|s| matches!(s.status, Status::Active | Status::Off | Status::NotPorted)));
+            assert_eq!(of(&r, "nextPill").status, Status::Active);
+        }
+
+        #[test]
+        fn new_keys_from_the_desktop_replace_the_old_ones() {
+            let mut r = report();
+            mark_bound(&mut r, Some(&[bound("openChat", Some("Ctrl+Alt+Space"))]));
+            mark_changed(&mut r, &[bound("openChat", Some("Meta+C")), bound("muteToggle", Some("Meta+M"))]);
+            assert_eq!(of(&r, "openChat").trigger.as_deref(), Some("Meta+C"));
+            assert_eq!(of(&r, "muteToggle").status, Status::Active);
+            assert_eq!(of(&r, "muteToggle").trigger.as_deref(), Some("Meta+M"));
+            assert_eq!(of(&r, "toggleIsland").status, Status::Off);
+        }
+
+        #[test]
+        fn a_failure_goes_back_to_unsupported() {
+            let mut r = report();
+            mark_bound(&mut r, Some(&[bound("openChat", Some("Ctrl+Alt+Space"))]));
+            mark_failed(&mut r);
+            for s in &r {
+                assert!(matches!(s.status, Status::Unsupported | Status::Off | Status::NotPorted), "{}", s.id);
+                assert_eq!(s.trigger, None);
+            }
+            assert_eq!(of(&r, "openChat").status, Status::Unsupported);
+        }
+
+        #[test]
+        fn every_action_has_a_description() {
+            for def in ACTIONS {
+                assert_ne!(description(def.id), "Coucou", "{}", def.id);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -423,10 +732,10 @@ mod tests {
     }
 
     #[test]
-    fn the_actions_not_ported_yet_are_reserved_not_registered() {
+    fn the_action_not_ported_yet_is_reserved_not_registered() {
         let plan = plan(&Bindings::new(), never);
         for (def, outcome) in plan {
-            let reserved = matches!(def.id, "attachFrontWindow" | "desktopToggle");
+            let reserved = def.id == "attachFrontWindow";
             assert_eq!(def.ported, !reserved);
             match outcome {
                 Ok(_) => assert!(def.ported && def.enabled_by_default, "{}", def.id),
@@ -545,7 +854,8 @@ mod tests {
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "wardrobeToggle"])), Some("wardrobeToggle"));
         assert_eq!(from_args(&args(&["coucou", "--shortcut"])), None);
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "rm -rf"])), None);
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), None);
+        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), Some("desktopToggle"));
+        assert_eq!(from_args(&args(&["coucou", "--shortcut", "attachFrontWindow"])), None);
         assert_eq!(from_args(&args(&["coucou"])), None);
     }
 }
