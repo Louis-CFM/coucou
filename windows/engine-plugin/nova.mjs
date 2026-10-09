@@ -27,6 +27,7 @@ export default async ()=>({
    // A real executable invocation forces the CLI's own ctx.ask gate.
    output.args.command=prefix+quote('& { '+original+' }');
   }
+  if(input.tool==='apply_patch'){for(const match of String(output.args.patchText||'').matchAll(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm))await protect(match[1].trim());}
   if(input.tool==='apply_patch'&&/^\*\*\* Delete File:/mi.test(String(output.args.patchText||'')))
    throw new Error('Use nova_recycle to delete files safely; permanent patch deletion is disabled');
  },
@@ -36,6 +37,7 @@ export default async ()=>({
    description:'Move a file or directory to the Windows Recycle Bin after fresh user permission. Never permanently delete.',
    args:{filePath:tool.schema.string().describe('Absolute existing path to recycle')},
    async execute({filePath},context){
+    await protect(filePath);
     const target=await realpath(filePath);
     if(path.parse(target).root.toLowerCase()===target.toLowerCase())throw new Error('Drive roots cannot be recycled');
     await context.ask({permission:'nova_recycle',patterns:[target],always:[],metadata:{filepath:target,recycle:true}});

@@ -44,7 +44,7 @@ jobs:
           $code = $LASTEXITCODE
           $output | Write-Output
           if ($code -ne 0) {
-            $tail = ($output | Select-Object -Last 100) -join "`n"
+            $tail = ($output | Select-Object -Last 30) -join "`n"
             $tail = $tail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Native build or integration failure::$tail"
             exit $code

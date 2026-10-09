@@ -691,8 +691,8 @@ mod wayland {
 mod tests {
     use super::*;
 
-    const MAC_IDS: [&str; 10] = [
-        "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
+    const MAC_IDS: [&str; 11] = [
+        "killEngine", "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
         "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
     ];
 
