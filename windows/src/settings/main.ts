@@ -966,6 +966,8 @@ function generalSection(): HTMLElement {
     h("div", { class: "hint", text: t("The folder whose subfolders the chat's Task mode offers as project folders. Empty: your home folder.") }),
     taskOutputsRow(),
     h("div", { class: "hint", text: t("A folder where every finished task is also saved — the answer as a Markdown note, reports as Typst files. An Obsidian vault folder works well.") }),
+    editorRow(),
+    h("div", { class: "hint", text: t("The command that opens a session's folder or a diff's file — e.g. kitty -e nvim. Empty: VS Code. The main pill takes the editor's name.") }),
     ...recapRows(),
     languageRow(),
   );
@@ -1001,6 +1003,22 @@ function taskOutputsRow(): HTMLElement {
     void save();
   });
   return h("div", { class: "row" }, h("label", { text: t("Task outputs") }), out);
+}
+
+/** Settings → General → Editor: what opens a session's folder or a diff's file. */
+function editorRow(): HTMLElement {
+  const editor = h("input", {
+    type: "text",
+    value: settings.editorCommand,
+    placeholder: "code",
+    spellcheck: "false",
+    style: "width:240px",
+  }) as HTMLInputElement;
+  editor.addEventListener("change", () => {
+    settings.editorCommand = editor.value.trim();
+    void save();
+  });
+  return h("div", { class: "row" }, h("label", { text: t("Editor") }), editor);
 }
 
 /**

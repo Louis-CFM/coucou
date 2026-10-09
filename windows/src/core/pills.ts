@@ -139,6 +139,18 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
 
+/**
+ * What the VS Code pill is called when Settings → Editor replaces `code`:
+ * the command's last word, prettied ("kitty -e nvim" → "Nvim"). Null when the
+ * editor is VS Code, so the catalog name stays.
+ */
+export function editorLabel(editorCommand: string): string | null {
+  const last = editorCommand.trim().split(/\s+/).pop() ?? "";
+  const name = last.split(/[/\\]/).pop() ?? "";
+  if (!name || name.startsWith("-")) return null;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 /** How many declared pills may sit next to the main one. */
 export const MAX_DECLARED = 4;
 

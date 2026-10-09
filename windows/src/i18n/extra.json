@@ -848,6 +848,17 @@
    "ru": "Перетащить",
    "id": "Letakkan"
   },
+  "Editor": {
+   "zh-Hans": "编辑器",
+   "hi": "एडिटर",
+   "es": "Editor",
+   "ar": "المحرر",
+   "fr": "Éditeur",
+   "bn": "এডিটর",
+   "pt-BR": "Editor",
+   "ru": "Редактор",
+   "id": "Editor"
+  },
   "Enter the server address first.": {
    "zh-Hans": "请先输入服务器地址。",
    "hi": "पहले सर्वर का पता दर्ज करें।",
@@ -2376,6 +2387,17 @@
    "pt-BR": "O endereço precisa começar com http:// ou https://.",
    "ru": "Адрес должен начинаться с http:// или https://.",
    "id": "Alamat harus diawali http:// atau https://."
+  },
+  "The command that opens a session's folder or a diff's file — e.g. kitty -e nvim. Empty: VS Code. The main pill takes the editor's name.": {
+   "zh-Hans": "打开会话文件夹或差异文件的命令 — 例如 kitty -e nvim。留空：VS Code。主胶囊会使用该编辑器的名字。",
+   "hi": "वह कमांड जो सेशन का फ़ोल्डर या diff की फ़ाइल खोलती है — जैसे kitty -e nvim। खाली: VS Code। मुख्य पिल उस एडिटर का नाम लेती है।",
+   "es": "El comando que abre la carpeta de una sesión o el archivo de un diff — p. ej. kitty -e nvim. Vacío: VS Code. La píldora principal toma el nombre del editor.",
+   "ar": "الأمر الذي يفتح مجلد الجلسة أو ملف الفرق — مثل kitty -e nvim. فارغ: VS Code. تأخذ الحبة الرئيسية اسم المحرر.",
+   "fr": "La commande qui ouvre le dossier d'une session ou le fichier d'un diff — p. ex. kitty -e nvim. Vide : VS Code. La pilule principale prend le nom de l'éditeur.",
+   "bn": "যে কমান্ড সেশনের ফোল্ডার বা ডিফের ফাইল খোলে — যেমন kitty -e nvim। খালি: VS Code। মূল পিল এডিটরের নাম নেয়।",
+   "pt-BR": "O comando que abre a pasta de uma sessão ou o arquivo de um diff — ex.: kitty -e nvim. Vazio: VS Code. A pílula principal adota o nome do editor.",
+   "ru": "Команда, открывающая папку сессии или файл из диффа — например kitty -e nvim. Пусто: VS Code. Главная пилюля берёт имя редактора.",
+   "id": "Perintah yang membuka folder sesi atau berkas diff — mis. kitty -e nvim. Kosong: VS Code. Pil utama memakai nama editor."
   },
   "The file is removed.": {
    "zh-Hans": "该文件将被删除。",

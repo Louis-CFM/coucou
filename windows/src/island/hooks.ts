@@ -9,7 +9,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
-import { pillDefinition } from "../core/pills";
+import { DEFAULT_MAIN_PILL, editorLabel, pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
@@ -197,7 +197,10 @@ function clearSession(id: string) {
   t.steps = [];
   t.stepIndex = 0;
   delete t.stepSeq;
-  t.name = pillDefinition(id)?.name ?? t.name;
+  t.name =
+    (id === DEFAULT_MAIN_PILL ? editorLabel(State.settings.editorCommand) : null) ??
+    pillDefinition(id)?.name ??
+    t.name;
   t.pillBadge = null;
   t.sessionId = null;
   t.finalLine = null;

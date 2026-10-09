@@ -197,7 +197,14 @@ fn open_url(url: String) {
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
+    let editor = shared.settings.lock().unwrap().editor_command.clone();
+    open_folder_in_editor(&editor, path)
+}
+
+/// `open_in_vscode`, with Settings → Editor already read: the user's own
+/// command when one is set, else `code`.
+fn open_folder_in_editor(editor: &str, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -212,7 +219,13 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
+    // Settings → Editor: the user's own command (`kitty -e nvim`…) instead of
+    // VS Code. Split by whitespace ourselves — still no shell anywhere.
+    if !editor.trim().is_empty() {
+        if spawn_editor(editor, path.as_deref()) {
+            return true;
+        }
+    } else if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
@@ -227,13 +240,35 @@ fn open_in_vscode(path: Option<String>) -> bool {
     false
 }
 
+/// Runs the Settings → Editor command with `target` appended, shell-free: the
+/// words of the command, then the already-validated path as one argument.
+fn spawn_editor(editor: &str, target: Option<&str>) -> bool {
+    let mut words = editor.split_whitespace();
+    let Some(program) = words.next() else { return false };
+    let exe = if std::path::Path::new(program).is_absolute() {
+        std::path::PathBuf::from(program)
+    } else {
+        match platform::find_on_path(program) {
+            Some(found) => found,
+            None => return false,
+        }
+    };
+    let mut cmd = Command::new(exe);
+    cmd.args(words);
+    if let Some(t) = target {
+        cmd.arg(t);
+    }
+    platform::no_console(&mut cmd).spawn().is_ok()
+}
+
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
 /// folder in VS Code, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<String>) -> bool {
+    let editor = shared.settings.lock().unwrap().editor_command.clone();
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return open_folder_in_editor(&editor, path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
@@ -241,16 +276,16 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
         if platform::focus_session_window(&owners, &folder) {
             return true;
         }
-        open_in_vscode(path)
+        open_folder_in_editor(&editor, path)
     }
     // Linux asks the display server, KWin or the terminal, which can take a
-    // moment: never on the UI thread a sync command runs on. VS Code still
+    // moment: never on the UI thread a sync command runs on. The editor still
     // opens when none of them could bring the window forward.
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
             if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
+                open_folder_in_editor(&editor, path);
             }
         });
         true
@@ -272,13 +307,18 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
-/// otherwise shows its folder. The file itself is never opened by its type —
-/// xdg-open or Explorer would run a script that Claude just wrote.
+/// The diff card's ↗: opens the edited file in the editor (Settings → Editor,
+/// else VS Code), otherwise shows its folder. The file itself is never opened
+/// by its type — xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
-fn open_file_in_vscode(path: String) -> bool {
+fn open_file_in_vscode(shared: State<Shared>, path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
+    let editor = shared.settings.lock().unwrap().editor_command.clone();
+    if !editor.trim().is_empty() {
+        if spawn_editor(&editor, Some(&file.to_string_lossy())) {
+            return true;
+        }
+    } else if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {

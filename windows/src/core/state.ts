@@ -3,8 +3,8 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 import {
-  DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
-  toggleDeclared, type HostOs, type PillDefinition,
+  DEFAULT_MAIN_PILL, HOST_OS, availablePills, editorLabel, orderPills, pillDefinition,
+  sanitizeDeclared, toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
@@ -160,6 +160,8 @@ export interface Settings {
   taskLastProject: string;
   /** Where finished tasks also land (answer as Markdown, reports as Typst); "" = project only. */
   taskOutputsDir: string;
+  /** Command that opens a session's folder or file ("" = VS Code, `code`). */
+  editorCommand: string;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -196,6 +198,7 @@ export const DEFAULT_SETTINGS: Settings = {
   taskProjectsRoot: "",
   taskLastProject: "",
   taskOutputsDir: "",
+  editorCommand: "",
 };
 
 type Listener = () => void;
@@ -417,7 +420,10 @@ class AppState {
     for (const def of availablePills(this.os)) {
       const shouldLoad = def.id === d.mainPill || d.activeIntegrations.includes(def.id);
       const idx = this.tasks.findIndex((t) => t.id === def.id);
-      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors));
+      // The VS Code pill wears the editor's name when Settings → Editor is set.
+      const name =
+        (def.id === DEFAULT_MAIN_PILL ? editorLabel(this.settings.editorCommand) : null) ?? def.name;
+      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors, name));
       const busy = idx >= 0 && (this.tasks[idx].state !== "idle" || this.tasks[idx].steps.length > 0);
       if (!shouldLoad && idx >= 0 && !busy) this.tasks.splice(idx, 1);
     }

@@ -75,6 +75,10 @@ pub struct Settings {
     /// reports as Typst files ("" = only in the project). An Obsidian vault
     /// folder works well here.
     pub task_outputs_dir: String,
+    /// The command that opens a session's folder or a diff's file from the
+    /// island — "kitty -e nvim", "subl"… ("" = VS Code, `code`). Run without
+    /// a shell, the path appended as one argument.
+    pub editor_command: String,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -135,6 +139,7 @@ impl Default for Settings {
             task_projects_root: String::new(),
             task_last_project: String::new(),
             task_outputs_dir: String::new(),
+            editor_command: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
         }
     }
@@ -415,6 +420,7 @@ mod tests {
   "taskProjectsRoot": "/home/me/projects",
   "taskLastProject": "/home/me/projects/shop",
   "taskOutputsDir": "/home/me/vault/outputs",
+  "editorCommand": "kitty -e nvim",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"##;
 
@@ -821,6 +827,7 @@ mod tests {
                 "taskProjectsRoot",
                 "taskLastProject",
                 "taskOutputsDir",
+                "editorCommand",
                 "desktopMochi",
             ]
         );
