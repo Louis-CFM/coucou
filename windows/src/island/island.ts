@@ -35,6 +35,13 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** Frame pacing while only the working dots move: enough for the pulse to read as one. */
+const PULSE_FRAME_MS = 1000 / 15;
+/**
+ * The least time between two frames while only looping motion is left. Just
+ * under three frames at 90 Hz and two at 60, so both land on 30 a second.
+ */
+const CALM_FRAME_MS = 30;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -87,6 +94,9 @@ export class Island {
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
   private collapseTimer: number | null = null;
+  private blinkTimer: number | null = null;
+  /** Only looping motion is left, so frames are paced (see `frame`). */
+  private calm = false;
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
@@ -283,7 +293,8 @@ export class Island {
     this.clock = h("div", { id: "clock" });
 
     this.header = buildHeader(actions);
-    this.views = buildViews(actions, () => this.animateGeometry(false));
+    // The chat grows with its conversation, and grows and shrinks with its model picker.
+    this.views = buildViews(actions, () => this.animateGeometry(this.targetSize().h < this.height.value));
     this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
@@ -580,6 +591,9 @@ export class Island {
         // already active by the time the view becomes `upload`.
         UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         this.alert("upload");
+        // Waking a hidden island passes through the home view, and leaving the
+        // drop views on the way switches the sequence off: switch it back on.
+        if (!UploadSeq.isActive) UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         break;
       }
       case "leave": {
@@ -693,6 +707,9 @@ export class Island {
         if (State.droppedFile?.path !== path) return;
         UploadSeq.deactivate();
         State.noteMessage = String(err).replace(/^Error:\s*/, "");
+        // This note leaves on its own, below: no OK button for it.
+        State.noteThen = null;
+        State.noteAt = performance.now();
         this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");
@@ -737,7 +754,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.pickingModel);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1040,12 +1057,39 @@ export class Island {
 
   ensureRunning() {
     if (this.running) return;
+    if (this.blinkTimer != null) {
+      window.clearTimeout(this.blinkTimer);
+      this.blinkTimer = null;
+    }
     this.running = true;
     this.lastFrame = performance.now();
     requestAnimationFrame(this.frame);
   }
 
+  /**
+   * The loop has stopped with Mochi still on screen: come back for his next
+   * blink, which only a frame can start. A hidden island schedules nothing.
+   */
+  private wakeForBlink() {
+    if (State.mode === "hidden") return;
+    const wait = this.engine.msUntilBlink();
+    if (wait === null) return;
+    this.blinkTimer = window.setTimeout(() => {
+      this.blinkTimer = null;
+      if (State.mode !== "hidden") this.ensureRunning();
+    }, Math.max(100, wait));
+  }
+
   private frame = (nowMs: number) => {
+    // Breathing and bouncing read the same at 30 frames a second as at the
+    // display's 90 or 120, and they are all the island does most of its life.
+    if (
+      this.calm && !this.dirty && !this.width.animating && !this.height.animating &&
+      !this.radius.animating && nowMs - this.lastFrame < CALM_FRAME_MS
+    ) {
+      requestAnimationFrame(this.frame);
+      return;
+    }
     const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
@@ -1103,11 +1147,30 @@ export class Island {
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
+    // Calm: nothing left but the loops. Anything on its way somewhere — the
+    // island changing shape, eyes following the pointer, a tween, a ticker —
+    // gets every frame back at once.
+    this.calm = busy && !settling &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !greetingActive && !UploadSeq.isActive && !viewAnimating &&
+      !this.engine.moving;
+
+    if (!busy) {
       this.running = false;
       Sound.idle();
+      this.wakeForBlink();
+    } else if (
+      this.engine.onlyPulsing && State.mode !== "hidden" && !settling && !greetingActive &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !UploadSeq.isActive && !viewAnimating
+    ) {
+      // Only the working dots are moving. A pulse that small does not need the
+      // display's own rate — eight times this on a 120 Hz panel — and no sound
+      // goes with it, so the audio thread can rest as it does when the loop stops.
+      Sound.idle();
+      window.setTimeout(() => requestAnimationFrame(this.frame), PULSE_FRAME_MS);
+    } else {
+      requestAnimationFrame(this.frame);
     }
   };
 
@@ -1239,10 +1302,8 @@ export class Island {
 
     const live = expanded && !greetingActive;
     this.contentEl.style.opacity = live ? "1" : "0";
-    // Folded or hidden, the views are out of sight but still in the page: what
-    // moves in them on its own stops (see #content.away), and picks up when the
-    // island unfolds.
-    this.contentEl.classList.toggle("away", !expanded);
+    // Lets the stylesheet pause what nobody can see (see `#content:not(.live)`).
+    this.contentEl.classList.toggle("live", live);
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";

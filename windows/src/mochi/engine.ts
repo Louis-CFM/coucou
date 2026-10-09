@@ -222,6 +222,10 @@ export class BotEngine {
 
   // Targets
   tgYaw = 0; tgPitch = 0; tgTilt = 0; tgSy = 1; tgSx = 1; tgEs = 1;
+  /** Seconds of full-rate drawing still owed to the pointer having moved the eyes. */
+  private lookMoving = 0;
+  private lookSeenX = 0;
+  private lookSeenY = 0;
 
   /** Extra canvas height above the body so hearts can fly out without clipping. */
   particleOverhang = 0;
@@ -539,24 +543,76 @@ export class BotEngine {
 
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
+    return this.moving || this.looping || this.pulsing || this.unsettled;
+  }
+
+  /**
+   * Nothing moves but the working dots: the island still needs frames, though
+   * far fewer than the display hands out.
+   */
+  get onlyPulsing(): boolean {
+    return this.pulsing && !this.moving && !this.looping && !this.unsettled;
+  }
+
+  /** The motion a state repeats for as long as it lasts: breathing, a bounce, the z's. */
+  get looping(): boolean {
     return (
-      this.tweens.size > 0 ||
-      this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
       this.isMini ||
-      this.isDancing || this.dancingLevel > 0.001 ||
+      this.isDancing || this.dancingLevel > 0.001
+    );
+  }
+
+  /** The dots pulse on the clock in drawBadge(), with no tween behind them. */
+  private get pulsing(): boolean {
+    return this.badge?.kind === "dots" && this.badgeS > 0.001;
+  }
+
+  /**
+   * Something is on its way somewhere: a tween, eyes turning to the pointer, a
+   * colour changing. This is what wants every frame. The loops — a breath, a
+   * scan, a bounce, the z's drifting up — chase targets that never settle, and
+   * read the same at a third of the frames, so they are not counted here.
+   */
+  get moving(): boolean {
+    return (
+      this.tweens.size > 0 ||
+      this.lookMoving > 0 ||
+      Math.abs(this.tgEs - this.es) > 0.002 ||
+      this.slotH > 0.001 || Math.abs(this.slotHVel) > 0.001 ||
+      Math.abs(this.col[0] - this.colT[0]) > 0.003 ||
+      Math.abs(this.col[1] - this.colT[1]) > 0.003 ||
+      Math.abs(this.col[2] - this.colT[2]) > 0.003
+    );
+  }
+
+  /**
+   * Everything else that still draws a new frame: particles, the body catching
+   * up with where a loop put its targets, costume physics. Yaw, pitch, tilt and
+   * the breath's scale stay unsettled for as long as their loop runs, so they
+   * are not in `moving`: a loop would otherwise never count as calm.
+   */
+  private get unsettled(): boolean {
+    return (
+      this.particles.length > 0 ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
       Math.abs(this.tgTilt - this.tilt) > 0.002 ||
       Math.abs(this.tgSy - this.sy) > 0.002 ||
       Math.abs(this.tgSx - this.sx) > 0.002 ||
-      Math.abs(this.tgEs - this.es) > 0.002 ||
-      this.slotH > 0.001 || Math.abs(this.slotHVel) > 0.001 ||
-      Math.abs(this.col[0] - this.colT[0]) > 0.003 ||
-      Math.abs(this.col[1] - this.colT[1]) > 0.003 ||
-      Math.abs(this.col[2] - this.colT[2]) > 0.003 ||
       (this.outfit !== "none" && (Math.abs(this.physVx) > 0.01 || Math.abs(this.physVy) > 0.01))
     );
+  }
+
+  /**
+   * How long until the next blink is due, 0 once it is, null in the states that
+   * never blink. Blinks are started by `update()`, so a stopped loop has to come
+   * back for them: the Mac draws every frame while the island is on screen, and
+   * without this Mochi would stare until the next hook event.
+   */
+  msUntilBlink(): number | null {
+    if (this.state === "sleeping" || this.state === "dizzy") return null;
+    return Math.max(0, (this.nextBlink - now()) * 1000);
   }
 
   // ── Tweens ──────────────────────────────────────────────────────────────────
@@ -591,6 +647,14 @@ export class BotEngine {
     }
 
     const t = n - this.t0;
+    // The pointer turning the eyes: every frame while it does, and a moment after.
+    if (!this.isMini && (this.lookX !== this.lookSeenX || this.lookY !== this.lookSeenY)) {
+      this.lookSeenX = this.lookX;
+      this.lookSeenY = this.lookY;
+      this.lookMoving = 0.35;
+    } else if (this.lookMoving > 0) {
+      this.lookMoving = Math.max(0, this.lookMoving - dt);
+    }
     let ty = this.lookX * 0.62;
     let tp = this.lookY * 0.5;
 

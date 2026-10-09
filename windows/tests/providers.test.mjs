@@ -34,11 +34,22 @@ test("Claude's model is the existing setting; the others are kept per provider",
   assert.deepEqual(DEFAULT_SETTINGS.chatModels, {});
 });
 
-test("model servers show in the picker once connected, or while in use", () => {
-  const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+test("the picker shows what is set up, and always where the chat goes", () => {
+  const ids = (s, keys = []) => visibleProviders(s, (key) => keys.includes(key)).map((p) => p.id);
+  // Nothing set up: only the active provider, which says its key is missing.
+  assert.deepEqual(ids(settings()), ["anthropic"]);
+  assert.deepEqual(ids(settings({ chatProvider: "openai" })), ["openai"]);
+  // A cloud provider shows once its key is stored.
+  assert.deepEqual(ids(settings(), ["anthropic-api-key", "google-api-key"]), ["anthropic", "google"]);
+  assert.deepEqual(ids(settings(), ["openrouter-api-key"]), ["anthropic", "openrouter"]);
+  // A model server shows once connected, or while in use.
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" }), ["anthropic-api-key"]), ["anthropic", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" }), ["anthropic-api-key"]), ["anthropic", "custom"]);
+  // In the catalog's order, whatever the order the keys were added in.
+  assert.deepEqual(
+    ids(settings({ lmstudioUrl: "http://127.0.0.1:1234" }), ["openai-api-key", "anthropic-api-key"]),
+    ["anthropic", "openai", "lmstudio"],
+  );
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

@@ -223,11 +223,12 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
-/* Keep it light: 0 % CPU when the island is hidden. Folded or hidden, the
-   views are invisible but still in the page, and an animation with no end — a
-   shimmering line, a pulsing dot, a turning ring — would go on being computed
-   for nobody. They all stop, and pick up when the island unfolds. */
-#content.away * {
+/* Keep it light: 0 % CPU when the island is hidden. Folded or hidden — and
+   while the greeting canvas covers the views — they are still in the page,
+   and an animation with no end — a shimmering line, a pulsing dot, a turning
+   ring — would go on being computed for nobody. They all stop, and pick up
+   when the island unfolds. */
+#content:not(.live) * {
   animation-play-state: paused !important;
 }
 
@@ -773,6 +774,20 @@ body {
 
 .title {
   font: 600 15px var(--font);
+}
+
+/* A note is one short sentence. A longer one — an error passed on from a
+   provider — stops with an ellipsis instead of filling its card to the edges. */
+.title.note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+/* With its OK button under it, a note has room for three lines. */
+.stack.closable .title.note {
+  -webkit-line-clamp: 3;
 }
 
 /* Claude's final message on the finished card: one line, never past the card. */
@@ -1350,6 +1365,17 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A model its provider refused: listed, "not found" once used, and not answered since. */
+.picker-model.refused .picker-model-name {
+  color: #8a8f98;
+}
+
+.picker-flag {
+  flex: 0 0 auto;
+  font: 400 11px var(--font);
+  color: var(--amber);
 }
 
 .picker-status {

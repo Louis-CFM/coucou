@@ -765,6 +765,15 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     Some((g.width() as f64, g.height() as f64))
 }
 
+pub fn moving_window() -> bool {
+    false
+}
+
+/// Layer-shell keeps the island above the other surfaces already.
+pub fn raise_topmost(_win: &WebviewWindow) {}
+
+pub fn keep_topmost(_app: &AppHandle) {}
+
 // ── Window under a point (drop Mochi on it → chat context) ────────────────────
 // IslandWindowController.windowContextAtPoint on the Mac. X11 only: Wayland
 // deliberately does not tell a client what is under the pointer, and on a

@@ -107,10 +107,18 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/**
+ * The chat while its model picker is open: all the height the panel has. On
+ * macOS the picker is a popover with 260 pt for the list; here it sits inside
+ * the island, where an empty chat left it room for a single model.
+ */
+export const CHAT_PICKER_H = PANEL_H - 8;
+
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  pickingModel = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -120,7 +128,8 @@ export function islandSize(
     case "compact":
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
-      const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
+      const chat = pickingModel ? CHAT_PICKER_H : chatPromptHeight(chatCount);
+      const h = view === "prompt" ? chat : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }

@@ -148,9 +148,10 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+    // Stop the cursor poll first so no in-flight tick can undo what follows.
+    shared.gate.set_active(!collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
-    shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
 }
 
@@ -517,6 +518,14 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The models of a provider that it refused and that have not answered since:
+/// a 404 for a model its own list offers. The picker marks them. Nothing is
+/// asked of anyone.
+#[tauri::command]
+fn chat_refused(chat: State<'_, Chat>, provider: String) -> Vec<String> {
+    chat.refused_models(&provider)
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -728,7 +737,7 @@ pub fn run() {
             gate: gate.clone(),
         })
         .manage(Pending::default())
-        .manage(Chat::default())
+        .manage(Chat::stored())
         .manage(dictation::Dictation::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
@@ -764,6 +773,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            chat_refused,
             local_connect,
             local_set_key,
             chat_reset,
@@ -812,6 +822,7 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
+            platform::keep_topmost(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window.
@@ -839,6 +850,7 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_drop_zone_watch(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
