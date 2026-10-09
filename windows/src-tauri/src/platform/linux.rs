@@ -294,6 +294,33 @@ pub fn codex_candidates() -> Vec<PathBuf> {
     out
 }
 
+/// Where the Claude Code CLI may be, best first: $PATH, the native installer's
+/// folders, then the same per-user install folders as `codex_candidates`.
+pub fn claude_candidates() -> Vec<PathBuf> {
+    let home = home_dir();
+    let mut out: Vec<PathBuf> = find_on_path("claude").into_iter().collect();
+    for dir in
+        [".local/bin", ".claude/local", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"]
+    {
+        out.push(home.join(dir).join("claude"));
+    }
+    out.push(PathBuf::from("/usr/local/bin/claude"));
+    out.push(PathBuf::from("/usr/bin/claude"));
+    let nvm = home.join(".nvm/versions/node");
+    if let Ok(entries) = std::fs::read_dir(&nvm) {
+        let mut versions: Vec<String> =
+            entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
+        versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
+        out.extend(versions.iter().map(|v| nvm.join(v).join("bin/claude")));
+    }
+    out.retain(|p| {
+        std::fs::metadata(p)
+            .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    });
+    out
+}
+
 // ── Cursor ────────────────────────────────────────────────────────────────────
 
 /// Nothing polls the cursor here: the page reports it over the island, and the

@@ -962,9 +962,45 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
+    taskProjectsRow(),
+    h("div", { class: "hint", text: t("The folder whose subfolders the chat's Task mode offers as project folders. Empty: your home folder.") }),
+    taskOutputsRow(),
+    h("div", { class: "hint", text: t("A folder where every finished task is also saved — the answer as a Markdown note, reports as Typst files. An Obsidian vault folder works well.") }),
     ...recapRows(),
     languageRow(),
   );
+}
+
+/** Settings → General → Task projects: where the chat's Task mode looks. */
+function taskProjectsRow(): HTMLElement {
+  const root = h("input", {
+    type: "text",
+    value: settings.taskProjectsRoot,
+    placeholder: t("Your home folder"),
+    spellcheck: "false",
+    style: "width:240px",
+  }) as HTMLInputElement;
+  root.addEventListener("change", () => {
+    settings.taskProjectsRoot = root.value.trim();
+    void save();
+  });
+  return h("div", { class: "row" }, h("label", { text: t("Task projects") }), root);
+}
+
+/** Settings → General → Task outputs: the vault folder answers are saved to. */
+function taskOutputsRow(): HTMLElement {
+  const out = h("input", {
+    type: "text",
+    value: settings.taskOutputsDir,
+    placeholder: t("Only in the project"),
+    spellcheck: "false",
+    style: "width:240px",
+  }) as HTMLInputElement;
+  out.addEventListener("change", () => {
+    settings.taskOutputsDir = out.value.trim();
+    void save();
+  });
+  return h("div", { class: "row" }, h("label", { text: t("Task outputs") }), out);
 }
 
 /**

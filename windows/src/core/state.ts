@@ -63,6 +63,14 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** Task mode: the running task this bubble reports (task_runner.rs). */
+  taskId?: number;
+  /** The task is still running: the bubble shows the wait and a Cancel. */
+  pending?: boolean;
+  /** The folder the task ran in — the bubble's "Open folder". */
+  taskDir?: string;
+  /** Claude Code's session, once known — "Follow up" resumes it. */
+  sessionId?: string;
 }
 
 export type PromptContext =
@@ -146,6 +154,12 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /** Task mode: the folder whose subfolders are offered as projects ("" = home). */
+  taskProjectsRoot: string;
+  /** The project folder picked last in the chat's Task mode. */
+  taskLastProject: string;
+  /** Where finished tasks also land (answer as Markdown, reports as Typst); "" = project only. */
+  taskOutputsDir: string;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -179,6 +193,9 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  taskProjectsRoot: "",
+  taskLastProject: "",
+  taskOutputsDir: "",
 };
 
 type Listener = () => void;

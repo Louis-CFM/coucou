@@ -23,6 +23,17 @@
    "ru": "(сохранён)",
    "id": "(tersimpan)"
   },
+  "*Running — follow it in the island…*": {
+   "zh-Hans": "*进行中 — 在岛中跟进…*",
+   "hi": "*चल रहा है — आइलैंड में देखें…*",
+   "es": "*En marcha — síguela en la isla…*",
+   "ar": "*قيد التنفيذ — تابِعها في الشريط…*",
+   "fr": "*En cours — suis-la dans l'île…*",
+   "bn": "*চলছে — আইল্যান্ডে দেখুন…*",
+   "pt-BR": "*Em andamento — acompanhe na ilha…*",
+   "ru": "*Выполняется — следите в острове…*",
+   "id": "*Berjalan — ikuti di pulau…*"
+  },
   "+ subagent": {
    "zh-Hans": "+ 子代理",
    "hi": "+ सब-एजेंट",
@@ -33,6 +44,17 @@
    "pt-BR": "+ subagente",
    "ru": "+ субагент",
    "id": "+ subagen"
+  },
+  "A folder where every finished task is also saved — the answer as a Markdown note, reports as Typst files. An Obsidian vault folder works well.": {
+   "zh-Hans": "每个完成的任务也会保存到的文件夹 — 答案存为 Markdown 笔记，报告存为 Typst 文件。Obsidian 仓库中的文件夹很合适。",
+   "hi": "वह फ़ोल्डर जहाँ हर पूरा हुआ टास्क भी सहेजा जाता है — उत्तर Markdown नोट के रूप में, रिपोर्टें Typst फ़ाइलों के रूप में। Obsidian वॉल्ट का फ़ोल्डर अच्छा रहता है।",
+   "es": "Una carpeta donde también se guarda cada tarea terminada: la respuesta como nota Markdown y los informes como archivos Typst. Una carpeta de un vault de Obsidian funciona bien.",
+   "ar": "مجلد تُحفظ فيه أيضًا كل مهمة منتهية — الإجابة كملاحظة Markdown والتقارير كملفات Typst. مجلد داخل خزنة Obsidian مناسب جدًا.",
+   "fr": "Un dossier où chaque tâche terminée est aussi enregistrée — la réponse en note Markdown, les rapports en fichiers Typst. Un dossier d'un coffre Obsidian convient bien.",
+   "bn": "একটি ফোল্ডার যেখানে প্রতিটি শেষ হওয়া টাস্কও সংরক্ষিত হয় — উত্তর Markdown নোট হিসেবে, রিপোর্ট Typst ফাইল হিসেবে। Obsidian ভল্টের একটি ফোল্ডার ভালো কাজ করে।",
+   "pt-BR": "Uma pasta onde cada tarefa concluída também é salva — a resposta como nota Markdown, relatórios como arquivos Typst. Uma pasta de um vault do Obsidian funciona bem.",
+   "ru": "Папка, куда также сохраняется каждая завершённая задача — ответ как заметка Markdown, отчёты как файлы Typst. Подойдёт папка хранилища Obsidian.",
+   "id": "Folder tempat setiap tugas yang selesai juga disimpan — jawaban sebagai catatan Markdown, laporan sebagai berkas Typst. Folder vault Obsidian cocok untuk ini."
   },
   "A hook group named \"coucou\" that Coucou did not write is already there — Coucou has not touched it.": {
    "zh-Hans": "已存在一个并非 Coucou 写入的名为“coucou”的 hook 组 — Coucou 没有修改它。",
@@ -694,6 +716,17 @@
    "ru": "Развёртывание",
    "id": "Deployment"
   },
+  "Describe a task — Claude Code runs it in the chosen folder…": {
+   "zh-Hans": "描述一个任务 — Claude Code 会在所选文件夹中运行它…",
+   "hi": "कोई टास्क बताएं — Claude Code उसे चुने गए फ़ोल्डर में चलाएगा…",
+   "es": "Describe una tarea — Claude Code la ejecuta en la carpeta elegida…",
+   "ar": "صِف مهمة — سيشغّلها Claude Code في المجلد المختار…",
+   "fr": "Décris une tâche — Claude Code l'exécute dans le dossier choisi…",
+   "bn": "একটি টাস্ক লিখুন — Claude Code সেটি বেছে নেওয়া ফোল্ডারে চালাবে…",
+   "pt-BR": "Descreva uma tarefa — o Claude Code a executa na pasta escolhida…",
+   "ru": "Опишите задачу — Claude Code выполнит её в выбранной папке…",
+   "id": "Jelaskan tugas — Claude Code menjalankannya di folder yang dipilih…"
+  },
   "Details": {
    "zh-Hans": "详情",
    "hi": "विवरण",
@@ -859,6 +892,28 @@
    "ru": "Папки пока перетаскивать нельзя.",
    "id": "Folder belum bisa diletakkan."
   },
+  "Follow up": {
+   "zh-Hans": "继续跟进",
+   "hi": "फ़ॉलो-अप",
+   "es": "Continuar",
+   "ar": "متابعة",
+   "fr": "Poursuivre",
+   "bn": "ফলো-আপ",
+   "pt-BR": "Continuar",
+   "ru": "Продолжить",
+   "id": "Tindak lanjut"
+  },
+  "Follow up — continues the same task…": {
+   "zh-Hans": "跟进 — 继续同一个任务…",
+   "hi": "फ़ॉलो-अप — वही टास्क जारी रहता है…",
+   "es": "Continuar — sigue la misma tarea…",
+   "ar": "متابعة — تستكمل المهمة نفسها…",
+   "fr": "Poursuivre — continue la même tâche…",
+   "bn": "ফলো-আপ — একই টাস্ক চালিয়ে যায়…",
+   "pt-BR": "Continuar — segue a mesma tarefa…",
+   "ru": "Продолжение — та же задача…",
+   "id": "Tindak lanjut — melanjutkan tugas yang sama…"
+  },
   "Friday": {
    "zh-Hans": "星期五",
    "hi": "शुक्रवार",
@@ -902,6 +957,17 @@
    "pt-BR": "Ir para a permissão ou pergunta pendente",
    "ru": "Перейти к ожидающему разрешению или вопросу",
    "id": "Buka izin atau pertanyaan yang menunggu"
+  },
+  "Hand the next message to Claude Code as a task": {
+   "zh-Hans": "把下一条消息作为任务交给 Claude Code",
+   "hi": "अगला संदेश Claude Code को टास्क के रूप में सौंपें",
+   "es": "Entregar el próximo mensaje a Claude Code como una tarea",
+   "ar": "تسليم الرسالة التالية إلى Claude Code كمهمة",
+   "fr": "Confier le prochain message à Claude Code comme une tâche",
+   "bn": "পরের বার্তাটি টাস্ক হিসেবে Claude Code-কে দিন",
+   "pt-BR": "Entregar a próxima mensagem ao Claude Code como uma tarefa",
+   "ru": "Передать следующее сообщение Claude Code как задачу",
+   "id": "Serahkan pesan berikutnya ke Claude Code sebagai tugas"
   },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
@@ -1387,6 +1453,17 @@
    "ru": "Моделей пока нет. Сначала загрузите модель в {name}.",
    "id": "Belum ada model. Unduh satu di {name} terlebih dahulu."
   },
+  "No project folder found — set Task projects in Settings.": {
+   "zh-Hans": "未找到项目文件夹 — 请在设置中设定任务项目。",
+   "hi": "कोई प्रोजेक्ट फ़ोल्डर नहीं मिला — सेटिंग्स में टास्क प्रोजेक्ट सेट करें।",
+   "es": "No se encontró ninguna carpeta de proyecto — configura Proyectos de tareas en los Ajustes.",
+   "ar": "لم يُعثر على مجلد مشروع — اضبط مشاريع المهام في الإعدادات.",
+   "fr": "Aucun dossier de projet trouvé — règle Projets de tâches dans les Réglages.",
+   "bn": "কোনো প্রজেক্ট ফোল্ডার পাওয়া যায়নি — সেটিংসে টাস্ক প্রজেক্ট ঠিক করুন।",
+   "pt-BR": "Nenhuma pasta de projeto encontrada — defina Projetos de tarefas nos Ajustes.",
+   "ru": "Папка проекта не найдена — задайте «Проекты задач» в настройках.",
+   "id": "Folder proyek tidak ditemukan — atur Proyek tugas di Pengaturan."
+  },
   "No response text.": {
    "zh-Hans": "没有回复内容。",
    "hi": "जवाब में कोई टेक्स्ट नहीं।",
@@ -1497,6 +1574,17 @@
    "ru": "Добавлять можно только файлы, перетащенные на остров.",
    "id": "Hanya file yang diletakkan di pulau yang bisa ditambahkan."
   },
+  "Only in the project": {
+   "zh-Hans": "仅在项目中",
+   "hi": "केवल प्रोजेक्ट में",
+   "es": "Solo en el proyecto",
+   "ar": "في المشروع فقط",
+   "fr": "Seulement dans le projet",
+   "bn": "শুধু প্রজেক্টে",
+   "pt-BR": "Só no projeto",
+   "ru": "Только в проекте",
+   "id": "Hanya di proyek"
+  },
   "Open Claude": {
    "zh-Hans": "打开 Claude",
    "hi": "Claude खोलें",
@@ -1518,6 +1606,17 @@
    "pt-BR": "Abrir Configurações",
    "ru": "Открыть настройки",
    "id": "Buka Pengaturan"
+  },
+  "Open folder": {
+   "zh-Hans": "打开文件夹",
+   "hi": "फ़ोल्डर खोलें",
+   "es": "Abrir carpeta",
+   "ar": "فتح المجلد",
+   "fr": "Ouvrir le dossier",
+   "bn": "ফোল্ডার খুলুন",
+   "pt-BR": "Abrir pasta",
+   "ru": "Открыть папку",
+   "id": "Buka folder"
   },
   "Open in VS Code": {
    "zh-Hans": "在 VS Code 中打开",
@@ -1694,6 +1793,17 @@
    "pt-BR": "Aba anterior",
    "ru": "Предыдущая вкладка",
    "id": "Tab sebelumnya"
+  },
+  "Project folder the task runs in": {
+   "zh-Hans": "任务运行所在的项目文件夹",
+   "hi": "वह प्रोजेक्ट फ़ोल्डर जिसमें टास्क चलेगा",
+   "es": "Carpeta del proyecto donde se ejecuta la tarea",
+   "ar": "مجلد المشروع الذي تعمل فيه المهمة",
+   "fr": "Dossier du projet où la tâche s'exécute",
+   "bn": "যে প্রজেক্ট ফোল্ডারে টাস্কটি চলবে",
+   "pt-BR": "Pasta do projeto onde a tarefa roda",
+   "ru": "Папка проекта, в которой выполняется задача",
+   "id": "Folder proyek tempat tugas berjalan"
   },
   "Pumpkin": {
    "zh-Hans": "南瓜",
@@ -2212,6 +2322,39 @@
    "ru": "Сменить провайдера или модель",
    "id": "Ganti penyedia atau model"
   },
+  "Task": {
+   "zh-Hans": "任务",
+   "hi": "टास्क",
+   "es": "Tarea",
+   "ar": "مهمة",
+   "fr": "Tâche",
+   "bn": "টাস্ক",
+   "pt-BR": "Tarefa",
+   "ru": "Задача",
+   "id": "Tugas"
+  },
+  "Task outputs": {
+   "zh-Hans": "任务输出",
+   "hi": "टास्क आउटपुट",
+   "es": "Salidas de tareas",
+   "ar": "مخرجات المهام",
+   "fr": "Sorties des tâches",
+   "bn": "টাস্ক আউটপুট",
+   "pt-BR": "Saídas de tarefas",
+   "ru": "Результаты задач",
+   "id": "Keluaran tugas"
+  },
+  "Task projects": {
+   "zh-Hans": "任务项目",
+   "hi": "टास्क प्रोजेक्ट",
+   "es": "Proyectos de tareas",
+   "ar": "مشاريع المهام",
+   "fr": "Projets de tâches",
+   "bn": "টাস্ক প্রজেক্ট",
+   "pt-BR": "Projetos de tarefas",
+   "ru": "Проекты задач",
+   "id": "Proyek tugas"
+  },
   "That key can't be used in a shortcut.": {
    "zh-Hans": "这个键不能用于快捷键。",
    "hi": "उस कुंजी का शॉर्टकट में उपयोग नहीं हो सकता।",
@@ -2244,6 +2387,17 @@
    "pt-BR": "O arquivo é removido.",
    "ru": "Файл удаляется.",
    "id": "File dihapus."
+  },
+  "The folder whose subfolders the chat's Task mode offers as project folders. Empty: your home folder.": {
+   "zh-Hans": "其子文件夹会在聊天的任务模式中作为项目文件夹出现的那个文件夹。留空：你的主文件夹。",
+   "hi": "वह फ़ोल्डर जिसके सब-फ़ोल्डर चैट के टास्क मोड में प्रोजेक्ट फ़ोल्डर के रूप में दिखते हैं। खाली: आपका होम फ़ोल्डर।",
+   "es": "La carpeta cuyas subcarpetas el modo Tarea del chat ofrece como carpetas de proyecto. Vacío: tu carpeta personal.",
+   "ar": "المجلد الذي تُعرض مجلداته الفرعية كمجلدات مشاريع في وضع المهام بالدردشة. فارغ: مجلد المنزل لديك.",
+   "fr": "Le dossier dont les sous-dossiers sont proposés comme dossiers de projet par le mode Tâche du chat. Vide : ton dossier personnel.",
+   "bn": "যে ফোল্ডারের সাব-ফোল্ডারগুলো চ্যাটের টাস্ক মোডে প্রজেক্ট ফোল্ডার হিসেবে দেখানো হয়। খালি: আপনার হোম ফোল্ডার।",
+   "pt-BR": "A pasta cujas subpastas o modo Tarefa do chat oferece como pastas de projeto. Vazio: sua pasta pessoal.",
+   "ru": "Папка, подпапки которой режим «Задача» в чате предлагает как папки проектов. Пусто: ваша домашняя папка.",
+   "id": "Folder yang subfoldernya ditawarkan mode Tugas pada obrolan sebagai folder proyek. Kosong: folder beranda Anda."
   },
   "The image could not be read.": {
    "zh-Hans": "无法读取图片。",
@@ -2761,6 +2915,17 @@
    "pt-BR": "Se algum não funcionar, você também pode adicioná-lo nas configurações de teclado do sistema, com estes comandos:",
    "ru": "Если какое-то не работает, его можно добавить и в настройках клавиатуры системы с такими командами:",
    "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:"
+  },
+  "Your home folder": {
+   "zh-Hans": "你的主文件夹",
+   "hi": "आपका होम फ़ोल्डर",
+   "es": "Tu carpeta personal",
+   "ar": "مجلد المنزل لديك",
+   "fr": "Ton dossier personnel",
+   "bn": "আপনার হোম ফোল্ডার",
+   "pt-BR": "Sua pasta pessoal",
+   "ru": "Ваша домашняя папка",
+   "id": "Folder beranda Anda"
   },
   "all green": {
    "zh-Hans": "全部通过",

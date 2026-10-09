@@ -9,7 +9,9 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
-import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
+import {
+  Bridge, onEvent, type ChatContext, type ModelInfo, type TaskResult, type TaskStarted,
+} from "../core/bridge";
 import {
   activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
@@ -27,11 +29,21 @@ const STRINGS = {
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
   openSettings: N_("Open Settings"),
+  task: N_("Task"),
+  taskHint: N_("Hand the next message to Claude Code as a task"),
+  taskProject: N_("Project folder the task runs in"),
+  placeholderTask: N_("Describe a task — Claude Code runs it in the chosen folder…"),
+  taskRunning: N_("*Running — follow it in the island…*"),
+  cancel: N_("Cancel"),
+  noProject: N_("No project folder found — set Task projects in Settings."),
+  followUp: N_("Follow up"),
+  openFolder: N_("Open folder"),
+  placeholderFollowUp: N_("Follow up — continues the same task…"),
 };
 
 let nextId = 1;
 
-function bubble(message: ChatMessage): HTMLElement {
+function bubble(message: ChatMessage, onFollowUp?: (m: ChatMessage) => void): HTMLElement {
   if (message.role === "user") {
     return h(
       "div",
@@ -41,7 +53,42 @@ function bubble(message: ChatMessage): HTMLElement {
   }
   const reply = h("div", { class: "reply" });
   renderMarkdown(reply, message.content);
-  return h("div", { class: "chat-row" }, reply);
+  const row = h("div", { class: "chat-row" }, reply);
+  if (message.taskId == null) return row;
+  if (message.pending) {
+    const taskId = message.taskId;
+    row.append(
+      h("button", {
+        class: "task-cancel",
+        text: tl(STRINGS.cancel),
+        onclick: () => void Bridge.taskCancel(taskId),
+      }),
+    );
+    return row;
+  }
+  // A finished task: its folder, and a follow-up in the same session.
+  const actions = h("div", { class: "task-actions" });
+  const dir = message.taskDir;
+  if (dir) {
+    actions.append(
+      h("button", {
+        class: "task-action",
+        text: tl(STRINGS.openFolder),
+        onclick: () => void Bridge.taskReveal(dir),
+      }),
+    );
+  }
+  if (dir && message.sessionId && onFollowUp) {
+    actions.append(
+      h("button", {
+        class: "task-action",
+        text: tl(STRINGS.followUp),
+        onclick: () => onFollowUp(message),
+      }),
+    );
+  }
+  if (actions.childElementCount > 0) row.append(actions);
+  return row;
 }
 
 function typingDots(): HTMLElement {
@@ -222,7 +269,12 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     modelName,
     svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
   );
-  const modelRow = h("div", { class: "model-row" }, modelBtn);
+  // Task mode: the next message is handed to `claude -p` in the chosen folder
+  // rather than to the chat provider. The folder list comes from Rust.
+  let taskMode = false;
+  const taskBtn = h("button", { class: "task-btn", title: tl(STRINGS.taskHint), text: tl(STRINGS.task) });
+  const dirSelect = h("select", { class: "task-dir", title: tl(STRINGS.taskProject) }) as HTMLSelectElement;
+  const modelRow = h("div", { class: "model-row" }, taskBtn, dirSelect, modelBtn);
 
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
@@ -236,8 +288,51 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   let sending = false;
   let renderedCount = -1;
+  // Bumped when a bubble changes without the count changing (a task's answer).
+  let epoch = 0;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
+
+  async function loadProjects() {
+    const dirs = (await Bridge.taskProjects()) ?? [];
+    clear(dirSelect);
+    for (const path of dirs) {
+      const name = path.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || path;
+      dirSelect.append(h("option", { value: path, text: name, title: path }));
+    }
+    const last = State.settings.taskLastProject;
+    if (last && dirs.includes(last)) dirSelect.value = last;
+  }
+
+  // A follow-up in flight: the next task resumes this bubble's session.
+  let followUpTarget: ChatMessage | null = null;
+
+  function startFollowUp(message: ChatMessage) {
+    followUpTarget = message;
+    if (!taskMode) {
+      taskMode = true;
+      void loadProjects();
+    }
+    taskBtn.classList.add("on");
+    dirSelect.classList.add("on");
+    Sound.play("pop");
+    input.placeholder = t(STRINGS.placeholderFollowUp);
+    input.focus();
+  }
+
+  taskBtn.addEventListener("click", () => {
+    taskMode = !taskMode;
+    if (taskMode) void loadProjects();
+    else followUpTarget = null;
+    Sound.play("pop");
+    taskBtn.classList.toggle("on", taskMode);
+    dirSelect.classList.toggle("on", taskMode);
+    input.placeholder = t(
+      taskMode ? STRINGS.placeholderTask
+      : State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext,
+    );
+    input.focus();
+  });
 
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
@@ -253,6 +348,22 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     else picker.open();
   });
 
+  void onEvent<TaskStarted>("task-started", (started) => {
+    const message = State.chatHistory.find((m) => m.taskId === started.taskId);
+    if (message) message.sessionId = started.sessionId;
+  });
+
+  void onEvent<TaskResult>("task-result", (result) => {
+    const message = State.chatHistory.find((m) => m.taskId === result.taskId);
+    if (!message || !message.pending) return;
+    message.pending = false;
+    message.content = result.text;
+    epoch++;
+    Sound.play(result.ok ? "finish" : "error");
+    State.notify();
+    onHeightChange();
+  });
+
   void onEvent<string>("chat-delta", (text) => {
     if (!sending || !text) return; // nothing visible yet: the dots stay
     if (!live) {
@@ -264,10 +375,51 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     log.scrollTop = log.scrollHeight;
   });
 
+  /** Task mode's send: the task goes to `claude -p`, the chat stays usable. */
+  async function submitTask(query: string) {
+    const target = followUpTarget;
+    followUpTarget = null;
+    const dir = target?.taskDir ?? dirSelect.value;
+    if (!dir) {
+      State.noteMessage = t(STRINGS.noProject);
+      State.view = "note";
+      State.notify();
+      return;
+    }
+    input.value = "";
+    Sound.play("send");
+    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    const placeholder: ChatMessage = {
+      id: nextId++, role: "assistant", content: t(STRINGS.taskRunning), pending: true, taskDir: dir,
+    };
+    State.chatHistory.push(placeholder);
+    State.notify();
+    onHeightChange();
+    try {
+      placeholder.taskId = await Bridge.taskSpawn(query, dir, target?.sessionId ?? null);
+      if (State.settings.taskLastProject !== dir) {
+        State.settings = { ...State.settings, taskLastProject: dir };
+        saveSettings();
+      }
+    } catch (err) {
+      placeholder.pending = false;
+      placeholder.content = String(err).replace(/^Error:\s*/, "");
+      Sound.play("error");
+    }
+    epoch++; // the bubble gained its Cancel, or the error text
+    State.notify();
+    onHeightChange();
+    input.focus();
+  }
+
   async function submit() {
     const query = input.value.trim();
     if (!query || sending) return;
     if (picker.isOpen) picker.close();
+    if (taskMode) {
+      await submitTask(query);
+      return;
+    }
     input.value = "";
     sending = true;
     drawModelButton();
@@ -328,11 +480,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       }
 
       const thinking = State.stateOverride === "thinking";
-      const count = State.chatHistory.length + (thinking ? 0.5 : 0);
+      const count = State.chatHistory.length + (thinking ? 0.5 : 0) + epoch * 1000;
       if (count !== renderedCount && !live) {
         renderedCount = count;
         clear(log);
-        for (const m of State.chatHistory) log.append(bubble(m));
+        for (const m of State.chatHistory) log.append(bubble(m, startFollowUp));
         if (thinking) log.append(typingDots());
         log.scrollTop = log.scrollHeight;
       }
@@ -341,7 +493,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      input.placeholder = t(
+        followUpTarget ? STRINGS.placeholderFollowUp
+        : taskMode ? STRINGS.placeholderTask
+        : State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext,
+      );
       input.disabled = sending;
     },
     focus() {

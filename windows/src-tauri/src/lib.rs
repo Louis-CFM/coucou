@@ -29,6 +29,7 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod task_runner;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -408,6 +409,51 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+// ── Task mode ─────────────────────────────────────────────────────────────────
+
+/// Chat → Task: hands the task to Claude Code (`claude -p`) in the chosen
+/// project folder. The session shows in the island through the hooks like any
+/// other; the final answer comes back later, as a `task-result` event.
+#[tauri::command]
+fn task_spawn(
+    app: AppHandle,
+    shared: State<Shared>,
+    tasks: State<task_runner::Tasks>,
+    prompt: String,
+    dir: String,
+    resume: Option<String>,
+) -> Result<u64, String> {
+    // Settings → Task outputs, "~/" written out so the spawn sees a full path.
+    let outputs = {
+        let raw = shared.settings.lock().unwrap().task_outputs_dir.trim().to_string();
+        match raw.strip_prefix("~/") {
+            Some(rest) => Some(platform::home_dir().join(rest).to_string_lossy().to_string()),
+            None if raw.is_empty() => None,
+            None => Some(raw),
+        }
+    };
+    task_runner::spawn(app, &tasks, prompt, dir, resume, outputs)
+}
+
+/// The folder button on a finished task's bubble.
+#[tauri::command]
+fn task_reveal(dir: String) {
+    task_runner::reveal(&dir);
+}
+
+/// The ✕ on a running task's chat bubble.
+#[tauri::command]
+fn task_cancel(app: AppHandle, task_id: u64) {
+    task_runner::cancel(&app, task_id);
+}
+
+/// The folders Task mode offers: the projects root, then its subfolders.
+#[tauri::command]
+fn task_projects(shared: State<Shared>) -> Vec<String> {
+    let root = shared.settings.lock().unwrap().task_projects_root.clone();
+    task_runner::projects(&root)
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
@@ -665,6 +711,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(task_runner::Tasks::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
@@ -692,6 +739,10 @@ pub fn run() {
             status_line_preview,
             status_line_apply,
             codex_plan_usage,
+            task_spawn,
+            task_cancel,
+            task_projects,
+            task_reveal,
             approval_decision,
             approval_answer,
             approval_ack,
