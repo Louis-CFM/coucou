@@ -149,6 +149,7 @@ targets:
           - id
           - pt-BR
           - ru
+          - tr
           - zh-Hans
     settings:
       base:
@@ -216,6 +217,7 @@ targets:
           - id
           - pt-BR
           - ru
+          - tr
           - zh-Hans
     settings:
       base:
