@@ -1,5 +1,8 @@
-# Coucou relay: forwards Live Activity pushes from the Mac app to Apple (APNs).
-# Deploy: see README.md. Secrets (never in git): APNS_KEY, APNS_KEY_ID.
+# Coucou relay: forwards Live Activity pushes from the Mac app to Apple (APNs),
+# and carries the self-hosted Android companion's pair/state/decision mailbox
+# (PC ⇄ phone) plus FCM pushes. Deploy: see README.md.
+# Secrets (never in git): APNS_KEY, APNS_KEY_ID, and for Android FCM_SA
+# (the Firebase service-account JSON, contents only).
 name = "coucou-relay"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
@@ -8,6 +11,16 @@ workers_dev = true
 [vars]
 APNS_TEAM_ID = "256AUJ9555"
 APNS_TOPIC = "fr.louisraille.Coucou.push-type.liveactivity"
+
+# Android companion mailboxes. On a self-hosted deploy this is the whole point;
+# on upstream's worker leave the binding in place — it is inert until used.
+[[durable_objects.bindings]]
+name = "PHONE_BOX"
+class_name = "PhoneBox"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["PhoneBox"]
 
 [observability]
 enabled = false

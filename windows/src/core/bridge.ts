@@ -138,6 +138,20 @@ export const Bridge = {
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 
+  // ── Android companion (core/phone.ts uses the island-facing ones) ────────
+  phoneStatus: () =>
+    call<{ enabled: boolean; paired: boolean; device: string; worker: string; pcId: string }>(
+      "phone_status",
+    ),
+  phoneEnable: (on: boolean) => call<void>("phone_enable", { on }),
+  /** Creates the relay box and the pairing code + QR SVG. */
+  phonePair: (worker: string) =>
+    callOrThrow<{ code: string; qrSvg: string }>("phone_pair", { worker }),
+  phoneUnpair: () => call<void>("phone_unpair"),
+  /** The island's visible state, pushed after each change. */
+  phoneState: (payload: unknown, alert: boolean) =>
+    call<void>("phone_state", { payload, alert }),
+
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>

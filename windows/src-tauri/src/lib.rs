@@ -18,6 +18,7 @@ mod local_chat;
 mod log;
 mod net;
 mod openai_compat;
+mod phone;
 mod pipe;
 mod platform;
 #[cfg(target_os = "linux")]
@@ -38,6 +39,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
@@ -442,6 +444,62 @@ fn approval_decline(app: AppHandle, request_id: String) {
     pipe::decline(&app, &request_id);
 }
 
+// ── Android companion ───────────────────────────────────────────────────────
+
+/// What the settings window shows: enabled, paired, which phone, which relay.
+#[tauri::command]
+fn phone_status(shared: State<'_, Shared>) -> serde_json::Value {
+    let s = shared.settings.lock().unwrap();
+    json!({
+        "enabled": s.phone_enabled,
+        "paired": s.phone_paired,
+        "device": s.phone_device,
+        "worker": s.phone_worker,
+        "pcId": s.phone_pc_id,
+    })
+}
+
+/// Turn remote control on or off. On needs a paired box — settings calls
+/// `phone_pair` for that; this just gates the poll loop.
+#[tauri::command]
+fn phone_enable(app: AppHandle, shared: State<'_, Shared>, on: bool) {
+    {
+        let mut s = shared.settings.lock().unwrap();
+        s.phone_enabled = on;
+        let snapshot = s.clone();
+        drop(s);
+        let _ = settings::save(&snapshot);
+    }
+    if on {
+        phone::spawn(app);
+    }
+}
+
+/// Create the pairing code/QR and the relay box. The phone claims it with
+/// `coucou://` payload the code carries.
+#[tauri::command]
+fn phone_pair(app: AppHandle, worker: String) -> Result<serde_json::Value, String> {
+    let pair = phone::start_pair(&worker)?;
+    if let Err(e) = phone::finish_pair(&app, &pair) {
+        let _ = secrets::clear("phone-secret");
+        return Err(e);
+    }
+    Ok(json!({ "code": pair.code, "qrSvg": pair.qr_svg }))
+}
+
+/// Forget the phone and wipe its mailbox on the relay.
+#[tauri::command]
+fn phone_unpair(app: AppHandle) {
+    phone::unpair(&app);
+}
+
+/// The island pushes its visible state after each change; `alert` wakes the
+/// phone for a waiting card.
+#[tauri::command]
+async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) {
+    let _ = phone::push_state(&app, payload, alert).await;
+}
+
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn with the provider picked in the chat view. API keys and any
@@ -696,6 +754,11 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            phone_status,
+            phone_enable,
+            phone_pair,
+            phone_unpair,
+            phone_state,
             log_line,
             chat_send,
             chat_models,
@@ -774,6 +837,7 @@ pub fn run() {
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
+            phone::spawn(handle.clone());
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);

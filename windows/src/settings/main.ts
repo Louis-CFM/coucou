@@ -399,6 +399,123 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Android companion section ────────────────────────────────────────────────
+
+/**
+ * Approve permissions and answer questions from an Android phone. The PC and
+ * the phone meet in a private "box" on a relay the user deploys (see
+ * android/README.md) — nothing is shared with any third party but the user's
+ * own worker, and the pairing secret lives in the keychain.
+ */
+function phoneSection(): HTMLElement {
+  const section = h("section", {}, h("h2", {}, h("span", { text: t("Android phone") })), h("div", {}));
+  const body = section.lastElementChild as HTMLElement;
+  let pairing: { code: string; qrSvg: string } | null = null;
+
+  async function draw() {
+    clear(body);
+    const st = (await Bridge.phoneStatus()) ?? {
+      enabled: false, paired: false, device: "", worker: "", pcId: "",
+    };
+    if (!st.paired && pairing) {
+      // The code is on screen and the phone hasn't claimed the box yet.
+      const qr = new DOMParser()
+        .parseFromString(pairing.qrSvg, "image/svg+xml")
+        .documentElement as unknown as SVGElement;
+      qr.setAttribute("width", "168");
+      qr.setAttribute("height", "168");
+      (qr as unknown as HTMLElement).style.cssText =
+        "background:#fff;border-radius:10px;padding:10px";
+      const code = h("input", {
+        type: "text",
+        value: pairing.code,
+        readonly: true,
+        style: "width:100%;font-family:monospace;font-size:10px",
+        onclick: (e) => (e.currentTarget as HTMLInputElement).select(),
+      });
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Scan this with the Coucou app on your Android phone, or paste the code there."),
+        }),
+        h("div", { class: "row", style: "justify-content:center" }, qr as unknown as Node),
+        h("div", { class: "row" }, code),
+        h("div", { class: "hint", text: t("Waiting for the phone…") }),
+      );
+      return;
+    }
+    if (st.paired) {
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Approvals, questions and chat reach {device} through your relay.", {
+            device: st.device || "Android",
+          }),
+        }),
+        h("div", { class: "row" },
+          h("label", { text: t("Phone") }),
+          statusDot(true),
+          h("span", { class: "hint", text: st.device || "Android" }),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: t("Control from the phone") }),
+          toggle(st.enabled, (on) => void Bridge.phoneEnable(on)),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: "" }),
+          h("button", {
+            class: "danger",
+            text: t("Unpair phone"),
+            onclick: () => void Bridge.phoneUnpair().then(draw),
+          }),
+        ),
+      );
+      return;
+    }
+    const worker = h("input", {
+      type: "text",
+      value: st.worker,
+      placeholder: "https://coucou-relay.you.workers.dev",
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const feedback = h("div", {});
+    body.append(
+      h("div", {
+        class: "hint",
+        text: t("Approve permissions, answer questions and chat from your Android phone. The phone and Coucou meet in a private mailbox on a relay you deploy yourself — free on Cloudflare's free tier (android/README.md)."),
+      }),
+      h("div", { class: "row" }, h("label", { text: t("Relay address") }), worker),
+      h("div", { class: "row" },
+        h("label", { text: "" }),
+        h("button", {
+          class: "primary",
+          text: t("Pair phone…"),
+          onclick: async () => {
+            clear(feedback);
+            try {
+              pairing = await Bridge.phonePair(worker.value.trim());
+              if (pairing) await draw();
+            } catch (err) {
+              feedback.append(
+                h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+              );
+            }
+          },
+        }),
+      ),
+      feedback,
+    );
+  }
+
+  draw();
+  void onEvent("phone-paired", () => {
+    pairing = null;
+    void draw();
+  });
+  return section;
+}
+
 // ── Active pills section ──────────────────────────────────────────────────────
 
 /**
@@ -1365,6 +1482,7 @@ async function render() {
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),
     localSection(customKey),
+    phoneSection(),
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),

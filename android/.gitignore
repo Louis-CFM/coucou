@@ -1,0 +1,17 @@
+# Android build output
+.gradle/
+build/
+app/build/
+captures/
+*.apk
+*.aab
+*.iml
+.idea/
+.cxx/
+
+# Machine-local SDK pointer
+local.properties
+
+# Each user generates their own Firebase project — never commit it.
+google-services.json
+app/google-services.json
