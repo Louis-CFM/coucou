@@ -63,12 +63,12 @@ interface Particle {
 
 // ── Constants (NovaConst / PISTES.nova) ─────────────────────────────────────
 
-const EYE_W = 0.25;
-const EYE_H = 0.27;
+const EYE_W = 0.28;
+const EYE_H = 0.18;
 const EYE_SP = 0.37;
 const EYE_P = -0.12;
-const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
-const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
+const BASE_TOP: RGB = [1, 0.98, 0.95]; // Nova cream-white
+const BASE_BOTTOM: RGB = [0.84, 0.82, 0.79]; // Nova warm-grey
 const INK = "rgb(26,20,18)"; // #1A1412
 const MINI_INK = "rgb(16,19,26)"; // #10131A
 
@@ -815,6 +815,16 @@ export class BotEngine {
       x.restore();
     }
 
+    // Nova's original orange spark; geometry only, existing motion unchanged.
+    if (!this.isMini) {
+      x.save(); x.clip(body); x.globalAlpha = 1 - this.morph;
+      x.fillStyle = "#e58436";
+      const y = -ry * 0.55, s = R * 0.14;
+      x.beginPath(); x.moveTo(0, y - s); x.lineTo(s * 0.35, y - s * 0.3);
+      x.lineTo(s, y); x.lineTo(s * 0.35, y + s * 0.3); x.lineTo(0, y + s);
+      x.lineTo(-s * 0.35, y + s * 0.3); x.lineTo(-s, y); x.lineTo(-s * 0.35, y - s * 0.3);
+      x.closePath(); x.fill(); x.restore();
+    }
     this.drawEyes(x, body, R, rx, ry);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
@@ -831,7 +841,7 @@ export class BotEngine {
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {
     const n = 72;
-    const expN = 2.0 / 2.7;
+    const expN = 2.0 / 2.2;
     const tw = R * 1.0;
     const th = R * 0.94;
     const tr = R * 0.42;
@@ -841,8 +851,9 @@ export class BotEngine {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
-      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
+      const contour = 1 + 0.08 * Math.cos(3 * a) - 0.03 * Math.sin(2 * a);
+      const px0 = contour * rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
+      const py0 = contour * ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
       let px = px0;
       let py = py0;
       if (m >= 0.005) {

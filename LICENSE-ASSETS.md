@@ -1,7 +1,9 @@
 # Nova assets and attribution
 
-At the user's request, this personal-use branch restores the upstream Mochi character geometry, appearance and generated character icons from Louis Raillé's Coucou project.
-The upstream character/name/icon assets remain all rights reserved by their author; the MIT code license is not a grant of rights to redistribute those assets. Obtain permission before distributing a build using them.
-The application name stays Nova. Bundled upstream sounds and demo media remain removed.
-Source portions remain Copyright (c) 2026 Louis Raillé under LICENSE.
-Original project: https://github.com/Louis-CFM/coucou
+NOVA uses its own cream-white, three-lobed mascot silhouette, compact eyes and orange spark marking. The app/tray/installer icons are generated from this design. Existing animation, spring and projection code is reused under the source MIT license, not claimed as new work.
+
+The upstream name, character branding, icon design, sounds and demo media are not included as product assets. The replacement does not claim rights to those upstream assets. The historical source attribution remains in LICENSE.
+
+Nova-specific replacement geometry, palette and generated icon artwork: Copyright (c) 2026 sweety, MIT license. Source portions: Copyright (c) 2026 Louis Raillé, MIT license.
+
+Upstream source provenance: https://github.com/Louis-CFM/coucou

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, nova/assistant-upgrade]
-    paths: ['windows/**', '.github/workflows/windows.yml']
+    paths: ['windows/**', '.github/workflows/windows.yml', '!windows/src-tauri/icons/**']
 permissions:
   contents: read
 jobs:

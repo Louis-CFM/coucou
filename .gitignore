@@ -5,3 +5,6 @@ windows/release/
 .claude/
 
 /windows/engine/
+
+# Original NOVA icon artwork is generated before builds, never upstream binaries.
+windows/src-tauri/icons/

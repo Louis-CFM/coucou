@@ -35,4 +35,4 @@ History is local but **not encrypted**: `%LOCALAPPDATA%\Nova\history`. The priva
 
 Windows CI exercises the real bundled engine with two **local mock-provider** endpoints, file edits, shell approval/denial and child-process cleanup. It does not validate your paid provider/key, model image capabilities, Windows display scaling or your desktop’s hover behavior. Those require the checks above.
 
-This fork retains upstream code attribution and uses the restored character assets for the requested personal build. Upstream character/name/icon rights are separate from the MIT code license; do not redistribute those assets as your own.
+This fork retains upstream MIT code attribution. NOVA uses original replacement mascot geometry, palette and generated icons; bundled upstream sounds and branded media are removed. See LICENSE and LICENSE-ASSETS.md.

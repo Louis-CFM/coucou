@@ -19,11 +19,11 @@ test("user-facing translation tables contain no retired brand", () => {
   for (const name of readdirSync(`${root}src/i18n`).filter(n => n.endsWith(".json")))
     assert.doesNotMatch(readFileSync(`${root}src/i18n/${name}`, "utf8"), /coucou|mochi|notchbuddy/i);
 });
-test("main and independent upload renderers restore the white character palette", () => {
+test("main and upload renderers use original white/orange Nova geometry", () => {
   for (const file of ["src/nova/engine.ts", "src/upload/canvas.ts"]) {
     const text = readFileSync(`${root}${file}`, "utf8");
-    assert.ok(text.includes("#EDEDEF"), file);
-    assert.ok(text.includes("#C4C5CA"), file);
+    assert.ok(text.includes("0.08 * Math.cos(3 * a)"), file);
+    assert.ok(text.includes("#e58436"), file);
     assert.ok(!text.includes("1.35 / (Math.abs(ca) + Math.abs(sa))"), file);
   }
   const recap = readFileSync(`${root}src/recap/share.ts`, "utf8");

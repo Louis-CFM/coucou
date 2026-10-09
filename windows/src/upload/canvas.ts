@@ -41,8 +41,9 @@ function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number): { rx: nu
     const a = (i / 96) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const px = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-    const py = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const contour = 1 + (1 - mc) * (0.08 * Math.cos(3 * a) - 0.03 * Math.sin(2 * a));
+    const px = contour * rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
+    const py = contour * ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
@@ -372,8 +373,8 @@ export class UploadCanvas {
 
     // Body.
     const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
-    bg.addColorStop(0, "#EDEDEF");
-    bg.addColorStop(1, "#C4C5CA");
+    bg.addColorStop(0, "#FFFAF2");
+    bg.addColorStop(1, "#D6D1C9");
     ctx.fillStyle = bg;
     ctx.fill();
 
@@ -426,9 +427,14 @@ export class UploadCanvas {
       }
     }
 
+    // Original Nova orange spark, using the sequence's existing morph value.
+    ctx.save(); ctx.globalAlpha *= 1 - mc; ctx.fillStyle = "#e58436";
+    const sparkY = -ry * 0.55, spark = R * 0.14;
+    ctx.beginPath(); ctx.moveTo(0, sparkY - spark); ctx.lineTo(spark, sparkY);
+    ctx.lineTo(0, sparkY + spark); ctx.lineTo(-spark, sparkY); ctx.closePath(); ctx.fill(); ctx.restore();
     // Eyes.
-    const ew = R * 0.25;
-    const eh = R * (0.62 - 0.16 * mc);
+    const ew = R * 0.28;
+    const eh = R * (0.40 - 0.10 * mc);
     const ey = R * (0.02 + 0.28 * mc);
     const sp = R * 0.3;
     const lx = f.lookX * R * (0.34 - 0.08 * mc);

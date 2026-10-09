@@ -1,42 +1,32 @@
-# NOVA — Phase 1 candidate
+# NOVA — Windows assistant fork
 
-Windows 11 x64 desktop island fork. This candidate rebrands the existing island;
-it does **not** yet implement the managed agent engine, new safety modes, widgets,
-or the remaining phases of the project brief. Existing direct model chat remains.
+Windows 11 x64 desktop island built on an existing Tauri 2/Rust + TypeScript/Vite app. The UI is a face for the bundled OpenCode 1.18.35 engine; OpenCode owns the tool loop, sessions, tool permissions and context handling.
+
+## Current verified baseline
+
+- Tall, scrollable chat, light/dark themes, hide/reopen and explicit Quit.
+- Managed native engine, provider profiles, endpoint-bound keys in Windows Credential Manager.
+- File/photo attachments, local searchable conversation cache and real-session resume.
+- Fresh approval for commands/edits, 60-second expiry and owned process-tree stop.
+- Original NOVA white/orange mascot artwork and generated icons; tuned motion is preserved.
+
+Clock/weather widgets, advanced engine affordances and final hardening are being completed in the remaining phases. Do not interpret this baseline as certification of all original-brief requirements.
 
 ## Build on Windows
 
-Node.js 24/npm, Rust via rustup, Visual Studio Build Tools 2022 with Desktop
-Development with C++, and the Microsoft Edge WebView2 runtime are required.
-No additional global package manager is required. NSIS is handled by Tauri.
+Node.js 24/npm, Rust via rustup, Visual Studio Build Tools 2022 (Desktop development with C++) and Microsoft Edge WebView2. No extra global package manager is required; NSIS is handled by Tauri.
 
 ```powershell
 cd windows
 npm ci
+npm run engine
 npm run icons
 npm test
 npm run pack
 ```
 
-Installer: `windows/release/Nova-Windows-setup.exe`.
-Portable: keep `nova.exe` and `nova-hook.exe` side by side; WebView2 is required.
-Portable means no installer, not zero prerequisite software or zero local data.
-Settings are in `%APPDATA%\Nova`; relay/log data in `%LOCALAPPDATA%\Nova`.
-Old application credentials/settings are not silently imported.
+Installer: `windows/release/Nova-Windows-setup.exe`. Portable must include `nova.exe`, `nova-hook.exe` and the complete `engine/` folder. See `windows/ASSISTANT-QUICKSTART.md` for setup, privacy and desktop acceptance steps.
 
-Unsigned builds may show SmartScreen. Only if you trust the build and its source,
-select **More info → Run anyway**. Do not bypass antivirus detections blindly.
+CI checks frontend regressions, the real Windows engine against two local mock providers, file/shell approval and denial, child-process cleanup, packaging and an 8-second launch smoke test. Your paid provider/key, real desktop hover/DPI and hour-long widget behavior require separate acceptance checks; these are not claimed tested by a Linux preview.
 
-## Phase 1 manual acceptance (not yet verified)
-
-1. Launch on Windows 11: no console or taskbar entry; tray and island appear.
-2. Hover/click, expand/collapse, blink, drag and sleep behaviour remain intact.
-3. Verify the teal chamfered mascot and replacement tray/installer icons.
-4. Open Settings and model chat; verify provider switching still works.
-5. Install hooks only after reviewing the displayed config diff; verify activity,
-   file diffs and Claude approval behaviour. Existing terminal fallback remains.
-6. Quit and reopen; verify preferences use the Nova directories.
-7. Test the installer and portable pair separately, including high-DPI displays.
-
-MIT source attribution is preserved in LICENSE. Restricted upstream media/sounds
-are not included. The replacement changes geometry/palette, not tuned motion.
+MIT attribution remains in LICENSE. Replacement artwork/provenance is documented in LICENSE-ASSETS.md. Unsigned builds can show SmartScreen; review the source and scan downloads before deciding to run them.
