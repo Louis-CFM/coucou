@@ -135,7 +135,7 @@ export class Island {
   }
 
   /** The request has its answer: the card goes and the session carries on. */
-  private closeApproval() {
+  closeApproval() {
     State.endApproval();
     this.fsm.pinned = false;
     this.setView(State.defaultView());

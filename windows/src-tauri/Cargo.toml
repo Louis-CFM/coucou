@@ -22,6 +22,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Android companion (phone.rs): random box ids/secrets, and the pairing QR.
+getrandom = "0.2"
+qrcode = "0.14"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

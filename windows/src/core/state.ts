@@ -151,6 +151,12 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Android companion — see phone.rs. The pairing secret never leaves the keychain. */
+  phoneEnabled?: boolean;
+  phoneWorker?: string;
+  phonePcId?: string;
+  phonePaired?: boolean;
+  phoneDevice?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
