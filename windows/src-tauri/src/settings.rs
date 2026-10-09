@@ -69,6 +69,15 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// The Android companion: control the island's cards from the phone.
+    /// The worker address and box id live here; the pairing secret lives in
+    /// the keychain ("phone-secret"), so it never sits in a file.
+    pub phone_enabled: bool,
+    pub phone_worker: String,
+    pub phone_pc_id: String,
+    /// A phone claimed the box; `phone_device` is the name it gave itself.
+    pub phone_paired: bool,
+    pub phone_device: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -124,6 +133,11 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            phone_enabled: false,
+            phone_worker: String::new(),
+            phone_pc_id: String::new(),
+            phone_paired: false,
+            phone_device: String::new(),
         }
     }
 }

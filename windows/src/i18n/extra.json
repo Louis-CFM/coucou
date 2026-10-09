@@ -45,6 +45,17 @@
    "ru": "Уже есть группа хуков «coucou», которую написал не Coucou, — Coucou её не трогал.",
    "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya."
   },
+  "A key is only sent over https, or to a server on this computer.": {
+   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
+   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
+   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
+   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
+   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
+   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
+   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
+   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
+   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
+  },
   "AI for the chat": {
    "zh-Hans": "聊天用的 AI",
    "hi": "चैट के लिए AI",
@@ -100,6 +111,17 @@
    "ru": "Нет API-ключа. Откройте настройки.",
    "id": "Kunci API tidak ada. Buka pengaturan."
   },
+  "Android phone": {
+   "zh-Hans": "安卓手机",
+   "hi": "Android फ़ोन",
+   "es": "Teléfono Android",
+   "ar": "هاتف أندرويد",
+   "fr": "Téléphone Android",
+   "bn": "অ্যান্ড্রয়েড ফোন",
+   "pt-BR": "Celular Android",
+   "ru": "Телефон Android",
+   "id": "Ponsel Android"
+  },
   "Answer in terminal": {
    "zh-Hans": "在终端中回答",
    "hi": "टर्मिनल में जवाब दें",
@@ -122,6 +144,28 @@
    "ru": "Ответьте в терминале.",
    "id": "Jawab di terminal Anda."
   },
+  "Approvals, questions and chat reach {device} through your relay.": {
+   "zh-Hans": "审批、问题和聊天会通过您的中继发送到 {device}。",
+   "hi": "स्वीकृतियाँ, प्रश्न और चैट आपके रिले के ज़रिए {device} तक पहुँचती हैं।",
+   "es": "Las aprobaciones, preguntas y el chat llegan a {device} a través de tu relay.",
+   "ar": "تصل الموافقات والأسئلة والدردشة إلى {device} عبر المرحّل الخاص بك.",
+   "fr": "Approbations, questions et discussions arrivent sur {device} via votre relais.",
+   "bn": "অনুমোদন, প্রশ্ন ও চ্যাট আপনার রিলে হয়ে {device}-এ পৌঁছায়।",
+   "pt-BR": "Aprovações, perguntas e chat chegam a {device} pelo seu relay.",
+   "ru": "Одобрения, вопросы и чат доходят до {device} через ваш ретранслятор.",
+   "id": "Persetujuan, pertanyaan, dan chat sampai ke {device} lewat relay Anda."
+  },
+  "Approve permissions, answer questions and chat from your Android phone. The phone and Coucou meet in a private mailbox on a relay you deploy yourself — free on Cloudflare's free tier (android/README.md).": {
+   "zh-Hans": "在安卓手机上批准权限、回答问题并聊天。手机与 Coucou 通过您自己部署的中继上的私有信箱通信——Cloudflare 免费套餐即可（android/README.md）。",
+   "hi": "अपने Android फ़ोन से अनुमतियाँ स्वीकारें, प्रश्नों के उत्तर दें और चैट करें। फ़ोन और Coucou आपके स्वयं deploy किए गए रिले पर एक निजी मेलबॉक्स में मिलते हैं — Cloudflare के मुफ़्त टियर पर मुफ़्त (android/README.md)।",
+   "es": "Aprueba permisos, responde preguntas y chatea desde tu teléfono Android. El teléfono y Coucou se encuentran en un buzón privado en un relay que tú despliegas — gratis con el plan gratuito de Cloudflare (android/README.md).",
+   "ar": "وافق على الأذونات وأجب على الأسئلة ودردش من هاتف أندرويد. يلتقي الهاتف و Coucou في صندوق بريد خاص على مرحّل تنشره بنفسك — مجانًا ضمن الخطة المجانية لـ Cloudflare (android/README.md).",
+   "fr": "Approuvez les permissions, répondez aux questions et discutez depuis votre téléphone Android. Le téléphone et Coucou se retrouvent dans une boîte privée sur un relais que vous déployez vous-même — gratuit avec l'offre gratuite de Cloudflare (android/README.md).",
+   "bn": "আপনার অ্যান্ড্রয়েড ফোন থেকে অনুমতি অনুমোদন করুন, প্রশ্নের উত্তর দিন এবং চ্যাট করুন। ফোন এবং Coucou আপনার নিজের ডিপ্লয় করা রিলের একটি ব্যক্তিগত মেইলবক্সে মিলিত হয় — Cloudflare-এর ফ্রি টিয়ারে ফ্রি (android/README.md)।",
+   "pt-BR": "Aprove permissões, responda perguntas e converse pelo seu celular Android. O celular e o Coucou se encontram numa caixa privada num relay que você mesmo hospeda — grátis no plano gratuito da Cloudflare (android/README.md).",
+   "ru": "Одобряйте разрешения, отвечайте на вопросы и общайтесь с телефона Android. Телефон и Coucou встречаются в приватном ящике на ретрансляторе, который вы разворачиваете сами — бесплатно на бесплатном тарифе Cloudflare (android/README.md).",
+   "id": "Setujui izin, jawab pertanyaan, dan chat dari ponsel Android Anda. Ponsel dan Coucou bertemu di kotak surat pribadi pada relay yang Anda deploy sendiri — gratis di paket gratis Cloudflare (android/README.md)."
+  },
   "Ask": {
    "zh-Hans": "提问",
    "hi": "पूछें",
@@ -143,6 +187,17 @@
    "pt-BR": "Consultando o Codex…",
    "ru": "Запрос к Codex…",
    "id": "Menanyakan Codex…"
+  },
+  "Asking your desktop to register the shortcuts. It may show its own window to confirm them.": {
+   "zh-Hans": "正在请求桌面注册这些快捷键。桌面可能会显示自己的窗口让你确认。",
+   "hi": "आपके डेस्कटॉप से शॉर्टकट पंजीकृत करने को कहा जा रहा है। पुष्टि के लिए वह अपनी विंडो दिखा सकता है।",
+   "es": "Pidiendo a tu escritorio que registre los atajos. Puede mostrar su propia ventana para confirmarlos.",
+   "ar": "جارٍ طلب تسجيل الاختصارات من سطح المكتب. قد يعرض نافذته الخاصة لتأكيدها.",
+   "fr": "Demande en cours à ton bureau pour enregistrer les raccourcis. Il peut afficher sa propre fenêtre pour les confirmer.",
+   "bn": "আপনার ডেস্কটপকে শর্টকাটগুলো নিবন্ধন করতে বলা হচ্ছে। নিশ্চিত করার জন্য এটি নিজের উইন্ডো দেখাতে পারে।",
+   "pt-BR": "Pedindo ao seu desktop para registrar os atalhos. Ele pode mostrar a própria janela para confirmá-los.",
+   "ru": "Запрашиваем регистрацию сочетаний у рабочего стола. Он может показать своё окно для подтверждения.",
+   "id": "Meminta desktop Anda mendaftarkan pintasan. Desktop mungkin menampilkan jendelanya sendiri untuk konfirmasi."
   },
   "Attach the front window to the chat": {
    "zh-Hans": "将前台窗口附加到聊天",
@@ -507,6 +562,17 @@
    "ru": "Сначала подключите {name} в «Настройки → Локальные модели».",
    "id": "Hubungkan {name} dulu di Pengaturan → Model lokal."
   },
+  "Control from the phone": {
+   "zh-Hans": "从手机控制",
+   "hi": "फ़ोन से नियंत्रित करें",
+   "es": "Controlar desde el teléfono",
+   "ar": "التحكم من الهاتف",
+   "fr": "Contrôler depuis le téléphone",
+   "bn": "ফোন থেকে নিয়ন্ত্রণ",
+   "pt-BR": "Controlar pelo celular",
+   "ru": "Управление с телефона",
+   "id": "Kendalikan dari ponsel"
+  },
   "Copied": {
    "zh-Hans": "已复制",
    "hi": "कॉपी हो गया",
@@ -693,6 +759,17 @@
    "pt-BR": "Implantação",
    "ru": "Развёртывание",
    "id": "Deployment"
+  },
+  "Desktop: {keys}": {
+   "zh-Hans": "桌面：{keys}",
+   "hi": "डेस्कटॉप: {keys}",
+   "es": "Escritorio: {keys}",
+   "ar": "سطح المكتب: {keys}",
+   "fr": "Bureau : {keys}",
+   "bn": "ডেস্কটপ: {keys}",
+   "pt-BR": "Desktop: {keys}",
+   "ru": "Рабочий стол: {keys}",
+   "id": "Desktop: {keys}"
   },
   "Details": {
    "zh-Hans": "详情",
@@ -935,6 +1012,17 @@
    "pt-BR": "Segure Ctrl, Alt ou a tecla Windows junto.",
    "ru": "Удерживайте вместе с ней Ctrl, Alt или клавишу Windows.",
    "id": "Tahan Ctrl, Alt, atau tombol Windows bersamaan."
+  },
+  "If one doesn't work, you can also add it in your system's keyboard settings with these commands:": {
+   "zh-Hans": "如果某个快捷键不起作用，也可以使用以下命令在系统的键盘设置中添加：",
+   "hi": "अगर कोई काम न करे, तो आप इन कमांड के साथ उसे अपने सिस्टम की कीबोर्ड सेटिंग्स में भी जोड़ सकते हैं:",
+   "es": "Si alguno no funciona, también puedes añadirlo en la configuración de teclado del sistema con estos comandos:",
+   "ar": "إذا لم يعمل أحدها، يمكنك أيضًا إضافته من إعدادات لوحة المفاتيح في نظامك بهذه الأوامر:",
+   "fr": "Si l'un d'eux ne marche pas, tu peux aussi l'ajouter dans les réglages clavier de ton système, avec ces commandes :",
+   "bn": "কোনোটি কাজ না করলে, এই কমান্ডগুলো দিয়ে সিস্টেমের কিবোর্ড সেটিংসেও সেটি যোগ করতে পারেন:",
+   "pt-BR": "Se algum não funcionar, você também pode adicioná-lo nas configurações de teclado do sistema, com estes comandos:",
+   "ru": "Если какое-то не работает, его можно добавить и в настройках клавиатуры системы с такими командами:",
+   "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:"
   },
   "Images": {
    "zh-Hans": "图片",
@@ -1475,6 +1563,17 @@
    "ru": "Недоступно",
    "id": "Tidak tersedia"
   },
+  "Not set by your desktop": {
+   "zh-Hans": "桌面未设置",
+   "hi": "आपके डेस्कटॉप ने सेट नहीं किया",
+   "es": "Tu escritorio no lo activó",
+   "ar": "لم يضبطه سطح المكتب",
+   "fr": "Non activé par ton bureau",
+   "bn": "আপনার ডেস্কটপ সেট করেনি",
+   "pt-BR": "Não ativado pelo seu desktop",
+   "ru": "Не назначено рабочим столом",
+   "id": "Tidak diatur oleh desktop Anda"
+  },
   "Nothing leaves your PC: the server runs on this computer.": {
    "zh-Hans": "数据不会离开你的电脑：服务器运行在这台电脑上。",
    "hi": "आपके PC से कुछ बाहर नहीं जाता: सर्वर इसी कंप्यूटर पर चलता है।",
@@ -1485,6 +1584,17 @@
    "pt-BR": "Nada sai do seu PC: o servidor roda neste computador.",
    "ru": "Ничего не покидает ваш ПК: сервер работает на этом компьютере.",
    "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini."
+  },
+  "Only a file dropped on the island can be sent with a question.": {
+   "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
+   "hi": "सवाल के साथ केवल वही फ़ाइल भेजी जा सकती है जो island पर छोड़ी गई हो।",
+   "es": "Solo se puede enviar con una pregunta un archivo soltado en la isla.",
+   "ar": "لا يمكن إرسال ملف مع سؤال إلا إذا أُفلِت على الجزيرة.",
+   "fr": "Seul un fichier déposé sur l'île peut être envoyé avec une question.",
+   "bn": "প্রশ্নের সঙ্গে কেবল আইল্যান্ডে ছাড়া ফাইলই পাঠানো যায়।",
+   "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
+   "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
+   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
   },
   "Only files dropped on the island can be added.": {
    "zh-Hans": "只能添加拖放到岛上的文件。",
@@ -1607,6 +1717,17 @@
    "ru": "PDF",
    "id": "PDF"
   },
+  "Pair phone…": {
+   "zh-Hans": "配对手机…",
+   "hi": "फ़ोन जोड़ें…",
+   "es": "Vincular teléfono…",
+   "ar": "إقران الهاتف…",
+   "fr": "Associer le téléphone…",
+   "bn": "ফোন পেয়ার করুন…",
+   "pt-BR": "Parear celular…",
+   "ru": "Подключить телефон…",
+   "id": "Sandingkan ponsel…"
+  },
   "Party hat": {
    "zh-Hans": "派对帽",
    "hi": "पार्टी टोपी",
@@ -1639,6 +1760,17 @@
    "pt-BR": "Permissões",
    "ru": "Разрешения",
    "id": "Izin"
+  },
+  "Phone": {
+   "zh-Hans": "手机",
+   "hi": "फ़ोन",
+   "es": "Teléfono",
+   "ar": "الهاتف",
+   "fr": "Téléphone",
+   "bn": "ফোন",
+   "pt-BR": "Celular",
+   "ru": "Телефон",
+   "id": "Ponsel"
   },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
@@ -1771,6 +1903,17 @@
    "pt-BR": "Relay",
    "ru": "Ретранслятор",
    "id": "Relay"
+  },
+  "Relay address": {
+   "zh-Hans": "中继地址",
+   "hi": "रिले पता",
+   "es": "Dirección del relay",
+   "ar": "عنوان المرحّل",
+   "fr": "Adresse du relais",
+   "bn": "রিলে ঠিকানা",
+   "pt-BR": "Endereço do relay",
+   "ru": "Адрес ретранслятора",
+   "id": "Alamat relay"
   },
   "Remove": {
    "zh-Hans": "移除",
@@ -1947,6 +2090,17 @@
    "pt-BR": "Salvando…",
    "ru": "Сохранение…",
    "id": "Menyimpan…"
+  },
+  "Scan this with the Coucou app on your Android phone, or paste the code there.": {
+   "zh-Hans": "用安卓手机上的 Coucou 应用扫描此二维码，或将代码粘贴到应用中。",
+   "hi": "अपने Android फ़ोन पर Coucou ऐप से यह स्कैन करें, या कोड वहाँ पेस्ट करें।",
+   "es": "Escanéalo con la app Coucou en tu teléfono Android, o pega el código allí.",
+   "ar": "امسحه بتطبيق Coucou على هاتف أندرويد، أو الصق الرمز هناك.",
+   "fr": "Scannez-le avec l'app Coucou sur votre téléphone Android, ou collez-y le code.",
+   "bn": "আপনার অ্যান্ড্রয়েড ফোনে Coucou অ্যাপ দিয়ে এটি স্ক্যান করুন, অথবা সেখানে কোডটি পেস্ট করুন।",
+   "pt-BR": "Escaneie com o app Coucou no seu celular Android, ou cole o código lá.",
+   "ru": "Отсканируйте в приложении Coucou на телефоне Android или вставьте код туда.",
+   "id": "Pindai dengan aplikasi Coucou di ponsel Android Anda, atau tempelkan kodenya di sana."
   },
   "Scarf": {
    "zh-Hans": "围巾",
@@ -2234,6 +2388,17 @@
    "ru": "Адрес должен начинаться с http:// или https://.",
    "id": "Alamat harus diawali http:// atau https://."
   },
+  "The address must start with https:// (plain http only to this computer).": {
+   "zh-Hans": "地址必须以 https:// 开头（仅本机可使用 http）。",
+   "hi": "पता https:// से शुरू होना चाहिए (सादा http केवल इसी कंप्यूटर के लिए)।",
+   "es": "La dirección debe empezar con https:// (http sin cifrar solo en esta computadora).",
+   "ar": "يجب أن يبدأ العنوان بـ https:// ‏(http العادي لهذا الكمبيوتر فقط).",
+   "fr": "L'adresse doit commencer par https:// (http en clair seulement sur cette machine).",
+   "bn": "ঠিকানা https:// দিয়ে শুরু হতে হবে (শুধুমাত্র এই কম্পিউটারে প্লেইন http)।",
+   "pt-BR": "O endereço deve começar com https:// (http simples só neste computador).",
+   "ru": "Адрес должен начинаться с https:// (открытый http только для этого компьютера).",
+   "id": "Alamat harus diawali https:// (http biasa hanya untuk komputer ini)."
+  },
   "The file is removed.": {
    "zh-Hans": "该文件将被删除。",
    "hi": "फ़ाइल हटा दी जाती है।",
@@ -2321,6 +2486,17 @@
    "pt-BR": "A resposta do servidor é grande demais.",
    "ru": "Ответ сервера слишком большой.",
    "id": "Jawaban server terlalu besar."
+  },
+  "These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.": {
+   "zh-Hans": "这些快捷键已在你的桌面注册。桌面可能会请你确认，或选择其他按键；如果它告知所用的按键，会显示在每个快捷键旁边。",
+   "hi": "ये शॉर्टकट आपके डेस्कटॉप के साथ पंजीकृत हैं। वह आपसे इनकी पुष्टि करने या दूसरी कुंजियाँ चुनने को कह सकता है; जब वह बताता है कि कौन-सी कुंजियाँ इस्तेमाल होती हैं, तो वे हर शॉर्टकट के आगे दिखती हैं।",
+   "es": "Estos atajos están registrados en tu escritorio. Puede pedirte que los confirmes o que elijas otras teclas; cuando indica qué teclas usa, aparecen junto a cada atajo.",
+   "ar": "هذه الاختصارات مسجّلة لدى سطح المكتب. قد يطلب منك تأكيدها أو اختيار مفاتيح أخرى؛ وعندما يذكر المفاتيح التي يستخدمها، تظهر بجانب كل اختصار.",
+   "fr": "Ces raccourcis sont enregistrés auprès de ton bureau. Il peut te demander de les confirmer ou de choisir d'autres touches ; quand il indique les touches qu'il utilise, elles s'affichent à côté de chaque raccourci.",
+   "bn": "এই শর্টকাটগুলো আপনার ডেস্কটপে নিবন্ধিত। এটি আপনাকে সেগুলো নিশ্চিত করতে বা অন্য কী বেছে নিতে বলতে পারে; কোন কী ব্যবহার করছে তা জানালে সেগুলো প্রতিটি শর্টকাটের পাশে দেখা যায়।",
+   "pt-BR": "Estes atalhos estão registrados no seu desktop. Ele pode pedir que você os confirme ou escolha outras teclas; quando informa quais teclas usa, elas aparecem ao lado de cada atalho.",
+   "ru": "Эти сочетания зарегистрированы в вашем рабочем столе. Он может попросить подтвердить их или выбрать другие клавиши; если он сообщает, какие клавиши использует, они показаны рядом с каждым сочетанием.",
+   "id": "Pintasan ini terdaftar di desktop Anda. Desktop mungkin meminta Anda mengonfirmasinya atau memilih tombol lain; jika desktop menyebutkan tombol yang dipakainya, tombol itu tampil di samping setiap pintasan."
   },
   "This address is another machine, over plain http: what you ask travels unencrypted.": {
    "zh-Hans": "这个地址是另一台机器，且使用明文 http：你的提问会以未加密的形式传输。",
@@ -2564,6 +2740,17 @@
    "ru": "Неизвестный агент «{id}».",
    "id": "Agen tidak dikenal “{id}”."
   },
+  "Unpair phone": {
+   "zh-Hans": "取消手机配对",
+   "hi": "फ़ोन अनपेयर करें",
+   "es": "Desvincular teléfono",
+   "ar": "إلغاء إقران الهاتف",
+   "fr": "Dissocier le téléphone",
+   "bn": "ফোনের পেয়ার বাতিল",
+   "pt-BR": "Desparear celular",
+   "ru": "Отвязать телефон",
+   "id": "Lepas ponsel"
+  },
   "Untitled": {
    "zh-Hans": "无标题",
    "hi": "बिना शीर्षक",
@@ -2607,6 +2794,17 @@
    "pt-BR": "Usado duas vezes",
    "ru": "Используется дважды",
    "id": "Dipakai dua kali"
+  },
+  "Waiting for the phone…": {
+   "zh-Hans": "等待手机连接…",
+   "hi": "फ़ोन की प्रतीक्षा है…",
+   "es": "Esperando al teléfono…",
+   "ar": "في انتظار الهاتف…",
+   "fr": "En attente du téléphone…",
+   "bn": "ফোনের জন্য অপেক্ষা করা হচ্ছে…",
+   "pt-BR": "Aguardando o celular…",
+   "ru": "Ожидание телефона…",
+   "id": "Menunggu ponsel…"
   },
   "Wardrobe…": {
    "zh-Hans": "衣橱…",
@@ -2706,61 +2904,6 @@
    "pt-BR": "Seu desktop Wayland não deixa os apps ouvirem teclas fora das próprias janelas. Em vez disso, adicione os atalhos nas configurações de teclado do sistema, com estes comandos:",
    "ru": "Ваш рабочий стол Wayland не позволяет приложениям слушать клавиши вне своих окон. Добавьте сочетания в настройках клавиатуры системы с такими командами:",
    "id": "Desktop Wayland Anda tidak mengizinkan aplikasi mendengarkan tombol di luar jendelanya sendiri. Tambahkan pintasan di pengaturan keyboard sistem Anda, dengan perintah berikut:"
-  },
-  "Desktop: {keys}": {
-   "zh-Hans": "桌面：{keys}",
-   "hi": "डेस्कटॉप: {keys}",
-   "es": "Escritorio: {keys}",
-   "ar": "سطح المكتب: {keys}",
-   "fr": "Bureau : {keys}",
-   "bn": "ডেস্কটপ: {keys}",
-   "pt-BR": "Desktop: {keys}",
-   "ru": "Рабочий стол: {keys}",
-   "id": "Desktop: {keys}"
-  },
-  "Not set by your desktop": {
-   "zh-Hans": "桌面未设置",
-   "hi": "आपके डेस्कटॉप ने सेट नहीं किया",
-   "es": "Tu escritorio no lo activó",
-   "ar": "لم يضبطه سطح المكتب",
-   "fr": "Non activé par ton bureau",
-   "bn": "আপনার ডেস্কটপ সেট করেনি",
-   "pt-BR": "Não ativado pelo seu desktop",
-   "ru": "Не назначено рабочим столом",
-   "id": "Tidak diatur oleh desktop Anda"
-  },
-  "These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.": {
-   "zh-Hans": "这些快捷键已在你的桌面注册。桌面可能会请你确认，或选择其他按键；如果它告知所用的按键，会显示在每个快捷键旁边。",
-   "hi": "ये शॉर्टकट आपके डेस्कटॉप के साथ पंजीकृत हैं। वह आपसे इनकी पुष्टि करने या दूसरी कुंजियाँ चुनने को कह सकता है; जब वह बताता है कि कौन-सी कुंजियाँ इस्तेमाल होती हैं, तो वे हर शॉर्टकट के आगे दिखती हैं।",
-   "es": "Estos atajos están registrados en tu escritorio. Puede pedirte que los confirmes o que elijas otras teclas; cuando indica qué teclas usa, aparecen junto a cada atajo.",
-   "ar": "هذه الاختصارات مسجّلة لدى سطح المكتب. قد يطلب منك تأكيدها أو اختيار مفاتيح أخرى؛ وعندما يذكر المفاتيح التي يستخدمها، تظهر بجانب كل اختصار.",
-   "fr": "Ces raccourcis sont enregistrés auprès de ton bureau. Il peut te demander de les confirmer ou de choisir d'autres touches ; quand il indique les touches qu'il utilise, elles s'affichent à côté de chaque raccourci.",
-   "bn": "এই শর্টকাটগুলো আপনার ডেস্কটপে নিবন্ধিত। এটি আপনাকে সেগুলো নিশ্চিত করতে বা অন্য কী বেছে নিতে বলতে পারে; কোন কী ব্যবহার করছে তা জানালে সেগুলো প্রতিটি শর্টকাটের পাশে দেখা যায়।",
-   "pt-BR": "Estes atalhos estão registrados no seu desktop. Ele pode pedir que você os confirme ou escolha outras teclas; quando informa quais teclas usa, elas aparecem ao lado de cada atalho.",
-   "ru": "Эти сочетания зарегистрированы в вашем рабочем столе. Он может попросить подтвердить их или выбрать другие клавиши; если он сообщает, какие клавиши использует, они показаны рядом с каждым сочетанием.",
-   "id": "Pintasan ini terdaftar di desktop Anda. Desktop mungkin meminta Anda mengonfirmasinya atau memilih tombol lain; jika desktop menyebutkan tombol yang dipakainya, tombol itu tampil di samping setiap pintasan."
-  },
-  "Asking your desktop to register the shortcuts. It may show its own window to confirm them.": {
-   "zh-Hans": "正在请求桌面注册这些快捷键。桌面可能会显示自己的窗口让你确认。",
-   "hi": "आपके डेस्कटॉप से शॉर्टकट पंजीकृत करने को कहा जा रहा है। पुष्टि के लिए वह अपनी विंडो दिखा सकता है।",
-   "es": "Pidiendo a tu escritorio que registre los atajos. Puede mostrar su propia ventana para confirmarlos.",
-   "ar": "جارٍ طلب تسجيل الاختصارات من سطح المكتب. قد يعرض نافذته الخاصة لتأكيدها.",
-   "fr": "Demande en cours à ton bureau pour enregistrer les raccourcis. Il peut afficher sa propre fenêtre pour les confirmer.",
-   "bn": "আপনার ডেস্কটপকে শর্টকাটগুলো নিবন্ধন করতে বলা হচ্ছে। নিশ্চিত করার জন্য এটি নিজের উইন্ডো দেখাতে পারে।",
-   "pt-BR": "Pedindo ao seu desktop para registrar os atalhos. Ele pode mostrar a própria janela para confirmá-los.",
-   "ru": "Запрашиваем регистрацию сочетаний у рабочего стола. Он может показать своё окно для подтверждения.",
-   "id": "Meminta desktop Anda mendaftarkan pintasan. Desktop mungkin menampilkan jendelanya sendiri untuk konfirmasi."
-  },
-  "If one doesn't work, you can also add it in your system's keyboard settings with these commands:": {
-   "zh-Hans": "如果某个快捷键不起作用，也可以使用以下命令在系统的键盘设置中添加：",
-   "hi": "अगर कोई काम न करे, तो आप इन कमांड के साथ उसे अपने सिस्टम की कीबोर्ड सेटिंग्स में भी जोड़ सकते हैं:",
-   "es": "Si alguno no funciona, también puedes añadirlo en la configuración de teclado del sistema con estos comandos:",
-   "ar": "إذا لم يعمل أحدها، يمكنك أيضًا إضافته من إعدادات لوحة المفاتيح في نظامك بهذه الأوامر:",
-   "fr": "Si l'un d'eux ne marche pas, tu peux aussi l'ajouter dans les réglages clavier de ton système, avec ces commandes :",
-   "bn": "কোনোটি কাজ না করলে, এই কমান্ডগুলো দিয়ে সিস্টেমের কিবোর্ড সেটিংসেও সেটি যোগ করতে পারেন:",
-   "pt-BR": "Se algum não funcionar, você também pode adicioná-lo nas configurações de teclado do sistema, com estes comandos:",
-   "ru": "Если какое-то не работает, его можно добавить и в настройках клавиатуры системы с такими командами:",
-   "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:"
   },
   "all green": {
    "zh-Hans": "全部通过",
@@ -3338,28 +3481,6 @@
    "pt-BR": "⚠ falhou",
    "ru": "⚠ ошибка",
    "id": "⚠ gagal"
-  },
-  "A key is only sent over https, or to a server on this computer.": {
-   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
-   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
-   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
-   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
-   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
-   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
-   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
-   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
-   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
-  },
-  "Only a file dropped on the island can be sent with a question.": {
-   "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
-   "hi": "सवाल के साथ केवल वही फ़ाइल भेजी जा सकती है जो island पर छोड़ी गई हो।",
-   "es": "Solo se puede enviar con una pregunta un archivo soltado en la isla.",
-   "ar": "لا يمكن إرسال ملف مع سؤال إلا إذا أُفلِت على الجزيرة.",
-   "fr": "Seul un fichier déposé sur l'île peut être envoyé avec une question.",
-   "bn": "প্রশ্নের সঙ্গে কেবল আইল্যান্ডে ছাড়া ফাইলই পাঠানো যায়।",
-   "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
-   "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
-   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
   }
  }
 }

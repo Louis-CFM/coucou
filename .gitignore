@@ -19,3 +19,12 @@ DerivedData/
 # Local only (never published)
 .claude/
 _prive/
+
+relay/.test-dist/
+
+# Android companion build artefacts + per-user Firebase file
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/google-services.json

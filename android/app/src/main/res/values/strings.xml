@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Coucou</string>
+    <string name="channel_alerts">Agent cards</string>
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+</resources>

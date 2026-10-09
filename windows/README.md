@@ -417,6 +417,10 @@ own window.
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
   here, and the drop card would need a third button it doesn't have.
+- The phone companion is an Android app (`android/`, sideloaded APK) rather
+  than the iPhone one: sessions, approval and question cards and chat over a
+  Cloudflare Worker relay you deploy yourself — free tier, Firebase wake-ups,
+  see `android/README.md` and `relay/README.md`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
