@@ -1409,17 +1409,6 @@
    "ru": "settings.json пока нет — нечего сохранять.",
    "id": "Belum ada settings.json — tidak ada yang perlu dicadangkan."
   },
-  "No telemetry. Network requests only go to the services you configure yourself.": {
-   "zh-Hans": "没有遥测。网络请求只会发往你自己配置的服务。",
-   "hi": "कोई टेलीमेट्री नहीं। नेटवर्क अनुरोध केवल उन्हीं सेवाओं को जाते हैं जिन्हें आप खुद सेट करते हैं।",
-   "es": "Sin telemetría. Las solicitudes de red solo van a los servicios que configuras tú.",
-   "ar": "لا قياس عن بُعد. تذهب طلبات الشبكة فقط إلى الخدمات التي تضبطها بنفسك.",
-   "fr": "Aucune télémétrie. Les requêtes réseau ne vont qu'aux services que tu configures toi-même.",
-   "bn": "কোনো টেলিমেট্রি নেই। নেটওয়ার্ক অনুরোধ শুধু আপনার নিজের সেট করা পরিষেবাগুলোতেই যায়।",
-   "pt-BR": "Sem telemetria. As requisições de rede só vão para os serviços que você mesmo configura.",
-   "ru": "Никакой телеметрии. Сетевые запросы идут только к сервисам, которые вы настроили сами.",
-   "id": "Tanpa telemetri. Permintaan jaringan hanya ke layanan yang Anda atur sendiri."
-  },
   "None": {
    "zh-Hans": "无",
    "hi": "कोई नहीं",
@@ -3437,6 +3426,28 @@
    "pt-BR": "Sair do Nova",
    "ru": "Закрыть Nova",
    "id": "Keluar dari Nova"
+  },
+  "Hide Nova": {
+   "zh-Hans": "隐藏 Nova",
+   "hi": "Nova छिपाएँ",
+   "es": "Ocultar Nova",
+   "ar": "إخفاء Nova",
+   "fr": "Masquer Nova",
+   "bn": "Nova লুকান",
+   "pt-BR": "Ocultar Nova",
+   "ru": "Скрыть Nova",
+   "id": "Sembunyikan Nova"
+  },
+  "Emergency engine stop (Strict mode)": {
+   "zh-Hans": "紧急停止引擎（严格模式）",
+   "hi": "इंजन तुरंत रोकें (सख्त मोड)",
+   "es": "Parada de emergencia (modo estricto)",
+   "ar": "إيقاف المحرك طارئًا (الوضع الصارم)",
+   "fr": "Arrêt d’urgence (mode strict)",
+   "bn": "ইঞ্জিন জরুরি বন্ধ (কঠোর মোড)",
+   "pt-BR": "Parada de emergência (modo estrito)",
+   "ru": "Аварийная остановка (строгий режим)",
+   "id": "Hentikan mesin darurat (mode ketat)"
   }
  }
 }

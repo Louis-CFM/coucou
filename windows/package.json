@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "predev": "cargo build --release -p nova-hook",
     "prebuild": "cargo build --release -p nova-hook",
-    "pack": "tauri build && node scripts/pack.mjs"
+    "pack": "tauri build && node scripts/pack.mjs",
+    "engine": "node scripts/fetch-engine.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

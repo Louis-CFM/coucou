@@ -1,0 +1,36 @@
+import { h,clear } from '../views/dom';
+import { EngineBridge,type EngineProfile,type EngineConfig } from '../core/engine';
+export function engineSection():HTMLElement {
+ const panel=h('section',{class:'engine-settings'},h('h2',{text:'AI Chat'}),h('p',{class:'hint',text:'Choose the provider and model you pay for. Keys stay in Windows Credential Manager.'}));
+ const status=h('div',{class:'hint',role:'status'});const list=h('div',{class:'engine-profile-list'});
+ const importButton=h('button',{text:'Use my previous saved chat setup'});panel.append(importButton,list);
+ const id=h('input',{type:'hidden'}) as HTMLInputElement;
+ const label=h('input',{type:'text',placeholder:'For example: My main AI'}) as HTMLInputElement;
+ const url=h('input',{type:'url',placeholder:'https://api.example.com/v1'}) as HTMLInputElement;
+ const key=h('input',{type:'password',autocomplete:'new-password',placeholder:'Leave blank to keep the saved key'}) as HTMLInputElement;
+ const model=h('input',{type:'text',placeholder:'Exact model ID from your provider'}) as HTMLInputElement;
+ const protocol=h('select',{},...['openai-compatible','openai-responses','anthropic','google'].map(v=>h('option',{value:v,text:v}))) as HTMLSelectElement;
+ const params=h('textarea',{placeholder:'{}',rows:3}) as HTMLTextAreaElement;
+ const inputRate=h('input',{type:'number',min:0,step:'any',placeholder:'Optional'}) as HTMLInputElement;
+ const outputRate=h('input',{type:'number',min:0,step:'any',placeholder:'Optional'}) as HTMLInputElement;
+ const cacheRate=h('input',{type:'number',min:0,step:'any',placeholder:'Optional'}) as HTMLInputElement;
+ const noAuth=h('input',{type:'checkbox'}) as HTMLInputElement;
+ const save=h('button',{class:'primary',text:'Save provider'});const reset=h('button',{text:'Add another provider'});
+ const field=(title:string,control:HTMLElement)=>h('label',{class:'engine-field'},h('span',{text:title}),control);
+ const optional=h('details',{class:'engine-optional'},h('summary',{text:'Optional model parameters and estimated pricing'}),field('Parameters (temperature, topP, reasoningEffort, contextWindow, maxOutputTokens)',params),h('div',{class:'engine-pricing'},field('Input USD / million',inputRate),field('Output USD / million',outputRate),field('Cached input USD / million',cacheRate)));
+ const form=h('div',{class:'engine-profile-form'},id,field('Name',label),field('API base URL',url),field('API format',protocol),field('Model ID',model),field('API key',key),h('label',{class:'engine-checkbox'},noAuth,'Local server without authentication (localhost only)'),optional,h('div',{class:'engine-profile-actions'},reset,save));
+ panel.append(form,status,h('p',{class:'hint',text:'The model must support tool calling for PC tasks. Image/PDF support depends on the model. Switching providers sends the active conversation to that provider.'}));
+ let cfg:EngineConfig={profiles:[],activeProfile:'',workspace:'',lastSession:null};
+ function notice(e:unknown){status.textContent=String(e).replace(/^Error:\s*/,'');}
+ function fill(p?:EngineProfile){id.value=p?.id||'';label.value=p?.label||'';url.value=p?.baseUrl||'';model.value=p?.modelId||'';key.value='';protocol.value=p?.protocol||'openai-compatible';params.value=p?JSON.stringify(p.params):'{}';inputRate.value=p?.inputUsdPerMillion==null?'':String(p.inputUsdPerMillion);outputRate.value=p?.outputUsdPerMillion==null?'':String(p.outputUsdPerMillion);cacheRate.value=p?.cachedInputUsdPerMillion==null?'':String(p.cachedInputUsdPerMillion);noAuth.checked=p?.noAuth||false;}
+ async function draw(){clear(list);for(const p of cfg.profiles){const present=await EngineBridge.keyPresent(p.id);const use=h('button',{text:cfg.activeProfile===p.id?'Selected':'Use this provider',onclick:()=>void(async()=>{try{cfg=await EngineBridge.preferences(cfg.workspace,p.id);await draw();}catch(e){notice(e);}})()});const edit=h('button',{text:'Edit provider',onclick:()=>fill(p)});const remove=h('button',{text:'Remove provider',onclick:()=>void(async()=>{try{cfg=await EngineBridge.removeProfile(p.id);await draw();fill();}catch(e){notice(e);}})()});list.append(h('div',{class:'engine-profile-summary'},h('strong',{text:p.label}),h('span',{class:'hint',text:p.modelId+' · '+(p.noAuth?'local, no key':present?'key saved':'key missing')}),h('div',{class:'engine-profile-actions'},use,edit,remove)));}}
+ reset.addEventListener('click',()=>fill());importButton.addEventListener('click',()=>void(async()=>{try{cfg=await EngineBridge.importProvider();await draw();notice('Saved chat setup imported. You can send a request now.');}catch(e){notice(e);}})());
+ save.addEventListener('click',()=>void(async()=>{save.disabled=true;try{const rate=(x:HTMLInputElement)=>x.value.trim()===''?null:Number(x.value);const p:EngineProfile={id:id.value||`profile-${Date.now().toString(36)}`,label:label.value.trim(),baseUrl:url.value.trim(),modelId:model.value.trim(),protocol:protocol.value as EngineProfile['protocol'],noAuth:noAuth.checked,params:JSON.parse(params.value||'{}'),inputUsdPerMillion:rate(inputRate),outputUsdPerMillion:rate(outputRate),cachedInputUsdPerMillion:rate(cacheRate)};const privateKey=key.value;key.value='';cfg=await EngineBridge.saveProfile(p,privateKey||null);id.value=p.id;await draw();notice('Provider saved. Select it in the chat and send a request.');}catch(e){notice(e);}finally{save.disabled=false;}})());
+ void(async()=>{try{cfg=await EngineBridge.config();await draw();}catch(e){notice(e);}})();return panel;
+}
+export function computerSection():HTMLElement{
+ const field=h('input',{type:'text',placeholder:'Blank uses NovaWorkspace in your home folder','aria-label':'Working folder'}) as HTMLInputElement;
+ const status=h('p',{class:'hint',role:'status'});const save=h('button',{class:'primary',text:'Save working folder'});
+ save.addEventListener('click',()=>void(async()=>{try{const c=await EngineBridge.config();await EngineBridge.preferences(field.value,c.activeProfile);status.textContent='Folder saved. The next request uses it.';}catch(e){status.textContent=String(e).replace(/^Error:\s*/,'');}})());void EngineBridge.config().then(c=>{field.value=c.workspace;}).catch(()=>{});
+ return h('section',{},h('h2',{text:'Computer Access'}),h('p',{class:'hint',text:'OpenCode runs locally as your Windows user, not as administrator. There is no “90% access” switch.'}),h('label',{class:'engine-field'},'Working folder',field),save,status,h('ul',{class:'access-rules'},h('li',{text:'Every shell command and file change needs a fresh approval. Nothing uses “Always allow”.'}),h('li',{text:'Unanswered approvals deny after 60 seconds. Stop task kills the engine process tree; Ctrl+Alt+K is the emergency shortcut when available.'}),h('li',{text:'Read requests outside the working folder may ask for extra access. Tell Nova the absolute path; protected app/system workspaces are refused.'}),h('li',{text:'Use the Recycle Bin tool for deletion. Arbitrary shell programs can delete permanently: inspect the full command before approving.'}),h('li',{text:'Chat history is stored locally and is not encrypted. Old chats can be resumed; searching past chats from the AI needs your approval.'})),h('p',{class:'hint',text:'The first engine start can fetch its official plugin dependency into the private app cache. No global Bun, WSL or Python installation is required.'}));
+}

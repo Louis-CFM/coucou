@@ -15,13 +15,13 @@ import { registerShortcutHandlers, runGlobalShortcut, runIslandKey } from "../sr
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
 const MAC_IDS = [
-  "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
+  "killEngine", "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
   "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
 ];
 
 // ── Defaults (testDefaultsExhaustive, testAllDefaultsHaveModifier, testNoDefaultDuplicates) ──
 
-test("every Mac action has a default, in the Mac's order, with its Mac id", () => {
+test("Windows adds an emergency stop before the unchanged upstream actions", () => {
   assert.deepEqual(SHORTCUTS.map((d) => d.id), MAC_IDS);
   for (const d of SHORTCUTS) assert.ok(SHORTCUT_TEXT[d.id], `${d.id} has no label`);
 });
@@ -79,7 +79,7 @@ test("only the island toggle is off by default; the one not ported yet is reserv
     assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
-    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
+    "killEngine", "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
     "wardrobeToggle",
   ]);
   // The Mac's ⌃⌥D, on the same letter.

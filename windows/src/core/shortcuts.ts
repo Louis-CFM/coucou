@@ -19,6 +19,7 @@
 import { N_ } from "../i18n/i18n";
 
 export const SHORTCUT_TEXT = {
+  killEngine: N_("Emergency engine stop (Strict mode)"),
   toggleIsland: N_("Open or close the island"),
   openChat: N_("Open the chat"),
   goToAlert: N_("Go to the waiting permission or question"),
@@ -47,6 +48,7 @@ export const SHORTCUT_TEXT = {
 
 /** Mac `ShortcutAction` raw values. Stored in settings.json: never rename one. */
 export type ShortcutId =
+  | "killEngine"
   | "toggleIsland"
   | "openChat"
   | "goToAlert"
@@ -71,6 +73,7 @@ const def = (id: ShortcutId, defaultKeys: string, enabledByDefault: boolean, por
 
 /** Same order and defaults as ACTIONS in src-tauri/src/shortcuts.rs. */
 export const SHORTCUTS: readonly ShortcutDef[] = [
+  def("killEngine", "Ctrl+Alt+K", true, true),
   def("toggleIsland", "Ctrl+Alt+N", false, true),
   def("openChat", "Ctrl+Alt+Space", true, true),
   def("goToAlert", "Ctrl+Alt+A", true, true),

@@ -1,5 +1,9 @@
 // Nova for Windows — app wiring and the commands the island calls.
 
+mod engine;
+mod engine_profiles;
+mod engine_files;
+mod engine_history;
 mod agent_hooks;
 mod agents;
 mod chat;
@@ -668,6 +672,24 @@ pub fn run() {
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
+            engine::engine_start,
+            engine::engine_status,
+            engine::engine_stop,
+            engine::engine_send,
+            engine::engine_reply,
+            engine::engine_snapshot,
+            engine::engine_new_session,
+            engine::engine_question_reply,
+            engine::engine_resume,
+            engine_files::engine_pick_files,
+            engine_history::engine_history_list,
+            engine_history::engine_history_read,
+            engine_profiles::engine_config,
+            engine_profiles::engine_preferences,
+            engine_profiles::engine_import_provider,
+            engine_profiles::engine_profile_save,
+            engine_profiles::engine_profile_remove,
+            engine_profiles::engine_profile_key_present,
             boot,
             save_settings,
             set_system_languages,
@@ -742,6 +764,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            engine::attach(handle.clone());
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
@@ -779,8 +802,9 @@ pub fn run() {
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Nova");
+        .build(tauri::generate_context!())
+        .expect("error while building Nova")
+        .run(|_, event| { if matches!(event, tauri::RunEvent::Exit) { engine::shutdown(); } });
 }
 
 #[cfg(test)]

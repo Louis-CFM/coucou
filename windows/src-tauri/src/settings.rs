@@ -101,7 +101,7 @@ impl Default for Settings {
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
-            open_on_hover: false,
+            open_on_hover: true,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),

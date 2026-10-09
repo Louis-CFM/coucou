@@ -18,6 +18,7 @@ import {
 } from "../core/pills";
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
+import { engineSection, computerSection } from "./engine";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -960,7 +961,7 @@ function generalSection(): HTMLElement {
     h("div", { class: "hint", text: t("Drop a file named like one of Nova's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
-      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+      h("span", {class:"hint",text:"Always enabled for the top-centre wake strip"}),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
@@ -1374,24 +1375,26 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
-  root.append(
-    h("h1", {}, h("span", { text: "Nova" }), h("span", { class: "version", text: version })),
-    appearanceSection(),
-    claudeSection(status),
-    agentsSection(agents),
-    planSection(status),
-    apiSection(hasKey),
-    chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
-    activePillsSection(connected),
-    integrationsSection(present),
-    generalSection(),
-    shortcutsSection(shortcutReport),
-    h("div", {
-      class: "hint",
-      text: t("No telemetry. Network requests only go to the services you configure yourself."),
-    }),
-  );
+  const pages = [
+    {id:"appearance",label:"Appearance & App",blocks:[appearanceSection(),generalSection()]},
+    {id:"chat",label:"AI Chat",blocks:[engineSection()]},
+    {id:"computer",label:"Computer Access",blocks:[computerSection()]},
+    {id:"advanced",label:"Advanced",blocks:[h("section", {}, h("h2", {text:"Coding-agent integrations"}), h("p", {class:"hint",text:"Optional power-user features. These hooks are not required for the assistant chat."})),claudeSection(status),agentsSection(agents),planSection(status),activePillsSection(connected),integrationsSection(present),shortcutsSection(shortcutReport),h("details",{class:"settings-legacy"},h("summary",{text:"Previous direct-chat setup (for key import)"}),apiSection(hasKey),chatProvidersSection(chatKeys,keyChanged),localSection(customKey))]},
+  ];
+  const nav = h("nav", {class:"settings-nav","aria-label":"Settings sections"});
+  const area = h("div", {class:"settings-content"});
+  let active = sessionStorage.getItem("nova-settings-tab") || "appearance";
+  const show = (id:string) => {
+    active = id;sessionStorage.setItem("nova-settings-tab",id);
+    for (const child of nav.children) child.classList.toggle("selected",(child as HTMLElement).dataset.page===id);
+    for (const child of area.children) (child as HTMLElement).hidden=(child as HTMLElement).dataset.page!==id;
+  };
+  for(const page of pages){
+    const button=h("button",{type:"button",text:page.label,onclick:()=>show(page.id)});button.dataset.page=page.id;nav.append(button);
+    const body=h("div",{class:"settings-page"},...page.blocks);body.dataset.page=page.id;area.append(body);
+  }
+  root.append(h("div",{class:"settings-titlebar"},h("h1",{},"Nova",h("span",{class:"version",text:version})),h("button",{class:"quit-app",text:t("Quit Nova"),onclick:()=>void Bridge.quit()})),h("p",{class:"hint",text:"The island’s × only hides it. Move your mouse to the top centre to reopen it; Quit stops the app."}),nav,area);
+  show(pages.some(p=>p.id===active)?active:"appearance");
 }
 
 void main();

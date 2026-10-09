@@ -12,6 +12,7 @@ import type { BotEmoteName, IslandViewName } from "../core/layout";
 import { cyclePill, islandKeyAction, navigate, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { Engine, EngineBridge } from "../core/engine";
 
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 
@@ -163,6 +164,12 @@ export function runIslandKey(host: ShortcutHost, action: IslandKeyAction) {
       host.viewCommand("toggleDiff");
       break;
     case "newChat":
+      if (Engine.initialized) {
+        if (Engine.status.busy) return;
+        void EngineBridge.newSession().then(() => { Engine.messages = []; Engine.permissions.clear(); Engine.notify(); }).catch(e => { Engine.error = String(e); Engine.notify(); });
+        host.setView("prompt");
+        break;
+      }
       // Not while an answer is on its way: it would land in the new chat.
       if (State.stateOverride === "thinking") return;
       State.chatHistory = [];

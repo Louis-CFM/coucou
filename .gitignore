@@ -3,3 +3,5 @@ windows/target/
 windows/dist/
 windows/release/
 .claude/
+
+/windows/engine/

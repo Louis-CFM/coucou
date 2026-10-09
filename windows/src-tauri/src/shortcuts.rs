@@ -58,6 +58,7 @@ const fn action(id: &'static str, keys: &'static str, on: bool, ported: bool) ->
 
 /// Same order as `ShortcutAction.allCases`.
 pub const ACTIONS: &[ActionDef] = &[
+    action("killEngine", "Ctrl+Alt+K", true, true),
     action("toggleIsland", "Ctrl+Alt+N", false, true),
     action("openChat", "Ctrl+Alt+Space", true, true),
     action("goToAlert", "Ctrl+Alt+A", true, true),
@@ -82,6 +83,7 @@ pub fn find(id: &str) -> Option<&'static ActionDef> {
 pub fn description(id: &str) -> &'static str {
     use crate::i18n::n_;
     match id {
+        "killEngine" => n_("Emergency engine stop (Strict mode)"),
         "toggleIsland" => n_("Open or close the island"),
         "openChat" => n_("Open the chat"),
         "goToAlert" => n_("Go to the waiting permission or question"),
@@ -321,6 +323,7 @@ pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 /// Hands an action to the island.
 pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
+    if action == "killEngine" { crate::engine::kill_switch(); return; }
     crate::log::line(format!("shortcut {action}"));
     if action == "wardrobeToggle" {
         let _ = app.emit_to(WINDOW_LABEL, "open-wardrobe", ());

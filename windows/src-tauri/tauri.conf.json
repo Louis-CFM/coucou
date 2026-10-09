@@ -51,12 +51,15 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../target/release/nova-hook.exe": "nova-hook.exe"
+      "../target/release/nova-hook.exe": "nova-hook.exe",
+      "../engine/opencode.exe": "engine/opencode.exe",
+      "../engine/LICENSE.txt": "engine/LICENSE.txt",
+      "../engine/VERSION": "engine/VERSION"
     },
     "copyright": "Copyright (c) 2026 sweety; portions Copyright (c) 2026 Louis Raill\u00e9",
     "category": "DeveloperTool",
     "shortDescription": "Your personal desktop island",
-    "longDescription": "Nova is a Windows desktop island for agent activity, approvals and model chat. Phase 1 rebrand candidate; managed engine execution is not yet implemented.",
+    "longDescription": "Nova is a personal Windows desktop island with managed OpenCode execution, per-call approvals, local conversations and file attachments.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",
