@@ -8,6 +8,8 @@ import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
+import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
+import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
@@ -78,6 +80,11 @@ async function main() {
 
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
 
+  // Settings → Reload sounds: read the sounds folder again, and let them hear it.
+  await onEvent<null>("sounds-changed", () => {
+    void Sound.reload().then(() => Sound.play("pop"));
+  });
+
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
     const previousMain = State.mainPillId;
@@ -93,6 +100,11 @@ async function main() {
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
+  registerSpotifyHandlers(island);
+  // Rust may have read Spotify before this page listened: ask once.
+  if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
+    void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
+  }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.
   const checkRecap = () => void Recap.check(island);

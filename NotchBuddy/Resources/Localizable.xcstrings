@@ -65,6 +65,70 @@
         }
       }
     },
+    "%lld custom": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld مخصّص"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld কাস্টম"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld custom"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld personalizados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld personnalisés"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld कस्टम"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kustom"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld personalizados"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "своих: %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个自定义"
+          }
+        }
+      }
+    },
     "AUTO": {
       "localizations": {
         "ar": {
@@ -2625,6 +2689,70 @@
         }
       }
     },
+    "Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ضع في مجلد الأصوات ملفًا يحمل اسم أحد أصوات Mochi (finish.wav وapproval.mp3 وgreet.m4a…) ليحل محله، ثم أعد التحميل."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi-র কোনো সাউন্ডের নামে একটি ফাইল (finish.wav, approval.mp3, greet.m4a…) সাউন্ড ফোল্ডারে রাখুন, সেটি বদলে যাবে; তারপর Reload করুন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deja en la carpeta de sonidos un archivo con el nombre de uno de los sonidos de Mochi (finish.wav, approval.mp3, greet.m4a…) para reemplazarlo y luego recarga."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déposez dans le dossier des sons un fichier nommé comme l'un des sons de Mochi (finish.wav, approval.mp3, greet.m4a…) pour le remplacer, puis rechargez."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi की किसी साउंड के नाम वाली फ़ाइल (finish.wav, approval.mp3, greet.m4a…) साउंड फ़ोल्डर में रखें, वह उसकी जगह ले लेगी; फिर Reload करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taruh file bernama seperti salah satu suara Mochi (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coloque na pasta de sons um arquivo com o nome de um dos sons do Mochi (finish.wav, approval.mp3, greet.m4a…) para substituí-lo e depois recarregue."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Положите в папку звуков файл с именем одного из звуков Mochi (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在声音文件夹中放入与 Mochi 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。"
+          }
+        }
+      }
+    },
     "Drop a file or window, or ask me anything.": {
       "localizations": {
         "ar": {
@@ -3453,6 +3581,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
+          }
+        }
+      }
+    },
+    "Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يفتح التمرير فوق الجزيرة ويُطوى بعد مغادرة المؤشر بقليل. انقر داخلها لإبقائها مفتوحة."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আইল্যান্ডের উপর পয়েন্টার রাখলে খোলে; পয়েন্টার সরালে একটু পরে আবার গুটিয়ে যায়। খোলা রাখতে ভিতরে ক্লিক করুন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasar el cursor por la isla la abre; se pliega poco después de que el cursor salga. Haz clic dentro para dejarla abierta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Survoler l'île l'ouvre ; elle se replie peu après que le pointeur la quitte. Cliquez dedans pour la garder ouverte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आइलैंड पर पॉइंटर ले जाने से वह खुलता है; पॉइंटर हटने के कुछ देर बाद फिर सिमट जाता है। खुला रखने के लिए अंदर क्लिक करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passar o cursor pela ilha a abre; ela se fecha logo depois que o cursor sai. Clique dentro para mantê-la aberta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将指针悬停在岛上即可打开；指针离开后不久会再次收起。在其中点按可保持打开。"
           }
         }
       }
@@ -5441,6 +5633,134 @@
         }
       }
     },
+    "Open on hover": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفتح عند التمرير"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হোভারে খুলুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open on hover"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir al pasar el cursor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir au survol"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "होवर पर खोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka saat kursor di atasnya"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir ao passar o cursor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открывать при наведении"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "悬停时打开"
+          }
+        }
+      }
+    },
+    "Open sounds folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح مجلد الأصوات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সাউন্ড ফোল্ডার খুলুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open sounds folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir la carpeta de sonidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir le dossier des sons"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "साउंड फ़ोल्डर खोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka folder suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir a pasta de sons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть папку звуков"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开声音文件夹"
+          }
+        }
+      }
+    },
     "Open terminal": {
       "localizations": {
         "ar": {
@@ -6013,6 +6333,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "刷新"
+          }
+        }
+      }
+    },
+    "Reload sounds": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة تحميل الأصوات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সাউন্ড আবার লোড করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload sounds"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recargar sonidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recharger les sons"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "साउंड फिर से लोड करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muat ulang suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recarregar sons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезагрузить звуки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新载入声音"
           }
         }
       }
@@ -12993,7 +13377,6 @@
         }
       }
     },
-
     "plugin.install": {
       "localizations": {
         "ar": {
@@ -16770,7 +17153,6 @@
         }
       }
     },
-
     "status.codex-hooks-installed": {
       "localizations": {
         "ar": {

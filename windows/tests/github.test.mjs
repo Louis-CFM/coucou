@@ -210,3 +210,40 @@ test("showing the GitHub card asks Rust for a refresh, once per showing", () => 
   State.setFocus(GITHUB);
   assert.deepEqual(sent("github_refresh"), [{ section: "pulse" }, { section: "pulse" }]);
 });
+
+// ── The lists from the keyboard (GitHubDetailView: ⌘↓ ⌘↑ ⌘O) ──────────────────
+
+test("Ctrl+↓ ↑ highlight a list row, Ctrl+O does what its click does", async () => {
+  const { installFakeDom } = await import("./fakedom.mjs");
+  installFakeDom();
+  const { githubDetail, githubPulseCard, highlightRow, listRows, openRow } = await import("../src/views/github.ts");
+  const pr = (n, url) => ({
+    id: `me/app#${n}`, title: `PR ${n}`, url, repo: "me/app", number: n, isDraft: false,
+    ci: "success", review: "none", headSha: null,
+  });
+  const pulse = {
+    login: "me", fetchedAt: 1, toReview: [], mainCI: [],
+    myPRs: [
+      pr(1, "https://github.com/me/app/pull/1"),
+      pr(2, "https://evil.example/2"),
+      pr(3, "https://github.com/me/app/pull/3"),
+    ],
+  };
+  // The summary card has no list to walk.
+  assert.deepEqual(listRows(githubPulseCard(pulse, null, null, () => {})), []);
+
+  const rows = listRows(githubDetail(pulse, null, null, () => {}));
+  assert.equal(rows.length, 3);
+  highlightRow(rows, 1, true);
+  assert.deepEqual(rows.map((r) => r.classList.contains("selected")), [false, true, false]);
+  highlightRow(rows, null, false);
+  assert.ok(rows.every((r) => !r.classList.contains("selected")));
+
+  calls.length = 0;
+  openRow(rows[0]);
+  assert.deepEqual(sent("open_url"), [{ url: "https://github.com/me/app/pull/1" }]);
+  // The same check as a click: only github.com opens.
+  openRow(rows[1]);
+  openRow(undefined);
+  assert.equal(sent("open_url").length, 1);
+});

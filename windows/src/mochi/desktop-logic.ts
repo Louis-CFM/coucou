@@ -19,6 +19,8 @@ export interface DesktopSnapshot {
   soundVolume: number;
   /** Tray → Pause: he dozes off and stays asleep. */
   paused: boolean;
+  /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
+  dancing: boolean;
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */
@@ -179,8 +181,12 @@ export type DesktopPhase =
 
 /** Everything the life cycle does to the world, injected so it can be tested. */
 export interface DesktopPorts {
-  /** Shows the window at the island and flies it to his spot. False: no spot. */
-  flyOut(): Promise<boolean>;
+  /**
+   * Shows the window at the island and flies it to his spot. False: no spot.
+   * `anywhere`: a spot on a display that is gone gives way to the first-visit
+   * corner instead of keeping him home (the user asked him out).
+   */
+  flyOut(anywhere: boolean): Promise<boolean>;
   /** Flies the window to the island and hides it. `forget`: he lives there again. */
   flyHome(forget: boolean): Promise<boolean>;
   /** The island's own Mochi hides while he is out. */
@@ -207,7 +213,7 @@ export class DesktopMochiController {
   }
 
   /** Launch, and back from an alert: fly out to his spot if he lives there. */
-  async launchFlyIfNeeded(): Promise<void> {
+  async launchFlyIfNeeded(anywhere = false): Promise<void> {
     if (!this.enabled || this.phase !== "home") return;
     // An alert is up: wait in the island, the alert's end flies him out.
     if (this.port.alertActive()) {
@@ -216,7 +222,7 @@ export class DesktopMochiController {
     }
     this.phase = "flyingOut";
     this.port.setAway(true);
-    const ok = await this.port.flyOut();
+    const ok = await this.port.flyOut(anywhere);
     if (this.phase !== "flyingOut") return;
     if (!ok) {
       // His spot is on a display that is gone: he stays home.
@@ -249,6 +255,20 @@ export class DesktopMochiController {
     await this.port.flyHome(true);
     this.port.play("peek");
     this.port.setAway(false);
+  }
+
+  /**
+   * The desktop shortcut (DesktopMochiController.flyOutOrHome, ⌃⌥D on the
+   * Mac): out to his spot from the island, home from the desktop. In flight,
+   * or away for an alert, nothing.
+   */
+  async flyOutOrHome(): Promise<void> {
+    if (this.phase === "home") {
+      this.enabled = true;
+      await this.launchFlyIfNeeded(true);
+    } else if (this.phase === "onDesktop") {
+      await this.flyHome();
+    }
   }
 
   /** Call whenever the alert condition may have changed; only edges count. */

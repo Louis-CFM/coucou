@@ -32,6 +32,9 @@ export const SHORTCUT_TEXT = {
   island: {
     nextPrev: N_("Next or previous pill"),
     byNumber: N_("Go to pill 1 to 9"),
+    navItems: N_("Navigate list items"),
+    open: N_("Open selected item"),
+    diff: N_("Open / close current diff"),
     send: N_("Send the message"),
     newChat: N_("Start a new chat"),
     settings: N_("Open Settings"),
@@ -76,7 +79,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   def("nextPill", "Ctrl+Alt+Right", true, true),
   def("prevPill", "Ctrl+Alt+Left", true, true),
   def("muteToggle", "Ctrl+Alt+S", true, true),
-  def("desktopToggle", "Ctrl+Alt+D", true, false),
+  def("desktopToggle", "Ctrl+Alt+D", true, true),
   def("wardrobeToggle", "Ctrl+Alt+G", true, true),
 ];
 
@@ -349,11 +352,13 @@ export function pillByNumber(ids: readonly string[], n: number): string | null {
   return n >= 1 && n <= ids.length ? ids[n - 1] : null;
 }
 
-/** Shown read-only in Settings, like ShortcutLogic.islandShortcuts. The Mac's
- *  ⌘↑ ⌘↓ ⌘O (card lists) and ⌘E (diff) have no counterpart here yet. */
+/** Shown read-only in Settings, like ShortcutLogic.islandShortcuts, in its order. */
 export const ISLAND_SHORTCUTS: readonly { keys: string; description: string }[] = [
   { keys: "Ctrl+→ / Ctrl+←", description: SHORTCUT_TEXT.island.nextPrev },
   { keys: "Ctrl+1 – Ctrl+9", description: SHORTCUT_TEXT.island.byNumber },
+  { keys: "Ctrl+↓ / Ctrl+↑", description: SHORTCUT_TEXT.island.navItems },
+  { keys: "Ctrl+O", description: SHORTCUT_TEXT.island.open },
+  { keys: "Ctrl+E", description: SHORTCUT_TEXT.island.diff },
   { keys: "Ctrl+Enter", description: SHORTCUT_TEXT.island.send },
   { keys: "Ctrl+K", description: SHORTCUT_TEXT.island.newChat },
   { keys: "Ctrl+,", description: SHORTCUT_TEXT.island.settings },
@@ -364,6 +369,12 @@ export const ISLAND_SHORTCUTS: readonly { keys: string; description: string }[] 
 export type IslandKeyAction =
   | { kind: "cycle"; delta: 1 | -1 }
   | { kind: "pill"; number: number }
+  /** Ctrl+↓ / Ctrl+↑: the highlight through the card's list (⌘↓ ⌘↑). */
+  | { kind: "list"; delta: 1 | -1 }
+  /** Ctrl+O: opens the highlighted item (⌘O). */
+  | { kind: "openSelection" }
+  /** Ctrl+E: the latest edit's diff, or closes the one open (⌘E). */
+  | { kind: "diff" }
   | { kind: "newChat" }
   | { kind: "settings" }
   | { kind: "pin" };
@@ -371,7 +382,7 @@ export type IslandKeyAction =
 /**
  * A key pressed while the island has the keyboard → what it does, or null to
  * leave it alone. Ctrl stands in for ⌘. In a text field Ctrl+← and Ctrl+→
- * keep moving by word.
+ * keep moving by word, and Ctrl+↑ and Ctrl+↓ by paragraph.
  */
 export function islandKeyAction(
   e: KeyPress,
@@ -382,11 +393,18 @@ export function islandKeyAction(
     if (ctx.inTextField) return null;
     return { kind: "cycle", delta: e.key === "ArrowRight" ? 1 : -1 };
   }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (ctx.inTextField) return null;
+    return { kind: "list", delta: e.key === "ArrowDown" ? 1 : -1 };
+  }
   const digit = /^Digit([1-9])$/.exec(e.code);
   if (digit) return { kind: "pill", number: Number(digit[1]) };
   const letter = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : /^Key([A-Z])$/.exec(e.code)?.[1].toLowerCase();
   if (letter === "k") return ctx.view === "prompt" ? { kind: "newChat" } : null;
   if (letter === "p") return { kind: "pin" };
+  if (letter === "o") return { kind: "openSelection" };
+  // The diff lives in the overview's left card: ⌘E means something only there.
+  if (letter === "e") return ctx.view === "overview" ? { kind: "diff" } : null;
   if (e.key === "," || e.code === "Comma") return { kind: "settings" };
   return null;
 }

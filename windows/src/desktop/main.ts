@@ -36,7 +36,7 @@ class DesktopMochi {
   private mode: DesktopMode = "off";
 
   private snap: DesktopSnapshot = {
-    state: "idle", outfit: "none", soundEnabled: true, soundVolume: 0.12, paused: false,
+    state: "idle", outfit: "none", soundEnabled: true, soundVolume: 0.12, paused: false, dancing: false,
   };
 
   private visible = false;
@@ -136,6 +136,8 @@ class DesktopMochi {
 
   private updateSleep(now: number) {
     if (!this.visible) return;
+    // Dancing keeps him up: asleep he would bounce at a few frames a second.
+    if (this.snap.dancing && !this.snap.paused) this.lastAgentActive = now;
     const distance = pointerDistance(this.mode === "poll", this.cursor, now - this.lastPointer);
     const sleep =
       !this.dragging &&
@@ -204,12 +206,16 @@ class DesktopMochi {
       engine.lookX = g.lookX;
       engine.lookY = g.lookY;
     }
-    // No dancing: the Windows and Linux app has no music signal to dance to.
+    // Dances while Spotify plays (Linux), by the compact island's rules.
+    engine.setDancing(this.snap.dancing && !this.asleep);
     engine.update(dt);
     const dpr = this.dpr();
     ctx.setTransform(dpr, 0, 0, dpr, SIDE * dpr, 0);
     ctx.clearRect(-SIDE, 0, PANEL_SIZE, PANEL_SIZE);
+    ctx.save();
+    engine.applyDance(ctx, DRAW_W, PANEL_SIZE);
     engine.draw(ctx, DRAW_W, PANEL_SIZE);
+    ctx.restore();
   }
 
   private dpr(): number {

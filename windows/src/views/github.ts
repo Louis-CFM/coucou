@@ -108,10 +108,18 @@ function ciDot(ci: GitHubPR["ci"]): HTMLElement {
   return el;
 }
 
+/** What each list row opens: its click, and Ctrl+O when it is highlighted. */
+const rowOpens = new WeakMap<Element, () => void>();
+
+function row(onOpen: () => void, ...children: (HTMLElement | null)[]): HTMLElement {
+  const el = h("button", { class: "gh-row", onclick: onOpen }, ...children);
+  rowOpens.set(el, onOpen);
+  return el;
+}
+
 function prRow(pr: GitHubPR, showCI: boolean): HTMLElement {
-  return h(
-    "button",
-    { class: "gh-row", onclick: () => open(pr.url) },
+  return row(
+    () => open(pr.url),
     showCI ? ciDot(pr.ci) : h("i", { class: "gh-gap" }),
     h("span", { class: "gh-ref", text: `${shortRepo(pr.repo)}#${pr.number}` }),
     h("span", { class: "gh-title", text: pr.title }),
@@ -121,9 +129,8 @@ function prRow(pr: GitHubPR, showCI: boolean): HTMLElement {
 
 function repoRow(repo: GitHubRepoCI): HTMLElement {
   const word = ciWord(repo.ci);
-  return h(
-    "button",
-    { class: "gh-row", onclick: () => open(actionsUrl(repo.url)) },
+  return row(
+    () => open(actionsUrl(repo.url)),
     ciDot(repo.ci),
     h("span", { class: "gh-ref", text: shortRepo(repo.repo) }),
     h("span", { class: "gh-title", text: repo.branch }),
@@ -131,12 +138,34 @@ function repoRow(repo: GitHubRepoCI): HTMLElement {
   );
 }
 
+// ── Keyboard: Ctrl+↓ Ctrl+↑ Ctrl+O (the Mac's cardSelection) ──────────────────
+
+/** The rows of the GitHub list shown in `root`, top to bottom; none without one. */
+export function listRows(root: HTMLElement): HTMLElement[] {
+  const list = root.querySelector(".gh-list");
+  return list ? (Array.from(list.children) as HTMLElement[]) : [];
+}
+
+/**
+ * Highlights row `selection` and no other (GitHubPRRowView's `selected`).
+ * `reveal`: the highlight just moved, so its row scrolls into the three the
+ * list shows.
+ */
+export function highlightRow(rows: readonly HTMLElement[], selection: number | null, reveal: boolean) {
+  rows.forEach((el, i) => el.classList.toggle("selected", i === selection));
+  if (reveal && selection != null) rows[selection]?.scrollIntoView({ block: "nearest" });
+}
+
+/** Ctrl+O: does what a click on the row does. */
+export function openRow(el: HTMLElement | undefined) {
+  if (el) rowOpens.get(el)?.();
+}
+
 function listDetail(section: Exclude<GitHubSection, "activity">, pulse: GitHubPulse, onBack: () => void): HTMLElement {
   const rows: HTMLElement[] =
     section === "mainCI"
       ? pulse.mainCI.map(repoRow)
       : (section === "myPRs" ? pulse.myPRs : pulse.toReview).map((pr) => prRow(pr, section === "myPRs"));
-
   const body =
     rows.length === 0
       ? h("div", { class: "gh-empty", text: GH_STRINGS.nothingHere })

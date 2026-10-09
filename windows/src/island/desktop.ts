@@ -7,6 +7,7 @@ import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge"
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { desktopDances } from "../core/spotify";
 import {
   DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
@@ -41,7 +42,7 @@ export class DesktopLink {
   constructor(host: DesktopHost) {
     this.host = host;
     this.controller = new DesktopMochiController({
-      flyOut: async () => (await Bridge.desktopFlyOut()) ?? false,
+      flyOut: async (anywhere) => (await Bridge.desktopFlyOut(anywhere)) ?? false,
       flyHome: async (forget) => (await Bridge.desktopFlyHome(forget)) ?? true,
       setAway: (away) => {
         State.mochiOnDesktop = away;
@@ -88,6 +89,15 @@ export class DesktopLink {
   /** The launch greeting is over: back to his spot if that is where he lives. */
   launch() {
     if (this.supported) void this.controller.launchFlyIfNeeded();
+  }
+
+  /**
+   * The desktop shortcut: out to his spot, or home. Not in the middle of a
+   * drag out of the island — the drop decides that one.
+   */
+  flyOutOrHome() {
+    if (!this.supported || this.carrying) return;
+    void this.controller.flyOutOrHome();
   }
 
   // ── Drag out of the island ──────────────────────────────────────────────────
@@ -161,6 +171,7 @@ export class DesktopLink {
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
       paused: State.paused,
+      dancing: desktopDances(State.spotifyPlaying, State.effectiveState),
     };
     const key = JSON.stringify(snapshot);
     if (key === this.pushed) return;

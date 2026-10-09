@@ -425,6 +425,11 @@ pub fn first_with_window(pids: &[u32]) -> Option<u32> {
     pids.iter().copied().find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
 }
 
+/// What a session remembers: the ancestor that owns a window, or nothing.
+pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
+    first_with_window(ancestors).into_iter().collect()
+}
+
 fn bring_forward(raw: isize) -> bool {
     let hwnd = HWND(raw as *mut _);
     unsafe {
@@ -444,6 +449,11 @@ pub fn focus_process_window(pid: u32, folder: &str) -> bool {
         .map(|(hwnd, _, title)| (hwnd, title))
         .collect();
     session_window::pick_window(&candidates, folder).is_some_and(|hwnd| bring_forward(*hwnd))
+}
+
+/// Brings forward the window a session remembered (`window_owners`).
+pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
+    owners.first().is_some_and(|pid| focus_process_window(*pid, folder))
 }
 
 /// Brings forward the window of a running app, by executable name.

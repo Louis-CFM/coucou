@@ -307,3 +307,73 @@ test("an unusable delay is ignored", () => {
   for (const bad of [NaN, -1, Infinity]) fsm.homeToPetitDelay = bad;
   assert.equal(fsm.homeToPetitDelay, 15);
 });
+
+// ── Open on hover (IslandHoverTests.swift) ────────────────────────────────────
+
+test("open on hover off: hovering only peeks", () => {
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "petit");
+  assert.equal(fsm.openedByHover, false);
+});
+
+test("open on hover: hovering opens, leaving folds after the short grace period", () => {
+  fsm.openOnHover = true;
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "home");
+  assert.equal(fsm.openedByHover, true);
+  fsm.mouseLeft();
+  seconds(0.5);
+  assert.equal(fsm.state, "home");
+  seconds(0.1);
+  assert.equal(fsm.state, "petit");
+  assert.equal(fsm.openedByHover, false);
+  // From the compact island it opens again.
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "home");
+});
+
+test("open on hover: coming back before the grace period keeps it open", () => {
+  fsm.openOnHover = true;
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(0.3);
+  fsm.mouseEntered();
+  seconds(5);
+  assert.equal(fsm.state, "home");
+});
+
+test("open on hover: a click inside makes it an ordinary open island", () => {
+  fsm.openOnHover = true;
+  fsm.homeToPetitDelay = 3;
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  fsm.userInteracted();          // the short countdown becomes the normal one
+  seconds(1);
+  assert.equal(fsm.state, "home");
+  seconds(2);
+  assert.equal(fsm.state, "petit");
+});
+
+test("open on hover: a waiting card holds the island, hover neither opens nor folds it", () => {
+  fsm.openOnHover = true;
+  fsm.pinned = true;
+  fsm.mouseEntered();
+  assert.equal(fsm.state, "petit");
+  assert.equal(fsm.openedByHover, false);
+  fsm.forceHome();
+  fsm.mouseLeft();
+  seconds(5);
+  assert.equal(fsm.state, "home");
+});
+
+test("open on hover: an island opened by an alert keeps the normal delay", () => {
+  fsm.openOnHover = true;
+  fsm.homeToPetitDelay = 3;
+  fsm.forceHome();
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(1);
+  assert.equal(fsm.state, "home");
+  seconds(2);
+  assert.equal(fsm.state, "petit");
+});
