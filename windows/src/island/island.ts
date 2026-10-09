@@ -123,6 +123,9 @@ export class Island {
     this.build();
     this.wireFsm();
     this.wireInput();
+    window.addEventListener("resize", () => {
+      if (State.mode === "expanded" && State.view === "prompt") this.animateGeometry(false);
+    });
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => {
       this.fsm.greetComplete();
@@ -644,7 +647,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, window.innerHeight);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1206,6 +1209,6 @@ export class Island {
   }
 
   get chatHeight() {
-    return chatPromptHeight(State.chatHistory.length);
+    return chatPromptHeight(State.chatHistory.length, window.innerHeight);
   }
 }
