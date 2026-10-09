@@ -278,6 +278,28 @@ mod tests {
     }
 
     #[test]
+    fn turkish_resolves_translates_and_preserves_counted_nouns() {
+        let system = |tag: &str| vec![tag.to_string()];
+        assert_eq!(resolve("tr", &system("en-US")), "tr");
+        for tag in ["tr", "tr-TR", "tr_TR.UTF-8"] {
+            assert_eq!(resolve("", &system(tag)), "tr");
+        }
+        set_for_test("tr");
+        assert_eq!(t("Allow"), "İzin ver");
+        assert_eq!(t("Deny"), "Reddet");
+        assert_eq!(t("Open the chat"), "Sohbeti aç");
+        assert_eq!(tf("Uploading {name}", &[("name", "öğrenci.pdf")]), "öğrenci.pdf yükleniyor");
+        assert_eq!(t("A string nobody translated"), "A string nobody translated");
+        for n in [0, 1, 2, 21] {
+            assert_eq!(plural_category("tr", n), if n == 1 { "one" } else { "other" });
+            assert_eq!(tn("{count} repo", "{count} repos", n, &[]), format!("{n} depo"));
+            assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", n, &[]),
+                format!("✓ Bağlı · {n} model"));
+        }
+        set_for_test("en");
+    }
+
+    #[test]
     fn every_extra_string_has_every_language() {
         let Value::Object(root) = serde_json::from_str::<Value>(EXTRA).unwrap() else { panic!() };
         let Some(Value::Object(strings)) = root.get("strings") else { panic!("no strings") };
