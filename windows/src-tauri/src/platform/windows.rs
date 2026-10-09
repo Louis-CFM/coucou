@@ -8,10 +8,14 @@ use std::process::Command;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::{BOOL, PWSTR};
+use ::windows::core::{BOOL, PCWSTR, PWSTR};
 use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
-use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
-use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
+use ::windows::Win32::Security::Authorization::{
+    ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
+};
+use ::windows::Win32::Security::{
+    GetTokenInformation, TokenUser, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER,
+};
 use ::windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
@@ -195,6 +199,140 @@ pub fn current_user_sid() -> Option<String> {
         let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
         sid
     }
+}
+
+// ── Relay pipe access ─────────────────────────────────────────────────────────
+//
+// Without an explicit descriptor, a named pipe gets the default one: full
+// control for SYSTEM, administrators and the creator owner, and read access for
+// Everyone and the anonymous account. Every instance of the relay pipe (pipe.rs)
+// is created with PipeSecurity instead.
+
+/// The pipe's SDDL: a protected DACL (`P`, nothing inherited), full access for
+/// `sid` and for SYSTEM, no other entry. None unless `sid` has the `S-1-…`
+/// shape: nothing else may slip into the string.
+pub fn pipe_sddl(sid: &str) -> Option<String> {
+    let rest = sid.strip_prefix("S-1-")?;
+    let well_formed =
+        rest.split('-').all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()));
+    well_formed.then(|| format!("D:P(A;;GA;;;{sid})(A;;GA;;;SY)"))
+}
+
+/// The security descriptor that reserves the relay pipe for one user.
+pub struct PipeSecurity(PSECURITY_DESCRIPTOR);
+
+// Memory allocated by ConvertStringSecurityDescriptorToSecurityDescriptorW,
+// owned by us alone and never modified afterwards: the listening task may move
+// it from one thread to another.
+unsafe impl Send for PipeSecurity {}
+unsafe impl Sync for PipeSecurity {}
+
+impl PipeSecurity {
+    /// None for a malformed SID (see pipe_sddl) or a descriptor Windows refuses.
+    pub fn for_user(sid: &str) -> Option<Self> {
+        let sddl: Vec<u16> = pipe_sddl(sid)?.encode_utf16().chain(std::iter::once(0)).collect();
+        let mut descriptor = PSECURITY_DESCRIPTOR::default();
+        unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                PCWSTR(sddl.as_ptr()),
+                SDDL_REVISION_1,
+                &mut descriptor,
+                None,
+            )
+            .ok()?;
+        }
+        Some(Self(descriptor))
+    }
+
+    /// Calls `create` with a pointer to a SECURITY_ATTRIBUTES carrying this
+    /// descriptor, the form `ServerOptions::create_with_security_attributes_raw`
+    /// expects. The pointer is only valid during the call.
+    pub fn with_attributes<R>(&self, create: impl FnOnce(*mut std::ffi::c_void) -> R) -> R {
+        let mut attributes = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: self.0 .0,
+            bInheritHandle: false.into(),
+        };
+        create((&mut attributes as *mut SECURITY_ATTRIBUTES).cast())
+    }
+}
+
+impl Drop for PipeSecurity {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = LocalFree(Some(HLOCAL(self.0 .0)));
+        }
+    }
+}
+
+/// A kernel object's DACL as SDDL, so tests check what Windows actually applied
+/// to the pipe.
+#[cfg(test)]
+pub fn dacl_sddl(handle: RawHandle) -> Option<String> {
+    use ::windows::Win32::Security::Authorization::{GetSecurityInfo, SE_KERNEL_OBJECT};
+    use ::windows::Win32::Security::DACL_SECURITY_INFORMATION;
+    unsafe {
+        let mut descriptor = PSECURITY_DESCRIPTOR::default();
+        GetSecurityInfo(
+            HANDLE(handle),
+            SE_KERNEL_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            None,
+            None,
+            None,
+            None,
+            Some(&mut descriptor),
+        )
+        .ok()
+        .ok()?;
+        descriptor_sddl(descriptor, DACL_SECURITY_INFORMATION)
+    }
+}
+
+/// `sid` as Windows writes it in SDDL: its alias when it has one (`SY`, `LA` for
+/// the built-in Administrator…), `S-1-…` otherwise. This lets tests compare a
+/// DACL read back with the current user, whoever that is.
+#[cfg(test)]
+pub fn sddl_trustee(sid: &str) -> Option<String> {
+    use ::windows::Win32::Security::OWNER_SECURITY_INFORMATION;
+    let sddl: Vec<u16> = format!("O:{sid}").encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        let mut descriptor = PSECURITY_DESCRIPTOR::default();
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            PCWSTR(sddl.as_ptr()),
+            SDDL_REVISION_1,
+            &mut descriptor,
+            None,
+        )
+        .ok()?;
+        descriptor_sddl(descriptor, OWNER_SECURITY_INFORMATION)?.strip_prefix("O:").map(str::to_string)
+    }
+}
+
+/// `descriptor` as SDDL, limited to `parts`. Frees `descriptor`, which must come
+/// from LocalAlloc.
+#[cfg(test)]
+unsafe fn descriptor_sddl(
+    descriptor: PSECURITY_DESCRIPTOR,
+    parts: ::windows::Win32::Security::OBJECT_SECURITY_INFORMATION,
+) -> Option<String> {
+    use ::windows::Win32::Security::Authorization::ConvertSecurityDescriptorToStringSecurityDescriptorW;
+    let mut text = PWSTR::null();
+    let converted = ConvertSecurityDescriptorToStringSecurityDescriptorW(
+        descriptor,
+        SDDL_REVISION_1,
+        parts,
+        &mut text,
+        None,
+    )
+    .is_ok();
+    let _ = LocalFree(Some(HLOCAL(descriptor.0)));
+    if !converted {
+        return None;
+    }
+    let sddl = text.to_string().ok();
+    let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
+    sddl
 }
 
 // The display name only feeds Mochi's greeting (identity.rs). The calls are
@@ -548,4 +686,51 @@ pub fn set_layer_overlay(_win: &WebviewWindow, _on: bool) {}
 /// Layer-shell only (Linux): the logical size of the display the island is on.
 pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<(f64, f64)> {
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_pipe_sddl_grants_the_user_and_system_only() {
+        let sid = "S-1-5-21-1004336348-1177238915-682003330-1001";
+        assert_eq!(
+            pipe_sddl(sid).as_deref(),
+            Some("D:P(A;;GA;;;S-1-5-21-1004336348-1177238915-682003330-1001)(A;;GA;;;SY)")
+        );
+        assert_eq!(pipe_sddl("S-1-5-18").as_deref(), Some("D:P(A;;GA;;;S-1-5-18)(A;;GA;;;SY)"));
+    }
+
+    #[test]
+    fn a_malformed_sid_never_reaches_the_sddl() {
+        for bad in [
+            "",
+            "S-1-",
+            "S-1-5-",
+            "S-1-5--21",
+            "s-1-5-21",
+            "S-1-5-21 ",
+            "WD",
+            "S-1-5-21)(A;;GA;;;WD",
+            "S-1-5-21-1001)(A;;GA;;;AN",
+        ] {
+            assert_eq!(pipe_sddl(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_sid_is_written_in_sddl_as_windows_writes_it() {
+        assert_eq!(sddl_trustee("S-1-5-18").as_deref(), Some("SY"));
+        let sid = current_user_sid().expect("the current user's SID");
+        assert!(sddl_trustee(&sid).is_some());
+        assert_eq!(sddl_trustee("S-1-5-21)(A;;GA;;;WD"), None);
+    }
+
+    #[test]
+    fn windows_accepts_the_descriptor_for_the_current_user() {
+        let sid = current_user_sid().expect("the current user's SID");
+        assert!(PipeSecurity::for_user(&sid).is_some());
+        assert!(PipeSecurity::for_user("S-1-5-21)(A;;GA;;;WD").is_none());
+    }
 }
