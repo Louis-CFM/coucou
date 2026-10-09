@@ -1827,6 +1827,17 @@
    "ru": "Папка проекта, в которой выполняется задача",
    "id": "Folder proyek tempat tugas berjalan"
   },
+  "Project folder the task runs in — Delete forgets a remembered one": {
+   "zh-Hans": "任务运行所在的项目文件夹 — 按 Delete 可忘掉一个记住的文件夹",
+   "hi": "वह प्रोजेक्ट फ़ोल्डर जिसमें टास्क चलेगा — Delete याद रखा फ़ोल्डर हटाता है",
+   "es": "Carpeta del proyecto donde se ejecuta la tarea — Supr olvida una recordada",
+   "ar": "مجلد المشروع الذي تعمل فيه المهمة — Delete يحذف مجلدًا محفوظًا",
+   "fr": "Dossier du projet où la tâche s'exécute — Suppr oublie un dossier retenu",
+   "bn": "যে প্রজেক্ট ফোল্ডারে টাস্কটি চলবে — Delete মনে রাখা ফোল্ডার ভুলে যায়",
+   "pt-BR": "Pasta do projeto onde a tarefa roda — Delete esquece uma lembrada",
+   "ru": "Папка проекта, в которой выполняется задача — Delete забывает запомненную",
+   "id": "Folder proyek tempat tugas berjalan — Delete melupakan folder yang diingat"
+  },
   "Pumpkin": {
    "zh-Hans": "南瓜",
    "hi": "कद्दू",

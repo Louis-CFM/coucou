@@ -41,6 +41,7 @@ const STRINGS = {
   placeholderFollowUp: N_("Follow up — continues the same task…"),
   otherFolder: N_("Other…"),
   typePath: N_("Full path of a folder — Enter to use it, Esc to go back"),
+  taskProjectDelete: N_("Project folder the task runs in — Delete forgets a remembered one"),
 };
 
 /** "Other…" keeps this many typed folders on the list. */
@@ -278,7 +279,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   // rather than to the chat provider. The folder list comes from Rust.
   let taskMode = false;
   const taskBtn = h("button", { class: "task-btn", title: tl(STRINGS.taskHint), text: tl(STRINGS.task) });
-  const dirSelect = h("select", { class: "task-dir", title: tl(STRINGS.taskProject) }) as HTMLSelectElement;
+  const dirSelect = h("select", { class: "task-dir", title: tl(STRINGS.taskProjectDelete) }) as HTMLSelectElement;
   // "Other…": the select steps aside for a text field taking any full path,
   // dotted folders included; Enter keeps it (and remembers it), Esc goes back.
   const dirInput = h("input", {
@@ -345,6 +346,26 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     dirInput.classList.add("on");
     dirInput.value = "";
     dirInput.focus();
+  });
+
+  // Delete (or Backspace) on the focused dropdown forgets a remembered
+  // folder — a typo typed into "Other…" doesn't haunt the list forever.
+  dirSelect.addEventListener("keydown", (e) => {
+    const key = (e as KeyboardEvent).key;
+    if (key !== "Delete" && key !== "Backspace") return;
+    const value = dirSelect.value;
+    if (!State.settings.taskRecentDirs.includes(value)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    State.settings = {
+      ...State.settings,
+      taskRecentDirs: State.settings.taskRecentDirs.filter((d) => d !== value),
+      taskLastProject: State.settings.taskLastProject === value ? "" : State.settings.taskLastProject,
+    };
+    saveSettings();
+    Sound.play("pop");
+    Array.from(dirSelect.options).find((o) => o.value === value)?.remove();
+    dirSelect.selectedIndex = 0;
   });
 
   dirInput.addEventListener("keydown", (e) => {
