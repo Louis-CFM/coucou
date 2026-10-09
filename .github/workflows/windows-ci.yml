@@ -57,11 +57,11 @@ jobs:
       - name: Island tests
         run: npm test
 
-      # The app bundles target/release/coucou-hook.exe as a resource, and its
+      # The app bundles target/release/nova-hook.exe as a resource, and its
       # build script refuses to run until that file exists. One command per
       # step: PowerShell carries on after a failed command in the same step.
       - name: Build the relay
-        run: cargo build --release -p coucou-hook
+        run: cargo build --release -p nova-hook
 
       - name: Rust tests
         run: cargo test --workspace --locked
