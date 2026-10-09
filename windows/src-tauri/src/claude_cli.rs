@@ -1,6 +1,8 @@
 // "Claude (your plan)": the chat through the Claude Code CLI on this PC, so a
 // Pro or Max subscription answers instead of an API key.
 //
+// A dropped file is the one exception to "no tools": Read, inside the inbox.
+//
 // Each turn runs `claude -p` with the conversation so far on stdin and reads
 // its stream-json output, forwarding the text as it is written. The CLI runs
 // without tools (it answers, it never acts on the PC), without the user's
@@ -83,14 +85,34 @@ pub async fn send(
         return Err(t("Claude Code isn't installed. Install it from claude.com/code, run `claude` once and log in with your Claude account."));
     };
     let turn = chat.begin(ID);
-    let question = crate::local_chat::user_text(turn.first, context.as_ref(), &query);
+    // A dropped file is read by Claude itself (PDFs and images included): the
+    // CLI runs in the inbox, with the Read tool only, and is told the file's path.
+    let file = match context.as_ref() {
+        Some(ChatContext::File { name, path }) if turn.first => Some((name.clone(), path.clone())),
+        _ => None,
+    };
+    let question = match &file {
+        // Relative to the inbox (the working folder), the only place Read may look.
+        Some((name, path)) => {
+            let file_name = std::path::Path::new(path).file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+            format!("The user dropped a file on you: \"{name}\". Read ./{file_name} with the Read tool.
+
+{query}")
+        }
+        None => crate::local_chat::user_text(turn.first, context.as_ref(), &query),
+    };
+    let tools = if file.is_some() { "Read" } else { "" };
+    let workdir = match &file {
+        Some(_) => crate::files::inbox_dir(),
+        None => std::env::temp_dir().join("coucou-chat"),
+    };
     let input = prompt(&turn.history, &question);
     let model = if model.is_empty() { DEFAULT_MODEL.to_string() } else { model.to_string() };
     let system = chat::system_prompt(false);
     let app2 = app.clone();
 
     let answer = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let dir = std::env::temp_dir().join("coucou-chat");
+        let dir = workdir;
         let _ = std::fs::create_dir_all(&dir);
         let mut cmd = Command::new(exe);
         cmd.args([
@@ -102,7 +124,12 @@ pub async fn send(
             "--model",
             &model,
             "--tools",
-            "",
+            tools,
+            "--allowedTools",
+            "Read(./**)",
+            // Read stays inside the working folder (the inbox): nothing else is readable.
+            "--permission-mode",
+            "dontAsk",
             "--setting-sources",
             "local",
             "--strict-mcp-config",
