@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Coucou",
+  "productName": "Pebble",
   "version": "0.3.0",
-  "identifier": "fr.louisraille.coucou",
+  "identifier": "dev.example.pebble",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "island",
-        "title": "Coucou",
+        "title": "Pebble",
         "url": "index.html",
         "width": 240,
         "height": 6,

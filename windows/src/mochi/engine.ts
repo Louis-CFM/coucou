@@ -67,20 +67,20 @@ const EYE_W = 0.25;
 const EYE_H = 0.27;
 const EYE_SP = 0.37;
 const EYE_P = -0.12;
-const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
-const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
-const INK = "rgb(26,20,18)"; // #1A1412
+const BASE_TOP: RGB = [0.78, 0.74, 0.66]; // warm stone, light
+const BASE_BOTTOM: RGB = [0.5, 0.47, 0.42]; // warm stone, dark
+const INK = "rgb(27,34,48)"; // slate
 const MINI_INK = "rgb(16,19,26)"; // #10131A
 
 const C = {
-  idle: [0.902, 0.914, 0.933] as RGB,
-  working: [0.231, 0.62, 1] as RGB,
+  idle: [0.78, 0.74, 0.66] as RGB,
+  working: [1, 0.71, 0.33] as RGB,
   thinking: [0.545, 0.361, 0.965] as RGB,
   searching: [0.388, 0.396, 0.949] as RGB,
   approval: [0.961, 0.647, 0.141] as RGB,
   question: [0.133, 0.827, 0.933] as RGB,
   error: [0.957, 0.314, 0.369] as RGB,
-  finished: [0.204, 0.831, 0.6] as RGB,
+  finished: [0.56, 0.84, 0.58] as RGB,
   ratelimit: [0.984, 0.573, 0.235] as RGB,
   sleeping: [0.58, 0.635, 0.722] as RGB,
   dizzy: [0.957, 0.447, 0.714] as RGB,
@@ -831,7 +831,7 @@ export class BotEngine {
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {
     const n = 72;
-    const expN = 2.0 / 2.7;
+    const expN = 1.0;
     const tw = R * 1.0;
     const th = R * 0.94;
     const tr = R * 0.42;
@@ -841,8 +841,9 @@ export class BotEngine {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
-      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
+      const lump = 1 + 0.035 * Math.sin(3 * a + 0.6) + 0.02 * Math.sin(5 * a + 1.9);
+      const px0 = rx * lump * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
+      const py0 = ry * lump * (sa >= 0 ? 0.82 * Math.pow(sa, expN) : -Math.pow(-sa, expN));
       let px = px0;
       let py = py0;
       if (m >= 0.005) {
@@ -910,6 +911,16 @@ export class BotEngine {
     hl.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = hl;
     x.fill(body);
+    if (!this.bodyColor) {
+      x.clip(body);
+      x.fillStyle = "rgba(40,32,24,0.16)";
+      for (let i = 0; i < 16; i++) {
+        const a = i * 2.399, r = (0.25 + ((i * 37) % 60) / 100) * R * 0.85;
+        x.beginPath();
+        x.arc(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.62, R * (0.018 + ((i * 13) % 5) * 0.006), 0, Math.PI * 2);
+        x.fill();
+      }
+    }
     x.restore();
   }
 
@@ -966,8 +977,25 @@ export class BotEngine {
         break;
       case "pill": {
         const hh = Math.max(h * this.open, w * 0.3);
-        roundRectPath(x, -w / 2, -hh / 2, w, hh, Math.min(w / 2, hh / 2));
+        if (this.isMini) {
+          roundRectPath(x, -w / 2, -hh / 2, w, hh, Math.min(w / 2, hh / 2));
+          x.fill();
+          break;
+        }
+        x.save();
+        x.fillStyle = "#f3efe4";
+        x.beginPath();
+        x.ellipse(0, 0, w * 0.82, hh * 0.62, 0, 0, Math.PI * 2);
         x.fill();
+        x.fillStyle = ink;
+        x.beginPath();
+        x.ellipse(this.lookX * w * 0.34, this.lookY * hh * 0.2, w * 0.42, Math.min(w * 0.42, hh * 0.46), 0, 0, Math.PI * 2);
+        x.fill();
+        x.fillStyle = "#f3efe4";
+        x.beginPath();
+        x.arc(this.lookX * w * 0.34 + w * 0.14, this.lookY * hh * 0.2 - hh * 0.12, w * 0.1, 0, Math.PI * 2);
+        x.fill();
+        x.restore();
         break;
       }
       case "dot":
