@@ -38,6 +38,7 @@ The Windows and Linux app catches up with the Mac, from 0.1.1 to 0.2.1 — every
 
 - **Terminal sessions**: Claude Code sessions started in Warp, Terminal, iTerm, Ghostty, cmux or Orca show in the notch, and "Open terminal" brings back the app the session runs in. Answering their questions and permissions from the notch is opt-in — Settings → Agents (#282 by @guerraOrzc, #238 by @mateuslamaral)
 - **Spotify pill**: what's playing in Spotify, with play/pause and skip (#246 by @JhoanG956)
+- **Pi Agent support**: Pi (`@earendil-works/pi-coding-agent`) sessions appear in the notch via a TypeScript extension (`~/.pi/agent/extensions/coucou.ts`) — Settings → Agents → Pi Plugin *(macOS, GitHub build)*
 - **A colour of your own for each Mochi**: click a pill's colour dot in Settings → Active pills (#320 by @shakibbinkabir)
 - **Dictate in the chat** *(GitHub build)*: click the mic and talk in any of your languages — Coucou listens in your Mac's languages and keyboard layouts and keeps the one you spoke; right-click the mic to pick a language. On-device when the Mac supports it (#116 by @xynlaze234)
 - **Open on hover**: the island opens when the pointer reaches the notch and closes when it leaves — Settings → General → Behavior, off by default (asked by felix11zx)
