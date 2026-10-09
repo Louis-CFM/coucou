@@ -357,6 +357,27 @@ function calcomCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+function calendarCard(): HTMLElement {
+  const events = arr("integration_calendar", "events");
+  const rows = h("div", { class: "int-rows tight" });
+  if (events.length === 0) rows.append(h("div", { class: "int-empty", text: t("Nothing coming up") }));
+  for (const e of events.slice(0, 3)) {
+    const when = new Date(String(e.start));
+    const day = when.toLocaleDateString(language(), { weekday: "short", day: "numeric" });
+    const time = e.allDay ? t("All day") : when.toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
+    rows.append(
+      h("div", { class: "int-row" },
+        dot("#4F9DF7", 4),
+        h("span", { class: "int-time", text: `${day} ${time}` }),
+        h("span", { class: "int-name", text: String(e.title ?? "") }),
+      ),
+    );
+  }
+  return h("div", { class: "int-card" }, header("#4F9DF7", t("Calendar"), t("Coming up")), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -439,6 +460,7 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_notion":
       return arr(id, "pages").length > 0;
     case "integration_calcom":
+    case "integration_calendar":
       return info.loaded;
     default:
       return false;
@@ -479,6 +501,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_calendar":
+      return calendarCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

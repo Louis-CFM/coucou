@@ -84,11 +84,13 @@ pub struct PlusPrefs {
     pub battery_alerts: bool,
     /// The texts copied lately, kept in memory only — never on disk.
     pub clipboard_history: bool,
+    /// The compact island never hides on its own.
+    pub always_visible: bool,
 }
 
 impl Default for PlusPrefs {
     fn default() -> Self {
-        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true }
+        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true, always_visible: true }
     }
 }
 
@@ -423,7 +425,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false }
 }"##;
 
     fn custom() -> Value {

@@ -3569,6 +3569,94 @@
    "pt-BR": "O Claude Code não está conectado. Abra um terminal, execute `claude`, digite /login e entre com sua conta Claude.",
    "ru": "Claude Code не выполнил вход. Откройте терминал, запустите `claude`, введите /login и войдите в аккаунт Claude.",
    "id": "Claude Code belum masuk. Buka terminal, jalankan `claude`, lalu ketik /login dan masuk dengan akun Claude kamu."
+  },
+  "Always show the island": {
+   "zh-Hans": "始终显示岛屿",
+   "hi": "आइलैंड हमेशा दिखाएँ",
+   "es": "Mostrar siempre la isla",
+   "ar": "إظهار الجزيرة دائمًا",
+   "fr": "Toujours afficher l'île",
+   "bn": "আইল্যান্ড সবসময় দেখান",
+   "pt-BR": "Sempre mostrar a ilha",
+   "ru": "Всегда показывать остров",
+   "id": "Selalu tampilkan pulau"
+  },
+  "The compact island stays at the top of the screen instead of hiding after a minute.": {
+   "zh-Hans": "紧凑岛屿始终停留在屏幕顶部，而不是一分钟后隐藏。",
+   "hi": "छोटा आइलैंड एक मिनट बाद छिपने के बजाय स्क्रीन के ऊपर बना रहता है।",
+   "es": "La isla compacta se queda arriba de la pantalla en lugar de ocultarse tras un minuto.",
+   "ar": "تبقى الجزيرة المصغّرة أعلى الشاشة بدلًا من الاختفاء بعد دقيقة.",
+   "fr": "L'île compacte reste en haut de l'écran au lieu de se cacher après une minute.",
+   "bn": "ছোট আইল্যান্ড এক মিনিট পরে লুকানোর বদলে স্ক্রিনের উপরে থাকে।",
+   "pt-BR": "A ilha compacta fica no topo da tela em vez de se esconder após um minuto.",
+   "ru": "Компактный остров остаётся вверху экрана, а не прячется через минуту.",
+   "id": "Pulau ringkas tetap di atas layar alih-alih bersembunyi setelah satu menit."
+  },
+  "Calendar": {
+   "zh-Hans": "日历",
+   "hi": "कैलेंडर",
+   "es": "Calendario",
+   "ar": "التقويم",
+   "fr": "Calendrier",
+   "bn": "ক্যালেন্ডার",
+   "pt-BR": "Calendário",
+   "ru": "Календарь",
+   "id": "Kalender"
+  },
+  "Coming up": {
+   "zh-Hans": "即将到来",
+   "hi": "आने वाले",
+   "es": "Próximamente",
+   "ar": "القادم",
+   "fr": "À venir",
+   "bn": "আসছে",
+   "pt-BR": "Em breve",
+   "ru": "Скоро",
+   "id": "Akan datang"
+  },
+  "Nothing coming up": {
+   "zh-Hans": "暂无安排",
+   "hi": "कुछ भी आने वाला नहीं",
+   "es": "Nada próximamente",
+   "ar": "لا شيء قادم",
+   "fr": "Rien à venir",
+   "bn": "কিছু আসছে না",
+   "pt-BR": "Nada em breve",
+   "ru": "Ничего не запланировано",
+   "id": "Tidak ada yang akan datang"
+  },
+  "All day": {
+   "zh-Hans": "全天",
+   "hi": "पूरा दिन",
+   "es": "Todo el día",
+   "ar": "طوال اليوم",
+   "fr": "Toute la journée",
+   "bn": "সারাদিন",
+   "pt-BR": "O dia todo",
+   "ru": "Весь день",
+   "id": "Sepanjang hari"
+  },
+  "iCal link": {
+   "zh-Hans": "iCal 链接",
+   "hi": "iCal लिंक",
+   "es": "Enlace iCal",
+   "ar": "رابط iCal",
+   "fr": "Lien iCal",
+   "bn": "iCal লিংক",
+   "pt-BR": "Link iCal",
+   "ru": "Ссылка iCal",
+   "id": "Tautan iCal"
+  },
+  "Google Calendar: Settings → your calendar → Secret address in iCal format. Outlook: Settings → Shared calendars → Publish → ICS.": {
+   "zh-Hans": "Google 日历：设置 → 你的日历 → iCal 格式的私密地址。Outlook：设置 → 共享日历 → 发布 → ICS。",
+   "hi": "Google Calendar: सेटिंग्स → आपका कैलेंडर → iCal फ़ॉर्मेट में गुप्त पता। Outlook: सेटिंग्स → साझा कैलेंडर → प्रकाशित करें → ICS।",
+   "es": "Google Calendar: Configuración → tu calendario → Dirección secreta en formato iCal. Outlook: Configuración → Calendarios compartidos → Publicar → ICS.",
+   "ar": "تقويم Google: الإعدادات ← تقويمك ← العنوان السري بتنسيق iCal. Outlook: الإعدادات ← التقويمات المشتركة ← نشر ← ICS.",
+   "fr": "Google Agenda : Paramètres → votre agenda → Adresse secrète au format iCal. Outlook : Paramètres → Calendriers partagés → Publier → ICS.",
+   "bn": "Google Calendar: সেটিংস → আপনার ক্যালেন্ডার → iCal ফরম্যাটে গোপন ঠিকানা। Outlook: সেটিংস → শেয়ার করা ক্যালেন্ডার → প্রকাশ → ICS।",
+   "pt-BR": "Google Agenda: Configurações → sua agenda → Endereço secreto no formato iCal. Outlook: Configurações → Calendários compartilhados → Publicar → ICS.",
+   "ru": "Google Календарь: Настройки → ваш календарь → Закрытый адрес в формате iCal. Outlook: Параметры → Общие календари → Опубликовать → ICS.",
+   "id": "Google Kalender: Setelan → kalendermu → Alamat rahasia dalam format iCal. Outlook: Setelan → Kalender bersama → Terbitkan → ICS."
   }
  }
 }

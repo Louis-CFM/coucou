@@ -163,10 +163,12 @@ export interface PlusPrefs {
   batteryAlerts: boolean;
   /** Texts copied lately, in memory only. */
   clipboardHistory: boolean;
+  /** The compact island never hides on its own. */
+  alwaysVisible: boolean;
 }
 
 export const DEFAULT_PLUS: PlusPrefs = {
-  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true,
+  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: true,
 };
 
 export const DEFAULT_SETTINGS: Settings = {

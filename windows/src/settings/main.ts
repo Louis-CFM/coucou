@@ -773,6 +773,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  { id: "integration_calendar", name: "iCal", color: "#4F9DF7",
+    fields: [{ key: "calendar-ics-url", label: N_("iCal link"), placeholder: "https://…/basic.ics", secret: true }],
+    hint: N_("Google Calendar: Settings → your calendar → Secret address in iCal format. Outlook: Settings → Shared calendars → Publish → ICS.") },
   // Nothing to enter: the music pills read the player (D-Bus on Linux, the
   // media controls on Windows — see core/pills.ts).
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
@@ -985,6 +988,7 @@ function islandExtrasSection(): HTMLElement {
     "section",
     {},
     h("h2", {}, h("span", { text: t("Island extras") })),
+    ...item("alwaysVisible", N_("Always show the island"), N_("The compact island stays at the top of the screen instead of hiding after a minute.")),
     ...item("volumeHud", N_("Volume"), N_("The volume keys show the level in the island instead of Windows' popup.")),
     ...item("brightnessHud", N_("Brightness"), N_("The island shows the brightness when it changes.")),
     ...item("batteryAlerts", N_("Battery"), N_("Plugged in, unplugged, and a word at 20 % and 10 % left.")),
@@ -1351,7 +1355,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key", "calendar-ics-url",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

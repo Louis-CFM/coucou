@@ -1218,6 +1218,9 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.fsm.alwaysVisible = State.settings.plus?.alwaysVisible ?? true;
+    // Already hidden when it was switched on: come back out.
+    if (this.fsm.alwaysVisible && this.fsm.state === "hidden") this.fsm.reveal();
     State.notify();
   }
 

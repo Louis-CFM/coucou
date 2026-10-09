@@ -136,7 +136,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
   // Windows only: whatever else plays — a browser tab, VLC, Media Player…
   { id: "integration_media", name: "Now Playing", color: "#A78BFA", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },  // Any calendar's private iCal link (Google, Outlook, iCloud): integrations.rs.
+  { id: "integration_calendar", name: "Calendar", color: "#4F9DF7", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calendar-ics-url") },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

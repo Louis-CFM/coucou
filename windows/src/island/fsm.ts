@@ -78,7 +78,7 @@ export class IslandStateMachine {
     this.clear("petitHide");
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
-      if (this.state === "petit" && this.peeking && !this.pinned) this.transition("hidden");
+      if (this.state === "petit" && this.peeking && !this.pinned && !this.alwaysVisible) this.transition("hidden");
     }, ms);
   }
 
@@ -178,8 +178,12 @@ export class IslandStateMachine {
 
   // ── Timers ──────────────────────────────────────────────────────────────────
 
+  /** The compact island stays on screen: nothing hides it but an explicit close. */
+  alwaysVisible = false;
+
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.alwaysVisible) return;
     // A card folded away while it waits for an answer keeps the compact island
     // on screen, so it can be reopened (isHeldOpen on macOS).
     if (this.pinned) return;

@@ -44,7 +44,9 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
   // Windows adds one pill the Mac doesn't have, after the Mac's: Now Playing.
   assert.deepEqual(
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
-    [...mac, ["integration_media", "Now Playing", "#A78BFA", "service", "Integration"]],
+    [...mac,
+      ["integration_media", "Now Playing", "#A78BFA", "service", "Integration"],
+      ["integration_calendar", "Calendar", "#4F9DF7", "service", "Integration"]],
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
