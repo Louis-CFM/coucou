@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "cs"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -173,6 +173,17 @@ fn plural_category(lang: &str, n: u64) -> &'static str {
             (_, 11..=99) => "many",
             _ => "other",
         },
+        // Czech (and Slovak): 1 is one, 2–4 few, 0 and 5+ other; "many" is
+        // only for fractions, which whole counts never hit.
+        "cs" => {
+            if n == 1 {
+                "one"
+            } else if (2..=4).contains(&n) {
+                "few"
+            } else {
+                "other"
+            }
+        }
         _ => {
             if n == 1 { "one" } else { "other" }
         }

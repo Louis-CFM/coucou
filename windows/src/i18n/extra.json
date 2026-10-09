@@ -10,7 +10,8 @@
    "bn": " · {date} পর্যন্ত",
    "pt-BR": " · até {date}",
    "ru": " · до {date}",
-   "id": " · hingga {date}"
+   "id": " · hingga {date}",
+   "cs": " · do {date}"
   },
   "(stored)": {
    "zh-Hans": "（已保存）",
@@ -21,7 +22,8 @@
    "bn": "(সংরক্ষিত)",
    "pt-BR": "(salva)",
    "ru": "(сохранён)",
-   "id": "(tersimpan)"
+   "id": "(tersimpan)",
+   "cs": "(uloženo)"
   },
   "+ subagent": {
    "zh-Hans": "+ 子代理",
@@ -32,7 +34,8 @@
    "bn": "+ সাব-এজেন্ট",
    "pt-BR": "+ subagente",
    "ru": "+ субагент",
-   "id": "+ subagen"
+   "id": "+ subagen",
+   "cs": "+ subagent"
   },
   "A hook group named \"coucou\" that Coucou did not write is already there — Coucou has not touched it.": {
    "zh-Hans": "已存在一个并非 Coucou 写入的名为“coucou”的 hook 组 — Coucou 没有修改它。",
@@ -43,7 +46,8 @@
    "bn": "“coucou” নামে একটি hook গ্রুপ আগে থেকেই আছে যা Coucou লেখেনি — Coucou এতে হাত দেয়নি।",
    "pt-BR": "Já existe um grupo de hooks chamado “coucou” que não foi escrito pelo Coucou — o Coucou não mexeu nele.",
    "ru": "Уже есть группа хуков «coucou», которую написал не Coucou, — Coucou её не трогал.",
-   "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya."
+   "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya.",
+   "cs": "Skupina hooků s názvem \"coucou\", kterou nezapsal Coucou, už tam je — Coucou se jí nedotkl."
   },
   "A key is only sent over https, or to a server on this computer.": {
    "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
@@ -54,7 +58,8 @@
    "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
    "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
    "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
-   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
+   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini.",
+   "cs": "Klíč se odesílá jen přes https nebo na server na tomto počítači."
   },
   "AI for the chat": {
    "zh-Hans": "聊天用的 AI",
@@ -65,7 +70,8 @@
    "bn": "চ্যাটের জন্য AI",
    "pt-BR": "IA para o chat",
    "ru": "ИИ для чата",
-   "id": "AI untuk obrolan"
+   "id": "AI untuk obrolan",
+   "cs": "AI pro chat"
   },
   "API error {code}": {
    "zh-Hans": "API 错误 {code}",
@@ -76,7 +82,8 @@
    "bn": "API ত্রুটি {code}",
    "pt-BR": "Erro de API {code}",
    "ru": "Ошибка API {code}",
-   "id": "Galat API {code}"
+   "id": "Galat API {code}",
+   "cs": "Chyba API {code}"
   },
   "API key": {
    "zh-Hans": "API 密钥",
@@ -87,7 +94,8 @@
    "bn": "API কী",
    "pt-BR": "Chave de API",
    "ru": "API-ключ",
-   "id": "Kunci API"
+   "id": "Kunci API",
+   "cs": "API klíč"
   },
   "API key (optional)": {
    "zh-Hans": "API 密钥（可选）",
@@ -98,7 +106,8 @@
    "bn": "API কী (ঐচ্ছিক)",
    "pt-BR": "Chave de API (opcional)",
    "ru": "API-ключ (необязательно)",
-   "id": "Kunci API (opsional)"
+   "id": "Kunci API (opsional)",
+   "cs": "API klíč (volitelný)"
   },
   "API key missing. Open settings.": {
    "zh-Hans": "缺少 API 密钥。请打开设置。",
@@ -109,7 +118,8 @@
    "bn": "API কী নেই। সেটিংস খুলুন।",
    "pt-BR": "Falta a chave de API. Abra as configurações.",
    "ru": "Нет API-ключа. Откройте настройки.",
-   "id": "Kunci API tidak ada. Buka pengaturan."
+   "id": "Kunci API tidak ada. Buka pengaturan.",
+   "cs": "Chybí API klíč. Otevřete Nastavení."
   },
   "Answer in terminal": {
    "zh-Hans": "在终端中回答",
@@ -120,7 +130,8 @@
    "bn": "টার্মিনালে উত্তর দিন",
    "pt-BR": "Responder no terminal",
    "ru": "Ответить в терминале",
-   "id": "Jawab di terminal"
+   "id": "Jawab di terminal",
+   "cs": "Odpovědět v terminálu"
   },
   "Answer it in your terminal.": {
    "zh-Hans": "请在终端中回答。",
@@ -131,7 +142,8 @@
    "bn": "আপনার টার্মিনালে উত্তর দিন।",
    "pt-BR": "Responda no seu terminal.",
    "ru": "Ответьте в терминале.",
-   "id": "Jawab di terminal Anda."
+   "id": "Jawab di terminal Anda.",
+   "cs": "Odpovězte na ni ve vašem terminálu."
   },
   "Ask": {
    "zh-Hans": "提问",
@@ -142,7 +154,8 @@
    "bn": "জিজ্ঞেস করুন",
    "pt-BR": "Perguntar",
    "ru": "Спросить",
-   "id": "Tanya"
+   "id": "Tanya",
+   "cs": "Zeptat se"
   },
   "Asking Codex…": {
    "zh-Hans": "正在询问 Codex…",
@@ -153,7 +166,8 @@
    "bn": "Codex-কে জিজ্ঞেস করা হচ্ছে…",
    "pt-BR": "Consultando o Codex…",
    "ru": "Запрос к Codex…",
-   "id": "Menanyakan Codex…"
+   "id": "Menanyakan Codex…",
+   "cs": "Ptá se Codexu…"
   },
   "Asking your desktop to register the shortcuts. It may show its own window to confirm them.": {
    "zh-Hans": "正在请求桌面注册这些快捷键。桌面可能会显示自己的窗口让你确认。",
@@ -164,7 +178,8 @@
    "bn": "আপনার ডেস্কটপকে শর্টকাটগুলো নিবন্ধন করতে বলা হচ্ছে। নিশ্চিত করার জন্য এটি নিজের উইন্ডো দেখাতে পারে।",
    "pt-BR": "Pedindo ao seu desktop para registrar os atalhos. Ele pode mostrar a própria janela para confirmá-los.",
    "ru": "Запрашиваем регистрацию сочетаний у рабочего стола. Он может показать своё окно для подтверждения.",
-   "id": "Meminta desktop Anda mendaftarkan pintasan. Desktop mungkin menampilkan jendelanya sendiri untuk konfirmasi."
+   "id": "Meminta desktop Anda mendaftarkan pintasan. Desktop mungkin menampilkan jendelanya sendiri untuk konfirmasi.",
+   "cs": "Registrují se zkratky u vašeho desktopového prostředí. Pro jejich potvrzení může zobrazit vlastní okno."
   },
   "Attach the front window to the chat": {
    "zh-Hans": "将前台窗口附加到聊天",
@@ -175,7 +190,8 @@
    "bn": "সামনের উইন্ডোটি চ্যাটে যুক্ত করুন",
    "pt-BR": "Anexar a janela em primeiro plano ao chat",
    "ru": "Прикрепить активное окно к чату",
-   "id": "Lampirkan jendela depan ke obrolan"
+   "id": "Lampirkan jendela depan ke obrolan",
+   "cs": "Připojit přední okno k chatu"
   },
   "Auto (seasons)": {
    "zh-Hans": "自动（随季节）",
@@ -186,7 +202,8 @@
    "bn": "অটো (ঋতু অনুযায়ী)",
    "pt-BR": "Auto (estações)",
    "ru": "Авто (по сезону)",
-   "id": "Otomatis (musim)"
+   "id": "Otomatis (musim)",
+   "cs": "Auto (roční období)"
   },
   "Auto · follows the seasons (now: {outfit})": {
    "zh-Hans": "自动 · 随季节变化（当前：{outfit}）",
@@ -197,7 +214,8 @@
    "bn": "অটো · ঋতু অনুযায়ী বদলায় (এখন: {outfit})",
    "pt-BR": "Auto · acompanha as estações (agora: {outfit})",
    "ru": "Авто · по сезону (сейчас: {outfit})",
-   "id": "Otomatis · mengikuti musim (sekarang: {outfit})"
+   "id": "Otomatis · mengikuti musim (sekarang: {outfit})",
+   "cs": "Auto · podle ročního období (nyní: {outfit})"
   },
   "Auto · {outfit}": {
    "zh-Hans": "自动 · {outfit}",
@@ -208,7 +226,8 @@
    "bn": "অটো · {outfit}",
    "pt-BR": "Auto · {outfit}",
    "ru": "Авто · {outfit}",
-   "id": "Otomatis · {outfit}"
+   "id": "Otomatis · {outfit}",
+   "cs": "Auto · {outfit}"
   },
   "Auto-close": {
    "zh-Hans": "自动关闭",
@@ -219,7 +238,8 @@
    "bn": "স্বয়ংক্রিয় বন্ধ",
    "pt-BR": "Fechar sozinho",
    "ru": "Автозакрытие",
-   "id": "Tutup otomatis"
+   "id": "Tutup otomatis",
+   "cs": "Automatické zavření"
   },
   "Back": {
    "zh-Hans": "返回",
@@ -230,7 +250,8 @@
    "bn": "ফিরে যান",
    "pt-BR": "Voltar",
    "ru": "Назад",
-   "id": "Kembali"
+   "id": "Kembali",
+   "cs": "Zpět"
   },
   "Back up and remove": {
    "zh-Hans": "备份并移除",
@@ -241,7 +262,8 @@
    "bn": "ব্যাকআপ নিয়ে সরান",
    "pt-BR": "Fazer backup e remover",
    "ru": "Сохранить копию и удалить",
-   "id": "Cadangkan dan hapus"
+   "id": "Cadangkan dan hapus",
+   "cs": "Zálohovat a odebrat"
   },
   "Back up and write": {
    "zh-Hans": "备份并写入",
@@ -252,7 +274,8 @@
    "bn": "ব্যাকআপ নিয়ে লিখুন",
    "pt-BR": "Fazer backup e gravar",
    "ru": "Сохранить копию и записать",
-   "id": "Cadangkan dan tulis"
+   "id": "Cadangkan dan tulis",
+   "cs": "Zálohovat a zapsat"
   },
   "Backup of {path} failed, nothing was written: {error}": {
    "zh-Hans": "{path} 备份失败，未写入任何内容：{error}",
@@ -263,7 +286,8 @@
    "bn": "{path}-এর ব্যাকআপ ব্যর্থ, কিছু লেখা হয়নি: {error}",
    "pt-BR": "O backup de {path} falhou, nada foi gravado: {error}",
    "ru": "Не удалось сохранить копию {path}, ничего не записано: {error}",
-   "id": "Pencadangan {path} gagal, tidak ada yang ditulis: {error}"
+   "id": "Pencadangan {path} gagal, tidak ada yang ditulis: {error}",
+   "cs": "Záloha {path} selhala, nic se nezapsalo: {error}"
   },
   "Backup → {path}": {
    "zh-Hans": "备份 → {path}",
@@ -274,7 +298,8 @@
    "bn": "ব্যাকআপ → {path}",
    "pt-BR": "Backup → {path}",
    "ru": "Резервная копия → {path}",
-   "id": "Cadangan → {path}"
+   "id": "Cadangan → {path}",
+   "cs": "Záloha → {path}"
   },
   "Bad API response: {error}": {
    "zh-Hans": "API 响应无效：{error}",
@@ -285,7 +310,8 @@
    "bn": "API-র উত্তর ঠিক নয়: {error}",
    "pt-BR": "Resposta da API inválida: {error}",
    "ru": "Некорректный ответ API: {error}",
-   "id": "Respons API tidak valid: {error}"
+   "id": "Respons API tidak valid: {error}",
+   "cs": "Chybná odpověď API: {error}"
   },
   "Beanie": {
    "zh-Hans": "毛线帽",
@@ -296,7 +322,8 @@
    "bn": "উলের টুপি",
    "pt-BR": "Gorro",
    "ru": "Шапка",
-   "id": "Kupluk"
+   "id": "Kupluk",
+   "cs": "Čepice"
   },
   "Bow": {
    "zh-Hans": "蝴蝶结",
@@ -307,7 +334,8 @@
    "bn": "বো",
    "pt-BR": "Laço",
    "ru": "Бантик",
-   "id": "Pita"
+   "id": "Pita",
+   "cs": "Mašle"
   },
   "Bunny ears": {
    "zh-Hans": "兔耳朵",
@@ -318,7 +346,8 @@
    "bn": "খরগোশের কান",
    "pt-BR": "Orelhas de coelho",
    "ru": "Заячьи ушки",
-   "id": "Telinga kelinci"
+   "id": "Telinga kelinci",
+   "cs": "Králičí ouška"
   },
   "Can't read {path}: {error}": {
    "zh-Hans": "无法读取 {path}：{error}",
@@ -329,7 +358,8 @@
    "bn": "{path} পড়া যাচ্ছে না: {error}",
    "pt-BR": "Não é possível ler {path}: {error}",
    "ru": "Не удаётся прочитать {path}: {error}",
-   "id": "Tidak dapat membaca {path}: {error}"
+   "id": "Tidak dapat membaca {path}: {error}",
+   "cs": "Nelze číst {path}: {error}"
   },
   "Canceled": {
    "zh-Hans": "已取消",
@@ -340,7 +370,8 @@
    "bn": "বাতিল",
    "pt-BR": "Cancelado",
    "ru": "Отменено",
-   "id": "Dibatalkan"
+   "id": "Dibatalkan",
+   "cs": "Zrušeno"
   },
   "Cannot copy: {error}": {
    "zh-Hans": "无法复制：{error}",
@@ -351,7 +382,8 @@
    "bn": "কপি করা যায়নি: {error}",
    "pt-BR": "Não é possível copiar: {error}",
    "ru": "Не удаётся скопировать: {error}",
-   "id": "Tidak dapat menyalin: {error}"
+   "id": "Tidak dapat menyalin: {error}",
+   "cs": "Nelze kopírovat: {error}"
   },
   "Cannot reach {url}. Is the server running?": {
    "zh-Hans": "无法连接到 {url}。服务器在运行吗？",
@@ -362,7 +394,8 @@
    "bn": "{url}-এ পৌঁছানো যাচ্ছে না। সার্ভার কি চলছে?",
    "pt-BR": "Não foi possível alcançar {url}. O servidor está rodando?",
    "ru": "Не удаётся подключиться к {url}. Сервер запущен?",
-   "id": "Tidak dapat menjangkau {url}. Apakah servernya berjalan?"
+   "id": "Tidak dapat menjangkau {url}. Apakah servernya berjalan?",
+   "cs": "Nelze se připojit k {url}. Běží server?"
   },
   "Cannot read {path}: {error}": {
    "zh-Hans": "无法读取 {path}：{error}",
@@ -373,7 +406,8 @@
    "bn": "{path} পড়া যাচ্ছে না: {error}",
    "pt-BR": "Não é possível ler {path}: {error}",
    "ru": "Не удаётся прочитать {path}: {error}",
-   "id": "Tidak dapat membaca {path}: {error}"
+   "id": "Tidak dapat membaca {path}: {error}",
+   "cs": "Nelze číst {path}: {error}"
   },
   "Chat providers": {
    "zh-Hans": "聊天服务商",
@@ -384,7 +418,8 @@
    "bn": "চ্যাট প্রদানকারী",
    "pt-BR": "Provedores de chat",
    "ru": "Провайдеры чата",
-   "id": "Penyedia obrolan"
+   "id": "Penyedia obrolan",
+   "cs": "Poskytovatelé chatu"
   },
   "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
    "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
@@ -395,7 +430,8 @@
    "bn": "Claude-এর বদলে Google AI, OpenAI বা OpenRouter-এর সঙ্গে চ্যাট করুন: এখানে একটি কী যোগ করুন, তারপর প্রদানকারী ও মডেল বদলাতে চ্যাট বক্সের উপরে মডেলের নামে ক্লিক করুন। কী সিস্টেম কীচেইনে থাকে। এই প্রদানকারীরা ওয়েব সার্চ বা টুল পায় না: তারা উত্তর দিতে পারে, এই কম্পিউটারে কখনো কিছু করে না।",
    "pt-BR": "Converse com Google AI, OpenAI ou OpenRouter em vez do Claude: adicione uma chave aqui e clique no nome do modelo acima da caixa de chat para trocar de provedor e de modelo. As chaves ficam no chaveiro do sistema. Esses provedores não têm busca na web nem ferramentas: podem responder, nunca agir neste computador.",
    "ru": "Общайтесь с Google AI, OpenAI или OpenRouter вместо Claude: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей. У этих провайдеров нет веб-поиска и инструментов: они могут отвечать, но никогда не действуют на этом компьютере.",
-   "id": "Mengobrol dengan Google AI, OpenAI, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini."
+   "id": "Mengobrol dengan Google AI, OpenAI, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini.",
+   "cs": "Chatujte s Google AI, OpenAI nebo OpenRouter místo Claudea: přidejte sem klíč a potom kliknutím na název modelu nad chatovým polem přepnete poskytovatele i model. Klíče zůstávají v systémové klíčence. Tito poskytovatelé nemají webové vyhledávání ani nástroje: umí odpovídat, ale nikdy nemohou jednat na tomto počítači."
   },
   "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.": {
    "zh-Hans": "与你自己运行的模型聊天：Ollama 或 LM Studio（地址留空即使用本机的默认地址），或任何兼容 OpenAI API 的服务器，例如 vLLM 或 llama.cpp。连接后，在聊天框上方选择它。",
@@ -406,7 +442,8 @@
    "bn": "নিজে চালানো মডেলের সঙ্গে চ্যাট করুন: Ollama বা LM Studio (এই কম্পিউটারের সাধারণ ঠিকানার জন্য ঠিকানা ফাঁকা রাখুন), অথবা OpenAI API বোঝে এমন যেকোনো সার্ভার, যেমন vLLM বা llama.cpp। সংযুক্ত হলে চ্যাট বক্সের উপরে সেটি বেছে নিন।",
    "pt-BR": "Converse com um modelo que você mesmo executa: Ollama ou LM Studio (deixe o endereço vazio para usar o padrão neste computador), ou qualquer servidor compatível com a API da OpenAI, como vLLM ou llama.cpp. Depois de conectado, escolha-o acima da caixa de chat.",
    "ru": "Общайтесь с моделью, которую запускаете сами: Ollama или LM Studio (оставьте адрес пустым, чтобы использовать обычный адрес на этом компьютере) или любой сервер с API OpenAI, например vLLM или llama.cpp. После подключения выберите его над полем чата.",
-   "id": "Mengobrol dengan model yang Anda jalankan sendiri: Ollama atau LM Studio (kosongkan alamat untuk alamat biasa di komputer ini), atau server apa pun yang mendukung API OpenAI, seperti vLLM atau llama.cpp. Setelah terhubung, pilih di atas kotak obrolan."
+   "id": "Mengobrol dengan model yang Anda jalankan sendiri: Ollama atau LM Studio (kosongkan alamat untuk alamat biasa di komputer ini), atau server apa pun yang mendukung API OpenAI, seperti vLLM atau llama.cpp. Setelah terhubung, pilih di atas kotak obrolan.",
+   "cs": "Chatujte s modelem, který provozujete sami: Ollama nebo LM Studio (pro obvyklou adresu na tomto počítači nechte pole prázdné), případně libovolný server mluvící OpenAI API, jako vLLM nebo llama.cpp. Po připojení ho vyberte nad chatovým polem."
   },
   "Choose a model": {
    "zh-Hans": "选择模型",
@@ -417,7 +454,8 @@
    "bn": "একটি মডেল বেছে নিন",
    "pt-BR": "Escolha um modelo",
    "ru": "Выберите модель",
-   "id": "Pilih model"
+   "id": "Pilih model",
+   "cs": "Zvolte model"
   },
   "Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.": {
    "zh-Hans": "带 repo 权限范围的经典令牌，或对 Pull requests、Commit statuses 和 Actions 具有读取权限的细粒度令牌。",
@@ -428,7 +466,8 @@
    "bn": "repo স্কোপসহ ক্লাসিক টোকেন, অথবা Pull requests, Commit statuses ও Actions-এ পড়ার অনুমতিসহ fine-grained টোকেন।",
    "pt-BR": "Token clássico com o escopo repo, ou refinado (fine-grained) com acesso de leitura a Pull requests, Commit statuses e Actions.",
    "ru": "Классический токен с областью repo или детализированный (fine-grained) с доступом на чтение к Pull requests, Commit statuses и Actions.",
-   "id": "Token klasik dengan cakupan repo, atau fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions."
+   "id": "Token klasik dengan cakupan repo, atau fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions.",
+   "cs": "Classic token s rozsahem repo, nebo fine-grained s přístupem pro čtení k Pull requests, Commit statuses a Actions."
   },
   "Claude declined this one.": {
    "zh-Hans": "Claude 拒绝了这个请求。",
@@ -439,7 +478,8 @@
    "bn": "Claude এটি প্রত্যাখ্যান করেছে।",
    "pt-BR": "O Claude recusou este pedido.",
    "ru": "Claude отклонил этот запрос.",
-   "id": "Claude menolak permintaan ini."
+   "id": "Claude menolak permintaan ini.",
+   "cs": "Claude tohle zamítl."
   },
   "Claude needs an answer.": {
    "zh-Hans": "Claude 需要一个回答。",
@@ -450,7 +490,8 @@
    "bn": "Claude-এর একটি উত্তর দরকার।",
    "pt-BR": "O Claude precisa de uma resposta.",
    "ru": "Claude ждёт ответа.",
-   "id": "Claude membutuhkan jawaban."
+   "id": "Claude membutuhkan jawaban.",
+   "cs": "Claude potřebuje odpověď."
   },
   "Claude plan usage": {
    "zh-Hans": "Claude 套餐用量",
@@ -461,7 +502,8 @@
    "bn": "Claude প্ল্যানের ব্যবহার",
    "pt-BR": "Uso do plano Claude",
    "ru": "Использование тарифа Claude",
-   "id": "Pemakaian paket Claude"
+   "id": "Pemakaian paket Claude",
+   "cs": "Využití plánu Claude"
   },
   "Close the island": {
    "zh-Hans": "关闭岛",
@@ -472,7 +514,8 @@
    "bn": "আইল্যান্ড বন্ধ করুন",
    "pt-BR": "Fechar a ilha",
    "ru": "Закрыть остров",
-   "id": "Tutup pulau"
+   "id": "Tutup pulau",
+   "cs": "Zavřít ostrůvek"
   },
   "Code": {
    "zh-Hans": "代码",
@@ -483,7 +526,8 @@
    "bn": "কোড",
    "pt-BR": "Código",
    "ru": "Код",
-   "id": "Kode"
+   "id": "Kode",
+   "cs": "Kód"
   },
   "Codex plan": {
    "zh-Hans": "Codex 套餐",
@@ -494,7 +538,8 @@
    "bn": "Codex প্ল্যান",
    "pt-BR": "Plano Codex",
    "ru": "Тариф Codex",
-   "id": "Paket Codex"
+   "id": "Paket Codex",
+   "cs": "Plán Codex"
   },
   "Codex plan usage": {
    "zh-Hans": "Codex 套餐用量",
@@ -505,7 +550,8 @@
    "bn": "Codex প্ল্যানের ব্যবহার",
    "pt-BR": "Uso do plano Codex",
    "ru": "Использование тарифа Codex",
-   "id": "Pemakaian paket Codex"
+   "id": "Pemakaian paket Codex",
+   "cs": "Využití plánu Codex"
   },
   "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.": {
    "zh-Hans": "Codex 只会运行你信任的新 hooks：启动 Codex，并用 /hooks 检查一次。",
@@ -516,7 +562,8 @@
    "bn": "Codex নতুন hooks তখনই চালায় যখন আপনি সেগুলোকে বিশ্বাস করেন: Codex চালু করে /hooks দিয়ে একবার পর্যালোচনা করুন।",
    "pt-BR": "O Codex só executa hooks novos depois que você confia neles: abra o Codex e revise-os uma vez com /hooks.",
    "ru": "Codex запускает новые хуки только после того, как вы им доверитесь: откройте Codex и один раз проверьте их через /hooks.",
-   "id": "Codex hanya menjalankan hooks baru setelah Anda memercayainya: buka Codex dan tinjau sekali dengan /hooks."
+   "id": "Codex hanya menjalankan hooks baru setelah Anda memercayainya: buka Codex dan tinjau sekali dengan /hooks.",
+   "cs": "Codex spustí nové hooky, až když jim důvěřujete: spusťte Codex a jednou je zkontrolujte pomocí /hooks."
   },
   "Connect {name} in Settings → Local models first.": {
    "zh-Hans": "请先在“设置 → 本地模型”中连接 {name}。",
@@ -527,7 +574,8 @@
    "bn": "আগে সেটিংস → লোকাল মডেল-এ {name} সংযুক্ত করুন।",
    "pt-BR": "Conecte primeiro o {name} em Configurações → Modelos locais.",
    "ru": "Сначала подключите {name} в «Настройки → Локальные модели».",
-   "id": "Hubungkan {name} dulu di Pengaturan → Model lokal."
+   "id": "Hubungkan {name} dulu di Pengaturan → Model lokal.",
+   "cs": "Nejdřív připojte {name} v Nastavení → Místní modely."
   },
   "Copied": {
    "zh-Hans": "已复制",
@@ -538,7 +586,8 @@
    "bn": "কপি হয়েছে",
    "pt-BR": "Copiado",
    "ru": "Скопировано",
-   "id": "Disalin"
+   "id": "Disalin",
+   "cs": "Zkopírováno"
   },
   "Copied — paste it anywhere.": {
    "zh-Hans": "已复制 — 可以粘贴到任何地方。",
@@ -549,7 +598,8 @@
    "bn": "কপি হয়েছে — যেকোনো জায়গায় পেস্ট করুন।",
    "pt-BR": "Copiada — cole onde quiser.",
    "ru": "Скопировано — вставьте куда угодно.",
-   "id": "Disalin — tempel di mana saja."
+   "id": "Disalin — tempel di mana saja.",
+   "cs": "Zkopírováno — vložte jej kamkoliv."
   },
   "Copying images isn't available here — use Save image.": {
    "zh-Hans": "此处无法复制图片 — 请使用“保存图片”。",
@@ -560,7 +610,8 @@
    "bn": "এখানে ছবি কপি করা যায় না — “ছবি সংরক্ষণ করুন” ব্যবহার করুন।",
    "pt-BR": "Não é possível copiar imagens aqui — use Salvar imagem.",
    "ru": "Копировать изображения здесь нельзя — используйте «Сохранить изображение».",
-   "id": "Menyalin gambar tidak tersedia di sini — gunakan Simpan gambar."
+   "id": "Menyalin gambar tidak tersedia di sini — gunakan Simpan gambar.",
+   "cs": "Kopírování obrázků tady není dostupné — použijte Uložit obrázek."
   },
   "Coucou could not list the agents.": {
    "zh-Hans": "Coucou 无法列出代理。",
@@ -571,7 +622,8 @@
    "bn": "Coucou এজেন্টদের তালিকা করতে পারেনি।",
    "pt-BR": "O Coucou não conseguiu listar os agentes.",
    "ru": "Coucou не удалось получить список агентов.",
-   "id": "Coucou tidak dapat menampilkan daftar agen."
+   "id": "Coucou tidak dapat menampilkan daftar agen.",
+   "cs": "Coucou nemohl vypsat agenty."
   },
   "Coucou counts your agent sessions as they happen — check back next Monday.": {
    "zh-Hans": "Coucou 会实时统计你的代理会话 — 下周一再来看看吧。",
@@ -582,7 +634,8 @@
    "bn": "Coucou আপনার এজেন্ট সেশন ঘটার সঙ্গে সঙ্গে গোনে — পরের সোমবার আবার দেখুন।",
    "pt-BR": "O Coucou conta suas sessões de agentes conforme acontecem — volte na próxima segunda-feira.",
    "ru": "Coucou считает ваши сессии агентов по ходу дела — загляните в следующий понедельник.",
-   "id": "Coucou menghitung sesi agen Anda saat berlangsung — cek lagi Senin depan."
+   "id": "Coucou menghitung sesi agen Anda saat berlangsung — cek lagi Senin depan.",
+   "cs": "Coucou počítá vaše relace agentů, jak probíhají — podívejte se znovu v příští pondělí."
   },
   "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.": {
    "zh-Hans": "Coucou 已接入你的 Claude Code 会话。工具调用、问题和权限请求都会显示在岛中，你可以直接在那里回应。",
@@ -593,7 +646,8 @@
    "bn": "Coucou আপনার Claude Code সেশনের সঙ্গে যুক্ত। টুল কল, প্রশ্ন আর অনুমতির অনুরোধ আইল্যান্ডে দেখা যায়, এবং আপনি সেখানেই উত্তর দিতে পারেন।",
    "pt-BR": "O Coucou está conectado às suas sessões do Claude Code. Chamadas de ferramentas, perguntas e pedidos de permissão aparecem na ilha, e você pode respondê-los ali.",
    "ru": "Coucou подключён к вашим сессиям Claude Code. Вызовы инструментов, вопросы и запросы разрешений появляются в острове, и отвечать можно прямо там.",
-   "id": "Coucou terhubung ke sesi Claude Code Anda. Panggilan alat, pertanyaan, dan permintaan izin muncul di pulau, dan Anda bisa menjawabnya di sana."
+   "id": "Coucou terhubung ke sesi Claude Code Anda. Panggilan alat, pertanyaan, dan permintaan izin muncul di pulau, dan Anda bisa menjawabnya di sana.",
+   "cs": "Coucou je napojený na vaše relace Claude Code. Volání nástrojů, otázky a žádosti o oprávnění se zobrazují v ostrůvku a můžete na ně odpovídat tam."
   },
   "Could not remove {path}: {error}": {
    "zh-Hans": "无法删除 {path}：{error}",
@@ -604,7 +658,8 @@
    "bn": "{path} সরানো যায়নি: {error}",
    "pt-BR": "Não foi possível remover {path}: {error}",
    "ru": "Не удалось удалить {path}: {error}",
-   "id": "Tidak dapat menghapus {path}: {error}"
+   "id": "Tidak dapat menghapus {path}: {error}",
+   "cs": "Nelze odebrat {path}: {error}"
   },
   "Could not remove: {error}": {
    "zh-Hans": "无法移除：{error}",
@@ -615,7 +670,8 @@
    "bn": "সরানো যায়নি: {error}",
    "pt-BR": "Não foi possível remover: {error}",
    "ru": "Не удалось удалить: {error}",
-   "id": "Tidak dapat menghapus: {error}"
+   "id": "Tidak dapat menghapus: {error}",
+   "cs": "Nelze odebrat: {error}"
   },
   "Could not save the image: {error}": {
    "zh-Hans": "无法保存图片：{error}",
@@ -626,7 +682,8 @@
    "bn": "ছবিটি সংরক্ষণ করা যায়নি: {error}",
    "pt-BR": "Não foi possível salvar a imagem: {error}",
    "ru": "Не удалось сохранить изображение: {error}",
-   "id": "Tidak dapat menyimpan gambar: {error}"
+   "id": "Tidak dapat menyimpan gambar: {error}",
+   "cs": "Nelze uložit obrázek: {error}"
   },
   "Could not save your current status line next to the relay; nothing was changed.": {
    "zh-Hans": "无法将你当前的状态栏保存到中继旁边；未做任何更改。",
@@ -637,7 +694,8 @@
    "bn": "আপনার বর্তমান স্ট্যাটাস লাইন রিলের পাশে সংরক্ষণ করা যায়নি; কিছুই বদলানো হয়নি।",
    "pt-BR": "Não foi possível salvar sua linha de status atual ao lado do relay; nada foi alterado.",
    "ru": "Не удалось сохранить вашу текущую строку состояния рядом с ретранслятором; ничего не изменено.",
-   "id": "Tidak dapat menyimpan baris status Anda saat ini di samping relay; tidak ada yang diubah."
+   "id": "Tidak dapat menyimpan baris status Anda saat ini di samping relay; tidak ada yang diubah.",
+   "cs": "Nelze uložit váš aktuální stavový řádek vedle relaye; nic se nezměnilo."
   },
   "Could not save: {error}": {
    "zh-Hans": "无法保存：{error}",
@@ -648,7 +706,8 @@
    "bn": "সংরক্ষণ করা যায়নি: {error}",
    "pt-BR": "Não foi possível salvar: {error}",
    "ru": "Не удалось сохранить: {error}",
-   "id": "Tidak dapat menyimpan: {error}"
+   "id": "Tidak dapat menyimpan: {error}",
+   "cs": "Nelze uložit: {error}"
   },
   "Could not write: {error}": {
    "zh-Hans": "无法写入：{error}",
@@ -659,7 +718,8 @@
    "bn": "লেখা যায়নি: {error}",
    "pt-BR": "Não foi possível gravar: {error}",
    "ru": "Не удалось записать: {error}",
-   "id": "Tidak dapat menulis: {error}"
+   "id": "Tidak dapat menulis: {error}",
+   "cs": "Nelze zapsat: {error}"
   },
   "Counts and project names only — never commands, files or prompts. Kept on this computer for 12 weeks.": {
    "zh-Hans": "仅保存计数和项目名称 — 绝不保存命令、文件或提示词。在这台电脑上保留 12 周。",
@@ -670,7 +730,8 @@
    "bn": "শুধু গণনা আর প্রজেক্টের নাম — কখনো কমান্ড, ফাইল বা প্রম্পট নয়। এই কম্পিউটারে ১২ সপ্তাহ রাখা হয়।",
    "pt-BR": "Somente contagens e nomes de projeto — nunca comandos, arquivos ou prompts. Mantido neste computador por 12 semanas.",
    "ru": "Только счётчики и названия проектов — никогда команды, файлы или промпты. Хранится на этом компьютере 12 недель.",
-   "id": "Hanya hitungan dan nama proyek — tidak pernah perintah, file, atau prompt. Disimpan di komputer ini selama 12 minggu."
+   "id": "Hanya hitungan dan nama proyek — tidak pernah perintah, file, atau prompt. Disimpan di komputer ini selama 12 minggu.",
+   "cs": "Jen počty a názvy projektů — nikdy příkazy, soubory ani prompty. Uchovává se na tomto počítači 12 týdnů."
   },
   "Crown": {
    "zh-Hans": "王冠",
@@ -681,7 +742,8 @@
    "bn": "মুকুট",
    "pt-BR": "Coroa",
    "ru": "Корона",
-   "id": "Mahkota"
+   "id": "Mahkota",
+   "cs": "Koruna"
   },
   "Custom server": {
    "zh-Hans": "自定义服务器",
@@ -692,7 +754,8 @@
    "bn": "কাস্টম সার্ভার",
    "pt-BR": "Servidor personalizado",
    "ru": "Свой сервер",
-   "id": "Server kustom"
+   "id": "Server kustom",
+   "cs": "Vlastní server"
   },
   "Default branch CI": {
    "zh-Hans": "默认分支 CI",
@@ -703,7 +766,8 @@
    "bn": "ডিফল্ট ব্রাঞ্চ CI",
    "pt-BR": "CI do branch padrão",
    "ru": "CI основной ветки",
-   "id": "CI cabang utama"
+   "id": "CI cabang utama",
+   "cs": "CI výchozí větve"
   },
   "Deployment": {
    "zh-Hans": "部署",
@@ -714,7 +778,8 @@
    "bn": "ডিপ্লয়মেন্ট",
    "pt-BR": "Implantação",
    "ru": "Развёртывание",
-   "id": "Deployment"
+   "id": "Deployment",
+   "cs": "Nasazení"
   },
   "Desktop: {keys}": {
    "zh-Hans": "桌面：{keys}",
@@ -725,7 +790,8 @@
    "bn": "ডেস্কটপ: {keys}",
    "pt-BR": "Desktop: {keys}",
    "ru": "Рабочий стол: {keys}",
-   "id": "Desktop: {keys}"
+   "id": "Desktop: {keys}",
+   "cs": "Desktop: {keys}"
   },
   "Details": {
    "zh-Hans": "详情",
@@ -736,7 +802,8 @@
    "bn": "বিস্তারিত",
    "pt-BR": "Detalhes",
    "ru": "Подробности",
-   "id": "Detail"
+   "id": "Detail",
+   "cs": "Podrobnosti"
   },
   "Dictate": {
    "zh-Hans": "听写",
@@ -747,7 +814,8 @@
    "bn": "শ্রুতিলিপি",
    "pt-BR": "Ditar",
    "ru": "Диктовать",
-   "id": "Diktekan"
+   "id": "Diktekan",
+   "cs": "Diktovat"
   },
   "Dictation needs an internet connection.": {
    "zh-Hans": "听写需要互联网连接。",
@@ -758,7 +826,8 @@
    "bn": "শ্রুতিলিপির জন্য ইন্টারনেট সংযোগ প্রয়োজন।",
    "pt-BR": "O ditado precisa de uma conexão com a internet.",
    "ru": "Для диктовки требуется подключение к интернету.",
-   "id": "Dikte memerlukan koneksi internet."
+   "id": "Dikte memerlukan koneksi internet.",
+   "cs": "Diktování potřebuje připojení k internetu."
   },
   "Display under the cursor": {
    "zh-Hans": "光标所在的显示器",
@@ -769,7 +838,8 @@
    "bn": "কার্সর যে ডিসপ্লেতে আছে",
    "pt-BR": "Tela sob o cursor",
    "ru": "Дисплей под курсором",
-   "id": "Layar di bawah kursor"
+   "id": "Layar di bawah kursor",
+   "cs": "Displej pod kurzorem"
   },
   "Docs": {
    "zh-Hans": "文档",
@@ -780,7 +850,8 @@
    "bn": "ডকুমেন্ট",
    "pt-BR": "Docs",
    "ru": "Документы",
-   "id": "Dokumen"
+   "id": "Dokumen",
+   "cs": "Dokumentace"
   },
   "Done": {
    "zh-Hans": "完成",
@@ -791,7 +862,8 @@
    "bn": "হয়েছে",
    "pt-BR": "Concluir",
    "ru": "Готово",
-   "id": "Selesai"
+   "id": "Selesai",
+   "cs": "Hotovo"
   },
   "Done.": {
    "zh-Hans": "完成。",
@@ -802,7 +874,8 @@
    "bn": "হয়ে গেছে।",
    "pt-BR": "Pronto.",
    "ru": "Готово.",
-   "id": "Selesai."
+   "id": "Selesai.",
+   "cs": "Hotovo."
   },
   "Done. Open a new Claude Code session to pick the hooks up.": {
    "zh-Hans": "完成。打开新的 Claude Code 会话即可启用 hooks。",
@@ -813,7 +886,8 @@
    "bn": "হয়ে গেছে। hooks চালু করতে Claude Code-এর নতুন সেশন খুলুন।",
    "pt-BR": "Pronto. Abra uma nova sessão do Claude Code para carregar os hooks.",
    "ru": "Готово. Откройте новую сессию Claude Code, чтобы хуки заработали.",
-   "id": "Selesai. Buka sesi Claude Code baru agar hooks dimuat."
+   "id": "Selesai. Buka sesi Claude Code baru agar hooks dimuat.",
+   "cs": "Hotovo. Otevřete novou relaci Claude Code, aby se hooky načetly."
   },
   "Done. Previous settings saved as {backup}. Open a new Claude Code session to pick the hooks up.": {
    "zh-Hans": "完成。旧设置已保存为 {backup}。打开新的 Claude Code 会话即可启用 hooks。",
@@ -824,7 +898,8 @@
    "bn": "হয়ে গেছে। আগের সেটিংস {backup} নামে সংরক্ষিত। hooks চালু করতে Claude Code-এর নতুন সেশন খুলুন।",
    "pt-BR": "Pronto. As configurações anteriores foram salvas como {backup}. Abra uma nova sessão do Claude Code para carregar os hooks.",
    "ru": "Готово. Предыдущие настройки сохранены как {backup}. Откройте новую сессию Claude Code, чтобы хуки заработали.",
-   "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Buka sesi Claude Code baru agar hooks dimuat."
+   "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Buka sesi Claude Code baru agar hooks dimuat.",
+   "cs": "Hotovo. Předchozí nastavení uložena jako {backup}. Otevřete novou relaci Claude Code, aby se hooky načetly."
   },
   "Done. Previous settings saved as {backup}. The numbers appear after the next reply of a Claude Code session.": {
    "zh-Hans": "完成。旧设置已保存为 {backup}。数字会在 Claude Code 会话的下一次回复后出现。",
@@ -835,7 +910,8 @@
    "bn": "হয়ে গেছে। আগের সেটিংস {backup} নামে সংরক্ষিত। Claude Code সেশনের পরের উত্তরের পর সংখ্যাগুলো দেখা যাবে।",
    "pt-BR": "Pronto. As configurações anteriores foram salvas como {backup}. Os números aparecem após a próxima resposta de uma sessão do Claude Code.",
    "ru": "Готово. Предыдущие настройки сохранены как {backup}. Цифры появятся после следующего ответа в сессии Claude Code.",
-   "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code."
+   "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code.",
+   "cs": "Hotovo. Předchozí nastavení uložena jako {backup}. Čísla se objeví po příští odpovědi relace Claude Code."
   },
   "Done. Previous version saved as {paths}.": {
    "zh-Hans": "完成。旧版本已保存为 {paths}。",
@@ -846,7 +922,8 @@
    "bn": "হয়ে গেছে। আগের সংস্করণ {paths} নামে সংরক্ষিত।",
    "pt-BR": "Pronto. A versão anterior foi salva como {paths}.",
    "ru": "Готово. Предыдущая версия сохранена как {paths}.",
-   "id": "Selesai. Versi sebelumnya disimpan sebagai {paths}."
+   "id": "Selesai. Versi sebelumnya disimpan sebagai {paths}.",
+   "cs": "Hotovo. Předchozí verze uložena jako {paths}."
   },
   "Done. The numbers appear after the next reply of a Claude Code session.": {
    "zh-Hans": "完成。数字会在 Claude Code 会话的下一次回复后出现。",
@@ -857,7 +934,8 @@
    "bn": "হয়ে গেছে। Claude Code সেশনের পরের উত্তরের পর সংখ্যাগুলো দেখা যাবে।",
    "pt-BR": "Pronto. Os números aparecem após a próxima resposta de uma sessão do Claude Code.",
    "ru": "Готово. Цифры появятся после следующего ответа в сессии Claude Code.",
-   "id": "Selesai. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code."
+   "id": "Selesai. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code.",
+   "cs": "Hotovo. Čísla se objeví po příští odpovědi relace Claude Code."
   },
   "Draft opened in your mail app — attach the file there.": {
    "zh-Hans": "已在你的邮件应用中打开草稿——请在那里附加文件。",
@@ -868,7 +946,8 @@
    "bn": "আপনার মেল অ্যাপে খসড়া খোলা হয়েছে — সেখানে ফাইলটি সংযুক্ত করুন।",
    "pt-BR": "Rascunho aberto no seu app de e-mail — anexe o arquivo lá.",
    "ru": "Черновик открыт в почтовом приложении — прикрепите файл там.",
-   "id": "Draf dibuka di aplikasi email Anda — lampirkan file di sana."
+   "id": "Draf dibuka di aplikasi email Anda — lampirkan file di sana.",
+   "cs": "Koncept otevřen ve vaší poštovní aplikaci — soubor připojte tam."
   },
   "Drop": {
    "zh-Hans": "拖放",
@@ -879,7 +958,8 @@
    "bn": "ড্রপ",
    "pt-BR": "Soltar",
    "ru": "Перетащить",
-   "id": "Letakkan"
+   "id": "Letakkan",
+   "cs": "Přetáhnout"
   },
   "Email sent to {recipient}.": {
    "zh-Hans": "邮件已发送至 {recipient}。",
@@ -890,7 +970,8 @@
    "bn": "{recipient}-কে ইমেল পাঠানো হয়েছে।",
    "pt-BR": "E-mail enviado para {recipient}.",
    "ru": "Письмо отправлено на {recipient}.",
-   "id": "Email terkirim ke {recipient}."
+   "id": "Email terkirim ke {recipient}.",
+   "cs": "E-mail odeslán na {recipient}."
   },
   "Enter the server address first.": {
    "zh-Hans": "请先输入服务器地址。",
@@ -901,7 +982,8 @@
    "bn": "আগে সার্ভারের ঠিকানা লিখুন।",
    "pt-BR": "Digite primeiro o endereço do servidor.",
    "ru": "Сначала введите адрес сервера.",
-   "id": "Masukkan alamat server terlebih dahulu."
+   "id": "Masukkan alamat server terlebih dahulu.",
+   "cs": "Nejdřív zadejte adresu serveru."
   },
   "Error": {
    "zh-Hans": "错误",
@@ -912,7 +994,8 @@
    "bn": "ত্রুটি",
    "pt-BR": "Erro",
    "ru": "Ошибка",
-   "id": "Galat"
+   "id": "Galat",
+   "cs": "Chyba"
   },
   "File": {
    "zh-Hans": "文件",
@@ -923,7 +1006,8 @@
    "bn": "ফাইল",
    "pt-BR": "Arquivo",
    "ru": "Файл",
-   "id": "File"
+   "id": "File",
+   "cs": "Soubor"
   },
   "Folders can't be dropped yet.": {
    "zh-Hans": "暂时还不能拖放文件夹。",
@@ -934,7 +1018,8 @@
    "bn": "এখনো ফোল্ডার ড্রপ করা যায় না।",
    "pt-BR": "Ainda não é possível soltar pastas.",
    "ru": "Папки пока перетаскивать нельзя.",
-   "id": "Folder belum bisa diletakkan."
+   "id": "Folder belum bisa diletakkan.",
+   "cs": "Složky zatím přetáhnout nejdou."
   },
   "Friday": {
    "zh-Hans": "星期五",
@@ -945,7 +1030,8 @@
    "bn": "শুক্রবার",
    "pt-BR": "Sexta-feira",
    "ru": "Пятница",
-   "id": "Jumat"
+   "id": "Jumat",
+   "cs": "Pátek"
   },
   "From address": {
    "zh-Hans": "发件人地址",
@@ -956,7 +1042,8 @@
    "bn": "প্রেরকের ঠিকানা",
    "pt-BR": "Endereço do remetente",
    "ru": "Адрес отправителя",
-   "id": "Alamat pengirim"
+   "id": "Alamat pengirim",
+   "cs": "Adresa odesílatele"
   },
   "From anywhere": {
    "zh-Hans": "全局",
@@ -967,7 +1054,8 @@
    "bn": "যেকোনো জায়গা থেকে",
    "pt-BR": "De qualquer lugar",
    "ru": "Отовсюду",
-   "id": "Dari mana saja"
+   "id": "Dari mana saja",
+   "cs": "Odkudkoliv"
   },
   "Go to pill 1 to 9": {
    "zh-Hans": "前往第 1 至 9 个标签",
@@ -978,7 +1066,8 @@
    "bn": "ট্যাব ১ থেকে ৯-এ যান",
    "pt-BR": "Ir para a aba 1 a 9",
    "ru": "Перейти к вкладке 1–9",
-   "id": "Buka tab 1 sampai 9"
+   "id": "Buka tab 1 sampai 9",
+   "cs": "Přejít na pilulku 1 až 9"
   },
   "Go to the waiting permission or question": {
    "zh-Hans": "前往待处理的权限请求或问题",
@@ -989,7 +1078,8 @@
    "bn": "অপেক্ষমাণ অনুমতি বা প্রশ্নে যান",
    "pt-BR": "Ir para a permissão ou pergunta pendente",
    "ru": "Перейти к ожидающему разрешению или вопросу",
-   "id": "Buka izin atau pertanyaan yang menunggu"
+   "id": "Buka izin atau pertanyaan yang menunggu",
+   "cs": "Přejít na čekající oprávnění nebo otázku"
   },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
@@ -1000,7 +1090,8 @@
    "bn": "প্রজেক্টের নাম লুকান",
    "pt-BR": "Ocultar nomes de projeto",
    "ru": "Скрыть названия проектов",
-   "id": "Sembunyikan nama proyek"
+   "id": "Sembunyikan nama proyek",
+   "cs": "Skrývat názvy projektů"
   },
   "History cleared.": {
    "zh-Hans": "历史记录已清除。",
@@ -1011,7 +1102,8 @@
    "bn": "ইতিহাস মুছে ফেলা হয়েছে।",
    "pt-BR": "Histórico apagado.",
    "ru": "История очищена.",
-   "id": "Riwayat dihapus."
+   "id": "Riwayat dihapus.",
+   "cs": "Historie vymazána."
   },
   "Hold Ctrl, Alt or the Windows key with it.": {
    "zh-Hans": "同时按住 Ctrl、Alt 或 Windows 键。",
@@ -1022,7 +1114,8 @@
    "bn": "সঙ্গে Ctrl, Alt বা Windows কী চেপে ধরুন।",
    "pt-BR": "Segure Ctrl, Alt ou a tecla Windows junto.",
    "ru": "Удерживайте вместе с ней Ctrl, Alt или клавишу Windows.",
-   "id": "Tahan Ctrl, Alt, atau tombol Windows bersamaan."
+   "id": "Tahan Ctrl, Alt, atau tombol Windows bersamaan.",
+   "cs": "Podržte přitom Ctrl, Alt nebo klávesu Windows."
   },
   "If one doesn't work, you can also add it in your system's keyboard settings with these commands:": {
    "zh-Hans": "如果某个快捷键不起作用，也可以使用以下命令在系统的键盘设置中添加：",
@@ -1033,7 +1126,8 @@
    "bn": "কোনোটি কাজ না করলে, এই কমান্ডগুলো দিয়ে সিস্টেমের কিবোর্ড সেটিংসেও সেটি যোগ করতে পারেন:",
    "pt-BR": "Se algum não funcionar, você também pode adicioná-lo nas configurações de teclado do sistema, com estes comandos:",
    "ru": "Если какое-то не работает, его можно добавить и в настройках клавиатуры системы с такими командами:",
-   "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:"
+   "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:",
+   "cs": "Pokud některá nefunguje, můžete ji také přidat v nastavení klávesnice vašeho systému pomocí těchto příkazů:"
   },
   "Images": {
    "zh-Hans": "图片",
@@ -1044,7 +1138,8 @@
    "bn": "ছবি",
    "pt-BR": "Imagens",
    "ru": "Изображения",
-   "id": "Gambar"
+   "id": "Gambar",
+   "cs": "Obrázky"
   },
   "In the open island": {
    "zh-Hans": "在打开的岛中",
@@ -1055,7 +1150,8 @@
    "bn": "খোলা আইল্যান্ডে",
    "pt-BR": "Na ilha aberta",
    "ru": "В открытом острове",
-   "id": "Di pulau yang terbuka"
+   "id": "Di pulau yang terbuka",
+   "cs": "V otevřeném ostrůvku"
   },
   "In use": {
    "zh-Hans": "使用中",
@@ -1066,7 +1162,8 @@
    "bn": "ব্যবহৃত হচ্ছে",
    "pt-BR": "Em uso",
    "ru": "Используется",
-   "id": "Sedang dipakai"
+   "id": "Sedang dipakai",
+   "cs": "Používá se"
   },
   "In use by another app": {
    "zh-Hans": "已被其他应用占用",
@@ -1077,7 +1174,8 @@
    "bn": "অন্য অ্যাপ ব্যবহার করছে",
    "pt-BR": "Em uso por outro app",
    "ru": "Занято другим приложением",
-   "id": "Dipakai aplikasi lain"
+   "id": "Dipakai aplikasi lain",
+   "cs": "Používá ji jiná aplikace"
   },
   "Install hooks…": {
    "zh-Hans": "安装 hooks…",
@@ -1088,7 +1186,8 @@
    "bn": "hooks ইনস্টল করুন…",
    "pt-BR": "Instalar hooks…",
    "ru": "Установить хуки…",
-   "id": "Pasang hooks…"
+   "id": "Pasang hooks…",
+   "cs": "Nainstalovat hooky…"
   },
   "Install relay…": {
    "zh-Hans": "安装中继…",
@@ -1099,7 +1198,8 @@
    "bn": "রিলে ইনস্টল করুন…",
    "pt-BR": "Instalar relay…",
    "ru": "Установить ретранслятор…",
-   "id": "Pasang relay…"
+   "id": "Pasang relay…",
+   "cs": "Nainstalovat relay…"
   },
   "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.": {
    "zh-Hans": "安装 hooks，即可在岛中查看 Claude Code 会话，并在不打断手头工作的情况下批准权限。",
@@ -1110,7 +1210,8 @@
    "bn": "আইল্যান্ডে আপনার Claude Code সেশন দেখতে এবং কাজ না থামিয়ে অনুমতি দিতে hooks ইনস্টল করুন।",
    "pt-BR": "Instale os hooks para ver suas sessões do Claude Code na ilha e aprovar permissões sem largar o que está fazendo.",
    "ru": "Установите хуки, чтобы видеть сессии Claude Code в острове и давать разрешения, не отрываясь от работы.",
-   "id": "Pasang hooks untuk melihat sesi Claude Code di pulau dan menyetujui izin tanpa meninggalkan pekerjaan Anda."
+   "id": "Pasang hooks untuk melihat sesi Claude Code di pulau dan menyetujui izin tanpa meninggalkan pekerjaan Anda.",
+   "cs": "Nainstalujte hooky, abyste viděli své relace Claude Code v ostrůvku a mohli schvalovat oprávnění, aniž byste opouštěli svou práci."
   },
   "Install…": {
    "zh-Hans": "安装…",
@@ -1121,7 +1222,8 @@
    "bn": "ইনস্টল করুন…",
    "pt-BR": "Instalar…",
    "ru": "Установить…",
-   "id": "Pasang…"
+   "id": "Pasang…",
+   "cs": "Nainstalovat…"
   },
   "Instance URL": {
    "zh-Hans": "实例地址",
@@ -1132,7 +1234,8 @@
    "bn": "ইনস্ট্যান্স URL",
    "pt-BR": "URL da instância",
    "ru": "URL экземпляра",
-   "id": "URL instans"
+   "id": "URL instans",
+   "cs": "URL instance"
   },
   "Integration": {
    "zh-Hans": "集成",
@@ -1143,7 +1246,8 @@
    "bn": "ইন্টিগ্রেশন",
    "pt-BR": "Integração",
    "ru": "Интеграция",
-   "id": "Integrasi"
+   "id": "Integrasi",
+   "cs": "Integrace"
   },
   "Integration lacks access": {
    "zh-Hans": "集成没有访问权限",
@@ -1154,7 +1258,8 @@
    "bn": "ইন্টিগ্রেশনের অ্যাক্সেস নেই",
    "pt-BR": "A integração não tem acesso",
    "ru": "У интеграции нет доступа",
-   "id": "Integrasi tidak punya akses"
+   "id": "Integrasi tidak punya akses",
+   "cs": "Integrace nemá přístup"
   },
   "Integration token": {
    "zh-Hans": "集成令牌",
@@ -1165,7 +1270,8 @@
    "bn": "ইন্টিগ্রেশন টোকেন",
    "pt-BR": "Token de integração",
    "ru": "Токен интеграции",
-   "id": "Token integrasi"
+   "id": "Token integrasi",
+   "cs": "Token integrace"
   },
   "Invalid API key (401)": {
    "zh-Hans": "API 密钥无效（401）",
@@ -1176,7 +1282,8 @@
    "bn": "অবৈধ API কী (401)",
    "pt-BR": "Chave de API inválida (401)",
    "ru": "Неверный API-ключ (401)",
-   "id": "Kunci API tidak valid (401)"
+   "id": "Kunci API tidak valid (401)",
+   "cs": "Neplatný API klíč (401)"
   },
   "Island lives on": {
    "zh-Hans": "岛所在位置",
@@ -1187,7 +1294,8 @@
    "bn": "আইল্যান্ড থাকবে",
    "pt-BR": "A ilha fica na",
    "ru": "Остров на",
-   "id": "Pulau berada di"
+   "id": "Pulau berada di",
+   "cs": "Ostrůvek je na"
   },
   "Keep the island open": {
    "zh-Hans": "保持岛打开",
@@ -1198,7 +1306,8 @@
    "bn": "আইল্যান্ড খোলা রাখুন",
    "pt-BR": "Manter a ilha aberta",
    "ru": "Оставить остров открытым",
-   "id": "Biarkan pulau tetap terbuka"
+   "id": "Biarkan pulau tetap terbuka",
+   "cs": "Nechat ostrůvek otevřený"
   },
   "Key configured": {
    "zh-Hans": "密钥已配置",
@@ -1209,7 +1318,8 @@
    "bn": "কী সেট করা আছে",
    "pt-BR": "Chave configurada",
    "ru": "Ключ настроен",
-   "id": "Kunci sudah diatur"
+   "id": "Kunci sudah diatur",
+   "cs": "Klíč nastaven"
   },
   "Key from {site}": {
    "zh-Hans": "密钥来自 {site}",
@@ -1220,7 +1330,8 @@
    "bn": "কী পাবেন {site}-এ",
    "pt-BR": "Chave em {site}",
    "ru": "Ключ на {site}",
-   "id": "Kunci dari {site}"
+   "id": "Kunci dari {site}",
+   "cs": "Klíč z {site}"
   },
   "Key lacks access": {
    "zh-Hans": "密钥没有访问权限",
@@ -1231,7 +1342,8 @@
    "bn": "কী-এর অ্যাক্সেস নেই",
    "pt-BR": "A chave não tem acesso",
    "ru": "У ключа нет доступа",
-   "id": "Kunci tidak punya akses"
+   "id": "Kunci tidak punya akses",
+   "cs": "Klíč nemá přístup"
   },
   "Key removed.": {
    "zh-Hans": "密钥已移除。",
@@ -1242,7 +1354,8 @@
    "bn": "কী সরানো হয়েছে।",
    "pt-BR": "Chave removida.",
    "ru": "Ключ удалён.",
-   "id": "Kunci dihapus."
+   "id": "Kunci dihapus.",
+   "cs": "Klíč odebrán."
   },
   "Key saved in the {store}.": {
    "zh-Hans": "密钥已保存在 {store} 中。",
@@ -1253,7 +1366,8 @@
    "bn": "কী {store}-এ সংরক্ষিত।",
    "pt-BR": "Chave salva em {store}.",
    "ru": "Ключ сохранён в {store}.",
-   "id": "Kunci tersimpan di {store}."
+   "id": "Kunci tersimpan di {store}.",
+   "cs": "Klíč uložen v {store}."
   },
   "Later — keep it waiting": {
    "zh-Hans": "稍后 — 让它等着",
@@ -1264,7 +1378,8 @@
    "bn": "পরে — অপেক্ষায় রাখুন",
    "pt-BR": "Depois — deixar esperando",
    "ru": "Позже — пусть подождёт",
-   "id": "Nanti — biarkan menunggu"
+   "id": "Nanti — biarkan menunggu",
+   "cs": "Později — nechat čekat"
   },
   "Launch at startup": {
    "zh-Hans": "开机时启动",
@@ -1275,7 +1390,8 @@
    "bn": "স্টার্টআপে চালু করুন",
    "pt-BR": "Abrir ao iniciar",
    "ru": "Запуск при старте системы",
-   "id": "Jalankan saat startup"
+   "id": "Jalankan saat startup",
+   "cs": "Spouštět při startu"
   },
   "Leave the user name and password out of the address.": {
    "zh-Hans": "请不要在地址中包含用户名和密码。",
@@ -1286,7 +1402,8 @@
    "bn": "ঠিকানায় ইউজারনেম আর পাসওয়ার্ড দেবেন না।",
    "pt-BR": "Não coloque usuário e senha no endereço.",
    "ru": "Не указывайте имя пользователя и пароль в адресе.",
-   "id": "Jangan sertakan nama pengguna dan kata sandi di alamat."
+   "id": "Jangan sertakan nama pengguna dan kata sandi di alamat.",
+   "cs": "Vynechte z adresy uživatelské jméno a heslo."
   },
   "Listening…": {
    "zh-Hans": "正在聆听…",
@@ -1297,7 +1414,8 @@
    "bn": "শুনছে…",
    "pt-BR": "Ouvindo…",
    "ru": "Слушаю…",
-   "id": "Mendengarkan…"
+   "id": "Mendengarkan…",
+   "cs": "Poslouchá…"
   },
   "Main display": {
    "zh-Hans": "主显示器",
@@ -1308,7 +1426,8 @@
    "bn": "প্রধান ডিসপ্লে",
    "pt-BR": "Tela principal",
    "ru": "Основной дисплей",
-   "id": "Layar utama"
+   "id": "Layar utama",
+   "cs": "Hlavní displej"
   },
   "Main tool": {
    "zh-Hans": "主要工具",
@@ -1319,7 +1438,8 @@
    "bn": "প্রধান টুল",
    "pt-BR": "Ferramenta principal",
    "ru": "Основной инструмент",
-   "id": "Alat utama"
+   "id": "Alat utama",
+   "cs": "Hlavní nástroj"
   },
   "Meeting": {
    "zh-Hans": "会议",
@@ -1330,7 +1450,8 @@
    "bn": "মিটিং",
    "pt-BR": "Reunião",
    "ru": "Встреча",
-   "id": "Rapat"
+   "id": "Rapat",
+   "cs": "Schůzka"
   },
   "Monday": {
    "zh-Hans": "星期一",
@@ -1341,7 +1462,8 @@
    "bn": "সোমবার",
    "pt-BR": "Segunda-feira",
    "ru": "Понедельник",
-   "id": "Senin"
+   "id": "Senin",
+   "cs": "Pondělí"
   },
   "Mute": {
    "zh-Hans": "静音",
@@ -1352,7 +1474,8 @@
    "bn": "মিউট",
    "pt-BR": "Silenciar",
    "ru": "Без звука",
-   "id": "Bisukan"
+   "id": "Bisukan",
+   "cs": "Ztlumit"
   },
   "Mute or unmute Mochi": {
    "zh-Hans": "静音或取消静音 Mochi",
@@ -1363,7 +1486,8 @@
    "bn": "Mochi-কে মিউট বা আনমিউট করুন",
    "pt-BR": "Silenciar ou ativar o som do Mochi",
    "ru": "Выключить или включить звук Mochi",
-   "id": "Bisukan atau bunyikan Mochi"
+   "id": "Bisukan atau bunyikan Mochi",
+   "cs": "Ztlumit nebo zrušit ztlumení Mochiho"
   },
   "Network error: {error}": {
    "zh-Hans": "网络错误：{error}",
@@ -1374,7 +1498,8 @@
    "bn": "নেটওয়ার্ক ত্রুটি: {error}",
    "pt-BR": "Erro de rede: {error}",
    "ru": "Ошибка сети: {error}",
-   "id": "Galat jaringan: {error}"
+   "id": "Galat jaringan: {error}",
+   "cs": "Chyba sítě: {error}"
   },
   "Next or previous pill": {
    "zh-Hans": "下一个或上一个标签",
@@ -1385,7 +1510,8 @@
    "bn": "পরের বা আগের ট্যাব",
    "pt-BR": "Próxima aba ou anterior",
    "ru": "Следующая или предыдущая вкладка",
-   "id": "Tab berikutnya atau sebelumnya"
+   "id": "Tab berikutnya atau sebelumnya",
+   "cs": "Další nebo předchozí pilulka"
   },
   "Next pill": {
    "zh-Hans": "下一个标签",
@@ -1396,7 +1522,8 @@
    "bn": "পরের ট্যাব",
    "pt-BR": "Próxima aba",
    "ru": "Следующая вкладка",
-   "id": "Tab berikutnya"
+   "id": "Tab berikutnya",
+   "cs": "Další pilulka"
   },
   "No API key — add it in Settings.": {
    "zh-Hans": "没有 API 密钥 — 请在设置中添加。",
@@ -1407,7 +1534,8 @@
    "bn": "কোনো API কী নেই — সেটিংসে যোগ করুন।",
    "pt-BR": "Sem chave de API — adicione nas Configurações.",
    "ru": "Нет API-ключа — добавьте его в настройках.",
-   "id": "Tidak ada kunci API — tambahkan di Pengaturan."
+   "id": "Tidak ada kunci API — tambahkan di Pengaturan.",
+   "cs": "Žádný API klíč — přidejte ho v Nastavení."
   },
   "No Pictures or Downloads folder to save into.": {
    "zh-Hans": "没有可保存的“图片”或“下载”文件夹。",
@@ -1418,7 +1546,8 @@
    "bn": "সংরক্ষণের জন্য কোনো Pictures বা Downloads ফোল্ডার নেই।",
    "pt-BR": "Não há uma pasta Imagens ou Downloads para salvar.",
    "ru": "Нет папки «Изображения» или «Загрузки» для сохранения.",
-   "id": "Tidak ada folder Gambar atau Unduhan untuk menyimpan."
+   "id": "Tidak ada folder Gambar atau Unduhan untuk menyimpan.",
+   "cs": "Není k dispozici složka Obrázky ani Stažené soubory pro uložení."
   },
   "No change.": {
    "zh-Hans": "没有改动。",
@@ -1429,7 +1558,8 @@
    "bn": "কোনো পরিবর্তন নেই।",
    "pt-BR": "Nenhuma alteração.",
    "ru": "Без изменений.",
-   "id": "Tidak ada perubahan."
+   "id": "Tidak ada perubahan.",
+   "cs": "Žádná změna."
   },
   "No connection: {error}": {
    "zh-Hans": "无连接：{error}",
@@ -1440,7 +1570,8 @@
    "bn": "সংযোগ নেই: {error}",
    "pt-BR": "Sem conexão: {error}",
    "ru": "Нет соединения: {error}",
-   "id": "Tidak ada koneksi: {error}"
+   "id": "Tidak ada koneksi: {error}",
+   "cs": "Žádné připojení: {error}"
   },
   "No detail available.": {
    "zh-Hans": "没有可用的详情。",
@@ -1451,7 +1582,8 @@
    "bn": "কোনো বিস্তারিত নেই।",
    "pt-BR": "Nenhum detalhe disponível.",
    "ru": "Подробностей нет.",
-   "id": "Tidak ada detail."
+   "id": "Tidak ada detail.",
+   "cs": "Žádné podrobnosti nejsou k dispozici."
   },
   "No details": {
    "zh-Hans": "无详细信息",
@@ -1462,7 +1594,8 @@
    "bn": "কোনো বিবরণ নেই",
    "pt-BR": "Sem detalhes",
    "ru": "Нет подробностей",
-   "id": "Tidak ada detail"
+   "id": "Tidak ada detail",
+   "cs": "Žádné podrobnosti"
   },
   "No display server was found, so global shortcuts are off.": {
    "zh-Hans": "未找到显示服务器，因此全局快捷键已关闭。",
@@ -1473,7 +1606,8 @@
    "bn": "কোনো ডিসপ্লে সার্ভার পাওয়া যায়নি, তাই গ্লোবাল শর্টকাট বন্ধ।",
    "pt-BR": "Nenhum servidor gráfico foi encontrado, então os atalhos globais estão desativados.",
    "ru": "Дисплейный сервер не найден, поэтому глобальные сочетания отключены.",
-   "id": "Server tampilan tidak ditemukan, jadi pintasan global dimatikan."
+   "id": "Server tampilan tidak ditemukan, jadi pintasan global dimatikan.",
+   "cs": "Nebyl nalezen žádný zobrazovací server, takže globální zkratky jsou vypnuté."
   },
   "No existing file — nothing to back up.": {
    "zh-Hans": "没有现有文件 — 无需备份。",
@@ -1484,7 +1618,8 @@
    "bn": "কোনো ফাইল নেই — ব্যাকআপ করার কিছু নেই।",
    "pt-BR": "Nenhum arquivo existente — nada para fazer backup.",
    "ru": "Файла пока нет — нечего сохранять.",
-   "id": "Belum ada file — tidak ada yang perlu dicadangkan."
+   "id": "Belum ada file — tidak ada yang perlu dicadangkan.",
+   "cs": "Žádný existující soubor — není co zálohovat."
   },
   "No key yet — the chat needs one.": {
    "zh-Hans": "还没有密钥 — 聊天需要一个。",
@@ -1495,7 +1630,8 @@
    "bn": "এখনো কোনো কী নেই — চ্যাটের একটি লাগবে।",
    "pt-BR": "Ainda não há chave — o chat precisa de uma.",
    "ru": "Ключа пока нет — он нужен для чата.",
-   "id": "Belum ada kunci — obrolan membutuhkannya."
+   "id": "Belum ada kunci — obrolan membutuhkannya.",
+   "cs": "Zatím žádný klíč — chat ho potřebuje."
   },
   "No models yet. Download one in {name} first.": {
    "zh-Hans": "还没有模型。请先在 {name} 中下载一个。",
@@ -1506,7 +1642,8 @@
    "bn": "এখনো কোনো মডেল নেই। আগে {name}-এ একটি ডাউনলোড করুন।",
    "pt-BR": "Ainda não há modelos. Baixe um no {name} primeiro.",
    "ru": "Моделей пока нет. Сначала загрузите модель в {name}.",
-   "id": "Belum ada model. Unduh satu di {name} terlebih dahulu."
+   "id": "Belum ada model. Unduh satu di {name} terlebih dahulu.",
+   "cs": "Zatím žádné modely. Nejdřív jeden stáhněte v {name}."
   },
   "No response text.": {
    "zh-Hans": "没有回复内容。",
@@ -1517,7 +1654,8 @@
    "bn": "উত্তরে কোনো লেখা নেই।",
    "pt-BR": "A resposta não tem texto.",
    "ru": "В ответе нет текста.",
-   "id": "Tidak ada teks balasan."
+   "id": "Tidak ada teks balasan.",
+   "cs": "Žádný text odpovědi."
   },
   "No settings.json yet — nothing to back up.": {
    "zh-Hans": "还没有 settings.json — 无需备份。",
@@ -1528,7 +1666,8 @@
    "bn": "এখনো কোনো settings.json নেই — ব্যাকআপ করার কিছু নেই।",
    "pt-BR": "Ainda não há settings.json — nada para fazer backup.",
    "ru": "settings.json пока нет — нечего сохранять.",
-   "id": "Belum ada settings.json — tidak ada yang perlu dicadangkan."
+   "id": "Belum ada settings.json — tidak ada yang perlu dicadangkan.",
+   "cs": "Zatím žádný settings.json — není co zálohovat."
   },
   "No telemetry. Network requests only go to the services you configure yourself.": {
    "zh-Hans": "没有遥测。网络请求只会发往你自己配置的服务。",
@@ -1539,7 +1678,8 @@
    "bn": "কোনো টেলিমেট্রি নেই। নেটওয়ার্ক অনুরোধ শুধু আপনার নিজের সেট করা পরিষেবাগুলোতেই যায়।",
    "pt-BR": "Sem telemetria. As requisições de rede só vão para os serviços que você mesmo configura.",
    "ru": "Никакой телеметрии. Сетевые запросы идут только к сервисам, которые вы настроили сами.",
-   "id": "Tanpa telemetri. Permintaan jaringan hanya ke layanan yang Anda atur sendiri."
+   "id": "Tanpa telemetri. Permintaan jaringan hanya ke layanan yang Anda atur sendiri.",
+   "cs": "Žádná telemetrie. Síťové požadavky směřují jen na služby, které si sami nastavíte."
   },
   "None": {
    "zh-Hans": "无",
@@ -1550,7 +1690,8 @@
    "bn": "কিছু না",
    "pt-BR": "Nenhum",
    "ru": "Нет",
-   "id": "Tidak ada"
+   "id": "Tidak ada",
+   "cs": "Žádné"
   },
   "Not a valid address: {address}": {
    "zh-Hans": "不是有效的地址：{address}",
@@ -1561,7 +1702,8 @@
    "bn": "বৈধ ঠিকানা নয়: {address}",
    "pt-BR": "Endereço inválido: {address}",
    "ru": "Некорректный адрес: {address}",
-   "id": "Alamat tidak valid: {address}"
+   "id": "Alamat tidak valid: {address}",
+   "cs": "Neplatná adresa: {address}"
   },
   "Not a valid http:// or https:// address.": {
    "zh-Hans": "不是有效的 http:// 或 https:// 地址。",
@@ -1572,7 +1714,8 @@
    "bn": "বৈধ http:// বা https:// ঠিকানা নয়।",
    "pt-BR": "Não é um endereço http:// ou https:// válido.",
    "ru": "Это не корректный адрес http:// или https://.",
-   "id": "Bukan alamat http:// atau https:// yang valid."
+   "id": "Bukan alamat http:// atau https:// yang valid.",
+   "cs": "Není platná adresa http:// nebo https://."
   },
   "Not a valid shortcut": {
    "zh-Hans": "无效的快捷键",
@@ -1583,7 +1726,8 @@
    "bn": "বৈধ শর্টকাট নয়",
    "pt-BR": "Atalho inválido",
    "ru": "Недопустимое сочетание",
-   "id": "Pintasan tidak valid"
+   "id": "Pintasan tidak valid",
+   "cs": "Neplatná zkratka"
   },
   "Not available": {
    "zh-Hans": "不可用",
@@ -1594,7 +1738,8 @@
    "bn": "উপলব্ধ নয়",
    "pt-BR": "Indisponível",
    "ru": "Недоступно",
-   "id": "Tidak tersedia"
+   "id": "Tidak tersedia",
+   "cs": "Není k dispozici"
   },
   "Not set by your desktop": {
    "zh-Hans": "桌面未设置",
@@ -1605,7 +1750,8 @@
    "bn": "আপনার ডেস্কটপ সেট করেনি",
    "pt-BR": "Não ativado pelo seu desktop",
    "ru": "Не назначено рабочим столом",
-   "id": "Tidak diatur oleh desktop Anda"
+   "id": "Tidak diatur oleh desktop Anda",
+   "cs": "Nenastaveno vaším desktopovým prostředím"
   },
   "Nothing leaves your PC: the server runs on this computer.": {
    "zh-Hans": "数据不会离开你的电脑：服务器运行在这台电脑上。",
@@ -1616,7 +1762,8 @@
    "bn": "আপনার PC থেকে কিছুই বাইরে যায় না: সার্ভার এই কম্পিউটারেই চলে।",
    "pt-BR": "Nada sai do seu PC: o servidor roda neste computador.",
    "ru": "Ничего не покидает ваш ПК: сервер работает на этом компьютере.",
-   "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini."
+   "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini.",
+   "cs": "Nic neopustí váš počítač: server běží na tomto počítači."
   },
   "Only a file dropped on the island can be sent with a question.": {
    "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
@@ -1627,7 +1774,8 @@
    "bn": "প্রশ্নের সঙ্গে কেবল আইল্যান্ডে ছাড়া ফাইলই পাঠানো যায়।",
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
-   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan.",
+   "cs": "S otázkou lze poslat jen soubor přetažený na ostrůvek."
   },
   "Only files dropped on the island can be added.": {
    "zh-Hans": "只能添加拖放到岛上的文件。",
@@ -1638,7 +1786,8 @@
    "bn": "শুধু আইল্যান্ডে ড্রপ করা ফাইলই যোগ করা যায়।",
    "pt-BR": "Só arquivos soltos na ilha podem ser adicionados.",
    "ru": "Добавлять можно только файлы, перетащенные на остров.",
-   "id": "Hanya file yang diletakkan di pulau yang bisa ditambahkan."
+   "id": "Hanya file yang diletakkan di pulau yang bisa ditambahkan.",
+   "cs": "Přidat lze jen soubory přetažené na ostrůvek."
   },
   "Open Claude": {
    "zh-Hans": "打开 Claude",
@@ -1649,7 +1798,8 @@
    "bn": "Claude খুলুন",
    "pt-BR": "Abrir o Claude",
    "ru": "Открыть Claude",
-   "id": "Buka Claude"
+   "id": "Buka Claude",
+   "cs": "Otevřít Claude"
   },
   "Open Settings": {
    "zh-Hans": "打开设置",
@@ -1660,7 +1810,8 @@
    "bn": "সেটিংস খুলুন",
    "pt-BR": "Abrir Configurações",
    "ru": "Открыть настройки",
-   "id": "Buka Pengaturan"
+   "id": "Buka Pengaturan",
+   "cs": "Otevřít Nastavení"
   },
   "Open in VS Code": {
    "zh-Hans": "在 VS Code 中打开",
@@ -1671,7 +1822,8 @@
    "bn": "VS Code-এ খুলুন",
    "pt-BR": "Abrir no VS Code",
    "ru": "Открыть в VS Code",
-   "id": "Buka di VS Code"
+   "id": "Buka di VS Code",
+   "cs": "Otevřít ve VS Code"
   },
   "Open or close the island": {
    "zh-Hans": "打开或关闭岛",
@@ -1682,7 +1834,8 @@
    "bn": "আইল্যান্ড খুলুন বা বন্ধ করুন",
    "pt-BR": "Abrir ou fechar a ilha",
    "ru": "Открыть или закрыть остров",
-   "id": "Buka atau tutup pulau"
+   "id": "Buka atau tutup pulau",
+   "cs": "Otevřít nebo zavřít ostrůvek"
   },
   "Open the chat": {
    "zh-Hans": "打开聊天",
@@ -1693,7 +1846,8 @@
    "bn": "চ্যাট খুলুন",
    "pt-BR": "Abrir o chat",
    "ru": "Открыть чат",
-   "id": "Buka obrolan"
+   "id": "Buka obrolan",
+   "cs": "Otevřít chat"
   },
   "Open the terminal": {
    "zh-Hans": "打开终端",
@@ -1704,7 +1858,8 @@
    "bn": "টার্মিনাল খুলুন",
    "pt-BR": "Abrir o terminal",
    "ru": "Открыть терминал",
-   "id": "Buka terminal"
+   "id": "Buka terminal",
+   "cs": "Otevřít terminál"
   },
   "Open the wardrobe": {
    "zh-Hans": "打开衣橱",
@@ -1715,7 +1870,8 @@
    "bn": "পোশাক ঘর খুলুন",
    "pt-BR": "Abrir o guarda-roupa",
    "ru": "Открыть гардероб",
-   "id": "Buka lemari"
+   "id": "Buka lemari",
+   "cs": "Otevřít šatník"
   },
   "OpenAI-compatible": {
    "zh-Hans": "兼容 OpenAI",
@@ -1726,7 +1882,8 @@
    "bn": "OpenAI-সামঞ্জস্যপূর্ণ",
    "pt-BR": "Compatível com OpenAI",
    "ru": "Совместимый с OpenAI",
-   "id": "Kompatibel OpenAI"
+   "id": "Kompatibel OpenAI",
+   "cs": "Kompatibilní s OpenAI"
   },
   "OpenAI-compatible server": {
    "zh-Hans": "兼容 OpenAI 的服务器",
@@ -1737,7 +1894,8 @@
    "bn": "OpenAI-সামঞ্জস্যপূর্ণ সার্ভার",
    "pt-BR": "Servidor compatível com OpenAI",
    "ru": "Сервер, совместимый с OpenAI",
-   "id": "Server kompatibel OpenAI"
+   "id": "Server kompatibel OpenAI",
+   "cs": "Server kompatibilní s OpenAI"
   },
   "PDF": {
    "zh-Hans": "PDF",
@@ -1748,7 +1906,8 @@
    "bn": "PDF",
    "pt-BR": "PDF",
    "ru": "PDF",
-   "id": "PDF"
+   "id": "PDF",
+   "cs": "PDF"
   },
   "Party hat": {
    "zh-Hans": "派对帽",
@@ -1759,7 +1918,8 @@
    "bn": "পার্টি টুপি",
    "pt-BR": "Chapéu de festa",
    "ru": "Праздничный колпак",
-   "id": "Topi pesta"
+   "id": "Topi pesta",
+   "cs": "Narozeninový klobouček"
   },
   "Payment": {
    "zh-Hans": "付款",
@@ -1770,7 +1930,8 @@
    "bn": "পেমেন্ট",
    "pt-BR": "Pagamento",
    "ru": "Платёж",
-   "id": "Pembayaran"
+   "id": "Pembayaran",
+   "cs": "Platba"
   },
   "Permissions": {
    "zh-Hans": "权限",
@@ -1781,7 +1942,8 @@
    "bn": "অনুমতি",
    "pt-BR": "Permissões",
    "ru": "Разрешения",
-   "id": "Izin"
+   "id": "Izin",
+   "cs": "Oprávnění"
   },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
@@ -1792,7 +1954,8 @@
    "bn": "আগে চ্যাট বক্সের উপরে একটি মডেল বেছে নিন।",
    "pt-BR": "Escolha primeiro um modelo acima da caixa de chat.",
    "ru": "Сначала выберите модель над полем чата.",
-   "id": "Pilih model di atas kotak obrolan terlebih dahulu."
+   "id": "Pilih model di atas kotak obrolan terlebih dahulu.",
+   "cs": "Nejdřív vyberte model nad chatovým polem."
   },
   "Pick a {name} model above the chat box.": {
    "zh-Hans": "请在聊天框上方选择一个 {name} 模型。",
@@ -1803,7 +1966,8 @@
    "bn": "চ্যাট বক্সের উপরে {name}-এর একটি মডেল বেছে নিন।",
    "pt-BR": "Escolha um modelo do {name} acima da caixa de chat.",
    "ru": "Выберите модель {name} над полем чата.",
-   "id": "Pilih model {name} di atas kotak obrolan."
+   "id": "Pilih model {name} di atas kotak obrolan.",
+   "cs": "Vyberte model {name} nad chatovým polem."
   },
   "Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.": {
    "zh-Hans": "最多选择 {max} 个标签显示在 Mochi 旁边 — 已用 {used}/{max}。密钥保存在 {store} 中，绝不写入磁盘。",
@@ -1814,7 +1978,8 @@
    "bn": "Mochi-র পাশে দেখাতে সর্বোচ্চ {max}টি ট্যাব বেছে নিন — {used}/{max} ব্যবহৃত। কী {store}-এ রাখা হয়, কখনো ডিস্কে নয়।",
    "pt-BR": "Escolha até {max} abas para mostrar ao lado do Mochi — {used}/{max} em uso. As chaves ficam em {store}, nunca no disco.",
    "ru": "Выберите до {max} вкладок рядом с Mochi — занято {used}/{max}. Ключи хранятся в {store}, никогда на диске.",
-   "id": "Pilih hingga {max} tab untuk ditampilkan di samping Mochi — {used}/{max} terpakai. Kunci disimpan di {store}, tidak pernah di disk."
+   "id": "Pilih hingga {max} tab untuk ditampilkan di samping Mochi — {used}/{max} terpakai. Kunci disimpan di {store}, tidak pernah di disk.",
+   "cs": "Vyberte až {max} pilulky, které se zobrazí vedle Mochiho — používá se {used}/{max}. Klíče se ukládají do {store}, nikdy na disk."
   },
   "Press keys…": {
    "zh-Hans": "请按键…",
@@ -1825,7 +1990,8 @@
    "bn": "কী চাপুন…",
    "pt-BR": "Pressione as teclas…",
    "ru": "Нажмите клавиши…",
-   "id": "Tekan tombol…"
+   "id": "Tekan tombol…",
+   "cs": "Stiskněte klávesy…"
   },
   "Previous pill": {
    "zh-Hans": "上一个标签",
@@ -1836,7 +2002,8 @@
    "bn": "আগের ট্যাব",
    "pt-BR": "Aba anterior",
    "ru": "Предыдущая вкладка",
-   "id": "Tab sebelumnya"
+   "id": "Tab sebelumnya",
+   "cs": "Předchozí pilulka"
   },
   "Pumpkin": {
    "zh-Hans": "南瓜",
@@ -1847,7 +2014,8 @@
    "bn": "কুমড়া",
    "pt-BR": "Abóbora",
    "ru": "Тыква",
-   "id": "Labu"
+   "id": "Labu",
+   "cs": "Dýně"
   },
   "Questions": {
    "zh-Hans": "问题",
@@ -1858,7 +2026,8 @@
    "bn": "প্রশ্ন",
    "pt-BR": "Perguntas",
    "ru": "Вопросы",
-   "id": "Pertanyaan"
+   "id": "Pertanyaan",
+   "cs": "Otázky"
   },
   "Ready": {
    "zh-Hans": "就绪",
@@ -1869,7 +2038,8 @@
    "bn": "প্রস্তুত",
    "pt-BR": "Pronto",
    "ru": "Готово",
-   "id": "Siap"
+   "id": "Siap",
+   "cs": "Připraveno"
   },
   "Ready · no setup needed": {
    "zh-Hans": "就绪 · 无需设置",
@@ -1880,7 +2050,8 @@
    "bn": "প্রস্তুত · সেটআপ লাগবে না",
    "pt-BR": "Pronto · sem configuração",
    "ru": "Готово · настройка не нужна",
-   "id": "Siap · tanpa pengaturan"
+   "id": "Siap · tanpa pengaturan",
+   "cs": "Připraveno · bez nastavování"
   },
   "Reinstall hooks…": {
    "zh-Hans": "重新安装 hooks…",
@@ -1891,7 +2062,8 @@
    "bn": "hooks আবার ইনস্টল করুন…",
    "pt-BR": "Reinstalar hooks…",
    "ru": "Переустановить хуки…",
-   "id": "Pasang ulang hooks…"
+   "id": "Pasang ulang hooks…",
+   "cs": "Přeinstalovat hooky…"
   },
   "Reinstall…": {
    "zh-Hans": "重新安装…",
@@ -1902,7 +2074,8 @@
    "bn": "আবার ইনস্টল করুন…",
    "pt-BR": "Reinstalar…",
    "ru": "Переустановить…",
-   "id": "Pasang ulang…"
+   "id": "Pasang ulang…",
+   "cs": "Přeinstalovat…"
   },
   "Relay": {
    "zh-Hans": "中继",
@@ -1913,7 +2086,8 @@
    "bn": "রিলে",
    "pt-BR": "Relay",
    "ru": "Ретранслятор",
-   "id": "Relay"
+   "id": "Relay",
+   "cs": "Relay"
   },
   "Remove": {
    "zh-Hans": "移除",
@@ -1924,7 +2098,8 @@
    "bn": "সরান",
    "pt-BR": "Remover",
    "ru": "Удалить",
-   "id": "Hapus"
+   "id": "Hapus",
+   "cs": "Odebrat"
   },
   "Repositories": {
    "zh-Hans": "仓库",
@@ -1935,7 +2110,8 @@
    "bn": "রিপোজিটরি",
    "pt-BR": "Repositórios",
    "ru": "Репозитории",
-   "id": "Repositori"
+   "id": "Repositori",
+   "cs": "Repozitáře"
   },
   "Resend error — check the API key and the sender.": {
    "zh-Hans": "Resend 出错——请检查 API 密钥和发件人。",
@@ -1946,7 +2122,8 @@
    "bn": "Resend ত্রুটি — API কী এবং প্রেরক যাচাই করুন।",
    "pt-BR": "Erro do Resend — verifique a chave de API e o remetente.",
    "ru": "Ошибка Resend — проверьте ключ API и отправителя.",
-   "id": "Kesalahan Resend — periksa kunci API dan pengirim."
+   "id": "Kesalahan Resend — periksa kunci API dan pengirim.",
+   "cs": "Chyba Resend — zkontrolujte API klíč a odesílatele."
   },
   "Reset to defaults": {
    "zh-Hans": "恢复默认",
@@ -1957,7 +2134,8 @@
    "bn": "ডিফল্টে ফেরান",
    "pt-BR": "Restaurar padrões",
    "ru": "Сбросить по умолчанию",
-   "id": "Kembalikan ke bawaan"
+   "id": "Kembalikan ke bawaan",
+   "cs": "Obnovit výchozí"
   },
   "Resets": {
    "zh-Hans": "重置",
@@ -1968,7 +2146,8 @@
    "bn": "রিসেট",
    "pt-BR": "Redefinições",
    "ru": "Сбросы",
-   "id": "Reset"
+   "id": "Reset",
+   "cs": "Resety"
   },
   "Restart Amp to load the plugin.": {
    "zh-Hans": "重启 Amp 以加载插件。",
@@ -1979,7 +2158,8 @@
    "bn": "প্লাগইন লোড করতে Amp আবার চালু করুন।",
    "pt-BR": "Reinicie o Amp para carregar o plugin.",
    "ru": "Перезапустите Amp, чтобы загрузить плагин.",
-   "id": "Mulai ulang Amp untuk memuat plugin."
+   "id": "Mulai ulang Amp untuk memuat plugin.",
+   "cs": "Restartujte Amp, aby se plugin načetl."
   },
   "Restart Cursor to pick the hooks up.": {
    "zh-Hans": "重启 Cursor 即可启用 hooks。",
@@ -1990,7 +2170,8 @@
    "bn": "hooks চালু করতে Cursor আবার চালু করুন।",
    "pt-BR": "Reinicie o Cursor para carregar os hooks.",
    "ru": "Перезапустите Cursor, чтобы хуки заработали.",
-   "id": "Mulai ulang Cursor agar hooks dimuat."
+   "id": "Mulai ulang Cursor agar hooks dimuat.",
+   "cs": "Restartujte Cursor, aby se hooky načetly."
   },
   "Restart OpenCode to load the plugin.": {
    "zh-Hans": "重启 OpenCode 以加载插件。",
@@ -2001,7 +2182,8 @@
    "bn": "প্লাগইন লোড করতে OpenCode আবার চালু করুন।",
    "pt-BR": "Reinicie o OpenCode para carregar o plugin.",
    "ru": "Перезапустите OpenCode, чтобы загрузить плагин.",
-   "id": "Mulai ulang OpenCode untuk memuat plugin."
+   "id": "Mulai ulang OpenCode untuk memuat plugin.",
+   "cs": "Restartujte OpenCode, aby se plugin načetl."
   },
   "Result": {
    "zh-Hans": "结果",
@@ -2012,7 +2194,8 @@
    "bn": "ফলাফল",
    "pt-BR": "Resultado",
    "ru": "Результат",
-   "id": "Hasil"
+   "id": "Hasil",
+   "cs": "Výsledek"
   },
   "Round glasses": {
    "zh-Hans": "圆框眼镜",
@@ -2023,7 +2206,8 @@
    "bn": "গোল চশমা",
    "pt-BR": "Óculos redondos",
    "ru": "Круглые очки",
-   "id": "Kacamata bulat"
+   "id": "Kacamata bulat",
+   "cs": "Kulaté brýle"
   },
   "Santa hat": {
    "zh-Hans": "圣诞帽",
@@ -2034,7 +2218,8 @@
    "bn": "সান্তা টুপি",
    "pt-BR": "Gorro de Papai Noel",
    "ru": "Шапка Санты",
-   "id": "Topi Sinterklas"
+   "id": "Topi Sinterklas",
+   "cs": "Vánoční čepice"
   },
   "Saturday": {
    "zh-Hans": "星期六",
@@ -2045,7 +2230,8 @@
    "bn": "শনিবার",
    "pt-BR": "Sábado",
    "ru": "Суббота",
-   "id": "Sabtu"
+   "id": "Sabtu",
+   "cs": "Sobota"
   },
   "Save image": {
    "zh-Hans": "保存图片",
@@ -2056,7 +2242,8 @@
    "bn": "ছবি সংরক্ষণ করুন",
    "pt-BR": "Salvar imagem",
    "ru": "Сохранить изображение",
-   "id": "Simpan gambar"
+   "id": "Simpan gambar",
+   "cs": "Uložit obrázek"
   },
   "Save key": {
    "zh-Hans": "保存密钥",
@@ -2067,7 +2254,8 @@
    "bn": "কী সংরক্ষণ করুন",
    "pt-BR": "Salvar chave",
    "ru": "Сохранить ключ",
-   "id": "Simpan kunci"
+   "id": "Simpan kunci",
+   "cs": "Uložit klíč"
   },
   "Saved as {name}": {
    "zh-Hans": "已保存为 {name}",
@@ -2078,7 +2266,8 @@
    "bn": "{name} নামে সংরক্ষিত",
    "pt-BR": "Salva como {name}",
    "ru": "Сохранено как {name}",
-   "id": "Disimpan sebagai {name}"
+   "id": "Disimpan sebagai {name}",
+   "cs": "Uloženo jako {name}"
   },
   "Saved. It never touches disk.": {
    "zh-Hans": "已保存。它从不写入磁盘。",
@@ -2089,7 +2278,8 @@
    "bn": "সংরক্ষিত। এটি কখনো ডিস্কে লেখা হয় না।",
    "pt-BR": "Salva. Ela nunca vai para o disco.",
    "ru": "Сохранено. Ключ никогда не попадает на диск.",
-   "id": "Tersimpan. Kunci tidak pernah ditulis ke disk."
+   "id": "Tersimpan. Kunci tidak pernah ditulis ke disk.",
+   "cs": "Uloženo. Nikdy se nedotýká disku."
   },
   "Saving…": {
    "zh-Hans": "正在保存…",
@@ -2100,7 +2290,8 @@
    "bn": "সংরক্ষণ হচ্ছে…",
    "pt-BR": "Salvando…",
    "ru": "Сохранение…",
-   "id": "Menyimpan…"
+   "id": "Menyimpan…",
+   "cs": "Ukládání…"
   },
   "Scarf": {
    "zh-Hans": "围巾",
@@ -2111,7 +2302,8 @@
    "bn": "মাফলার",
    "pt-BR": "Cachecol",
    "ru": "Шарф",
-   "id": "Syal"
+   "id": "Syal",
+   "cs": "Šála"
   },
   "Secret key": {
    "zh-Hans": "私密密钥",
@@ -2122,7 +2314,8 @@
    "bn": "সিক্রেট কী",
    "pt-BR": "Chave secreta",
    "ru": "Секретный ключ",
-   "id": "Kunci rahasia"
+   "id": "Kunci rahasia",
+   "cs": "Tajný klíč"
   },
   "Send Mochi to the desktop": {
    "zh-Hans": "把 Mochi 送到桌面",
@@ -2133,7 +2326,8 @@
    "bn": "Mochi-কে ডেস্কটপে পাঠান",
    "pt-BR": "Enviar o Mochi para a área de trabalho",
    "ru": "Отправить Mochi на рабочий стол",
-   "id": "Kirim Mochi ke desktop"
+   "id": "Kirim Mochi ke desktop",
+   "cs": "Poslat Mochiho na plochu"
   },
   "Send the message": {
    "zh-Hans": "发送消息",
@@ -2144,7 +2338,8 @@
    "bn": "বার্তা পাঠান",
    "pt-BR": "Enviar a mensagem",
    "ru": "Отправить сообщение",
-   "id": "Kirim pesan"
+   "id": "Kirim pesan",
+   "cs": "Odeslat zprávu"
   },
   "Services": {
    "zh-Hans": "服务",
@@ -2155,7 +2350,8 @@
    "bn": "পরিষেবা",
    "pt-BR": "Serviços",
    "ru": "Сервисы",
-   "id": "Layanan"
+   "id": "Layanan",
+   "cs": "Služby"
   },
   "Session stopped on an error.": {
    "zh-Hans": "会话因错误而停止。",
@@ -2166,7 +2362,8 @@
    "bn": "একটি ত্রুটিতে সেশন থেমে গেছে।",
    "pt-BR": "A sessão parou por um erro.",
    "ru": "Сессия остановилась из-за ошибки.",
-   "id": "Sesi berhenti karena galat."
+   "id": "Sesi berhenti karena galat.",
+   "cs": "Relace zastavena kvůli chybě."
   },
   "Sessions — approvals stay in the agent": {
    "zh-Hans": "会话 — 审批仍在代理中进行",
@@ -2177,7 +2374,8 @@
    "bn": "সেশন — অনুমোদন এজেন্টেই থাকে",
    "pt-BR": "Sessões — as aprovações ficam no agente",
    "ru": "Сессии — подтверждения остаются в агенте",
-   "id": "Sesi — persetujuan tetap di agen"
+   "id": "Sesi — persetujuan tetap di agen",
+   "cs": "Relace — schvalování zůstává v agentovi"
   },
   "Sessions, and Allow / Deny from the island": {
    "zh-Hans": "会话，以及在岛中允许 / 拒绝",
@@ -2188,7 +2386,8 @@
    "bn": "সেশন, আর আইল্যান্ড থেকে অনুমতি / প্রত্যাখ্যান",
    "pt-BR": "Sessões, e Permitir / Negar pela ilha",
    "ru": "Сессии и «Разрешить / Отклонить» из острова",
-   "id": "Sesi, dan Izinkan / Tolak dari pulau"
+   "id": "Sesi, dan Izinkan / Tolak dari pulau",
+   "cs": "Relace a Povolit / Zamítnout z ostrůvku"
   },
   "Set sender address in Settings.": {
    "zh-Hans": "请在“设置”中设置发件人地址。",
@@ -2199,7 +2398,8 @@
    "bn": "সেটিংসে প্রেরকের ঠিকানা সেট করুন।",
    "pt-BR": "Defina o endereço do remetente nos Ajustes.",
    "ru": "Укажите адрес отправителя в настройках.",
-   "id": "Atur alamat pengirim di Pengaturan."
+   "id": "Atur alamat pengirim di Pengaturan.",
+   "cs": "Nastavte adresu odesílatele v Nastavení."
   },
   "Settings": {
    "zh-Hans": "设置",
@@ -2210,7 +2410,8 @@
    "bn": "সেটিংস",
    "pt-BR": "Configurações",
    "ru": "Настройки",
-   "id": "Pengaturan"
+   "id": "Pengaturan",
+   "cs": "Nastavení"
   },
   "Share your week": {
    "zh-Hans": "分享你的一周",
@@ -2221,7 +2422,8 @@
    "bn": "আপনার সপ্তাহ শেয়ার করুন",
    "pt-BR": "Compartilhe sua semana",
    "ru": "Поделитесь своей неделей",
-   "id": "Bagikan minggu Anda"
+   "id": "Bagikan minggu Anda",
+   "cs": "Sdílet svůj týden"
   },
   "Show Codex plan in the notch": {
    "zh-Hans": "在刘海中显示 Codex 套餐",
@@ -2232,7 +2434,8 @@
    "bn": "নচে Codex প্ল্যান দেখান",
    "pt-BR": "Mostrar o plano Codex no notch",
    "ru": "Показывать тариф Codex в нотче",
-   "id": "Tampilkan paket Codex di notch"
+   "id": "Tampilkan paket Codex di notch",
+   "cs": "Zobrazovat plán Codex v ostrůvku"
   },
   "Show in folder": {
    "zh-Hans": "在文件夹中显示",
@@ -2243,7 +2446,8 @@
    "bn": "ফোল্ডারে দেখান",
    "pt-BR": "Mostrar na pasta",
    "ru": "Показать в папке",
-   "id": "Tampilkan di folder"
+   "id": "Tampilkan di folder",
+   "cs": "Zobrazit ve složce"
   },
   "Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.": {
    "zh-Hans": "在岛中显示其他编程代理。Coucou 会把自己的条目添加到各代理的配置中：写入之前，你会看到确切的改动和备份位置；卸载只会移除 Coucou 添加的内容。",
@@ -2254,7 +2458,8 @@
    "bn": "অন্যান্য কোডিং এজেন্টকে আইল্যান্ডে দেখান। Coucou প্রতিটি এজেন্টের নিজস্ব কনফিগে তার এন্ট্রি যোগ করে: কিছু লেখার আগে আপনি সঠিক পরিবর্তন এবং ব্যাকআপ কোথায় যাবে তা দেখতে পান, আর আনইনস্টল করলে শুধু Coucou যা যোগ করেছিল তা-ই সরানো হয়।",
    "pt-BR": "Mostre outros agentes de programação na ilha. O Coucou adiciona as próprias entradas à configuração de cada agente: você vê a alteração exata e para onde vai o backup antes de qualquer gravação, e desinstalar remove só o que o Coucou adicionou.",
    "ru": "Показывайте другие агенты для кода в острове. Coucou добавляет свои записи в конфигурацию каждого агента: до любой записи вы видите точное изменение и куда пойдёт резервная копия, а удаление убирает только то, что добавил Coucou.",
-   "id": "Tampilkan agen coding lain di pulau. Coucou menambahkan entrinya ke konfigurasi masing-masing agen: Anda melihat perubahan persisnya dan lokasi cadangan sebelum apa pun ditulis, dan mencopot pemasangan hanya menghapus yang ditambahkan Coucou."
+   "id": "Tampilkan agen coding lain di pulau. Coucou menambahkan entrinya ke konfigurasi masing-masing agen: Anda melihat perubahan persisnya dan lokasi cadangan sebelum apa pun ditulis, dan mencopot pemasangan hanya menghapus yang ditambahkan Coucou.",
+   "cs": "Zobrazovat v ostrůvku další programátorské agenty. Coucou přidává své záznamy do vlastní konfigurace každého agenta: ještě před jakýmkoliv zápisem vidíte přesnou změnu a kam půjde záloha, a odinstalace odstraní jen to, co Coucou přidal."
   },
   "Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在岛的顶栏显示你的 Claude 套餐用量（5 小时和每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一个状态栏中继。如果你已有状态栏，它会照常工作。仅限 Pro 和 Max 套餐。",
@@ -2265,7 +2470,8 @@
    "bn": "আইল্যান্ডের হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Coucou ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার আগে থেকে স্ট্যাটাস লাইন থাকলে সেটি আগের মতোই চলবে। শুধু Pro ও Max প্ল্যান।",
    "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanal) no cabeçalho da ilha. O Coucou adiciona um relay de linha de status em ~/.claude/settings.json. Se você já tem uma linha de status, ela continua funcionando como antes. Apenas planos Pro e Max.",
    "ru": "Показывает использование тарифа Claude (лимиты на 5 часов и на неделю) в заголовке острова. Coucou добавляет ретранслятор строки состояния в ~/.claude/settings.json. Если у вас уже есть строка состояния, она работает как прежде. Только тарифы Pro и Max.",
-   "id": "Menampilkan pemakaian paket Claude Anda (batas 5 jam dan mingguan) di header pulau. Coucou menambahkan relay baris status di ~/.claude/settings.json. Jika Anda sudah punya baris status, baris itu tetap berjalan seperti biasa. Khusus paket Pro dan Max."
+   "id": "Menampilkan pemakaian paket Claude Anda (batas 5 jam dan mingguan) di header pulau. Coucou menambahkan relay baris status di ~/.claude/settings.json. Jika Anda sudah punya baris status, baris itu tetap berjalan seperti biasa. Khusus paket Pro dan Max.",
+   "cs": "Zobrazuje využití vašeho plánu Claude (5hodinový a týdenní limit) v záhlaví ostrůvku. Coucou přidá relay stavového řádku do ~/.claude/settings.json. Pokud už stavový řádek máte, funguje dál jako dosud. Jen pro plány Pro a Max."
   },
   "Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.": {
    "zh-Hans": "在岛的顶栏显示你的 Codex 套餐用量（每周限额和剩余的免费重置次数）。标签显示时，Coucou 会询问 Codex CLI（codex app-server），不会安装任何东西。Codex 必须已用 ChatGPT 登录。",
@@ -2276,7 +2482,8 @@
    "bn": "আইল্যান্ডের হেডারে আপনার Codex প্ল্যানের ব্যবহার (সাপ্তাহিক সীমা ও বাকি ফ্রি রিসেট) দেখায়। ট্যাব দেখা গেলে Coucou Codex CLI (codex app-server)-কে জিজ্ঞেস করে; কিছুই ইনস্টল হয় না। Codex-এ ChatGPT দিয়ে সাইন ইন থাকতে হবে।",
    "pt-BR": "Mostra o uso do seu plano Codex (limite semanal e redefinições grátis restantes) no cabeçalho da ilha. O Coucou consulta a CLI do Codex (codex app-server) quando a aba aparece; nada é instalado. O Codex precisa estar conectado com o ChatGPT.",
    "ru": "Показывает использование тарифа Codex (недельный лимит и оставшиеся бесплатные сбросы) в заголовке острова. Coucou спрашивает Codex CLI (codex app-server), когда видна вкладка; ничего не устанавливается. В Codex нужно войти через ChatGPT.",
-   "id": "Menampilkan pemakaian paket Codex Anda (batas mingguan dan sisa reset gratis) di header pulau. Coucou menanyakan Codex CLI (codex app-server) saat tab tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT."
+   "id": "Menampilkan pemakaian paket Codex Anda (batas mingguan dan sisa reset gratis) di header pulau. Coucou menanyakan Codex CLI (codex app-server) saat tab tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT.",
+   "cs": "Zobrazuje využití vašeho plánu Codex (týdenní limit a zbývající bezplatné resety) v záhlaví ostrůvku. Coucou se ptá Codex CLI (codex app-server), když se pilulka ukáže; nic se neinstaluje. Codex musí být přihlášený přes ChatGPT."
   },
   "Speech recognition isn't available.": {
    "zh-Hans": "语音识别不可用。",
@@ -2287,7 +2494,8 @@
    "bn": "স্পিচ রিকগনিশন উপলব্ধ নয়।",
    "pt-BR": "O reconhecimento de voz não está disponível.",
    "ru": "Распознавание речи недоступно.",
-   "id": "Pengenalan ucapan tidak tersedia."
+   "id": "Pengenalan ucapan tidak tersedia.",
+   "cs": "Rozpoznávání řeči není k dispozici."
   },
   "Speech recognition isn't set up for this language.": {
    "zh-Hans": "语音识别未针对此语言进行设置。",
@@ -2298,7 +2506,8 @@
    "bn": "এই ভাষার জন্য স্পিচ রিকগনিশন সেট আপ করা নেই।",
    "pt-BR": "O reconhecimento de voz não está configurado para este idioma.",
    "ru": "Распознавание речи не настроено для этого языка.",
-   "id": "Pengenalan ucapan belum disiapkan untuk bahasa ini."
+   "id": "Pengenalan ucapan belum disiapkan untuk bahasa ini.",
+   "cs": "Rozpoznávání řeči není nastaveno pro tento jazyk."
   },
   "Start a new Antigravity conversation to pick the hooks up.": {
    "zh-Hans": "开启新的 Antigravity 对话即可启用 hooks。",
@@ -2309,7 +2518,8 @@
    "bn": "hooks চালু করতে Antigravity-তে নতুন কথোপকথন শুরু করুন।",
    "pt-BR": "Inicie uma nova conversa no Antigravity para carregar os hooks.",
    "ru": "Начните новый разговор в Antigravity, чтобы хуки заработали.",
-   "id": "Mulai percakapan Antigravity baru agar hooks dimuat."
+   "id": "Mulai percakapan Antigravity baru agar hooks dimuat.",
+   "cs": "Spusťte novou konverzaci Antigravity, aby se hooky načetly."
   },
   "Start a new Copilot CLI session to pick the hooks up.": {
    "zh-Hans": "开启新的 Copilot CLI 会话即可启用 hooks。",
@@ -2320,7 +2530,8 @@
    "bn": "hooks চালু করতে Copilot CLI-এর নতুন সেশন শুরু করুন।",
    "pt-BR": "Inicie uma nova sessão do Copilot CLI para carregar os hooks.",
    "ru": "Начните новую сессию Copilot CLI, чтобы хуки заработали.",
-   "id": "Mulai sesi Copilot CLI baru agar hooks dimuat."
+   "id": "Mulai sesi Copilot CLI baru agar hooks dimuat.",
+   "cs": "Spusťte novou relaci Copilot CLI, aby se hooky načetly."
   },
   "Start a new Gemini CLI session to pick the hooks up.": {
    "zh-Hans": "开启新的 Gemini CLI 会话即可启用 hooks。",
@@ -2331,7 +2542,8 @@
    "bn": "hooks চালু করতে Gemini CLI-এর নতুন সেশন শুরু করুন।",
    "pt-BR": "Inicie uma nova sessão do Gemini CLI para carregar os hooks.",
    "ru": "Начните новую сессию Gemini CLI, чтобы хуки заработали.",
-   "id": "Mulai sesi Gemini CLI baru agar hooks dimuat."
+   "id": "Mulai sesi Gemini CLI baru agar hooks dimuat.",
+   "cs": "Spusťte novou relaci Gemini CLI, aby se hooky načetly."
   },
   "Start a new Muse Code session to pick the hooks up.": {
    "zh-Hans": "开启新的 Muse Code 会话即可启用 hooks。",
@@ -2342,7 +2554,8 @@
    "bn": "hooks চালু করতে Muse Code-এর নতুন সেশন শুরু করুন।",
    "pt-BR": "Inicie uma nova sessão do Muse Code para carregar os hooks.",
    "ru": "Начните новую сессию Muse Code, чтобы хуки заработали.",
-   "id": "Mulai sesi Muse Code baru agar hooks dimuat."
+   "id": "Mulai sesi Muse Code baru agar hooks dimuat.",
+   "cs": "Spusťte novou relaci Muse Code, aby se hooky načetly."
   },
   "Start a new chat": {
    "zh-Hans": "开始新聊天",
@@ -2353,7 +2566,8 @@
    "bn": "নতুন চ্যাট শুরু করুন",
    "pt-BR": "Começar um novo chat",
    "ru": "Начать новый чат",
-   "id": "Mulai obrolan baru"
+   "id": "Mulai obrolan baru",
+   "cs": "Zahájit nový chat"
   },
   "Sunday": {
    "zh-Hans": "星期日",
@@ -2364,7 +2578,8 @@
    "bn": "রবিবার",
    "pt-BR": "Domingo",
    "ru": "Воскресенье",
-   "id": "Minggu"
+   "id": "Minggu",
+   "cs": "Neděle"
   },
   "Sunglasses": {
    "zh-Hans": "墨镜",
@@ -2375,7 +2590,8 @@
    "bn": "সানগ্লাস",
    "pt-BR": "Óculos de sol",
    "ru": "Солнечные очки",
-   "id": "Kacamata hitam"
+   "id": "Kacamata hitam",
+   "cs": "Sluneční brýle"
   },
   "Switch provider or model": {
    "zh-Hans": "切换服务商或模型",
@@ -2386,7 +2602,8 @@
    "bn": "প্রদানকারী বা মডেল বদলান",
    "pt-BR": "Trocar de provedor ou modelo",
    "ru": "Сменить провайдера или модель",
-   "id": "Ganti penyedia atau model"
+   "id": "Ganti penyedia atau model",
+   "cs": "Přepnout poskytovatele nebo model"
   },
   "That key can't be used in a shortcut.": {
    "zh-Hans": "这个键不能用于快捷键。",
@@ -2397,7 +2614,8 @@
    "bn": "সেই কী শর্টকাটে ব্যবহার করা যায় না।",
    "pt-BR": "Essa tecla não pode ser usada num atalho.",
    "ru": "Эту клавишу нельзя использовать в сочетании.",
-   "id": "Tombol itu tidak dapat dipakai dalam pintasan."
+   "id": "Tombol itu tidak dapat dipakai dalam pintasan.",
+   "cs": "Tuto klávesu nelze použít ve zkratce."
   },
   "The address must start with http:// or https://.": {
    "zh-Hans": "地址必须以 http:// 或 https:// 开头。",
@@ -2408,7 +2626,8 @@
    "bn": "ঠিকানাটি http:// বা https:// দিয়ে শুরু হতে হবে।",
    "pt-BR": "O endereço precisa começar com http:// ou https://.",
    "ru": "Адрес должен начинаться с http:// или https://.",
-   "id": "Alamat harus diawali http:// atau https://."
+   "id": "Alamat harus diawali http:// atau https://.",
+   "cs": "Adresa musí začínat http:// nebo https://."
   },
   "The file is removed.": {
    "zh-Hans": "该文件将被删除。",
@@ -2419,7 +2638,8 @@
    "bn": "ফাইলটি সরানো হবে।",
    "pt-BR": "O arquivo é removido.",
    "ru": "Файл удаляется.",
-   "id": "File dihapus."
+   "id": "File dihapus.",
+   "cs": "Soubor je odebrán."
   },
   "The file is too large to email.": {
    "zh-Hans": "文件太大，无法通过邮件发送。",
@@ -2430,7 +2650,8 @@
    "bn": "ফাইলটি ইমেল করার জন্য বেশি বড়।",
    "pt-BR": "O arquivo é grande demais para enviar por e-mail.",
    "ru": "Файл слишком большой для отправки по почте.",
-   "id": "File terlalu besar untuk dikirim melalui email."
+   "id": "File terlalu besar untuk dikirim melalui email.",
+   "cs": "Soubor je příliš velký na odeslání e-mailem."
   },
   "The image could not be read.": {
    "zh-Hans": "无法读取图片。",
@@ -2441,7 +2662,8 @@
    "bn": "ছবিটি পড়া যায়নি।",
    "pt-BR": "Não foi possível ler a imagem.",
    "ru": "Не удалось прочитать изображение.",
-   "id": "Gambar tidak dapat dibaca."
+   "id": "Gambar tidak dapat dibaca.",
+   "cs": "Obrázek nešlo přečíst."
   },
   "The image is too large.": {
    "zh-Hans": "图片过大。",
@@ -2452,7 +2674,8 @@
    "bn": "ছবিটি অনেক বড়।",
    "pt-BR": "A imagem é grande demais.",
    "ru": "Изображение слишком большое.",
-   "id": "Gambar terlalu besar."
+   "id": "Gambar terlalu besar.",
+   "cs": "Obrázek je příliš velký."
   },
   "The microphone isn't available.": {
    "zh-Hans": "麦克风不可用。",
@@ -2463,7 +2686,8 @@
    "bn": "মাইক্রোফোন উপলব্ধ নয়।",
    "pt-BR": "O microfone não está disponível.",
    "ru": "Микрофон недоступен.",
-   "id": "Mikrofon tidak tersedia."
+   "id": "Mikrofon tidak tersedia.",
+   "cs": "Mikrofon není k dispozici."
   },
   "The preview is out of date. Nothing was written — review the new diff.": {
    "zh-Hans": "预览已过期。未写入任何内容 — 请查看新的差异。",
@@ -2474,7 +2698,8 @@
    "bn": "প্রিভিউ পুরোনো হয়ে গেছে। কিছু লেখা হয়নি — নতুন ডিফ দেখুন।",
    "pt-BR": "A prévia está desatualizada. Nada foi gravado — revise o novo diff.",
    "ru": "Предпросмотр устарел. Ничего не записано — проверьте новый diff.",
-   "id": "Pratinjau sudah usang. Tidak ada yang ditulis — tinjau diff yang baru."
+   "id": "Pratinjau sudah usang. Tidak ada yang ditulis — tinjau diff yang baru.",
+   "cs": "Náhled je zastaralý. Nic se nezapsalo — zkontrolujte nový diff."
   },
   "The relay isn't installed yet.": {
    "zh-Hans": "中继尚未安装。",
@@ -2485,7 +2710,8 @@
    "bn": "রিলে এখনো ইনস্টল হয়নি।",
    "pt-BR": "O relay ainda não está instalado.",
    "ru": "Ретранслятор ещё не установлен.",
-   "id": "Relay belum terpasang."
+   "id": "Relay belum terpasang.",
+   "cs": "Relay zatím není nainstalován."
   },
   "The relay isn't installed yet. Restart Coucou.": {
    "zh-Hans": "中继尚未安装。请重启 Coucou。",
@@ -2496,7 +2722,8 @@
    "bn": "রিলে এখনো ইনস্টল হয়নি। Coucou আবার চালু করুন।",
    "pt-BR": "O relay ainda não está instalado. Reinicie o Coucou.",
    "ru": "Ретранслятор ещё не установлен. Перезапустите Coucou.",
-   "id": "Relay belum terpasang. Mulai ulang Coucou."
+   "id": "Relay belum terpasang. Mulai ulang Coucou.",
+   "cs": "Relay zatím není nainstalován. Restartujte Coucou."
   },
   "The server refused the key. Check it, then connect again.": {
    "zh-Hans": "服务器拒绝了该密钥。请检查后重新连接。",
@@ -2507,7 +2734,8 @@
    "bn": "সার্ভার কী প্রত্যাখ্যান করেছে। যাচাই করে আবার সংযুক্ত করুন।",
    "pt-BR": "O servidor recusou a chave. Verifique-a e conecte de novo.",
    "ru": "Сервер отклонил ключ. Проверьте его и подключитесь снова.",
-   "id": "Server menolak kunci. Periksa, lalu hubungkan lagi."
+   "id": "Server menolak kunci. Periksa, lalu hubungkan lagi.",
+   "cs": "Server klíč odmítl. Zkontrolujte ho a připojte se znovu."
   },
   "The server's answer is too large.": {
    "zh-Hans": "服务器的回复过大。",
@@ -2518,7 +2746,8 @@
    "bn": "সার্ভারের উত্তর অনেক বড়।",
    "pt-BR": "A resposta do servidor é grande demais.",
    "ru": "Ответ сервера слишком большой.",
-   "id": "Jawaban server terlalu besar."
+   "id": "Jawaban server terlalu besar.",
+   "cs": "Odpověď serveru je příliš velká."
   },
   "These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.": {
    "zh-Hans": "这些快捷键已在你的桌面注册。桌面可能会请你确认，或选择其他按键；如果它告知所用的按键，会显示在每个快捷键旁边。",
@@ -2529,7 +2758,8 @@
    "bn": "এই শর্টকাটগুলো আপনার ডেস্কটপে নিবন্ধিত। এটি আপনাকে সেগুলো নিশ্চিত করতে বা অন্য কী বেছে নিতে বলতে পারে; কোন কী ব্যবহার করছে তা জানালে সেগুলো প্রতিটি শর্টকাটের পাশে দেখা যায়।",
    "pt-BR": "Estes atalhos estão registrados no seu desktop. Ele pode pedir que você os confirme ou escolha outras teclas; quando informa quais teclas usa, elas aparecem ao lado de cada atalho.",
    "ru": "Эти сочетания зарегистрированы в вашем рабочем столе. Он может попросить подтвердить их или выбрать другие клавиши; если он сообщает, какие клавиши использует, они показаны рядом с каждым сочетанием.",
-   "id": "Pintasan ini terdaftar di desktop Anda. Desktop mungkin meminta Anda mengonfirmasinya atau memilih tombol lain; jika desktop menyebutkan tombol yang dipakainya, tombol itu tampil di samping setiap pintasan."
+   "id": "Pintasan ini terdaftar di desktop Anda. Desktop mungkin meminta Anda mengonfirmasinya atau memilih tombol lain; jika desktop menyebutkan tombol yang dipakainya, tombol itu tampil di samping setiap pintasan.",
+   "cs": "Tyto zkratky se registrují ve vašem desktopovém prostředí. Může vás požádat o jejich potvrzení nebo o výběr jiných kláves; když oznámí, které klávesy používá, zobrazí se vedle každé zkratky."
   },
   "This address is another machine, over plain http: what you ask travels unencrypted.": {
    "zh-Hans": "这个地址是另一台机器，且使用明文 http：你的提问会以未加密的形式传输。",
@@ -2540,7 +2770,8 @@
    "bn": "এই ঠিকানাটি অন্য মেশিনের, সাধারণ http-তে: আপনি যা জিজ্ঞেস করেন তা এনক্রিপশন ছাড়া যায়।",
    "pt-BR": "Este endereço é outra máquina, por http simples: o que você pergunta trafega sem criptografia.",
    "ru": "Этот адрес — другой компьютер, по обычному http: ваши запросы передаются без шифрования.",
-   "id": "Alamat ini adalah mesin lain, melalui http biasa: pertanyaan Anda dikirim tanpa enkripsi."
+   "id": "Alamat ini adalah mesin lain, melalui http biasa: pertanyaan Anda dikirim tanpa enkripsi.",
+   "cs": "Tato adresa vede na jiný počítač přes prosté http: vaše dotazy cestují nešifrovaně."
   },
   "This address is another machine: what you ask is sent to it.": {
    "zh-Hans": "这个地址是另一台机器：你的提问会发送给它。",
@@ -2551,7 +2782,8 @@
    "bn": "এই ঠিকানাটি অন্য একটি মেশিনের: আপনি যা জিজ্ঞেস করেন তা সেখানে পাঠানো হয়।",
    "pt-BR": "Este endereço é outra máquina: o que você pergunta é enviado para ela.",
    "ru": "Этот адрес — другой компьютер: ваши запросы отправляются туда.",
-   "id": "Alamat ini adalah mesin lain: pertanyaan Anda dikirim ke sana."
+   "id": "Alamat ini adalah mesin lain: pertanyaan Anda dikirim ke sana.",
+   "cs": "Tato adresa je jiný počítač: vaše dotazy se posílají na něj."
   },
   "This agent takes a plugin, not hook entries.": {
    "zh-Hans": "此代理使用插件，而不是 hook 条目。",
@@ -2562,7 +2794,8 @@
    "bn": "এই এজেন্ট প্লাগইন নেয়, hook এন্ট্রি নয়।",
    "pt-BR": "Este agente usa um plugin, não entradas de hooks.",
    "ru": "Этот агент использует плагин, а не записи хуков.",
-   "id": "Agen ini memakai plugin, bukan entri hook."
+   "id": "Agen ini memakai plugin, bukan entri hook.",
+   "cs": "Tento agent používá plugin, ne záznamy hooků."
   },
   "This is exactly what changes for {name}. Nothing else is touched.": {
    "zh-Hans": "这正是 {name} 将发生的改动。其他内容不会被触碰。",
@@ -2573,7 +2806,8 @@
    "bn": "{name}-এর জন্য ঠিক এটাই বদলাবে। আর কিছুতে হাত দেওয়া হয় না।",
    "pt-BR": "Isto é exatamente o que muda para {name}. Nada mais é alterado.",
    "ru": "Вот что именно изменится для {name}. Больше ничего не затрагивается.",
-   "id": "Inilah persisnya yang berubah untuk {name}. Tidak ada yang lain disentuh."
+   "id": "Inilah persisnya yang berubah untuk {name}. Tidak ada yang lain disentuh.",
+   "cs": "Přesně toto se změní pro {name}. Na nic jiného se nesahne."
   },
   "This is exactly what will change in your settings.json. Your own hooks are left untouched.": {
    "zh-Hans": "这正是你的 settings.json 将发生的改动。你自己的 hooks 不会被触碰。",
@@ -2584,7 +2818,8 @@
    "bn": "আপনার settings.json-এ ঠিক এটাই বদলাবে। আপনার নিজের hooks-এ হাত দেওয়া হয় না।",
    "pt-BR": "Isto é exatamente o que vai mudar no seu settings.json. Seus próprios hooks não são alterados.",
    "ru": "Вот что именно изменится в вашем settings.json. Ваши собственные хуки не затрагиваются.",
-   "id": "Inilah persisnya yang akan berubah di settings.json Anda. Hooks milik Anda tidak disentuh."
+   "id": "Inilah persisnya yang akan berubah di settings.json Anda. Hooks milik Anda tidak disentuh.",
+   "cs": "Přesně toto se změní ve vašem settings.json. Vaše vlastní hooky zůstanou nedotčené."
   },
   "This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you.": {
    "zh-Hans": "这正是将发生的改动：只涉及状态栏。如果你已有状态栏，它会照常工作，由 Coucou 的中继替你运行。",
@@ -2595,7 +2830,8 @@
    "bn": "ঠিক এটাই বদলাবে: শুধু স্ট্যাটাস লাইন। আপনার আগে থেকে একটি থাকলে সেটি চলতেই থাকবে, Coucou-র রিলে আপনার হয়ে সেটি চালায়।",
    "pt-BR": "Isto é exatamente o que vai mudar: apenas a linha de status. Se você já tem uma, ela continua funcionando: o relay do Coucou a executa para você.",
    "ru": "Вот что именно изменится: только строка состояния. Если она у вас уже есть, она продолжит работать — её запускает ретранслятор Coucou.",
-   "id": "Inilah persisnya yang akan berubah: hanya baris status. Jika Anda sudah punya, baris itu tetap berjalan, relay Coucou menjalankannya untuk Anda."
+   "id": "Inilah persisnya yang akan berubah: hanya baris status. Jika Anda sudah punya, baris itu tetap berjalan, relay Coucou menjalankannya untuk Anda.",
+   "cs": "Přesně toto se změní: jen stavový řádek. Pokud už jeden máte, funguje dál — relay Coucou ho spouští za vás."
   },
   "This puts your previous status line back, or removes the entry if there was none.": {
    "zh-Hans": "这会恢复你之前的状态栏；如果之前没有，则移除该条目。",
@@ -2606,7 +2842,8 @@
    "bn": "এটি আপনার আগের স্ট্যাটাস লাইন ফিরিয়ে আনে, অথবা আগে না থাকলে এন্ট্রিটি সরিয়ে দেয়।",
    "pt-BR": "Isto restaura sua linha de status anterior, ou remove a entrada se não havia nenhuma.",
    "ru": "Возвращается ваша прежняя строка состояния, а если её не было — запись удаляется.",
-   "id": "Ini mengembalikan baris status Anda sebelumnya, atau menghapus entri jika sebelumnya tidak ada."
+   "id": "Ini mengembalikan baris status Anda sebelumnya, atau menghapus entri jika sebelumnya tidak ada.",
+   "cs": "Toto vrátí váš předchozí stavový řádek, nebo záznam odebere, pokud žádný nebyl."
   },
   "This removes Coucou's entries only. Everything else stays.": {
    "zh-Hans": "这只会移除 Coucou 的条目，其余内容保持不变。",
@@ -2617,7 +2854,8 @@
    "bn": "এটি শুধু Coucou-র এন্ট্রি সরায়। বাকি সব থেকে যায়।",
    "pt-BR": "Isto remove apenas as entradas do Coucou. O resto continua.",
    "ru": "Удаляются только записи Coucou. Всё остальное остаётся.",
-   "id": "Ini hanya menghapus entri Coucou. Yang lain tetap ada."
+   "id": "Ini hanya menghapus entri Coucou. Yang lain tetap ada.",
+   "cs": "Toto odstraní jen záznamy Coucou. Všechno ostatní zůstane."
   },
   "This removes Coucou's entries only. Your own hooks are left untouched.": {
    "zh-Hans": "这只会移除 Coucou 的条目。你自己的 hooks 不会被触碰。",
@@ -2628,7 +2866,8 @@
    "bn": "এটি শুধু Coucou-র এন্ট্রি সরায়। আপনার নিজের hooks-এ হাত দেওয়া হয় না।",
    "pt-BR": "Isto remove apenas as entradas do Coucou. Seus próprios hooks não são alterados.",
    "ru": "Удаляются только записи Coucou. Ваши собственные хуки не затрагиваются.",
-   "id": "Ini hanya menghapus entri Coucou. Hooks milik Anda tidak disentuh."
+   "id": "Ini hanya menghapus entri Coucou. Hooks milik Anda tidak disentuh.",
+   "cs": "Toto odstraní jen záznamy Coucou. Vaše vlastní hooky zůstanou nedotčené."
   },
   "Thursday": {
    "zh-Hans": "星期四",
@@ -2639,7 +2878,8 @@
    "bn": "বৃহস্পতিবার",
    "pt-BR": "Quinta-feira",
    "ru": "Четверг",
-   "id": "Kamis"
+   "id": "Kamis",
+   "cs": "Čtvrtek"
   },
   "Token": {
    "zh-Hans": "令牌",
@@ -2650,7 +2890,8 @@
    "bn": "টোকেন",
    "pt-BR": "Token",
    "ru": "Токен",
-   "id": "Token"
+   "id": "Token",
+   "cs": "Token"
   },
   "Token lacks access": {
    "zh-Hans": "令牌没有访问权限",
@@ -2661,7 +2902,8 @@
    "bn": "টোকেনের অ্যাক্সেস নেই",
    "pt-BR": "O token não tem acesso",
    "ru": "У токена нет доступа",
-   "id": "Token tidak punya akses"
+   "id": "Token tidak punya akses",
+   "cs": "Token nemá přístup"
   },
   "Token lacks the needed scope": {
    "zh-Hans": "令牌缺少所需的权限范围",
@@ -2672,7 +2914,8 @@
    "bn": "টোকেনে প্রয়োজনীয় স্কোপ নেই",
    "pt-BR": "Falta ao token o escopo necessário",
    "ru": "У токена нет нужной области доступа",
-   "id": "Token tidak memiliki cakupan yang diperlukan"
+   "id": "Token tidak memiliki cakupan yang diperlukan",
+   "cs": "Token nemá potřebný rozsah"
   },
   "Total stars": {
    "zh-Hans": "星标总数",
@@ -2683,7 +2926,8 @@
    "bn": "মোট স্টার",
    "pt-BR": "Total de estrelas",
    "ru": "Всего звёзд",
-   "id": "Total bintang"
+   "id": "Total bintang",
+   "cs": "Celkem hvězdiček"
   },
   "Tuesday": {
    "zh-Hans": "星期二",
@@ -2694,7 +2938,8 @@
    "bn": "মঙ্গলবার",
    "pt-BR": "Terça-feira",
    "ru": "Вторник",
-   "id": "Selasa"
+   "id": "Selasa",
+   "cs": "Úterý"
   },
   "Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session.": {
    "zh-Hans": "先用 `hermes plugins enable coucou` 启用一次，然后开启新的 Hermes 会话。",
@@ -2705,7 +2950,8 @@
    "bn": "একবার `hermes plugins enable coucou` দিয়ে চালু করুন, তারপর Hermes-এর নতুন সেশন শুরু করুন।",
    "pt-BR": "Ative uma vez com `hermes plugins enable coucou` e depois inicie uma nova sessão do Hermes.",
    "ru": "Включите его один раз командой `hermes plugins enable coucou`, затем начните новую сессию Hermes.",
-   "id": "Aktifkan sekali dengan `hermes plugins enable coucou`, lalu mulai sesi Hermes baru."
+   "id": "Aktifkan sekali dengan `hermes plugins enable coucou`, lalu mulai sesi Hermes baru.",
+   "cs": "Zapněte ho jednou pomocí `hermes plugins enable coucou` a pak spusťte novou relaci Hermes."
   },
   "Types “{char}”": {
    "zh-Hans": "输入“{char}”",
@@ -2716,7 +2962,8 @@
    "bn": "“{char}” টাইপ করে",
    "pt-BR": "Digita “{char}”",
    "ru": "Вводит «{char}»",
-   "id": "Mengetik “{char}”"
+   "id": "Mengetik “{char}”",
+   "cs": "Napíše „{char}“"
   },
   "Unexpected API response.": {
    "zh-Hans": "API 返回了意外的响应。",
@@ -2727,7 +2974,8 @@
    "bn": "API থেকে অপ্রত্যাশিত উত্তর।",
    "pt-BR": "Resposta inesperada da API.",
    "ru": "Неожиданный ответ API.",
-   "id": "Respons API tak terduga."
+   "id": "Respons API tak terduga.",
+   "cs": "Neočekávaná odpověď API."
   },
   "Uninstall hooks…": {
    "zh-Hans": "卸载 hooks…",
@@ -2738,7 +2986,8 @@
    "bn": "hooks আনইনস্টল করুন…",
    "pt-BR": "Desinstalar hooks…",
    "ru": "Удалить хуки…",
-   "id": "Copot hooks…"
+   "id": "Copot hooks…",
+   "cs": "Odinstalovat hooky…"
   },
   "Uninstall relay…": {
    "zh-Hans": "卸载中继…",
@@ -2749,7 +2998,8 @@
    "bn": "রিলে আনইনস্টল করুন…",
    "pt-BR": "Desinstalar relay…",
    "ru": "Удалить ретранслятор…",
-   "id": "Copot relay…"
+   "id": "Copot relay…",
+   "cs": "Odinstalovat relay…"
   },
   "Uninstall…": {
    "zh-Hans": "卸载…",
@@ -2760,7 +3010,8 @@
    "bn": "আনইনস্টল করুন…",
    "pt-BR": "Desinstalar…",
    "ru": "Удалить…",
-   "id": "Copot…"
+   "id": "Copot…",
+   "cs": "Odinstalovat…"
   },
   "Unknown agent \"{id}\".": {
    "zh-Hans": "未知代理“{id}”。",
@@ -2771,7 +3022,8 @@
    "bn": "অজানা এজেন্ট “{id}”।",
    "pt-BR": "Agente desconhecido “{id}”.",
    "ru": "Неизвестный агент «{id}».",
-   "id": "Agen tidak dikenal “{id}”."
+   "id": "Agen tidak dikenal “{id}”.",
+   "cs": "Neznámý agent \"{id}\"."
   },
   "Untitled": {
    "zh-Hans": "无标题",
@@ -2782,7 +3034,8 @@
    "bn": "শিরোনামহীন",
    "pt-BR": "Sem título",
    "ru": "Без названия",
-   "id": "Tanpa judul"
+   "id": "Tanpa judul",
+   "cs": "Bez názvu"
   },
   "Use a secret key (sk_live_… not pk_live_…)": {
    "zh-Hans": "请使用私密密钥（sk_live_…，而不是 pk_live_…）",
@@ -2793,7 +3046,8 @@
    "bn": "সিক্রেট কী ব্যবহার করুন (sk_live_…, pk_live_… নয়)",
    "pt-BR": "Use uma chave secreta (sk_live_…, não pk_live_…)",
    "ru": "Используйте секретный ключ (sk_live_…, а не pk_live_…)",
-   "id": "Gunakan kunci rahasia (sk_live_…, bukan pk_live_…)"
+   "id": "Gunakan kunci rahasia (sk_live_…, bukan pk_live_…)",
+   "cs": "Použijte tajný klíč (sk_live_…, nikoliv pk_live_…)"
   },
   "Use in chat": {
    "zh-Hans": "在聊天中使用",
@@ -2804,7 +3058,8 @@
    "bn": "চ্যাটে ব্যবহার করুন",
    "pt-BR": "Usar no chat",
    "ru": "Использовать в чате",
-   "id": "Pakai di obrolan"
+   "id": "Pakai di obrolan",
+   "cs": "Použít v chatu"
   },
   "Used twice": {
    "zh-Hans": "重复使用",
@@ -2815,7 +3070,8 @@
    "bn": "দুবার ব্যবহৃত",
    "pt-BR": "Usado duas vezes",
    "ru": "Используется дважды",
-   "id": "Dipakai dua kali"
+   "id": "Dipakai dua kali",
+   "cs": "Použito dvakrát"
   },
   "Wardrobe…": {
    "zh-Hans": "衣橱…",
@@ -2826,7 +3082,8 @@
    "bn": "পোশাক ঘর…",
    "pt-BR": "Guarda-roupa…",
    "ru": "Гардероб…",
-   "id": "Lemari…"
+   "id": "Lemari…",
+   "cs": "Šatník…"
   },
   "Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer.": {
    "zh-Hans": "警告：密钥将以未加密的方式（http://）发送到另一台机器。请使用 https://，或本机上的服务器。",
@@ -2837,7 +3094,8 @@
    "bn": "সতর্কতা: কী এনক্রিপশন ছাড়া (http://) অন্য মেশিনে পাঠানো হবে। https:// অথবা এই কম্পিউটারের সার্ভার ব্যবহার করুন।",
    "pt-BR": "Atenção: a chave seria enviada sem criptografia (http://) para outra máquina. Use https:// ou um servidor neste computador.",
    "ru": "Внимание: ключ будет отправлен без шифрования (http://) на другой компьютер. Используйте https:// или сервер на этом компьютере.",
-   "id": "Peringatan: kunci akan dikirim tanpa enkripsi (http://) ke mesin lain. Gunakan https://, atau server di komputer ini."
+   "id": "Peringatan: kunci akan dikirim tanpa enkripsi (http://) ke mesin lain. Gunakan https://, atau server di komputer ini.",
+   "cs": "Varování: klíč by se odeslal nešifrovaně (http://) na jiný počítač. Použijte https:// nebo server na tomto počítači."
   },
   "Wednesday": {
    "zh-Hans": "星期三",
@@ -2848,7 +3106,8 @@
    "bn": "বুধবার",
    "pt-BR": "Quarta-feira",
    "ru": "Среда",
-   "id": "Rabu"
+   "id": "Rabu",
+   "cs": "Středa"
   },
   "Where you code": {
    "zh-Hans": "编程环境",
@@ -2859,7 +3118,8 @@
    "bn": "যেখানে আপনি কোড করেন",
    "pt-BR": "Onde você programa",
    "ru": "Где вы пишете код",
-   "id": "Tempat Anda membuat kode"
+   "id": "Tempat Anda membuat kode",
+   "cs": "Kde programujete"
   },
   "Witch hat": {
    "zh-Hans": "女巫帽",
@@ -2870,7 +3130,8 @@
    "bn": "ডাইনির টুপি",
    "pt-BR": "Chapéu de bruxa",
    "ru": "Шляпа ведьмы",
-   "id": "Topi penyihir"
+   "id": "Topi penyihir",
+   "cs": "Čarodějnický klobouk"
   },
   "Work from any app. Click a shortcut to change it, then press the new keys — Esc cancels, Backspace removes it.": {
    "zh-Hans": "在任何应用中都可使用。点击某个快捷键即可修改，然后按下新的按键 — Esc 取消，Backspace 删除。",
@@ -2881,7 +3142,8 @@
    "bn": "যেকোনো অ্যাপ থেকে কাজ করে। বদলাতে একটি শর্টকাটে ক্লিক করুন, তারপর নতুন কী চাপুন — Esc বাতিল করে, Backspace সেটি সরায়।",
    "pt-BR": "Funcionam em qualquer app. Clique num atalho para alterá-lo e pressione as novas teclas — Esc cancela, Backspace remove.",
    "ru": "Работают из любого приложения. Нажмите на сочетание, чтобы изменить его, затем нажмите новые клавиши — Esc отменяет, Backspace удаляет.",
-   "id": "Berfungsi dari aplikasi apa pun. Klik pintasan untuk mengubahnya, lalu tekan tombol baru — Esc membatalkan, Backspace menghapusnya."
+   "id": "Berfungsi dari aplikasi apa pun. Klik pintasan untuk mengubahnya, lalu tekan tombol baru — Esc membatalkan, Backspace menghapusnya.",
+   "cs": "Funguje z libovolné aplikace. Kliknutím na zkratku ji změníte, pak stiskněte nové klávesy — Esc zruší, Backspace ji odebere."
   },
   "Workflow": {
    "zh-Hans": "工作流",
@@ -2892,7 +3154,8 @@
    "bn": "ওয়ার্কফ্লো",
    "pt-BR": "Fluxo de trabalho",
    "ru": "Сценарий",
-   "id": "Alur kerja"
+   "id": "Alur kerja",
+   "cs": "Workflow"
   },
   "Write to {path} failed: {error}": {
    "zh-Hans": "写入 {path} 失败：{error}",
@@ -2903,7 +3166,8 @@
    "bn": "{path}-এ লেখা ব্যর্থ: {error}",
    "pt-BR": "A gravação em {path} falhou: {error}",
    "ru": "Не удалось записать {path}: {error}",
-   "id": "Gagal menulis ke {path}: {error}"
+   "id": "Gagal menulis ke {path}: {error}",
+   "cs": "Zápis do {path} selhal: {error}"
   },
   "Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:": {
    "zh-Hans": "你的 Wayland 桌面不允许应用监听自身窗口之外的按键。请改为在系统的键盘设置中添加快捷键，使用以下命令：",
@@ -2914,7 +3178,8 @@
    "bn": "আপনার Wayland ডেস্কটপ অ্যাপকে নিজের উইন্ডোর বাইরে কী শুনতে দেয় না। এর বদলে এই কমান্ডগুলো দিয়ে সিস্টেমের কিবোর্ড সেটিংসে শর্টকাট যোগ করুন:",
    "pt-BR": "Seu desktop Wayland não deixa os apps ouvirem teclas fora das próprias janelas. Em vez disso, adicione os atalhos nas configurações de teclado do sistema, com estes comandos:",
    "ru": "Ваш рабочий стол Wayland не позволяет приложениям слушать клавиши вне своих окон. Добавьте сочетания в настройках клавиатуры системы с такими командами:",
-   "id": "Desktop Wayland Anda tidak mengizinkan aplikasi mendengarkan tombol di luar jendelanya sendiri. Tambahkan pintasan di pengaturan keyboard sistem Anda, dengan perintah berikut:"
+   "id": "Desktop Wayland Anda tidak mengizinkan aplikasi mendengarkan tombol di luar jendelanya sendiri. Tambahkan pintasan di pengaturan keyboard sistem Anda, dengan perintah berikut:",
+   "cs": "Vaše prostředí Wayland nedovoluje aplikacím zachytávat klávesy mimo jejich vlastní okna. Zkratky místo toho přidejte v nastavení klávesnice svého systému pomocí těchto příkazů:"
   },
   "all green": {
    "zh-Hans": "全部通过",
@@ -2925,7 +3190,8 @@
    "bn": "সব সবুজ",
    "pt-BR": "tudo verde",
    "ru": "всё зелёное",
-   "id": "semua hijau"
+   "id": "semua hijau",
+   "cs": "všechno zelené"
   },
   "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.": {
    "zh-Hans": "coucou-hook.exe 尚未就位。请重启 Coucou；如果仍然失败，请用 `cargo build -p coucou-hook` 构建它。",
@@ -2936,7 +3202,8 @@
    "bn": "coucou-hook.exe এখনো জায়গামতো নেই। Coucou আবার চালু করুন; তবুও না হলে `cargo build -p coucou-hook` দিয়ে এটি বানান।",
    "pt-BR": "O coucou-hook.exe ainda não está no lugar. Reinicie o Coucou; se continuar falhando, compile-o com `cargo build -p coucou-hook`.",
    "ru": "coucou-hook.exe ещё не на месте. Перезапустите Coucou; если не поможет, соберите его командой `cargo build -p coucou-hook`.",
-   "id": "coucou-hook.exe belum ada di tempatnya. Mulai ulang Coucou; jika masih gagal, build dengan `cargo build -p coucou-hook`."
+   "id": "coucou-hook.exe belum ada di tempatnya. Mulai ulang Coucou; jika masih gagal, build dengan `cargo build -p coucou-hook`.",
+   "cs": "coucou-hook.exe zatím není na místě. Restartujte Coucou; pokud to dál selhává, sestavte ho pomocí `cargo build -p coucou-hook`."
   },
   "failing": {
    "zh-Hans": "失败",
@@ -2947,7 +3214,8 @@
    "bn": "ব্যর্থ",
    "pt-BR": "falhando",
    "ru": "с ошибками",
-   "id": "gagal"
+   "id": "gagal",
+   "cs": "selhává"
   },
   "finished": {
    "zh-Hans": "已完成",
@@ -2958,7 +3226,8 @@
    "bn": "শেষ হয়েছে",
    "pt-BR": "terminou",
    "ru": "завершил",
-   "id": "selesai"
+   "id": "selesai",
+   "cs": "dokončeno"
   },
   "installed": {
    "zh-Hans": "已安装",
@@ -2969,7 +3238,8 @@
    "bn": "ইনস্টল আছে",
    "pt-BR": "instalado",
    "ru": "установлен",
-   "id": "terpasang"
+   "id": "terpasang",
+   "cs": "nainstalováno"
   },
   "is asking": {
    "zh-Hans": "在提问",
@@ -2980,7 +3250,8 @@
    "bn": "জিজ্ঞেস করছে",
    "pt-BR": "está perguntando",
    "ru": "спрашивает",
-   "id": "bertanya"
+   "id": "bertanya",
+   "cs": "se ptá"
   },
   "is asking ({index} of {total})": {
    "zh-Hans": "在提问（第 {index} 个，共 {total} 个）",
@@ -2991,7 +3262,8 @@
    "bn": "জিজ্ঞেস করছে ({total}টির মধ্যে {index})",
    "pt-BR": "está perguntando ({index} de {total})",
    "ru": "спрашивает ({index} из {total})",
-   "id": "bertanya ({index} dari {total})"
+   "id": "bertanya ({index} dari {total})",
+   "cs": "se ptá ({index} z {total})"
   },
   "is asking a question": {
    "zh-Hans": "在提问",
@@ -3002,7 +3274,8 @@
    "bn": "একটি প্রশ্ন করছে",
    "pt-BR": "está fazendo uma pergunta",
    "ru": "задаёт вопрос",
-   "id": "mengajukan pertanyaan"
+   "id": "mengajukan pertanyaan",
+   "cs": "klade otázku"
   },
   "lines": {
    "zh-Hans": "行",
@@ -3013,7 +3286,8 @@
    "bn": "লাইন",
    "pt-BR": "linhas",
    "ru": "строк",
-   "id": "baris"
+   "id": "baris",
+   "cs": "řádků"
   },
   "no repos": {
    "zh-Hans": "没有仓库",
@@ -3024,7 +3298,8 @@
    "bn": "কোনো রিপোজিটরি নেই",
    "pt-BR": "nenhum repositório",
    "ru": "нет репозиториев",
-   "id": "tidak ada repositori"
+   "id": "tidak ada repositori",
+   "cs": "žádné repozitáře"
   },
   "not installed": {
    "zh-Hans": "未安装",
@@ -3035,7 +3310,8 @@
    "bn": "ইনস্টল নেই",
    "pt-BR": "não instalado",
    "ru": "не установлен",
-   "id": "belum terpasang"
+   "id": "belum terpasang",
+   "cs": "nenainstalováno"
   },
   "passing": {
    "zh-Hans": "通过",
@@ -3046,7 +3322,8 @@
    "bn": "সফল",
    "pt-BR": "passando",
    "ru": "успешно",
-   "id": "lulus"
+   "id": "lulus",
+   "cs": "prochází"
   },
   "running": {
    "zh-Hans": "运行中",
@@ -3057,7 +3334,8 @@
    "bn": "চলছে",
    "pt-BR": "em execução",
    "ru": "выполняется",
-   "id": "berjalan"
+   "id": "berjalan",
+   "cs": "běží"
   },
   "seconds after you leave the island": {
    "zh-Hans": "鼠标离开岛后的秒数",
@@ -3068,7 +3346,8 @@
    "bn": "আইল্যান্ড ছাড়ার পর সেকেন্ড",
    "pt-BR": "segundos depois de sair da ilha",
    "ru": "секунд после ухода с острова",
-   "id": "detik setelah Anda meninggalkan pulau"
+   "id": "detik setelah Anda meninggalkan pulau",
+   "cs": "sekund po opuštění ostrůvku"
   },
   "settings.json: {what} has an unexpected type — Coucou has not touched it.": {
    "zh-Hans": "settings.json：{what} 的类型不符合预期 — Coucou 没有修改它。",
@@ -3079,7 +3358,8 @@
    "bn": "settings.json: {what}-এর ধরন অপ্রত্যাশিত — Coucou এতে হাত দেয়নি।",
    "pt-BR": "settings.json: {what} tem um tipo inesperado — o Coucou não mexeu nele.",
    "ru": "settings.json: у {what} неожиданный тип — Coucou его не трогал.",
-   "id": "settings.json: {what} bertipe tak terduga — Coucou tidak menyentuhnya."
+   "id": "settings.json: {what} bertipe tak terduga — Coucou tidak menyentuhnya.",
+   "cs": "settings.json: {what} má neočekávaný typ — Coucou se ho nedotkl."
   },
   "unknown": {
    "zh-Hans": "未知",
@@ -3090,7 +3370,8 @@
    "bn": "অজানা",
    "pt-BR": "desconhecido",
    "ru": "неизвестно",
-   "id": "tidak diketahui"
+   "id": "tidak diketahui",
+   "cs": "neznámé"
   },
   "{allowed} allowed, {denied} denied": {
    "zh-Hans": "允许 {allowed} 次，拒绝 {denied} 次",
@@ -3101,7 +3382,8 @@
    "bn": "{allowed}টি অনুমোদিত, {denied}টি প্রত্যাখ্যাত",
    "pt-BR": "{allowed} permitidas, {denied} negadas",
    "ru": "разрешено: {allowed}, отклонено: {denied}",
-   "id": "{allowed} diizinkan, {denied} ditolak"
+   "id": "{allowed} diizinkan, {denied} ditolak",
+   "cs": "{allowed} povoleno, {denied} zamítnuto"
   },
   "{count} contributions": {
    "zh-Hans": {
@@ -3143,7 +3425,8 @@
    },
    "id": {
     "other": "{count} kontribusi"
-   }
+   },
+   "cs": "{count} příspěvků"
   },
   "{count} models": {
    "zh-Hans": {
@@ -3185,7 +3468,8 @@
    },
    "id": {
     "other": "{count} model"
-   }
+   },
+   "cs": "{count} modelů"
   },
   "{count} repos": {
    "zh-Hans": {
@@ -3227,7 +3511,8 @@
    },
    "id": {
     "other": "{count} repositori"
-   }
+   },
+   "cs": "{count} repozitářů"
   },
   "{file} isn't UTF-8 text — Coucou won't touch it.": {
    "zh-Hans": "{file} 不是 UTF-8 文本 — Coucou 不会修改它。",
@@ -3238,7 +3523,8 @@
    "bn": "{file} UTF-8 টেক্সট নয় — Coucou এতে হাত দেবে না।",
    "pt-BR": "{file} não é texto UTF-8 — o Coucou não vai mexer nele.",
    "ru": "{file} — не текст в UTF-8, Coucou его не тронет.",
-   "id": "{file} bukan teks UTF-8 — Coucou tidak akan menyentuhnya."
+   "id": "{file} bukan teks UTF-8 — Coucou tidak akan menyentuhnya.",
+   "cs": "{file} není text UTF-8 — Coucou se ho nedotkne."
   },
   "{file} isn't a JSON object — Coucou won't touch it.": {
    "zh-Hans": "{file} 不是 JSON 对象 — Coucou 不会修改它。",
@@ -3249,7 +3535,8 @@
    "bn": "{file} JSON অবজেক্ট নয় — Coucou এতে হাত দেবে না।",
    "pt-BR": "{file} não é um objeto JSON — o Coucou não vai mexer nele.",
    "ru": "{file} — не объект JSON, Coucou его не тронет.",
-   "id": "{file} bukan objek JSON — Coucou tidak akan menyentuhnya."
+   "id": "{file} bukan objek JSON — Coucou tidak akan menyentuhnya.",
+   "cs": "{file} není objekt JSON — Coucou se ho nedotkne."
   },
   "{file} isn't valid JSON ({error}). Fix or move it, then try again — Coucou won't overwrite it.": {
    "zh-Hans": "{file} 不是有效的 JSON（{error}）。请修复或移走它后重试 — Coucou 不会覆盖它。",
@@ -3260,7 +3547,8 @@
    "bn": "{file} বৈধ JSON নয় ({error})। এটি ঠিক করুন বা সরান, তারপর আবার চেষ্টা করুন — Coucou এটি ওভাররাইট করবে না।",
    "pt-BR": "{file} não é um JSON válido ({error}). Corrija ou mova o arquivo e tente de novo — o Coucou não vai sobrescrevê-lo.",
    "ru": "{file} — некорректный JSON ({error}). Исправьте или переместите его и попробуйте снова — Coucou не будет его перезаписывать.",
-   "id": "{file} bukan JSON yang valid ({error}). Perbaiki atau pindahkan, lalu coba lagi — Coucou tidak akan menimpanya."
+   "id": "{file} bukan JSON yang valid ({error}). Perbaiki atau pindahkan, lalu coba lagi — Coucou tidak akan menimpanya.",
+   "cs": "{file} není platný JSON ({error}). Opravte ho nebo přesuňte, pak to zkuste znovu — Coucou ho nepřepíše."
   },
   "{h}h {m}m": {
    "zh-Hans": "{h} 小时 {m} 分钟",
@@ -3271,7 +3559,8 @@
    "bn": "{h} ঘ. {m} মি.",
    "pt-BR": "{h} h {m} min",
    "ru": "{h} ч {m} мин",
-   "id": "{h} j {m} mnt"
+   "id": "{h} j {m} mnt",
+   "cs": "{h} h {m} min"
   },
   "{keys} types “{char}” on your keyboard, so it can't be a shortcut. Pick another key.": {
    "zh-Hans": "{keys} 在你的键盘上会输入“{char}”，所以不能用作快捷键。请换一个键。",
@@ -3282,7 +3571,8 @@
    "bn": "{keys} আপনার কিবোর্ডে “{char}” টাইপ করে, তাই এটি শর্টকাট হতে পারে না। অন্য একটি কী বেছে নিন।",
    "pt-BR": "{keys} digita “{char}” no seu teclado, então não pode ser um atalho. Escolha outra tecla.",
    "ru": "{keys} вводит «{char}» на вашей клавиатуре, поэтому не может быть сочетанием. Выберите другую клавишу.",
-   "id": "{keys} mengetik “{char}” di keyboard Anda, jadi tidak bisa menjadi pintasan. Pilih tombol lain."
+   "id": "{keys} mengetik “{char}” di keyboard Anda, jadi tidak bisa menjadi pintasan. Pilih tombol lain.",
+   "cs": "{keys} na vaší klávesnici napíše „{char}“, takže nemůže být zkratkou. Vyberte jinou klávesu."
   },
   "{model} isn't installed. Pick another model above the chat box.": {
    "zh-Hans": "{model} 未安装。请在聊天框上方选择其他模型。",
@@ -3293,7 +3583,8 @@
    "bn": "{model} ইনস্টল করা নেই। চ্যাট বক্সের উপরে অন্য মডেল বেছে নিন।",
    "pt-BR": "{model} não está instalado. Escolha outro modelo acima da caixa de chat.",
    "ru": "{model} не установлена. Выберите другую модель над полем чата.",
-   "id": "{model} belum terpasang. Pilih model lain di atas kotak obrolan."
+   "id": "{model} belum terpasang. Pilih model lain di atas kotak obrolan.",
+   "cs": "{model} není nainstalovaný. Nad chatovým polem vyberte jiný model."
   },
   "{name} API key missing. Add it in Settings.": {
    "zh-Hans": "缺少 {name} 的 API 密钥。请在设置中添加。",
@@ -3304,7 +3595,8 @@
    "bn": "{name} API কী নেই। সেটিংসে যোগ করুন।",
    "pt-BR": "Falta a chave de API do {name}. Adicione nas Configurações.",
    "ru": "Нет API-ключа {name}. Добавьте его в настройках.",
-   "id": "Kunci API {name} tidak ada. Tambahkan di Pengaturan."
+   "id": "Kunci API {name} tidak ada. Tambahkan di Pengaturan.",
+   "cs": "Chybí API klíč {name}. Přidejte ho v Nastavení."
   },
   "{name} rate limit reached (429): {detail}": {
    "zh-Hans": "{name} 已达到速率限制（429）：{detail}",
@@ -3315,7 +3607,8 @@
    "bn": "{name}-এর রেট লিমিটে পৌঁছেছে (429): {detail}",
    "pt-BR": "{name}: limite de requisições atingido (429): {detail}",
    "ru": "{name}: достигнут лимит запросов (429): {detail}",
-   "id": "Batas laju {name} tercapai (429): {detail}"
+   "id": "Batas laju {name} tercapai (429): {detail}",
+   "cs": "{name}: dosažen rate limit (429): {detail}"
   },
   "{name} rejected the API key ({status}). Check it in Settings.": {
    "zh-Hans": "{name} 拒绝了 API 密钥（{status}）。请在设置中检查。",
@@ -3326,7 +3619,8 @@
    "bn": "{name} API কী প্রত্যাখ্যান করেছে ({status})। সেটিংসে যাচাই করুন।",
    "pt-BR": "{name} recusou a chave de API ({status}). Verifique-a nas Configurações.",
    "ru": "{name} отклонил API-ключ ({status}). Проверьте его в настройках.",
-   "id": "{name} menolak kunci API ({status}). Periksa di Pengaturan."
+   "id": "{name} menolak kunci API ({status}). Periksa di Pengaturan.",
+   "cs": "{name} odmítl API klíč ({status}). Zkontrolujte ho v Nastavení."
   },
   "{name} wasn't written by Coucou — Coucou has not touched it.": {
    "zh-Hans": "{name} 不是由 Coucou 写入的 — Coucou 没有修改它。",
@@ -3337,7 +3631,8 @@
    "bn": "{name} Coucou লেখেনি — Coucou এতে হাত দেয়নি।",
    "pt-BR": "{name} não foi escrito pelo Coucou — o Coucou não mexeu nele.",
    "ru": "{name} записан не Coucou — Coucou его не трогал.",
-   "id": "{name} tidak ditulis oleh Coucou — Coucou tidak menyentuhnya."
+   "id": "{name} tidak ditulis oleh Coucou — Coucou tidak menyentuhnya.",
+   "cs": "{name} nezapsal Coucou — Coucou se ho nedotkl."
   },
   "{name} — {width}×{height} at {x},{y}": {
    "zh-Hans": "{name} — {width}×{height}，位于 {x},{y}",
@@ -3348,7 +3643,8 @@
    "bn": "{name} — {width}×{height}, অবস্থান {x},{y}",
    "pt-BR": "{name} — {width}×{height} em {x},{y}",
    "ru": "{name} — {width}×{height} в точке {x},{y}",
-   "id": "{name} — {width}×{height} di {x},{y}"
+   "id": "{name} — {width}×{height} di {x},{y}",
+   "cs": "{name} — {width}×{height} na {x},{y}"
   },
   "{name}: model not found (404). Pick another one above the chat box. {detail}": {
    "zh-Hans": "{name}：未找到模型（404）。请在聊天框上方选择其他模型。{detail}",
@@ -3359,7 +3655,8 @@
    "bn": "{name}: মডেল পাওয়া যায়নি (404)। চ্যাট বক্সের উপরে অন্য একটি বেছে নিন। {detail}",
    "pt-BR": "{name}: modelo não encontrado (404). Escolha outro acima da caixa de chat. {detail}",
    "ru": "{name}: модель не найдена (404). Выберите другую над полем чата. {detail}",
-   "id": "{name}: model tidak ditemukan (404). Pilih yang lain di atas kotak obrolan. {detail}"
+   "id": "{name}: model tidak ditemukan (404). Pilih yang lain di atas kotak obrolan. {detail}",
+   "cs": "{name}: model nenalezen (404). Nad chatovým polem vyberte jiný. {detail}"
   },
   "{name}: not enough credits (402). {detail}": {
    "zh-Hans": "{name}：额度不足（402）。{detail}",
@@ -3370,7 +3667,8 @@
    "bn": "{name}: যথেষ্ট ক্রেডিট নেই (402)। {detail}",
    "pt-BR": "{name}: créditos insuficientes (402). {detail}",
    "ru": "{name}: недостаточно кредитов (402). {detail}",
-   "id": "{name}: kredit tidak cukup (402). {detail}"
+   "id": "{name}: kredit tidak cukup (402). {detail}",
+   "cs": "{name}: nedostatek kreditů (402). {detail}"
   },
   "{n} available": {
    "zh-Hans": "可用 {n} 次",
@@ -3381,7 +3679,8 @@
    "bn": "{n}টি উপলব্ধ",
    "pt-BR": "{n} disponíveis",
    "ru": "доступно: {n}",
-   "id": "{n} tersedia"
+   "id": "{n} tersedia",
+   "cs": "{n} k dispozici"
   },
   "{n}d": {
    "zh-Hans": "{n} 天",
@@ -3392,7 +3691,8 @@
    "bn": "{n} দি.",
    "pt-BR": "{n} d",
    "ru": "{n} д",
-   "id": "{n} h"
+   "id": "{n} h",
+   "cs": "{n}d"
   },
   "{n}h": {
    "zh-Hans": "{n} 小时",
@@ -3403,7 +3703,8 @@
    "bn": "{n} ঘ.",
    "pt-BR": "{n} h",
    "ru": "{n} ч",
-   "id": "{n} j"
+   "id": "{n} j",
+   "cs": "{n}h"
   },
   "{n}m": {
    "zh-Hans": "{n} 分钟",
@@ -3414,7 +3715,8 @@
    "bn": "{n} মি.",
    "pt-BR": "{n} min",
    "ru": "{n} мин",
-   "id": "{n} mnt"
+   "id": "{n} mnt",
+   "cs": "{n} min"
   },
   "{path} changed since the preview. Nothing was written — review the new diff.": {
    "zh-Hans": "{path} 在预览后已被修改。未写入任何内容 — 请查看新的差异。",
@@ -3425,7 +3727,8 @@
    "bn": "প্রিভিউয়ের পর {path} বদলে গেছে। কিছু লেখা হয়নি — নতুন ডিফ দেখুন।",
    "pt-BR": "{path} mudou desde a prévia. Nada foi gravado — revise o novo diff.",
    "ru": "{path} изменился после предпросмотра. Ничего не записано — проверьте новый diff.",
-   "id": "{path} berubah sejak pratinjau. Tidak ada yang ditulis — tinjau diff yang baru."
+   "id": "{path} berubah sejak pratinjau. Tidak ada yang ditulis — tinjau diff yang baru.",
+   "cs": "{path} se od náhledu změnil. Nic se nezapsalo — zkontrolujte nový diff."
   },
   "{time} ago": {
    "zh-Hans": "{time}前",
@@ -3436,7 +3739,8 @@
    "bn": "{time} আগে",
    "pt-BR": "há {time}",
    "ru": "{time} назад",
-   "id": "{time} yang lalu"
+   "id": "{time} yang lalu",
+   "cs": "před {time}"
   },
   "{total} past year": {
    "zh-Hans": "过去一年 {total}",
@@ -3447,7 +3751,8 @@
    "bn": "গত বছরে {total}",
    "pt-BR": "{total} no último ano",
    "ru": "{total} за год",
-   "id": "{total} setahun terakhir"
+   "id": "{total} setahun terakhir",
+   "cs": "{total} za poslední rok"
   },
   "{used}/{max} slots in use — the main tool doesn't take one.": {
    "zh-Hans": "已用 {used}/{max} 个位置 — 主要工具不占位置。",
@@ -3458,7 +3763,8 @@
    "bn": "{used}/{max} স্লট ব্যবহৃত — প্রধান টুল কোনো স্লট নেয় না।",
    "pt-BR": "{used}/{max} espaços em uso — a ferramenta principal não ocupa nenhum.",
    "ru": "Занято мест: {used}/{max} — основной инструмент место не занимает.",
-   "id": "{used}/{max} slot terpakai — alat utama tidak memakai slot."
+   "id": "{used}/{max} slot terpakai — alat utama tidak memakai slot.",
+   "cs": "{used}/{max} slotů obsazeno — hlavní nástroj žádný nezabírá."
   },
   "{what} has an unexpected type — Coucou has not touched it.": {
    "zh-Hans": "{what} 的类型不符合预期 — Coucou 没有修改它。",
@@ -3469,7 +3775,8 @@
    "bn": "{what}-এর ধরন অপ্রত্যাশিত — Coucou এতে হাত দেয়নি।",
    "pt-BR": "{what} tem um tipo inesperado — o Coucou não mexeu nele.",
    "ru": "У {what} неожиданный тип — Coucou его не трогал.",
-   "id": "{what} bertipe tak terduga — Coucou tidak menyentuhnya."
+   "id": "{what} bertipe tak terduga — Coucou tidak menyentuhnya.",
+   "cs": "{what} má neočekávaný typ — Coucou se ho nedotkl."
   },
   "• subagent done": {
    "zh-Hans": "• 子代理完成",
@@ -3480,7 +3787,8 @@
    "bn": "• সাব-এজেন্ট শেষ",
    "pt-BR": "• subagente concluído",
    "ru": "• субагент завершил",
-   "id": "• subagen selesai"
+   "id": "• subagen selesai",
+   "cs": "• subagent hotový"
   },
   "⚠ failed": {
    "zh-Hans": "⚠ 失败",
@@ -3491,7 +3799,8 @@
    "bn": "⚠ ব্যর্থ",
    "pt-BR": "⚠ falhou",
    "ru": "⚠ ошибка",
-   "id": "⚠ gagal"
+   "id": "⚠ gagal",
+   "cs": "⚠ selhalo"
   }
  }
 }

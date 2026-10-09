@@ -15,6 +15,12 @@
             "value": " প্রস্তুত।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " je připraven."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -77,6 +83,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld কাস্টম"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vlastní"
           }
         },
         "en": {
@@ -143,6 +155,12 @@
             "value": "অটো"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTO"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -205,6 +223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সক্রিয় ট্যাব"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivní pilulky"
           }
         },
         "en": {
@@ -271,6 +295,12 @@
             "value": "কার্যকলাপ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivita"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -333,6 +363,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এজেন্টস"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenti"
           }
         },
         "en": {
@@ -399,6 +435,12 @@
             "value": "অনুমতি দিন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povolit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -461,6 +503,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou-কে Music নিয়ন্ত্রণ করতে দিন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povolit aplikaci Coucou ovládat Hudbu"
           }
         },
         "en": {
@@ -527,6 +575,12 @@
             "value": "সর্বদা"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vždy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -589,6 +643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পরবর্তী চালুতে প্রযোজ্য হবে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeví se při příštím spuštění"
           }
         },
         "en": {
@@ -655,6 +715,12 @@
             "value": "Claude-কে জিজ্ঞেস করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeptat se Claudea"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -717,6 +783,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "একটি প্রশ্ন করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Položit otázku"
           }
         },
         "en": {
@@ -783,6 +855,12 @@
             "value": "এটা সম্পর্কে প্রশ্ন করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeptat se na to"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -845,6 +923,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "যেকোনো কিছু জিজ্ঞেস করুন…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeptejte se na cokoliv…"
           }
         },
         "en": {
@@ -911,6 +995,12 @@
             "value": "স্বয়ংক্রিয়-বন্ধ · %lldস"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatické zavření · %lld s"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -973,6 +1063,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "অটোমেশন অনুমোদিত নয়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatizace není povolena"
           }
         },
         "en": {
@@ -1039,6 +1135,12 @@
             "value": "আচরণ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chování"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1101,6 +1203,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "বাতিল"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrušit"
           }
         },
         "en": {
@@ -1167,6 +1275,12 @@
             "value": "চ্যাট"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1229,6 +1343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@-এর সাথে চ্যাট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat s %@"
           }
         },
         "en": {
@@ -1295,6 +1415,12 @@
             "value": "আপনি যে টুলগুলো ব্যবহার করেন তা বেছে নিন। Coucou শুধুমাত্র আপনার ঘোষণা করা জিনিস দেখায়।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vyberte nástroje, které používáte. Coucou zobrazí jen to, co tady vyberete."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1357,6 +1483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code শেষ হয়েছে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code dokončil"
           }
         },
         "en": {
@@ -1423,6 +1555,12 @@
             "value": "Claude Code জিজ্ঞেস করছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code se ptá"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1485,6 +1623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude %@ পড়ছে…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude čte %@…"
           }
         },
         "en": {
@@ -1551,6 +1695,12 @@
             "value": "Claude খুঁজছে…"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude vyhledává…"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1613,6 +1763,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "মুছুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vymazat"
           }
         },
         "en": {
@@ -1679,6 +1835,12 @@
             "value": "ইতিহাস মুছুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vymazat historii"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1741,6 +1903,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "বন্ধ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavřít"
           }
         },
         "en": {
@@ -1807,6 +1975,12 @@
             "value": "পরে বন্ধ করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavřít po"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1869,6 +2043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "রং"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barva"
           }
         },
         "en": {
@@ -1935,6 +2115,12 @@
             "value": "শীঘ্রই আসছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Již brzy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -1997,6 +2183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সফলভাবে সম্পন্ন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Úspěšně dokončeno."
           }
         },
         "en": {
@@ -2063,6 +2255,12 @@
             "value": "সংযুক্ত"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojeno"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2125,6 +2323,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সংযুক্ত · %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojeno · %@"
           }
         },
         "en": {
@@ -2191,6 +2395,12 @@
             "value": "সংযুক্ত · লোড হচ্ছে…"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojeno · načítání…"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2253,6 +2463,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চালিয়ে যান…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokračovat…"
           }
         },
         "en": {
@@ -2319,6 +2535,12 @@
             "value": "কপি"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopírovat"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2381,6 +2603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডিফল্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Výchozí"
           }
         },
         "en": {
@@ -2447,6 +2675,12 @@
             "value": "প্রত্যাখ্যান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamítnout"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2509,6 +2743,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডিপ্লয়মেন্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nasazení"
           }
         },
         "en": {
@@ -2575,6 +2815,12 @@
             "value": "ডিফ খুব বড়"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Příliš velký diff"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2637,6 +2883,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ড্রাফ্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koncept"
           }
         },
         "en": {
@@ -2703,6 +2955,12 @@
             "value": "Mochi-র কোনো সাউন্ডের নামে একটি ফাইল (finish.wav, approval.mp3, greet.m4a…) সাউন্ড ফোল্ডারে রাখুন, সেটি বদলে যাবে; তারপর Reload করুন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do složky se zvuky přetáhněte soubor pojmenovaný jako některý z Mochiho zvuků (finish.wav, approval.mp3, greet.m4a…), čímž ho nahradíte, a potom zvolte „Znovu načíst zvuky“."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2765,6 +3023,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "একটি ফাইল বা উইন্ডো ড্রপ করুন, অথবা যেকোনো কিছু জিজ্ঞেস করুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přetáhněte soubor nebo okno, nebo se zeptejte na cokoliv."
           }
         },
         "en": {
@@ -2831,6 +3095,12 @@
             "value": "আপনার ফাইলগুলি এখানে ড্রপ করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přetáhněte sem soubory"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -2893,6 +3163,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ইমেইল"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-maily"
           }
         },
         "en": {
@@ -2959,6 +3235,12 @@
             "value": "শব্দ সক্ষম করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapnout zvuky"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3021,6 +3303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ব্যর্থ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neúspěšné"
           }
         },
         "en": {
@@ -3087,6 +3375,12 @@
             "value": "সাধারণ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obecné"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3149,6 +3443,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এক সেকেন্ড — তিন সেকেন্ডে কাজে ফিরে যাচ্ছি।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chvilku strpení — za tři sekundy jsem zpátky v práci."
           }
         },
         "en": {
@@ -3215,6 +3515,12 @@
             "value": "Gmail নোড 30 সেকেন্ড পরে টাইম আউট হয়েছে। পুনরায় চেষ্টা করুন বা n8n খুলুন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzel Gmailu vypršel po 30 s. Zkuste to znovu, nebo otevřete n8n."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3277,6 +3583,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পরে লুকান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrýt po"
           }
         },
         "en": {
@@ -3343,6 +3655,12 @@
             "value": "শেয়ার করা ছবিতে প্রকল্পের নাম লুকান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrývat názvy projektů ve sdílených obrázcích"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3405,6 +3723,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks ইনস্টল করা আছে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány"
           }
         },
         "en": {
@@ -3471,6 +3795,12 @@
             "value": "Hooks ইনস্টল নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nenainstalovány"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3533,6 +3863,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হটকি"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klávesová zkratka"
           }
         },
         "en": {
@@ -3599,6 +3935,12 @@
             "value": "আইল্যান্ডের উপর পয়েন্টার রাখলে খোলে; পয়েন্টার সরালে একটু পরে আবার গুটিয়ে যায়। খোলা রাখতে ভিতরে ক্লিক করুন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najetí na ostrůvek ho otevře; krátce po odjetí ukazatele se zase složí. Chcete-li ho nechat otevřený, klikněte dovnitř."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3661,6 +4003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ইন্টিগ্রেশন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrace"
           }
         },
         "en": {
@@ -3727,6 +4075,12 @@
             "value": "আমার কোডিং সেশনের ইতিহাস রাখুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uchovávat historii mých relací programování"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3789,6 +4143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কী কনফিগার করা হয়েছে · %@"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klíč nastaven · %@"
           }
         },
         "en": {
@@ -3855,6 +4215,12 @@
             "value": "কী কনফিগার নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klíč není nastaven"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -3917,6 +4283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ভাষা"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jazyk"
           }
         },
         "en": {
@@ -3983,6 +4355,12 @@
             "value": "Mac স্টার্টআপে চালু করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spouštět při startu Macu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4045,6 +4423,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "মডেল লোড হচ্ছে…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Načítání modelů…"
           }
         },
         "en": {
@@ -4111,6 +4495,12 @@
             "value": "লোড হচ্ছে…"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Načítání…"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4173,6 +4563,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "মেইল পাওয়া যাচ্ছে না।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poštovní aplikace není k dispozici."
           }
         },
         "en": {
@@ -4239,6 +4635,12 @@
             "value": "মূল"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlavní"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4301,6 +4703,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্রাপক অনুপস্থিত।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chybí příjemce."
           }
         },
         "en": {
@@ -4367,6 +4775,12 @@
             "value": "আমার PR"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moje PR"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4429,6 +4843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "নতুন ইমেইল"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nový e-mail"
           }
         },
         "en": {
@@ -4495,6 +4915,12 @@
             "value": "পরবর্তী"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Další"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4557,6 +4983,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কোনো কল নির্ধারিত নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádné naplánované schůzky"
           }
         },
         "en": {
@@ -4623,6 +5055,12 @@
             "value": "কোনো পরিবর্তন নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádné změny"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4685,6 +5123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কোনো অবদান নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádné příspěvky"
           }
         },
         "en": {
@@ -4751,6 +5195,12 @@
             "value": "সংযুক্ত নয়"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nepřipojeno"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4813,6 +5263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চলছে না"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic se nepřehrává"
           }
         },
         "en": {
@@ -4879,6 +5335,12 @@
             "value": "এখানে কিছু নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic tu není"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -4941,6 +5403,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এখন কিছু চলছে না।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Právě teď nic neběží."
           }
         },
         "en": {
@@ -5007,6 +5475,12 @@
             "value": "ঠিক আছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5069,6 +5543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít"
           }
         },
         "en": {
@@ -5135,6 +5615,12 @@
             "value": "%@ খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít %@"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5197,6 +5683,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Codex"
           }
         },
         "en": {
@@ -5263,6 +5755,12 @@
             "value": "Coucou খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Coucou"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5325,6 +5823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cursor খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Cursor"
           }
         },
         "en": {
@@ -5391,6 +5895,12 @@
             "value": "Music খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Hudbu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5453,6 +5963,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সেটিংস খুলুন…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Nastavení…"
           }
         },
         "en": {
@@ -5519,6 +6035,12 @@
             "value": "Visual Studio Code খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Visual Studio Code"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5581,6 +6103,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "n8n-এ খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít v n8n"
           }
         },
         "en": {
@@ -5647,6 +6175,12 @@
             "value": "হোভারে খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít při najetí"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5709,6 +6243,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সাউন্ড ফোল্ডার খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít složku se zvuky"
           }
         },
         "en": {
@@ -5775,6 +6315,12 @@
             "value": "টার্মিনাল খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít terminál"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5837,6 +6383,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "অন্যান্য…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jiné…"
           }
         },
         "en": {
@@ -5903,6 +6455,12 @@
             "value": "সংক্ষিপ্ত বিবরণ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přehled"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -5965,6 +6523,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পেমেন্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platby"
           }
         },
         "en": {
@@ -6031,6 +6595,12 @@
             "value": "চালু আছে · %@"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přehrává se · %@"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6093,6 +6663,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্লাগইন ইনস্টল নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin není nainstalován"
           }
         },
         "en": {
@@ -6159,6 +6735,12 @@
             "value": "বাহির হন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukončit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6221,6 +6803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সাম্প্রতিক"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nedávné"
           }
         },
         "en": {
@@ -6287,6 +6875,12 @@
             "value": "রিফ্রেশ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6349,6 +6943,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সাউন্ড আবার লোড করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znovu načíst zvuky"
           }
         },
         "en": {
@@ -6415,6 +7015,12 @@
             "value": "টার্মিনালে উত্তর দিন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpovědět v terminálu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6477,6 +7083,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পুনরায় পাঠান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odeslat znovu"
           }
         },
         "en": {
@@ -6543,6 +7155,12 @@
             "value": "Coucou পুনরায় শুরু করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restartovat Coucou"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6605,6 +7223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পুনরায় চেষ্টা"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zkusit znovu"
           }
         },
         "en": {
@@ -6671,6 +7295,12 @@
             "value": "সংরক্ষণ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uložit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6733,6 +7363,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সংরক্ষণ করুন…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uložit…"
           }
         },
         "en": {
@@ -6799,6 +7435,12 @@
             "value": "সময়সূচি"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozvrh"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6861,6 +7503,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পাঠান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odeslat"
           }
         },
         "en": {
@@ -6927,6 +7575,12 @@
             "value": "ইমেইলে পাঠান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odeslat e-mailem"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -6989,6 +7643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পাঠানো হচ্ছে…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odesílání…"
           }
         },
         "en": {
@@ -7055,6 +7715,12 @@
             "value": "সেশন শেষ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relace dokončena"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7117,6 +7783,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সেটিংস…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nastavení…"
           }
         },
         "en": {
@@ -7183,6 +7855,12 @@
             "value": "শেয়ার করুন…"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sdílet…"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7245,6 +7923,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শর্টকাট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zkratka"
           }
         },
         "en": {
@@ -7311,6 +7995,12 @@
             "value": "শর্টকাট"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zkratky"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7373,6 +8063,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শর্টকাট দিয়ে আইল্যান্ড দেখান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobrazovat ostrůvek zkratkou"
           }
         },
         "en": {
@@ -7439,6 +8135,12 @@
             "value": "শব্দ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zvuk"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7501,6 +8203,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "স্টার্টআপ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spuštění"
           }
         },
         "en": {
@@ -7567,6 +8275,12 @@
             "value": "তোমার Mac-এ স্থানীয়ভাবে সংরক্ষিত। কিছু Mac ছেড়ে যায় না। ১২ সপ্তাহ ধরে রাখা হয়।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uloženo lokálně ve vašem Macu. Nic neopustí váš Mac. Uchovává se 12 týdnů."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7629,6 +8343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "বিষয়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Předmět"
           }
         },
         "en": {
@@ -7695,6 +8415,12 @@
             "value": "সফল"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Úspěšné"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7757,6 +8483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সিস্টেম"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systém"
           }
         },
         "en": {
@@ -7823,6 +8555,12 @@
             "value": "প্রতি"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -7885,6 +8623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পর্যালোচনার জন্য"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ke kontrole"
           }
         },
         "en": {
@@ -7951,6 +8695,12 @@
             "value": "একসাথে অনেক বেশি ক্লিক।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Příliš mnoho požadavků najednou."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8013,6 +8763,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "অজানা"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neznámé"
           }
         },
         "en": {
@@ -8079,6 +8835,12 @@
             "value": "%@ আপলোড হচ্ছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nahrávání %@"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8141,6 +8903,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ভলিউম"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlasitost"
           }
         },
         "en": {
@@ -8207,6 +8975,12 @@
             "value": "পোশাক ঘর"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šatník"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8269,6 +9043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld টির মধ্যে %lld টি দেখছেন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleduje se %lld z %lld"
           }
         },
         "en": {
@@ -8335,6 +9115,12 @@
             "value": "সাপ্তাহিক সারসংক্ষেপ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Týdenní souhrn"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8397,6 +9183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আপনি এটা দিয়ে কী করতে চান?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co s tím chcete udělat?"
           }
         },
         "en": {
@@ -8463,6 +9255,12 @@
             "value": "ওয়ার্কফ্লো বন্ধ হয়ে গেছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow zastaveno."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8525,6 +9323,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আপনার উত্তর…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaše odpověď…"
           }
         },
         "en": {
@@ -8591,6 +9395,12 @@
             "value": "লিখবে:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (আগে ব্যাকআপ তৈরি হবে)"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapíše:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (nejprve se vytvoří záloha)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8653,6 +9463,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ইনস্টল করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nainstalovat"
           }
         },
         "en": {
@@ -8719,6 +9535,12 @@
             "value": "~/.claude-এ Coucou হুক ইনস্টল করবেন?"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nainstalovat hooky Coucou do ~/.claude?"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8778,6 +9600,12 @@
           }
         },
         "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API"
+          }
+        },
+        "cs": {
           "stringUnit": {
             "state": "translated",
             "value": "Anthropic API"
@@ -8847,6 +9675,12 @@
             "value": "API কী (sk-ant-…)"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API klíč (sk-ant-…)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -8909,6 +9743,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API কী (AI Studio)"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API klíč (AI Studio)"
           }
         },
         "en": {
@@ -8975,6 +9815,12 @@
             "value": "API কী (sk-…)"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API klíč (sk-…)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9037,6 +9883,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সংযুক্ত করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojit"
           }
         },
         "en": {
@@ -9103,6 +9955,12 @@
             "value": "সংযুক্ত হচ্ছে…"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojování…"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9167,6 +10025,12 @@
             "value": "সংযোগ বিচ্ছিন্ন করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpojit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9226,6 +10090,12 @@
           }
         },
         "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "cs": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -9295,6 +10165,12 @@
             "value": "একটি স্থানীয় মডেল সার্ভারে সংযুক্ত হন। কোনো API কী লাগবে না।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojuje se k serveru místních modelů. API klíč není potřeba."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9357,6 +10233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "স্থানীয় মডেল"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Místní modely"
           }
         },
         "en": {
@@ -9423,6 +10305,12 @@
             "value": "মডেল"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9485,6 +10373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কাস্টম…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vlastní…"
           }
         },
         "en": {
@@ -9551,6 +10445,12 @@
             "value": "মডেল ID (যেমন claude-sonnet-4-6)"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID modelu (např. claude-sonnet-4-6)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9615,6 +10515,12 @@
             "value": "চ্যাটে ব্যবহৃত হয়। তালিকা আপনার Anthropic অ্যাকাউন্ট থেকে আসে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Používá ho chat. Seznam pochází z vašeho účtu Anthropic."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9674,6 +10580,12 @@
           }
         },
         "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "cs": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -9743,6 +10655,12 @@
             "value": "চ্যাট থেকে Google Gemini বা OpenAI ব্যবহার করতে। কীগুলো Keychain-এ সংরক্ষিত হয়।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro použití Google Gemini nebo OpenAI z chatu. Klíče se ukládají do Klíčenky."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9805,6 +10723,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চ্যাট — অন্যান্য প্রদানকারী"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat — jiní poskytovatelé"
           }
         },
         "en": {
@@ -9871,6 +10795,12 @@
             "value": "%@ প্রস্তুত।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ je připraven."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -9933,6 +10863,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Antigravity রিস্টার্ট করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány — pro aktivaci restartujte Antigravity"
           }
         },
         "en": {
@@ -9999,6 +10935,12 @@
             "value": "Antigravity হুক"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro Antigravity"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10061,6 +11003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code হুক"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro Claude Code"
           }
         },
         "en": {
@@ -10127,6 +11075,12 @@
             "value": "হুক ইনস্টল হয়েছে — Codex খুলুন এবং /hooks চালান বা অ্যাপের সেটিংসে Hooks খুলুন বিশ্বাস করতে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány — otevřete Codex a spusťte /hooks, nebo je schvalte v části Hooky v nastavení aplikace"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10189,6 +11143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex হুক"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro Codex"
           }
         },
         "en": {
@@ -10255,6 +11215,12 @@
             "value": "নিশ্চিত করুন এবং লিখুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Potvrdit a zapsat"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10317,6 +11283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Copilot CLI রিস্টার্ট করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány — pro aktivaci restartujte Copilot CLI"
           }
         },
         "en": {
@@ -10383,6 +11355,12 @@
             "value": "GitHub Copilot CLI হুক"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro GitHub Copilot CLI"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10445,6 +11423,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Gemini CLI রিস্টার্ট করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány — pro aktivaci restartujte Gemini CLI"
           }
         },
         "en": {
@@ -10511,6 +11495,12 @@
             "value": "Gemini CLI হুক"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro Gemini CLI"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10573,6 +11563,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হুক ইনস্টল করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nainstalovat hooky"
           }
         },
         "en": {
@@ -10639,6 +11635,12 @@
             "value": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Muse Code রিস্টার্ট করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky nainstalovány — pro aktivaci restartujte Muse Code"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10701,6 +11703,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Muse Code হুক"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky pro Muse Code"
           }
         },
         "en": {
@@ -10767,6 +11775,12 @@
             "value": "হুক পুরনো — নচ থেকে Claude-এর প্রশ্নের উত্তর দিতে আপডেট করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooky jsou zastaralé — aktualizujte je, abyste mohli odpovídat na otázky Claudea z ostrůvku"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10829,6 +11843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "নিশ্চিত করার আগে নীচের JSON পর্যালোচনা করুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Před potvrzením zkontrolujte níže uvedený JSON."
           }
         },
         "en": {
@@ -10895,6 +11915,12 @@
             "value": "আনইনস্টল করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstalovat"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -10957,6 +11983,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "হুক আপডেট করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualizovat hooky"
           }
         },
         "en": {
@@ -11023,6 +12055,12 @@
             "value": "repo স্কোপ সহ ক্লাসিক টোকেন, অথবা Pull requests, Commit statuses এবং Actions-এ পড়ার অ্যাক্সেস সহ ফাইন-গ্রেইনড টোকেন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classic token s rozsahem repo, nebo fine-grained s přístupem pro čtení k Pull requests, commit statuses a Actions."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11085,6 +12123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্রজেক্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekty"
           }
         },
         "en": {
@@ -11151,6 +12195,12 @@
             "value": "ইন্টিগ্রেশন সংরক্ষণ করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uložit integrace"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11213,6 +12263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ওয়ার্কফ্লো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow"
           }
         },
         "en": {
@@ -11279,6 +12335,12 @@
             "value": "iPhone থেকে পাঠানো নির্দেশনা চ্যাটে বর্তমানে খোলা মডেল ব্যবহার করে। সিস্টেম প্রম্পট এবং কথোপকথনের ইতিহাস প্রযোজ্য। Coucou চলছে না থাকলে পাঠানো নির্দেশনাগুলো কিউতে রাখা হয় এবং পরবর্তী চালুতে চালানো হয়।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrukce odeslaná z iPhonu použije model otevřený v chatu. Platí systémová výzva a historie konverzace. Instrukce odeslané, když Coucou neběží, se zařadí do fronty a provedou při příštím spuštění."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11341,6 +12403,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আমার iPhone-কে Claude Code-এ নির্দেশ পাঠাতে দাও"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povolit mému iPhonu posílat instrukce pro Claude Code"
           }
         },
         "en": {
@@ -11407,6 +12475,12 @@
             "value": "Apple-এর পুশ সার্ভিসে Coucou রিলের মাধ্যমে যায়। শুধুমাত্র এজেন্টের নাম এবং অবস্থা পাঠানো হয়: কোনো প্রজেক্ট নাম, কমান্ড বা পাথ নয়।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prochází přes relay Coucou do push služby Applu. Posílá se jen jméno agenta a stav: žádný název projektu, příkaz ani cesta."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11469,6 +12543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mac লক থাকলে Mochi-কে আমার iPhone-এর Dynamic Island-এ নিয়ে যান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přesunout Mochiho do Dynamic Island mého iPhonu, když je můj Mac zamčený"
           }
         },
         "en": {
@@ -11535,6 +12615,12 @@
             "value": "Coucou iPhone অ্যাপের জন্য আপনার সেশনগুলো আপনার প্রাইভেট iCloud-এ পাঠায়। প্রজেক্টের নাম, কমান্ড এবং প্রশ্নগুলো আপনার iCloud কী দিয়ে এনক্রিপ্ট করা হয়। বন্ধ করলে iCloud থেকে মুছে যাবে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posílá vaše relace do vašeho soukromého iCloudu pro aplikaci Coucou na iPhonu. Názvy projektů, příkazy a otázky se šifrují vašimi klíči iCloudu. Vypnutí odstraní data z iCloudu."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11597,6 +12683,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আমার iPhone-এ আমার এজেন্ট সেশন দেখান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobrazovat mé relace agentů na mém iPhonu"
           }
         },
         "en": {
@@ -11663,6 +12755,12 @@
             "value": "%@-এর সাথে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "s %@"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11725,6 +12823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "মিনিট নড়াচড়া ছাড়া"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min bez pohybu"
           }
         },
         "en": {
@@ -11791,6 +12895,12 @@
             "value": "অনুমতি প্রয়োজন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "potřebuje oprávnění"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11853,6 +12963,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "৫ ঘণ্টা"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 hodin"
           }
         },
         "en": {
@@ -11919,6 +13035,12 @@
             "value": "Claude প্ল্যান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plán Claude"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -11981,6 +13103,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "নচ হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Coucou ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার কাছে ইতিমধ্যে স্ট্যাটাস লাইন থাকলে তা আগের মতোই কাজ করবে। শুধুমাত্র Pro এবং Max প্ল্যানের জন্য।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobrazuje využití vašeho plánu Claude (5hodinový a týdenní limit) v záhlaví ostrůvku. Coucou přidá relay stavového řádku do ~/.claude/settings.json. Pokud už stavový řádek máte, funguje dál jako dosud. Jen pro plány Pro a Max."
           }
         },
         "en": {
@@ -12047,6 +13175,12 @@
             "value": "%lld ঘণ্টা আগে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "před %lld h"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12109,6 +13243,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এইমাত্র"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "právě teď"
           }
         },
         "en": {
@@ -12175,6 +13315,12 @@
             "value": "%lld মিনিট আগে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "před %lld min"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12237,6 +13383,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "রিলে ইনস্টল করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nainstalovat relay"
           }
         },
         "en": {
@@ -12303,6 +13455,12 @@
             "value": "রিলে: ইনস্টল আছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: nainstalován"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12365,6 +13523,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "রিলে: ইনস্টল নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: nenainstalován"
           }
         },
         "en": {
@@ -12431,6 +13595,12 @@
             "value": "রিলে আনইনস্টল করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstalovat relay"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12493,6 +13663,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld ঘণ্টা %lld মিনিটে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "za %lld h %lld"
           }
         },
         "en": {
@@ -12559,6 +13735,12 @@
             "value": "%lld মিনিটে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "za %lld min"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12621,6 +13803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "রিসেট হচ্ছে…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resetuje se…"
           }
         },
         "en": {
@@ -12687,6 +13875,12 @@
             "value": "নচে দেখান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobrazovat v ostrůvku"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12749,6 +13943,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্ল্যান ব্যবহার"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Využití plánu"
           }
         },
         "en": {
@@ -12815,6 +14015,12 @@
             "value": "Claude Code-এর উত্তরের অপেক্ষায়"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Čekání na odpověď od Claude Code"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -12877,6 +14083,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সপ্তাহ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Týden"
           }
         },
         "en": {
@@ -12943,6 +14155,12 @@
             "value": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে Amp রিস্টার্ট করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin nainstalován — pro aktivaci restartujte Amp"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13005,6 +14223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Amp প্লাগইন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin pro Amp"
           }
         },
         "en": {
@@ -13071,6 +14295,12 @@
             "value": "Hermes প্লাগইন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13133,6 +14363,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hermes প্লাগইন ~/.hermes/plugins/coucou/-এ ইনস্টল হয়েছে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes nainstalován do ~/.hermes/plugins/coucou/"
           }
         },
         "en": {
@@ -13199,6 +14435,12 @@
             "value": "নচে অনুমোদন অনুরোধ দেখান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobrazovat žádosti o schválení v ostrůvku"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13261,6 +14503,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "নচে অনুমোদন অনুরোধ দেখানো হয়। Coucou না চললে Hermes তার নিজের প্রম্পটে ফলব্যাক করে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádosti o schválení se zobrazují v ostrůvku. Když Coucou neběží, Hermes použije vlastní výzvu."
           }
         },
         "en": {
@@ -13327,6 +14575,12 @@
             "value": "Hermes অনুমোদন অনুরোধ পরিচালনা করে (টার্মিনাল বা গেটওয়ে)।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádosti o schválení obsluhuje Hermes (terminál nebo gateway)."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13389,6 +14643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্লাগইন ইনস্টল করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nainstalovat plugin"
           }
         },
         "en": {
@@ -13455,6 +14715,12 @@
             "value": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে OpenCode রিস্টার্ট করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin nainstalován — pro aktivaci restartujte OpenCode"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13517,6 +14783,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "OpenCode প্লাগইন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin pro OpenCode"
           }
         },
         "en": {
@@ -13583,6 +14855,12 @@
             "value": "নিশ্চিত করার আগে নীচের বিষয়বস্তু পর্যালোচনা করুন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Před potvrzením zkontrolujte níže uvedený obsah."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13645,6 +14923,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এটি চাপলে → আইল্যান্ড খোলে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stiskněte toto → ostrůvek se otevře"
           }
         },
         "en": {
@@ -13711,6 +14995,12 @@
             "value": "কোডিং"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "programování"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13773,6 +15063,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কমান্ড"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "příkazů"
           }
         },
         "en": {
@@ -13839,6 +15135,12 @@
             "value": "ফাইল"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "soubor"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -13901,6 +15203,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ফাইল"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "souborů"
           }
         },
         "en": {
@@ -13967,6 +15275,12 @@
             "value": "অনুমোদিত"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schváleno"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14029,6 +15343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সবচেয়ে ব্যস্ত দিন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nejrušnější den"
           }
         },
         "en": {
@@ -14095,6 +15415,12 @@
             "value": "কমান্ড"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PŘÍKAZY"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14157,6 +15483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্রত্যাখ্যাত"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamítnuto"
           }
         },
         "en": {
@@ -14223,6 +15555,12 @@
             "value": "ফাইল"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SOUBORY"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14285,6 +15623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "দীর্ঘতম সেশন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nejdelší relace"
           }
         },
         "en": {
@@ -14351,6 +15695,12 @@
             "value": "সেশন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RELACE"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14413,6 +15763,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কোডিং সময়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ČAS PROGRAMOVÁNÍ"
           }
         },
         "en": {
@@ -14479,6 +15835,12 @@
             "value": "শীর্ষ এজেন্ট"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nejaktivnější agent"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14541,6 +15903,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শীর্ষ প্রজেক্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nejaktivnější projekt"
           }
         },
         "en": {
@@ -14607,6 +15975,12 @@
             "value": "গত সপ্তাহে কোনো কার্যক্রম নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minulý týden žádná aktivita"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14669,6 +16043,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সেশন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "relace"
           }
         },
         "en": {
@@ -14735,6 +16115,12 @@
             "value": "সেশন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "relací"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14797,6 +16183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ছবি শেয়ার করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sdílet obrázek"
           }
         },
         "en": {
@@ -14863,6 +16255,12 @@
             "value": "সাপ্তাহিক রিক্যাপ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Týdenní souhrn"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -14925,6 +16323,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সে. নিষ্ক্রিয়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "s nečinnosti"
           }
         },
         "en": {
@@ -14991,6 +16395,12 @@
             "value": "প্রধান"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlavní"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15053,6 +16463,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld/4 স্লট ব্যবহৃত"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/4 slotů obsazeno"
           }
         },
         "en": {
@@ -15119,6 +16535,12 @@
             "value": "সেটিংস — Coucou"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nastavení — Coucou"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15181,6 +16603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সামনের উইন্ডো সংযুক্ত করো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připojit přední okno"
           }
         },
         "en": {
@@ -15247,6 +16675,12 @@
             "value": "ডুপ্লিকেট"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicitní"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15309,6 +16743,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সিস্টেম কনফ্লিক্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konflikt se systémem"
           }
         },
         "en": {
@@ -15375,6 +16815,12 @@
             "value": "Mochi ডেস্কটপে চালু / বন্ধ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochiho na plochu zap./vyp."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15437,6 +16883,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সতর্কতায় যাও"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přejít na upozornění"
           }
         },
         "en": {
@@ -15503,6 +16955,12 @@
             "value": "গ্লোবাল শর্টকাট — যেকোনো অ্যাপ থেকে কাজ করে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Globální zkratky — aktivní v libovolné aplikaci"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15565,6 +17023,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আইল্যান্ড শর্টকাট — আইল্যান্ড ফোকাসে থাকলে সক্রিয়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zkratky ostrůvku — aktivní, když je ostrůvek vpředu"
           }
         },
         "en": {
@@ -15631,6 +17095,12 @@
             "value": "নম্বর দিয়ে ট্যাবে যাও"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přejít na pilulku podle čísla"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15693,6 +17163,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আইল্যান্ড বন্ধ করো (পিন না থাকলে)"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zavřít ostrůvek (pokud není připnutý)"
           }
         },
         "en": {
@@ -15759,6 +17235,12 @@
             "value": "বর্তমান ডিফ খোলা / বন্ধ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít / zavřít aktuální diff"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15821,6 +17303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "তালিকার আইটেম নেভিগেট করো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procházet položky seznamu"
           }
         },
         "en": {
@@ -15887,6 +17375,12 @@
             "value": "নতুন কথোপকথন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nová konverzace"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -15949,6 +17443,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পরের / আগের ট্যাব"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Další / předchozí pilulka"
           }
         },
         "en": {
@@ -16015,6 +17515,12 @@
             "value": "নির্বাচিত আইটেম খোলো"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít vybranou položku"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16077,6 +17583,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আইল্যান্ড পিন / আনপিন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Připnout / odepnout ostrůvek"
           }
         },
         "en": {
@@ -16143,6 +17655,12 @@
             "value": "চ্যাট বার্তা পাঠাও"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odeslat zprávu v chatu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16205,6 +17723,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সেটিংস খোলো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Nastavení"
           }
         },
         "en": {
@@ -16271,6 +17795,12 @@
             "value": "টার্মিনালে যাও"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přejít do terminálu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16333,6 +17863,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শব্দ মিউট / আনমিউট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ztlumit / zrušit ztlumení zvuků"
           }
         },
         "en": {
@@ -16399,6 +17935,12 @@
             "value": "পরের ট্যাব"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Další pilulka"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16461,6 +18003,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চ্যাট খোলো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít chat"
           }
         },
         "en": {
@@ -16527,6 +18075,12 @@
             "value": "আইল্যান্ড খোলা / বন্ধ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít / zavřít ostrůvek"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16589,6 +18143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আগের ট্যাব"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Předchozí pilulka"
           }
         },
         "en": {
@@ -16655,6 +18215,12 @@
             "value": "সব ডিফল্টে রিসেট করো"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obnovit vše na výchozí"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16717,6 +18283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "পোশাক খোলা / বন্ধ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít / zavřít šatník"
           }
         },
         "en": {
@@ -16783,6 +18355,12 @@
             "value": "✓ ~/.gemini/config/hooks.json-এ Antigravity হুক ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Antigravity nainstalovány do ~/.gemini/config/hooks.json"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16845,6 +18423,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Antigravity হুক সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Antigravity odstraněny."
           }
         },
         "en": {
@@ -16911,6 +18495,12 @@
             "value": "✓ ~/.config/amp/plugins/coucou.ts-এ Amp প্লাগইন ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Amp nainstalován do ~/.config/amp/plugins/coucou.ts"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -16973,6 +18563,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Amp প্লাগইন সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Amp odstraněn."
           }
         },
         "en": {
@@ -17039,6 +18635,12 @@
             "value": "✓ Hermes প্লাগইন ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes nainstalován"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17101,6 +18703,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hermes প্লাগইন সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin Hermes odstraněn"
           }
         },
         "en": {
@@ -17167,6 +18775,12 @@
             "value": "✓ Codex হুক ইনস্টল হয়েছে — Codex-এ /hooks চালান বা সেগুলো বিশ্বাস করতে অ্যাপের সেটিংসে Hooks খুলুন।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Codex nainstalovány — spusťte /hooks v Codexu, nebo je schvalte v části Hooky v nastavení aplikace."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17229,6 +18843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Codex হুক সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Codex odstraněny."
           }
         },
         "en": {
@@ -17295,6 +18915,12 @@
             "value": "✓ ~/.copilot/hooks/coucou.json-এ Copilot CLI হুক ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Copilot CLI nainstalovány do ~/.copilot/hooks/coucou.json"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17357,6 +18983,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Copilot CLI হুক সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Copilot CLI odstraněny."
           }
         },
         "en": {
@@ -17423,6 +19055,12 @@
             "value": "✓ ~/.gemini/settings.json-এ Gemini CLI হুক ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Gemini CLI nainstalovány do ~/.gemini/settings.json"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17485,6 +19123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Gemini CLI হুক সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Gemini CLI odstraněny."
           }
         },
         "en": {
@@ -17551,6 +19195,12 @@
             "value": "✓ Google কী সংরক্ষিত হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klíč Google uložen."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17613,6 +19263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ হুক ইনস্টল হয়েছে — সক্রিয় করতে VS Code রিস্টার্ট করুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky nainstalovány — pro aktivaci restartujte VS Code."
           }
         },
         "en": {
@@ -17679,6 +19335,12 @@
             "value": "✓ ~/.claude/settings.json-এ হুক ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky nainstalovány do ~/.claude/settings.json"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17741,6 +19403,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ হুক সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky odstraněny."
           }
         },
         "en": {
@@ -17807,6 +19475,12 @@
             "value": "✓ ইন্টিগ্রেশন কি সংরক্ষিত হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klíče integrací uloženy."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -17869,6 +19543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ কী সংরক্ষিত হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klíč uložen."
           }
         },
         "en": {
@@ -17954,6 +19634,36 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "✓ সংযুক্ত · %lld টি মডেল"
+                }
+              }
+            }
+          }
+        },
+        "cs": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Připojeno · %lld model"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Připojeno · %lld modely"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Připojeno · %lld modelu"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Připojeno · %lld modelů"
                 }
               }
             }
@@ -18119,6 +19829,12 @@
             "value": "LM Studio সংযোগ বিচ্ছিন্ন হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio odpojeno."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18181,6 +19897,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এখনো কোনো মডেল নেই — প্রথমে %@-এ একটি ডাউনলোড করুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatím žádné modely — nejdřív jeden stáhněte v %@."
           }
         },
         "en": {
@@ -18247,6 +19969,12 @@
             "value": "Ollama সংযোগ বিচ্ছিন্ন হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama odpojeno."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18309,6 +20037,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ কে %2$@ তে পৌঁছানো যাচ্ছে না। এটি কি চলছে?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nelze kontaktovat %1$@ na %2$@. Je spuštěný?"
           }
         },
         "en": {
@@ -18375,6 +20109,12 @@
             "value": "শুধুমাত্র http:// এবং https:// URL সমর্থিত।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přípustné jsou jen adresy http:// a https://."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18437,6 +20177,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ ~/.config/muse/settings.json-এ Muse Code হুক ইনস্টল হয়েছে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Muse Code nainstalovány do ~/.config/muse/settings.json"
           }
         },
         "en": {
@@ -18503,6 +20249,12 @@
             "value": "✓ Muse Code হুক সরানো হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooky pro Muse Code odstraněny."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18565,6 +20317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ OpenAI কী সংরক্ষিত হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klíč OpenAI uložen."
           }
         },
         "en": {
@@ -18631,6 +20389,12 @@
             "value": "✓ ~/.config/opencode/plugins/coucou.js-এ OpenCode প্লাগইন ইনস্টল হয়েছে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin OpenCode nainstalován do ~/.config/opencode/plugins/coucou.js"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18693,6 +20457,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ OpenCode প্লাগইন সরানো হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin OpenCode odstraněn."
           }
         },
         "en": {
@@ -18759,6 +20529,12 @@
             "value": "❌ .claude ফোল্ডার নির্বাচন করুন (লুকানো, আপনার Home ডিরেক্টরিতে)।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Vyberte složku .claude (skrytá, ve vaší domovské složce)."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18821,6 +20597,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ স্ট্যাটাস লাইন ইনস্টল হয়েছে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Stavový řádek nainstalován."
           }
         },
         "en": {
@@ -18887,6 +20669,12 @@
             "value": "✓ স্ট্যাটাস লাইন সরানো হয়েছে।"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Stavový řádek odstraněn."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -18949,6 +20737,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "এজেন্ট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
           }
         },
         "en": {
@@ -19015,6 +20809,12 @@
             "value": "সম্পাদনা করে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Úpravy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19077,6 +20877,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আনে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Načtení"
           }
         },
         "en": {
@@ -19143,6 +20949,12 @@
             "value": "তালিকা"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Výpisy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19205,6 +21017,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "নোটবুক"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notebook"
           }
         },
         "en": {
@@ -19271,6 +21089,12 @@
             "value": "পড়ে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Čtení"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19333,6 +21157,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চালায়"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spuštění"
           }
         },
         "en": {
@@ -19399,6 +21229,12 @@
             "value": "খোঁজে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hledání"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19461,6 +21297,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কার্য"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Úkoly"
           }
         },
         "en": {
@@ -19527,6 +21369,12 @@
             "value": "পরীক্ষা করে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19589,6 +21437,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ওয়েব খোঁজে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hledá na webu"
           }
         },
         "en": {
@@ -19655,6 +21509,12 @@
             "value": "লেখে"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zápisy"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19719,6 +21579,12 @@
             "value": "সহ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "s"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -19772,12 +21638,6 @@
     "No error details available.": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No error details available."
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -19788,6 +21648,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "কোনো ত্রুটির বিবরণ পাওয়া যায়নি।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádné podrobnosti o chybě nejsou k dispozici."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No error details available."
           }
         },
         "es": {
@@ -19837,12 +21709,6 @@
     "demo.groupbox.title": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -19853,6 +21719,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
           }
         },
         "es": {
@@ -19902,12 +21780,6 @@
     "demo.description": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -19918,6 +21790,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "API কী বা Claude Code ছাড়াই সমস্ত ফিচার এক্সপ্লোর করুন। ডিস্কে কিছু লেখা হয় না।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vyzkoušejte všechny funkce bez API klíče a bez Claude Code. Nic se nezapisuje na disk."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
           }
         },
         "es": {
@@ -19967,12 +21851,6 @@
     "demo.start": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try demo mode"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -19983,6 +21861,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো মোড চেষ্টা করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vyzkoušet demo režim"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try demo mode"
           }
         },
         "es": {
@@ -20032,12 +21922,6 @@
     "demo.stop": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stop demo"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -20048,6 +21932,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো বন্ধ করুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zastavit demo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop demo"
           }
         },
         "es": {
@@ -20097,12 +21993,6 @@
     "Demo mode": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo mode"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -20113,6 +22003,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো মোড"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo režim"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo mode"
           }
         },
         "es": {
@@ -20171,6 +22073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "রিপিট চালু"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opakování zapnuto"
           }
         },
         "en": {
@@ -20237,6 +22145,12 @@
             "value": "রিপিট বন্ধ"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opakování vypnuto"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20299,6 +22213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "প্রিয় থেকে সরান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odebrat z oblíbených"
           }
         },
         "en": {
@@ -20365,6 +22285,12 @@
             "value": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povolit aplikaci Coucou ovládat Spotify"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20427,6 +22353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify নিন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Získat Spotify"
           }
         },
         "en": {
@@ -20493,6 +22425,12 @@
             "value": "Spotify খুলুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevřít Spotify"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20555,6 +22493,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "আগেরটি"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Předchozí"
           }
         },
         "en": {
@@ -20621,6 +22565,12 @@
             "value": "একটি রিপিট"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opakovat jednu"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20683,6 +22633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "চালান"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přehrát"
           }
         },
         "en": {
@@ -20749,6 +22705,12 @@
             "value": "প্রিয়তে যোগ করুন"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oblíbená"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20811,6 +22773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify ইনস্টল নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify není nainstalované"
           }
         },
         "en": {
@@ -20877,6 +22845,12 @@
             "value": "বিরতি"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozastavit"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -20939,6 +22913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শাফল বন্ধ"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Náhodné přehrávání vypnuto"
           }
         },
         "en": {
@@ -21005,6 +22985,12 @@
             "value": "ভলিউম %lld%%"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlasitost %lld %%"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -21067,6 +23053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "সব রিপিট"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opakovat vše"
           }
         },
         "en": {
@@ -21133,6 +23125,12 @@
             "value": "শাফল চালু"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Náhodné přehrávání zapnuto"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -21195,6 +23193,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "বিজ্ঞাপন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reklama"
           }
         },
         "en": {
@@ -21261,6 +23265,12 @@
             "value": "ইনস্টল নেই"
           }
         },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenainstalováno"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
@@ -21323,6 +23333,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — Spotify খুলুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — otevřít Spotify"
           }
         },
         "en": {
