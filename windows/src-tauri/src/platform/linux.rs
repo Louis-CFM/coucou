@@ -765,6 +765,86 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     Some((g.width() as f64, g.height() as f64))
 }
 
+// ── Window under a point (drop Mochi on it → chat context) ────────────────────
+// IslandWindowController.windowContextAtPoint on the Mac. X11 only: Wayland
+// deliberately does not tell a client what is under the pointer, and on a
+// layer surface the drop coordinates are not screen coordinates anyway.
+
+pub fn window_context_at(_x: f64, _y: f64) -> Option<super::WindowContext> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt};
+
+    // The pointer IS at the drop point — this is a release. On Wayland the
+    // connect itself fails, which is the honest answer there.
+    let (conn, screen) = x11rb::connect(None).ok()?;
+    let root = conn.setup().roots.get(screen)?.root;
+    let pointer = conn.query_pointer(root).ok()?.reply().ok()?;
+    // `child` is the top-level window under the pointer — the WM's frame. The
+    // client inside carries _NET_WM_PID; frames do not.
+    let mut win = pointer.child;
+    if win == 0 {
+        return None;
+    }
+    let intern = |name: &str| -> Option<u32> {
+        conn.intern_atom(false, name.as_bytes()).ok()?.reply().ok().map(|r| r.atom)
+    };
+    let wm_pid = intern("_NET_WM_PID")?;
+    let wm_state = intern("WM_STATE")?;
+    let wm_name = intern("_NET_WM_NAME")?;
+    let utf8 = intern("UTF8_STRING")?;
+
+    let prop = |window: u32, atom: u32, kind: u32| -> Option<Vec<u8>> {
+        conn.get_property(false, window, atom, kind, 0, 1024)
+            .ok()?
+            .reply()
+            .ok()
+            .map(|r| r.value)
+            .filter(|v| !v.is_empty())
+    };
+    // A CARDINAL is read through value32: the bytes are in the wire order,
+    // not necessarily the host's.
+    let pid_of = |window: u32| -> Option<u32> {
+        conn.get_property(false, window, wm_pid, u32::from(AtomEnum::CARDINAL), 0, 1)
+            .ok()?
+            .reply()
+            .ok()?
+            .value32()?
+            .next()
+    };
+
+    // Descend into the frame until a window carries a PID — the client lives
+    // there. Children come bottom-to-top; the topmost is the visible one.
+    for _ in 0..3 {
+        if pid_of(win).is_some() {
+            break;
+        }
+        let kids = conn.query_tree(win).ok()?.reply().ok()?.children;
+        let Some(next) = kids
+            .iter()
+            .rev()
+            .find(|k| prop(**k, wm_state, u32::from(AtomEnum::ANY)).is_some() || pid_of(**k).is_some())
+            .copied()
+        else {
+            return None;
+        };
+        win = next;
+    }
+
+    let pid = pid_of(win)?;
+    if pid == std::process::id() {
+        return None;
+    }
+    let title = prop(win, wm_name, utf8)
+        .or_else(|| prop(win, u32::from(AtomEnum::WM_NAME), u32::from(AtomEnum::STRING)))
+        .map(|v| String::from_utf8_lossy(&v).trim_end_matches('\0').to_string())
+        .unwrap_or_default();
+    let app_name = std::fs::read_to_string(format!("/proc/{pid}/comm"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())?;
+    Some(super::WindowContext { app_name, title })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

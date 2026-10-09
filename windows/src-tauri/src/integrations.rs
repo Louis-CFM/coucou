@@ -693,6 +693,82 @@ async fn poll_resend(app: AppHandle) {
     });
 }
 
+// ── Resend: sending the dropped file ─────────────────────────────────────────
+// MailView.sendViaResend on the Mac. Errors are stable codes the island turns
+// into sentences, so a localized string never rides a Result.
+
+/// Resend caps a request at 40 MB; base64 inflates a third, so 25 MB of file
+/// stays safely under it.
+const RESEND_MAX_ATTACHMENT: u64 = 25 * 1024 * 1024;
+
+const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Base64 with padding — the encoding Resend's `attachments[].content` wants.
+fn b64(data: &[u8]) -> String {
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        // Left-align the group's bytes in 24 bits: 1 byte → 2 chars, 2 → 3.
+        let n = chunk.iter().fold(0u32, |n, b| (n << 8) | u32::from(*b)) << ((3 - chunk.len()) * 8);
+        for i in 0..4 {
+            out.push(if i <= chunk.len() {
+                B64[((n >> (18 - 6 * i)) & 63) as usize] as char
+            } else {
+                '='
+            });
+        }
+    }
+    out
+}
+
+pub async fn resend_send(
+    to: &str,
+    subject: &str,
+    body: &str,
+    path: Option<&str>,
+) -> Result<(), String> {
+    let key = secrets::get("resend-api-key").ok_or("no-key")?;
+    let from = secrets::get("resend-from").ok_or("no-from")?;
+
+    let mut payload = json!({
+        "from": from,
+        "to": [to],
+        "subject": subject,
+        "text": if body.is_empty() { " " } else { body },
+    });
+    if let Some(p) = path.filter(|p| !p.is_empty()) {
+        // The page names the path: like the chat's file context, only a file
+        // that actually came in through a drop — a copy inside the inbox —
+        // can leave the machine.
+        if !crate::chat::is_inside(&crate::files::inbox_dir(), std::path::Path::new(p)) {
+            return Err("bad-path".into());
+        }
+        if std::fs::metadata(p).map_err(|e| e.to_string())?.len() > RESEND_MAX_ATTACHMENT {
+            return Err("too-big".into());
+        }
+        let bytes = std::fs::read(p).map_err(|e| e.to_string())?;
+        let name = std::path::Path::new(p)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "file".into());
+        payload["attachments"] = json!([{ "filename": name, "content": b64(&bytes) }]);
+    }
+
+    let response = client()
+        .post("https://api.resend.com/emails")
+        .header("Authorization", format!("Bearer {key}"))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    match response.status().as_u16() {
+        200 | 201 => Ok(()),
+        code => {
+            log::line(format!("resend send: HTTP {code}"));
+            Err(format!("http-{code}"))
+        }
+    }
+}
+
 // ── Notion ────────────────────────────────────────────────────────────────────
 
 async fn poll_notion(app: AppHandle) {
@@ -787,10 +863,34 @@ fn parse_notion_page(obj: &Value) -> Option<Value> {
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
+/// YYYY-MM-DD for today + `offset_days`, in UTC — civil-from-days, no chrono.
+fn utc_date(offset_days: i64) -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let z = secs.div_euclid(86_400) + offset_days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    format!("{:04}-{:02}-{:02}", if m <= 2 { y + 1 } else { y }, m, d)
+}
+
 async fn poll_calcom(app: AppHandle) {
     let Some(key) = secrets::get("calcom-api-key") else { return };
+    // v2 answers to afterStart/beforeEnd (start/end are silently ignored):
+    // today through today + 60 days, at most 50 rows — the Mac's range.
+    let after = utc_date(0);
+    let before = utc_date(60);
     let response = client()
-        .get("https://api.cal.com/v2/bookings?status=upcoming")
+        .get(format!(
+            "https://api.cal.com/v2/bookings?status=upcoming&afterStart={after}&beforeEnd={before}&take=50"
+        ))
         .header("Authorization", format!("Bearer {key}"))
         .header("cal-api-version", "2024-08-13")
         .send()
@@ -828,6 +928,7 @@ async fn poll_calcom(app: AppHandle) {
                         "id": b.get("id").map(|v| v.to_string()).unwrap_or_default(),
                         "title": b.get("title").and_then(Value::as_str).unwrap_or("Meeting"),
                         "start": start,
+                        "end": b.get("end").or_else(|| b.get("endTime")).and_then(Value::as_str),
                         "status": b.get("status").and_then(Value::as_str).unwrap_or("accepted"),
                         "attendeeName": attendee.and_then(|a| a.get("name")).and_then(Value::as_str),
                         "attendeeEmail": attendee.and_then(|a| a.get("email")).and_then(Value::as_str),
@@ -1020,5 +1121,25 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn b64_pads_partial_groups() {
+        assert_eq!(b64(b""), "");
+        assert_eq!(b64(b"f"), "Zg==");
+        assert_eq!(b64(b"fo"), "Zm8=");
+        assert_eq!(b64(b"foo"), "Zm9v");
+        assert_eq!(b64(b"foobar"), "Zm9vYmFy");
+        // A binary byte trips nothing — every 6-bit window lands in the table.
+        assert_eq!(b64(&[0xff, 0x00]), "/wA=");
+    }
+
+    #[test]
+    fn utc_date_formats_and_offsets() {
+        // 2026-10-09 12:34:56 UTC = 1775829296 s — today + 60 days stays sane.
+        let today = utc_date(0);
+        let later = utc_date(60);
+        assert_eq!(today.len(), 10);
+        assert!(later > today, "{later} should be after {today}");
     }
 }

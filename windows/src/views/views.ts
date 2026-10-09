@@ -9,7 +9,7 @@ import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
-import { buildChoose, buildUpload, buildUploading } from "./upload";
+import { buildChoose, buildMail, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
@@ -29,6 +29,8 @@ import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
+  /** Mail sent (or handed to the mail app): chime + wink + note + back. */
+  mailDone(note: string): void;
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
@@ -821,8 +823,8 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
-  // Not in the Windows v1: sending a file by email, window attach + web result.
-  map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
+  map.set("mail", buildMail(actions));
+  // Not in the Windows v1: window attach + web result.
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
   map.set("result", buildPlaceholder(tl("Result"), ""));
   return map;

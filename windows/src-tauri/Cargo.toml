@@ -30,6 +30,9 @@ keyring = { version = "3", features = ["windows-native"] }
 webview2-com = "0.39"
 wv2_core = { package = "windows-core", version = "0.62" }
 windows = { version = "0.61", features = [
+  "Foundation",
+  # Dictation in the chat field (dictation.rs).
+  "Media_SpeechRecognition",
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
@@ -39,6 +42,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  # Drop Mochi on a window: the version resource names the owning app.
+  "Win32_Storage_FileSystem",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }

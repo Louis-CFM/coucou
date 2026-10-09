@@ -1348,6 +1348,75 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--dim-3);
 }
 
+/* ── Mail sheet — MailView in IslandViewContent.swift ───────────────────────── */
+
+.mail-stack {
+  padding: 6px 18px 10px 92px;
+  gap: 6px;
+}
+
+.mail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.mail-head .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0 10px;
+}
+
+.mail-label {
+  flex: 0 0 auto;
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+}
+
+.mail-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 12.5px var(--font);
+  outline: none;
+  padding: 6px 0;
+}
+
+.mail-input::placeholder {
+  color: var(--dim-3);
+}
+
+.mail-area {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  resize: none;
+  height: 44px;
+}
+
+.mail-status {
+  font: 400 11px var(--font);
+  color: #ff8d97;
+  min-height: 0;
+}
+
+.mail-status:empty {
+  display: none;
+}
+
 .send-btn {
   width: 28px;
   height: 28px;
@@ -1364,6 +1433,39 @@ input[type="range"]::-webkit-slider-thumb {
 
 .send-btn:active {
   transform: scale(0.94);
+}
+
+/* The chat's mic: quiet next to send, a soft pulse while it listens. */
+.mic-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-60, rgba(255, 255, 255, 0.6));
+  display: grid;
+  place-items: center;
+  cursor: default;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.mic-btn.listening {
+  color: #fff;
+  background: rgba(239, 68, 68, 0.85);
+  animation: mic-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
 }
 
 /* ── Drop zone ──────────────────────────────────────────────────────────── */
@@ -1832,6 +1934,102 @@ input[type="range"]::-webkit-slider-thumb {
 
 .int-card.detail {
   padding-top: 8px;
+}
+
+/* ── Cal.com: the sequential month grid (weeks of day 1..7, 8..14…) ─────────
+   CalcomCalendarView/CalcomDayView/CalcomBookingDetailView on the Mac. */
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.cal-title {
+  flex: 1 1 auto;
+  font: 400 10px var(--font);
+  color: #c5c8cd;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cal-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+.cal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.cal-week {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-wlabel {
+  width: 26px;
+  flex: 0 0 26px;
+  font: 400 7px var(--font);
+  color: #4b5563;
+  text-align: right;
+  padding-right: 4px;
+}
+
+.cal-day {
+  flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  cursor: default;
+}
+
+.cal-num {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 500 9px var(--font);
+  color: #9398a1;
+}
+
+.cal-day.today .cal-num {
+  background: rgba(201, 149, 106, 0.55);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #c9956a;
+}
+
+.cal-booking {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: rgba(201, 149, 106, 0.06);
+  cursor: default;
+}
+
+.cal-chev {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--dim-3);
 }
 
 /* ── Plan usage: the pills in the header and the card behind them ────────────
