@@ -169,8 +169,10 @@ pub struct Recap {
     path: PathBuf,
     history: History,
     drafts: HashMap<String, Draft>,
-    /// Permission request ID → agent, until the island answers it.
-    requests: HashMap<String, String>,
+    /// Permission request ID → agent, until the island answers it. A Vec keeps
+    /// the arrival order: at the cap the oldest is dropped, not all of them —
+    /// a decision arriving right after a clear would be scored for Claude.
+    requests: Vec<(String, String)>,
     /// The last image saved, so "Show in folder" never takes a path from the page.
     last_saved: Option<PathBuf>,
 }
@@ -183,7 +185,7 @@ impl Recap {
             path,
             history,
             drafts: HashMap::new(),
-            requests: HashMap::new(),
+            requests: Vec::new(),
             last_saved: None,
         };
         recap.prune(now);
@@ -297,22 +299,25 @@ impl Recap {
 
     /// A permission request reached the island: remember whose it is.
     pub fn note_request(&mut self, request_id: &str, payload: &Value) {
+        self.requests.retain(|(id, _)| id != request_id);
         if self.requests.len() >= MAX_REQUESTS {
-            self.requests.clear();
+            self.requests.remove(0);
         }
-        self.requests.insert(request_id.to_string(), agent_id(payload));
+        self.requests.push((request_id.to_string(), agent_id(payload)));
     }
 
     /// The request was handed back to the terminal: nothing to record.
     pub fn forget_request(&mut self, request_id: &str) {
-        self.requests.remove(request_id);
+        self.requests.retain(|(id, _)| id != request_id);
     }
 
     /// A click on Allow or Deny.
     pub fn record_decision(&mut self, request_id: &str, decision: &str, now: i64) {
         let agent = self
             .requests
-            .remove(request_id)
+            .iter()
+            .position(|(id, _)| id == request_id)
+            .map(|i| self.requests.remove(i).1)
             .unwrap_or_else(|| "integration_claude".to_string());
         if !self.history.prefs.enabled {
             return;
