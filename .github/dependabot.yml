@@ -1,0 +1,31 @@
+# Keeps the Windows/Linux app's dependencies from silently rotting: npm for the
+# frontend and the relay, cargo for the Rust crates, and the actions themselves.
+# Weekly, few open pull requests at a time — enough to stay current without
+# drowning review.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /windows
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /relay
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: cargo
+    directory: /windows
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

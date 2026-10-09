@@ -47,7 +47,9 @@ if (!packages) {
   process.exit(1);
 }
 
-/** The newest file in `dir` ending with `suffix`, in case an older build is still lying around. */
+/** The file in `dir` ending with `suffix` that belongs to this build. Tauri puts
+ * the version in every package name, so a stale artifact from an older build is
+ * skipped rather than silently shipped under the new name. */
 function newest(dir, suffix) {
   let files = [];
   try {
@@ -56,7 +58,12 @@ function newest(dir, suffix) {
     return null;
   }
   if (files.length === 0) return null;
-  return files
+  const versioned = files.filter((f) => f.includes(version));
+  const pool = versioned.length > 0 ? versioned : files;
+  if (pool.length > 1) {
+    console.warn(`  ${pool.length} candidates in ${dir} — picking the newest.`);
+  }
+  return pool
     .map((f) => join(dir, f))
     .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
 }

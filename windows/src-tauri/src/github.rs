@@ -131,7 +131,7 @@ fn pr_basics(node: &Value) -> Option<(String, String, String, String, i64, bool)
     Some((format!("{repo}#{number}"), title, url, repo, number, is_draft))
 }
 
-fn nodes<'a>(parent: Option<&'a Value>) -> &'a [Value] {
+fn nodes(parent: Option<&Value>) -> &[Value] {
     parent
         .and_then(|p| p.get("nodes"))
         .and_then(Value::as_array)

@@ -65,3 +65,6 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --locked
+
+      - name: Clippy
+        run: cargo clippy --workspace --locked -- -D warnings
