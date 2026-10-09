@@ -1,8 +1,9 @@
-/* Nova settings — page-specific styles. The shared theme (tokens, light
-   theme, base, rows) lives in ./theme.css and the control styles (buttons,
-   switches, inputs, notices) in ./controls.css; both are imported first. */
+/* Nova settings — page-specific styles. Shared theme (tokens, light theme,
+   base, rows) in ./theme.css, control styles in ./controls.css, and pills,
+   palette, shortcuts and nav in ./panels.css. All imported first. */
 @import "./theme.css";
 @import "./controls.css";
+@import "./panels.css";
 
 /* ── Engine profiles ─────────────────────────────────────────────────────── */
 
