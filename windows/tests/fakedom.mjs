@@ -70,6 +70,13 @@ class FakeElement {
   getAttribute(k) {
     return this.attributes.get(k) ?? null;
   }
+  removeAttribute(k) {
+    this.attributes.delete(k);
+  }
+  getBoundingClientRect() {
+    return { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0 };
+  }
+  setPointerCapture() {}
   addEventListener(type, fn) {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), fn]);
   }

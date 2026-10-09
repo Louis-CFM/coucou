@@ -4,7 +4,7 @@
 
 pkgname=coucou-git
 _pkgname=coucou
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="Mochi lives at the top of your screen and keeps an eye on your Claude Code sessions"
 arch=('x86_64' 'aarch64')

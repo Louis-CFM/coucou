@@ -12,6 +12,7 @@ import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
+import { Spotify, musicPlaying } from "./spotify";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -100,6 +101,8 @@ export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
+  /** Hovering the island opens it all the way (off: hovering only peeks). */
+  openOnHover: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -154,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
+  openOnHover: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -229,6 +233,10 @@ class AppState {
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
+  /** Ctrl+↑ / Ctrl+↓: the highlighted row of the card's list (AppState.cardSelection). */
+  cardSelection: number | null = null;
+  /** Rows in the list on screen, 0 when there is none (AppState.cardItemCount). */
+  cardItemCount = 0;
   /**
    * Mochi is out of the island — on the desktop, flying, or being dragged
    * there — so the island's own Mochi is hidden (AppState.mochiOnDesktop).
@@ -263,6 +271,11 @@ class AppState {
 
   get effectiveState(): BotStateName {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
+  }
+
+  /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
+  get spotifyPlaying(): boolean {
+    return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
   }
 
   get otherTasks(): AgentTask[] {
