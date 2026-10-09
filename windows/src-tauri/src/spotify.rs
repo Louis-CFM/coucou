@@ -15,7 +15,7 @@
 //
 // Windows has no music source yet: the commands answer "nothing playing".
 
-// The pure parts below are only reached from the Linux client and the tests.
+// The pure parts below are only reached from the Linux and Windows clients and the tests.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
 use serde::Serialize;
@@ -23,7 +23,10 @@ use tauri::AppHandle;
 
 pub const PILL_ID: &str = "integration_spotify";
 /// Where "Get Spotify" leads when it isn't installed.
+#[cfg(target_os = "linux")]
 pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/linux/";
+#[cfg(not(target_os = "linux"))]
+pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/windows/";
 /// Island events: the player's state, and a track's cover as a data URL.
 const STATE_EVENT: &str = "spotify";
 const ARTWORK_EVENT: &str = "spotify-artwork";
@@ -424,7 +427,11 @@ pub async fn spotify_refresh(app: AppHandle) -> Option<PlayerState> {
     {
         tauri::async_runtime::spawn_blocking(move || linux::refresh(&linux::Out::App(app))).await.ok().flatten()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        win::refresh(&app).await
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = app;
         None
@@ -439,7 +446,11 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     {
         tauri::async_runtime::spawn_blocking(move || linux::control(&linux::Out::App(app), &action, value)).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        win::control(&app, &action, value).await
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = (app, action, value);
         false
@@ -454,7 +465,11 @@ pub async fn spotify_open() -> bool {
     {
         tauri::async_runtime::spawn_blocking(linux::open).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        win::open().await
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -467,7 +482,11 @@ pub fn spotify_installed() -> bool {
     {
         linux::installed()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        win::installed()
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -478,7 +497,9 @@ pub fn spotify_installed() -> bool {
 pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     #[cfg(target_os = "linux")]
     linux::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    win::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
+    #[cfg(not(any(target_os = "linux", windows)))]
     let _ = (app, active_integrations);
 }
 
@@ -1499,5 +1520,426 @@ mod tests {
         assert_eq!(sniff_image(b"GIF89a.."), Some("image/gif"));
         assert_eq!(sniff_image(b"<svg xmlns="), None);
         assert_eq!(data_url(&[0xFF, 0xD8, 0xFF]).as_deref(), Some("data:image/jpeg;base64,/9j/"));
+    }
+}
+
+// ── Windows: WinRT GSMTC ──────────────────────────────────────────────────────
+
+#[cfg(windows)]
+mod win {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    use tauri::Emitter;
+    use windows::Foundation::TypedEventHandler;
+    use windows::Media::Control::{
+        CurrentSessionChangedEventArgs,
+        GlobalSystemMediaTransportControlsSession as GSMTCSession,
+        GlobalSystemMediaTransportControlsSessionManager as GSMTCManager,
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus as GSMTCPlaybackStatus,
+        MediaPropertiesChangedEventArgs, PlaybackInfoChangedEventArgs,
+        SessionsChangedEventArgs, TimelinePropertiesChangedEventArgs,
+    };
+    use windows::Storage::Streams::{DataReader, IRandomAccessStreamWithContentType};
+
+    static MANAGER: OnceLock<Arc<WinSessionManager>> = OnceLock::new();
+    static PILL_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+    struct WinSessionManager {
+        app: AppHandle,
+        active_session: Mutex<Option<GSMTCSession>>,
+        last_state: Mutex<PlayerState>,
+    }
+
+    fn get_mgr(app: &AppHandle) -> Arc<WinSessionManager> {
+        MANAGER
+            .get_or_init(|| {
+                let mgr = Arc::new(WinSessionManager {
+                    app: app.clone(),
+                    active_session: Mutex::new(None),
+                    last_state: Mutex::new(PlayerState {
+                        installed: installed(),
+                        ..PlayerState::default()
+                    }),
+                });
+
+                let clone = mgr.clone();
+                let _ = std::thread::Builder::new()
+                    .name("coucou-spotify-win".into())
+                    .spawn(move || {
+                        let rt = tokio::runtime::Builder::new_current_thread()
+                            .enable_all()
+                            .build();
+                        if let Ok(rt) = rt {
+                            let local = tokio::task::LocalSet::new();
+                            local.block_on(&rt, async move {
+                                clone.listen_sessions().await;
+                            });
+                        }
+                    });
+
+                mgr
+            })
+            .clone()
+    }
+
+    pub fn sync(app: &AppHandle, on: bool) {
+        PILL_ACTIVE.store(on, Ordering::Relaxed);
+        let mgr = get_mgr(app);
+        if on {
+            request_update(app);
+        } else {
+            let state = {
+                let mut s = mgr.last_state.lock().unwrap();
+                s.clear(now_ms());
+                s.clone()
+            };
+            emit_state(app, &state);
+        }
+    }
+
+    pub async fn refresh(app: &AppHandle) -> Option<PlayerState> {
+        let mgr = get_mgr(app);
+        request_update(app);
+        let state = mgr.last_state.lock().unwrap().clone();
+        Some(state)
+    }
+
+    pub async fn control(app: &AppHandle, action: &str, value: Option<f64>) -> bool {
+        let mgr = get_mgr(app);
+        let session = mgr.active_session.lock().unwrap().clone();
+        let Some(s) = session else { return false };
+        let v = value.unwrap_or(0.0);
+        let app_handle = app.clone();
+        let action_str = action.to_string();
+
+        tauri::async_runtime::spawn_blocking(move || {
+            let done = match action_str.as_str() {
+                "playPause" => {
+                    if let Ok(info) = s.GetPlaybackInfo() {
+                        let is_playing = info.PlaybackStatus().ok() == Some(GSMTCPlaybackStatus::Playing);
+                        if is_playing {
+                            s.TryPauseAsync().ok().is_some()
+                        } else {
+                            s.TryPlayAsync().ok().is_some()
+                        }
+                    } else {
+                        s.TryTogglePlayPauseAsync().ok().is_some()
+                    }
+                }
+                "next" => s.TrySkipNextAsync().ok().is_some(),
+                "previous" => s.TrySkipPreviousAsync().ok().is_some(),
+                "seek" => {
+                    let ticks = (v * 10_000_000.0) as i64;
+                    s.TryChangePlaybackPositionAsync(ticks).ok().is_some()
+                }
+                "shuffle" => {
+                    let _ = s.TryChangeShuffleActiveAsync(v != 0.0).ok();
+                    true
+                }
+                "repeat" => {
+                    use windows::Media::MediaPlaybackAutoRepeatMode;
+                    let mode = if v != 0.0 {
+                        MediaPlaybackAutoRepeatMode::List
+                    } else {
+                        MediaPlaybackAutoRepeatMode::None
+                    };
+                    let _ = s.TryChangeAutoRepeatModeAsync(mode).ok();
+                    true
+                }
+                _ => false,
+            };
+
+            if done {
+                request_update(&app_handle);
+            }
+            done
+        })
+        .await
+        .unwrap_or(false)
+    }
+
+    pub async fn open() -> bool {
+        if crate::platform::focus_app("Spotify.exe") {
+            return true;
+        }
+        crate::platform::open_url("spotify:");
+        true
+    }
+
+    pub fn installed() -> bool {
+        if crate::platform::is_process_running("Spotify.exe") {
+            return true;
+        }
+        if let Some(base) = std::env::var_os("APPDATA") {
+            let path = std::path::PathBuf::from(base).join("Spotify").join("Spotify.exe");
+            if path.is_file() {
+                return true;
+            }
+        }
+        if let Some(base) = std::env::var_os("LOCALAPPDATA") {
+            let path = std::path::PathBuf::from(base)
+                .join("Microsoft")
+                .join("WindowsApps")
+                .join("Spotify.exe");
+            if path.is_file() {
+                return true;
+            }
+        }
+        true
+    }
+
+    fn request_update(app: &AppHandle) {
+        let app_handle = app.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build();
+            if let Ok(rt) = rt {
+                let local = tokio::task::LocalSet::new();
+                local.block_on(&rt, async move {
+                    let mgr = get_mgr(&app_handle);
+                    mgr.refresh_current().await;
+                });
+            }
+        });
+    }
+
+    impl WinSessionManager {
+        async fn listen_sessions(&self) {
+            let winrt_manager = match GSMTCManager::RequestAsync() {
+                Ok(op) => match op.await {
+                    Ok(m) => m,
+                    Err(e) => {
+                        crate::log::line(format!("spotify winrt: RequestAsync failed: {e}"));
+                        return;
+                    }
+                },
+                Err(e) => {
+                    crate::log::line(format!("spotify winrt: RequestAsync call failed: {e}"));
+                    return;
+                }
+            };
+
+            let app_clone1 = self.app.clone();
+            let handler = TypedEventHandler::<GSMTCManager, SessionsChangedEventArgs>::new(
+                move |_sender, _args| {
+                    request_update(&app_clone1);
+                    Ok(())
+                },
+            );
+            let _ = winrt_manager.SessionsChanged(&handler);
+
+            let app_clone2 = self.app.clone();
+            let curr_handler = TypedEventHandler::<GSMTCManager, CurrentSessionChangedEventArgs>::new(
+                move |_sender, _args| {
+                    request_update(&app_clone2);
+                    Ok(())
+                },
+            );
+            let _ = winrt_manager.CurrentSessionChanged(&curr_handler);
+
+            self.refresh_from_manager(&winrt_manager).await;
+
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                if PILL_ACTIVE.load(Ordering::Relaxed) {
+                    self.refresh_from_manager(&winrt_manager).await;
+                }
+            }
+        }
+
+        async fn refresh_current(&self) {
+            if let Ok(op) = GSMTCManager::RequestAsync() {
+                if let Ok(m) = op.await {
+                    self.refresh_from_manager(&m).await;
+                }
+            }
+        }
+
+        async fn refresh_from_manager(&self, manager: &GSMTCManager) {
+            let sessions = match manager.GetSessions() {
+                Ok(s) => s,
+                Err(_) => return,
+            };
+
+            let mut spotify_session: Option<GSMTCSession> = None;
+            for s in sessions {
+                if let Ok(id) = s.SourceAppUserModelId() {
+                    let id_str = id.to_string_lossy().to_lowercase();
+                    if id_str.contains("spotify") {
+                        spotify_session = Some(s);
+                        break;
+                    }
+                }
+            }
+
+            {
+                let mut guard = self.active_session.lock().unwrap();
+                let is_new = guard.is_none() && spotify_session.is_some();
+                *guard = spotify_session.clone();
+                if is_new {
+                    if let Some(ref s) = spotify_session {
+                        let app1 = self.app.clone();
+                        let h_props = TypedEventHandler::<GSMTCSession, MediaPropertiesChangedEventArgs>::new(
+                            move |_s, _e| {
+                                request_update(&app1);
+                                Ok(())
+                            },
+                        );
+                        let _ = s.MediaPropertiesChanged(&h_props);
+
+                        let app2 = self.app.clone();
+                        let h_playback = TypedEventHandler::<GSMTCSession, PlaybackInfoChangedEventArgs>::new(
+                            move |_s, _e| {
+                                request_update(&app2);
+                                Ok(())
+                            },
+                        );
+                        let _ = s.PlaybackInfoChanged(&h_playback);
+
+                        let app3 = self.app.clone();
+                        let h_timeline = TypedEventHandler::<GSMTCSession, TimelinePropertiesChangedEventArgs>::new(
+                            move |_s, _e| {
+                                request_update(&app3);
+                                Ok(())
+                            },
+                        );
+                        let _ = s.TimelinePropertiesChanged(&h_timeline);
+                    }
+                }
+            }
+
+            let Some(session) = spotify_session else {
+                let mut state = self.last_state.lock().unwrap();
+                let was_running = state.running;
+                let was_playing = state.playing;
+                state.running = crate::platform::is_process_running("Spotify.exe");
+                state.clear(now_ms());
+                if was_running || was_playing {
+                    emit_state(&self.app, &state);
+                }
+                return;
+            };
+
+            let playback_info = session.GetPlaybackInfo().ok();
+            let is_playing = playback_info.as_ref().map_or(false, |info| {
+                info.PlaybackStatus().ok() == Some(GSMTCPlaybackStatus::Playing)
+            });
+
+            // Timeline properties
+            let mut position = 0.0;
+            let mut duration = 0.0;
+            let mut position_at = now_ms();
+            if let Ok(timeline) = session.GetTimelineProperties() {
+                if let Ok(end) = timeline.EndTime() {
+                    duration = end.Duration as f64 / 10_000_000.0;
+                }
+                if let Ok(pos) = timeline.Position() {
+                    position = pos.Duration as f64 / 10_000_000.0;
+                }
+                if let Ok(updated) = timeline.LastUpdatedTime() {
+                    const UNIX_EPOCH_TICKS: i64 = 116_444_736_000_000_000;
+                    if updated.UniversalTime > UNIX_EPOCH_TICKS {
+                        let ms = (updated.UniversalTime - UNIX_EPOCH_TICKS) / 10_000;
+                        position_at = ms as f64;
+                    }
+                }
+            }
+
+            // Media properties
+            let mut track: Option<Track> = None;
+            let mut artwork_data_url: Option<String> = None;
+            if let Ok(props_op) = session.TryGetMediaPropertiesAsync() {
+                if let Ok(props) = props_op.await {
+                    let title = props.Title().map_or(String::new(), |s| s.to_string_lossy());
+                    let artist = props.Artist().map_or(String::new(), |s| s.to_string_lossy());
+                    let album = props.AlbumTitle().map_or(String::new(), |s| s.to_string_lossy());
+                    if !title.is_empty() || !artist.is_empty() {
+                        let id = format!("spotify:track:{}:{}", artist, title);
+                        artwork_data_url = read_thumbnail_data_url(&props).await;
+                        track = Some(Track {
+                            id: id.clone(),
+                            title: short_title(&title),
+                            artist: short_artist(&artist),
+                            album,
+                            duration,
+                            art_url: artwork_data_url.as_ref().map(|_| id.clone()),
+                            object_path: String::new(),
+                        });
+                    }
+                }
+            }
+
+            let last_guard = self.last_state.lock().unwrap();
+            let track_changed = last_guard.track.as_ref().map(|t| &t.id) != track.as_ref().map(|t| &t.id);
+            let play_changed = last_guard.playing != is_playing;
+            let drift = (last_guard.position - position).abs() > 2.0;
+
+            let should_emit = track_changed || play_changed || drift;
+            drop(last_guard);
+
+            let new_state = PlayerState {
+                running: true,
+                installed: installed(),
+                track: track.clone(),
+                playing: is_playing,
+                position,
+                position_at,
+                shuffle: false,
+                repeat: false,
+                volume: 50,
+            };
+
+            *self.last_state.lock().unwrap() = new_state.clone();
+            if should_emit {
+                emit_state(&self.app, &new_state);
+            }
+
+            if let (Some(t), Some(data_url)) = (track, artwork_data_url) {
+                if let Some(art_url) = t.art_url {
+                    let _ = self.app.emit_to(
+                        crate::island::WINDOW_LABEL,
+                        ARTWORK_EVENT,
+                        Artwork { art_url, data_url },
+                    );
+                }
+            }
+        }
+    }
+
+    async fn read_thumbnail_data_url(
+        props: &windows::Media::Control::GlobalSystemMediaTransportControlsSessionMediaProperties,
+    ) -> Option<String> {
+        let stream: IRandomAccessStreamWithContentType = {
+            let thumb_ref = props.Thumbnail().ok()?;
+            let stream_op = thumb_ref.OpenReadAsync().ok()?;
+            stream_op.await.ok()?
+        };
+        let size = stream.Size().ok()? as u32;
+        if size == 0 || size > 5 * 1024 * 1024 {
+            return None;
+        }
+
+        let content_type = stream
+            .ContentType()
+            .map(|s| s.to_string_lossy())
+            .unwrap_or_else(|_| "image/jpeg".into());
+
+        let reader = DataReader::CreateDataReader(&stream).ok()?;
+        let bytes_loaded = {
+            let load_op = reader.LoadAsync(size).ok()?;
+            load_op.await.ok()?
+        };
+        if bytes_loaded == 0 {
+            return None;
+        }
+
+        let mut buf = vec![0u8; bytes_loaded as usize];
+        reader.ReadBytes(&mut buf).ok()?;
+
+        let b64 = crate::claude::base64_for(&buf);
+        Some(format!("data:{content_type};base64,{b64}"))
     }
 }

@@ -457,7 +457,7 @@ pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
 }
 
 /// Brings forward the window of a running app, by executable name.
-fn focus_app(exe: &str) -> bool {
+pub fn focus_app(exe: &str) -> bool {
     let pids: Vec<u32> = process_table()
         .into_iter()
         .filter(|(_, p)| p.exe.eq_ignore_ascii_case(exe))
@@ -467,6 +467,10 @@ fn focus_app(exe: &str) -> bool {
         .into_iter()
         .find(|(_, owner, _)| pids.contains(owner))
         .is_some_and(|(hwnd, _, _)| bring_forward(hwnd))
+}
+
+pub fn is_process_running(exe: &str) -> bool {
+    process_table().values().any(|p| p.exe.eq_ignore_ascii_case(exe))
 }
 
 /// The Claude desktop app: brought forward when it runs (Claude Code's own

@@ -628,6 +628,7 @@ dependencies = [
  "webview2-com",
  "windows 0.61.3",
  "windows-core 0.62.2",
+ "windows-future 0.2.1",
  "x11rb",
 ]
 

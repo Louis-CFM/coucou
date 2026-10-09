@@ -29,7 +29,11 @@ keyring = { version = "3", features = ["windows-native"] }
 # Same versions as wry, so nothing new is compiled.
 webview2-com = "0.39"
 wv2_core = { package = "windows-core", version = "0.62" }
+windows-future = "0.2"
 windows = { version = "0.61", features = [
+  "Foundation",
+  "Media_Control",
+  "Storage_Streams",
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",

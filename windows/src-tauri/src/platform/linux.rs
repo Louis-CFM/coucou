@@ -268,6 +268,14 @@ pub fn open_claude_desktop() -> bool {
     false
 }
 
+pub fn focus_app(_exe: &str) -> bool {
+    false
+}
+
+pub fn is_process_running(_exe: &str) -> bool {
+    false
+}
+
 /// Where the Codex CLI may be, best first: $PATH, then the usual per-user
 /// install folders, which a desktop launch often leaves out of $PATH (npm's
 /// global prefix, Volta, Bun, pnpm, and nvm with its newest Node first).
