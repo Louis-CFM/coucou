@@ -144,6 +144,10 @@ pub fn spawn(
             cmd.env("PATH", joined);
         }
     }
+    // Marks the session for the relay: headless claude never fires
+    // PermissionRequest, so the relay raises a task's writing or running
+    // PreToolUse to an approval card itself (hook/src/main.rs, task_ask).
+    cmd.env("COUCOU_TASK", "1");
     platform::no_console(&mut cmd);
     let mut child = cmd
         .spawn()

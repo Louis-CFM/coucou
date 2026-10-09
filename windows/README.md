@@ -233,6 +233,11 @@ answer comes back to the chat as Markdown.
   allowed, so a task can read docs outside its project. Writing and running
   commands ask: an approval card in the island with the hooks installed, a
   safe deny otherwise — a task can fail, but never acts without a click.
+  Headless `claude -p` never fires PermissionRequest on its own, so the relay
+  raises a task's writing or running PreToolUse to the card itself; a card
+  left unanswered stays silent, and the session's own permission rules decide
+  exactly as before — a folder the task's project allows keeps working
+  without a click.
 - **Where answers land** — with **Settings… → Task outputs** set (an Obsidian
   vault folder works well), Coucou saves every finished answer there as a
   dated Markdown note with `task:`/`project:`/`date:` front matter, and the
