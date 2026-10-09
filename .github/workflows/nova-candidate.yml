@@ -1,0 +1,84 @@
+name: Nova Phase 1 candidate
+on:
+  push:
+    branches: ['nova/phase-1']
+    paths: ['.nova/**', '.github/workflows/nova-candidate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Materialize reviewed Windows-only source
+        run: node .nova/materialize.mjs
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: nova-phase1-${{ hashFiles('windows/Cargo.lock') }}
+      - name: Install existing frontend dependencies
+        working-directory: windows
+        run: npm ci
+      - name: Generate replacement icons
+        working-directory: windows
+        run: npm run icons
+      - name: Frontend regression tests
+        working-directory: windows
+        run: npm test
+      - name: Type check
+        working-directory: windows
+        run: npm exec tsc -- --noEmit
+      - name: Build existing hook relay
+        working-directory: windows
+        run: cargo build --release -p nova-hook
+      - name: Native regression tests
+        working-directory: windows
+        run: cargo test --workspace
+      - name: Existing Tauri build and package pipeline
+        working-directory: windows
+        run: npm run pack
+      - name: Record artifact checksums
+        shell: pwsh
+        run: |
+          $files = @('windows/release/Nova-Windows-setup.exe', 'windows/target/release/nova.exe', 'windows/target/release/nova-hook.exe')
+          $files | ForEach-Object { $hash = Get-FileHash $_ -Algorithm SHA256; "$($hash.Hash.ToLower())  $(Split-Path $_ -Leaf)" } | Set-Content windows/release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-Windows-installer-phase1
+          path: |
+            windows/release/Nova-Windows-setup.exe
+            windows/release/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-Windows-portable-phase1
+          path: |
+            windows/target/release/nova.exe
+            windows/target/release/nova-hook.exe
+          if-no-files-found: error
+      - name: Stage clean source without transport files or build outputs
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'Nova-source'
+          New-Item -ItemType Directory -Force $source | Out-Null
+          Copy-Item README.md,LICENSE,LICENSE-ASSETS.md,.gitignore $source
+          New-Item -ItemType Directory -Force "$source/.github/workflows" | Out-Null
+          Copy-Item .github/workflows/windows.yml,.github/workflows/windows-ci.yml "$source/.github/workflows"
+          robocopy windows "$source/windows" /E /XD node_modules target dist release /NFL /NDL /NJH /NJS
+          if ($LASTEXITCODE -gt 7) { throw 'Source staging failed' }
+          $global:LASTEXITCODE = 0
+          Compress-Archive -Path "$source/*" -DestinationPath "$env:RUNNER_TEMP/Nova-source-phase1.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-clean-source-phase1
+          path: ${{ runner.temp }}/Nova-source-phase1.zip
+          if-no-files-found: error
