@@ -1,163 +1,100 @@
-name: Windows
-
-# Builds the Windows app and publishes the installer.
-# Triggered by tags like `windows-v0.1.0`; the macOS workflows are untouched.
-
+name: Nova Windows
 on:
-  push:
-    tags:
-      - 'windows-v*'
   workflow_dispatch:
-
+  push:
+    branches: [main, nova/assistant-upgrade]
+    paths: ['windows/**', '.github/workflows/windows.yml', '!windows/src-tauri/icons/**']
 permissions:
-  contents: write
-
-# Publishing is on: Microsoft reviewed the Defender false positive
-# (Trojan:Win32/Wacatac.H!ml) and removed the detection. Before pushing a
-# windows-v* tag, run this workflow by hand and scan the artifacts with Defender:
-# a new unsigned build can still trip its machine-learning model. Set this to
-# 'false' to build tags without publishing.
-env:
-  PUBLISH: 'true'
-
+  contents: read
 jobs:
   build:
     runs-on: windows-latest
     defaults:
       run:
         working-directory: windows
-
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: windows/package-lock.json
-
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             windows/target
-          key: windows-cargo-${{ hashFiles('windows/Cargo.lock') }}
-          restore-keys: windows-cargo-
-
-      - name: Install dependencies
-        run: npm ci
-
-      # Three files carry the version and they drift silently. Publishing a
-      # "0.1.1" that installs a 0.1.0 is the kind of thing nobody notices until
-      # a bug report arrives against the wrong build.
-      - name: Check the tag and every version agree
-        if: startsWith(github.ref, 'refs/tags/windows-v')
+          key: nova-windows-${{ hashFiles('windows/Cargo.lock') }}
+      - run: npm ci
+      - run: npm run icons
+      - name: Fetch verified native OpenCode engine
+        run: npm run engine
+      - name: Frontend regression tests
         shell: pwsh
         run: |
-          $tag  = "${{ github.ref_name }}" -replace '^windows-v', ''
-          $conf = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
-          $pkg  = (Get-Content package.json | ConvertFrom-Json).version
-          $cargo = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.+)"').Matches[0].Groups[1].Value
-          "tag=$tag tauri.conf=$conf package.json=$pkg Cargo.toml=$cargo"
-          $bad = @()
-          if ($tag -ne $conf)  { $bad += "tauri.conf.json says $conf" }
-          if ($tag -ne $pkg)   { $bad += "package.json says $pkg" }
-          if ($tag -ne $cargo) { $bad += "Cargo.toml says $cargo" }
-          if ($bad) { throw "tag says $tag but $($bad -join '; ')" }
-
-      # `npm run build` (run by tauri as beforeBuildCommand) builds coucou-hook
-      # first, which tauri.conf.json then bundles as a resource. `pack` then
-      # copies the installer out of target/ under its shipping name.
-      - name: Build and pack the installer
-        id: pack
-        shell: pwsh
-        run: |
-          npm run pack
-          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
-          "version=$version" >> $env:GITHUB_OUTPUT
-          Get-ChildItem release | Format-Table Name, Length
-
-      # Upload only on a manual run or when publishing a release.
-      # The repo is public, so artifacts are downloadable by any signed-in GitHub
-      # user; the condition keeps them off automatic tag builds while downloads
-      # are paused. retention-days: 3 limits exposure.
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
-        with:
-          name: Coucou-Windows-setup
-          path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}-setup.exe
-          retention-days: 3
-
-      # MSI installer generated via WiX toolset. Bypasses NSIS extractor false-positives
-      # and provides clean native Windows Installer deployment.
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
-        with:
-          name: Coucou-Windows-msi
-          path: windows/release/Coucou-Windows-${{ steps.pack.outputs.version }}.msi
-          retention-days: 3
-
-      # The unsigned NSIS installer is what Defender false-positives on, so the
-      # bare binaries go up as well. hooks.rs already falls back to looking for
-      # coucou-hook.exe next to coucou.exe, which is exactly this layout, so the
-      # portable pair runs with working Claude Code hooks and no installer.
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
-        with:
-          name: Coucou-Windows-portable
-          path: |
-            windows/target/release/coucou.exe
-            windows/target/release/coucou-hook.exe
-          retention-days: 3
-
-      - name: Publish the release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $v = "${{ steps.pack.outputs.version }}"
-          $notes = @"
-          Coucou for Windows $v — Mochi at the top of your screen.
-
-          Download ``Coucou-Windows-$v.msi`` (Windows Installer) or ``Coucou-Windows-$v-setup.exe`` and run it. The installer is not
-          code-signed yet, so Windows SmartScreen shows a warning: click
-          **More info → Run anyway**.
-          "@
-          # --latest=false is not cosmetic: without it GitHub hands "Latest" to
-          # whichever release was published last, and the site's Download for Mac
-          # button points at /releases/latest. A Windows tag would silently send
-          # Mac users to the .exe. The macOS `v*` releases own that slot.
-          gh release create "${{ github.ref_name }}" `
-            "release/Coucou-Windows-$v-setup.exe" `
-            "release/Coucou-Windows-$v.msi" `
-            --title "Coucou for Windows $v" `
-            --notes $notes `
-            --latest=false
-
-      - name: Update the rolling windows-latest release
-        if: env.PUBLISH == 'true' && startsWith(github.ref, 'refs/tags/windows-v')
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $v = "${{ steps.pack.outputs.version }}"
-          $exists = gh release view windows-latest 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            # The tag has to follow the release, or windows-latest keeps pointing
-            # at the first commit it was ever created from and anyone building
-            # from it gets an old tree.
-            git tag -f windows-latest "${{ github.sha }}"
-            git push -f origin windows-latest
-            gh release edit windows-latest --title "Coucou for Windows (latest)" --notes "Always the newest Windows build — currently $v."
-            gh release upload windows-latest "release/Coucou-Windows-setup.exe" "release/Coucou-Windows.msi" --clobber
-          } else {
-            gh release create windows-latest `
-              "release/Coucou-Windows-setup.exe" `
-              "release/Coucou-Windows.msi" `
-              --title "Coucou for Windows (latest)" `
-              --notes "Always the newest Windows build — currently $v." `
-              --latest=false
+          $output = & node --import ./tests/setup.mjs --test --test-reporter=tap "tests/**/*.test.mjs" 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            foreach ($failure in ($output | Select-String -Pattern '^not ok ' -Context 0,35)) {
+              $text = $failure.ToString()
+              if ($text.Length -gt 3800) { $text = $text.Substring(0,3800) }
+              $text = $text.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Frontend regression failure::$text"
+            }
+            exit $code
           }
+      - run: npm exec tsc -- --noEmit
+      - run: cargo build --release -p nova-hook
+      - name: Native tests and real-engine approval integration
+        shell: pwsh
+        env:
+          NOVA_ENGINE_TEST_EXE: ${{ github.workspace }}\windows\engine\opencode.exe
+        run: |
+          $output = & cargo test --workspace 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            $tail = ($output | Select-Object -Last 30) -join "`n"
+            $tail = $tail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Native build or integration failure::$tail"
+            exit $code
+          }
+      - run: npm run pack
+      - name: Windows process launch smoke test (not visual acceptance)
+        working-directory: .
+        shell: pwsh
+        run: |
+          $env:APPDATA = Join-Path $env:RUNNER_TEMP 'Nova-smoke-roaming'
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'Nova-smoke-local'
+          New-Item -ItemType Directory -Force $env:APPDATA,$env:LOCALAPPDATA | Out-Null
+          $process = Start-Process -FilePath (Resolve-Path windows/target/release/nova.exe) -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+            if ($process.HasExited) { throw "Nova exited during launch smoke test: $($process.ExitCode)" }
+            Write-Output "Nova process remained alive for 8 seconds; visual/DPI acceptance still requires a real desktop."
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { taskkill /PID $process.Id /T /F | Out-Null }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-Windows-assistant-upgrade-installer
+          path: windows/release/Nova-Windows-setup.exe
+          if-no-files-found: error
+      - name: Prepare portable directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force portable/engine | Out-Null
+          Copy-Item target/release/nova.exe,target/release/nova-hook.exe portable/
+          Copy-Item engine/opencode.exe,engine/LICENSE.txt,engine/VERSION portable/engine/
+          Copy-Item ASSISTANT-QUICKSTART.md portable/README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-Windows-assistant-upgrade-portable
+          path: windows/portable/
+          if-no-files-found: error

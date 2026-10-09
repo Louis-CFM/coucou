@@ -19,6 +19,7 @@
 import { N_ } from "../i18n/i18n";
 
 export const SHORTCUT_TEXT = {
+  killEngine: N_("Emergency engine stop (Strict mode)"),
   toggleIsland: N_("Open or close the island"),
   openChat: N_("Open the chat"),
   goToAlert: N_("Go to the waiting permission or question"),
@@ -26,8 +27,8 @@ export const SHORTCUT_TEXT = {
   attachFrontWindow: N_("Attach the front window to the chat"),
   nextPill: N_("Next pill"),
   prevPill: N_("Previous pill"),
-  muteToggle: N_("Mute or unmute Mochi"),
-  desktopToggle: N_("Send Mochi to the desktop"),
+  muteToggle: N_("Mute or unmute Nova"),
+  desktopToggle: N_("Send Nova to the desktop"),
   wardrobeToggle: N_("Open the wardrobe"),
   island: {
     nextPrev: N_("Next or previous pill"),
@@ -47,6 +48,7 @@ export const SHORTCUT_TEXT = {
 
 /** Mac `ShortcutAction` raw values. Stored in settings.json: never rename one. */
 export type ShortcutId =
+  | "killEngine"
   | "toggleIsland"
   | "openChat"
   | "goToAlert"
@@ -71,6 +73,7 @@ const def = (id: ShortcutId, defaultKeys: string, enabledByDefault: boolean, por
 
 /** Same order and defaults as ACTIONS in src-tauri/src/shortcuts.rs. */
 export const SHORTCUTS: readonly ShortcutDef[] = [
+  def("killEngine", "Ctrl+Alt+K", true, true),
   def("toggleIsland", "Ctrl+Alt+N", false, true),
   def("openChat", "Ctrl+Alt+Space", true, true),
   def("goToAlert", "Ctrl+Alt+A", true, true),
@@ -296,7 +299,7 @@ export function duplicates(entries: Iterable<[string, string]>): Set<string> {
   return dups;
 }
 
-/** The (id, keys) pairs Coucou would register with `stored`. */
+/** The (id, keys) pairs Nova would register with `stored`. */
 export function activeKeys(stored: Bindings | undefined): [string, string][] {
   return SHORTCUTS.filter((d) => d.ported)
     .map((d) => [d.id, effective(d, stored)] as const)

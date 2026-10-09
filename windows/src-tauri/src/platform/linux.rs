@@ -8,7 +8,7 @@
 //   * click-through is the window's input region, set to the island shape, so
 //     the compositor itself sends every other click to whatever is underneath;
 //   * the cursor comes from the page's own mouse events, which only fire over
-//     the island — Mochi's eyes follow the pointer there, not across the screen.
+//     the island — Nova's eyes follow the pointer there, not across the screen.
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -23,7 +23,7 @@ use tauri::{AppHandle, WebviewWindow};
 use super::{home_dir, LocalTime};
 
 /// File name of the Claude Code relay.
-pub const HOOK_EXE: &str = "coucou-hook";
+pub const HOOK_EXE: &str = "nova-hook";
 
 /// Environment variable holding the home directory.
 pub const HOME_VAR: &str = "HOME";
@@ -39,16 +39,16 @@ fn xdg(var: &str, fallback: &str) -> PathBuf {
         .unwrap_or_else(|| home_dir().join(fallback))
 }
 
-/// ~/.config/coucou — preferences.
+/// ~/.config/nova — preferences.
 pub fn config_dir() -> PathBuf {
-    xdg("XDG_CONFIG_HOME", ".config").join("coucou")
+    xdg("XDG_CONFIG_HOME", ".config").join("nova")
 }
 
-/// ~/.local/share/coucou — where coucou-hook, the inbox and the log live. The
+/// ~/.local/share/nova — where nova-hook, the inbox and the log live. The
 /// relay has to sit at a stable path: an AppImage is mounted somewhere new on
 /// every launch.
 pub fn local_dir() -> PathBuf {
-    xdg("XDG_DATA_HOME", ".local/share").join("coucou")
+    xdg("XDG_DATA_HOME", ".local/share").join("nova")
 }
 
 /// Where a saved image goes, best first: the XDG pictures folder named in
@@ -90,14 +90,14 @@ fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
 /// keeps its plugin registry in ~/.cache/gstreamer-1.0 by default — the same
 /// file the system's GStreamer uses. The AppImage is mounted somewhere new on
 /// every launch, so each launch would rewrite the system's registry with
-/// plugin paths that vanish once Coucou quits. Give ours its own file.
+/// plugin paths that vanish once Nova quits. Give ours its own file.
 pub fn prepare_environment() {
     prefer_x11_on_gnome();
     follow_gnome_text_scaling();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
-    let cache = xdg("XDG_CACHE_HOME", ".cache").join("coucou");
+    let cache = xdg("XDG_CACHE_HOME", ".cache").join("nova");
     if std::fs::create_dir_all(&cache).is_ok() {
         std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
     }
@@ -107,13 +107,13 @@ pub fn prepare_environment() {
 /// to go, so the island lands in the middle of the screen. Through XWayland it
 /// can be placed, and a Dock window survives "show desktop" (Super+D).
 /// An inherited GDK_BACKEND=wayland is overridden too: editors and terminals
-/// pass theirs down to every child. COUCOU_X11=0 keeps the Wayland window.
+/// pass theirs down to every child. NOVA_X11=0 keeps the Wayland window.
 fn prefer_x11_on_gnome() {
     let env = |k: &str| std::env::var(k).unwrap_or_default();
     if should_prefer_x11(
         &env("XDG_SESSION_TYPE"),
         &env("XDG_CURRENT_DESKTOP"),
-        &env("COUCOU_X11"),
+        &env("NOVA_X11"),
         &env("DISPLAY"),
     ) {
         std::env::set_var("GDK_BACKEND", "x11");
@@ -200,8 +200,8 @@ fn is_private_dir(dir: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Where coucou-hook finds us: `$XDG_RUNTIME_DIR/coucou.sock`, or
-/// `/run/user/<uid>/coucou.sock` when the variable is missing. A directory
+/// Where nova-hook finds us: `$XDG_RUNTIME_DIR/nova.sock`, or
+/// `/run/user/<uid>/nova.sock` when the variable is missing. A directory
 /// that is not ours and private means no relay at all — never a fallback to a
 /// shared place like /tmp. Must match `socket_path()` in hook/src/unix.rs
 /// exactly.
@@ -210,7 +210,7 @@ pub fn relay_socket_path() -> Option<PathBuf> {
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .unwrap_or_else(|| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
-    is_private_dir(&dir).then(|| dir.join("coucou.sock"))
+    is_private_dir(&dir).then(|| dir.join("nova.sock"))
 }
 
 // ── Who we are ────────────────────────────────────────────────────────────────
@@ -338,9 +338,9 @@ mod layer {
     }
 }
 
-/// COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
+/// NOVA_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
 fn layer_shell_wanted() -> bool {
-    std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true)
+    std::env::var("NOVA_LAYER_SHELL").map(|v| v != "0").unwrap_or(true)
 }
 
 /// True once the island window is a layer-shell surface.
@@ -364,7 +364,7 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 /// the keyboard. Must run before the window is first shown: a layer surface
 /// cannot be made out of a window the compositor already knows.
 ///
-/// Without layer-shell (GNOME, X11, or COUCOU_LAYER_SHELL=0) the window stays
+/// Without layer-shell (GNOME, X11, or NOVA_LAYER_SHELL=0) the window stays
 /// an ordinary always-on-top window that refuses focus; where it lands is then
 /// up to the window manager.
 pub fn make_non_activating(win: &WebviewWindow) {
@@ -377,7 +377,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
     let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
     if !wanted || !supported || gw.is_realized() {
         let why = if !wanted {
-            "COUCOU_LAYER_SHELL=0"
+            "NOVA_LAYER_SHELL=0"
         } else if supported {
             "window already shown"
         } else {
@@ -388,8 +388,8 @@ pub fn make_non_activating(win: &WebviewWindow) {
         if !gw.is_realized() {
             // On X11 a Dock is kept above everything and is the only kind of
             // window, besides the desktop, that "show desktop" leaves alone.
-            // COUCOU_DOCK=0 falls back to a utility window.
-            let dock = std::env::var("COUCOU_DOCK").map(|v| v != "0").unwrap_or(true);
+            // NOVA_DOCK=0 falls back to a utility window.
+            let dock = std::env::var("NOVA_DOCK").map(|v| v != "0").unwrap_or(true);
             gw.set_type_hint(if dock {
                 gtk::gdk::WindowTypeHint::Dock
             } else {
@@ -407,7 +407,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
     let ptr = gtk_window_ptr(&gw);
     unsafe {
         layer::gtk_layer_init_for_window(ptr);
-        layer::gtk_layer_set_namespace(ptr, c"coucou".as_ptr());
+        layer::gtk_layer_set_namespace(ptr, c"nova".as_ptr());
         layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
         // Top edge only: the compositor centres the surface horizontally.
         layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
@@ -576,7 +576,7 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
 /// grab made through XWayland only sees keys typed into other X11 windows, so
 /// it would look registered and never fire. On Wayland the shortcuts go to the
 /// desktop through the XDG GlobalShortcuts portal instead (portal.rs), and
-/// where there is none Settings explains how to bind `coucou --shortcut <id>`
+/// where there is none Settings explains how to bind `nova --shortcut <id>`
 /// in the desktop's own keyboard settings.
 pub fn global_shortcuts_blocked() -> Option<&'static str> {
     let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
@@ -597,7 +597,7 @@ pub fn ctrl_alt_types(_vk: u16, _shift: bool) -> Option<String> {
     None
 }
 
-// ── Desktop Mochi window ──────────────────────────────────────────────────────
+// ── Desktop Nova window ──────────────────────────────────────────────────────
 //
 // Where the window may go decides everything here:
 //   * X11 places any window where it is asked: an ordinary always-on-top
@@ -605,7 +605,7 @@ pub fn ctrl_alt_types(_vk: u16, _shift: bool) -> Option<String> {
 //   * a layer-shell compositor won't move a toplevel, but anchors a layer
 //     surface wherever its margins say, on the island's display;
 //   * GNOME on Wayland has neither, so the feature is off there.
-// In every case the input region is Mochi's body, so clicks anywhere else go
+// In every case the input region is Nova's body, so clicks anywhere else go
 // to the desktop underneath without any cursor polling.
 
 /// Which of the three applies. Must run on the GTK main thread.
@@ -624,8 +624,8 @@ pub fn desktop_mode() -> super::DesktopMode {
     }
 }
 
-/// The input shape last asked for the desktop Mochi, re-applied on every map.
-static MOCHI_SHAPE: Mutex<super::MouseShape> = Mutex::new(super::MouseShape::Empty);
+/// The input shape last asked for the desktop Nova, re-applied on every map.
+static NOVA_SHAPE: Mutex<super::MouseShape> = Mutex::new(super::MouseShape::Empty);
 
 /// Sets the window up for `mode` before it is ever shown. False means it can't
 /// be used (a layer surface can't be made from a window already shown).
@@ -635,14 +635,14 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
     match mode {
         super::DesktopMode::Layer => {
             if gw.is_realized() {
-                crate::log::line("desktop Mochi: window already shown, no layer surface");
+                crate::log::line("desktop Nova: window already shown, no layer surface");
                 return false;
             }
             gw.set_titlebar(None::<&gtk::Widget>);
             let ptr = gtk_window_ptr(&gw);
             unsafe {
                 layer::gtk_layer_init_for_window(ptr);
-                layer::gtk_layer_set_namespace(ptr, c"coucou-mochi".as_ptr());
+                layer::gtk_layer_set_namespace(ptr, c"nova-nova".as_ptr());
                 // Above windows, below fullscreen video — like a floating panel.
                 layer::gtk_layer_set_layer(ptr, layer::LAYER_TOP);
                 layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
@@ -655,13 +655,13 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
             // Same first-frame problem as the island (see make_non_activating).
             let remapped = std::cell::Cell::new(false);
             gw.connect_map_event(move |w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *NOVA_SHAPE.lock().unwrap());
                 if !remapped.replace(true) {
                     let w = w.clone();
                     gtk::glib::idle_add_local_once(move || {
                         w.hide();
                         w.show_all();
-                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock().unwrap());
+                        apply_mouse_shape(&w, *NOVA_SHAPE.lock().unwrap());
                     });
                 }
                 gtk::glib::Propagation::Proceed
@@ -670,7 +670,7 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
         }
         super::DesktopMode::Window => {
             gw.connect_map_event(|w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *NOVA_SHAPE.lock().unwrap());
                 gtk::glib::Propagation::Proceed
             });
             true
@@ -679,9 +679,9 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
     }
 }
 
-/// Which part of the desktop Mochi takes the mouse. Main thread.
+/// Which part of the desktop Nova takes the mouse. Main thread.
 pub fn set_desktop_shape(win: &WebviewWindow, shape: super::MouseShape) {
-    *MOCHI_SHAPE.lock().unwrap() = shape;
+    *NOVA_SHAPE.lock().unwrap() = shape;
     let Ok(gw) = win.gtk_window() else { return };
     apply_mouse_shape(&gw, shape);
 }
@@ -733,7 +733,7 @@ pub fn set_layer_margins(win: &WebviewWindow, x: f64, y: f64) {
 
 /// Layer surface only: `on` stretches it over the whole display — how a drag
 /// gets exact pointer positions on Wayland, where a surface that moves under
-/// the pointer can't tell where it is — and `off` folds it back to Mochi's
+/// the pointer can't tell where it is — and `off` folds it back to Nova's
 /// size in the corner. Main thread.
 pub fn set_layer_overlay(win: &WebviewWindow, on: bool) {
     let Ok(gw) = win.gtk_window() else { return };
@@ -748,9 +748,9 @@ pub fn set_layer_overlay(win: &WebviewWindow, on: bool) {
     }
 }
 
-/// Layer surface only: puts the desktop Mochi on the island's display and
+/// Layer surface only: puts the desktop Nova on the island's display and
 /// returns that display's logical size. Main thread.
-pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f64, f64)> {
+pub fn layer_display(island: &WebviewWindow, nova: &WebviewWindow) -> Option<(f64, f64)> {
     let island_gw = island.gtk_window().ok()?;
     let display = gtk::gdk::Display::default()?;
     let monitor = island_gw
@@ -758,7 +758,7 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
         .and_then(|w| display.monitor_at_window(&w))
         .or_else(|| display.primary_monitor())
         .or_else(|| display.monitor(0))?;
-    if let Ok(gw) = mochi.gtk_window() {
+    if let Ok(gw) = nova.gtk_window() {
         unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), monitor.to_glib_none().0) };
     }
     let g = monitor.geometry();
@@ -771,7 +771,7 @@ mod tests {
 
     #[test]
     fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {
-        let base = std::env::temp_dir().join(format!("coucou-rt-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("nova-rt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let dir = base.join("runtime");
         std::fs::create_dir_all(&dir).unwrap();
@@ -821,7 +821,7 @@ mod tests {
     #[test]
     fn private_dirs_are_closed_to_everyone_else() {
         use std::os::unix::fs::MetadataExt;
-        let dir = std::env::temp_dir().join(format!("coucou-priv-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nova-priv-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();

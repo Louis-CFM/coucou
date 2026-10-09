@@ -6,7 +6,7 @@
 // component. Never a command, a file path, file contents or a prompt.
 //
 // The history lives in recap.json under platform::local_dir()
-// (%LOCALAPPDATA%\Coucou on Windows, ~/.local/share/coucou on Linux), keeps a
+// (%LOCALAPPDATA%\Nova on Windows, ~/.local/share/nova on Linux), keeps a
 // 12-week rolling window and a hard cap on its length, and is written whole to
 // a temporary file then renamed over the old one, so a crash never leaves half
 // a file. Nothing in it ever leaves the machine.
@@ -436,7 +436,7 @@ fn write_history(path: &Path, history: &History) -> std::io::Result<()> {
     }
     let json = serde_json::to_vec(history)
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    let temp = path.with_extension(format!("json.nova-{}", std::process::id()));
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]
@@ -454,7 +454,7 @@ fn write_history(path: &Path, history: &History) -> std::io::Result<()> {
     written
 }
 
-/// One line in coucou.log. Tests must never write to the real one.
+/// One line in nova.log. Tests must never write to the real one.
 fn note(message: String) {
     #[cfg(not(test))]
     crate::log::line(message);
@@ -469,11 +469,11 @@ fn text<'a>(payload: &'a Value, key: &str) -> &'a str {
 }
 
 /// Same routing as hooks.ts, so a turn counts for the pill it showed on: a
-/// valid `coucou_agent` → `agent_<name>` (every agent the relay normalises,
+/// valid `nova_agent` → `agent_<name>` (every agent the relay normalises,
 /// Claude Desktop included); otherwise Claude Code's own pill — Cursor's when
 /// it runs in Cursor's terminal, VS Code's else. "claude" is reserved.
 fn agent_id(payload: &Value) -> String {
-    let raw = text(payload, "coucou_agent");
+    let raw = text(payload, "nova_agent");
     let valid = !raw.is_empty()
         && raw.len() <= 24
         && raw != "claude"
@@ -662,9 +662,9 @@ fn save_png(dirs: &[PathBuf], data: &str, week: &str) -> Result<PathBuf, String>
         .find(|d| d.is_dir())
         .ok_or_else(|| crate::i18n::t("No Pictures or Downloads folder to save into."))?;
     let stem = if is_week_key(week) {
-        format!("Coucou weekly recap {week}")
+        format!("Nova weekly recap {week}")
     } else {
-        "Coucou weekly recap".to_string()
+        "Nova weekly recap".to_string()
     };
     write_unique(dir, &stem, &bytes)
         .map_err(|err| crate::i18n::tf("Could not save the image: {error}", &[("error", &err.to_string())]))
@@ -777,14 +777,14 @@ mod tests {
     const T0: i64 = 1_791_158_400;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("coucou-recap-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nova-recap-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
 
     fn event(name: &str, session: &str, extra: Value) -> Value {
-        let mut v = json!({ "hook_event_name": name, "session_id": session, "cwd": "/home/me/code/coucou" });
+        let mut v = json!({ "hook_event_name": name, "session_id": session, "cwd": "/home/me/code/nova" });
         if let (Some(obj), Value::Object(more)) = (v.as_object_mut(), extra) {
             obj.extend(more);
         }
@@ -805,17 +805,17 @@ mod tests {
         r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "Read" })), T0 + 20);
         r.observe(&event("PreToolUse", "s1", json!({ "tool_name": "AskUserQuestion" })), T0 + 25);
         r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Edit", "tool_input": {
-            "file_path": "/home/me/code/coucou/a.rs", "old_string": "a\nb\nc", "new_string": "a\nB\nc\nd" } })), T0 + 30);
+            "file_path": "/home/me/code/nova/a.rs", "old_string": "a\nb\nc", "new_string": "a\nB\nc\nd" } })), T0 + 30);
         r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Write", "tool_input": {
-            "file_path": "/home/me/code/coucou/b.rs", "content": "one\ntwo\nthree\n" } })), T0 + 40);
+            "file_path": "/home/me/code/nova/b.rs", "content": "one\ntwo\nthree\n" } })), T0 + 40);
         r.observe(&event("PostToolUse", "s1", json!({ "tool_name": "Edit", "tool_input": {
-            "file_path": "/home/me/code/coucou/a.rs", "old_string": "x", "new_string": "y" } })), T0 + 50);
+            "file_path": "/home/me/code/nova/a.rs", "old_string": "x", "new_string": "y" } })), T0 + 50);
         r.observe(&event("Stop", "s1", json!({})), T0 + HOUR);
 
         let view = r.view(0);
         assert_eq!(view.turns, vec![Turn {
             agent: "integration_claude".into(),
-            project: "coucou".into(),
+            project: "nova".into(),
             start: T0,
             end: T0 + HOUR,
             files_changed: 2,
@@ -830,7 +830,7 @@ mod tests {
         for secret in ["secret plan", "rm -rf", "a.rs", "/home/me", "one\\ntwo"] {
             assert!(!written.contains(secret), "{secret} must not be stored");
         }
-        assert_eq!(on_disk(&file)["turns"][0]["project"], "coucou");
+        assert_eq!(on_disk(&file)["turns"][0]["project"], "nova");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -839,10 +839,10 @@ mod tests {
         let dir = scratch("sessions");
         let mut r = Recap::load(dir.join("recap.json"), T0);
         r.observe(&event("UserPromptSubmit", "a", json!({})), T0);
-        r.observe(&event("UserPromptSubmit", "b", json!({ "coucou_agent": "gemini", "cwd": "C:\\Users\\me\\side-project\\" })), T0 + 60);
-        r.observe(&event("PreToolUse", "b", json!({ "coucou_agent": "gemini", "tool_name": "run_shell_command" })), T0 + 70);
+        r.observe(&event("UserPromptSubmit", "b", json!({ "nova_agent": "gemini", "cwd": "C:\\Users\\me\\side-project\\" })), T0 + 60);
+        r.observe(&event("PreToolUse", "b", json!({ "nova_agent": "gemini", "tool_name": "run_shell_command" })), T0 + 70);
         r.observe(&event("Stop", "a", json!({})), T0 + 120);
-        r.observe(&event("Stop", "b", json!({ "coucou_agent": "gemini" })), T0 + 180);
+        r.observe(&event("Stop", "b", json!({ "nova_agent": "gemini" })), T0 + 180);
         let turns = r.view(0).turns;
         assert_eq!(turns.len(), 2);
         assert_eq!((turns[0].agent.as_str(), turns[0].commands_run), ("integration_claude", 0));
@@ -855,9 +855,9 @@ mod tests {
     #[test]
     fn invalid_or_reserved_agent_tags_fall_back_to_claude_code() {
         for tag in ["claude", "Gemini", "has space", "a-very-long-agent-name-over-24"] {
-            assert_eq!(agent_id(&json!({ "coucou_agent": tag })), "integration_claude", "{tag}");
+            assert_eq!(agent_id(&json!({ "nova_agent": tag })), "integration_claude", "{tag}");
         }
-        assert_eq!(agent_id(&json!({ "coucou_agent": "codex" })), "agent_codex");
+        assert_eq!(agent_id(&json!({ "nova_agent": "codex" })), "agent_codex");
     }
 
     #[test]
@@ -865,8 +865,8 @@ mod tests {
         // Claude Code in Cursor's terminal is the Cursor pill, as in hooks.ts.
         assert_eq!(agent_id(&json!({ "term_editor": "cursor" })), "agent_cursor");
         // An explicit agent wins over the terminal it runs in.
-        assert_eq!(agent_id(&json!({ "coucou_agent": "claude-desktop", "term_editor": "cursor" })), "agent_claude-desktop");
-        assert_eq!(agent_id(&json!({ "coucou_agent": "copilot" })), "agent_copilot");
+        assert_eq!(agent_id(&json!({ "nova_agent": "claude-desktop", "term_editor": "cursor" })), "agent_claude-desktop");
+        assert_eq!(agent_id(&json!({ "nova_agent": "copilot" })), "agent_copilot");
         assert_eq!(agent_id(&json!({})), "integration_claude");
     }
 
@@ -888,7 +888,7 @@ mod tests {
     fn decisions_are_recorded_with_the_agent_that_asked() {
         let dir = scratch("decisions");
         let mut r = Recap::load(dir.join("recap.json"), T0);
-        r.note_request("r1", &json!({ "coucou_agent": "codex" }));
+        r.note_request("r1", &json!({ "nova_agent": "codex" }));
         r.record_decision("r1", "always", T0);
         r.record_decision("unknown", "deny", T0 + 1);
         r.record_decision("r3", "maybe", T0 + 2);
@@ -1036,11 +1036,11 @@ mod tests {
         let png = "data:image/png;base64,iVBORw0KGgo=";
         let first = save_png(&[missing.clone(), dir.clone()], png, "2026-10-05").unwrap();
         let second = save_png(&[dir.clone()], png, "2026-10-05").unwrap();
-        assert_eq!(first, dir.join("Coucou weekly recap 2026-10-05.png"));
-        assert_eq!(second, dir.join("Coucou weekly recap 2026-10-05 (2).png"));
+        assert_eq!(first, dir.join("Nova weekly recap 2026-10-05.png"));
+        assert_eq!(second, dir.join("Nova weekly recap 2026-10-05 (2).png"));
         // The week is a date or nothing: no path tricks through it.
         let third = save_png(&[dir.clone()], png, "../../x").unwrap();
-        assert_eq!(third, dir.join("Coucou weekly recap.png"));
+        assert_eq!(third, dir.join("Nova weekly recap.png"));
         // Not a PNG: refused.
         assert!(save_png(&[dir.clone()], "data:image/png;base64,aGVsbG8=", "").is_err());
         assert!(save_png(&[missing], png, "").is_err());

@@ -50,10 +50,10 @@ export interface ViewLayout {
   agentMode: AgentLayoutMode;
 }
 
-// The window is a fixed 720×320 (largest view) like the macOS panel; the island is
-// drawn inside it, glued to the top edge and horizontally centred.
+// The host window leaves room for tall chats; other island views keep their
+// original sizes. Rust caps the host to the selected monitor height.
 export const PANEL_W = 720;
-export const PANEL_H = 320;
+export const PANEL_H = 720;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
@@ -96,21 +96,23 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
-// dropped the whole sequence — Mochi included — is drawn by src/upload, which
+// dropped the whole sequence — Nova included — is drawn by src/upload, which
 // owns its own constants (USC) straight from UploadSequenceEngine.swift.
 
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
 
-/** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
-export function chatPromptHeight(messageCount: number): number {
-  return Math.min(300, 240 + messageCount * 40);
+/** Taller chat with room below for the composer; smaller monitors remain bounded. */
+export function chatPromptHeight(messageCount: number, panelHeight = PANEL_H): number {
+  const available = Math.max(0, panelHeight - 24);
+  return Math.min(available, 680, 480 + Math.max(0, messageCount) * 60);
 }
 
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  panelHeight = PANEL_H,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
@@ -120,7 +122,7 @@ export function islandSize(
     case "compact":
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
-      const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
+      const h = view === "prompt" ? chatPromptHeight(chatCount, panelHeight) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
     }
   }

@@ -2,6 +2,9 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // Appearance switch (stroked).
+  sun: "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1v3M12 20v3M1 12h3M20 12h3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1",
+  moon: "M20.5 14.2A9 9 0 0 1 9.8 3.5 9 9 0 1 0 20.5 14.2z",
   // house.fill
   house: "M12 3.2 2.8 10.6V21h6.6v-5.4h5.2V21h6.6V10.6L12 3.2z",
   // bubble.left.fill

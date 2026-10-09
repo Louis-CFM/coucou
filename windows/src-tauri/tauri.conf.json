@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Coucou",
+  "productName": "Nova",
   "version": "0.3.0",
-  "identifier": "fr.louisraille.coucou",
+  "identifier": "com.sweety.nova",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,13 +12,13 @@
   "app": {
     "withGlobalTauri": false,
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost",
-      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://ipapi.co ipc: http://ipc.localhost",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://ipapi.co ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"
     },
     "windows": [
       {
         "label": "island",
-        "title": "Coucou",
+        "title": "Nova",
         "url": "index.html",
         "width": 240,
         "height": 6,
@@ -41,22 +41,32 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "resources": { "../target/release/coucou-hook.exe": "coucou-hook.exe" },
-    "copyright": "© Louis Raille",
+    "resources": {
+      "../target/release/nova-hook.exe": "nova-hook.exe",
+      "../engine/opencode.exe": "engine/opencode.exe",
+      "../engine/LICENSE.txt": "engine/LICENSE.txt",
+      "../engine/VERSION": "engine/VERSION"
+    },
+    "copyright": "Copyright (c) 2026 sweety; portions Copyright (c) 2026 Louis Raill\u00e9",
     "category": "DeveloperTool",
-    "shortDescription": "Mochi lives at the top of your screen",
-    "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
+    "shortDescription": "Your personal desktop island",
+    "longDescription": "Nova is a personal Windows desktop island with managed OpenCode execution, per-call approvals, local conversations and file attachments.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["English", "French"],
+        "languages": [
+          "English",
+          "French"
+        ],
         "installerHooks": "nsis/hooks.nsh"
       }
     }

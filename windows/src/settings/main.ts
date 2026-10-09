@@ -10,13 +10,17 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { applyTheme, normalizeTheme } from "../core/theme";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
+import { widgetsSection } from "./widgets";
 import { agentsSection } from "./agents";
+import { engineSection, computerSection } from "./engine";
+import { extensionsSection } from "./extensions";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -30,6 +34,19 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+let themePicker: HTMLSelectElement | null = null;
+
+function appearanceSection(): HTMLElement {
+  themePicker = h("select", { "aria-label": t("Theme") }) as HTMLSelectElement;
+  themePicker.append(h("option", { value: "dark", text: t("Dark") }), h("option", { value: "light", text: t("Light") }));
+  themePicker.value = normalizeTheme(settings.theme);
+  themePicker.addEventListener("change", () => {
+    settings.theme = normalizeTheme(themePicker!.value);
+    applyTheme(settings.theme);
+    void save();
+  });
+  return h("section", {}, h("h2", { text: t("Appearance") }), h("div", { class: "row" }, h("label", { text: t("Theme") }), themePicker));
+}
 
 const root = document.getElementById("settings-root")!;
 
@@ -37,7 +54,7 @@ async function save() {
   await Bridge.saveSettings(settings);
 }
 
-/** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
+/** A colour was picked for a pill's Nova (see ./colors.ts): the island follows. */
 function pickColor(next: Record<string, string>) {
   settings.pillColors = next;
   void save();
@@ -73,7 +90,7 @@ const HOOKS_CHANGE: Change = {
   preview: Bridge.hooksPreview,
   apply: Bridge.hooksApply,
   get installText() { return t("This is exactly what will change in your settings.json. Your own hooks are left untouched."); },
-  get removeText() { return t("This removes Coucou's entries only. Your own hooks are left untouched."); },
+  get removeText() { return t("This removes Nova's entries only. Your own hooks are left untouched."); },
   get installButton() { return t("Back up and write"); },
   get removeButton() { return t("Back up and remove"); },
   done: (backup) => backup
@@ -84,7 +101,7 @@ const HOOKS_CHANGE: Change = {
 const STATUS_LINE_CHANGE: Change = {
   preview: Bridge.statusLinePreview,
   apply: Bridge.statusLineApply,
-  get installText() { return t("This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you."); },
+  get installText() { return t("This is exactly what will change: only the status line. If you already have one it keeps working, Nova's relay runs it for you."); },
   get removeText() { return t("This puts your previous status line back, or removes the entry if there was none."); },
   get installButton() { return t("Back up and write"); },
   get removeButton() { return t("Back up and remove"); },
@@ -180,7 +197,7 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: status.installed
-          ? t("Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
+          ? t("Nova is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
           : t("Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing."),
       }),
       h("div", { class: "row" },
@@ -197,7 +214,7 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: t("coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`."),
+        text: t("nova-hook.exe is not in place yet. Restart Nova; if it still fails, build it with `cargo build -p nova-hook`."),
       }));
     }
 
@@ -237,9 +254,9 @@ function claudeSection(status: HookStatus): HTMLElement {
  * that has been confirmed. A status line the user had keeps working.
  */
 const PLAN_SETTINGS_TEXT = {
-  get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
+  get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Nova adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
   get showClaude() { return t("Show in notch"); },
-  get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
+  get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Nova asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
 };
 
@@ -300,7 +317,7 @@ function planSection(status: HookStatus): HTMLElement {
               onclick: () => void reviewChange(body, STATUS_LINE_CHANGE, true, redraw, () => void rebuild()),
             }),
       ),
-      // Codex: nothing to install, Coucou asks the Codex CLI when the pill shows.
+      // Codex: nothing to install, Nova asks the Codex CLI when the pill shows.
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.codex }),
       h("div", { class: "row" },
         h("label", { text: PLAN_SETTINGS_TEXT.showCodex }),
@@ -474,7 +491,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     "section",
     {},
     h("h2", {}, h("span", { text: t("Active pills") })),
-    h("div", { class: "hint", text: t("Choose the tools you use. Coucou only shows what you declare here.") }),
+    h("div", { class: "hint", text: t("Choose the tools you use. Nova only shows what you declare here.") }),
     slots,
     h("div", { class: "row" }, h("label", { text: t("Main tool") }), main),
     groups,
@@ -793,7 +810,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = t("Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
+    note.textContent = t("Pick up to {max} pills to show next to Nova — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
   }
   declaredViews.push(updateNote);
 
@@ -943,10 +960,10 @@ function generalSection(): HTMLElement {
       volume,
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
-    h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    h("div", { class: "hint", text: t("Drop a file named like one of Nova's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
-      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+      h("span", {class:"hint",text:"Always enabled for the top-centre wake strip"}),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
@@ -962,14 +979,13 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
-    ...recapRows(),
     languageRow(),
   );
 }
 
 /**
  * Settings → General → Language, as on the Mac: "System" follows the
- * system's language when Coucou has it (else English), or one of the ten.
+ * system's language when Nova has it (else English), or one of the ten.
  * Both windows and the tray switch in place, without a restart.
  */
 function languageRow(): HTMLElement {
@@ -1260,7 +1276,7 @@ function applyLanguage() {
 
 function applyDirection() {
   document.documentElement.dir = isRtl() ? "rtl" : "ltr";
-  document.title = t("Settings — Coucou");
+  document.title = t("Settings — Nova");
 }
 
 let rendering: Promise<void> | null = null;
@@ -1295,6 +1311,7 @@ async function main() {
     version = boot.version;
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
+  applyTheme(settings.theme);
   applyDirection();
   onLanguageChange(() => {
     applyDirection();
@@ -1306,6 +1323,8 @@ async function main() {
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
+    applyTheme(settings.theme);
+    if (themePicker) themePicker.value = normalizeTheme(settings.theme);
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
@@ -1357,23 +1376,26 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
-  root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    agentsSection(agents),
-    planSection(status),
-    apiSection(hasKey),
-    chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
-    activePillsSection(connected),
-    integrationsSection(present),
-    generalSection(),
-    shortcutsSection(shortcutReport),
-    h("div", {
-      class: "hint",
-      text: t("No telemetry. Network requests only go to the services you configure yourself."),
-    }),
-  );
+  const pages = [
+    {id:"appearance",label:"Appearance & App",blocks:[appearanceSection(),widgetsSection(),generalSection()]},
+    {id:"chat",label:"AI Chat",blocks:[engineSection(),extensionsSection()]},
+    {id:"computer",label:"Computer Access",blocks:[computerSection()]},
+    {id:"advanced",label:"Advanced",blocks:[h("section", {}, h("h2", {text:"Coding-agent integrations"}), h("p", {class:"hint",text:"Optional power-user features. These hooks are not required for the assistant chat."})),claudeSection(status),agentsSection(agents),h("section",{},h("h2",{text:"Coding-session recap"}),h("p",{class:"hint",text:"Optional coding statistics only. This is separate from your assistant chat history."}),...recapRows()),planSection(status),activePillsSection(connected),integrationsSection(present),shortcutsSection(shortcutReport),h("details",{class:"settings-legacy"},h("summary",{text:"Previous direct-chat setup (for key import)"}),apiSection(hasKey),chatProvidersSection(chatKeys,keyChanged),localSection(customKey))]},
+  ];
+  const nav = h("nav", {class:"settings-nav","aria-label":"Settings sections"});
+  const area = h("div", {class:"settings-content"});
+  let active = sessionStorage.getItem("nova-settings-tab") || "appearance";
+  const show = (id:string) => {
+    active = id;sessionStorage.setItem("nova-settings-tab",id);
+    for (const child of nav.children) child.classList.toggle("selected",(child as HTMLElement).dataset.page===id);
+    for (const child of area.children) (child as HTMLElement).hidden=(child as HTMLElement).dataset.page!==id;
+  };
+  for(const page of pages){
+    const button=h("button",{type:"button",text:page.label,onclick:()=>show(page.id)});button.dataset.page=page.id;nav.append(button);
+    const body=h("div",{class:"settings-page"},...page.blocks);body.dataset.page=page.id;area.append(body);
+  }
+  root.append(h("div",{class:"settings-titlebar"},h("h1",{},"Nova",h("span",{class:"version",text:version})),h("button",{class:"quit-app",text:t("Quit Nova"),onclick:()=>void Bridge.quit()})),h("p",{class:"hint",text:"The island’s × only hides it. Move your mouse to the top centre to reopen it; Quit stops the app."}),nav,area);
+  show(pages.some(p=>p.id===active)?active:"appearance");
 }
 
 void main();

@@ -1,429 +1,193 @@
-/* Settings window — same palette as the island, laid out as a normal window. */
+/* Nova settings — page-specific styles. Shared theme (tokens, light theme,
+   base, rows) in ./theme.css, control styles in ./controls.css, and pills,
+   palette, shortcuts and nav in ./panels.css. All imported first. */
+@import "./theme.css";
+@import "./controls.css";
+@import "./panels.css";
 
-:root {
-  /* Makes Windows render the native dropdown and scrollbars dark — without it
-     the <select> popup is white text on white. */
-  color-scheme: dark;
+/* ── Engine profiles ─────────────────────────────────────────────────────── */
 
-  /* Then the scripts of the other interface languages (see src/style.css). */
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI",
-    "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Arabic",
-    "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
-  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
-  --ink: #f5f6f8;
-  --dim: #9398a1;
-  --dim-2: #6b7079;
-  --bg: #0b0c0e;
-  --card: #141518;
-  --hairline: rgba(255, 255, 255, 0.07);
-  --green: #22c55e;
-  --red: #f4505e;
-  --amber: #f5a524;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body.settings-window {
-  background: var(--bg);
-  color: var(--ink);
-  font: 400 13px/1.45 var(--font);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
-
-#settings-root {
-  padding: 22px 24px 32px;
+.engine-profile-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-h1 {
-  font: 600 17px var(--font);
-  letter-spacing: -0.01em;
-}
-
-h1 .version {
-  font: 400 12px var(--font);
-  color: var(--dim-2);
-  margin-left: 8px;
-}
-
-section {
-  background: var(--card);
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-section > h2 {
-  font: 600 13px var(--font);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hint {
-  font: 400 12px var(--font);
-  color: var(--dim);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.row > label {
-  min-width: 132px;
-  color: var(--dim);
-  font-size: 12.5px;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  flex: 0 0 auto;
-}
-
-button {
-  font: 500 12.5px var(--font);
-  padding: 7px 14px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--ink);
-  cursor: pointer;
-  transition: background 0.14s, transform 0.08s;
-}
-
-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-button:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
-button.primary {
-  background: var(--ink);
-  color: #0b0c0e;
-}
-
-button.primary:hover:not(:disabled) {
-  background: #fff;
-}
-
-button.danger {
-  background: rgba(244, 80, 94, 0.16);
-  color: #ff8d97;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-code,
-.path {
-  font: 400 11.5px var(--mono);
-  color: var(--dim);
-  word-break: break-all;
-  user-select: text;
-}
-
-.switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
-  flex: 0 0 36px;
-  padding: 0;
-}
-
-.switch.on {
-  background: var(--green);
-}
-
-.switch::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.18s;
-}
-
-.switch.on::after {
-  transform: translateX(16px);
-}
-
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
-  width: 140px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #fff;
-}
-
-input[type="number"],
-input[type="text"],
-input[type="password"],
-select {
-  font: 400 12.5px var(--font);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  color: var(--ink);
-  padding: 5px 8px;
-}
-
-input::placeholder {
-  color: var(--dim-2);
-}
-
-input:focus,
-select:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-/* The popup is drawn by the OS: give it an explicit pair of colours rather than
-   inheriting white on white. */
-select option {
-  background-color: #1a1c20;
-  color: var(--ink);
-}
-
-.diff {
-  font: 400 11.5px/1.5 var(--mono);
-  background: #08090b;
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-  padding: 10px 12px;
-  max-height: 260px;
-  overflow: auto;
-  white-space: pre;
-  user-select: text;
-}
-
-.diff .add {
-  color: #86efac;
-}
-
-.diff .del {
-  color: #ff8d97;
-}
-
-.diff .ctx {
-  color: var(--dim-2);
-}
-
-.notice {
-  font: 400 12px var(--font);
-  border-radius: 10px;
-  padding: 8px 12px;
-}
-
-.notice.ok {
-  background: rgba(34, 197, 94, 0.12);
-  color: #86efac;
-}
-
-.notice.err {
-  background: rgba(244, 80, 94, 0.14);
-  color: #ff8d97;
-}
-
-.notice.warn {
-  background: rgba(245, 165, 36, 0.13);
-  color: #fbc06a;
-}
-
-/* Active pills — one group per catalog category, one row per pill. */
-
-.pill-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 13px;
   border-top: 1px solid var(--hairline);
+  padding-top: 16px;
 }
 
-.pill-group > h3 {
-  font: 600 11px var(--font);
+.engine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
   color: var(--dim);
+  min-width: 0;
 }
 
-.pill-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-}
-
-.pill-row .name {
-  font-size: 12.5px;
-}
-
-/* The dot of a pill's row opens the colour palette (see ./colors.ts). The dot
-   itself is unchanged. */
-.color-dot {
-  cursor: pointer;
-}
-
-.color-dot:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
-  outline-offset: 2px;
-}
-
-.palette {
-  position: fixed;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.engine-field input,
+.engine-field select,
+.engine-field textarea {
+  width: 100%;
+  max-width: 100%;
   padding: 8px 10px;
-  background: var(--card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  color: var(--ink);
   border: 1px solid var(--hairline);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font: 400 12.5px/1.4 var(--font);
+  min-height: var(--ctl-h);
+  transition: border-color var(--t-med) var(--ease),
+              box-shadow var(--t-med) var(--ease);
 }
 
-.palette .swatch {
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border-radius: 50%;
+.engine-field input:focus,
+.engine-field select:focus,
+.engine-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.palette .swatch.on {
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink);
+.engine-field textarea {
+  resize: vertical;
+  min-height: 68px;
 }
 
-.palette .reset {
-  padding: 3px 10px;
-  font-size: 11.5px;
-}
-
-.pill-row.full .name {
-  color: var(--dim-2);
-}
-
-.pill-row .state {
-  margin-left: auto;
-  font: 400 11.5px var(--font);
+.engine-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
   color: var(--dim);
 }
 
-.hint.full {
-  color: var(--amber);
+.engine-pricing {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
 }
 
-/* Shortcuts section */
-
-.subhead {
-  font: 600 11px var(--font);
-  color: var(--dim-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-top: 4px;
+.engine-optional {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 10px;
 }
 
-.shortcut-list {
+.engine-optional summary {
+  color: var(--dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.engine-optional summary:hover { color: var(--ink); }
+
+.engine-optional > label { margin-top: 12px; }
+
+.engine-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.engine-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.engine-profile-summary {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--bg-raised);
+  transition: border-color var(--t-med) var(--ease);
+}
+
+.engine-profile-summary:hover { border-color: var(--hairline-strong); }
+
+.access-rules {
+  padding-left: 18px;
+  color: var(--dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.access-rules li { margin: 8px 0; }
+
+/* ── Widgets ──────────────────────────────────────────────────────────────── */
+
+.widget-settings-order {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.row.shortcut {
-  flex-wrap: nowrap;
-  gap: 10px;
-}
-
-.row.shortcut.off .shortcut-name {
-  color: var(--dim-2);
-}
-
-.shortcut-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 12.5px;
-}
-
-.keycap {
-  font: 500 11.5px var(--mono);
-  min-width: 118px;
-  padding: 5px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
+.widget-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  transition: border-color var(--t-med) var(--ease);
+}
+
+.widget-settings-row:hover { border-color: var(--hairline-strong); }
+
+.widget-settings-row label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
   color: var(--ink);
-  text-align: center;
-  flex: 0 0 auto;
 }
 
-.keycap.recording {
-  border-color: rgba(255, 255, 255, 0.4);
-  color: var(--dim);
+.widget-settings-row button {
+  padding: 5px 12px;
+  margin-left: 5px;
+  min-height: 28px;
 }
 
-.keycap.static {
-  background: transparent;
-  color: var(--dim);
+.widget-city-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
 }
 
-.tag {
-  font: 500 10.5px var(--font);
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--dim);
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
+.widget-city-results button { min-height: 28px; padding: 4px 10px; font-size: 11.5px; }
 
-.tag.warn {
-  background: rgba(245, 165, 36, 0.13);
-  color: #fbc06a;
-}
+.engine-optional .engine-profile-actions { margin-top: 10px; }
 
-.tag.err {
-  background: rgba(244, 80, 94, 0.14);
-  color: #ff8d97;
-}
+/* ── Arabic (RTL): code, paths, keys and addresses stay left to right ─────── */
 
-/* Arabic: the window reads right to left (main.ts sets <html dir="rtl">);
-   diffs, paths, keys and addresses stay left to right. */
 html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
   direction: ltr;
+}
+
+/* ── Narrow windows ───────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  #settings-root { padding: 12px 12px 24px; gap: 12px; }
+  section { padding: 16px; border-radius: var(--radius-sm); }
+  .row > label { flex-basis: 100%; min-width: 0; }
+  .settings-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .engine-pricing { grid-template-columns: 1fr; }
+}
+
+/* ── Reduced motion: everything still works, nothing moves ─────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

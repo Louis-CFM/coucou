@@ -1,8 +1,8 @@
 // The upload canvas — port of UploadCanvasView.swift.
 //
 // While the sequence engine is active this canvas draws the whole island body:
-// card, dashed drop frame, drop text, progress bar, the choose card, Mochi and
-// the file being sucked in. The island's own Mochi is hidden for the duration,
+// card, dashed drop frame, drop text, progress bar, the choose card, Nova and
+// the file being sucked in. The island's own Nova is hidden for the duration,
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
@@ -41,8 +41,9 @@ function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number): { rx: nu
     const a = (i / 96) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const px = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-    const py = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const contour = 1 + (1 - mc) * (0.08 * Math.cos(3 * a) - 0.03 * Math.sin(2 * a));
+    const px = contour * rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
+    const py = contour * ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
@@ -174,14 +175,14 @@ export class UploadCanvas {
 
   private drawScene(ctx: CanvasRenderingContext2D, f: UploadFrame, wallTime: number) {
     // Island background.
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = (State.settings.theme === "light" ? "#FAF8F5" : "#000000");
     ctx.fillRect(0, 0, USC.W, USC.ISL_H);
 
     // Card.
     ctx.save();
     rr(ctx, USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H, USC.CARD_R);
     ctx.clip();
-    ctx.fillStyle = "#0D0E10";
+    ctx.fillStyle = (State.settings.theme === "light" ? "#FFFFFF" : "#0D0E10");
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
     // Green glow, fanning up from the bottom edge of the card.
@@ -201,7 +202,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : (State.settings.theme === "light" ? "rgba(38,41,47,0.22)" : "rgba(255,255,255,0.14)");
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -214,7 +215,7 @@ export class UploadCanvas {
     if (f.barAlpha > 0 || f.barReveal > 0) this.drawProgressBar(ctx, f);
     if (f.chooseAlpha > 0) this.drawChoose(ctx, f);
 
-    this.drawMochi(ctx, f);
+    this.drawNova(ctx, f);
     if (f.fileVisible) this.drawFile(ctx, f);
   }
 
@@ -224,7 +225,7 @@ export class UploadCanvas {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
     const title = fitted(ctx, t("Drop your files here"), TEXT_RIGHT - USC.TEXT_X, 500, 13);
-    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, "#D5D7DB");
+    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, (State.settings.theme === "light" ? "#42464D" : "#D5D7DB"));
 
     // The macOS port measures chips the same rough way, so the row lines up; a
     // translation wider than that estimate gets the room it needs.
@@ -243,10 +244,10 @@ export class UploadCanvas {
     let cx = USC.TEXT_X;
     labels.forEach((chip, i) => {
       const w = ws[i];
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.fillStyle = (State.settings.theme === "light" ? "rgba(38,41,47,0.07)" : "rgba(255,255,255,0.07)");
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, (State.settings.theme === "light" ? "#555C66" : "#B9BDC4"));
       cx += w + 6;
     });
     ctx.restore();
@@ -266,7 +267,7 @@ export class UploadCanvas {
     // Room up to the percentage (or the check mark) at the bar's right end.
     const uploading = t("Uploading {name}", { name: State.droppedFile?.name ?? t("file") });
     const label = fitted(ctx, uploading, x1 - x0 - 56, 500, 12.5);
-    text(ctx, label.s, x0, by - 30, label.font, "#A9ADB5");
+    text(ctx, label.s, x0, by - 30, label.font, (State.settings.theme === "light" ? "#555C66" : "#A9ADB5"));
 
     if (f.check > 0) {
       ctx.save();
@@ -287,12 +288,12 @@ export class UploadCanvas {
       ctx.stroke();
       ctx.restore();
     } else {
-      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, "#A9ADB5", "right");
+      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, (State.settings.theme === "light" ? "#555C66" : "#A9ADB5"), "right");
     }
 
     // Track.
     if (barLen > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = (State.settings.theme === "light" ? "rgba(38,41,47,0.08)" : "rgba(255,255,255,0.08)");
       rr(ctx, x0, by - 3, barLen, 6, 3);
       ctx.fill();
     }
@@ -339,27 +340,27 @@ export class UploadCanvas {
 
     const maxW = TEXT_RIGHT - 114;
     const ready = fitted(ctx, t("{name} is ready.", { name: State.droppedFile?.name ?? t("file") }), maxW, 600, 14);
-    text(ctx, ready.s, 114, 80, ready.font, "#F5F6F8");
+    text(ctx, ready.s, 114, 80, ready.font, (State.settings.theme === "light" ? "#252830" : "#F5F6F8"));
     const what = fitted(ctx, t("What do you want to do with it?"), maxW, 400, 12.5);
-    text(ctx, what.s, 114, 100, what.font, "#9398A1");
+    text(ctx, what.s, 114, 100, what.font, (State.settings.theme === "light" ? "#626975" : "#9398A1"));
 
-    ctx.fillStyle = "#F5F6F8";
+    ctx.fillStyle = (State.settings.theme === "light" ? "#252830" : "#F5F6F8");
     rr(ctx, ASK_BTN.x, 113, ASK_BTN.w, 26, 13);
     ctx.fill();
     const ask = fitted(ctx, t("Ask a question about it"), ASK_BTN.w - 14, 500, 12.5);
-    text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, "#0B0C0E", "center");
+    text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, (State.settings.theme === "light" ? "#FFFFFF" : "#0B0C0E"), "center");
 
-    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.fillStyle = (State.settings.theme === "light" ? "rgba(38,41,47,0.09)" : "rgba(255,255,255,0.09)");
     rr(ctx, CANCEL_BTN.x, 113, CANCEL_BTN.w, 26, 13);
     ctx.fill();
     const cancel = fitted(ctx, t("Cancel"), CANCEL_BTN.w - 14, 500, 12.5);
-    text(ctx, cancel.s, CANCEL_BTN.x + CANCEL_BTN.w / 2, 126, cancel.font, "#F1F2F4", "center");
+    text(ctx, cancel.s, CANCEL_BTN.x + CANCEL_BTN.w / 2, 126, cancel.font, (State.settings.theme === "light" ? "#31343B" : "#F1F2F4"), "center");
     ctx.restore();
   }
 
-  // ── Mochi ─────────────────────────────────────────────────────────────────
+  // ── Nova ─────────────────────────────────────────────────────────────────
 
-  private drawMochi(ctx: CanvasRenderingContext2D, f: UploadFrame) {
+  private drawNova(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     const R = f.d / 2 / 1.04;
     const mc = Math.max(0, Math.min(f.morph, 1));
 
@@ -372,8 +373,8 @@ export class UploadCanvas {
 
     // Body.
     const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
-    bg.addColorStop(0, "#EDEDEF");
-    bg.addColorStop(1, "#C4C5CA");
+    bg.addColorStop(0, "#FFFAF2");
+    bg.addColorStop(1, "#D6D1C9");
     ctx.fillStyle = bg;
     ctx.fill();
 
@@ -390,7 +391,7 @@ export class UploadCanvas {
     bodyPath(ctx, f.morph, R);
     ctx.clip();
 
-    // Top rim, once Mochi is box-shaped enough to have one.
+    // Top rim, once Nova is box-shaped enough to have one.
     if (mc > 0.3) {
       const a = Math.max(0, Math.min(1, (mc - 0.3) / 0.7));
       ctx.beginPath();
@@ -426,9 +427,14 @@ export class UploadCanvas {
       }
     }
 
+    // Original Nova orange spark, using the sequence's existing morph value.
+    ctx.save(); ctx.globalAlpha *= 1 - mc; ctx.fillStyle = "#e58436";
+    const sparkY = -ry * 0.55, spark = R * 0.14;
+    ctx.beginPath(); ctx.moveTo(0, sparkY - spark); ctx.lineTo(spark, sparkY);
+    ctx.lineTo(0, sparkY + spark); ctx.lineTo(-spark, sparkY); ctx.closePath(); ctx.fill(); ctx.restore();
     // Eyes.
-    const ew = R * 0.25;
-    const eh = R * (0.62 - 0.16 * mc);
+    const ew = R * 0.28;
+    const eh = R * (0.40 - 0.10 * mc);
     const ey = R * (0.02 + 0.28 * mc);
     const sp = R * 0.3;
     const lx = f.lookX * R * (0.34 - 0.08 * mc);

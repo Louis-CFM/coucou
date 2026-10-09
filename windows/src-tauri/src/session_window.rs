@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn windows_terminal_is_found_above_the_shells() {
-        // WindowsTerminal → pwsh → claude (node) → bash → coucou-hook
+        // WindowsTerminal → pwsh → claude (node) → bash → nova-hook
         let procs = tree(&[
             (4, 0, "System"),
             (100, 4, "explorer.exe"),
@@ -217,7 +217,7 @@ mod tests {
             (300, 200, "pwsh.exe"),
             (400, 300, "node.exe"),
             (500, 400, "bash.exe"),
-            (600, 500, "coucou-hook.exe"),
+            (600, 500, "nova-hook.exe"),
         ]);
         assert_eq!(ancestors_below(&procs, 600, WINDOWS_TREE_TOPS), [500, 400, 300, 200]);
         assert_eq!(window_owner(&procs, 600, |pid| pid == 200 || pid == 100), Some(200));
@@ -231,7 +231,7 @@ mod tests {
             (220, 210, "Code.exe"),
             (300, 220, "powershell.exe"),
             (400, 300, "node.exe"),
-            (600, 400, "coucou-hook.exe"),
+            (600, 400, "nova-hook.exe"),
         ]);
         assert_eq!(window_owner(&procs, 600, |pid| pid == 210), Some(210));
     }
@@ -244,7 +244,7 @@ mod tests {
             (100, 1, "explorer.exe"),
             (300, 100, "cmd.exe"),
             (400, 300, "node.exe"),
-            (600, 400, "coucou-hook.exe"),
+            (600, 400, "nova-hook.exe"),
         ]);
         assert_eq!(window_owner(&procs, 600, |pid| pid == 100), None);
     }
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn a_relay_already_gone_or_a_loop_ends_the_walk() {
         assert!(ancestors(&tree(&[]), 600).is_empty());
-        let looped = tree(&[(1, 2, "a.exe"), (2, 1, "b.exe"), (3, 1, "coucou-hook.exe")]);
+        let looped = tree(&[(1, 2, "a.exe"), (2, 1, "b.exe"), (3, 1, "nova-hook.exe")]);
         assert_eq!(ancestors(&looped, 3), [1, 2]);
         let deep: Vec<(u32, u32, &str)> = (1..100).map(|i| (i, i + 1, "x.exe")).collect();
         assert_eq!(ancestors(&tree(&deep), 1).len(), MAX_DEPTH);
@@ -287,14 +287,14 @@ mod tests {
 
     #[test]
     fn linux_terminals_are_found_below_the_service_manager() {
-        // systemd --user → gnome-terminal-server → bash → claude → sh → coucou-hook
+        // systemd --user → gnome-terminal-server → bash → claude → sh → nova-hook
         let gnome = [
             (900, 1, "systemd"),
             (1000, 900, "gnome-terminal-"),
             (1100, 1000, "bash"),
             (1200, 1100, "claude"),
             (1300, 1200, "sh"),
-            (1400, 1300, "coucou-hook"),
+            (1400, 1300, "nova-hook"),
         ];
         assert_eq!(linux(&gnome), [1300, 1200, 1100, 1000]);
 
@@ -305,7 +305,7 @@ mod tests {
             (600, 500, "konsole"),
             (700, 600, "zsh"),
             (800, 700, "node"),
-            (810, 800, "coucou-hook"),
+            (810, 800, "nova-hook"),
         ];
         assert_eq!(linux(&panel), [800, 700, 600]);
 
@@ -317,7 +317,7 @@ mod tests {
             (32, 31, "code"),
             (40, 32, "bash"),
             (41, 40, "node"),
-            (42, 41, "coucou-hook"),
+            (42, 41, "nova-hook"),
         ];
         assert_eq!(linux(&code), [41, 40, 32, 31, 30]);
     }
@@ -325,13 +325,13 @@ mod tests {
     #[test]
     fn linux_walks_end_at_logins_and_session_managers() {
         // Over ssh: nothing above the shell may be raised.
-        let ssh = [(10, 1, "sshd"), (11, 10, "sshd-session"), (12, 11, "bash"), (13, 12, "claude"), (14, 13, "coucou-hook")];
+        let ssh = [(10, 1, "sshd"), (11, 10, "sshd-session"), (12, 11, "bash"), (13, 12, "claude"), (14, 13, "nova-hook")];
         assert_eq!(linux(&ssh), [13, 12]);
         // tmux's server is daemonised under the service manager: no terminal.
-        let tmux = [(5, 1, "systemd"), (6, 5, "tmux: server"), (7, 6, "bash"), (8, 7, "claude"), (9, 8, "coucou-hook")];
+        let tmux = [(5, 1, "systemd"), (6, 5, "tmux: server"), (7, 6, "bash"), (8, 7, "claude"), (9, 8, "nova-hook")];
         assert_eq!(linux(&tmux), [8, 7, 6]);
         // An X session started by hand ends at xinit, names compared lower-cased.
-        let xinit = [(2, 1, "xinit"), (3, 2, "Xorg"), (4, 2, "i3"), (50, 4, "xterm"), (51, 50, "bash"), (52, 51, "coucou-hook")];
+        let xinit = [(2, 1, "xinit"), (3, 2, "Xorg"), (4, 2, "i3"), (50, 4, "xterm"), (51, 50, "bash"), (52, 51, "nova-hook")];
         assert_eq!(linux(&xinit), [51, 50]);
     }
 
@@ -348,16 +348,16 @@ mod tests {
         let windows = vec![
             ("panel", 500, "Panel".to_string()),
             ("notes", 30, "notes — Visual Studio Code".to_string()),
-            ("coucou", 30, "lib.rs — coucou — Visual Studio Code".to_string()),
-            ("other", 99, "coucou — elsewhere".to_string()),
+            ("nova", 30, "lib.rs — nova — Visual Studio Code".to_string()),
+            ("other", 99, "nova — elsewhere".to_string()),
         ];
         // The shell and node own nothing; VS Code's main process does.
-        assert_eq!(choose_window(&[41, 40, 30, 500], &windows, "coucou"), Some(&"coucou"));
+        assert_eq!(choose_window(&[41, 40, 30, 500], &windows, "nova"), Some(&"nova"));
         assert_eq!(choose_window(&[41, 40, 30], &windows, "missing"), Some(&"notes"));
         // A nearer ancestor wins even when a farther one's title matches.
-        assert_eq!(choose_window(&[500, 30], &windows, "coucou"), Some(&"panel"));
+        assert_eq!(choose_window(&[500, 30], &windows, "nova"), Some(&"panel"));
         // A title alone never picks a window of another process.
-        assert_eq!(choose_window(&[41, 40], &windows, "coucou"), None);
+        assert_eq!(choose_window(&[41, 40], &windows, "nova"), None);
         assert_eq!(choose_window::<&str>(&[1], &[], "x"), None);
     }
 
@@ -365,13 +365,13 @@ mod tests {
     fn the_window_named_after_the_project_wins() {
         let windows = vec![
             (1, "notes — Visual Studio Code".to_string()),
-            (2, "app.ts — coucou — Visual Studio Code".to_string()),
+            (2, "app.ts — nova — Visual Studio Code".to_string()),
         ];
-        assert_eq!(pick_window(&windows, "Coucou"), Some(&2));
+        assert_eq!(pick_window(&windows, "Nova"), Some(&2));
         assert_eq!(pick_window(&windows, "other"), Some(&1));
         assert_eq!(pick_window(&windows, ""), Some(&1));
         assert_eq!(pick_window::<i32>(&[], "x"), None);
-        assert_eq!(folder_name(r"C:\Users\me\coucou\"), "coucou");
+        assert_eq!(folder_name(r"C:\Users\me\nova\"), "nova");
         assert_eq!(folder_name("/home/me/proj"), "proj");
     }
 

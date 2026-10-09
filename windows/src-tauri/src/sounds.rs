@@ -1,7 +1,7 @@
-// Your own sounds: a file named like one of Mochi's sounds in the sounds folder
+// Your own sounds: a file named like one of Nova's sounds in the sounds folder
 // replaces it (finish.wav, approval.mp3, greet.m4a…), as on the Mac
 // (SoundEngine.customFolder). The folder is platform::config_dir()/sounds:
-// ~/.config/coucou/sounds on Linux, %APPDATA%\Coucou\sounds on Windows.
+// ~/.config/nova/sounds on Linux, %APPDATA%\Nova\sounds on Windows.
 //
 // The page decodes the bytes itself; a file it can't decode falls back to the
 // built-in sound there (src/core/sound.ts).
@@ -67,7 +67,7 @@ mod tests {
     use super::*;
 
     fn scratch(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("coucou-sounds-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nova-sounds-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

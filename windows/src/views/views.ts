@@ -4,11 +4,13 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { buildWidgetSlots } from "../core/widgets";
+import { buildAppearanceControls } from "./appearance";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
-import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
-import { buildPrompt } from "./chat";
+import { createMiniBot, pruneMiniBots } from "../nova/minibots";
+import { buildEnginePrompt as buildPrompt } from "./engine-chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
@@ -23,7 +25,7 @@ import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
-import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
+import type { Outfit, OutfitSelection } from "../nova/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
 
@@ -32,6 +34,7 @@ export interface ViewActions {
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
+  hide(): void;
   /** Folds a waiting card to the compact island without answering it. */
   foldApproval(): void;
   setFocus(id: string): void;
@@ -51,7 +54,7 @@ export interface ViewActions {
   blip(): void;
   /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
   chooseOutfit(selection: OutfitSelection): void;
-  /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
+  /** Wardrobe hover: shows an outfit on Nova without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
 }
 
@@ -107,6 +110,7 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
+  const appearance = buildAppearanceControls(() => actions.hide());
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
@@ -128,7 +132,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
+    buildWidgetSlots(),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, appearance.toggle, appearance.quit),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -136,6 +141,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+      appearance.sync();
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");

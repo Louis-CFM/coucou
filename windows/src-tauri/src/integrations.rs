@@ -55,7 +55,7 @@ fn client() -> reqwest::Client {
 }
 
 /// Set from the tray's Pause item. While it is on, nothing reaches the network:
-/// pausing Coucou has to mean pausing Coucou, not just hiding the island.
+/// pausing Nova has to mean pausing Nova, not just hiding the island.
 pub static PAUSED: AtomicBool = AtomicBool::new(false);
 
 pub fn set_paused(on: bool) {
@@ -281,7 +281,7 @@ async fn poll_github(app: AppHandle) {
         .get("https://api.github.com/user")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
+        .header("User-Agent", "Nova")
         .send()
         .await;
     let Ok(response) = user else { return };
@@ -306,7 +306,7 @@ async fn poll_github(app: AppHandle) {
         .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
+        .header("User-Agent", "Nova")
         .send()
         .await;
     let stars: i64 = match repos {
@@ -334,7 +334,7 @@ async fn poll_github(app: AppHandle) {
 // pull requests and their CI, reviews waiting for me, default-branch CI) 10 s
 // after launch, then every 60 s while some CI is running and every 5 min
 // otherwise; the contribution calendar 15 s after launch, then every 30 min.
-// Neither touches the network while the pill is off or Coucou is paused, and
+// Neither touches the network while the pill is off or Nova is paused, and
 // the island wakes them when the card is opened on stale data.
 //
 // All three results are kept here and always sent together, so one poll never
@@ -425,7 +425,7 @@ async fn github_graphql(token: &str, query: &str, what: &str) -> Option<Value> {
         .post("https://api.github.com/graphql")
         .header("Authorization", format!("Bearer {token}"))
         .header("Content-Type", "application/json")
-        .header("User-Agent", "Coucou")
+        .header("User-Agent", "Nova")
         .json(&json!({ "query": query }))
         .send()
         .await;

@@ -1,4 +1,4 @@
-// The user's first name, for Mochi's system prompt — the same rules as
+// The user's first name, for Nova's system prompt — the same rules as
 // UserIdentity.swift on the Mac. The full name comes from the OS account
 // (platform::user_full_name); this file only decides whether it is something
 // you would greet someone by.

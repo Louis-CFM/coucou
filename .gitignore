@@ -1,21 +1,10 @@
-# Build artefacts
-NotchBuddy/build/
-NotchBuddy/NotchBuddy.xcodeproj/project.xcworkspace/xcuserdata/
-NotchBuddy/NotchBuddy.xcodeproj/xcuserdata/
-NotchBuddy/NotchBuddy.xcodeproj/xcshareddata/
-*.xcuserstate
-
-# Xcode DerivedData (outside repo — listed for clarity)
-DerivedData/
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# iCloud stubs
-*.icloud
-
-# Local only (never published)
+windows/node_modules/
+windows/target/
+windows/dist/
+windows/release/
 .claude/
-_prive/
+
+/windows/engine/
+
+# Original NOVA icon artwork is generated before builds, never upstream binaries.
+windows/src-tauri/icons/

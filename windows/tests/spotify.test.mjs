@@ -1,5 +1,5 @@
-// The Spotify pill (Linux) and Mochi's dance: the page's rules in
-// src/core/spotify.ts, the dance in src/mochi/engine.ts, the report handling in
+// The Spotify pill (Linux) and Nova's dance: the page's rules in
+// src/core/spotify.ts, the dance in src/nova/engine.ts, the report handling in
 // src/island/spotify.ts and the views in src/views/spotify.ts. The MPRIS side —
 // metadata, position, the bus itself — is tested in src-tauri/src/spotify.rs.
 
@@ -11,7 +11,7 @@ import {
   IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd, islandDances,
   musicPlaying, spotifyPosition, volumeLevel, withPlaying,
 } from "../src/core/spotify.ts";
-import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
+import { BotEngine, danceTransform, stepDanceLevel } from "../src/nova/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
 import { buildSpotifyCard, buildSpotifyPill } from "../src/views/spotify.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
@@ -80,7 +80,7 @@ test("a cover shows only on the track it belongs to", () => {
   Spotify.artwork = null;
 });
 
-// ── When Mochi dances ─────────────────────────────────────────────────────────
+// ── When Nova dances ─────────────────────────────────────────────────────────
 
 test("music counts only when it plays on a declared Spotify pill", () => {
   assert.ok(musicPlaying(playing(), [SPOTIFY_ID]));
@@ -89,7 +89,7 @@ test("music counts only when it plays on a declared Spotify pill", () => {
   assert.ok(!musicPlaying(playing({ track: null }), [SPOTIFY_ID]));
 });
 
-test("the island's Mochi dances by the Mac's rules", () => {
+test("the island's Nova dances by the Mac's rules", () => {
   const base = { music: true, state: "idle", mode: "compact", view: "overview", focusId: "integration_claude" };
   // Compact: whenever music plays, in the calm and busy states.
   for (const state of ["idle", "working", "thinking", "searching", "finished"]) {
@@ -107,7 +107,7 @@ test("the island's Mochi dances by the Mac's rules", () => {
   assert.ok(!islandDances({ ...base, mode: "expanded", focusId: SPOTIFY_ID, view: "prompt" }));
 });
 
-test("Mochi on the desktop dances by the compact island's rules", () => {
+test("Nova on the desktop dances by the compact island's rules", () => {
   assert.ok(desktopDances(true, "working"));
   assert.ok(!desktopDances(true, "approval"));
   assert.ok(!desktopDances(false, "idle"));

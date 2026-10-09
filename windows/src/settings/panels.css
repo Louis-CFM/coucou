@@ -1,0 +1,39 @@
+/* Nova theme — pills, palette, shortcuts and the 4-page settings nav. */
+.pill-group{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--hairline)}
+.pill-group>h3{font:600 11px/1.6 var(--font);color:var(--dim)}
+.pill-row{display:grid;grid-template-columns:10px minmax(0,1fr) minmax(0,auto) 38px;align-items:center;gap:10px;min-height:40px}
+.pill-row .name{font-size:12.5px;overflow-wrap:anywhere}
+.pill-row .state{font:400 11.5px/1.5 var(--font);color:var(--dim);text-align:end;overflow-wrap:anywhere}
+.pill-row.full .name{color:var(--dim-2)}
+.hint.full{color:var(--amber)}
+.color-dot{cursor:pointer}
+.color-dot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.palette{position:fixed;z-index:10;display:flex;align-items:center;gap:7px;padding:10px;background:var(--card);border:1px solid var(--hairline-strong);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);max-width:calc(100vw - 16px);flex-wrap:wrap}
+.palette .swatch{width:18px;height:18px;padding:0;border:0;border-radius:50%;transition:transform var(--t-fast) var(--ease)}
+.palette .swatch:hover{transform:scale(1.2)}
+.palette .swatch.on{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--ink)}
+.palette .reset{padding:3px 10px;font-size:11.5px}
+.subhead{font:600 11px/1.6 var(--font);color:var(--dim-2);text-transform:uppercase;letter-spacing:.07em;margin-top:4px}
+.shortcut-list{display:flex;flex-direction:column;gap:10px}
+.row.shortcut{flex-wrap:nowrap;gap:10px;padding-block:4px}
+.row.shortcut.off .shortcut-name{color:var(--dim-2)}
+.shortcut-name{flex:1 1 120px;min-width:0;font-size:12.5px}
+.keycap{font:500 11.5px/1.6 var(--mono);min-width:118px;max-width:100%;padding:7px 10px;border-radius:8px;background:var(--bg-raised);border:1px solid var(--hairline);color:var(--ink);text-align:center;flex:0 0 auto;overflow-wrap:anywhere;transition:border-color var(--t-fast) var(--ease)}
+.keycap.recording{border-color:var(--accent);color:var(--accent)}
+.keycap.static{background:transparent;color:var(--dim)}
+.tag{font:500 10.5px/1.5 var(--font);padding:3px 8px;border-radius:6px;background:var(--bg-raised);color:var(--dim);max-width:100%;overflow-wrap:anywhere}
+.tag.warn{background:rgba(245,196,119,.1);color:var(--amber)}
+.tag.err{background:var(--red-soft);color:var(--red)}
+.settings-titlebar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.quit-app{background:var(--red-soft);color:var(--red);border-color:transparent}
+.settings-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;position:sticky;top:0;z-index:2;background:var(--bg);padding:10px clamp(14px,3vw,28px);margin:0 calc(-1 * clamp(14px,3vw,28px))}
+.settings-nav button{border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:10px 7px;font-size:12px;min-height:40px;transition:background-color var(--t-med) var(--ease),color var(--t-med) var(--ease),border-color var(--t-med) var(--ease)}
+.settings-nav button:hover:not(.selected){border-color:var(--hairline-strong)}
+.settings-nav button.selected{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.settings-page{display:flex;flex-direction:column;gap:14px}
+.settings-page[hidden]{display:none}
+.settings-page section{padding:18px 20px}
+.settings-legacy{padding:16px;background:var(--card);border:1px solid var(--hairline);border-radius:var(--radius)}
+.settings-legacy summary{cursor:pointer;color:var(--dim);transition:color var(--t-fast) var(--ease)}
+.settings-legacy summary:hover{color:var(--ink)}
+.settings-legacy section{margin-top:14px}

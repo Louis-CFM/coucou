@@ -1,5 +1,5 @@
 {
- "_generated": "By scripts/gen-strings.mjs from NotchBuddy/Resources/Localizable.xcstrings. Do not edit: run `node scripts/gen-strings.mjs`.",
+ "_generated": "Standalone Nova translations; edit this file directly.",
  "languages": [
   "en",
   "zh-Hans",
@@ -145,27 +145,27 @@
    "ru": "Разрешить",
    "id": "Izinkan"
   },
-  "Allow Coucou to control Music": {
-   "zh-Hans": "允许 Coucou 控制音乐",
-   "hi": "Coucou को Music नियंत्रित करने दें",
-   "es": "Permitir que Coucou controle Music",
-   "ar": "السماح لـ Coucou بالتحكم في الموسيقى",
-   "fr": "Autoriser Coucou à contrôler Music",
-   "bn": "Coucou-কে Music নিয়ন্ত্রণ করতে দিন",
-   "pt-BR": "Permitir que o Coucou controle o Music",
-   "ru": "Разрешить Coucou управлять Music",
-   "id": "Izinkan Coucou mengontrol Music"
+  "Allow Nova to control Music": {
+   "zh-Hans": "允许 Nova 控制音乐",
+   "hi": "Nova को Music नियंत्रित करने दें",
+   "es": "Permitir que Nova controle Music",
+   "ar": "السماح لـ Nova بالتحكم في الموسيقى",
+   "fr": "Autoriser Nova à contrôler Music",
+   "bn": "Nova-কে Music নিয়ন্ত্রণ করতে দিন",
+   "pt-BR": "Permitir que o Nova controle o Music",
+   "ru": "Разрешить Nova управлять Music",
+   "id": "Izinkan Nova mengontrol Music"
   },
-  "Allow Coucou to control Spotify": {
-   "zh-Hans": "允许 Coucou 控制 Spotify",
-   "hi": "Coucou को Spotify नियंत्रित करने दें",
-   "es": "Permitir que Coucou controle Spotify",
-   "ar": "السماح لـ Coucou بالتحكم في Spotify",
-   "fr": "Autoriser Coucou à contrôler Spotify",
-   "bn": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন",
-   "pt-BR": "Permitir que o Coucou controle o Spotify",
-   "ru": "Разрешить Coucou управлять Spotify",
-   "id": "Izinkan Coucou mengontrol Spotify"
+  "Allow Nova to control Spotify": {
+   "zh-Hans": "允许 Nova 控制 Spotify",
+   "hi": "Nova को Spotify नियंत्रित करने दें",
+   "es": "Permitir que Nova controle Spotify",
+   "ar": "السماح لـ Nova بالتحكم في Spotify",
+   "fr": "Autoriser Nova à contrôler Spotify",
+   "bn": "Nova-কে Spotify নিয়ন্ত্রণ করতে দিন",
+   "pt-BR": "Permitir que o Nova controle o Spotify",
+   "ru": "Разрешить Nova управлять Spotify",
+   "id": "Izinkan Nova mengontrol Spotify"
   },
   "Always": {
    "zh-Hans": "始终允许",
@@ -189,16 +189,16 @@
    "ru": "Плагин Amp",
    "id": "Plugin Amp"
   },
-  "An instruction sent from the iPhone uses the model open in chat. The system prompt and conversation history apply. Instructions sent when Coucou is not running are queued and executed on next launch.": {
-   "zh-Hans": "从 iPhone 发送的指令使用聊天中当前打开的模型。系统提示和对话历史适用。Coucou 未运行时发送的指令将排队，并在下次启动时执行。",
-   "hi": "iPhone से भेजा गया निर्देश चैट में वर्तमान में खुले मॉडल का उपयोग करता है। सिस्टम प्रॉम्प्ट और बातचीत का इतिहास लागू होता है। Coucou चल नहीं रहे होने पर भेजे गए निर्देश कतार में रखे जाते हैं और अगली बार चालू होने पर चलाए जाते हैं।",
-   "es": "Una instrucción enviada desde el iPhone usa el modelo abierto actualmente en el chat. Se aplican el prompt de sistema y el historial de conversación. Las instrucciones enviadas mientras Coucou no está en ejecución se ponen en cola y se ejecutan en el siguiente inicio.",
-   "ar": "التعليمات المُرسَلة من iPhone تستخدم النموذج المفتوح حاليًا في الدردشة. يُطبَّق موجه النظام وتاريخ المحادثة. التعليمات المُرسَلة أثناء توقف Coucou تُضاف إلى قائمة الانتظار وتُنفَّذ عند التشغيل التالي.",
-   "fr": "Une instruction envoyée depuis l'iPhone utilise le modèle ouvert dans le chat. Le prompt système et l'historique de conversation s'appliquent. Les instructions envoyées quand Coucou ne tourne pas sont mises en file d'attente et exécutées au prochain démarrage.",
-   "bn": "iPhone থেকে পাঠানো নির্দেশনা চ্যাটে বর্তমানে খোলা মডেল ব্যবহার করে। সিস্টেম প্রম্পট এবং কথোপকথনের ইতিহাস প্রযোজ্য। Coucou চলছে না থাকলে পাঠানো নির্দেশনাগুলো কিউতে রাখা হয় এবং পরবর্তী চালুতে চালানো হয়।",
-   "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
-   "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
-   "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
+  "An instruction sent from the iPhone uses the model open in chat. The system prompt and conversation history apply. Instructions sent when Nova is not running are queued and executed on next launch.": {
+   "zh-Hans": "从 iPhone 发送的指令使用聊天中当前打开的模型。系统提示和对话历史适用。Nova 未运行时发送的指令将排队，并在下次启动时执行。",
+   "hi": "iPhone से भेजा गया निर्देश चैट में वर्तमान में खुले मॉडल का उपयोग करता है। सिस्टम प्रॉम्प्ट और बातचीत का इतिहास लागू होता है। Nova चल नहीं रहे होने पर भेजे गए निर्देश कतार में रखे जाते हैं और अगली बार चालू होने पर चलाए जाते हैं।",
+   "es": "Una instrucción enviada desde el iPhone usa el modelo abierto actualmente en el chat. Se aplican el prompt de sistema y el historial de conversación. Las instrucciones enviadas mientras Nova no está en ejecución se ponen en cola y se ejecutan en el siguiente inicio.",
+   "ar": "التعليمات المُرسَلة من iPhone تستخدم النموذج المفتوح حاليًا في الدردشة. يُطبَّق موجه النظام وتاريخ المحادثة. التعليمات المُرسَلة أثناء توقف Nova تُضاف إلى قائمة الانتظار وتُنفَّذ عند التشغيل التالي.",
+   "fr": "Une instruction envoyée depuis l'iPhone utilise le modèle ouvert dans le chat. Le prompt système et l'historique de conversation s'appliquent. Les instructions envoyées quand Nova ne tourne pas sont mises en file d'attente et exécutées au prochain démarrage.",
+   "bn": "iPhone থেকে পাঠানো নির্দেশনা চ্যাটে বর্তমানে খোলা মডেল ব্যবহার করে। সিস্টেম প্রম্পট এবং কথোপকথনের ইতিহাস প্রযোজ্য। Nova চলছে না থাকলে পাঠানো নির্দেশনাগুলো কিউতে রাখা হয় এবং পরবর্তী চালুতে চালানো হয়।",
+   "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Nova não está em execução ficam na fila e são executadas no próximo início.",
+   "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Nova не запущен, ставятся в очередь и выполняются при следующем запуске.",
+   "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Nova tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -233,16 +233,16 @@
    "ru": "Применится при следующем запуске",
    "id": "Berlaku saat peluncuran berikutnya"
   },
-  "Approval requests appear in the notch. If Coucou is not running, Hermes falls back to its own prompt.": {
-   "zh-Hans": "审批请求显示在刘海中。若 Coucou 未运行，Hermes 将回退到其自己的提示。",
-   "hi": "नॉच में अनुमोदन अनुरोध दिखाए जाते हैं। यदि Coucou नहीं चल रहा तो Hermes अपने प्रॉम्प्ट पर वापस जाता है।",
-   "es": "Las solicitudes de aprobación aparecen en el notch. Si Coucou no está en ejecución, Hermes usa su propio prompt.",
-   "ar": "تظهر طلبات الموافقة في الشريط. إذا لم تكن Coucou تعمل، يعود Hermes إلى طرفيته الخاصة.",
-   "fr": "Les demandes d'approbation s'affichent dans le notch. Si Coucou ne tourne pas, Hermes utilise son propre prompt.",
-   "bn": "নচে অনুমোদন অনুরোধ দেখানো হয়। Coucou না চললে Hermes তার নিজের প্রম্পটে ফলব্যাক করে।",
-   "pt-BR": "Solicitações de aprovação aparecem no notch. Se Coucou não estiver em execução, Hermes usa seu próprio prompt.",
-   "ru": "Запросы подтверждения отображаются в notch. Если Coucou не запущен, Hermes использует собственный prompt.",
-   "id": "Permintaan persetujuan muncul di notch. Jika Coucou tidak berjalan, Hermes menggunakan promptnya sendiri."
+  "Approval requests appear in the notch. If Nova is not running, Hermes falls back to its own prompt.": {
+   "zh-Hans": "审批请求显示在刘海中。若 Nova 未运行，Hermes 将回退到其自己的提示。",
+   "hi": "नॉच में अनुमोदन अनुरोध दिखाए जाते हैं। यदि Nova नहीं चल रहा तो Hermes अपने प्रॉम्प्ट पर वापस जाता है।",
+   "es": "Las solicitudes de aprobación aparecen en el notch. Si Nova no está en ejecución, Hermes usa su propio prompt.",
+   "ar": "تظهر طلبات الموافقة في الشريط. إذا لم تكن Nova تعمل، يعود Hermes إلى طرفيته الخاصة.",
+   "fr": "Les demandes d'approbation s'affichent dans le notch. Si Nova ne tourne pas, Hermes utilise son propre prompt.",
+   "bn": "নচে অনুমোদন অনুরোধ দেখানো হয়। Nova না চললে Hermes তার নিজের প্রম্পটে ফলব্যাক করে।",
+   "pt-BR": "Solicitações de aprovação aparecem no notch. Se Nova não estiver em execução, Hermes usa seu próprio prompt.",
+   "ru": "Запросы подтверждения отображаются в notch. Если Nova не запущен, Hermes использует собственный prompt.",
+   "id": "Permintaan persetujuan muncul di notch. Jika Nova tidak berjalan, Hermes menggunakan promptnya sendiri."
   },
   "Approval requests are handled by Hermes (terminal or gateway).": {
    "zh-Hans": "审批请求由 Hermes 处理（终端或网关）。",
@@ -431,16 +431,16 @@
    "ru": "Чат — другие провайдеры",
    "id": "Chat — penyedia lain"
   },
-  "Choose the tools you use. Coucou only shows what you declare here.": {
-   "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
-   "hi": "वे टूल चुनें जो आप उपयोग करते हैं। Coucou केवल वही दिखाता है जो आप यहाँ घोषित करते हैं।",
-   "es": "Elige las herramientas que usas. Coucou solo muestra lo que declares aquí.",
-   "ar": "اختر الأدوات التي تستخدمها. يعرض Coucou فقط ما تُعلنه هنا.",
-   "fr": "Choisis les outils que tu utilises. Coucou n'affiche que ce que tu déclares ici.",
-   "bn": "আপনি যে টুলগুলো ব্যবহার করেন তা বেছে নিন। Coucou শুধুমাত্র আপনার ঘোষণা করা জিনিস দেখায়।",
-   "pt-BR": "Escolha as ferramentas que você usa. O Coucou mostra apenas o que você declarar aqui.",
-   "ru": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь.",
-   "id": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini."
+  "Choose the tools you use. Nova only shows what you declare here.": {
+   "zh-Hans": "选择你使用的工具。Nova 只显示你在这里声明的内容。",
+   "hi": "वे टूल चुनें जो आप उपयोग करते हैं। Nova केवल वही दिखाता है जो आप यहाँ घोषित करते हैं।",
+   "es": "Elige las herramientas que usas. Nova solo muestra lo que declares aquí.",
+   "ar": "اختر الأدوات التي تستخدمها. يعرض Nova فقط ما تُعلنه هنا.",
+   "fr": "Choisis les outils que tu utilises. Nova n'affiche que ce que tu déclares ici.",
+   "bn": "আপনি যে টুলগুলো ব্যবহার করেন তা বেছে নিন। Nova শুধুমাত্র আপনার ঘোষণা করা জিনিস দেখায়।",
+   "pt-BR": "Escolha as ferramentas que você usa. O Nova mostra apenas o que você declarar aqui.",
+   "ru": "Выбери инструменты, которые ты используешь. Nova показывает только то, что ты здесь объявишь.",
+   "id": "Pilih alat yang Anda gunakan. Nova hanya menampilkan yang Anda deklarasikan di sini."
   },
   "Classic token with repo scope, or fine-grained with read access to Pull requests, commit statuses, and Actions.": {
    "zh-Hans": "具有 repo 权限的经典令牌，或具有 Pull requests、Commit statuses 和 Actions 读取权限的细粒度令牌。",
@@ -827,16 +827,16 @@
    "ru": "Черновик",
    "id": "Draf"
   },
-  "Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.": {
-   "zh-Hans": "在声音文件夹中放入与 Mochi 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。",
-   "hi": "Mochi की किसी साउंड के नाम वाली फ़ाइल (finish.wav, approval.mp3, greet.m4a…) साउंड फ़ोल्डर में रखें, वह उसकी जगह ले लेगी; फिर Reload करें।",
-   "es": "Deja en la carpeta de sonidos un archivo con el nombre de uno de los sonidos de Mochi (finish.wav, approval.mp3, greet.m4a…) para reemplazarlo y luego recarga.",
-   "ar": "ضع في مجلد الأصوات ملفًا يحمل اسم أحد أصوات Mochi (finish.wav وapproval.mp3 وgreet.m4a…) ليحل محله، ثم أعد التحميل.",
-   "fr": "Déposez dans le dossier des sons un fichier nommé comme l'un des sons de Mochi (finish.wav, approval.mp3, greet.m4a…) pour le remplacer, puis rechargez.",
-   "bn": "Mochi-র কোনো সাউন্ডের নামে একটি ফাইল (finish.wav, approval.mp3, greet.m4a…) সাউন্ড ফোল্ডারে রাখুন, সেটি বদলে যাবে; তারপর Reload করুন।",
-   "pt-BR": "Coloque na pasta de sons um arquivo com o nome de um dos sons do Mochi (finish.wav, approval.mp3, greet.m4a…) para substituí-lo e depois recarregue.",
-   "ru": "Положите в папку звуков файл с именем одного из звуков Mochi (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите.",
-   "id": "Taruh file bernama seperti salah satu suara Mochi (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang."
+  "Drop a file named like one of Nova's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.": {
+   "zh-Hans": "在声音文件夹中放入与 Nova 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。",
+   "hi": "Nova की किसी साउंड के नाम वाली फ़ाइल (finish.wav, approval.mp3, greet.m4a…) साउंड फ़ोल्डर में रखें, वह उसकी जगह ले लेगी; फिर Reload करें।",
+   "es": "Deja en la carpeta de sonidos un archivo con el nombre de uno de los sonidos de Nova (finish.wav, approval.mp3, greet.m4a…) para reemplazarlo y luego recarga.",
+   "ar": "ضع في مجلد الأصوات ملفًا يحمل اسم أحد أصوات Nova (finish.wav وapproval.mp3 وgreet.m4a…) ليحل محله، ثم أعد التحميل.",
+   "fr": "Déposez dans le dossier des sons un fichier nommé comme l'un des sons de Nova (finish.wav, approval.mp3, greet.m4a…) pour le remplacer, puis rechargez.",
+   "bn": "Nova-র কোনো সাউন্ডের নামে একটি ফাইল (finish.wav, approval.mp3, greet.m4a…) সাউন্ড ফোল্ডারে রাখুন, সেটি বদলে যাবে; তারপর Reload করুন।",
+   "pt-BR": "Coloque na pasta de sons um arquivo com o nome de um dos sons do Nova (finish.wav, approval.mp3, greet.m4a…) para substituí-lo e depois recarregue.",
+   "ru": "Положите в папку звуков файл с именем одного из звуков Nova (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите.",
+   "id": "Taruh file bernama seperti salah satu suara Nova (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang."
   },
   "Drop a file or window, or ask me anything.": {
    "zh-Hans": "拖入文件或窗口，或问我任何问题。",
@@ -1058,16 +1058,16 @@
    "ru": "Перейти на вкладку по номеру",
    "id": "Pindah ke tab berdasarkan nomor"
   },
-  "Goes through the Coucou relay to Apple's push service. Only the agent name and state are sent: no project name, command, or path.": {
-   "zh-Hans": "通过 Coucou 中继传至 Apple 推送服务。仅发送 Agent 的名称和状态：不含项目名称、命令或路径。",
-   "hi": "Coucou रिले के माध्यम से Apple के पुश सर्विस से जाता है। केवल एजेंट का नाम और स्थिति भेजी जाती है: कोई प्रोजेक्ट नाम, कमांड या पाथ नहीं।",
-   "es": "Pasa por el relay de Coucou al servicio push de Apple. Solo se envían el nombre y el estado del agente: sin nombre de proyecto, comando ni ruta.",
-   "ar": "يمر عبر ريلاي Coucou إلى خدمة Apple للإشعارات. يُرسَل فقط اسم الوكيل وحالته: لا اسم مشروع ولا أمر ولا مسار.",
-   "fr": "Passe par le relais Coucou vers le service push d'Apple. Seuls le nom et l'état de l'agent sont envoyés : aucun nom de projet, commande ou chemin.",
-   "bn": "Apple-এর পুশ সার্ভিসে Coucou রিলের মাধ্যমে যায়। শুধুমাত্র এজেন্টের নাম এবং অবস্থা পাঠানো হয়: কোনো প্রজেক্ট নাম, কমান্ড বা পাথ নয়।",
-   "pt-BR": "Passa pelo relay do Coucou para o serviço push da Apple. Apenas o nome e o estado do agente são enviados: sem nome de projeto, comando ou caminho.",
-   "ru": "Проходит через ретранслятор Coucou к сервису push Apple. Отправляются только имя и состояние агента: без имени проекта, команды или пути.",
-   "id": "Melewati relay Coucou ke layanan push Apple. Hanya nama dan status agen yang dikirim: tanpa nama proyek, perintah, atau jalur."
+  "Goes through the Nova relay to Apple's push service. Only the agent name and state are sent: no project name, command, or path.": {
+   "zh-Hans": "通过 Nova 中继传至 Apple 推送服务。仅发送 Agent 的名称和状态：不含项目名称、命令或路径。",
+   "hi": "Nova रिले के माध्यम से Apple के पुश सर्विस से जाता है। केवल एजेंट का नाम और स्थिति भेजी जाती है: कोई प्रोजेक्ट नाम, कमांड या पाथ नहीं।",
+   "es": "Pasa por el relay de Nova al servicio push de Apple. Solo se envían el nombre y el estado del agente: sin nombre de proyecto, comando ni ruta.",
+   "ar": "يمر عبر ريلاي Nova إلى خدمة Apple للإشعارات. يُرسَل فقط اسم الوكيل وحالته: لا اسم مشروع ولا أمر ولا مسار.",
+   "fr": "Passe par le relais Nova vers le service push d'Apple. Seuls le nom et l'état de l'agent sont envoyés : aucun nom de projet, commande ou chemin.",
+   "bn": "Apple-এর পুশ সার্ভিসে Nova রিলের মাধ্যমে যায়। শুধুমাত্র এজেন্টের নাম এবং অবস্থা পাঠানো হয়: কোনো প্রজেক্ট নাম, কমান্ড বা পাথ নয়।",
+   "pt-BR": "Passa pelo relay do Nova para o serviço push da Apple. Apenas o nome e o estado do agente são enviados: sem nome de projeto, comando ou caminho.",
+   "ru": "Проходит через ретранслятор Nova к сервису push Apple. Отправляются только имя и состояние агента: без имени проекта, команды или пути.",
+   "id": "Melewati relay Nova ke layanan push Apple. Hanya nama dan status agen yang dikirim: tanpa nama proyek, perintah, atau jalur."
   },
   "Google AI": {
    "zh-Hans": "Google AI",
@@ -1245,16 +1245,16 @@
    "ru": "Установить",
    "id": "Pasang"
   },
-  "Install Coucou hooks in ~/.claude?": {
-   "zh-Hans": "是否将 Coucou Hooks 安装到 ~/.claude？",
-   "hi": "~/.claude में Coucou हुक इंस्टॉल करें?",
-   "es": "¿Instalar los hooks de Coucou en ~/.claude?",
-   "ar": "هل تريد تثبيت خطافات Coucou في ~/.claude؟",
-   "fr": "Installer les hooks Coucou dans ~/.claude ?",
-   "bn": "~/.claude-এ Coucou হুক ইনস্টল করবেন?",
-   "pt-BR": "Instalar os hooks do Coucou em ~/.claude?",
-   "ru": "Установить хуки Coucou в ~/.claude?",
-   "id": "Pasang hooks Coucou di ~/.claude?"
+  "Install Nova hooks in ~/.claude?": {
+   "zh-Hans": "是否将 Nova Hooks 安装到 ~/.claude？",
+   "hi": "~/.claude में Nova हुक इंस्टॉल करें?",
+   "es": "¿Instalar los hooks de Nova en ~/.claude?",
+   "ar": "هل تريد تثبيت خطافات Nova في ~/.claude؟",
+   "fr": "Installer les hooks Nova dans ~/.claude ?",
+   "bn": "~/.claude-এ Nova হুক ইনস্টল করবেন?",
+   "pt-BR": "Instalar os hooks do Nova em ~/.claude?",
+   "ru": "Установить хуки Nova в ~/.claude?",
+   "id": "Pasang hooks Nova di ~/.claude?"
   },
   "Install hooks": {
    "zh-Hans": "安装 Hooks",
@@ -1476,16 +1476,16 @@
    "ru": "Получатель не указан.",
    "id": "Penerima tidak ada."
   },
-  "Mochi to desktop on/off": {
-   "zh-Hans": "Mochi 桌面开/关",
-   "hi": "Mochi डेस्कटॉप पर चालू / बंद",
-   "es": "Mochi en el escritorio sí / no",
-   "ar": "Mochi على / إيقاف سطح المكتب",
-   "fr": "Mochi sur le bureau oui / non",
-   "bn": "Mochi ডেস্কটপে চালু / বন্ধ",
-   "pt-BR": "Mochi na área de trabalho sim / não",
-   "ru": "Mochi на рабочем столе вкл / выкл",
-   "id": "Mochi di desktop ya / tidak"
+  "Nova to desktop on/off": {
+   "zh-Hans": "Nova 桌面开/关",
+   "hi": "Nova डेस्कटॉप पर चालू / बंद",
+   "es": "Nova en el escritorio sí / no",
+   "ar": "Nova على / إيقاف سطح المكتب",
+   "fr": "Nova sur le bureau oui / non",
+   "bn": "Nova ডেস্কটপে চালু / বন্ধ",
+   "pt-BR": "Nova na área de trabalho sim / não",
+   "ru": "Nova на рабочем столе вкл / выкл",
+   "id": "Nova di desktop ya / tidak"
   },
   "Model": {
    "zh-Hans": "模型",
@@ -1509,16 +1509,16 @@
    "ru": "ID модели (напр. claude-sonnet-4-6)",
    "id": "ID model (mis. claude-sonnet-4-6)"
   },
-  "Move Mochi to my iPhone's Dynamic Island when my Mac is locked": {
-   "zh-Hans": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛",
-   "hi": "Mac लॉक होने पर Mochi को मेरे iPhone की Dynamic Island पर ले जाएं",
-   "es": "Mover a Mochi a la Dynamic Island de mi iPhone cuando mi Mac esté bloqueado",
-   "ar": "نقل Mochi إلى Dynamic Island في iPhone عند إغلاق Mac",
-   "fr": "Déplacer Mochi vers la Dynamic Island de mon iPhone quand mon Mac est verrouillé",
-   "bn": "Mac লক থাকলে Mochi-কে আমার iPhone-এর Dynamic Island-এ নিয়ে যান",
-   "pt-BR": "Mover o Mochi para a Dynamic Island do meu iPhone quando meu Mac estiver bloqueado",
-   "ru": "Переносить Mochi на Dynamic Island моего iPhone, когда Mac заблокирован",
-   "id": "Pindahkan Mochi ke Dynamic Island iPhone saya saat Mac terkunci"
+  "Move Nova to my iPhone's Dynamic Island when my Mac is locked": {
+   "zh-Hans": "Mac 锁定时将 Nova 移至我 iPhone 的灵动岛",
+   "hi": "Mac लॉक होने पर Nova को मेरे iPhone की Dynamic Island पर ले जाएं",
+   "es": "Mover a Nova a la Dynamic Island de mi iPhone cuando mi Mac esté bloqueado",
+   "ar": "نقل Nova إلى Dynamic Island في iPhone عند إغلاق Mac",
+   "fr": "Déplacer Nova vers la Dynamic Island de mon iPhone quand mon Mac est verrouillé",
+   "bn": "Mac লক থাকলে Nova-কে আমার iPhone-এর Dynamic Island-এ নিয়ে যান",
+   "pt-BR": "Mover o Nova para a Dynamic Island do meu iPhone quando meu Mac estiver bloqueado",
+   "ru": "Переносить Nova на Dynamic Island моего iPhone, когда Mac заблокирован",
+   "id": "Pindahkan Nova ke Dynamic Island iPhone saya saat Mac terkunci"
   },
   "Muse Code hooks": {
    "zh-Hans": "Muse Code 钩子",
@@ -1850,16 +1850,16 @@
    "ru": "Открыть Codex",
    "id": "Buka Codex"
   },
-  "Open Coucou": {
-   "zh-Hans": "打开 Coucou",
-   "hi": "Coucou खोलें",
-   "es": "Abrir Coucou",
-   "ar": "فتح Coucou",
-   "fr": "Ouvrir Coucou",
-   "bn": "Coucou খুলুন",
-   "pt-BR": "Abrir Coucou",
-   "ru": "Открыть Coucou",
-   "id": "Buka Coucou"
+  "Open Nova": {
+   "zh-Hans": "打开 Nova",
+   "hi": "Nova खोलें",
+   "es": "Abrir Nova",
+   "ar": "فتح Nova",
+   "fr": "Ouvrir Nova",
+   "bn": "Nova খুলুন",
+   "pt-BR": "Abrir Nova",
+   "ru": "Открыть Nova",
+   "id": "Buka Nova"
   },
   "Open Cursor": {
    "zh-Hans": "打开 Cursor",
@@ -2356,16 +2356,16 @@
    "ru": "Сброс…",
    "id": "Mereset…"
   },
-  "Restart Coucou": {
-   "zh-Hans": "重启 Coucou",
-   "hi": "Coucou को पुनः आरंभ करें",
-   "es": "Reiniciar Coucou",
-   "ar": "إعادة تشغيل Coucou",
-   "fr": "Redémarrer Coucou",
-   "bn": "Coucou পুনরায় শুরু করুন",
-   "pt-BR": "Reiniciar Coucou",
-   "ru": "Перезапустить Coucou",
-   "id": "Mulai ulang Coucou"
+  "Restart Nova": {
+   "zh-Hans": "重启 Nova",
+   "hi": "Nova को पुनः आरंभ करें",
+   "es": "Reiniciar Nova",
+   "ar": "إعادة تشغيل Nova",
+   "fr": "Redémarrer Nova",
+   "bn": "Nova পুনরায় শুরু করুন",
+   "pt-BR": "Reiniciar Nova",
+   "ru": "Перезапустить Nova",
+   "id": "Mulai ulang Nova"
   },
   "Retry": {
    "zh-Hans": "重试",
@@ -2532,16 +2532,16 @@
    "ru": "Отправка…",
    "id": "Mengirim…"
   },
-  "Sends your sessions to your private iCloud for the Coucou app on iPhone. Project names, commands, and questions are encrypted with your iCloud keys. Disabling removes data from iCloud.": {
-   "zh-Hans": "将你的会话发送到私有 iCloud，供 Coucou iPhone 应用使用。项目名称、命令和问题使用你的 iCloud 密钥加密。关闭后将从 iCloud 中删除。",
-   "hi": "Coucou iPhone ऐप के लिए आपके सेशन आपके प्राइवेट iCloud में भेजता है। प्रोजेक्ट नाम, कमांड और सवाल आपकी iCloud कुंजियों से एन्क्रिप्ट किए जाते हैं। बंद करने पर iCloud से हटा दिए जाते हैं।",
-   "es": "Envía tus sesiones a tu iCloud privado para la app Coucou de iPhone. Los nombres de proyecto, comandos y preguntas se cifran con tus claves de iCloud. Desactivarlo las elimina de iCloud.",
-   "ar": "يُرسل جلساتك إلى iCloud الخاص بك لتطبيق Coucou على iPhone. تُشفَّر أسماء المشاريع والأوامر والأسئلة بمفاتيح iCloud الخاصة بك. إيقاف التشغيل يحذفها من iCloud.",
-   "fr": "Envoie tes sessions sur ton iCloud privé pour l'app Coucou sur iPhone. Les noms de projets, commandes et questions sont chiffrés avec tes clés iCloud. Désactiver supprime les données d'iCloud.",
-   "bn": "Coucou iPhone অ্যাপের জন্য আপনার সেশনগুলো আপনার প্রাইভেট iCloud-এ পাঠায়। প্রজেক্টের নাম, কমান্ড এবং প্রশ্নগুলো আপনার iCloud কী দিয়ে এনক্রিপ্ট করা হয়। বন্ধ করলে iCloud থেকে মুছে যাবে।",
-   "pt-BR": "Envia suas sessões para seu iCloud privado para o app Coucou no iPhone. Nomes de projetos, comandos e perguntas são criptografados com suas chaves do iCloud. Desativar remove-os do iCloud.",
-   "ru": "Отправляет твои сессии в личный iCloud для приложения Coucou на iPhone. Имена проектов, команды и вопросы шифруются твоими ключами iCloud. Отключение удаляет их из iCloud.",
-   "id": "Mengirim sesi Anda ke iCloud pribadi Anda untuk aplikasi Coucou iPhone. Nama proyek, perintah, dan pertanyaan dienkripsi dengan kunci iCloud Anda. Mematikannya menghapusnya dari iCloud."
+  "Sends your sessions to your private iCloud for the Nova app on iPhone. Project names, commands, and questions are encrypted with your iCloud keys. Disabling removes data from iCloud.": {
+   "zh-Hans": "将你的会话发送到私有 iCloud，供 Nova iPhone 应用使用。项目名称、命令和问题使用你的 iCloud 密钥加密。关闭后将从 iCloud 中删除。",
+   "hi": "Nova iPhone ऐप के लिए आपके सेशन आपके प्राइवेट iCloud में भेजता है। प्रोजेक्ट नाम, कमांड और सवाल आपकी iCloud कुंजियों से एन्क्रिप्ट किए जाते हैं। बंद करने पर iCloud से हटा दिए जाते हैं।",
+   "es": "Envía tus sesiones a tu iCloud privado para la app Nova de iPhone. Los nombres de proyecto, comandos y preguntas se cifran con tus claves de iCloud. Desactivarlo las elimina de iCloud.",
+   "ar": "يُرسل جلساتك إلى iCloud الخاص بك لتطبيق Nova على iPhone. تُشفَّر أسماء المشاريع والأوامر والأسئلة بمفاتيح iCloud الخاصة بك. إيقاف التشغيل يحذفها من iCloud.",
+   "fr": "Envoie tes sessions sur ton iCloud privé pour l'app Nova sur iPhone. Les noms de projets, commandes et questions sont chiffrés avec tes clés iCloud. Désactiver supprime les données d'iCloud.",
+   "bn": "Nova iPhone অ্যাপের জন্য আপনার সেশনগুলো আপনার প্রাইভেট iCloud-এ পাঠায়। প্রজেক্টের নাম, কমান্ড এবং প্রশ্নগুলো আপনার iCloud কী দিয়ে এনক্রিপ্ট করা হয়। বন্ধ করলে iCloud থেকে মুছে যাবে।",
+   "pt-BR": "Envia suas sessões para seu iCloud privado para o app Nova no iPhone. Nomes de projetos, comandos e perguntas são criptografados com suas chaves do iCloud. Desativar remove-os do iCloud.",
+   "ru": "Отправляет твои сессии в личный iCloud для приложения Nova на iPhone. Имена проектов, команды и вопросы шифруются твоими ключами iCloud. Отключение удаляет их из iCloud.",
+   "id": "Mengirim sesi Anda ke iCloud pribadi Anda untuk aplikasi Nova iPhone. Nama proyek, perintah, dan pertanyaan dienkripsi dengan kunci iCloud Anda. Mematikannya menghapusnya dari iCloud."
   },
   "Session finished": {
    "zh-Hans": "会话已结束",
@@ -2554,16 +2554,16 @@
    "ru": "Сессия завершена",
    "id": "Sesi selesai"
   },
-  "Settings — Coucou": {
-   "zh-Hans": "设置 — Coucou",
-   "hi": "सेटिंग्स — Coucou",
-   "es": "Ajustes — Coucou",
-   "ar": "الإعدادات — Coucou",
-   "fr": "Réglages — Coucou",
-   "bn": "সেটিংস — Coucou",
-   "pt-BR": "Configurações — Coucou",
-   "ru": "Настройки — Coucou",
-   "id": "Pengaturan — Coucou"
+  "Settings — Nova": {
+   "zh-Hans": "设置 — Nova",
+   "hi": "सेटिंग्स — Nova",
+   "es": "Ajustes — Nova",
+   "ar": "الإعدادات — Nova",
+   "fr": "Réglages — Nova",
+   "bn": "সেটিংস — Nova",
+   "pt-BR": "Configurações — Nova",
+   "ru": "Настройки — Nova",
+   "id": "Pengaturan — Nova"
   },
   "Settings…": {
    "zh-Hans": "设置…",
@@ -2664,16 +2664,16 @@
    "ru": "Показывать мои сессии агента на iPhone",
    "id": "Tampilkan sesi agen saya di iPhone saya"
   },
-  "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
-   "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
-   "hi": "नॉच हेडर में आपके Claude प्लान का उपयोग (5 घंटे और साप्ताहिक सीमाएं) दिखाता है। Coucou ~/.claude/settings.json में एक स्टेटस लाइन रिले जोड़ता है। अगर आपके पास पहले से स्टेटस लाइन है, तो वह पहले की तरह काम करती रहेगी। केवल Pro और Max प्लान के लिए।",
-   "es": "Muestra el uso de tu plan Claude (límites de 5 horas y semanales) en el encabezado del notch. Coucou añade una línea de estado relay en ~/.claude/settings.json. Si ya tienes una línea de estado, seguirá funcionando como antes. Solo planes Pro y Max.",
-   "ar": "يعرض استخدام خطة Claude (الحدود الخمس ساعات والأسبوعية) في ترويسة الشريط العلوي. تضيف Coucou سطر حالة مُرحِّلاً إلى ~/.claude/settings.json. إن كان لديك سطر حالة بالفعل، يستمر في العمل كالمعتاد. للخططَين Pro وMax فقط.",
-   "fr": "Affiche ton utilisation du forfait Claude (limites de 5 heures et hebdomadaire) dans l'en-tête de l'encoche. Coucou ajoute un relais de ligne de statut dans ~/.claude/settings.json. Si tu as déjà une ligne de statut, elle continue de fonctionner comme avant. Forfaits Pro et Max uniquement.",
-   "bn": "নচ হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Coucou ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার কাছে ইতিমধ্যে স্ট্যাটাস লাইন থাকলে তা আগের মতোই কাজ করবে। শুধুমাত্র Pro এবং Max প্ল্যানের জন্য।",
-   "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanais) no cabeçalho do notch. O Coucou adiciona um relay de linha de status ao ~/.claude/settings.json. Se você já tiver uma linha de status, ela continua funcionando normalmente. Apenas planos Pro e Max.",
-   "ru": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Coucou добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max.",
-   "id": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Coucou menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max."
+  "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Nova adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
+   "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Nova 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
+   "hi": "नॉच हेडर में आपके Claude प्लान का उपयोग (5 घंटे और साप्ताहिक सीमाएं) दिखाता है। Nova ~/.claude/settings.json में एक स्टेटस लाइन रिले जोड़ता है। अगर आपके पास पहले से स्टेटस लाइन है, तो वह पहले की तरह काम करती रहेगी। केवल Pro और Max प्लान के लिए।",
+   "es": "Muestra el uso de tu plan Claude (límites de 5 horas y semanales) en el encabezado del notch. Nova añade una línea de estado relay en ~/.claude/settings.json. Si ya tienes una línea de estado, seguirá funcionando como antes. Solo planes Pro y Max.",
+   "ar": "يعرض استخدام خطة Claude (الحدود الخمس ساعات والأسبوعية) في ترويسة الشريط العلوي. تضيف Nova سطر حالة مُرحِّلاً إلى ~/.claude/settings.json. إن كان لديك سطر حالة بالفعل، يستمر في العمل كالمعتاد. للخططَين Pro وMax فقط.",
+   "fr": "Affiche ton utilisation du forfait Claude (limites de 5 heures et hebdomadaire) dans l'en-tête de l'encoche. Nova ajoute un relais de ligne de statut dans ~/.claude/settings.json. Si tu as déjà une ligne de statut, elle continue de fonctionner comme avant. Forfaits Pro et Max uniquement.",
+   "bn": "নচ হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Nova ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার কাছে ইতিমধ্যে স্ট্যাটাস লাইন থাকলে তা আগের মতোই কাজ করবে। শুধুমাত্র Pro এবং Max প্ল্যানের জন্য।",
+   "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanais) no cabeçalho do notch. O Nova adiciona um relay de linha de status ao ~/.claude/settings.json. Se você já tiver uma linha de status, ela continua funcionando normalmente. Apenas planos Pro e Max.",
+   "ru": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Nova добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max.",
+   "id": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Nova menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max."
   },
   "Shuffle off": {
    "zh-Hans": "随机播放：关",
@@ -3093,16 +3093,16 @@
    "ru": "Записывает",
    "id": "Menulis"
   },
-  "Writes:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)": {
-   "zh-Hans": "将写入：\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json（先创建备份）",
-   "hi": "लिखेगा:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (पहले बैकअप बनाया जाएगा)",
-   "es": "Escribirá:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (se crea una copia de seguridad primero)",
-   "ar": "سيكتب:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (يُنشئ نسخة احتياطية أولاً)",
-   "fr": "Écrira :\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (sauvegarde créée d'abord)",
-   "bn": "লিখবে:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (আগে ব্যাকআপ তৈরি হবে)",
-   "pt-BR": "Vai escrever:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup criado antes)",
-   "ru": "Запишет:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)",
-   "id": "Akan menulis:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)"
+  "Writes:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (backup created first)": {
+   "zh-Hans": "将写入：\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json（先创建备份）",
+   "hi": "लिखेगा:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (पहले बैकअप बनाया जाएगा)",
+   "es": "Escribirá:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (se crea una copia de seguridad primero)",
+   "ar": "سيكتب:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (يُنشئ نسخة احتياطية أولاً)",
+   "fr": "Écrira :\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (sauvegarde créée d'abord)",
+   "bn": "লিখবে:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (আগে ব্যাকআপ তৈরি হবে)",
+   "pt-BR": "Vai escrever:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (backup criado antes)",
+   "ru": "Запишет:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)",
+   "id": "Akan menulis:\n• ~/.claude/nova/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)"
   },
   "Your answer…": {
    "zh-Hans": "您的答案…",
@@ -3346,16 +3346,16 @@
    "ru": "{n} мин назад",
    "id": "{n} menit lalu"
   },
-  "✓ Amp plugin installed in ~/.config/amp/plugins/coucou.ts": {
-   "zh-Hans": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts",
-   "hi": "✓ ~/.config/amp/plugins/coucou.ts में Amp प्लगइन इंस्टॉल हुआ",
-   "es": "✓ Plugin de Amp instalado en ~/.config/amp/plugins/coucou.ts",
-   "ar": "✓ ملحق Amp مثبَّت في ~/.config/amp/plugins/coucou.ts",
-   "fr": "✓ Plugin Amp installé dans ~/.config/amp/plugins/coucou.ts",
-   "bn": "✓ ~/.config/amp/plugins/coucou.ts-এ Amp প্লাগইন ইনস্টল হয়েছে",
-   "pt-BR": "✓ Plugin do Amp instalado em ~/.config/amp/plugins/coucou.ts",
-   "ru": "✓ Плагин Amp установлен в ~/.config/amp/plugins/coucou.ts",
-   "id": "✓ Plugin Amp terpasang di ~/.config/amp/plugins/coucou.ts"
+  "✓ Amp plugin installed in ~/.config/amp/plugins/nova.ts": {
+   "zh-Hans": "✓ Amp 插件已安装至 ~/.config/amp/plugins/nova.ts",
+   "hi": "✓ ~/.config/amp/plugins/nova.ts में Amp प्लगइन इंस्टॉल हुआ",
+   "es": "✓ Plugin de Amp instalado en ~/.config/amp/plugins/nova.ts",
+   "ar": "✓ ملحق Amp مثبَّت في ~/.config/amp/plugins/nova.ts",
+   "fr": "✓ Plugin Amp installé dans ~/.config/amp/plugins/nova.ts",
+   "bn": "✓ ~/.config/amp/plugins/nova.ts-এ Amp প্লাগইন ইনস্টল হয়েছে",
+   "pt-BR": "✓ Plugin do Amp instalado em ~/.config/amp/plugins/nova.ts",
+   "ru": "✓ Плагин Amp установлен в ~/.config/amp/plugins/nova.ts",
+   "id": "✓ Plugin Amp terpasang di ~/.config/amp/plugins/nova.ts"
   },
   "✓ Amp plugin removed.": {
    "zh-Hans": "✓ Amp 插件已移除。",
@@ -3454,16 +3454,16 @@
     "other": "✓ Connected · {count} models"
    }
   },
-  "✓ Copilot CLI hooks installed in ~/.copilot/hooks/coucou.json": {
-   "zh-Hans": "✓ Copilot CLI Hooks 已安装至 ~/.copilot/hooks/coucou.json",
-   "hi": "✓ ~/.copilot/hooks/coucou.json में Copilot CLI हुक इंस्टॉल हुए",
-   "es": "✓ Hooks de Copilot CLI instalados en ~/.copilot/hooks/coucou.json",
-   "ar": "✓ خطافات Copilot CLI مثبَّتة في ~/.copilot/hooks/coucou.json",
-   "fr": "✓ Hooks Copilot CLI installés dans ~/.copilot/hooks/coucou.json",
-   "bn": "✓ ~/.copilot/hooks/coucou.json-এ Copilot CLI হুক ইনস্টল হয়েছে",
-   "pt-BR": "✓ Hooks do Copilot CLI instalados em ~/.copilot/hooks/coucou.json",
-   "ru": "✓ Хуки Copilot CLI установлены в ~/.copilot/hooks/coucou.json",
-   "id": "✓ Hooks Copilot CLI terpasang di ~/.copilot/hooks/coucou.json"
+  "✓ Copilot CLI hooks installed in ~/.copilot/hooks/nova.json": {
+   "zh-Hans": "✓ Copilot CLI Hooks 已安装至 ~/.copilot/hooks/nova.json",
+   "hi": "✓ ~/.copilot/hooks/nova.json में Copilot CLI हुक इंस्टॉल हुए",
+   "es": "✓ Hooks de Copilot CLI instalados en ~/.copilot/hooks/nova.json",
+   "ar": "✓ خطافات Copilot CLI مثبَّتة في ~/.copilot/hooks/nova.json",
+   "fr": "✓ Hooks Copilot CLI installés dans ~/.copilot/hooks/nova.json",
+   "bn": "✓ ~/.copilot/hooks/nova.json-এ Copilot CLI হুক ইনস্টল হয়েছে",
+   "pt-BR": "✓ Hooks do Copilot CLI instalados em ~/.copilot/hooks/nova.json",
+   "ru": "✓ Хуки Copilot CLI установлены в ~/.copilot/hooks/nova.json",
+   "id": "✓ Hooks Copilot CLI terpasang di ~/.copilot/hooks/nova.json"
   },
   "✓ Copilot CLI hooks removed.": {
    "zh-Hans": "✓ Copilot CLI Hooks 已移除。",
@@ -3520,16 +3520,16 @@
    "ru": "✓ Плагин Hermes установлен",
    "id": "✓ Plugin Hermes terpasang"
   },
-  "✓ Hermes plugin installed in ~/.hermes/plugins/coucou/": {
-   "zh-Hans": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/",
-   "hi": "✓ Hermes प्लगइन ~/.hermes/plugins/coucou/ में इंस्टॉल हुआ",
-   "es": "✓ Plugin de Hermes instalado en ~/.hermes/plugins/coucou/",
-   "ar": "✓ ملحق Hermes مثبَّت في ~/.hermes/plugins/coucou/",
-   "fr": "✓ Plugin Hermes installé dans ~/.hermes/plugins/coucou/",
-   "bn": "✓ Hermes প্লাগইন ~/.hermes/plugins/coucou/-এ ইনস্টল হয়েছে",
-   "pt-BR": "✓ Plugin do Hermes instalado em ~/.hermes/plugins/coucou/",
-   "ru": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/",
-   "id": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/"
+  "✓ Hermes plugin installed in ~/.hermes/plugins/nova/": {
+   "zh-Hans": "✓ Hermes 插件已安装至 ~/.hermes/plugins/nova/",
+   "hi": "✓ Hermes प्लगइन ~/.hermes/plugins/nova/ में इंस्टॉल हुआ",
+   "es": "✓ Plugin de Hermes instalado en ~/.hermes/plugins/nova/",
+   "ar": "✓ ملحق Hermes مثبَّت في ~/.hermes/plugins/nova/",
+   "fr": "✓ Plugin Hermes installé dans ~/.hermes/plugins/nova/",
+   "bn": "✓ Hermes প্লাগইন ~/.hermes/plugins/nova/-এ ইনস্টল হয়েছে",
+   "pt-BR": "✓ Plugin do Hermes instalado em ~/.hermes/plugins/nova/",
+   "ru": "✓ Плагин Hermes установлен в ~/.hermes/plugins/nova/",
+   "id": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/nova/"
   },
   "✓ Hooks installed in ~/.claude/settings.json": {
    "zh-Hans": "✓ Hooks 已安装至 ~/.claude/settings.json",
@@ -3619,16 +3619,16 @@
    "ru": "✓ Ключ OpenAI сохранён.",
    "id": "✓ Kunci OpenAI tersimpan."
   },
-  "✓ OpenCode plugin installed in ~/.config/opencode/plugins/coucou.js": {
-   "zh-Hans": "✓ OpenCode 插件已安装至 ~/.config/opencode/plugins/coucou.js",
-   "hi": "✓ ~/.config/opencode/plugins/coucou.js में OpenCode प्लगइन इंस्टॉल हुआ",
-   "es": "✓ Plugin de OpenCode instalado en ~/.config/opencode/plugins/coucou.js",
-   "ar": "✓ ملحق OpenCode مثبَّت في ~/.config/opencode/plugins/coucou.js",
-   "fr": "✓ Plugin OpenCode installé dans ~/.config/opencode/plugins/coucou.js",
-   "bn": "✓ ~/.config/opencode/plugins/coucou.js-এ OpenCode প্লাগইন ইনস্টল হয়েছে",
-   "pt-BR": "✓ Plugin do OpenCode instalado em ~/.config/opencode/plugins/coucou.js",
-   "ru": "✓ Плагин OpenCode установлен в ~/.config/opencode/plugins/coucou.js",
-   "id": "✓ Plugin OpenCode terpasang di ~/.config/opencode/plugins/coucou.js"
+  "✓ OpenCode plugin installed in ~/.config/opencode/plugins/nova.js": {
+   "zh-Hans": "✓ OpenCode 插件已安装至 ~/.config/opencode/plugins/nova.js",
+   "hi": "✓ ~/.config/opencode/plugins/nova.js में OpenCode प्लगइन इंस्टॉल हुआ",
+   "es": "✓ Plugin de OpenCode instalado en ~/.config/opencode/plugins/nova.js",
+   "ar": "✓ ملحق OpenCode مثبَّت في ~/.config/opencode/plugins/nova.js",
+   "fr": "✓ Plugin OpenCode installé dans ~/.config/opencode/plugins/nova.js",
+   "bn": "✓ ~/.config/opencode/plugins/nova.js-এ OpenCode প্লাগইন ইনস্টল হয়েছে",
+   "pt-BR": "✓ Plugin do OpenCode instalado em ~/.config/opencode/plugins/nova.js",
+   "ru": "✓ Плагин OpenCode установлен в ~/.config/opencode/plugins/nova.js",
+   "id": "✓ Plugin OpenCode terpasang di ~/.config/opencode/plugins/nova.js"
   },
   "✓ OpenCode plugin removed.": {
    "zh-Hans": "✓ OpenCode 插件已移除。",

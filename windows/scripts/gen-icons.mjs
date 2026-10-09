@@ -1,4 +1,4 @@
-// Draws Mochi into the PNG/ICO set Tauri needs. No dependencies: the icons are
+// Draws Nova into the PNG/ICO set Tauri needs. No dependencies: the icons are
 // rasterised here and encoded with node:zlib, so the app icon stays "drawn in
 // code" like the character itself.
 //
@@ -11,10 +11,10 @@ import { fileURLToPath } from "node:url";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "src-tauri", "icons");
 
-// ── Mochi ─────────────────────────────────────────────────────────────────────
+// ── Nova ─────────────────────────────────────────────────────────────────────
 
 const BASE_TOP = [255, 250, 245]; // #FFFAF5
-const BASE_BOTTOM = [221, 204, 191]; // #DDCCBF
+const BASE_BOTTOM = [214, 209, 201]; // Nova warm-grey
 const INK = [26, 20, 18]; // #1A1412
 const RIM = [0, 0, 0];
 
@@ -22,8 +22,9 @@ const SS = 4; // supersampling factor
 
 /** Superellipse (exponent 2.7) test in body-local coordinates. */
 function insideBody(x, y, rx, ry) {
-  const n = 2.7;
-  return Math.pow(Math.abs(x / rx), n) + Math.pow(Math.abs(y / ry), n) <= 1;
+  const n = 2.2; const a = Math.atan2(y / ry, x / rx);
+  const contour = 1 + 0.08 * Math.cos(3 * a) - 0.03 * Math.sin(2 * a);
+  return Math.pow(Math.abs(x / (rx * contour)), n) + Math.pow(Math.abs(y / (ry * contour)), n) <= 1;
 }
 
 function insidePill(x, y, w, h) {
@@ -35,7 +36,7 @@ function insidePill(x, y, w, h) {
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 }
 
-function renderMochi(size) {
+function renderNova(size) {
   const px = new Uint8Array(size * size * 4);
   const R = size * 0.34;
   const rx = R * 1.14;
@@ -52,8 +53,8 @@ function renderMochi(size) {
   const ey = -Math.sin(eyePitch) * ry;
   const fx = Math.max(0.18, Math.cos(eyeYaw));
   const fy = Math.max(0.18, cp);
-  const ew = R * 0.25 * fx;
-  const eh = R * 0.27 * fy;
+  const ew = R * 0.28 * fx;
+  const eh = R * 0.18 * fy;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -98,6 +99,10 @@ function renderMochi(size) {
         col = col.map((c, i) => c * (1 - eyeA) + INK[i] * eyeA);
       }
 
+      // Original orange spark, distinct from the upstream icon.
+      const markX = Math.abs((x + 0.5 - cx) / (R * 0.14));
+      const markY = Math.abs((y + 0.5 - cy + ry * 0.55) / (R * 0.14));
+      if (bodyA > 0 && markX + markY < 1) col = [229, 132, 54];
       const o = (y * size + x) * 4;
       px[o] = Math.round(col[0]);
       px[o + 1] = Math.round(col[1]);
@@ -182,7 +187,7 @@ function encodeICO(entries) {
 
 mkdirSync(OUT, { recursive: true });
 
-const png = (size) => encodePNG(size, renderMochi(size));
+const png = (size) => encodePNG(size, renderNova(size));
 
 const files = {
   "32x32.png": png(32),

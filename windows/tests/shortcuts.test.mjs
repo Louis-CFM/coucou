@@ -15,13 +15,13 @@ import { registerShortcutHandlers, runGlobalShortcut, runIslandKey } from "../sr
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
 const MAC_IDS = [
-  "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
+  "killEngine", "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
   "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
 ];
 
 // ── Defaults (testDefaultsExhaustive, testAllDefaultsHaveModifier, testNoDefaultDuplicates) ──
 
-test("every Mac action has a default, in the Mac's order, with its Mac id", () => {
+test("Windows adds an emergency stop before the unchanged upstream actions", () => {
   assert.deepEqual(SHORTCUTS.map((d) => d.id), MAC_IDS);
   for (const d of SHORTCUTS) assert.ok(SHORTCUT_TEXT[d.id], `${d.id} has no label`);
 });
@@ -79,7 +79,7 @@ test("only the island toggle is off by default; the one not ported yet is reserv
     assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
-    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
+    "killEngine", "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
     "wardrobeToggle",
   ]);
   // The Mac's ⌃⌥D, on the same letter.
@@ -305,7 +305,7 @@ beforeEach(() => {
   State.stateOverride = null;
   State.chatHistory = [];
   State.settings = { ...DEFAULT_SETTINGS };
-  State.mochiOnDesktop = false;
+  State.novaOnDesktop = false;
   State.cardSelection = null;
   State.cardItemCount = 0;
   desktopSupported = true;
@@ -360,7 +360,7 @@ test("the island toggle opens with the keyboard, and closes an open island", () 
   assert.deepEqual(did, ["collapse"]);
 });
 
-test("go to alert: the permission first, then a question, else Mochi is annoyed", () => {
+test("go to alert: the permission first, then a question, else Nova is annoyed", () => {
   runGlobalShortcut(host, "goToAlert", resume);
   assert.deepEqual(did, ["emote:annoyed"]);
 
@@ -436,7 +436,7 @@ test("next and previous pill wrap around and open the overview", () => {
   assert.deepEqual(did, ["resume", "alert:overview", "resume", "alert:overview"]);
 });
 
-test("mute flips the sound, saves it, and Mochi reacts", () => {
+test("mute flips the sound, saves it, and Nova reacts", () => {
   runGlobalShortcut(host, "muteToggle", resume);
   assert.equal(State.settings.soundEnabled, false);
   assert.equal(sent("save_settings").at(-1).settings.soundEnabled, false);
@@ -445,18 +445,18 @@ test("mute flips the sound, saves it, and Mochi reacts", () => {
   assert.deepEqual(did, ["emote:annoyed", "emote:happy"]);
 });
 
-test("the desktop shortcut sends Mochi out, lifting Pause, and brings him home", () => {
+test("the desktop shortcut sends Nova out, lifting Pause, and brings him home", () => {
   runGlobalShortcut(host, "desktopToggle", resume);
   assert.deepEqual(did, ["resume", "desktop"]);
   // Out there already: home, and Pause stays as it is.
   did = [];
-  State.mochiOnDesktop = true;
+  State.novaOnDesktop = true;
   runGlobalShortcut(host, "desktopToggle", resume);
   assert.deepEqual(did, ["desktop"]);
   assert.deepEqual(calls, []);
 });
 
-test("where Mochi can't leave the island (GNOME on Wayland), he says so", () => {
+test("where Nova can't leave the island (GNOME on Wayland), he says so", () => {
   desktopSupported = false;
   runGlobalShortcut(host, "desktopToggle", resume);
   assert.deepEqual(did, ["emote:annoyed"]);
@@ -466,7 +466,7 @@ test("the desktop shortcut arrives like the others, and runs from the command li
   emit("shortcut", "desktopToggle");
   assert.deepEqual(did, ["resume", "desktop"]);
   const rust = readFileSync(new URL("../src-tauri/src/shortcuts.rs", import.meta.url), "utf8");
-  assert.match(rust, /from_args\(&args\(&\["coucou", "--shortcut", "desktopToggle"\]\)\), Some\("desktopToggle"\)/);
+  assert.match(rust, /from_args\(&args\(&\["nova", "--shortcut", "desktopToggle"\]\)\), Some\("desktopToggle"\)/);
 });
 
 test("actions that aren't the island's do nothing here", () => {

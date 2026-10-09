@@ -13,6 +13,8 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    /// Island and settings appearance; older settings keep the dark default.
+    pub theme: String,
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
@@ -32,7 +34,7 @@ pub struct Settings {
     /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
     /// Off until the user turns it on, so the header stays as it shipped.
     pub show_plan_in_notch: bool,
-    /// Coucou's status line relay is the one in Claude Code's settings.json.
+    /// Nova's status line relay is the one in Claude Code's settings.json.
     /// Like `hooks_installed`, the real state wins at launch over what was stored.
     pub plan_relay_installed: bool,
     /// Show the Codex plan pill (5 h / weekly limits from `codex app-server`).
@@ -53,27 +55,27 @@ pub struct Settings {
     /// Global shortcuts the user changed, by action id; the others keep their
     /// default (see shortcuts.rs).
     pub shortcuts: crate::shortcuts::Bindings,
-    /// Mochi's outfit, picked in the wardrobe: "auto" (dresses for the
+    /// Nova's outfit, picked in the wardrobe: "auto" (dresses for the
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
-    pub mochi_outfit: String,
-    /// A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB"),
+    pub nova_outfit: String,
+    /// A colour of the user's own for a pill's Nova, by pill ID ("#RRGGBB"),
     /// picked in Settings → Active pills. Empty means the catalog's colours.
-    /// Kept as it comes, like `mochi_outfit`: src/core/pill-colors.ts reads
+    /// Kept as it comes, like `nova_outfit`: src/core/pill-colors.ts reads
     /// whatever is not a colour as "no choice".
     pub pill_colors: BTreeMap<String, String>,
     /// Interface language: "" follows the system, else one of i18n::LANGUAGES
-    /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
+    /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `nova_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
-    /// Mochi on the desktop: whether he lives there, and his spot. Owned by
+    /// Nova on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
-    pub desktop_mochi: DesktopMochiPref,
+    pub desktop_nova: DesktopNovaPref,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
-pub struct DesktopMochiPref {
+pub struct DesktopNovaPref {
     /// He was on the desktop when the app quit: he flies back out at launch.
     pub on_desktop: bool,
     /// Top-left corner of his window where the user last left him.
@@ -95,10 +97,11 @@ fn default_model() -> String {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            theme: "dark".into(),
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
-            open_on_hover: false,
+            open_on_hover: true,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -120,10 +123,10 @@ impl Default for Settings {
             lmstudio_url: String::new(),
             custom_url: String::new(),
             shortcuts: Default::default(),
-            mochi_outfit: "auto".into(),
+            nova_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
-            desktop_mochi: DesktopMochiPref::default(),
+            desktop_nova: DesktopNovaPref::default(),
         }
     }
 }
@@ -161,7 +164,7 @@ fn not_loaded() -> MutexGuard<'static, Vec<PathBuf>> {
     NOT_LOADED.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// One line in coucou.log. Tests must never write to the real one.
+/// One line in nova.log. Tests must never write to the real one.
 fn note(message: String) {
     #[cfg(not(test))]
     crate::log::line(message);
@@ -206,7 +209,7 @@ fn salvage(fields: Map<String, Value>) -> Settings {
 
 /// The log line for a field `salvage` had to drop. The name comes straight from
 /// the file, so it is written escaped: a line break in it must not be able to
-/// start what looks like another line of coucou.log.
+/// start what looks like another line of nova.log.
 fn unusable_field(key: &str) -> String {
     format!("settings.json: {key:?} is not usable — its default is used instead")
 }
@@ -359,7 +362,7 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
 
     // Write beside the target and rename over it: a crash, a full disk or a
     // power cut leaves the previous settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    let temp = path.with_extension(format!("json.nova-{}", std::process::id()));
     let written = std::fs::File::create(&temp)
         .and_then(|mut file| write_whole(&mut file, &json))
         .and_then(|()| std::fs::rename(&temp, path));
@@ -377,6 +380,7 @@ mod tests {
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".
     const CUSTOM: &str = r##"{
+  "theme": "light",
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
@@ -397,10 +401,10 @@ mod tests {
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
-  "mochiOutfit": "witchHat",
+  "novaOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopNova": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"##;
 
     fn custom() -> Value {
@@ -429,7 +433,7 @@ mod tests {
     /// A fresh directory of our own, and the settings.json it will hold.
     fn scratch(name: &str) -> (PathBuf, PathBuf) {
         let dir = std::env::temp_dir()
-            .join(format!("coucou-settings-{name}-{}", std::process::id()));
+            .join(format!("nova-settings-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("settings.json");
@@ -491,42 +495,42 @@ mod tests {
     }
 
     #[test]
-    fn a_file_from_before_the_wardrobe_dresses_mochi_for_the_seasons() {
-        let loaded = parse(&custom_with("mochiOutfit", None)).unwrap();
-        assert_eq!(loaded.mochi_outfit, "auto");
+    fn a_file_from_before_the_wardrobe_dresses_nova_for_the_seasons() {
+        let loaded = parse(&custom_with("novaOutfit", None)).unwrap();
+        assert_eq!(loaded.nova_outfit, "auto");
         assert_eq!(loaded.model, "some-model");
         assert!(!loaded.sound_enabled);
     }
 
     #[test]
-    fn a_file_from_before_the_desktop_mochi_keeps_him_in_the_island() {
-        let loaded = parse(&custom_with("desktopMochi", None)).unwrap();
-        assert_eq!(loaded.desktop_mochi, DesktopMochiPref::default());
-        assert!(!loaded.desktop_mochi.on_desktop);
-        assert_eq!(loaded.mochi_outfit, "witchHat");
+    fn a_file_from_before_the_desktop_nova_keeps_him_in_the_island() {
+        let loaded = parse(&custom_with("desktopNova", None)).unwrap();
+        assert_eq!(loaded.desktop_nova, DesktopNovaPref::default());
+        assert!(!loaded.desktop_nova.on_desktop);
+        assert_eq!(loaded.nova_outfit, "witchHat");
     }
 
     #[test]
     fn a_half_written_desktop_spot_costs_only_the_spot() {
         let loaded = parse(&custom_with(
-            "desktopMochi",
+            "desktopNova",
             Some(json!({ "onDesktop": true, "spot": { "x": "left" } })),
         ))
         .unwrap();
         // The whole field falls back, and nothing else does.
-        assert_eq!(loaded.desktop_mochi, DesktopMochiPref::default());
+        assert_eq!(loaded.desktop_nova, DesktopNovaPref::default());
         assert_eq!(loaded.model, "some-model");
 
-        let loaded = parse(&custom_with("desktopMochi", Some(json!({ "onDesktop": true })))).unwrap();
-        assert!(loaded.desktop_mochi.on_desktop);
-        assert_eq!(loaded.desktop_mochi.spot, None);
+        let loaded = parse(&custom_with("desktopNova", Some(json!({ "onDesktop": true })))).unwrap();
+        assert!(loaded.desktop_nova.on_desktop);
+        assert_eq!(loaded.desktop_nova.spot, None);
     }
 
     #[test]
     fn a_file_from_before_the_colours_paints_every_pill_as_the_catalog_says() {
         let loaded = parse(&custom_with("pillColors", None)).unwrap();
         assert!(loaded.pill_colors.is_empty());
-        assert_eq!(loaded.mochi_outfit, "witchHat");
+        assert_eq!(loaded.nova_outfit, "witchHat");
     }
 
     #[test]
@@ -544,8 +548,8 @@ mod tests {
     fn an_outfit_this_build_does_not_know_is_kept_as_written() {
         // A newer build may add outfits: the island shows "auto" for it, but
         // the choice must survive a save made by this one.
-        let loaded = parse(&custom_with("mochiOutfit", Some(json!("topHat")))).unwrap();
-        assert_eq!(loaded.mochi_outfit, "topHat");
+        let loaded = parse(&custom_with("novaOutfit", Some(json!("topHat")))).unwrap();
+        assert_eq!(loaded.nova_outfit, "topHat");
         // The language too: "" (follow the system) when absent, as it comes otherwise.
         assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
         assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
@@ -763,6 +767,12 @@ mod tests {
     }
 
     #[test]
+    fn a_missing_theme_keeps_the_old_dark_appearance() {
+        assert_eq!(parse(&custom_with("theme", None)).unwrap().theme, "dark");
+        assert_eq!(parse(&custom_with("theme", Some(json!("light")))).unwrap().theme, "light");
+    }
+
+    #[test]
     fn every_field_survives_a_save_and_a_load() {
         let (dir, file) = scratch("round-trip");
         let settings: Settings = serde_json::from_str(CUSTOM).unwrap();
@@ -780,6 +790,7 @@ mod tests {
         assert_eq!(
             keys,
             [
+                "theme",
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",
@@ -800,10 +811,10 @@ mod tests {
                 "lmstudioUrl",
                 "customUrl",
                 "shortcuts",
-                "mochiOutfit",
+                "novaOutfit",
                 "pillColors",
                 "language",
-                "desktopMochi",
+                "desktopNova",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -833,7 +844,7 @@ mod tests {
         // directory squatting on that name, the write cannot even start.
         let (dir, file) = scratch("blocked");
         std::fs::write(&file, CUSTOM).unwrap();
-        let temp = dir.join(format!("settings.json.coucou-{}", std::process::id()));
+        let temp = dir.join(format!("settings.json.nova-{}", std::process::id()));
         std::fs::create_dir(&temp).unwrap();
 
         assert!(save_to(&file, &Settings::default()).is_err());

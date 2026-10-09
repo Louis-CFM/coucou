@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 // ── The catalog itself ────────────────────────────────────────────────────────
 
 test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's values", () => {
-  // Copied from NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID is a
+  // Copied from Nova/Sources/NovaKit/PillCatalog.swift: an ID is a
   // contract value, and a colour or subtitle that drifts is a visible bug.
   const mac = [
     ["integration_claude", "VS Code", "#F5F6F8", "workspace", "Integration"],

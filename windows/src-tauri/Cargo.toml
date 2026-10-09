@@ -1,13 +1,13 @@
 [package]
-name = "coucou"
-description = "Coucou for Windows and Linux — Mochi lives at the top of your screen"
-authors = ["Louis Raille"]
+name = "nova"
+description = "Nova for Windows — your personal desktop island"
+authors = ["sweety", "Louis Raille"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "coucou_lib"
+name = "nova_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -39,21 +39,10 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  "Win32_System_JobObjects",
+  "Win32_Security_Cryptography",
+  "Win32_UI_Controls_Dialogs",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
 
-[target.'cfg(target_os = "linux")'.dependencies]
-# Secret Service (GNOME Keyring, KWallet) over D-Bus, encrypted in transit.
-keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
-libc = "0.2"
-# The GTK that Tauri already runs on, to reach its window for layer-shell and
-# the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
-gtk = "0.18"
-# libdbus, which keyring's Secret Service already links, so nothing new is
-# downloaded: Wayland global shortcuts through the XDG GlobalShortcuts portal
-# (portal.rs), the Spotify pill over MPRIS (spotify.rs) and "Open terminal"
-# through KWin's scripting (platform/linux_focus.rs).
-dbus = "0.9.12"
-# EWMH on X11 for "Open terminal", already in the tree (global-hotkey).
-x11rb = { version = "0.13", default-features = false }
