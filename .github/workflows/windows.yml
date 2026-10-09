@@ -92,6 +92,7 @@ jobs:
           New-Item -ItemType Directory -Force portable/engine | Out-Null
           Copy-Item target/release/nova.exe,target/release/nova-hook.exe portable/
           Copy-Item engine/opencode.exe,engine/LICENSE.txt,engine/VERSION portable/engine/
+          Copy-Item ASSISTANT-QUICKSTART.md portable/README.md
       - uses: actions/upload-artifact@v4
         with:
           name: Nova-Windows-assistant-upgrade-portable

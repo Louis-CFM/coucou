@@ -71,7 +71,7 @@ pub fn workspace(raw:&str)->Result<PathBuf,String>{
     blocked.push(std::env::var("ProgramFiles(x86)").unwrap_or_else(|_|"C:\\Program Files (x86)".into()));
     blocked.push(crate::settings::config_dir().to_string_lossy().into_owned());
     if let Ok(exe)=std::env::current_exe(){if let Some(p)=exe.parent(){blocked.push(p.to_string_lossy().into_owned());}}
-    if blocked.iter().any(|b|{let b=b.to_lowercase();normalized==b||normalized.starts_with(&(b+"\\"))}){return Err("Do not use a protected system/app folder as the engine workspace".into());}
+    if blocked.iter().any(|b|{let b=std::fs::canonicalize(b).map(|p|p.to_string_lossy().replace("\\\\?\\", "").to_lowercase()).unwrap_or_else(|_|b.to_lowercase());normalized==b||normalized.starts_with(&(b+"\\"))}){return Err("Do not use a protected system/app folder as the engine workspace".into());}
     Ok(PathBuf::from(canonical.to_string_lossy().replace("\\\\?\\","")))
 }
 pub fn rules(mode:&str)->Value{
