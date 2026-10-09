@@ -57,6 +57,12 @@
             "value": " готов."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " hazır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -119,6 +125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "своих: %lld"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld özel"
           }
         },
         "zh-Hans": {
@@ -185,6 +197,12 @@
             "value": "АВТО"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OTOMATİK"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -247,6 +265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Активные вкладки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etkin araçlar"
           }
         },
         "zh-Hans": {
@@ -313,6 +337,12 @@
             "value": "Активность"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etkinlik"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -375,6 +405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Агенты"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanlar"
           }
         },
         "zh-Hans": {
@@ -441,6 +477,12 @@
             "value": "Разрешить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin ver"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -503,6 +545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрешить Coucou управлять Music"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou'nun Music'i kontrol etmesine izin ver"
           }
         },
         "zh-Hans": {
@@ -569,6 +617,12 @@
             "value": "Всегда"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her zaman"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -631,6 +685,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Применится при следующем запуске"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir sonraki açılışta uygulanır"
           }
         },
         "zh-Hans": {
@@ -697,6 +757,12 @@
             "value": "Спросить Claude"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude'a sor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -759,6 +825,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задать вопрос"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soru sor"
           }
         },
         "zh-Hans": {
@@ -825,6 +897,12 @@
             "value": "Задать вопрос"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bununla ilgili soru sor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -887,6 +965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спроси меня о чём угодно…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bana istediğini sor…"
           }
         },
         "zh-Hans": {
@@ -953,6 +1037,12 @@
             "value": "Автозакрытие · %lld с"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik kapanma · %lld sn"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1015,6 +1105,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автоматизация не разрешена"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomasyona izin verilmedi"
           }
         },
         "zh-Hans": {
@@ -1081,6 +1177,12 @@
             "value": "Поведение"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davranış"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1143,6 +1245,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отмена"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İptal"
           }
         },
         "zh-Hans": {
@@ -1209,6 +1317,12 @@
             "value": "Чат"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbet"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1271,6 +1385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Чат с %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile sohbet"
           }
         },
         "zh-Hans": {
@@ -1337,6 +1457,12 @@
             "value": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullandığın araçları seç. Coucou yalnızca burada belirttiğin araçları gösterir."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1399,6 +1525,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code завершил"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code tamamladı"
           }
         },
         "zh-Hans": {
@@ -1465,6 +1597,12 @@
             "value": "Claude Code спрашивает"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code soruyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1527,6 +1665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude читает %@…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %@ okuyor…"
           }
         },
         "zh-Hans": {
@@ -1593,6 +1737,12 @@
             "value": "Claude ищет…"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude arıyor…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1655,6 +1805,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Очистить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temizle"
           }
         },
         "zh-Hans": {
@@ -1721,6 +1877,12 @@
             "value": "Очистить историю"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçmişi temizle"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1783,6 +1945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрыть"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
           }
         },
         "zh-Hans": {
@@ -1849,6 +2017,12 @@
             "value": "Закрыть через"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapanma süresi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1911,6 +2085,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Цвет"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renk"
           }
         },
         "zh-Hans": {
@@ -1977,6 +2157,12 @@
             "value": "Скоро"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yakında"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2039,6 +2225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Завершено успешно."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başarıyla tamamlandı."
           }
         },
         "zh-Hans": {
@@ -2105,6 +2297,12 @@
             "value": "Подключено"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2167,6 +2365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключено · %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı · %@"
           }
         },
         "zh-Hans": {
@@ -2233,6 +2437,12 @@
             "value": "Подключено · загрузка…"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı · yükleniyor…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2295,6 +2505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Продолжить…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam et…"
           }
         },
         "zh-Hans": {
@@ -2361,6 +2577,12 @@
             "value": "Скопировать"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopyala"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2423,6 +2645,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "По умолчанию"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan"
           }
         },
         "zh-Hans": {
@@ -2489,6 +2717,12 @@
             "value": "Отклонить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reddet"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2551,6 +2785,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Деплои"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dağıtımlar"
           }
         },
         "zh-Hans": {
@@ -2617,6 +2857,12 @@
             "value": "Diff слишком большой"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler çok büyük"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2679,6 +2925,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Черновик"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taslak"
           }
         },
         "zh-Hans": {
@@ -2745,6 +2997,12 @@
             "value": "Положите в папку звуков файл с именем одного из звуков Mochi (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi'nin seslerinden birini değiştirmek için aynı adı taşıyan bir dosyayı (finish.wav, approval.mp3, greet.m4a…) sesler klasörüne bırak, ardından sesleri yeniden yükle."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2807,6 +3065,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Брось файл или окно, или спроси меня о чём угодно."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir dosya veya pencere bırak ya da bana istediğini sor."
           }
         },
         "zh-Hans": {
@@ -2873,6 +3137,12 @@
             "value": "Перетащите файлы сюда"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyalarını buraya bırak"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2935,6 +3205,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Письма"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-postalar"
           }
         },
         "zh-Hans": {
@@ -3001,6 +3277,12 @@
             "value": "Включить звуки"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesleri etkinleştir"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3063,6 +3345,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ошибка"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başarısız"
           }
         },
         "zh-Hans": {
@@ -3129,6 +3417,12 @@
             "value": "Основные"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3191,6 +3485,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Секунду — вернусь к работе через три секунды."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir saniye — üç saniye sonra işe dönüyorum."
           }
         },
         "zh-Hans": {
@@ -3257,6 +3557,12 @@
             "value": "Узел Gmail завершился по таймауту через 30с. Повторите или откройте n8n."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail düğümü 30 sn sonra zaman aşımına uğradı. Yeniden dene veya n8n'i aç."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3319,6 +3625,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрыть через"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlenme süresi"
           }
         },
         "zh-Hans": {
@@ -3385,6 +3697,12 @@
             "value": "Скрывать названия проектов в изображениях"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paylaşılan görsellerde proje adlarını gizle"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3447,6 +3765,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kurulu"
           }
         },
         "zh-Hans": {
@@ -3513,6 +3837,12 @@
             "value": "Хуки не установлены"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kurulu değil"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3575,6 +3905,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Горячая клавиша"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısayol tuşu"
           }
         },
         "zh-Hans": {
@@ -3641,6 +3977,12 @@
             "value": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretçiyi adanın üzerine getirdiğinde ada açılır; işaretçi ayrıldıktan kısa süre sonra tekrar kapanır. Açık tutmak için içine tıkla."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3703,6 +4045,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Интеграции"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entegrasyonlar"
           }
         },
         "zh-Hans": {
@@ -3769,6 +4117,12 @@
             "value": "Хранить историю сессий"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodlama oturumlarımın geçmişini tut"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3831,6 +4185,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ключ настроен · %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anahtar yapılandırıldı · %@"
           }
         },
         "zh-Hans": {
@@ -3897,6 +4257,12 @@
             "value": "Ключ не настроен"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anahtar yapılandırılmadı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3959,6 +4325,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Язык"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dil"
           }
         },
         "zh-Hans": {
@@ -4025,6 +4397,12 @@
             "value": "Запускать при старте Mac"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac açılışında başlat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4087,6 +4465,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загрузка моделей…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modeller yükleniyor…"
           }
         },
         "zh-Hans": {
@@ -4153,6 +4537,12 @@
             "value": "Загрузка…"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleniyor…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4215,6 +4605,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Почта недоступна."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail kullanılamıyor."
           }
         },
         "zh-Hans": {
@@ -4281,6 +4677,12 @@
             "value": "Главный"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ana"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4343,6 +4745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Получатель не указан."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alıcı eksik."
           }
         },
         "zh-Hans": {
@@ -4409,6 +4817,12 @@
             "value": "Мои PR"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PR'larım"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4471,6 +4885,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новое письмо"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni e-posta"
           }
         },
         "zh-Hans": {
@@ -4537,6 +4957,12 @@
             "value": "Далее"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4599,6 +5025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет звонков"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planlanmış görüşme yok"
           }
         },
         "zh-Hans": {
@@ -4665,6 +5097,12 @@
             "value": "Нет изменений"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklik yok"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4727,6 +5165,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет вкладов"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katkı yok"
           }
         },
         "zh-Hans": {
@@ -4793,6 +5237,12 @@
             "value": "Не подключено"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı değil"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4855,6 +5305,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не воспроизводится"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalmıyor"
           }
         },
         "zh-Hans": {
@@ -4921,6 +5377,12 @@
             "value": "Ничего нет"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Burada bir şey yok"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4983,6 +5445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сейчас ничего не запущено."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şu anda çalışan bir şey yok."
           }
         },
         "zh-Hans": {
@@ -5049,6 +5517,12 @@
             "value": "ОК"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamam"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5111,6 +5585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aç"
           }
         },
         "zh-Hans": {
@@ -5177,6 +5657,12 @@
             "value": "Открыть %@"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5239,6 +5725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Codex"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex'i aç"
           }
         },
         "zh-Hans": {
@@ -5305,6 +5797,12 @@
             "value": "Открыть Coucou"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou'yu aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5367,6 +5865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Cursor"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursor'ı aç"
           }
         },
         "zh-Hans": {
@@ -5433,6 +5937,12 @@
             "value": "Открыть Music"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Music'i aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5495,6 +6005,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть настройки…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarları aç…"
           }
         },
         "zh-Hans": {
@@ -5561,6 +6077,12 @@
             "value": "Открыть Visual Studio Code"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visual Studio Code'u aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5623,6 +6145,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть в n8n"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "n8n'de aç"
           }
         },
         "zh-Hans": {
@@ -5689,6 +6217,12 @@
             "value": "Открывать при наведении"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üzerine gelince aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5751,6 +6285,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть папку звуков"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesler klasörünü aç"
           }
         },
         "zh-Hans": {
@@ -5817,6 +6357,12 @@
             "value": "Открыть терминал"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminali aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5879,6 +6425,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Другое…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diğer…"
           }
         },
         "zh-Hans": {
@@ -5945,6 +6497,12 @@
             "value": "Обзор"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel bakış"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6007,6 +6565,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Платежи"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ödemeler"
           }
         },
         "zh-Hans": {
@@ -6073,6 +6637,12 @@
             "value": "Играет · %@"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıyor · %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6135,6 +6705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Плагин не установлен"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklenti kurulu değil"
           }
         },
         "zh-Hans": {
@@ -6201,6 +6777,12 @@
             "value": "Выход"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkış"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6263,6 +6845,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Недавние"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son"
           }
         },
         "zh-Hans": {
@@ -6329,6 +6917,12 @@
             "value": "Обновить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yenile"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6391,6 +6985,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перезагрузить звуки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesleri yeniden yükle"
           }
         },
         "zh-Hans": {
@@ -6457,6 +7057,12 @@
             "value": "Ответить в терминале"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminalde yanıtla"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6519,6 +7125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden gönder"
           }
         },
         "zh-Hans": {
@@ -6585,6 +7197,12 @@
             "value": "Перезапустить Coucou"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou'yu yeniden başlat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6647,6 +7265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden dene"
           }
         },
         "zh-Hans": {
@@ -6713,6 +7337,12 @@
             "value": "Сохранить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6775,6 +7405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сохранить…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet…"
           }
         },
         "zh-Hans": {
@@ -6841,6 +7477,12 @@
             "value": "Расписание"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takvim"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6903,6 +7545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönder"
           }
         },
         "zh-Hans": {
@@ -6969,6 +7617,12 @@
             "value": "Отправить по email"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-postayla gönder"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7031,6 +7685,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправка…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönderiliyor…"
           }
         },
         "zh-Hans": {
@@ -7097,6 +7757,12 @@
             "value": "Сессия завершена"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum tamamlandı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7159,6 +7825,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Настройки…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar…"
           }
         },
         "zh-Hans": {
@@ -7225,6 +7897,12 @@
             "value": "Поделиться…"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paylaş…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7287,6 +7965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сочетание клавиш"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısayol"
           }
         },
         "zh-Hans": {
@@ -7353,6 +8037,12 @@
             "value": "Горячие клавиши"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısayollar"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7415,6 +8105,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывать остров горячей клавишей"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adayı kısayolla göster"
           }
         },
         "zh-Hans": {
@@ -7481,6 +8177,12 @@
             "value": "Звук"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7543,6 +8245,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запуск"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlangıç"
           }
         },
         "zh-Hans": {
@@ -7609,6 +8317,12 @@
             "value": "Хранится локально на Mac. Ничего не покидает Mac. Хранится 12 недель."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac'inde yerel olarak saklanır. Hiçbir veri Mac'inden çıkmaz. 12 hafta tutulur."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7671,6 +8385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тема"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konu"
           }
         },
         "zh-Hans": {
@@ -7737,6 +8457,12 @@
             "value": "Успешно"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başarılı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7799,6 +8525,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Системный"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem"
           }
         },
         "zh-Hans": {
@@ -7865,6 +8597,12 @@
             "value": "Кому"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alıcı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7927,6 +8665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "На ревью"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İncelenecekler"
           }
         },
         "zh-Hans": {
@@ -7993,6 +8737,12 @@
             "value": "Слишком много нажатий подряд."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı anda çok fazla istek."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8055,6 +8805,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Неизвестно"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmiyor"
           }
         },
         "zh-Hans": {
@@ -8121,6 +8877,12 @@
             "value": "Загружается %@"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ yükleniyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8183,6 +8945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Громкость"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses düzeyi"
           }
         },
         "zh-Hans": {
@@ -8249,6 +9017,12 @@
             "value": "Гардероб"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gardırop"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8311,6 +9085,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Наблюдение: %lld из %lld"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld izleniyor"
           }
         },
         "zh-Hans": {
@@ -8377,6 +9157,12 @@
             "value": "Итоги недели"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalık özet"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8439,6 +9225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Что вы хотите с ним сделать?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bununla ne yapmak istiyorsun?"
           }
         },
         "zh-Hans": {
@@ -8505,6 +9297,12 @@
             "value": "Рабочий процесс остановлен."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş akışı durdu."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8567,6 +9365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Твой ответ…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıtın…"
           }
         },
         "zh-Hans": {
@@ -8633,6 +9437,12 @@
             "value": "Запишет:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazılacak dosyalar:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (önce yedek oluşturulur)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8695,6 +9505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kur"
           }
         },
         "zh-Hans": {
@@ -8761,6 +9577,12 @@
             "value": "Установить хуки Coucou в ~/.claude?"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou hook'ları ~/.claude içine kurulsun mu?"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8820,6 +9642,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Anthropic API"
@@ -8889,6 +9717,12 @@
             "value": "Ключ API (sk-ant-…)"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API anahtarı (sk-ant-…)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8951,6 +9785,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ключ API (AI Studio)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API anahtarı (AI Studio)"
           }
         },
         "zh-Hans": {
@@ -9017,6 +9857,12 @@
             "value": "Ключ API (sk-…)"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API anahtarı (sk-…)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9079,6 +9925,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlan"
           }
         },
         "zh-Hans": {
@@ -9145,6 +9997,12 @@
             "value": "Подключение…"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlanıyor…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9209,6 +10067,12 @@
             "value": "Отключить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantıyı kes"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9268,6 +10132,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -9337,6 +10207,12 @@
             "value": "Подключись к локальному серверу моделей. API-ключ не нужен."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel bir model sunucusuna bağlan. API anahtarı gerekmez."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9399,6 +10275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Локальные модели"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel modeller"
           }
         },
         "zh-Hans": {
@@ -9465,6 +10347,12 @@
             "value": "Модель"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9527,6 +10415,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Свой…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özel…"
           }
         },
         "zh-Hans": {
@@ -9593,6 +10487,12 @@
             "value": "ID модели (напр. claude-sonnet-4-6)"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model kimliği (ör. claude-sonnet-4-6)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9657,6 +10557,12 @@
             "value": "Используется чатом. Список берётся из твоего аккаунта Anthropic."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbette kullanılır. Liste Anthropic hesabından alınır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9716,6 +10622,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -9785,6 +10697,12 @@
             "value": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbette Google Gemini veya OpenAI kullanmak için. Anahtarlar Anahtar Zinciri'nde saklanır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9847,6 +10765,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Чат — другие провайдеры"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbet — diğer sağlayıcılar"
           }
         },
         "zh-Hans": {
@@ -9913,6 +10837,12 @@
             "value": "%@ готов."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hazır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9975,6 +10905,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Antigravity для активации"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kuruldu — etkinleştirmek için Antigravity'yi yeniden başlat"
           }
         },
         "zh-Hans": {
@@ -10041,6 +10977,12 @@
             "value": "Хуки Antigravity"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antigravity hook'ları"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10103,6 +11045,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Claude Code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code hook'ları"
           }
         },
         "zh-Hans": {
@@ -10169,6 +11117,12 @@
             "value": "Хуки установлены — открой Codex и выполни /hooks или открой Hooks в настройках приложения, чтобы подтвердить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kuruldu — onaylamak için Codex'i açıp /hooks çalıştır veya uygulama ayarlarında Hooks bölümünü aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10231,6 +11185,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Codex"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex hook'ları"
           }
         },
         "zh-Hans": {
@@ -10297,6 +11257,12 @@
             "value": "Подтвердить и записать"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onayla ve yaz"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10359,6 +11325,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Copilot CLI для активации"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kuruldu — etkinleştirmek için Copilot CLI'ı yeniden başlat"
           }
         },
         "zh-Hans": {
@@ -10425,6 +11397,12 @@
             "value": "Хуки GitHub Copilot CLI"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub Copilot CLI hook'ları"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10487,6 +11465,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Gemini CLI для активации"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kuruldu — etkinleştirmek için Gemini CLI'ı yeniden başlat"
           }
         },
         "zh-Hans": {
@@ -10553,6 +11537,12 @@
             "value": "Хуки Gemini CLI"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini CLI hook'ları"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10615,6 +11605,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить хуки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'ları kur"
           }
         },
         "zh-Hans": {
@@ -10681,6 +11677,12 @@
             "value": "Хуки установлены — перезапусти Muse Code для активации"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar kuruldu — etkinleştirmek için Muse Code'u yeniden başlat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10743,6 +11745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Muse Code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muse Code hook'ları"
           }
         },
         "zh-Hans": {
@@ -10809,6 +11817,12 @@
             "value": "Хуки устарели — обнови их, чтобы отвечать на вопросы Claude из ноча"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'lar güncel değil — Claude'un sorularını adadan yanıtlamak için güncelle"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10871,6 +11885,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотри JSON ниже перед подтверждением."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onaylamadan önce aşağıdaki JSON'u incele."
           }
         },
         "zh-Hans": {
@@ -10937,6 +11957,12 @@
             "value": "Удалить"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10999,6 +12025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновить хуки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook'ları güncelle"
           }
         },
         "zh-Hans": {
@@ -11065,6 +12097,12 @@
             "value": "Классический токен с правом repo или гранулярный с доступом на чтение к Pull requests, Commit statuses и Actions."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "repo kapsamına sahip klasik token veya Pull requests, commit statuses ve Actions için okuma erişimi olan ayrıntılı token."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11127,6 +12165,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Проекты"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeler"
           }
         },
         "zh-Hans": {
@@ -11193,6 +12237,12 @@
             "value": "Сохранить интеграции"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entegrasyonları kaydet"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11255,6 +12305,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Рабочие процессы"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş akışları"
           }
         },
         "zh-Hans": {
@@ -11321,6 +12377,12 @@
             "value": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone'dan gönderilen talimat, sohbette açık olan modeli kullanır. Sistem istemi ve sohbet geçmişi geçerlidir. Coucou çalışmıyorken gönderilen talimatlar sıraya alınır ve bir sonraki açılışta yürütülür."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11383,6 +12445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Позволять iPhone отправлять инструкции в Claude Code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone'umun Claude Code'a talimat göndermesine izin ver"
           }
         },
         "zh-Hans": {
@@ -11449,6 +12517,12 @@
             "value": "Проходит через ретранслятор Coucou к сервису push Apple. Отправляются только имя и состояние агента: без имени проекта, команды или пути."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou aracısı üzerinden Apple'ın anlık bildirim servisine iletilir. Yalnızca ajan adı ve durumu gönderilir; proje adı, komut veya yol gönderilmez."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11511,6 +12585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переносить Mochi на Dynamic Island моего iPhone, когда Mac заблокирован"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac'im kilitlendiğinde Mochi'yi iPhone'umun Dynamic Island'ına taşı"
           }
         },
         "zh-Hans": {
@@ -11577,6 +12657,12 @@
             "value": "Отправляет твои сессии в личный iCloud для приложения Coucou на iPhone. Имена проектов, команды и вопросы шифруются твоими ключами iCloud. Отключение удаляет их из iCloud."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumlarını iPhone'daki Coucou uygulaması için özel iCloud hesabına gönderir. Proje adları, komutlar ve sorular iCloud anahtarlarınla şifrelenir. Kapatıldığında veriler iCloud'dan kaldırılır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11639,6 +12725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывать мои сессии агента на iPhone"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajan oturumlarımı iPhone'umda göster"
           }
         },
         "zh-Hans": {
@@ -11705,6 +12797,12 @@
             "value": "с %@"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11767,6 +12865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "мин без активности"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dk hareketsiz"
           }
         },
         "zh-Hans": {
@@ -11833,6 +12937,12 @@
             "value": "требует разрешения"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "için izin gerekiyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11895,6 +13005,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "5 часов"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 saat"
           }
         },
         "zh-Hans": {
@@ -11961,6 +13077,12 @@
             "value": "План Claude"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude planı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12023,6 +13145,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Coucou добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude plan kullanımını (5 saatlik ve haftalık sınırlar) adanın başlığında gösterir. Coucou, ~/.claude/settings.json içine bir durum satırı aracısı ekler. Mevcut durum satırın varsa eskisi gibi çalışmaya devam eder. Yalnızca Pro ve Max planları için."
           }
         },
         "zh-Hans": {
@@ -12089,6 +13217,12 @@
             "value": "%lld ч назад"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sa önce"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12151,6 +13285,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "только что"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "az önce"
           }
         },
         "zh-Hans": {
@@ -12217,6 +13357,12 @@
             "value": "%lld мин назад"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dk önce"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12279,6 +13425,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить ретранслятор"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aracıyı kur"
           }
         },
         "zh-Hans": {
@@ -12345,6 +13497,12 @@
             "value": "Ретранслятор: установлен"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aracı: kurulu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12407,6 +13565,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ретранслятор: не установлен"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aracı: kurulu değil"
           }
         },
         "zh-Hans": {
@@ -12473,6 +13637,12 @@
             "value": "Удалить ретранслятор"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aracıyı kaldır"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12535,6 +13705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "через %lld ч %lld мин"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sa %lld dk sonra"
           }
         },
         "zh-Hans": {
@@ -12601,6 +13777,12 @@
             "value": "через %lld мин"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dk sonra"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12663,6 +13845,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сброс…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırlanıyor…"
           }
         },
         "zh-Hans": {
@@ -12729,6 +13917,12 @@
             "value": "Показывать в нотче"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adada göster"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12791,6 +13985,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Использование плана"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan kullanımı"
           }
         },
         "zh-Hans": {
@@ -12857,6 +14057,12 @@
             "value": "Ожидание ответа Claude Code"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code'dan yanıt bekleniyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12919,6 +14125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Неделя"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafta"
           }
         },
         "zh-Hans": {
@@ -12985,6 +14197,12 @@
             "value": "Плагин установлен — перезапусти Amp для активации"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklenti kuruldu — etkinleştirmek için Amp'i yeniden başlat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13049,6 +14267,12 @@
             "value": "Плагин Amp"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp eklentisi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13108,6 +14332,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Hermes Agent"
@@ -13177,6 +14407,12 @@
             "value": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes eklentisi ~/.hermes/plugins/coucou/ içine kuruldu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13239,6 +14475,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывать запросы подтверждения в notch"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay isteklerini adada göster"
           }
         },
         "zh-Hans": {
@@ -13305,6 +14547,12 @@
             "value": "Запросы подтверждения отображаются в notch. Если Coucou не запущен, Hermes использует собственный prompt."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay istekleri adada görünür. Coucou çalışmıyorsa Hermes kendi onay istemini kullanır."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13367,6 +14615,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay istekleri Hermes tarafından işlenir (terminal veya ağ geçidi)."
           }
         },
         "zh-Hans": {
@@ -13433,6 +14687,12 @@
             "value": "Установить плагин"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklentiyi kur"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13495,6 +14755,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Плагин установлен — перезапусти OpenCode для активации"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklenti kuruldu — etkinleştirmek için OpenCode'u yeniden başlat"
           }
         },
         "zh-Hans": {
@@ -13561,6 +14827,12 @@
             "value": "Плагин OpenCode"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode eklentisi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13623,6 +14895,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотри содержимое ниже перед подтверждением."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onaylamadan önce aşağıdaki içeriği incele."
           }
         },
         "zh-Hans": {
@@ -13689,6 +14967,12 @@
             "value": "нажми → остров открывается"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "buna bas → ada açılır"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13751,6 +15035,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "программирования"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kodlama"
           }
         },
         "zh-Hans": {
@@ -13817,6 +15107,12 @@
             "value": "команды"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "komut"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13879,6 +15175,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "файл"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dosya"
           }
         },
         "zh-Hans": {
@@ -13945,6 +15247,12 @@
             "value": "файлы"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dosya"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14007,6 +15315,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Одобрено"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onaylandı"
           }
         },
         "zh-Hans": {
@@ -14073,6 +15387,12 @@
             "value": "Самый насыщенный день"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yoğun gün"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14135,6 +15455,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "КОМАНДЫ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KOMUTLAR"
           }
         },
         "zh-Hans": {
@@ -14201,6 +15527,12 @@
             "value": "Отклонено"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reddedildi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14263,6 +15595,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ФАЙЛЫ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOSYALAR"
           }
         },
         "zh-Hans": {
@@ -14329,6 +15667,12 @@
             "value": "Самая долгая сессия"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En uzun oturum"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14391,6 +15735,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "СЕССИИ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OTURUMLAR"
           }
         },
         "zh-Hans": {
@@ -14457,6 +15807,12 @@
             "value": "ВРЕМЯ КОДИНГА"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KODLAMA SÜRESİ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14519,6 +15875,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Топ агент"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En çok kullanılan ajan"
           }
         },
         "zh-Hans": {
@@ -14585,6 +15947,12 @@
             "value": "Топ проект"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En çok çalışılan proje"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14647,6 +16015,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "На прошлой неделе активности не было"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçen hafta etkinlik yok"
           }
         },
         "zh-Hans": {
@@ -14713,6 +16087,12 @@
             "value": "сессия"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oturum"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14775,6 +16155,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "сессии"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oturum"
           }
         },
         "zh-Hans": {
@@ -14841,6 +16227,12 @@
             "value": "Поделиться картинкой"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görseli paylaş"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14903,6 +16295,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Итоги недели"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalık özet"
           }
         },
         "zh-Hans": {
@@ -14969,6 +16367,12 @@
             "value": "с без активности"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sn etkinlik yok"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15031,6 +16435,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Главный"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ana"
           }
         },
         "zh-Hans": {
@@ -15097,6 +16507,12 @@
             "value": "%lld/4 слотов занято"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/4 yuva kullanılıyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15159,6 +16575,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Настройки — Coucou"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar — Coucou"
           }
         },
         "zh-Hans": {
@@ -15225,6 +16647,12 @@
             "value": "Прикрепить переднее окно"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öndeki pencereyi ekle"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15287,6 +16715,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дублирующийся"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yinelenen"
           }
         },
         "zh-Hans": {
@@ -15353,6 +16787,12 @@
             "value": "Системный конфликт"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistemle çakışıyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15415,6 +16855,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mochi на рабочем столе вкл / выкл"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi'yi masaüstüne taşı / geri getir"
           }
         },
         "zh-Hans": {
@@ -15481,6 +16927,12 @@
             "value": "Перейти к уведомлению"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uyarıya git"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15543,6 +16995,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Глобальные сочетания — работают из любого приложения"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel kısayollar — her uygulamada etkin"
           }
         },
         "zh-Hans": {
@@ -15609,6 +17067,12 @@
             "value": "Сочетания нотча — работают когда нотч в фокусе"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ada kısayolları — ada öndeyken etkin"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15671,6 +17135,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перейти на вкладку по номеру"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numarayla sekmeye git"
           }
         },
         "zh-Hans": {
@@ -15737,6 +17207,12 @@
             "value": "Закрыть нотч (если не закреплён)"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adayı kapat (sabitlenmemişse)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15799,6 +17275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть / закрыть текущий diff"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut değişiklikleri aç / kapat"
           }
         },
         "zh-Hans": {
@@ -15865,6 +17347,12 @@
             "value": "Навигация по элементам списка"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste öğelerinde gezin"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15927,6 +17415,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новый разговор"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni sohbet"
           }
         },
         "zh-Hans": {
@@ -15993,6 +17487,12 @@
             "value": "Следующая / предыдущая вкладка"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki / önceki sekme"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16055,6 +17555,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть выбранный элемент"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili öğeyi aç"
           }
         },
         "zh-Hans": {
@@ -16121,6 +17627,12 @@
             "value": "Закрепить / открепить нотч"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adayı sabitle / serbest bırak"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16183,6 +17695,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить сообщение в чат"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbet mesajı gönder"
           }
         },
         "zh-Hans": {
@@ -16249,6 +17767,12 @@
             "value": "Открыть настройки"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarları aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16311,6 +17835,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перейти в терминал"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminale git"
           }
         },
         "zh-Hans": {
@@ -16377,6 +17907,12 @@
             "value": "Выключить / включить звук"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesleri kapat / aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16439,6 +17975,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Следующая вкладка"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki sekme"
           }
         },
         "zh-Hans": {
@@ -16505,6 +18047,12 @@
             "value": "Открыть чат"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sohbeti aç"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16567,6 +18115,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть / закрыть нотч"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adayı aç / kapat"
           }
         },
         "zh-Hans": {
@@ -16633,6 +18187,12 @@
             "value": "Предыдущая вкладка"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki sekme"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16695,6 +18255,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сбросить всё к значениям по умолчанию"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü varsayılana sıfırla"
           }
         },
         "zh-Hans": {
@@ -16761,6 +18327,12 @@
             "value": "Открыть / закрыть гардероб"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gardırobu aç / kapat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16823,6 +18395,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Antigravity установлены в ~/.gemini/config/hooks.json"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Antigravity hook'ları ~/.gemini/config/hooks.json içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -16889,6 +18467,12 @@
             "value": "✓ Хуки Antigravity удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Antigravity hook'ları kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16951,6 +18535,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин Amp установлен в ~/.config/amp/plugins/coucou.ts"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Amp eklentisi ~/.config/amp/plugins/coucou.ts içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -17017,6 +18607,12 @@
             "value": "✓ Плагин Amp удалён."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Amp eklentisi kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17079,6 +18675,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин Hermes установлен"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes eklentisi kuruldu"
           }
         },
         "zh-Hans": {
@@ -17145,6 +18747,12 @@
             "value": "✓ Плагин Hermes удалён."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes eklentisi kaldırıldı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17207,6 +18815,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Codex установлены — выполни /hooks в Codex или открой Hooks в настройках приложения, чтобы подтвердить."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex hook'ları kuruldu — onaylamak için Codex'te /hooks çalıştır veya uygulama ayarlarında Hooks bölümünü aç."
           }
         },
         "zh-Hans": {
@@ -17273,6 +18887,12 @@
             "value": "✓ Хуки Codex удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex hook'ları kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17335,6 +18955,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Copilot CLI установлены в ~/.copilot/hooks/coucou.json"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Copilot CLI hook'ları ~/.copilot/hooks/coucou.json içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -17401,6 +19027,12 @@
             "value": "✓ Хуки Copilot CLI удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Copilot CLI hook'ları kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17463,6 +19095,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Gemini CLI установлены в ~/.gemini/settings.json"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Gemini CLI hook'ları ~/.gemini/settings.json içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -17529,6 +19167,12 @@
             "value": "✓ Хуки Gemini CLI удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Gemini CLI hook'ları kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17591,6 +19235,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ Google сохранён."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Google anahtarı kaydedildi."
           }
         },
         "zh-Hans": {
@@ -17657,6 +19307,12 @@
             "value": "✓ Хуки установлены — перезапусти VS Code для активации."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hook'lar kuruldu — etkinleştirmek için VS Code'u yeniden başlat."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17719,6 +19375,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки установлены в ~/.claude/settings.json"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hook'lar ~/.claude/settings.json içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -17785,6 +19447,12 @@
             "value": "✓ Хуки удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hook'lar kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17849,6 +19517,12 @@
             "value": "✓ Ключи интеграции сохранены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Entegrasyon anahtarları kaydedildi."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17911,6 +19585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ сохранён."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Anahtar kaydedildi."
           }
         },
         "zh-Hans": {
@@ -18085,6 +19765,24 @@
             }
           }
         },
+        "tr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Bağlı · %lld model"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Bağlı · %lld model"
+                }
+              }
+            }
+          }
+        },
         "zh-Hans": {
           "variations": {
             "plural": {
@@ -18161,6 +19859,12 @@
             "value": "LM Studio отключён."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio bağlantısı kesildi."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18223,6 +19927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет моделей — скачай одну в %@ сначала."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz model yok — önce %@ içinde bir model indir."
           }
         },
         "zh-Hans": {
@@ -18289,6 +19999,12 @@
             "value": "Ollama отключён."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama bağlantısı kesildi."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18351,6 +20067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось подключиться к %1$@ по адресу %2$@. Он запущен?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ adresindeki %1$@ erişilebilir değil. Çalışıyor mu?"
           }
         },
         "zh-Hans": {
@@ -18417,6 +20139,12 @@
             "value": "Поддерживаются только URL с http:// и https://."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca http:// ve https:// URL'leri kabul edilir."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18479,6 +20207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Muse Code установлены в ~/.config/muse/settings.json"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Muse Code hook'ları ~/.config/muse/settings.json içine kuruldu"
           }
         },
         "zh-Hans": {
@@ -18545,6 +20279,12 @@
             "value": "✓ Хуки Muse Code удалены."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Muse Code hook'ları kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18607,6 +20347,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ OpenAI сохранён."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenAI anahtarı kaydedildi."
           }
         },
         "zh-Hans": {
@@ -18673,6 +20419,12 @@
             "value": "✓ Плагин OpenCode установлен в ~/.config/opencode/plugins/coucou.js"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenCode eklentisi ~/.config/opencode/plugins/coucou.js içine kuruldu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18735,6 +20487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин OpenCode удалён."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenCode eklentisi kaldırıldı."
           }
         },
         "zh-Hans": {
@@ -18801,6 +20559,12 @@
             "value": "❌ Выбери папку .claude (скрытая, в домашнем каталоге)."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ .claude klasörünü seç (ana dizinindeki gizli klasör)."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18863,6 +20627,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Строка статуса установлена."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Durum satırı kuruldu."
           }
         },
         "zh-Hans": {
@@ -18929,6 +20699,12 @@
             "value": "✓ Строка статуса удалена."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Durum satırı kaldırıldı."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18991,6 +20767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Агент"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajan"
           }
         },
         "zh-Hans": {
@@ -19057,6 +20839,12 @@
             "value": "Редактирует"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenliyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19119,6 +20907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Получает"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getiriyor"
           }
         },
         "zh-Hans": {
@@ -19185,6 +20979,12 @@
             "value": "Перечисляет"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listeliyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19244,6 +21044,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notebook"
+          }
+        },
+        "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Notebook"
@@ -19313,6 +21119,12 @@
             "value": "Читает"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19375,6 +21187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запускает"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıştırıyor"
           }
         },
         "zh-Hans": {
@@ -19441,6 +21259,12 @@
             "value": "Ищет"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arıyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19503,6 +21327,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задачи"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevler"
           }
         },
         "zh-Hans": {
@@ -19569,6 +21399,12 @@
             "value": "Тестирует"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test ediyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19631,6 +21467,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ищет в сети"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web'de arıyor"
           }
         },
         "zh-Hans": {
@@ -19697,6 +21539,12 @@
             "value": "Записывает"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazıyor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19759,6 +21607,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "с"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ile"
           }
         },
         "zh-Hans": {
@@ -19826,6 +21680,12 @@
             "value": "Нет подробностей об ошибке."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hata ayrıntısı yok."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19889,6 +21749,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демо"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
           }
         },
         "zh-Hans": {
@@ -19956,6 +21822,12 @@
             "value": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API anahtarı veya Claude Code olmadan tüm özellikleri keşfet. Diske hiçbir şey yazılmaz."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20019,6 +21891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Попробовать демо"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo modunu dene"
           }
         },
         "zh-Hans": {
@@ -20086,6 +21964,12 @@
             "value": "Остановить демо"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demoyu durdur"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20149,6 +22033,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демо-режим"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo modu"
           }
         },
         "zh-Hans": {
@@ -20215,6 +22105,12 @@
             "value": "Повтор вкл."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar açık"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20277,6 +22173,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повтор выкл."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar kapalı"
           }
         },
         "zh-Hans": {
@@ -20343,6 +22245,12 @@
             "value": "Убрать из избранного"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorilerden kaldır"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20405,6 +22313,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрешить Coucou управлять Spotify"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou'nun Spotify'ı kontrol etmesine izin ver"
           }
         },
         "zh-Hans": {
@@ -20471,6 +22385,12 @@
             "value": "Скачать Spotify"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify'ı edin"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20533,6 +22453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Spotify"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify'ı aç"
           }
         },
         "zh-Hans": {
@@ -20599,6 +22525,12 @@
             "value": "Предыдущий"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20661,6 +22593,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторять один"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tek parçayı tekrarla"
           }
         },
         "zh-Hans": {
@@ -20727,6 +22665,12 @@
             "value": "Воспроизвести"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oynat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20789,6 +22733,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "В избранное"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favori"
           }
         },
         "zh-Hans": {
@@ -20855,6 +22805,12 @@
             "value": "Spotify не установлен"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify kurulu değil"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20917,6 +22873,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пауза"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duraklat"
           }
         },
         "zh-Hans": {
@@ -20983,6 +22945,12 @@
             "value": "Перемешивание выкл."
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karışık çalma kapalı"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21045,6 +23013,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Громкость %lld%%"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses düzeyi %lld%%"
           }
         },
         "zh-Hans": {
@@ -21111,6 +23085,12 @@
             "value": "Повторять все"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü tekrarla"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21173,6 +23153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перемешивание вкл."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karışık çalma açık"
           }
         },
         "zh-Hans": {
@@ -21239,6 +23225,12 @@
             "value": "Реклама"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reklam"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21303,6 +23295,12 @@
             "value": "Не установлено"
           }
         },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu değil"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21365,6 +23363,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — открыть Spotify"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Spotify'ı aç"
           }
         },
         "zh-Hans": {

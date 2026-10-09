@@ -99,6 +99,37 @@ test("labels() tables and dates read in the current language", () => {
   inLanguage("es", () => assert.match(dayMonth(8, 28), /^28 sept?/));
 });
 
+test("Turkish translates both tables, interpolates and falls back to English", () => {
+  inLanguage("tr", () => {
+    assert.equal(t("Allow"), "İzin ver");
+    assert.equal(t("Deny"), "Reddet");
+    assert.equal(t("Open the chat"), "Sohbeti aç");
+    assert.equal(t("Uploading {name}", { name: "öğrenci.pdf" }), "öğrenci.pdf yükleniyor");
+    assert.equal(t("Some brand new sentence."), "Some brand new sentence.");
+    assert.equal(t("Hello {name}", { name: "Mochi" }), "Hello Mochi");
+    assert.equal(dayMonth(9, 9), "9 Eki");
+    assert.equal(isRtl(), false);
+  });
+});
+
+test("Turkish keeps nouns singular after counts in both tables", () => {
+  inLanguage("tr", () => {
+    for (const count of [0, 1, 2, 21]) {
+      assert.equal(tn("{count} repo", "{count} repos", count), `${count} depo`);
+      assert.equal(tn("✓ Connected · {count} model", "✓ Connected · {count} models", count),
+        `✓ Bağlı · ${count} model`);
+    }
+  });
+});
+
+test("Turkish can be selected or resolved from regional system languages", () => {
+  assert.equal(LANGUAGES.find((l) => l.code === "tr").name, "Türkçe");
+  assert.equal(resolveLanguage("tr", ["en-US"]), "tr");
+  for (const tag of ["tr", "tr-TR", "tr_TR"]) {
+    assert.equal(resolveLanguage("", [tag, "en-US"]), "tr");
+  }
+});
+
 // ── Choosing the language ─────────────────────────────────────────────────────
 
 test("System follows the system's language when Coucou has it, else English", () => {
@@ -116,8 +147,8 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("xx", ["bn-IN"]), "bn");
 });
 
-test("the picker offers the Mac's ten languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"]);
+test("the picker offers the Mac's eleven languages, Arabic reads right to left", () => {
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "tr"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });
@@ -182,6 +213,37 @@ for (const [name, table] of [["strings.json", MAC.strings], ["extra.json", EXTRA
     }
   });
 }
+
+test("all Apple catalog entries have translated Turkish units with matching format placeholders", () => {
+  const catalog = JSON.parse(readFileSync(join(WINDOWS, "../NotchBuddy/Resources/Localizable.xcstrings"), "utf8"));
+  for (const [key, entry] of Object.entries(catalog.strings)) {
+    const en = entry.localizations.en;
+    const tr = entry.localizations.tr;
+    assert.ok(tr, key);
+    const forms = tr.variations?.plural ?? { other: tr };
+    for (const [category, form] of Object.entries(forms)) {
+      const source = en.variations?.plural?.[category] ?? en.variations?.plural?.other ?? en;
+      assert.equal(form.stringUnit.state, "translated", key);
+      assert.deepEqual(placeholders(convertFormat(form.stringUnit.value)),
+        placeholders(convertFormat(source.stringUnit.value)), key);
+    }
+  }
+});
+
+test("language registrations agree across generated tables, Rust and Apple targets", () => {
+  assert.deepEqual(MAC.languages, [...LANGUAGE_CODES]);
+  const rust = readFileSync(join(WINDOWS, "src-tauri/src/i18n.rs"), "utf8");
+  const codes = [...rust.match(/pub const LANGUAGES:[^=]+=[^;]+;/)[0].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(codes, [...LANGUAGE_CODES]);
+  for (const file of ["Info.plist", "InfoAppStore.plist"]) {
+    const plist = readFileSync(join(WINDOWS, "../NotchBuddy/Resources", file), "utf8");
+    const array = plist.match(/<key>CFBundleLocalizations<\/key>\s*<array>([\s\S]*?)<\/array>/)[1];
+    const supported = [...array.matchAll(/<string>([^<]+)<\/string>/g)].map((m) => m[1]);
+    assert.deepEqual(supported.sort(), [...LANGUAGE_CODES].sort(), file);
+  }
+  const picker = readFileSync(join(WINDOWS, "../NotchBuddy/Sources/App/SettingsView.swift"), "utf8");
+  assert.ok(picker.includes('Text("Türkçe").tag("tr")'));
+});
 
 test("extra.json never shadows a string of the Mac's", () => {
   for (const key of Object.keys(EXTRA.strings)) assert.ok(!(key in MAC.strings), key);
