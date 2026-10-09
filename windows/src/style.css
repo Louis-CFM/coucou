@@ -762,8 +762,10 @@ body {
 
 .pill .lbl {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Starts after the mini Mochi, so a long name never runs under him. */
+  left: 34px;
+  right: 8px;
+  text-overflow: ellipsis;
   text-align: center;
   font: 600 10px var(--font);
   color: var(--dim-3);
@@ -2459,9 +2461,26 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .np-card {
+  position: relative;
   padding: 10px 12px 0 108px;
   display: flex;
   flex-direction: column;
+}
+.np-card > :not(.np-backdrop) {
+  position: relative;
+}
+.np-backdrop {
+  position: absolute;
+  inset: -40px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.6);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.np-card.has-art .np-backdrop {
+  opacity: 0.32;
 }
 
 .np-head {
@@ -2474,9 +2493,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 .np-art {
   position: relative;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);

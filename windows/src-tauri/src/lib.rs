@@ -160,6 +160,8 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
+    #[cfg(windows)]
+    sysevents::keep_on_top();
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.

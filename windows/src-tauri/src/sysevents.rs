@@ -34,7 +34,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_VOLUME_DOWN, V
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostThreadMessageW,
     RegisterClassW, SetWindowsHookExW, UnhookWindowsHookEx, DEVICE_NOTIFY_WINDOW_HANDLE, HC_ACTION, HHOOK,
-    HWND_MESSAGE, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, PBT_APMRESUMEAUTOMATIC, PBT_POWERSETTINGCHANGE,
+    HWND_MESSAGE, KBDLLHOOKSTRUCT, MSG, PBT_APMRESUMEAUTOMATIC, PBT_POWERSETTINGCHANGE,
     WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP, WM_CLIPBOARDUPDATE, WM_KEYDOWN, WM_POWERBROADCAST,
     WM_SYSKEYDOWN, WNDCLASSW,
 };
@@ -168,6 +168,17 @@ fn run() {
             let _ = RegisterPowerSettingNotification(HANDLE(hwnd.0), &guid, DEVICE_NOTIFY_WINDOW_HANDLE);
         }
         let _ = AddClipboardFormatListener(hwnd);
+        // Another app coming forward (a full-screen one, the taskbar) can rise
+        // above the island: it climbs back on top each time, and only then.
+        let _ = windows::Win32::UI::Accessibility::SetWinEventHook(
+            windows::Win32::UI::WindowsAndMessaging::EVENT_SYSTEM_FOREGROUND,
+            windows::Win32::UI::WindowsAndMessaging::EVENT_SYSTEM_FOREGROUND,
+            None,
+            Some(foreground_changed),
+            0,
+            0,
+            windows::Win32::UI::WindowsAndMessaging::WINEVENT_OUTOFCONTEXT,
+        );
         sync_hook();
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).as_bool() {
@@ -185,8 +196,12 @@ fn sync_hook() {
     let mut hook = HOOK.lock().unwrap();
     match (want, *hook) {
         (true, None) => {
-            if let Ok(h) = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), None, 0) } {
-                *hook = Some(h.0 as isize);
+            match unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), None, 0) } {
+                Ok(h) => {
+                    *hook = Some(h.0 as isize);
+                    crate::log::line("sysevents: volume keys hooked");
+                }
+                Err(e) => crate::log::line(format!("sysevents: no keyboard hook: {e}")),
             }
         }
         (false, Some(h)) => {
@@ -197,6 +212,33 @@ fn sync_hook() {
     }
 }
 
+unsafe extern "system" fn foreground_changed(
+    _: windows::Win32::UI::Accessibility::HWINEVENTHOOK,
+    _: u32,
+    _: HWND,
+    _: i32,
+    _: i32,
+    _: u32,
+    _: u32,
+) {
+    keep_on_top();
+}
+
+/// Puts the island (and Mochi on the desktop) back above every other window.
+pub fn keep_on_top() {
+    use tauri::Manager;
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE};
+    let Some(app) = APP.get() else { return };
+    for (_, win) in app.webview_windows() {
+        if win.label() == "settings" {
+            continue;
+        }
+        if let Ok(h) = win.hwnd() {
+            let _ = unsafe { SetWindowPos(HWND(h.0 as _), Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
+        }
+    }
+}
+
 // ── Volume keys ───────────────────────────────────────────────────────────────
 
 unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -204,8 +246,9 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARA
         let k = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
         let vk = VIRTUAL_KEY(k.vkCode as u16);
         let ours = vk == VK_VOLUME_UP || vk == VK_VOLUME_DOWN || vk == VK_VOLUME_MUTE;
-        // A key another program typed on purpose goes through untouched.
-        if ours && (k.flags.0 & LLKHF_INJECTED.0) == 0 {
+        // Laptop Fn keys often arrive injected by the maker's hotkey service,
+        // so injected keys count too (Coucou never injects any itself).
+        if ours {
             let down = wparam.0 as u32 == WM_KEYDOWN || wparam.0 as u32 == WM_SYSKEYDOWN;
             if down {
                 if let Some(tx) = VOLUME_TX.get() {

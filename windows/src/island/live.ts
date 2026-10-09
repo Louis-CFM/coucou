@@ -65,7 +65,9 @@ export function showLive(host: LiveHost, e: LiveEvent) {
 }
 
 export function registerLiveHandlers(host: LiveHost) {
-  void onEvent<LiveEvent>("live", (e) => showLive(host, e));
+  void onEvent<LiveEvent>("live", (e) => {
+    showLive(host, e);
+  });
 }
 
 function iconFor(e: LiveEvent): { path: string; stroke: number } {

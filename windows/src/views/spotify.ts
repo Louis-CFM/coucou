@@ -307,7 +307,9 @@ export function buildSpotifyCard(): SpotifyCardHost {
     h("div", { class: "grow" }),
     volumeBox,
   );
-  const playingEl = h("div", { class: "np-card" }, head, progressRow, controls);
+  // The cover, blurred and dim, washes the card in the album's colours.
+  const backdrop = h("div", { class: "np-backdrop" });
+  const playingEl = h("div", { class: "np-card" }, backdrop, head, progressRow, controls);
 
   // Idle: the same layout as the other idle cards.
   const idleDot = dot("#22C55E", 5);
@@ -364,19 +366,25 @@ export function buildSpotifyCard(): SpotifyCardHost {
     if (shownTrack !== track) {
       shownTrack = track;
       title.textContent = isAd(track) ? t("Advertisement") : track.title;
-      const sub = [track.artist, track.album].filter((x) => x).join(" · ");
-      subtitle.textContent = sub;
-      subtitle.style.display = sub ? "" : "none";
+      // The artist alone reads in full; the album is in the tooltip.
+      subtitle.textContent = track.artist || track.album;
+      subtitle.title = [track.artist, track.album].filter((x) => x).join(" · ");
+      subtitle.style.display = subtitle.textContent ? "" : "none";
     } else if (isAd(track)) {
       title.textContent = t("Advertisement");
     }
     art.title = t("Open {0}", { 0: playerName(s) });
     const cover = currentArtwork(s);
     if (cover) {
-      if (artImg.getAttribute("src") !== cover) artImg.setAttribute("src", cover);
+      if (artImg.getAttribute("src") !== cover) {
+        artImg.setAttribute("src", cover);
+        backdrop.style.backgroundImage = `url("${cover}")`;
+      }
       art.classList.add("has-art");
+      playingEl.classList.add("has-art");
     } else {
       art.classList.remove("has-art");
+      playingEl.classList.remove("has-art");
       artImg.removeAttribute("src");
     }
 
