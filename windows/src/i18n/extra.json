@@ -3141,6 +3141,17 @@
    "ru": "{model} не установлена. Выберите другую модель над полем чата.",
    "id": "{model} belum terpasang. Pilih model lain di atas kotak obrolan."
   },
+  "The model thought the whole answer away without writing one. Try another model, or a shorter question.": {
+    "zh-Hans": "模型把整个回答额度都用在了思考上，没有写出内容。请换一个模型，或缩短问题。",
+    "hi": "मॉडल ने पूरा उत्तर बजट सोचने में खर्च कर दिया और कुछ लिखा नहीं। कोई दूसरा मॉडल आज़माएँ, या सवाल छोटा करें।",
+    "es": "El modelo se gastó todo el presupuesto de respuesta pensando y no escribió nada. Prueba otro modelo o acorta la pregunta.",
+    "ar": "أنفق النموذج كامل حصة الإجابة في التفكير ولم يكتب شيئًا. جرّب نموذجًا آخر أو قصّر السؤال.",
+    "fr": "Le modèle a dépensé tout le budget de réponse à réfléchir sans rien écrire. Essaie un autre modèle, ou raccourcis la question.",
+    "bn": "মডেলটি সম্পূর্ণ উত্তরের কোটা ভেবে ভাবল কিন্তু কিছু লেখেনি। অন্য মডেল ব্যবহার করুন, বা প্রশ্নটি ছোট করুন।",
+    "pt-BR": "O modelo gastou todo o orçamento da resposta pensando e não escreveu nada. Tente outro modelo ou encurte a pergunta.",
+    "ru": "Модель потратила весь бюджет ответа на размышления и ничего не написала. Попробуйте другую модель или сократите вопрос.",
+    "id": "Modelnya menghabiskan seluruh jatah jawaban untuk berpikir tanpa menulis apa pun. Coba model lain, atau persingkat pertanyaannya."
+  },
   "{name} API key missing. Add it in Settings.": {
    "zh-Hans": "缺少 {name} 的 API 密钥。请在设置中添加。",
    "hi": "{name} API कुंजी नहीं है। इसे सेटिंग्स में जोड़ें।",
