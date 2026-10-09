@@ -440,6 +440,10 @@ own window.
 - The chat field has a dictation mic on Windows (WinRT speech recognition in
   the system's speech language); tap to talk, tap again to stop, each phrase
   lands at the caret. Linux does not show the mic.
+- The phone companion is an Android app (`android/`, sideloaded APK) rather
+  than the iPhone one: sessions, approval and question cards and chat over a
+  Cloudflare Worker relay you deploy yourself — free tier, Firebase wake-ups,
+  see `android/README.md` and `relay/README.md`.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is

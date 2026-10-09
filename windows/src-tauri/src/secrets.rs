@@ -22,6 +22,8 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-from",
     "notion-api-key",
     "calcom-api-key",
+    // The shared secret the Android companion proves on every relay call.
+    "phone-secret",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

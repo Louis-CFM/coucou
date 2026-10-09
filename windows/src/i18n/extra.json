@@ -73,6 +73,18 @@
    "id": "AI untuk obrolan",
    "cs": "AI pro chat"
   },
+  "Android phone": {
+   "zh-Hans": "安卓手机",
+   "hi": "Android फ़ोन",
+   "es": "Teléfono Android",
+   "ar": "هاتف أندرويد",
+   "fr": "Téléphone Android",
+   "bn": "অ্যান্ড্রয়েড ফোন",
+   "pt-BR": "Celular Android",
+   "ru": "Телефон Android",
+   "id": "Ponsel Android",
+   "cs": "Telefon s Androidem"
+  },
   "API error {code}": {
    "zh-Hans": "API 错误 {code}",
    "hi": "API त्रुटि {code}",
@@ -144,6 +156,30 @@
    "ru": "Ответьте в терминале.",
    "id": "Jawab di terminal Anda.",
    "cs": "Odpovězte na ni ve vašem terminálu."
+  },
+  "Approvals, questions and chat reach {device} through your relay.": {
+   "zh-Hans": "审批、问题和聊天会通过您的中继发送到 {device}。",
+   "hi": "स्वीकृतियाँ, प्रश्न और चैट आपके रिले के ज़रिए {device} तक पहुँचती हैं।",
+   "es": "Las aprobaciones, preguntas y el chat llegan a {device} a través de tu relay.",
+   "ar": "تصل الموافقات والأسئلة والدردشة إلى {device} عبر المرحّل الخاص بك.",
+   "fr": "Approbations, questions et discussions arrivent sur {device} via votre relais.",
+   "bn": "অনুমোদন, প্রশ্ন ও চ্যাট আপনার রিলে হয়ে {device}-এ পৌঁছায়।",
+   "pt-BR": "Aprovações, perguntas e chat chegam a {device} pelo seu relay.",
+   "ru": "Одобрения, вопросы и чат доходят до {device} через ваш ретранслятор.",
+   "id": "Persetujuan, pertanyaan, dan chat sampai ke {device} lewat relay Anda.",
+   "cs": "Schválení, otázky a chat dorazí na {device} přes váš relay."
+  },
+  "Approve permissions, answer questions and chat from your Android phone. The phone and Coucou meet in a private mailbox on a relay you deploy yourself — free on Cloudflare's free tier (android/README.md).": {
+   "zh-Hans": "在安卓手机上批准权限、回答问题并聊天。手机与 Coucou 通过您自己部署的中继上的私有信箱通信——Cloudflare 免费套餐即可（android/README.md）。",
+   "hi": "अपने Android फ़ोन से अनुमतियाँ स्वीकारें, प्रश्नों के उत्तर दें और चैट करें। फ़ोन और Coucou आपके स्वयं deploy किए गए रिले पर एक निजी मेलबॉक्स में मिलते हैं — Cloudflare के मुफ़्त टियर पर मुफ़्त (android/README.md)।",
+   "es": "Aprueba permisos, responde preguntas y chatea desde tu teléfono Android. El teléfono y Coucou se encuentran en un buzón privado en un relay que tú despliegas — gratis con el plan gratuito de Cloudflare (android/README.md).",
+   "ar": "وافق على الأذونات وأجب على الأسئلة ودردش من هاتف أندرويد. يلتقي الهاتف و Coucou في صندوق بريد خاص على مرحّل تنشره بنفسك — مجانًا ضمن الخطة المجانية لـ Cloudflare (android/README.md).",
+   "fr": "Approuvez les permissions, répondez aux questions et discutez depuis votre téléphone Android. Le téléphone et Coucou se retrouvent dans une boîte privée sur un relais que vous déployez vous-même — gratuit avec l'offre gratuite de Cloudflare (android/README.md).",
+   "bn": "আপনার অ্যান্ড্রয়েড ফোন থেকে অনুমতি অনুমোদন করুন, প্রশ্নের উত্তর দিন এবং চ্যাট করুন। ফোন এবং Coucou আপনার নিজের ডিপ্লয় করা রিলের একটি ব্যক্তিগত মেইলবক্সে মিলিত হয় — Cloudflare-এর ফ্রি টিয়ারে ফ্রি (android/README.md)।",
+   "pt-BR": "Aprove permissões, responda perguntas e converse pelo seu celular Android. O celular e o Coucou se encontram numa caixa privada num relay que você mesmo hospeda — grátis no plano gratuito da Cloudflare (android/README.md).",
+   "ru": "Одобряйте разрешения, отвечайте на вопросы и общайтесь с телефона Android. Телефон и Coucou встречаются в приватном ящике на ретрансляторе, который вы разворачиваете сами — бесплатно на бесплатном тарифе Cloudflare (android/README.md).",
+   "id": "Setujui izin, jawab pertanyaan, dan chat dari ponsel Android Anda. Ponsel dan Coucou bertemu di kotak surat pribadi pada relay yang Anda deploy sendiri — gratis di paket gratis Cloudflare (android/README.md).",
+   "cs": "Schvalujte oprávnění, odpovídejte na otázky a chatujte ze svého telefonu s Androidem. Telefon a Coucou se potkávají v soukromé schránce na relayi, který si nasadíte sami — zdarma v rámci free tieru Cloudflare (android/README.md)."
   },
   "Ask": {
    "zh-Hans": "提问",
@@ -408,6 +444,18 @@
    "ru": "Не удаётся прочитать {path}: {error}",
    "id": "Tidak dapat membaca {path}: {error}",
    "cs": "Nelze číst {path}: {error}"
+  },
+  "Control from the phone": {
+   "zh-Hans": "从手机控制",
+   "hi": "फ़ोन से नियंत्रित करें",
+   "es": "Controlar desde el teléfono",
+   "ar": "التحكم من الهاتف",
+   "fr": "Contrôler depuis le téléphone",
+   "bn": "ফোন থেকে নিয়ন্ত্রণ",
+   "pt-BR": "Controlar pelo celular",
+   "ru": "Управление с телефона",
+   "id": "Kendalikan dari ponsel",
+   "cs": "Ovládání z telefonu"
   },
   "Devin": {
    "zh-Hans": "Devin",
@@ -2041,6 +2089,18 @@
    "id": "Server kompatibel OpenAI",
    "cs": "Server kompatibilní s OpenAI"
   },
+  "Pair phone…": {
+   "zh-Hans": "配对手机…",
+   "hi": "फ़ोन जोड़ें…",
+   "es": "Vincular teléfono…",
+   "ar": "إقران الهاتف…",
+   "fr": "Associer le téléphone…",
+   "bn": "ফোন পেয়ার করুন…",
+   "pt-BR": "Parear celular…",
+   "ru": "Подключить телефон…",
+   "id": "Sandingkan ponsel…",
+   "cs": "Spárovat telefon…"
+  },
   "PDF": {
    "zh-Hans": "PDF",
    "hi": "PDF",
@@ -2088,6 +2148,18 @@
    "ru": "Разрешения",
    "id": "Izin",
    "cs": "Oprávnění"
+  },
+  "Phone": {
+   "zh-Hans": "手机",
+   "hi": "फ़ोन",
+   "es": "Teléfono",
+   "ar": "الهاتف",
+   "fr": "Téléphone",
+   "bn": "ফোন",
+   "pt-BR": "Celular",
+   "ru": "Телефон",
+   "id": "Ponsel",
+   "cs": "Telefon"
   },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
@@ -2232,6 +2304,18 @@
    "ru": "Ретранслятор",
    "id": "Relay",
    "cs": "Relay"
+  },
+  "Relay address": {
+   "zh-Hans": "中继地址",
+   "hi": "रिले पता",
+   "es": "Dirección del relay",
+   "ar": "عنوان المرحّل",
+   "fr": "Adresse du relais",
+   "bn": "রিলে ঠিকানা",
+   "pt-BR": "Endereço do relay",
+   "ru": "Адрес ретранслятора",
+   "id": "Alamat relay",
+   "cs": "Adresa relaye"
   },
   "Remove": {
    "zh-Hans": "移除",
@@ -2448,6 +2532,18 @@
    "ru": "Сохранение…",
    "id": "Menyimpan…",
    "cs": "Ukládání…"
+  },
+  "Scan this with the Coucou app on your Android phone, or paste the code there.": {
+   "zh-Hans": "用安卓手机上的 Coucou 应用扫描此二维码，或将代码粘贴到应用中。",
+   "hi": "अपने Android फ़ोन पर Coucou ऐप से यह स्कैन करें, या कोड वहाँ पेस्ट करें।",
+   "es": "Escanéalo con la app Coucou en tu teléfono Android, o pega el código allí.",
+   "ar": "امسحه بتطبيق Coucou على هاتف أندرويد، أو الصق الرمز هناك.",
+   "fr": "Scannez-le avec l'app Coucou sur votre téléphone Android, ou collez-y le code.",
+   "bn": "আপনার অ্যান্ড্রয়েড ফোনে Coucou অ্যাপ দিয়ে এটি স্ক্যান করুন, অথবা সেখানে কোডটি পেস্ট করুন।",
+   "pt-BR": "Escaneie com o app Coucou no seu celular Android, ou cole o código lá.",
+   "ru": "Отсканируйте в приложении Coucou на телефоне Android или вставьте код туда.",
+   "id": "Pindai dengan aplikasi Coucou di ponsel Android Anda, atau tempelkan kodenya di sana.",
+   "cs": "Naskenujte toto aplikací Coucou ve svém telefonu s Androidem, nebo tam kód vložte."
   },
   "Scarf": {
    "zh-Hans": "围巾",
@@ -2796,6 +2892,18 @@
    "ru": "Адрес должен начинаться с http:// или https://.",
    "id": "Alamat harus diawali http:// atau https://.",
    "cs": "Adresa musí začínat http:// nebo https://."
+  },
+  "The address must start with https:// (plain http only to this computer).": {
+   "zh-Hans": "地址必须以 https:// 开头（仅本机可使用 http）。",
+   "hi": "पता https:// से शुरू होना चाहिए (सादा http केवल इसी कंप्यूटर के लिए)।",
+   "es": "La dirección debe empezar con https:// (http sin cifrar solo en esta computadora).",
+   "ar": "يجب أن يبدأ العنوان بـ https:// ‏(http العادي لهذا الكمبيوتر فقط).",
+   "fr": "L'adresse doit commencer par https:// (http en clair seulement sur cette machine).",
+   "bn": "ঠিকানা https:// দিয়ে শুরু হতে হবে (শুধুমাত্র এই কম্পিউটারে প্লেইন http)।",
+   "pt-BR": "O endereço deve começar com https:// (http simples só neste computador).",
+   "ru": "Адрес должен начинаться с https:// (открытый http только для этого компьютера).",
+   "id": "Alamat harus diawali https:// (http biasa hanya untuk komputer ini).",
+   "cs": "Adresa musí začínat https:// (čisté http jen pro tento počítač)."
   },
   "The file is removed.": {
    "zh-Hans": "该文件将被删除。",
@@ -3205,6 +3313,18 @@
    "id": "Agen tidak dikenal “{id}”.",
    "cs": "Neznámý agent \"{id}\"."
   },
+  "Unpair phone": {
+   "zh-Hans": "取消手机配对",
+   "hi": "फ़ोन अनपेयर करें",
+   "es": "Desvincular teléfono",
+   "ar": "إلغاء إقران الهاتف",
+   "fr": "Dissocier le téléphone",
+   "bn": "ফোনের পেয়ার বাতিল",
+   "pt-BR": "Desparear celular",
+   "ru": "Отвязать телефон",
+   "id": "Lepas ponsel",
+   "cs": "Zrušit párování telefonu"
+  },
   "Untitled": {
    "zh-Hans": "无标题",
    "hi": "बिना शीर्षक",
@@ -3252,6 +3372,18 @@
    "ru": "Используется дважды",
    "id": "Dipakai dua kali",
    "cs": "Použito dvakrát"
+  },
+  "Waiting for the phone…": {
+   "zh-Hans": "等待手机连接…",
+   "hi": "फ़ोन की प्रतीक्षा है…",
+   "es": "Esperando al teléfono…",
+   "ar": "في انتظار الهاتف…",
+   "fr": "En attente du téléphone…",
+   "bn": "ফোনের জন্য অপেক্ষা করা হচ্ছে…",
+   "pt-BR": "Aguardando o celular…",
+   "ru": "Ожидание телефона…",
+   "id": "Menunggu ponsel…",
+   "cs": "Čeká se na telefon…"
   },
   "Wardrobe…": {
    "zh-Hans": "衣橱…",

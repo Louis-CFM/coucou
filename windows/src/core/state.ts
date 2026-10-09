@@ -166,6 +166,12 @@ export interface Settings {
   editor?: string | null;
   /** Time and date in the island while it rests compact. */
   showClock: boolean;
+  /** Android companion — see phone.rs. The pairing secret never leaves the keychain. */
+  phoneEnabled?: boolean;
+  phoneWorker?: string;
+  phonePcId?: string;
+  phonePaired?: boolean;
+  phoneDevice?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

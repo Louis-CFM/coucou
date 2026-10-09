@@ -158,8 +158,9 @@ export class Island {
   }
 
   /** The request has its answer: the card goes and the session carries on —
-   * unless another request was waiting in line, which takes the card instead. */
-  private closeApproval() {
+   * unless another request was waiting in line, which takes the card instead.
+   * The phone companion calls this for its remote decisions. */
+  closeApproval() {
     settleApproval(this);
     this.fsm.pinned = State.isPinned;
   }

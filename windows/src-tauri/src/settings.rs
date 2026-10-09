@@ -77,6 +77,15 @@ pub struct Settings {
     /// where the top panel (and its clock) auto-hides under it.
     #[serde(default)]
     pub show_clock: bool,
+    /// The Android companion: control the island's cards from the phone.
+    /// The worker address and box id live here; the pairing secret lives in
+    /// the keychain ("phone-secret"), so it never sits in a file.
+    pub phone_enabled: bool,
+    pub phone_worker: String,
+    pub phone_pc_id: String,
+    /// A phone claimed the box; `phone_device` is the name it gave itself.
+    pub phone_paired: bool,
+    pub phone_device: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -134,6 +143,11 @@ impl Default for Settings {
             desktop_mochi: DesktopMochiPref::default(),
             editor: None,
             show_clock: false,
+            phone_enabled: false,
+            phone_worker: String::new(),
+            phone_pc_id: String::new(),
+            phone_paired: false,
+            phone_device: String::new(),
         }
     }
 }
@@ -412,7 +426,12 @@ mod tests {
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
   "editor": "zed",
-  "showClock": true
+  "showClock": true,
+  "phoneEnabled": true,
+  "phoneWorker": "https://coucou-relay.example.workers.dev",
+  "phonePcId": "pc-123",
+  "phonePaired": true,
+  "phoneDevice": "Pixel 9"
 }"##;
 
     fn custom() -> Value {
@@ -818,6 +837,11 @@ mod tests {
                 "desktopMochi",
                 "editor",
                 "showClock",
+                "phoneEnabled",
+                "phoneWorker",
+                "phonePcId",
+                "phonePaired",
+                "phoneDevice",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
