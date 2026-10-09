@@ -119,6 +119,10 @@ pub fn spawn(
         "--append-system-prompt",
         &charter,
     ]);
+    // A task may always read — the docs it needs often live outside the
+    // project. Writing and running things still ask: an approval card when
+    // the hooks are installed, a safe deny otherwise.
+    cmd.args(["--allowedTools", "Read,Glob,Grep"]);
     if let Some(out) = outputs.as_deref() {
         cmd.arg("--add-dir").arg(out);
     }
