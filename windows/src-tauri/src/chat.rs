@@ -71,6 +71,9 @@ pub struct Turn {
     pub history: Vec<Value>,
 }
 
+/// Turns kept as provider context. Older turns are dropped, never mid-pair.
+const MAX_TURNS: usize = 40;
+
 impl Chat {
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
@@ -106,6 +109,14 @@ impl Chat {
         c.native.push(assistant);
         c.plain.push(json!({ "role": "user", "content": user_text }));
         c.plain.push(json!({ "role": "assistant", "content": answer }));
+        // begin() clones the whole history every turn, so an unbounded
+        // conversation is quadratic work. Both vectors grow in pairs — the
+        // drop count is even and the alignment survives.
+        if c.plain.len() > MAX_TURNS * 2 {
+            let drop = c.plain.len() - MAX_TURNS * 2;
+            c.plain.drain(..drop);
+            c.native.drain(..drop);
+        }
     }
 }
 

@@ -239,6 +239,10 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     let decision = wait_for_decision(&id, &mut rx).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
+    // The island never answered — nothing to remember in the recap either.
+    if decision.is_none() {
+        crate::recap::forget_request(&app, &id);
+    }
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
     // and Claude Code asks in the terminal, exactly as if Coucou were closed.
