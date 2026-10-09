@@ -977,7 +977,6 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
-    ...recapRows(),
     languageRow(),
   );
 }
@@ -1379,7 +1378,7 @@ async function render() {
     {id:"appearance",label:"Appearance & App",blocks:[appearanceSection(),generalSection()]},
     {id:"chat",label:"AI Chat",blocks:[engineSection()]},
     {id:"computer",label:"Computer Access",blocks:[computerSection()]},
-    {id:"advanced",label:"Advanced",blocks:[h("section", {}, h("h2", {text:"Coding-agent integrations"}), h("p", {class:"hint",text:"Optional power-user features. These hooks are not required for the assistant chat."})),claudeSection(status),agentsSection(agents),planSection(status),activePillsSection(connected),integrationsSection(present),shortcutsSection(shortcutReport),h("details",{class:"settings-legacy"},h("summary",{text:"Previous direct-chat setup (for key import)"}),apiSection(hasKey),chatProvidersSection(chatKeys,keyChanged),localSection(customKey))]},
+    {id:"advanced",label:"Advanced",blocks:[h("section", {}, h("h2", {text:"Coding-agent integrations"}), h("p", {class:"hint",text:"Optional power-user features. These hooks are not required for the assistant chat."})),claudeSection(status),agentsSection(agents),h("section",{},h("h2",{text:"Coding-session recap"}),h("p",{class:"hint",text:"Optional coding statistics only. This is separate from your assistant chat history."}),...recapRows()),planSection(status),activePillsSection(connected),integrationsSection(present),shortcutsSection(shortcutReport),h("details",{class:"settings-legacy"},h("summary",{text:"Previous direct-chat setup (for key import)"}),apiSection(hasKey),chatProvidersSection(chatKeys,keyChanged),localSection(customKey))]},
   ];
   const nav = h("nav", {class:"settings-nav","aria-label":"Settings sections"});
   const area = h("div", {class:"settings-content"});
