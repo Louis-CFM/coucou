@@ -1,4 +1,9 @@
-/* ── Engine profiles ───────────────────────────────────────────────────────── */
+/* Nova settings — page-specific styles. The shared theme (tokens, light
+   theme, base, buttons, inputs, pills, nav, shortcuts) lives in ./theme.css
+   and is imported first. */
+@import "./theme.css";
+
+/* ── Engine profiles ─────────────────────────────────────────────────────── */
 
 .engine-profile-form {
   display: flex;
@@ -112,7 +117,7 @@
 
 .access-rules li { margin: 8px 0; }
 
-/* ── Widgets ───────────────────────────────────────────────────────────────── */
+/* ── Widgets ──────────────────────────────────────────────────────────────── */
 
 .widget-settings-order {
   display: flex;
@@ -159,7 +164,7 @@
 
 .engine-optional .engine-profile-actions { margin-top: 10px; }
 
-/* ── Arabic (RTL): code, paths, keys and addresses stay left to right ───────── */
+/* ── Arabic (RTL): code, paths, keys and addresses stay left to right ─────── */
 
 html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
   direction: ltr;
@@ -169,25 +174,16 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
 
 @media (max-width: 560px) {
   #settings-root { padding: 12px 12px 24px; gap: 12px; }
-
   section { padding: 16px; border-radius: var(--radius-sm); }
-
-  .row > label {
-    flex-basis: 100%;
-    min-width: 0;
-  }
-
+  .row > label { flex-basis: 100%; min-width: 0; }
   .settings-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
   .engine-pricing { grid-template-columns: 1fr; }
 }
 
-/* ── Reduced motion: transitions off, everything still works ───────────────── */
+/* ── Reduced motion: everything still works, nothing moves ─────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     scroll-behavior: auto !important;
