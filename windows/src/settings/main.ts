@@ -17,6 +17,7 @@ import {
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
+import { widgetsSection } from "./widgets";
 import { agentsSection } from "./agents";
 import { engineSection, computerSection } from "./engine";
 import { colorDot } from "./colors";
@@ -1375,7 +1376,7 @@ async function render() {
   shortcutsListener = null;
   clear(root);
   const pages = [
-    {id:"appearance",label:"Appearance & App",blocks:[appearanceSection(),generalSection()]},
+    {id:"appearance",label:"Appearance & App",blocks:[appearanceSection(),widgetsSection(),generalSection()]},
     {id:"chat",label:"AI Chat",blocks:[engineSection()]},
     {id:"computer",label:"Computer Access",blocks:[computerSection()]},
     {id:"advanced",label:"Advanced",blocks:[h("section", {}, h("h2", {text:"Coding-agent integrations"}), h("p", {class:"hint",text:"Optional power-user features. These hooks are not required for the assistant chat."})),claudeSection(status),agentsSection(agents),h("section",{},h("h2",{text:"Coding-session recap"}),h("p",{class:"hint",text:"Optional coding statistics only. This is separate from your assistant chat history."}),...recapRows()),planSection(status),activePillsSection(connected),integrationsSection(present),shortcutsSection(shortcutReport),h("details",{class:"settings-legacy"},h("summary",{text:"Previous direct-chat setup (for key import)"}),apiSection(hasKey),chatProvidersSection(chatKeys,keyChanged),localSection(customKey))]},

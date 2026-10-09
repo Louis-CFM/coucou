@@ -4,6 +4,7 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { buildWidgetSlots } from "../core/widgets";
 import { buildAppearanceControls } from "./appearance";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
@@ -131,6 +132,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    buildWidgetSlots(),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, appearance.toggle, appearance.quit),
   );
   const headerActions = el.lastElementChild as HTMLElement;
