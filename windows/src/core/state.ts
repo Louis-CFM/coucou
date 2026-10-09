@@ -152,6 +152,12 @@ export interface Settings {
    * for news that asks nothing.
    */
   announceSongs: boolean;
+  /**
+   * Mochi dances to the song's own beat (Settings → Integrations → Spotify,
+   * Windows). Off by default: finding the beat means listening to what the
+   * computer plays, which is for the user to ask for.
+   */
+  danceToBeat: boolean;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -186,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pillColors: {},
   language: "",
   announceSongs: false,
+  danceToBeat: false,
 };
 
 type Listener = () => void;

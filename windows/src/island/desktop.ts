@@ -8,6 +8,7 @@ import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { desktopDances } from "../core/spotify";
+import { DanceClock } from "../mochi/engine";
 import {
   DESKTOP_EVENTS, DesktopMochiController, alertActive, type DesktopSnapshot,
 } from "../mochi/desktop-logic";
@@ -172,6 +173,8 @@ export class DesktopLink {
       soundVolume: State.settings.soundVolume,
       paused: State.paused,
       dancing: desktopDances(State.spotifyPlaying, State.effectiveState),
+      tempo: DanceClock.tempo,
+      beatAt: DanceClock.beatAt,
     };
     const key = JSON.stringify(snapshot);
     if (key === this.pushed) return;

@@ -425,6 +425,19 @@ own window.
   sleeps until Windows says a session or Spotify's state changed, while the
   pill is declared. Other players (a browser, another music app) are not
   shown. For Linux see [Linux](#linux).
+- **Mochi dances to the song's own beat** on Windows: Settings → Integrations
+  → Spotify → **Dance to the song's beat**, off by default. The Mac's Mochi
+  bounces at 112 beats a minute whatever plays; here, when asked, the app
+  listens to what the computer plays, a few seconds at a time, finds the
+  song's tempo and where its beats fall, and he lands on them. It listens
+  only while a Mochi is seen dancing, rests between looks (about a quarter of
+  a song is heard), keeps the tempo through a pause or a seek, and holds or
+  sends nothing of the sound: as it comes it is reduced to "how much just
+  started", a hundred numbers a second. The listening is
+  [taktus](https://github.com/shakibbinkabir/taktus), a tempo and beat engine
+  by Shakib Bin Kabir, in the tree as one file (`src-tauri/src/taktus.rs`,
+  Apache-2.0). It hears the whole output, not Spotify alone, so another
+  app's sound blurs the reading. Linux has no tap yet: he keeps the 112.
 - **A new song** can open the island on Spotify's card for three seconds and
   fold it back, the pill that was in front getting its place again (Settings →
   Integrations → Spotify → **Announce new songs**, off by default; Windows and

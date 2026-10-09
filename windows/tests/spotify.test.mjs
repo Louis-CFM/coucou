@@ -11,7 +11,7 @@ import {
   ANNOUNCE_SECONDS, IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd,
   isNewSong, islandDances, musicPlaying, spotifyPosition, volumeLevel, withPlaying,
 } from "../src/core/spotify.ts";
-import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
+import { BotEngine, DanceClock, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
 import { buildSpotifyCard, buildSpotifyPill } from "../src/views/spotify.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
@@ -191,6 +191,10 @@ beforeEach(() => {
   Spotify.artwork = null;
   Spotify.heard = null;
   Spotify.announcing = 0;
+  Spotify.dancing = false;
+  State.mochiOnDesktop = false;
+  DanceClock.tempo = 0;
+  DanceClock.beatAt = 0;
   island.reveals = 0;
   island.glances = [];
   island.free = true;
@@ -466,4 +470,96 @@ test("the card wears its light for as long as the song is announced, and plays i
   Spotify.announcing = 0;
   card.sync();
   assert.ok(!card.el.classList.contains("announce"));
+});
+
+// ── The song's own beat ───────────────────────────────────────────────────────
+
+test("the bounce keeps any tempo it is given: still on each beat, highest between two", () => {
+  const R = 10;
+  for (const bpm of [87.4, 112, 142]) {
+    const beat = 60 / bpm;
+    for (const n of [0, 1, 7]) {
+      const on = danceTransform(n * beat, 1, R, bpm);
+      assert.ok(Math.abs(on.dy) < 1e-9 && Math.abs(on.sy - 0.94) < 1e-9, `${bpm}: lands on beat ${n}`);
+      assert.ok(Math.abs(danceTransform((n + 0.5) * beat, 1, R, bpm).dy + 2) < 1e-9, `${bpm}: highest after beat ${n}`);
+    }
+  }
+  // Told nothing, it is the Mac's 112.
+  assert.deepEqual(danceTransform(1.3, 1, R), danceTransform(1.3, 1, R, 112));
+});
+
+test("Mochi dances to the song's beat once it has been heard, and at 112 until then", () => {
+  State.settings.danceToBeat = true;
+  emit("spotify", playing());
+  assert.equal(DanceClock.tempo, 0, "not heard yet: the Mac's bounce");
+  emit("spotify", playing({ tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.deepEqual(DanceClock, { tempo: 87.4, beatAt: 1_700_000_000_000 });
+  // After a seek the tempo holds and where the beats fall is not known yet: he keeps the tempo.
+  emit("spotify", playing({ position: 90, tempo: 87.4, beatAt: 0 }));
+  assert.deepEqual(DanceClock, { tempo: 87.4, beatAt: 0 });
+  // Paused, the song's beat is no longer where it was.
+  emit("spotify", playing({ playing: false, tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.equal(DanceClock.tempo, 0);
+  // Linux, and a song whose beat was not found: no tempo.
+  emit("spotify", playing({ track: track({ id: "spotify:track:other" }) }));
+  assert.equal(DanceClock.tempo, 0);
+});
+
+test("the song's beat is not danced to unless asked for, and no longer once it is not", () => {
+  assert.equal(DEFAULT_SETTINGS.danceToBeat, false);
+  emit("spotify", playing({ tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.equal(DanceClock.tempo, 0);
+  State.settings.danceToBeat = true;
+  State.notify();
+  assert.equal(DanceClock.tempo, 87.4, "asked for: at once, without waiting for Spotify to say something");
+  State.settings.danceToBeat = false;
+  State.notify();
+  assert.equal(DanceClock.tempo, 0);
+});
+
+test("the song is listened to only when asked, and only while a Mochi is seen dancing to it", () => {
+  const told = () => sent("spotify_dancing").map((args) => args.on);
+  const before = told().length;
+  const since = () => told().slice(before);
+  // Not asked for: music plays, he dances in the compact island, and Rust is told nothing.
+  emit("spotify", playing());
+  State.mode = "compact";
+  State.notify();
+  assert.deepEqual(since(), []);
+  // Asked for.
+  State.settings.danceToBeat = true;
+  State.notify();
+  assert.deepEqual(since(), [true]);
+  State.notify();
+  assert.deepEqual(since(), [true], "said once");
+  // The island hides and he is not on the desktop: nobody to dance for.
+  State.mode = "hidden";
+  State.notify();
+  assert.deepEqual(since(), [true, false]);
+  // He lives on the desktop, where he dances while the island is hidden.
+  State.mochiOnDesktop = true;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true]);
+  // The music stops.
+  emit("spotify", playing({ playing: false }));
+  assert.deepEqual(since(), [true, false, true, false]);
+  emit("spotify", playing());
+  assert.deepEqual(since(), [true, false, true, false, true]);
+  // The app is paused.
+  State.paused = true;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false]);
+  State.paused = false;
+  // Expanded on another pill's card, with Mochi back in the island, he does not dance.
+  State.mochiOnDesktop = false;
+  State.mode = "expanded";
+  State.focusId = "integration_claude";
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false]);
+  State.setFocus(SPOTIFY_ID);
+  assert.deepEqual(since(), [true, false, true, false, true, false, true]);
+  // And the choice withdrawn is heard at once.
+  State.settings.danceToBeat = false;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false, true, false]);
 });

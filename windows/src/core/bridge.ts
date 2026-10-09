@@ -221,6 +221,10 @@ export const Bridge = {
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
+  /** Whether the song's beat can be heard on this system (Settings; beat.rs, Windows). */
+  spotifyHears: () => call<boolean>("spotify_hears"),
+  /** A Mochi dances to the song where he can be seen, or no longer does: Rust listens to it only then. */
+  spotifyDancing: (on: boolean) => call<void>("spotify_dancing", { on }),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

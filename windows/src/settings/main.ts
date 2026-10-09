@@ -859,6 +859,20 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         ),
         h("div", { class: "hint", text: t("The island opens on each new song for a few seconds, then folds back.") }),
       );
+      // Only where the song can be heard (Windows): Mochi's dance takes its beat.
+      void Bridge.spotifyHears().then((hears) => {
+        if (!hears) return;
+        rows.append(
+          h("div", { class: "row" },
+            h("label", { text: t("Dance to the song's beat") }),
+            toggle(settings.danceToBeat, (v) => { settings.danceToBeat = v; void save(); }),
+          ),
+          h("div", {
+            class: "hint",
+            text: t("Mochi listens to what the computer plays, a few seconds at a time, to find the song's tempo. Nothing is recorded or sent."),
+          }),
+        );
+      });
     }
 
     list.append(

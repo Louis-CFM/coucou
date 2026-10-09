@@ -18,7 +18,10 @@
 // session among them, sleeping until Windows says a session or Spotify's state
 // changed. The cover comes with the session, so nothing is fetched. The
 // session has no volume: the card's slider moves Spotify's level in the
-// Windows volume mixer.
+// Windows volume mixer. And Windows lets the listener hear what plays: when
+// the user asks for it (Settings, off by default), a few seconds of the song
+// now and then give its tempo, which Mochi dances to (beat.rs). Only while he
+// is seen dancing: the page says when (`spotify_dancing`).
 
 // Each OS reaches only its own half of the pure parts below, and the tests all of them.
 #![allow(dead_code)]
@@ -130,6 +133,11 @@ pub struct PlayerState {
     /// session: Spotify answers that it changed them and changes nothing, so
     /// the card leaves the two buttons out there.
     pub modes: bool,
+    /// The tempo Mochi dances at, beats a minute, heard from the song itself
+    /// (beat.rs); 0 while it is not known, and he keeps the Mac's 112.
+    pub tempo: f64,
+    /// Unix milliseconds of one of those beats.
+    pub beat_at: f64,
 }
 
 impl Default for PlayerState {
@@ -145,6 +153,8 @@ impl Default for PlayerState {
             repeat: false,
             volume: 50,
             modes: !cfg!(windows),
+            tempo: 0.0,
+            beat_at: 0.0,
         }
     }
 }
@@ -483,6 +493,23 @@ pub async fn spotify_open() -> bool {
     {
         false
     }
+}
+
+/// For Settings: whether the song's beat can be heard here (beat.rs). The
+/// choice to dance to it is offered only then.
+#[tauri::command]
+pub fn spotify_hears() -> bool {
+    cfg!(windows)
+}
+
+/// A Mochi dances to the song where he can be seen, or no longer does: it is
+/// listened to only for him, and only when the user asked (the page checks).
+#[tauri::command]
+pub fn spotify_dancing(on: bool) {
+    #[cfg(windows)]
+    smtc::seen_dancing(on);
+    #[cfg(not(windows))]
+    let _ = on;
 }
 
 /// For Settings: whether there is a Spotify to launch.
@@ -1414,6 +1441,8 @@ impl SessionReading {
             repeat: false,
             volume,
             modes: false,
+            tempo: 0.0,
+            beat_at: 0.0,
         }
     }
 }
@@ -1441,8 +1470,9 @@ pub fn is_news(prev: &PlayerState, next: &PlayerState, now_ms: f64) -> bool {
 mod smtc {
     use super::*;
     use std::hash::{DefaultHasher, Hash, Hasher};
-    use std::sync::mpsc::{channel, Receiver, Sender};
+    use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
     use std::sync::{LazyLock, Mutex};
+    use std::time::{Duration, Instant};
 
     use tauri::Emitter;
     use windows::core::{w, Interface, HSTRING};
@@ -1469,6 +1499,8 @@ mod smtc {
         Media,
         /// Play, pause, or the timeline.
         Changed,
+        /// A Mochi began to dance where he can be seen, or stopped.
+        Dance,
         /// The pill was turned off.
         Stop,
     }
@@ -1482,10 +1514,24 @@ mod smtc {
         state: PlayerState,
         /// The cover the island already has: which track, and a hash of its bytes.
         cover: Option<(String, u64)>,
+        /// The beat heard in a track: which one, its tempo, and when one of its
+        /// beats fell (0 when that is no longer known: a pause, a seek).
+        beat: Option<(String, f64, f64)>,
+        /// Whether a Mochi dances to the song where he can be seen, the user
+        /// having asked for it: the song is listened to only then.
+        dancing: bool,
     }
 
     static SHARED: LazyLock<Mutex<Shared>> = LazyLock::new(|| {
-        Mutex::new(Shared { generation: 0, active: false, wake: None, state: PlayerState::default(), cover: None })
+        Mutex::new(Shared {
+            generation: 0,
+            active: false,
+            wake: None,
+            state: PlayerState::default(),
+            cover: None,
+            beat: None,
+            dancing: false,
+        })
     });
 
     // ── Start / stop ──────────────────────────────────────────────────────────
@@ -1499,6 +1545,7 @@ mod smtc {
             s.active = on;
             s.generation += 1;
             s.cover = None;
+            s.beat = None;
             s.state = PlayerState { installed: installed(), ..PlayerState::default() };
             s.wake.take()
         };
@@ -1521,6 +1568,17 @@ mod smtc {
             std::thread::Builder::new().name("coucou-spotify".into()).spawn(move || listen(app, generation, tx, rx));
         if let Err(err) = spawned {
             crate::log::line(format!("spotify: no listener thread: {err}"));
+        }
+    }
+
+    /// The page says a Mochi dances to the song where he can be seen, or no longer does.
+    pub fn seen_dancing(on: bool) {
+        let mut s = SHARED.lock().unwrap();
+        if s.dancing != on {
+            s.dancing = on;
+            if let Some(listener) = &s.wake {
+                let _ = listener.send(Wake::Dance);
+            }
         }
     }
 
@@ -1581,9 +1639,10 @@ mod smtc {
             }))
             .ok();
         let mut attached: Option<Attached> = None;
+        let mut ears = Ears::default();
         // Spotify may have been playing before the pill was declared.
         let mut wake = Wake::Sessions;
-        loop {
+        'awake: loop {
             // What queued up while the last reading was made counts as one change.
             let mut pending = vec![wake];
             while let Ok(more) = rx.try_recv() {
@@ -1598,18 +1657,176 @@ mod smtc {
                 attached = spotify_session(&manager).map(|s| attach(s, &tx));
                 cover = true;
             }
-            if report(&app, generation, attached.as_ref().map(|a| &a.session), cover, false).is_none() {
+            let Some(state) = report(&app, generation, attached.as_ref().map(|a| &a.session), cover, false) else {
                 break;
+            };
+            let dancing = SHARED.lock().unwrap().dancing;
+            if ears.follow(&state, dancing) {
+                forget_where(&app, generation);
             }
-            match rx.recv() {
-                Ok(next) => wake = next,
-                Err(_) => break,
-            }
+            // Asleep until Windows has news. Only while a song is being
+            // listened to does the thread come back by itself, ten times a
+            // second, to read what was played.
+            wake = loop {
+                let woken = match ears.pause() {
+                    None => rx.recv().ok(),
+                    Some(wait) => match rx.recv_timeout(wait) {
+                        Err(RecvTimeoutError::Timeout) => {
+                            if let Some(beat) = ears.listen() {
+                                tell_beat(&app, generation, beat);
+                            }
+                            continue;
+                        }
+                        other => other.ok(),
+                    },
+                };
+                match woken {
+                    Some(next) => break next,
+                    None => break 'awake,
+                }
+            };
         }
         detach(attached);
         if let Some(token) = token {
             let _ = manager.RemoveSessionsChanged(token);
         }
+    }
+
+    // ── The beat ──────────────────────────────────────────────────────────────
+
+    /// The listener's ear: a song is listened to while it plays and a Mochi is
+    /// seen dancing to it, a few seconds at a time (the follower says when),
+    /// and its beat told to the island.
+    struct Ears {
+        /// The track followed, and the clock its follower counts on.
+        song: Option<String>,
+        since: Instant,
+        follower: crate::beat::Follower,
+        /// Open only while the follower wants the sound.
+        tap: Option<crate::beat::tap::Tap>,
+        /// Whether the song is listened to now: it plays, and somebody dances.
+        awake: bool,
+        /// Where the song was last said to be, to tell a pause or a seek.
+        said: Option<PlayerState>,
+        heard: Vec<f32>,
+    }
+
+    impl Default for Ears {
+        fn default() -> Self {
+            Ears {
+                song: None,
+                since: Instant::now(),
+                follower: Default::default(),
+                tap: None,
+                awake: false,
+                said: None,
+                heard: Vec::new(),
+            }
+        }
+    }
+
+    impl Ears {
+        /// What plays changed, or who watches. Another song is followed from
+        /// scratch. The same one keeps its tempo through a pause or a seek, and
+        /// has only to find where its beats fall again. True when the beats
+        /// told before are no longer where they were.
+        fn follow(&mut self, state: &PlayerState, dancing: bool) -> bool {
+            let now = now_ms();
+            let track = state.track.as_ref().map(|t| t.id.clone());
+            if track != self.song {
+                *self = Ears { song: track, ..Ears::default() };
+            }
+            let jumped = self.said.as_ref().is_some_and(|said| {
+                said.playing != state.playing
+                    || (said.position_at_time(now) - state.position_at_time(now)).abs() > SEEK_SLACK
+            });
+            self.said = Some(state.clone());
+            let awake = dancing && state.playing && self.song.is_some();
+            // Sound missed, for whatever reason, is a break in what the follower heard.
+            if jumped || (awake && !self.awake) {
+                self.follower.moved();
+            }
+            if !awake {
+                self.tap = None;
+            }
+            self.awake = awake;
+            jumped
+        }
+
+        /// How long the thread may sleep before the sound is wanted; none while it is not.
+        fn pause(&mut self) -> Option<Duration> {
+            if !self.awake {
+                return None;
+            }
+            let now = self.since.elapsed().as_secs_f64();
+            if !self.follower.listens(now) {
+                // Resting between two looks: the tap is closed meanwhile.
+                self.tap = None;
+                return self.follower.sleeps(now).map(Duration::from_secs_f64);
+            }
+            if self.tap.is_none() {
+                self.tap = crate::beat::tap::Tap::open();
+                // No sound to hear on this machine: the song is left alone.
+                if self.tap.is_none() {
+                    self.awake = false;
+                    return None;
+                }
+            }
+            Some(Duration::from_millis(100))
+        }
+
+        /// Reads what was played. The beat, when it was found or set right:
+        /// the track, the tempo to dance at, and when one of its beats fell.
+        fn listen(&mut self) -> Option<(String, f64, f64)> {
+            let id = self.song.clone()?;
+            self.heard.clear();
+            self.tap.as_mut()?.read(&mut self.heard);
+            let now = self.since.elapsed().as_secs_f64();
+            if !self.follower.hear(&self.heard, now) {
+                return None;
+            }
+            Some(match self.follower.beat() {
+                Some((period, beat)) => (id, crate::beat::dance_tempo(period), now_ms() - (now - beat) * 1000.0),
+                None => (id, 0.0, 0.0),
+            })
+        }
+    }
+
+    /// The song paused or jumped: its tempo holds, where its beats fall is no
+    /// longer known until the follower has found them again. Mochi keeps the
+    /// tempo meanwhile.
+    fn forget_where(app: &AppHandle, generation: u64) {
+        let state = {
+            let mut guard = SHARED.lock().unwrap();
+            let s = &mut *guard;
+            if !(s.active && s.generation == generation) {
+                return;
+            }
+            match s.beat.as_mut() {
+                Some(beat) if beat.2 != 0.0 => beat.2 = 0.0,
+                _ => return,
+            }
+            if s.state.beat_at == 0.0 {
+                return;
+            }
+            s.state.beat_at = 0.0;
+            s.state.clone()
+        };
+        emit_state(app, &state);
+    }
+
+    /// The beat of the track that plays, for the island.
+    fn tell_beat(app: &AppHandle, generation: u64, beat: (String, f64, f64)) {
+        let state = {
+            let mut s = SHARED.lock().unwrap();
+            if !(s.active && s.generation == generation) || s.state.track.as_ref().map(|t| &t.id) != Some(&beat.0) {
+                return;
+            }
+            (s.state.tempo, s.state.beat_at) = (beat.1, beat.2);
+            s.beat = Some(beat);
+            s.state.clone()
+        };
+        emit_state(app, &state);
     }
 
     // ── Reading ───────────────────────────────────────────────────────────────
@@ -1682,10 +1899,16 @@ mod smtc {
                 return None;
             }
             let volume = level.unwrap_or(s.state.volume);
-            let next = match &read {
+            let mut next = match &read {
                 Some((reading, _)) => reading.state(installed(), volume, now),
                 None => PlayerState { installed: installed(), volume, ..PlayerState::default() },
             };
+            // The beat heard in this track goes with it.
+            if let Some((id, tempo, beat_at)) = &s.beat {
+                if next.track.as_ref().map(|t| &t.id) == Some(id) {
+                    (next.tempo, next.beat_at) = (*tempo, *beat_at);
+                }
+            }
             let changed = force || is_news(&s.state, &next, now);
             if changed {
                 s.state = next.clone();
@@ -1997,6 +2220,8 @@ mod tests {
         assert_eq!(json["track"]["artUrl"], "https://i.scdn.co/image/abc");
         assert_eq!(json["track"]["id"], "spotify:track:ID1");
         assert!(json["track"].get("objectPath").is_none());
+        // No tempo until the song has been heard (beat.rs): the page keeps the Mac's 112.
+        assert_eq!((json["tempo"].as_f64(), json["beatAt"].as_f64()), (Some(0.0), Some(0.0)));
     }
 
     #[test]

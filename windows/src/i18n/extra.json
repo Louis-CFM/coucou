@@ -3382,6 +3382,28 @@
    "pt-BR": "A ilha abre por alguns segundos a cada nova música e depois se fecha.",
    "ru": "Остров открывается на несколько секунд при каждом новом треке, затем сворачивается.",
    "id": "Pulau terbuka beberapa detik setiap ada lagu baru, lalu menutup kembali."
+  },
+  "Dance to the song's beat": {
+   "zh-Hans": "跟着歌曲的节拍跳舞",
+   "hi": "गाने की ताल पर नाचना",
+   "es": "Bailar al ritmo de la canción",
+   "ar": "الرقص على إيقاع الأغنية",
+   "fr": "Danser au rythme du morceau",
+   "bn": "গানের তালে নাচ",
+   "pt-BR": "Dançar no ritmo da música",
+   "ru": "Танцевать в ритме трека",
+   "id": "Menari mengikuti irama lagu"
+  },
+  "Mochi listens to what the computer plays, a few seconds at a time, to find the song's tempo. Nothing is recorded or sent.": {
+   "zh-Hans": "Mochi 会听电脑播放的声音，每次几秒，以找出歌曲的速度。不会录音，也不会发送任何内容。",
+   "hi": "गाने की गति जानने के लिए Mochi कंप्यूटर पर बज रही आवाज़ को एक बार में कुछ सेकंड सुनता है। कुछ भी रिकॉर्ड या भेजा नहीं जाता।",
+   "es": "Mochi escucha lo que suena en el ordenador, unos segundos cada vez, para encontrar el tempo de la canción. No se graba ni se envía nada.",
+   "ar": "يستمع Mochi إلى ما يشغّله الحاسوب لبضع ثوانٍ في كل مرة ليعرف إيقاع الأغنية. لا يُسجَّل شيء ولا يُرسَل.",
+   "fr": "Mochi écoute ce que joue l'ordinateur, quelques secondes à la fois, pour trouver le tempo du morceau. Rien n'est enregistré ni envoyé.",
+   "bn": "গানের গতি বুঝতে Mochi কম্পিউটারে যা বাজছে তা একবারে কয়েক সেকেন্ড শোনে। কিছুই রেকর্ড করা বা পাঠানো হয় না।",
+   "pt-BR": "O Mochi ouve o que o computador toca, alguns segundos por vez, para encontrar o andamento da música. Nada é gravado nem enviado.",
+   "ru": "Mochi слушает то, что играет компьютер, по несколько секунд за раз, чтобы определить темп трека. Ничего не записывается и не отправляется.",
+   "id": "Mochi mendengarkan apa yang diputar komputer, beberapa detik setiap kali, untuk menemukan tempo lagu. Tidak ada yang direkam atau dikirim."
   }
  }
 }

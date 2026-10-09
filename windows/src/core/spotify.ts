@@ -40,11 +40,18 @@ export interface SpotifyState {
    * system it changed them and changes nothing, so the card leaves them out.
    */
   modes: boolean;
+  /**
+   * The tempo Mochi dances at, beats a minute, heard from the song itself
+   * (src-tauri/src/beat.rs, Windows); 0 while it is not known.
+   */
+  tempo: number;
+  /** Unix ms of one of those beats. */
+  beatAt: number;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
   running: false, installed: false, track: null, playing: false,
-  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50, modes: true,
+  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50, modes: true, tempo: 0, beatAt: 0,
 };
 
 /** The page's copy of the player, and the cover of the track that has one. */
@@ -55,6 +62,8 @@ export const Spotify = {
   heard: null as string | null,
   /** A new song is being announced (island/spotify.ts): 0, or a number of its own for each. */
   announcing: 0,
+  /** What Rust was last told (island/spotify.ts): a Mochi is seen dancing, and the song may be listened to. */
+  dancing: false,
 };
 
 /** How long the island stays open on a song that just started, seconds. */
