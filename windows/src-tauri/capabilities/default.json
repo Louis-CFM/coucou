@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Coucou's windows are allowed to do. Everything that touches the OS goes through Coucou's own commands.",
-  "windows": ["island", "settings", "mochi"],
+  "description": "What Nova's windows are allowed to do. Everything that touches the OS goes through Nova's own commands.",
+  "windows": ["island", "settings", "nova"],
   "permissions": ["core:default", "autostart:default"]
 }

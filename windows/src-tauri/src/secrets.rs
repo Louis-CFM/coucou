@@ -3,9 +3,9 @@
 
 use keyring::Entry;
 
-const SERVICE: &str = "fr.louisraille.coucou";
+const SERVICE: &str = "com.sweety.nova";
 
-/// Every key Coucou may store. Anything outside this list is refused.
+/// Every key Nova may store. Anything outside this list is refused.
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
     "openai-api-key",

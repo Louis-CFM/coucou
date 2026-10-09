@@ -1,8 +1,8 @@
 // The upload canvas — port of UploadCanvasView.swift.
 //
 // While the sequence engine is active this canvas draws the whole island body:
-// card, dashed drop frame, drop text, progress bar, the choose card, Mochi and
-// the file being sucked in. The island's own Mochi is hidden for the duration,
+// card, dashed drop frame, drop text, progress bar, the choose card, Nova and
+// the file being sucked in. The island's own Nova is hidden for the duration,
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
@@ -41,8 +41,11 @@ function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number): { rx: nu
     const a = (i / 96) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const px = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-    const py = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const radius = Math.min(1, 1.35 / (Math.abs(ca) + Math.abs(sa)));
+    const boxX = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
+    const boxY = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const px = lerp(rx * ca * radius, boxX, mc);
+    const py = lerp(ry * sa * radius, boxY, mc);
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
@@ -214,7 +217,7 @@ export class UploadCanvas {
     if (f.barAlpha > 0 || f.barReveal > 0) this.drawProgressBar(ctx, f);
     if (f.chooseAlpha > 0) this.drawChoose(ctx, f);
 
-    this.drawMochi(ctx, f);
+    this.drawNova(ctx, f);
     if (f.fileVisible) this.drawFile(ctx, f);
   }
 
@@ -357,9 +360,9 @@ export class UploadCanvas {
     ctx.restore();
   }
 
-  // ── Mochi ─────────────────────────────────────────────────────────────────
+  // ── Nova ─────────────────────────────────────────────────────────────────
 
-  private drawMochi(ctx: CanvasRenderingContext2D, f: UploadFrame) {
+  private drawNova(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     const R = f.d / 2 / 1.04;
     const mc = Math.max(0, Math.min(f.morph, 1));
 
@@ -372,8 +375,8 @@ export class UploadCanvas {
 
     // Body.
     const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
-    bg.addColorStop(0, "#EDEDEF");
-    bg.addColorStop(1, "#C4C5CA");
+    bg.addColorStop(0, "#62EFD3");
+    bg.addColorStop(1, "#0E8588");
     ctx.fillStyle = bg;
     ctx.fill();
 
@@ -390,7 +393,7 @@ export class UploadCanvas {
     bodyPath(ctx, f.morph, R);
     ctx.clip();
 
-    // Top rim, once Mochi is box-shaped enough to have one.
+    // Top rim, once Nova is box-shaped enough to have one.
     if (mc > 0.3) {
       const a = Math.max(0, Math.min(1, (mc - 0.3) / 0.7));
       ctx.beginPath();
@@ -520,13 +523,13 @@ export class UploadCanvas {
 
 // ── Eye shapes ──────────────────────────────────────────────────────────────
 
-const INK = "#0E0F12";
+const INK = "#0A2731";
 
 function drawEye(ctx: CanvasRenderingContext2D, shape: UploadEyeShape, w: number, h: number) {
   switch (shape) {
     case "pill":
       ctx.fillStyle = INK;
-      rr(ctx, -w / 2, -h / 2, w, h, w / 2);
+      rr(ctx, -w * 0.7, -h * 0.18, w * 1.4, h * 0.36, w * 0.16);
       ctx.fill();
       break;
 

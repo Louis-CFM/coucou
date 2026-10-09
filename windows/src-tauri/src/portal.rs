@@ -41,15 +41,15 @@ const IFACE: &str = "org.freedesktop.portal.GlobalShortcuts";
 const REQUEST: &str = "org.freedesktop.portal.Request";
 const SESSION: &str = "org.freedesktop.portal.Session";
 /// Tauri's identifier. Told to the portal so the desktop files the shortcuts
-/// under Coucou rather than under an unnamed app.
-const APP_ID: &str = "fr.louisraille.coucou";
+/// under Nova rather than under an unnamed app.
+const APP_ID: &str = "com.sweety.nova";
 /// For the calls themselves, which answer at once: the user's answer comes
 /// later, in a Response signal.
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
-/// Coucou's accelerator ("Ctrl+Alt+Space") → the XDG shortcuts spec's trigger
+/// Nova's accelerator ("Ctrl+Alt+Space") → the XDG shortcuts spec's trigger
 /// ("CTRL+ALT+space"): modifiers CTRL, ALT, SHIFT, LOGO, then an xkb keysym
 /// name. `None` for a binding that isn't a shortcut, or whose key has no
 /// keysym here; the desktop then picks the key, or lets the user pick one.
@@ -417,7 +417,7 @@ impl Portal {
 
     fn token(&mut self) -> String {
         self.tokens += 1;
-        format!("coucou{}_{}", std::process::id(), self.tokens)
+        format!("nova{}_{}", std::process::id(), self.tokens)
     }
 
     fn gen(&self) -> Option<u64> {
@@ -605,7 +605,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn coucou_bindings_become_xdg_triggers() {
+    fn nova_bindings_become_xdg_triggers() {
         assert_eq!(xdg_trigger("Ctrl+Alt+Space").as_deref(), Some("CTRL+ALT+space"));
         assert_eq!(xdg_trigger("Ctrl+Alt+A").as_deref(), Some("CTRL+ALT+a"));
         assert_eq!(xdg_trigger("Ctrl+Alt+Right").as_deref(), Some("CTRL+ALT+Right"));
@@ -638,7 +638,7 @@ mod tests {
     }
 
     #[test]
-    fn every_default_and_every_key_coucou_records_has_a_trigger() {
+    fn every_default_and_every_key_nova_records_has_a_trigger() {
         for def in crate::shortcuts::ACTIONS {
             assert!(xdg_trigger(def.default_keys).is_some(), "{}", def.id);
         }
@@ -661,12 +661,12 @@ mod tests {
     #[test]
     fn request_and_session_paths_follow_the_portal_rule() {
         assert_eq!(
-            request_path(":1.42", "coucou7_1"),
-            "/org/freedesktop/portal/desktop/request/1_42/coucou7_1"
+            request_path(":1.42", "nova7_1"),
+            "/org/freedesktop/portal/desktop/request/1_42/nova7_1"
         );
         assert_eq!(
-            session_path(":1.42", "coucou7_2"),
-            "/org/freedesktop/portal/desktop/session/1_42/coucou7_2"
+            session_path(":1.42", "nova7_2"),
+            "/org/freedesktop/portal/desktop/session/1_42/nova7_2"
         );
     }
 
@@ -764,7 +764,7 @@ mod tests {
     // ── The whole exchange, against a stand-in portal ─────────────────────────
     //
     // Needs a session bus of its own, so it doesn't run by default:
-    //   dbus-run-session -- cargo test -p coucou --lib portal -- --ignored
+    //   dbus-run-session -- cargo test -p nova --lib portal -- --ignored
 
     /// Plays org.freedesktop.portal.Desktop: answers every request at once,
     /// reports each shortcut's keys as "Fake <preferred trigger>", presses
@@ -843,7 +843,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs its own session bus: dbus-run-session -- cargo test -p coucou --lib portal -- --ignored"]
+    #[ignore = "needs its own session bus: dbus-run-session -- cargo test -p nova --lib portal -- --ignored"]
     fn the_whole_exchange_with_a_stand_in_portal() {
         let recv = |rx: &mpsc::Receiver<Event>| rx.recv_timeout(Duration::from_secs(15)).expect("an event");
 

@@ -111,7 +111,7 @@ impl Chat {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-/// Mochi's instructions. Greets the user by their first name when the account
+/// Nova's instructions. Greets the user by their first name when the account
 /// has one worth using (identity.rs), and only claims web search where the
 /// provider runs it (Claude).
 pub fn system_prompt(web_search: bool) -> String {
@@ -120,8 +120,8 @@ pub fn system_prompt(web_search: bool) -> String {
 
 fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
     let opening = match first_name {
-        Some(name) => format!("You are Mochi, {name}'s personal AI assistant living at the top of their screen."),
-        None => "You are Mochi, a personal AI assistant living at the top of the user's screen.".to_string(),
+        Some(name) => format!("You are Nova, {name}'s personal AI assistant living at the top of their screen."),
+        None => "You are Nova, a personal AI assistant living at the top of the user's screen.".to_string(),
     };
     let abilities = if web_search {
         "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
@@ -172,7 +172,7 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         .unwrap_or_default()
 }
 
-/// A file rides along only if it is one of Coucou's own copies of a dropped
+/// A file rides along only if it is one of Nova's own copies of a dropped
 /// file (files.rs puts them in the inbox). The page names the path, so without
 /// this any file the user can read could be sent to a chat provider.
 fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
@@ -310,11 +310,11 @@ mod tests {
     #[test]
     fn the_prompt_greets_by_first_name_and_claims_web_search_only_for_claude() {
         let p = system_prompt_for(Some("Louis"), true);
-        assert!(p.starts_with("You are Mochi, Louis's personal AI assistant living at the top of their screen."));
+        assert!(p.starts_with("You are Nova, Louis's personal AI assistant living at the top of their screen."));
         assert!(p.contains("web search access"));
         assert!(p.contains("light Markdown"));
         let p = system_prompt_for(None, false);
-        assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
+        assert!(p.starts_with("You are Nova, a personal AI assistant living at the top of the user's screen."));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
     }
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     fn only_files_in_the_inbox_ride_along() {
-        let base = std::env::temp_dir().join(format!("coucou-chat-ctx-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("nova-chat-ctx-{}", std::process::id()));
         let inbox = base.join("inbox");
         std::fs::create_dir_all(inbox.join("sub")).unwrap();
         std::fs::write(inbox.join("a.txt"), b"a").unwrap();

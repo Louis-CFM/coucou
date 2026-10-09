@@ -1,4 +1,4 @@
-// The one careful way Coucou changes a file that belongs to somebody else:
+// The one careful way Nova changes a file that belongs to somebody else:
 // Claude Code's settings.json, every other agent's hook config, and the plugin
 // files a few agents load.
 //
@@ -77,9 +77,9 @@ pub fn parse_json(bytes: Option<&[u8]>, label: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(tf("{file} isn't a JSON object — Coucou won't touch it.", &[("file", label)])),
+        Ok(_) => Err(tf("{file} isn't a JSON object — Nova won't touch it.", &[("file", label)])),
         Err(err) => Err(tf(
-            "{file} isn't valid JSON ({error}). Fix or move it, then try again — Coucou won't overwrite it.",
+            "{file} isn't valid JSON ({error}). Fix or move it, then try again — Nova won't overwrite it.",
             &[("file", label), ("error", &err.to_string())],
         )),
     }
@@ -108,7 +108,7 @@ pub fn json_edit<'a>(
     })
 }
 
-/// An `Edit` for a text file Coucou generates whole (a plugin): `change` gets
+/// An `Edit` for a text file Nova generates whole (a plugin): `change` gets
 /// the current text and returns the new one, or `None` to remove the file.
 pub fn text_edit<'a>(
     label: String,
@@ -119,7 +119,7 @@ pub fn text_edit<'a>(
             None => None,
             Some(b) => Some(
                 std::str::from_utf8(b)
-                    .map_err(|_| tf("{file} isn't UTF-8 text — Coucou won't touch it.", &[("file", &label)]))?,
+                    .map_err(|_| tf("{file} isn't UTF-8 text — Nova won't touch it.", &[("file", &label)]))?,
             ),
         };
         let after = change(current)?;
@@ -343,7 +343,7 @@ fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let path = resolved.as_path();
 
     let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let temp = path.with_file_name(format!("{name}.coucou-{}", std::process::id()));
+    let temp = path.with_file_name(format!("{name}.nova-{}", std::process::id()));
     let result = write_like(&temp, path, bytes).and_then(|()| std::fs::rename(&temp, path));
     if result.is_err() {
         let _ = std::fs::remove_file(&temp);
@@ -433,7 +433,7 @@ pub mod tests {
 
     /// A fresh directory of our own.
     pub fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("coucou-cfg-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nova-cfg-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -454,7 +454,7 @@ pub mod tests {
             path: path.to_path_buf(),
             edit: json_edit("test.json".into(), |v| {
                 if v.get("hooks").is_some_and(|h| !h.is_object()) {
-                    return Err("\"hooks\" has an unexpected type — Coucou has not touched it.".into());
+                    return Err("\"hooks\" has an unexpected type — Nova has not touched it.".into());
                 }
                 let mut next = v.clone();
                 next["ours"] = json!(true);
@@ -586,7 +586,7 @@ pub mod tests {
     #[test]
     fn removing_a_file_backs_it_up_first() {
         let dir = scratch("remove");
-        let path = dir.join("coucou.json");
+        let path = dir.join("nova.json");
         std::fs::write(&path, b"{\"a\":1}").unwrap();
         let plan = preview(&remove_file_edit(&path)).unwrap();
         assert!(plan.diff.starts_with("The file is removed."));

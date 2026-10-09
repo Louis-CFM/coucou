@@ -234,12 +234,12 @@ export function sampleHistory(monday: Date): RecapHistory {
   const claude = "integration_claude";
   return {
     turns: [
-      turn(claude, "coucou", at(0, 9), at(0, 11, 30), 8, 312, 87, 14, 2),
-      turn(claude, "coucou", at(0, 14), at(0, 15, 45), 3, 95, 20, 5, 0),
+      turn(claude, "nova", at(0, 9), at(0, 11, 30), 8, 312, 87, 14, 2),
+      turn(claude, "nova", at(0, 14), at(0, 15, 45), 3, 95, 20, 5, 0),
       turn("agent_gemini", "side-project", at(1, 10), at(1, 11), 2, 50, 10, 3, 1),
-      turn(claude, "coucou", at(2, 9, 30), at(2, 12), 5, 180, 60, 8, 3),
-      turn(claude, "coucou", at(3, 16), at(3, 17), 1, 40, 5, 2, 0),
-      turn(claude, "coucou", at(4, 8), at(4, 13), 12, 540, 130, 22, 5),
+      turn(claude, "nova", at(2, 9, 30), at(2, 12), 5, 180, 60, 8, 3),
+      turn(claude, "nova", at(3, 16), at(3, 17), 1, 40, 5, 2, 0),
+      turn(claude, "nova", at(4, 8), at(4, 13), 12, 540, 130, 22, 5),
     ],
     decisions: [
       { agent: claude, date: at(0, 9, 30), decision: "allow" },

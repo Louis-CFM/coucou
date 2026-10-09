@@ -11,7 +11,7 @@ import {
 
 const secs = (d) => Math.floor(d.getTime() / 1000);
 const turn = (start, end, extra = {}) => ({
-  agent: "integration_claude", project: "coucou",
+  agent: "integration_claude", project: "nova",
   start: secs(start), end: secs(end),
   filesChanged: 0, linesAdded: 0, linesRemoved: 0, commandsRun: 0, questions: 0,
   ...extra,
@@ -73,7 +73,7 @@ test("the sample week adds up like the Mac's", () => {
   assert.equal(s.permissionsAllowed, 4);
   assert.equal(s.permissionsDenied, 1);
   assert.equal(s.topAgent, "Claude Code");
-  assert.equal(s.topProject, "coucou");
+  assert.equal(s.topProject, "nova");
   assert.equal(s.busiestDay, "Monday");
   assert.equal(s.longestSessionMinutes, 300);
 });

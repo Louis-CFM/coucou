@@ -184,7 +184,7 @@ beforeEach(() => {
 test("an alert badges the GitHub pill when another pill is on screen", () => {
   emit("github-alerts", [{ kind: "mainFailed", repo: "a/b" }]);
   assert.equal(github().pillBadge, "error");
-  assert.equal(github().state, "idle", "Mochi's state is left alone, as on macOS");
+  assert.equal(github().state, "idle", "Nova's state is left alone, as on macOS");
 });
 
 test("no badge while the GitHub pill is the one on screen", () => {

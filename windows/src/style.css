@@ -1,4 +1,4 @@
-/* Coucou for Windows — same palette, sizes and type scale as the macOS island.
+/* Nova for Windows — same palette, sizes and type scale as the macOS island.
    Every colour below is copied from the Swift views. */
 
 :root {
@@ -176,7 +176,7 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
-/* A mini Mochi: the slot is the body, the canvas is larger and overflows it so
+/* A mini Nova: the slot is the body, the canvas is larger and overflows it so
    hands, badges and particles are not cut off. */
 .mini {
   position: relative;
@@ -2269,7 +2269,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 0;
 }
 
-/* ── Wardrobe (right-click on Mochi) — WardrobeView on macOS ─────────────── */
+/* ── Wardrobe (right-click on Nova) — WardrobeView on macOS ─────────────── */
 
 .wardrobe-stack {
   padding: 12px 16px 12px 104px;
@@ -2607,7 +2607,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ── Arabic: right to left ─────────────────────────────────────────────────────
    i18n.ts sets <html data-dir="rtl">. The text of the cards reads and aligns
-   right to left; Mochi, the pills, the header and the cards themselves keep
+   right to left; Nova, the pills, the header and the cards themselves keep
    their places, and code, commands and the contribution grid stay left to
    right. A chat message follows its own text's direction (an English answer
    stays left to right). */

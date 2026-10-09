@@ -1,14 +1,14 @@
 // Wardrobe view — port of WardrobeView (IslandViewContent.swift). Opened with a
-// right-click on Mochi or from the tray menu. Resting the pointer on a button
-// tries the outfit on Mochi; a click keeps it.
+// right-click on Nova or from the tray menu. Resting the pointer on a button
+// tries the outfit on Nova; a click keeps it.
 
 import { h } from "./dom";
 import { State } from "../core/state";
-import { drawWardrobeIcon } from "../mochi/outfits";
+import { drawWardrobeIcon } from "../nova/outfits";
 import {
   OUTFIT_KEYS, OUTFIT_SELECTIONS, WARDROBE_STRINGS, parseOutfit, resolveOutfit, seasonalOutfit,
   wardrobeHeader, type Outfit, type OutfitSelection,
-} from "../mochi/wardrobe";
+} from "../nova/wardrobe";
 import type { ViewActions, ViewHost } from "./views";
 import { language, tl } from "../i18n/i18n";
 
@@ -38,7 +38,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
   const items = new Map<OutfitSelection, { button: HTMLButtonElement; canvas: HTMLCanvasElement }>();
 
   const updateNote = () => {
-    note.textContent = wardrobeHeader(hovered, parseOutfit(State.settings.mochiOutfit), new Date());
+    note.textContent = wardrobeHeader(hovered, parseOutfit(State.settings.novaOutfit), new Date());
   };
 
   for (const sel of OUTFIT_SELECTIONS) {
@@ -89,7 +89,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
       drawIcons();
       // The island drops the preview when the view closes: so does the hover.
       if (State.wardrobePreview == null) hovered = null;
-      const current = parseOutfit(State.settings.mochiOutfit);
+      const current = parseOutfit(State.settings.novaOutfit);
       for (const [sel, { button }] of items) button.classList.toggle("on", sel === current);
       updateNote();
     },

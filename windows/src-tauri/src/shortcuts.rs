@@ -3,7 +3,7 @@
 // The shortcuts are registered from Rust through tauri-plugin-global-shortcut
 // (RegisterHotKey on Windows, XGrabKey on X11). Wayland has no key grabs: there
 // they go to the desktop through the XDG GlobalShortcuts portal (portal.rs), and
-// where there is no such portal Settings lists `coucou --shortcut <id>` commands
+// where there is no such portal Settings lists `nova --shortcut <id>` commands
 // to bind by hand. A press is handed to the island
 // as a `shortcut` event carrying the action id; the island does the rest, the
 // same way it handles the tray menu. The wardrobe is the exception: it goes out
@@ -17,9 +17,9 @@
 // on E, Q, M, W, C and on every digit and most punctuation keys:
 //
 //   Ctrl+Alt+Space   open the chat           Ctrl+Alt+→ / ←  next / previous pill
-//   Ctrl+Alt+A       waiting permission      Ctrl+Alt+S      mute Mochi
+//   Ctrl+Alt+A       waiting permission      Ctrl+Alt+S      mute Nova
 //   Ctrl+Alt+T       open the terminal       Ctrl+Alt+G      wardrobe
-//   Ctrl+Alt+D       Mochi to the desktop, or home again (the Mac's ⌃⌥D)
+//   Ctrl+Alt+D       Nova to the desktop, or home again (the Mac's ⌃⌥D)
 //   Ctrl+Alt+N       open / close the island (off by default, as on the Mac)
 //
 // ⌃⌥[ and ⌃⌥] became the arrows (brackets are AltGr characters almost
@@ -62,7 +62,7 @@ pub const ACTIONS: &[ActionDef] = &[
     action("openChat", "Ctrl+Alt+Space", true, true),
     action("goToAlert", "Ctrl+Alt+A", true, true),
     action("jumpToTerminal", "Ctrl+Alt+T", true, true),
-    // Dragging Mochi onto a window is not in this version.
+    // Dragging Nova onto a window is not in this version.
     action("attachFrontWindow", "Ctrl+Alt+F", true, false),
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
@@ -89,10 +89,10 @@ pub fn description(id: &str) -> &'static str {
         "attachFrontWindow" => n_("Attach the front window to the chat"),
         "nextPill" => n_("Next pill"),
         "prevPill" => n_("Previous pill"),
-        "muteToggle" => n_("Mute or unmute Mochi"),
-        "desktopToggle" => n_("Send Mochi to the desktop"),
+        "muteToggle" => n_("Mute or unmute Nova"),
+        "desktopToggle" => n_("Send Nova to the desktop"),
         "wardrobeToggle" => n_("Open the wardrobe"),
-        _ => "Coucou",
+        _ => "Nova",
     }
 }
 
@@ -133,7 +133,7 @@ pub enum Status {
     Off,
     /// Another app already holds this combination.
     InUse,
-    /// Another Coucou shortcut has the same combination.
+    /// Another Nova shortcut has the same combination.
     Duplicate,
     /// Not a combination the OS can register.
     Invalid,
@@ -173,7 +173,7 @@ pub struct ActionStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub typed: Option<String>,
     /// Wayland: the keys the desktop says run it, in its own words. It may
-    /// let the user pick other keys than the ones Coucou asked for.
+    /// let the user pick other keys than the ones Nova asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
 }
@@ -294,7 +294,7 @@ pub fn plan(
         .collect()
 }
 
-/// `coucou --shortcut <id>` → the action id, when it names a ported one.
+/// `nova --shortcut <id>` → the action id, when it names a ported one.
 pub fn from_args(args: &[String]) -> Option<&'static str> {
     let at = args.iter().position(|a| a == "--shortcut")?;
     let def = find(args.get(at + 1)?)?;
@@ -329,7 +329,7 @@ pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     }
 }
 
-/// Unregisters everything Coucou holds.
+/// Unregisters everything Nova holds.
 fn release<R: Runtime>(app: &AppHandle<R>) {
     if let Some(gs) = app.try_state::<GlobalShortcut<R>>() {
         if let Err(err) = gs.unregister_all() {
@@ -395,7 +395,7 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
 }
 
 /// Lets go of every shortcut while a new one is being recorded in Settings,
-/// so pressing a combination Coucou already holds records it instead of
+/// so pressing a combination Nova already holds records it instead of
 /// running it.
 pub fn suspend<R: Runtime>(app: &AppHandle<R>) {
     release(app);
@@ -422,7 +422,7 @@ fn launch_command() -> String {
         .map(std::path::PathBuf::from)
         .or_else(|| std::env::current_exe().ok())
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "coucou".to_string());
+        .unwrap_or_else(|| "nova".to_string());
     if exe.contains(' ') {
         format!("\"{exe}\"")
     } else {
@@ -678,7 +678,7 @@ mod wayland {
         #[test]
         fn every_action_has_a_description() {
             for def in ACTIONS {
-                assert_ne!(description(def.id), "Coucou", "{}", def.id);
+                assert_ne!(description(def.id), "Nova", "{}", def.id);
             }
         }
     }
@@ -850,12 +850,12 @@ mod tests {
     #[test]
     fn the_command_line_names_an_action() {
         let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "openChat"])), Some("openChat"));
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "wardrobeToggle"])), Some("wardrobeToggle"));
-        assert_eq!(from_args(&args(&["coucou", "--shortcut"])), None);
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "rm -rf"])), None);
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), Some("desktopToggle"));
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "attachFrontWindow"])), None);
-        assert_eq!(from_args(&args(&["coucou"])), None);
+        assert_eq!(from_args(&args(&["nova", "--shortcut", "openChat"])), Some("openChat"));
+        assert_eq!(from_args(&args(&["nova", "--shortcut", "wardrobeToggle"])), Some("wardrobeToggle"));
+        assert_eq!(from_args(&args(&["nova", "--shortcut"])), None);
+        assert_eq!(from_args(&args(&["nova", "--shortcut", "rm -rf"])), None);
+        assert_eq!(from_args(&args(&["nova", "--shortcut", "desktopToggle"])), Some("desktopToggle"));
+        assert_eq!(from_args(&args(&["nova", "--shortcut", "attachFrontWindow"])), None);
+        assert_eq!(from_args(&args(&["nova"])), None);
     }
 }

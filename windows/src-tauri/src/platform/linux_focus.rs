@@ -281,7 +281,7 @@ mod kwin {
     use super::*;
 
     /// Where the script says what it did: our own connection, this interface.
-    const REPLY_INTERFACE: &str = "fr.louisraille.Coucou.Focus";
+    const REPLY_INTERFACE: &str = "fr.louisraille.Nova.Focus";
     const KWIN: &str = "org.kde.KWin";
     const TIMEOUT: Duration = Duration::from_secs(2);
 
@@ -376,7 +376,7 @@ mod kwin {
             }),
         );
 
-        let name = format!("coucou-focus-{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+        let name = format!("nova-focus-{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
         let path = dir.join(format!("{name}.js"));
         let written = std::fs::OpenOptions::new()
             .write(true)
@@ -439,10 +439,10 @@ mod kwin {
             // The folder travels as UTF-16 codes, lower-cased: no quote, no word of it.
             assert!(text.contains("String.fromCharCode(99, 97, 102, 233, 32, 34, 41, 59, 32"));
             assert!(!text.contains("evil"));
-            assert!(text.contains(r#"callDBus(":1.42", "/", "fr.louisraille.Coucou.Focus""#));
+            assert!(text.contains(r#"callDBus(":1.42", "/", "fr.louisraille.Nova.Focus""#));
             // Apart from the code itself, every quoted string is one we wrote.
             let quoted: Vec<&str> = text.split('"').skip(1).step_by(2).collect();
-            assert_eq!(quoted, ["function", ":1.42", "/", "fr.louisraille.Coucou.Focus", "Activated", "NotFound"]);
+            assert_eq!(quoted, ["function", ":1.42", "/", "fr.louisraille.Nova.Focus", "Activated", "NotFound"]);
 
             let empty = script(&[1], "", ":1.2").unwrap();
             assert!(empty.contains("String.fromCharCode();"));
