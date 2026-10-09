@@ -36,6 +36,8 @@ enum RestingBarAutoHide {
     /// How far around the bar the pointer brings it back.
     static let revealMarginX: CGFloat = 60
     static let revealMarginY: CGFloat = 16
+    /// A compact island shown only by a hover hides this long after the pointer leaves.
+    static let hoverPeekHideDelay: TimeInterval = 1
 
     static func revealZone(around bar: CGRect) -> CGRect {
         bar.insetBy(dx: -revealMarginX, dy: -revealMarginY)

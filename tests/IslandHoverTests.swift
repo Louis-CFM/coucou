@@ -55,7 +55,56 @@ enum IslandHoverTests {
         try await Task.sleep(for: .milliseconds(600))
         precondition(alert.state == .home)
 
-        print("Island open on hover: 6 cases passed")
+        // Resting bar auto-hide: a hover peek hides after the short delay once the pointer leaves.
+        let peek = IslandStateMachine()
+        peek.petitToHiddenDelay = 30
+        peek.hoverPeekHideDelay = { 0.1 }
+        peek.mouseEntered()
+        precondition(peek.state == .petit && peek.peekedByHover)
+        peek.mouseLeft()
+        try await waitFor(.hidden, peek, timeout: 2)
+
+        // Without the delay (setting off or a notch screen), the peek keeps the normal delay.
+        let normalPeek = IslandStateMachine()
+        normalPeek.petitToHiddenDelay = 30
+        normalPeek.mouseEntered()
+        normalPeek.mouseLeft()
+        try await Task.sleep(for: .milliseconds(500))
+        precondition(normalPeek.state == .petit)
+
+        // A compact island revealed by agent work keeps the normal delay.
+        let work = IslandStateMachine()
+        work.petitToHiddenDelay = 30
+        work.hoverPeekHideDelay = { 0.1 }
+        work.reveal()
+        precondition(!work.peekedByHover)
+        work.mouseEntered()
+        work.mouseLeft()
+        try await Task.sleep(for: .milliseconds(500))
+        precondition(work.state == .petit)
+
+        // Work arriving during a hover peek turns it into a normal compact island.
+        let peekThenWork = IslandStateMachine()
+        peekThenWork.petitToHiddenDelay = 30
+        peekThenWork.hoverPeekHideDelay = { 0.1 }
+        peekThenWork.mouseEntered()
+        peekThenWork.mouseLeft()
+        peekThenWork.reveal()
+        try await Task.sleep(for: .milliseconds(500))
+        precondition(peekThenWork.state == .petit && !peekThenWork.peekedByHover)
+
+        // A hover-opened island folds to a peek that also hides quickly.
+        let hoverOpen = machine()
+        hoverOpen.petitToHiddenDelay = 30
+        hoverOpen.hoverPeekHideDelay = { 0.1 }
+        hoverOpen.mouseEntered()
+        hoverOpen.mouseLeft()
+        try await waitFor(.petit, hoverOpen, timeout: 2)
+        precondition(hoverOpen.peekedByHover)
+        hoverOpen.mouseLeft()   // the controller calls this when the fold lands with the pointer outside
+        try await waitFor(.hidden, hoverOpen, timeout: 2)
+
+        print("Island open on hover and peek auto-hide: 11 cases passed")
     }
 
     @MainActor

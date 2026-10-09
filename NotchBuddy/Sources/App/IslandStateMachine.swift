@@ -43,6 +43,12 @@ final class IslandStateMachine {
     /// True while the island is open because of a hover, until the user clicks inside it.
     private(set) var openedByHover = false
 
+    /// When it returns a delay, a compact island shown only because of a hover hides after
+    /// that delay once the pointer leaves, instead of `petitToHiddenDelay` (resting bar auto-hide).
+    var hoverPeekHideDelay: (() -> TimeInterval?)?
+    /// True while the compact island is on screen only because of a hover (no work event).
+    private(set) var peekedByHover = false
+
     private var petitHideWork: DispatchWorkItem?
     private var homeCollapseWork: DispatchWorkItem?
     private var greetCollapseWork: DispatchWorkItem?
@@ -70,6 +76,7 @@ final class IslandStateMachine {
                 state = .home
             } else {
                 cancelTimers()
+                peekedByHover = true
                 transition(to: .petit)
             }
         case .petit:
@@ -163,6 +170,11 @@ final class IslandStateMachine {
 
     /// Non-alert work event: show compact from hidden (HookServer reveal)
     func reveal() {
+        // Work arriving during a hover peek makes it a normal compact island (normal hide delay).
+        if peekedByHover {
+            peekedByHover = false
+            if state == .petit, petitHideWork != nil { schedulePetitHide() }
+        }
         guard state == .hidden else { return }
         cancelTimers()
         transition(to: .petit)
@@ -178,13 +190,16 @@ final class IslandStateMachine {
             self.transition(to: .hidden)
         }
         petitHideWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + petitToHiddenDelay, execute: item)
+        let peekDelay = peekedByHover ? hoverPeekHideDelay?() : nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + (peekDelay ?? petitToHiddenDelay), execute: item)
     }
 
     private func scheduleHomeCollapse() {
         homeCollapseWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.state == .home, !(self.isHeldOpen?() ?? false) else { return }
+            // A hover-opened island folds to a hover peek, so it can hide quickly too.
+            self.peekedByHover = self.openedByHover
             self.openedByHover = false
             self.transition(to: .petit)
         }
@@ -207,6 +222,7 @@ final class IslandStateMachine {
 
     private func transition(to new: State) {
         guard new != state else { return }
+        if new != .petit { peekedByHover = false }
         let old = state
         state = new
         onTransition?(old, new)

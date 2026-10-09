@@ -276,6 +276,10 @@ final class IslandWindowController: NSWindowController {
         }
 
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        fsm.hoverPeekHideDelay = { [weak self] in
+            guard let self, self.state.autoHideRestingBar, !self.hasNotch else { return nil }
+            return RestingBarAutoHide.hoverPeekHideDelay
+        }
     }
 
     // MARK: - Polling loop
