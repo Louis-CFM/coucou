@@ -1634,10 +1634,7 @@ mod win {
                     let ticks = (v * 10_000_000.0) as i64;
                     s.TryChangePlaybackPositionAsync(ticks).ok().is_some()
                 }
-                "shuffle" => {
-                    let _ = s.TryChangeShuffleActiveAsync(v != 0.0).ok();
-                    true
-                }
+                "shuffle" => s.TryChangeShuffleActiveAsync(v != 0.0).ok().is_some(),
                 "repeat" => {
                     use windows::Media::MediaPlaybackAutoRepeatMode;
                     let mode = if v != 0.0 {
@@ -1645,8 +1642,7 @@ mod win {
                     } else {
                         MediaPlaybackAutoRepeatMode::None
                     };
-                    let _ = s.TryChangeAutoRepeatModeAsync(mode).ok();
-                    true
+                    s.TryChangeAutoRepeatModeAsync(mode).ok().is_some()
                 }
                 _ => false,
             };
@@ -1827,6 +1823,19 @@ mod win {
             let is_playing = playback_info.as_ref().map_or(false, |info| {
                 info.PlaybackStatus().ok() == Some(GSMTCPlaybackStatus::Playing)
             });
+            let is_shuffle = playback_info
+                .as_ref()
+                .and_then(|info| info.IsShuffleActive().ok())
+                .map(|b| b.Value().unwrap_or(false))
+                .unwrap_or(false);
+            let is_repeat = playback_info
+                .as_ref()
+                .and_then(|info| info.AutoRepeatMode().ok())
+                .map(|mode| {
+                    use windows::Media::MediaPlaybackAutoRepeatMode;
+                    mode.Value().unwrap_or(MediaPlaybackAutoRepeatMode::None) != MediaPlaybackAutoRepeatMode::None
+                })
+                .unwrap_or(false);
 
             // Timeline properties
             let mut position = 0.0;
@@ -1875,9 +1884,12 @@ mod win {
             let last_guard = self.last_state.lock().unwrap();
             let track_changed = last_guard.track.as_ref().map(|t| &t.id) != track.as_ref().map(|t| &t.id);
             let play_changed = last_guard.playing != is_playing;
+            let shuffle_changed = last_guard.shuffle != is_shuffle;
+            let repeat_changed = last_guard.repeat != is_repeat;
             let drift = (last_guard.position - position).abs() > 2.0;
+            let current_volume = last_guard.volume;
 
-            let should_emit = track_changed || play_changed || drift;
+            let should_emit = track_changed || play_changed || shuffle_changed || repeat_changed || drift;
             drop(last_guard);
 
             let new_state = PlayerState {
@@ -1887,9 +1899,9 @@ mod win {
                 playing: is_playing,
                 position,
                 position_at,
-                shuffle: false,
-                repeat: false,
-                volume: 50,
+                shuffle: is_shuffle,
+                repeat: is_repeat,
+                volume: current_volume,
             };
 
             *self.last_state.lock().unwrap() = new_state.clone();
