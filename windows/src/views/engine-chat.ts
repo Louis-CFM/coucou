@@ -1,7 +1,7 @@
 import { h,clear,svg } from './dom';
 import { ICONS } from './icons';
 import { renderMarkdown } from './markdown';
-import { Engine,EngineBridge,commandPreview,permissionWarning,turnUsage,type Attachment } from '../core/engine';
+import { Engine,EngineBridge,commandPreview,permissionWarning,turnUsage,type Attachment,type EngineSelection } from '../core/engine';
 import { Bridge } from '../core/bridge';
 import { State } from '../core/state';
 import { t } from '../i18n/i18n';
@@ -15,7 +15,12 @@ export function buildEnginePrompt(onHeightChange:()=>void):ViewHost {
  const stop=h('button',{class:'engine-link stop-task',text:'Stop task'});
  const profiles=h('select',{'aria-label':'AI provider profile',class:'engine-profile'}) as HTMLSelectElement;
  const mode=h('select',{'aria-label':'Permission mode',class:'engine-mode'},h('option',{value:'normal',text:'Ask for changes / commands'}),h('option',{value:'strict',text:'Ask before every tool'})) as HTMLSelectElement;
- const header=h('div',{class:'engine-toolbar'},status,h('div',{class:'engine-actions'},historyButton,fresh,settings));
+ const toolsButton=h('button',{class:'engine-link',text:'Engine tools'});
+ const exportButton=h('button',{class:'engine-link',text:'Export Markdown'});
+ const selection=h('select',{'aria-label':'Engine skill, command or subagent',class:'engine-profile'},h('option',{value:'',text:'Normal assistant'})) as HTMLSelectElement;
+ const catalogInfo=h('span',{class:'engine-empty'});
+ const toolPanel=h('div',{class:'engine-tools-panel'},selection,catalogInfo,exportButton);toolPanel.hidden=true;
+ const header=h('div',{class:'engine-toolbar'},status,h('div',{class:'engine-actions'},historyButton,fresh,toolsButton,settings));
  const picker=h('div',{class:'engine-picker'},profiles,mode,stop);
  const log=h('div',{class:'chat-log engine-log'});
  const approvals=h('div',{class:'engine-approvals'});
@@ -29,11 +34,13 @@ export function buildEnginePrompt(onHeightChange:()=>void):ViewHost {
  const search=h('input',{type:'search',placeholder:'Search conversations on this PC','aria-label':'Search local conversations'}) as HTMLInputElement;
  const historyRows=h('div',{class:'engine-history-rows'});
  history.append(h('p',{class:'engine-empty',text:'Saved on this PC. Open a conversation to continue it. Chat content is not encrypted.'}),search,historyRows);
- const body=h('div',{class:'chat-body engine-body'},header,picker,error,log,history,approvals,usage,attached,h('div',{class:'chat-bar'},add,input,send));
+ const body=h('div',{class:'chat-body engine-body'},header,picker,toolPanel,error,log,history,approvals,usage,attached,h('div',{class:'chat-bar'},add,input,send));
  const el=h('div',{class:'view'},h('div',{class:'card chat-card engine-card'},body));
  let sending=false,historyOpen=false,files:Attachment[]=[];let lastMessages='',lastPermissions='',lastProfiles='';let frame:number|null=null;let count=-1;let shown=100;let searchTimer:number|undefined;let historyRequest=0;
  async function action(fn:()=>Promise<unknown>){try{Engine.error='';await fn();}catch(e){Engine.error=String(e).replace(/^Error:\s*/,'');}Engine.notify();}
  async function newConversation(){if(Engine.status.busy)throw new Error('Stop the current task first');await EngineBridge.newSession();Engine.messages=[];Engine.permissions.clear();Engine.questions.clear();Engine.status.sessionId=null;files=[];historyOpen=false;shown=100;}
+ toolsButton.addEventListener('click',()=>void action(async()=>{toolPanel.hidden=!toolPanel.hidden;if(toolPanel.hidden)return;const saved=selection.value;const catalog=await EngineBridge.catalog();clear(selection);selection.append(h('option',{value:'',text:'Normal assistant'}));for(const agent of catalog.agents.filter(a=>!a.hidden&&['all','subagent'].includes(a.mode)))selection.append(h('option',{value:'subagent:'+agent.name,text:'Subagent · '+agent.name}));for(const [kind,rows] of [['skill',catalog.skills],['command',catalog.commands]] as const)for(const row of rows)selection.append(h('option',{value:kind+':'+row.id,text:kind+' · '+row.id}));selection.value=saved;const mcp=Object.entries(catalog.mcp);catalogInfo.textContent=mcp.length?'MCP: '+mcp.map(([name,info])=>name+' ('+info.status+')').join(', '):'Add skills, commands or MCP in Settings → AI Chat. Subagents appear after the engine starts.'; }));
+ exportButton.addEventListener('click',()=>void action(async()=>{const id=Engine.status.sessionId||Engine.config.lastSession;if(!id)throw new Error('Send or open a conversation before exporting');const path=await EngineBridge.exportSession(id);if(path)Engine.error='Saved Markdown: '+path;}));
  profiles.addEventListener('change',()=>void action(()=>Engine.selectProfile(profiles.value)));
  mode.addEventListener('change',()=>void action(async()=>{if(Engine.status.busy)throw new Error('Stop the current task first');const next=mode.value as 'strict'|'normal';if(Engine.status.online){await EngineBridge.stop();Engine.status=await EngineBridge.start(Engine.config.activeProfile,Engine.config.workspace,next);}else Engine.status.mode=next;}));
  stop.addEventListener('click',()=>void action(async()=>{Engine.status=await EngineBridge.stop();}));
@@ -43,7 +50,7 @@ export function buildEnginePrompt(onHeightChange:()=>void):ViewHost {
  historyButton.addEventListener('click',()=>void action(async()=>{historyOpen=!historyOpen;if(historyOpen)await listHistory();}));
  search.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=window.setTimeout(()=>void action(listHistory),200);});
  async function submit(){const query=input.value.trim();if(!query||sending||Engine.status.busy)return;sending=true;historyOpen=false;State.stateOverride='thinking';State.notify();sync();
-  try{await Engine.submit(query,files.map(f=>f.path));input.value='';files=[];}catch(e){Engine.error=String(e).replace(/^Error:\s*/,'');}finally{sending=false;State.stateOverride=null;State.notify();sync();input.focus();}}
+  try{await Engine.submit(query,files.map(f=>f.path),selection.value?{kind:selection.value.split(':')[0] as EngineSelection['kind'],name:selection.value.slice(selection.value.indexOf(':')+1)}:null);input.value='';files=[];}catch(e){Engine.error=String(e).replace(/^Error:\s*/,'');}finally{sending=false;State.stateOverride=null;State.notify();sync();input.focus();}}
  send.addEventListener('click',()=>void submit());input.addEventListener('keydown',e=>{const k=e as KeyboardEvent;if(k.key==='Enter'&&!k.shiftKey){e.preventDefault();void submit();}e.stopPropagation();});
  function drawMessages(){
   const signature=JSON.stringify(Engine.messages)+shown;if(signature===lastMessages)return;lastMessages=signature;
@@ -68,7 +75,7 @@ export function buildEnginePrompt(onHeightChange:()=>void):ViewHost {
   const signature=JSON.stringify([[...Engine.permissions.values()],[...Engine.questions.values()]]);if(signature===lastPermissions)return;lastPermissions=signature;clear(approvals);
   for(const p of Engine.permissions.values()){
    const command=p.metadata.command;const shell=typeof command==='string';
-   const box=h('div',{class:'engine-permission'},h('strong',{text:`Permission needed · ${p.permission}`}),h('span',{class:'engine-deadline',text:'Unanswered requests deny after 60 seconds. Allow applies to this call only.'}));
+   const box=h('div',{class:'engine-permission'},h('strong',{text:`Permission needed · ${p.permission}${p.sessionID!==Engine.status.sessionId?' · subagent':''}`}),h('span',{class:'engine-deadline',text:'Unanswered requests deny after 60 seconds. Allow applies to this call only.'}));
    const warn=permissionWarning(p);if(warn)box.append(h('p',{class:'engine-warning',text:warn}));
    box.append(h('pre',{class:'engine-command',text:shell?commandPreview(command):p.patterns.join('\n')}));
    if(typeof p.metadata.diff==='string')box.append(h('details',{class:'engine-tool'},h('summary',{text:'Review file changes'}),h('pre',{class:'engine-diff',text:p.metadata.diff})));
@@ -90,7 +97,7 @@ export function buildEnginePrompt(onHeightChange:()=>void):ViewHost {
   const active=Engine.questions.size?"question":Engine.permissions.size?"approval":s.busy?"thinking":null;
   if(State.stateOverride!==active&&(s.busy||sending||State.stateOverride==="thinking"||State.stateOverride==="approval")){State.stateOverride=active;State.notify();}
   status.textContent=s.busy?'Working on your request…':s.online?'Engine ready':'Engine starts when you send';status.classList.toggle('online',s.online);
-  error.textContent=Engine.error||s.error||'';stop.disabled=!s.online;fresh.disabled=s.busy;historyButton.disabled=s.busy;add.disabled=sending||s.busy;input.disabled=sending||s.busy;send.disabled=sending||s.busy;profiles.disabled=s.busy;mode.disabled=s.busy;mode.value=s.mode;
+  error.textContent=Engine.error||s.error||'';stop.disabled=!s.online;fresh.disabled=s.busy;historyButton.disabled=s.busy;add.disabled=sending||s.busy;input.disabled=sending||s.busy;send.disabled=sending||s.busy;profiles.disabled=s.busy;mode.disabled=s.busy;mode.value=s.mode;selection.disabled=s.busy;toolsButton.disabled=s.busy;exportButton.disabled=s.busy||!Engine.messages.length;
   const signature=JSON.stringify(Engine.config.profiles);if(signature!==lastProfiles){lastProfiles=signature;clear(profiles);if(!Engine.config.profiles.length)profiles.append(h('option',{text:'Set up AI Chat in Settings',value:''}));for(const p of Engine.config.profiles)profiles.append(h('option',{value:p.id,text:`${p.label} · ${p.modelId}`}));}profiles.value=Engine.config.activeProfile;
   log.style.display=historyOpen?'none':'';history.style.display=historyOpen?'flex':'none';historyButton.classList.toggle('selected',historyOpen);
   drawMessages();drawApprovals();clear(attached);for(const f of files){const remove=h('button',{class:'attachment-remove',title:'Remove attachment',text:'×'});remove.addEventListener('click',()=>{files=files.filter(x=>x!==f);Engine.notify();});attached.append(h('span',{class:'attachment-chip'},f.name,remove));}

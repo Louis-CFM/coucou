@@ -10,7 +10,18 @@ export interface EnginePart {id:string;messageID:string;sessionID:string;type:st
 export interface EngineQuestion {id:string;questions:{header:string;question:string;options:{label:string;description:string}[];multiple?:boolean}[]}
 export interface HistoryEntry {id:string;title:string;workspace:string;updated:number;messages?:EngineMessage[]}
 export interface Attachment {name:string;path:string;size:number}
+export interface EngineInstruction{id:string;description:string;body:string}
+export interface EngineMcp{id:string;kind:'remote'|'local';url:string;command:string[];enabled:boolean;authenticated:boolean}
+export interface EngineExtensions{version:number;skills:EngineInstruction[];commands:EngineInstruction[];servers:EngineMcp[]}
+export interface EngineSelection{kind:'subagent'|'skill'|'command';name:string}
+export interface EngineCatalog{agents:{name:string;mode:string;hidden?:boolean;description?:string}[];skills:EngineInstruction[];commands:EngineInstruction[];mcp:Record<string,{status:string}>}
 export const EngineBridge={
+ extensions:()=>invoke<EngineExtensions>('engine_extensions'),
+ saveInstruction:(instruction:EngineInstruction,kind:string)=>invoke<EngineExtensions>('engine_instruction_save',{instruction,kind}),
+ saveMcp:(server:EngineMcp,token:string|null,trustedLocal:boolean)=>invoke<EngineExtensions>('engine_mcp_save',{server,token,trustedLocal}),
+ removeExtension:(kind:string,id:string)=>invoke<EngineExtensions>('engine_extension_remove',{kind,id}),
+ catalog:()=>invoke<EngineCatalog>('engine_catalog'),
+ exportSession:(id:string)=>invoke<string|null>('engine_export_session',{id}),
  pickFiles:()=>invoke<Attachment[]>('engine_pick_files'),
  history:(query:string)=>invoke<HistoryEntry[]>('engine_history_list',{query}),
  readHistory:(id:string)=>invoke<HistoryEntry>('engine_history_read',{id}),
@@ -24,7 +35,7 @@ export const EngineBridge={
  preferences:(workspace:string,activeProfile:string)=>invoke<EngineConfig>('engine_preferences',{workspace,activeProfile}),
  start:(profileId:string,workspace:string,mode:'strict'|'normal')=>invoke<EngineStatus>('engine_start',{profileId,workspace,mode}),
  stop:()=>invoke<EngineStatus>('engine_stop'),
- send:(query:string,attachments:string[]=[])=>invoke<unknown>('engine_send',{query,attachments}),
+ send:(query:string,attachments:string[]=[],selection:EngineSelection|null=null)=>invoke<unknown>('engine_send',{query,attachments,selection}),
  reply:(requestId:string,allow:boolean,permanentConfirmed=false)=>invoke<void>('engine_reply',{requestId,allow,permanentConfirmed}),
  snapshot:()=>invoke<{messages:EngineMessage[];permissions:EnginePermission[]}>('engine_snapshot'),
  newSession:()=>invoke<void>('engine_new_session'),
@@ -73,7 +84,7 @@ class EngineState {
  accept(e:{type:string;properties:any}){
   const p=e.properties;
   const sid=p.info?.sessionID||p.part?.sessionID||p.sessionID;
-  if(sid&&this.status.sessionId&&sid!==this.status.sessionId)return;
+  if(sid&&this.status.sessionId&&sid!==this.status.sessionId&&!e.type.startsWith('permission.')&&!e.type.startsWith('question.'))return;
   if(e.type==='permission.asked')this.permissions.set(p.id,p);
   if(e.type==='permission.replied')this.permissions.delete(p.requestID);
   if(e.type==='question.asked')this.questions.set(p.id,p);
@@ -93,13 +104,13 @@ class EngineState {
   if(e.type==='session.error')this.error=String(p.error?.data?.message||p.error?.message||'Engine task failed');
   this.notify();
  }
- async submit(query:string,attachments:string[]=[]){
+ async submit(query:string,attachments:string[]=[],selection:EngineSelection|null=null){
   await this.initialize();this.config=await EngineBridge.config();if(this.status.busy)throw new Error('Stop the current task first');
   if(!this.config.activeProfile)throw new Error('Add a managed provider profile in Settings first');
   this.error='';
   if(!this.status.online)this.status=await EngineBridge.start(this.config.activeProfile,this.config.workspace,this.status.mode);
   this.status.busy=true;this.notify();
-  try{await EngineBridge.send(query,attachments);await this.refresh();}finally{this.status=await EngineBridge.status();this.notify();}
+  try{await EngineBridge.send(query,attachments,selection);await this.refresh();}finally{this.status=await EngineBridge.status();this.notify();}
  }
  async selectProfile(id:string){
   if(this.status.busy)throw new Error('Stop the task before switching providers');

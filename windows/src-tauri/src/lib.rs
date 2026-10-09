@@ -4,6 +4,7 @@ mod engine;
 mod engine_profiles;
 mod engine_files;
 mod engine_history;
+mod engine_extensions;
 mod agent_hooks;
 mod agents;
 mod chat;
@@ -672,6 +673,12 @@ pub fn run() {
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
+            engine_extensions::engine_extensions,
+            engine_extensions::engine_instruction_save,
+            engine_extensions::engine_mcp_save,
+            engine_extensions::engine_extension_remove,
+            engine::engine_catalog,
+            engine_files::engine_export_session,
             engine::engine_start,
             engine::engine_status,
             engine::engine_stop,

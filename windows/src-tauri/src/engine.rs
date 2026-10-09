@@ -78,33 +78,36 @@ pub fn rules(mode:&str)->Value{
  let mut r=vec![json!({"permission":"*","pattern":"*","action":"ask"})];
  if mode=="normal"{for name in ["read","glob","grep","list"]{r.push(json!({"permission":name,"pattern":"*","action":"allow"}));}}
  for pattern in [".env",".env.*","**/.env","**/.env.*"]{r.push(json!({"permission":"read","pattern":pattern,"action":"deny"}));}
- // Subagents/MCP are not exposed before Phase 5. No 'always' approvals exist.
- r.push(json!({"permission":"task","pattern":"*","action":"deny"}));json!(r)
+ // All model-requested subagents and MCP calls use the existing CLI ask gate.
+ r.push(json!({"permission":"task","pattern":"*","action":"ask"}));json!(r)
 }
 fn config(p:&Profile,plugin:&Path)->Value{
  let npm=match p.protocol.as_str(){"anthropic"=>"@ai-sdk/anthropic","google"=>"@ai-sdk/google","openai-responses"=>"@ai-sdk/openai",_=>"@ai-sdk/openai-compatible"};
  let mut options=p.params.clone();let context=options.remove("contextWindow").and_then(|v|v.as_u64()).unwrap_or(128000);let output=options.remove("maxOutputTokens").and_then(|v|v.as_u64()).unwrap_or(8192).min(context);
  let mut model=json!({"name":p.model_id,"tool_call":true,"modalities":{"input":["text","image","pdf"],"output":["text"]},"limit":{"context":context,"output":output},"options":options});
  if let (Some(input),Some(output))=(p.input_usd_per_million,p.output_usd_per_million){model["cost"]=json!({"input":input,"output":output,"cache_read":p.cached_input_usd_per_million.unwrap_or(input),"cache_write":input});}
- json!({"shell":std::env::var("SystemRoot").unwrap_or_else(|_|"C:\\Windows".into())+"\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","$schema":"https://opencode.ai/config.json","model":format!("nova/{}",p.model_id),"enabled_providers":["nova"],"autoupdate":false,"share":"disabled","snapshot":false,"lsp":false,"formatter":false,"plugin":[reqwest::Url::from_file_path(plugin).unwrap().to_string()],"permission":{"*":"ask","task":"deny"},"provider":{"nova":{"npm":npm,"name":p.label,"options":{"baseURL":p.base_url,"apiKey":"{env:NOVA_PROVIDER_API_KEY}","timeout":300000},"models":{p.model_id.clone():model}}}})
+ json!({"shell":std::env::var("SystemRoot").unwrap_or_else(|_|"C:\\Windows".into())+"\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","$schema":"https://opencode.ai/config.json","model":format!("nova/{}",p.model_id),"enabled_providers":["nova"],"autoupdate":false,"share":"disabled","snapshot":false,"lsp":false,"formatter":false,"plugin":[reqwest::Url::from_file_path(plugin).unwrap().to_string()],"permission":{"*":"ask","task":"ask"},"provider":{"nova":{"npm":npm,"name":p.label,"options":{"baseURL":p.base_url,"apiKey":"{env:NOVA_PROVIDER_API_KEY}","timeout":300000},"models":{p.model_id.clone():model}}}})
 }
 fn spawn(p:&Profile,key:String,cwd:&Path,generation:u64,base:&Path)->Result<Process,String>{
     let bin=exe()?;crate::platform::ensure_private_dir(base).map_err(|_|"Cannot create private engine data directory")?;
     let plugin_dir=base.join("config/opencode");std::fs::create_dir_all(&plugin_dir).map_err(|_|"Cannot create engine config")?;
     let plugin=plugin_dir.join("nova-plugin.mjs");std::fs::write(&plugin,include_str!("../../engine-plugin/nova.mjs")).map_err(|_|"Cannot install engine adapter")?;
+    let extensions=crate::engine_extensions::runtime(base)?;
+    let mut engine_config=config(p,&plugin);engine_config["command"]=extensions.commands;engine_config["mcp"]=extensions.mcp;
     let password=random_password()?;let socket=TcpListener::bind("127.0.0.1:0").map_err(|_|"Cannot allocate a local engine port")?;let port=socket.local_addr().unwrap().port();drop(socket);
     let mut cmd=Command::new(bin);cmd.args(["serve","--hostname","127.0.0.1","--port",&port.to_string(),"--log-level","ERROR"]);
     cmd.current_dir(cwd).env_clear();
     for name in ["PATH","SystemRoot","WINDIR","SystemDrive","USERPROFILE","HOMEDRIVE","HOMEPATH","TEMP","TMP","ComSpec","PATHEXT","APPDATA","LOCALAPPDATA","PROCESSOR_ARCHITECTURE","NUMBER_OF_PROCESSORS"]{if let Some(v)=std::env::var_os(name){cmd.env(name,v);}}
-    cmd.env("NOVA_PROVIDER_API_KEY",&key).env("OPENCODE_SERVER_PASSWORD",&password).env("OPENCODE_SERVER_USERNAME","opencode").env("OPENCODE_DISABLE_PROJECT_CONFIG","true").env("OPENCODE_DISABLE_AUTOUPDATE","true").env("OPENCODE_DISABLE_MODELS_FETCH","true").env("OPENCODE_CONFIG_CONTENT",config(p,&plugin).to_string()).env("OPENCODE_TEST_HOME",base.join("home"));
+    cmd.env("NOVA_PROVIDER_API_KEY",&key).env("OPENCODE_SERVER_PASSWORD",&password).env("OPENCODE_SERVER_USERNAME","opencode").env("OPENCODE_DISABLE_PROJECT_CONFIG","true").env("OPENCODE_DISABLE_AUTOUPDATE","true").env("OPENCODE_DISABLE_MODELS_FETCH","true").env("OPENCODE_CONFIG_CONTENT",engine_config.to_string()).env("OPENCODE_TEST_HOME",base.join("home"));
     for (name,folder) in [("XDG_CONFIG_HOME","config"),("XDG_DATA_HOME","data"),("XDG_CACHE_HOME","cache"),("XDG_STATE_HOME","state")]{cmd.env(name,base.join(folder));}
+    for (name,value) in &extensions.env{cmd.env(name,value);}
     cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());crate::platform::no_console(&mut cmd);
     let mut child=cmd.spawn().map_err(|_|"OpenCode could not start")?;
     let group=match job(&child){Ok(j)=>j,Err(e)=>{let _=child.kill();let _=child.wait();return Err(e);}};
     // CLI diagnostics are deliberately not persisted: provider errors may contain secrets.
     if let Some(mut stream)=child.stdout.take(){std::thread::spawn(move||{let _=std::io::copy(&mut stream,&mut std::io::sink());});}
     if let Some(mut stream)=child.stderr.take(){std::thread::spawn(move||{let _=std::io::copy(&mut stream,&mut std::io::sink());});}
-    Ok(Process{child,job:group,connection:Connection{url:format!("http://127.0.0.1:{port}"),password:password.clone(),secrets:vec![key,password],cwd:cwd.to_string_lossy().into_owned(),generation,session:None}})
+    Ok(Process{child,job:group,connection:Connection{url:format!("http://127.0.0.1:{port}"),password:password.clone(),secrets:{let mut keys=extensions.secrets;keys.extend([key,password]);keys},cwd:cwd.to_string_lossy().into_owned(),generation,session:None}})
 }
 fn connection()->Result<Connection,String>{state().lock().unwrap().process.as_ref().map(|p|p.connection.clone()).ok_or("Engine offline".into())}
 fn client()->reqwest::Client{reqwest::Client::builder().no_proxy().connect_timeout(Duration::from_secs(5)).build().unwrap()}
@@ -197,14 +200,25 @@ async fn session(c:&Connection)->Result<String,String>{
  {let mut s=state().lock().unwrap();if s.generation!=c.generation{return Err("Engine restarted".into());}if let Some(p)=s.process.as_mut(){p.connection.session=Some(id.clone());}s.status.session_id=Some(id.clone());}
  let mut cfg=engine_profiles::load();cfg.last_session=Some(id.clone());engine_profiles::save(&cfg)?;emit_status();Ok(id)
 }
-#[tauri::command]pub async fn engine_send(query:String,attachments:Option<Vec<String>>)->Result<Value,String>{
+#[derive(Clone,Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Selection{pub kind:String,pub name:String}
+#[tauri::command]pub async fn engine_catalog()->Result<Value,String>{let saved=crate::engine_extensions::load()?;let agents=if let Ok(c)=connection(){api(&c,reqwest::Method::GET,"/agent",None,Duration::from_secs(10)).await?}else{json!([])};let mcp=if let Ok(c)=connection(){api(&c,reqwest::Method::GET,"/mcp",None,Duration::from_secs(10)).await?}else{json!({})};Ok(json!({"agents":agents,"skills":saved.skills,"commands":saved.commands,"mcp":mcp}))}
+#[tauri::command]pub async fn engine_send(mut query:String,attachments:Option<Vec<String>>,selection:Option<Selection>)->Result<Value,String>{
  if query.trim().is_empty()||query.len()>64000{return Err("Enter a request up to 64,000 bytes".into());}
  let selected=attachments.unwrap_or_default();let files=crate::engine_files::parts(&selected)?;
  let c=connection()?;
  {let mut s=state().lock().unwrap();if !s.status.online||s.status.busy{return Err("Engine is offline or busy".into());}s.status.busy=true;}emit_status();
  let result=async{
   let id=session(&c).await?;let cfg=engine_profiles::load();let p=cfg.profiles.iter().find(|p|p.id==cfg.active_profile).ok_or("Profile missing")?;
-  let mut parts=vec![json!({"type":"text","text":query})];parts.extend(files);
+  let mut subtask=None;
+  if let Some(choice)=selection{let ext=crate::engine_extensions::load()?;match choice.kind.as_str(){
+   "command"=>{let cmd=ext.commands.iter().find(|i|i.id==choice.name).ok_or("Unknown app-owned command")?;crate::engine_extensions::safe_command(&cmd.body)?;crate::engine_extensions::safe_command(&query)?;return api(&c,reqwest::Method::POST,&format!("/session/{id}/command"),Some(json!({"command":format!("nova-{}",cmd.id),"arguments":query,"model":format!("nova/{}",p.model_id),"parts":files})),Duration::from_secs(1800)).await;},
+   "skill"=>{let skill=ext.skills.iter().find(|i|i.id==choice.name).ok_or("Unknown registered skill")?;query=format!("Use your registered skill {:?} for this request. Load it using the skill tool. Request: {}",skill.id,query);},
+   "subagent"=>{let agents=api(&c,reqwest::Method::GET,"/agent",None,Duration::from_secs(10)).await?;if !agents.as_array().is_some_and(|a|a.iter().any(|v|v["name"]==choice.name && (v["mode"]=="subagent"||v["mode"]=="all")&&v["hidden"]!=true)){return Err("Choose an available visible subagent".into());}subtask=Some(json!({"type":"subtask","agent":choice.name,"description":"User-requested subagent","prompt":query,"model":{"providerID":"nova","modelID":p.model_id}}));},
+   _=>return Err("Unknown engine selection".into())
+  }}
+  let mut parts=if let Some(task)=subtask{vec![task]}else{vec![json!({"type":"text","text":query})]};parts.extend(files);
   api(&c,reqwest::Method::POST,&format!("/session/{id}/message"),Some(json!({"model":{"providerID":"nova","modelID":p.model_id},"parts":parts,"system":"You are Nova, a personal Windows assistant using an existing local agent engine. Work in the selected project folder. Use native file tools for edits and nova_recycle for deletions. Never permanently delete through patch tools. Every shell call requires fresh user approval; never try to bypass it. Do not modify Nova, its runtime, credentials, permission configuration or plugins. Never put credentials into model messages, logs, commands or files."})),Duration::from_secs(1800)).await
  }.await;
  let _=cache_current(c.generation).await;

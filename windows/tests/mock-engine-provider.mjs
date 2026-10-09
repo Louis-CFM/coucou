@@ -2,6 +2,7 @@
 import http from 'node:http';import {writeFileSync} from 'node:fs';import path from 'node:path';
 const [portFile,workspace,key]=process.argv.slice(2);
 const server=http.createServer(async(req,res)=>{
+ if(req.url==='/mcp'){const chunks=[];for await(const c of req)chunks.push(c);let b;try{b=JSON.parse(Buffer.concat(chunks).toString())}catch{res.writeHead(400);res.end();return;}if(b.id===undefined){res.writeHead(202);res.end();return;}const result=b.method==='initialize'?{protocolVersion:b.params.protocolVersion,capabilities:{tools:{}},serverInfo:{name:'nova-test-mcp',version:'1'}}:b.method==='tools/list'?{tools:[{name:'echo',description:'Return the supplied message',inputSchema:{type:'object',properties:{message:{type:'string'}},required:['message']}}]}:b.method==='tools/call'?{content:[{type:'text',text:'MCP_FIXTURE_RESULT '+String(b.params.arguments.message)}]}:{};res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({jsonrpc:'2.0',id:b.id,result}));return;}
  if(req.headers.authorization!==`Bearer ${key}`){res.writeHead(401);res.end('{}');return;}
  const chunks=[];for await(const chunk of req)chunks.push(chunk);let b;try{b=JSON.parse(Buffer.concat(chunks).toString())}catch{res.writeHead(400);res.end('{}');return;}
  const messages=b.messages||[];const user=[...messages].reverse().find(m=>m.role==='user');const text=typeof user?.content==='string'?user.content:JSON.stringify(user?.content||'');
@@ -11,6 +12,7 @@ const server=http.createServer(async(req,res)=>{
  if(!done&&text.includes('SHELL_FIXTURE')&&names.includes('bash'))call={name:'bash',arguments:JSON.stringify({command:`[System.IO.File]::WriteAllText(${q(path.join(workspace,'shell.txt'))},'approved only')`})};
  if(!done&&text.includes('CHILD_FIXTURE')&&names.includes('bash'))call={name:'bash',arguments:JSON.stringify({command:`$p=Start-Process -FilePath "$PSHOME\\powershell.exe" -ArgumentList '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "Start-Sleep -Seconds 120"' -WindowStyle Hidden -PassThru; Set-Content -LiteralPath ${q(path.join(workspace,'child.pid'))} -Value $p.Id`})};
  if(!done&&text.includes('FORMAT_DENY_FIXTURE')&&names.includes('bash'))call={name:'bash',arguments:JSON.stringify({command:'format Z: /FS:NTFS /Q /Y'})};
+ if(!done&&text.includes('MCP_FIXTURE')){const name=names.find(n=>n.includes('fixture')&&n.endsWith('echo'));if(name)call={name,arguments:JSON.stringify({message:'approved MCP echo'})};}
  const answer=call?null:text.includes('RECALL_FIXTURE')?'Your prior marker is NOVA_MEMORY_271.':'Fixture task complete.';
  if(!b.stream){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({id:'chatcmpl-fixture',object:'chat.completion',created:1,model:b.model,choices:[{index:0,message:{role:'assistant',content:answer,tool_calls:call?[{id:'call_fixture',type:'function',function:call}]:undefined},finish_reason:call?'tool_calls':'stop'}],usage:{prompt_tokens:12,completion_tokens:8,total_tokens:20}}));return;}
  res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache'});

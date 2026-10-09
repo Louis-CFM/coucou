@@ -1,0 +1,29 @@
+import { h,clear } from '../views/dom';
+import { EngineBridge,type EngineExtensions,type EngineInstruction,type EngineMcp } from '../core/engine';
+export function extensionsSection():HTMLElement{
+ const status=h('p',{class:'hint',role:'status'});const list=h('div',{class:'engine-extension-list'});
+ const section=h('section',{},h('h2',{text:'Engine skills, commands & MCP'}),h('p',{class:'hint',text:'These configure OpenCode’s existing capabilities. Saving stops the idle engine; your next message restarts it. Never paste API keys into instructions or command arguments.'}),list,status);
+ let config:EngineExtensions={version:1,skills:[],commands:[],servers:[]};
+ const notice=(e:unknown)=>{status.textContent=String(e).replace(/^Error:\s*/,'');};
+ async function action(f:()=>Promise<EngineExtensions>){try{config=await f();draw();notice('Saved. The next request reloads the engine configuration.');}catch(e){notice(e);}}
+ function draw(){clear(list);for(const kind of ['skill','command','mcp'] as const){const rows=kind==='skill'?config.skills:kind==='command'?config.commands:config.servers;for(const row of rows){const edit=h('button',{text:'Edit',onclick:()=>{if(kind==='mcp')fillServer(row as EngineMcp);else fillInstruction(row as EngineInstruction,kind);}});const remove=h('button',{text:'Remove',onclick:()=>{if(confirm(`Remove ${kind} ${row.id}?`))void action(()=>EngineBridge.removeExtension(kind,row.id));}});list.append(h('div',{class:'engine-profile-summary'},h('strong',{text:`${kind} · ${row.id}`}),h('span',{class:'hint',text:kind==='mcp'?`${(row as EngineMcp).kind} · ${(row as EngineMcp).enabled?'enabled':'disabled'}`:(row as EngineInstruction).description}),h('div',{class:'engine-profile-actions'},edit,remove)));}}}
+ const field=(name:string,el:HTMLElement)=>h('label',{class:'engine-field'},h('span',{text:name}),el);
+ const kind=h('select',{},h('option',{value:'skill',text:'Skill'}),h('option',{value:'command',text:'Instruction command'})) as HTMLSelectElement;
+ const id=h('input',{placeholder:'code-review'}) as HTMLInputElement;const description=h('input',{placeholder:'When should the engine use this?'}) as HTMLInputElement;
+ const body=h('textarea',{rows:7,placeholder:'Write plain instructions. Commands can use $ARGUMENTS, but cannot use ! or @.'}) as HTMLTextAreaElement;
+ function fillInstruction(i:EngineInstruction,k:string){id.value=i.id;description.value=i.description;body.value=i.body;kind.value=k;instructionDetails.open=true;id.focus();}
+ const instructionDetails=h('details',{class:'engine-optional'},h('summary',{text:'Add or edit a skill / instruction command'}),field('Type',kind),field('ID (lowercase letters, digits, hyphens)',id),field('Description',description),field('Instructions (not a shell script)',body),h('button',{class:'primary',text:'Save instructions',onclick:()=>void action(()=>EngineBridge.saveInstruction({id:id.value.trim(),description:description.value.trim(),body:body.value},kind.value))})) as HTMLDetailsElement;
+ const serverId=h('input',{placeholder:'my-tools'}) as HTMLInputElement;
+ const serverKind=h('select',{},h('option',{value:'remote',text:'Remote HTTPS MCP'}),h('option',{value:'local',text:'Existing local executable'})) as HTMLSelectElement;
+ const url=h('input',{type:'url',placeholder:'https://example.com/mcp'}) as HTMLInputElement;
+ const command=h('textarea',{rows:3,placeholder:'["C:\\\\Tools\\\\server.exe", "--stdio"]'}) as HTMLTextAreaElement;
+ const token=h('input',{type:'password',autocomplete:'new-password',placeholder:'Leave blank to keep the saved token'}) as HTMLInputElement;
+ const auth=h('input',{type:'checkbox'}) as HTMLInputElement;const enabled=h('input',{type:'checkbox'}) as HTMLInputElement;enabled.checked=true;
+ const trust=h('input',{type:'checkbox'}) as HTMLInputElement;
+ const remote=h('div',{},field('MCP URL',url),h('label',{class:'engine-checkbox'},auth,'Bearer authentication'),field('Bearer token (Windows Credential Manager)',token),h('p',{class:'hint',text:'Remote OAuth is not enabled in this version. Use a server with bearer-token or no-auth support.'}));
+ const local=h('div',{},field('Executable and arguments (JSON array)',command),h('label',{class:'engine-checkbox'},trust,'I trust this exact executable and arguments to run as my Windows user whenever the engine starts.'),h('p',{class:'hint',text:'A local MCP server is real code, not an OS sandbox. Its internal actions are not individual shell prompts. Nova asks before model-invoked MCP tools; install no unknown server.'}));
+ function showKind(){remote.hidden=serverKind.value!=='remote';local.hidden=serverKind.value!=='local';trust.checked=false;}serverKind.addEventListener('change',showKind);showKind();
+ function fillServer(s:EngineMcp){serverId.value=s.id;serverKind.value=s.kind;url.value=s.url;command.value=JSON.stringify(s.command);auth.checked=s.authenticated;enabled.checked=s.enabled;token.value='';showKind();serverDetails.open=true;serverId.focus();}
+ const serverDetails=h('details',{class:'engine-optional'},h('summary',{text:'Attach or edit an MCP server'}),field('Server ID',serverId),field('Connection',serverKind),remote,local,h('label',{class:'engine-checkbox'},enabled,'Enable on engine startup'),h('button',{class:'primary',text:'Save MCP server',onclick:()=>void action(async()=>{const s:EngineMcp={id:serverId.value.trim(),kind:serverKind.value as 'local'|'remote',url:serverKind.value==='remote'?url.value.trim():'',command:serverKind.value==='local'?JSON.parse(command.value):[],enabled:enabled.checked,authenticated:serverKind.value==='remote'&&auth.checked};const privateToken=token.value;token.value='';return EngineBridge.saveMcp(s,privateToken||null,trust.checked);})})) as HTMLDetailsElement;
+ section.append(instructionDetails,serverDetails);void EngineBridge.extensions().then(c=>{config=c;draw();}).catch(notice);return section;
+}

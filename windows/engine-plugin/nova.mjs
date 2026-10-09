@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { realpath,readFile,readdir,stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const secretNames=['NOVA_PROVIDER_API_KEY','OPENCODE_SERVER_PASSWORD'];
+const secretNames=['NOVA_PROVIDER_API_KEY','OPENCODE_SERVER_PASSWORD',...Object.keys(process.env).filter(n=>n.startsWith('NOVA_MCP_TOKEN_'))];
 const ps=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
 const quote=s=>"'"+s.replaceAll("'","''")+"'";
 const protectedRoots=[path.join(process.env.APPDATA||'', 'Nova'),path.join(process.env.LOCALAPPDATA||'', 'Nova'),path.dirname(path.dirname(process.execPath))].map(p=>path.resolve(p).toLowerCase());
@@ -45,7 +45,7 @@ export default async ()=>({
     await context.ask({permission:'nova_recycle',patterns:[target],always:[],metadata:{filepath:target,recycle:true}});
     const script=`Add-Type -AssemblyName Microsoft.VisualBasic; $p=${quote(target)}; if(Test-Path -LiteralPath $p -PathType Container){[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p,'OnlyErrorDialogs','SendToRecycleBin','ThrowException')}else{[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p,'OnlyErrorDialogs','SendToRecycleBin','ThrowException')}`;
     await new Promise((resolve,reject)=>{
-     const p=spawn(ps,['-NoLogo','-NoProfile','-NonInteractive','-WindowStyle','Hidden','-Command',script],{windowsHide:true,stdio:['ignore','ignore','ignore'],env:{...process.env,NOVA_PROVIDER_API_KEY:'',OPENCODE_SERVER_PASSWORD:''}});
+     const p=spawn(ps,['-NoLogo','-NoProfile','-NonInteractive','-WindowStyle','Hidden','-Command',script],{windowsHide:true,stdio:['ignore','ignore','ignore'],env:{...process.env,...Object.fromEntries(secretNames.map(n=>[n,'']))}});
      const abort=()=>{p.kill();reject(new Error('Recycle operation cancelled'));};context.abort.addEventListener('abort',abort,{once:true});
      const timer=setTimeout(()=>{p.kill();reject(new Error('Recycle operation timed out'));},30000);
      p.on('error',()=>{clearTimeout(timer);reject(new Error('Recycle operation could not start'));});

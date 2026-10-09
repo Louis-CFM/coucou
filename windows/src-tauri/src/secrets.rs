@@ -23,7 +23,7 @@ pub const KNOWN_KEYS: &[&str] = &[
 ];
 
 fn entry(key: &str) -> Option<Entry> {
-    if !KNOWN_KEYS.contains(&key) && !key.strip_prefix("engine-profile-").is_some_and(crate::engine_profiles::valid_id) {
+    if !KNOWN_KEYS.contains(&key) && !key.strip_prefix("engine-profile-").is_some_and(crate::engine_profiles::valid_id) && !key.strip_prefix("engine-mcp-").is_some_and(crate::engine_extensions::safe_id) {
         return None;
     }
     Entry::new(SERVICE, key).ok()

@@ -36,3 +36,25 @@ History is local but **not encrypted**: `%LOCALAPPDATA%\Nova\history`. The priva
 Windows CI exercises the real bundled engine with two **local mock-provider** endpoints, file edits, shell approval/denial and child-process cleanup. It does not validate your paid provider/key, model image capabilities, Windows display scaling or your desktop’s hover behavior. Those require the checks above.
 
 This fork retains upstream MIT code attribution. NOVA uses original replacement mascot geometry, palette and generated icons; bundled upstream sounds and branded media are removed. See LICENSE and LICENSE-ASSETS.md.
+
+## Clock and weather
+
+Settings → Appearance & App → Widgets enables/reorders the two header pills. Weather is disabled until you choose a location. Enter coordinates or search a city; the optional IP estimate asks first and shares your public IP with ipapi.co. Open-Meteo receives coordinates, not your chat. Cached weather refreshes after 60 minutes; `~` marks a stale offline value. A disabled pill stops its timer. The optional second clock accepts an IANA timezone (for example `Asia/Kolkata`).
+
+## Skills, instruction commands, subagents and MCP
+
+Settings → AI Chat → Engine skills, commands & MCP manages the engine's own extensions. No configuration-file editing is required. IDs use lowercase letters, digits and hyphens. Skills are registered as OpenCode `SKILL.md` files; commands are registered under `nova-<id>`. Command instructions may use `$ARGUMENTS`; `!` and `@` are rejected in commands and their arguments because upstream performs shell/file expansion before permission hooks.
+
+In chat, **Engine tools** opens the subagent/skill/command picker and MCP connection status. Send one ordinary message to start the engine first; its available subagents then appear. A selected skill asks the model to load the engine's skill tool; compliance depends on the model. A selected subagent delegates through OpenCode's real task mechanism. Its permissions/questions remain visible, with fresh shell approval and the same 60-second denial timer. The visible transcript remains the parent conversation.
+
+Remote MCP supports HTTPS (or local HTTP), no-auth and a bearer token stored in Windows Credential Manager and bound to the exact endpoint. OAuth is not enabled. Local MCP requires an already-installed absolute `.exe` and an explicit trust checkbox for its executable/arguments; Nova installs no global tools. A local MCP server is trusted code running as your Windows user, **not an OS sandbox**. Its internal startup/actions cannot be inspected as separate shell calls. The model's MCP tool invocations still ask permission. Disable or remove the server in Settings to stop attaching it at engine startup. Never put a secret in a URL, command argument, instruction or skill body.
+
+**Export Markdown** opens Windows' Save dialog and exports the cached conversation's text, tool status and attachment names, not image bytes or attachment data URLs. Active conversations update their local cache when a turn finishes. History search remains local and plaintext; export is plaintext too.
+
+### Extension acceptance checks
+
+1. Add a harmless skill and an instruction command; open Engine tools and try both.
+2. Select `general` as a subagent and ask it to write a throwaway file. Verify no write/command runs before approving its card.
+3. Attach a known MCP server. Check its status in Engine tools and deny a first tool request.
+4. Resume an older conversation and export Markdown to a folder you choose.
+5. Change a bearer-protected MCP endpoint without entering a new token: startup must refuse to reuse the old token.

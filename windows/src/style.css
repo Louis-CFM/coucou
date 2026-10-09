@@ -2671,3 +2671,8 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 
 /* Widgets are DOM-only; no timing or Canvas changes. */
 .widget-slots{display:flex;align-items:center;gap:5px;margin-left:auto;min-width:0;max-width:200px;overflow:hidden}.widget-pill{font:500 10px var(--font);color:var(--dim);border:1px solid var(--hairline);border-radius:8px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}.widget-pill.stale{color:var(--amber);border-style:dashed}.widget-pill.stale::after{content:" ~"}.widget-slots+.header-actions{margin-left:6px}
+
+.engine-tools-panel { display:flex; flex-wrap:wrap; gap:6px; align-items:center; flex-shrink:0; padding-bottom:6px; }
+.engine-tools-panel[hidden] { display:none; }
+.engine-tools-panel select { flex:1; min-width:170px; background:var(--card-flat); color:var(--ink); border:1px solid var(--hairline); border-radius:7px; padding:5px; font:inherit; }
+.engine-tools-panel .engine-empty { width:100%; font-size:10px; overflow-wrap:anywhere; }
