@@ -97,8 +97,9 @@ jobs:
       # script refuses to run until that file exists.
       - name: Test
         run: |
+          npm test
           cargo build --release -p coucou-hook
-          cargo test --workspace
+          cargo test --workspace --locked
 
       # linuxdeploy is itself an AppImage; runners have no FUSE, so it unpacks
       # itself instead of mounting.
