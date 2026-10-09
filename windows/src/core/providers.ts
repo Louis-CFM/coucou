@@ -80,7 +80,10 @@ export function isLoopbackHost(host: string): boolean {
   const h = host.replace(/^\[|\]$/g, "").toLowerCase();
   if (h === "localhost" || h.endsWith(".localhost")) return true;
   if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
-  return h === "0.0.0.0" || h === "::1" || h === "::" || h === "::ffff:127.0.0.1" || h === "::ffff:7f00:1";
+  // Any IPv4 loopback written as IPv6, as net.rs has it: the WHATWG URL
+  // parser turns ::ffff:127.0.0.2 into ::ffff:7f00:2.
+  if (/^::ffff:(7f[0-9a-f]{2}:[0-9a-f]{1,4}|127\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.test(h)) return true;
+  return h === "0.0.0.0" || h === "::1" || h === "::";
 }
 
 /**
@@ -103,4 +106,25 @@ export function urlExposure(raw: string): Exposure {
   if (!url.hostname || url.username || url.password) return "invalid";
   if (isLoopbackHost(url.hostname)) return "local";
   return url.protocol === "https:" ? "remote" : "remote-http";
+}
+
+export type KeyAddress = "ok" | "remote-http" | "invalid";
+
+/**
+ * As n8n_base in integrations.rs: a key only goes over https, or over plain
+ * http to this machine ("ok"); "remote-http" is refused. The address must be
+ * complete (no http:// added for you), and credentials in it stay allowed: a
+ * self-hosted n8n behind basic auth needs them.
+ */
+export function keyAddress(raw: string): KeyAddress {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return "invalid";
+  }
+  if (!url.hostname) return "invalid";
+  if (url.protocol === "https:") return "ok";
+  if (url.protocol !== "http:") return "invalid";
+  return isLoopbackHost(url.hostname) ? "ok" : "remote-http";
 }

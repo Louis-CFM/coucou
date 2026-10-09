@@ -525,9 +525,14 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
 #[tauri::command]
 fn open_n8n() {
-    if let Some(url) = secrets::get("n8n-url") {
-        open_url(url);
-    }
+    let Some(raw) = secrets::get("n8n-url") else { return };
+    let Ok(mut url) = reqwest::Url::parse(raw.trim()) else { return };
+    // Without credentials: the launcher (rundll32, xdg-open) would carry them on
+    // its command line, readable by any program in the session, and then into
+    // the browser history. The browser asks for them if the instance needs them.
+    let _ = url.set_username("");
+    let _ = url.set_password(None);
+    open_url(url.to_string());
 }
 
 /// Refresh buttons in the integration cards.

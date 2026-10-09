@@ -3360,6 +3360,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "The server redirects elsewhere, and the key is not sent on. Enter the final address.": {
+   "zh-Hans": "服务器重定向到了别处，密钥不会随之转发。请输入最终地址。",
+   "hi": "सर्वर कहीं और रीडायरेक्ट करता है, और कुंजी आगे नहीं भेजी जाती। अंतिम पता दर्ज करें।",
+   "es": "El servidor redirige a otro sitio y la clave no se reenvía. Introduce la dirección final.",
+   "ar": "يعيد الخادم التوجيه إلى مكان آخر، ولا يُعاد إرسال المفتاح إليه. أدخل العنوان النهائي.",
+   "fr": "Le serveur redirige ailleurs, et la clé n'y est pas transmise. Saisis l'adresse finale.",
+   "bn": "সার্ভার অন্য কোথাও রিডাইরেক্ট করে, আর কী সেখানে পাঠানো হয় না। চূড়ান্ত ঠিকানাটি লিখুন।",
+   "pt-BR": "O servidor redireciona para outro lugar, e a chave não é repassada. Informe o endereço final.",
+   "ru": "Сервер перенаправляет запрос в другое место, а ключ туда не передаётся. Укажите конечный адрес.",
+   "id": "Server mengalihkan ke tempat lain, dan kunci tidak ikut diteruskan. Masukkan alamat akhirnya."
   }
  }
 }

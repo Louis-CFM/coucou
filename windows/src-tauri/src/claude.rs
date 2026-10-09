@@ -160,8 +160,11 @@ pub async fn send(
     Ok(ChatReply { text })
 }
 
+// The key rides in x-api-key, a header reqwest would keep on a redirect to
+// another host, and the address may come from COUCOU_ANTHROPIC_BASE_URL: no
+// redirect is followed.
 async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> {
-    let response = net::client(endpoint, Duration::from_secs(90))?
+    let response = net::client_without_redirects(endpoint, Duration::from_secs(90))?
         .post(endpoint.clone())
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)
@@ -185,7 +188,7 @@ async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> 
 /// The models on the user's Anthropic account, newest first, as the API lists them.
 pub async fn models(key: &str) -> Result<Vec<ModelInfo>, String> {
     let url = models_endpoint(&endpoint()?);
-    let response = net::client(&url, Duration::from_secs(10))?
+    let response = net::client_without_redirects(&url, Duration::from_secs(10))?
         .get(url.clone())
         .header("x-api-key", key)
         .header("anthropic-version", ANTHROPIC_VERSION)

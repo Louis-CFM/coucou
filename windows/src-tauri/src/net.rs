@@ -5,7 +5,7 @@
 // hostile server (a local model address can point anywhere) cannot make the
 // app hold an unbounded amount of memory.
 
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::Duration;
 
 use reqwest::Url;
@@ -112,13 +112,45 @@ pub fn anthropic_endpoint(raw: &str) -> Result<Url, String> {
 /// A client for `url`: requests to this machine skip any system proxy, which
 /// would otherwise see (and usually fail) a loopback address.
 pub fn client(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
+    builder(url, timeout).build().map_err(|e| e.to_string())
+}
+
+/// The same, following no redirect: for a request that carries a secret in a
+/// custom header (x-api-key, X-N8N-API-KEY). When a redirect changes host,
+/// reqwest only strips the standard ones (Authorization, Cookie…), so ours
+/// would reach the new host. The 3xx is returned as is.
+pub fn client_without_redirects(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
+    builder(url, timeout)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+fn builder(url: &Url, timeout: Duration) -> reqwest::ClientBuilder {
     let mut builder = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10).min(timeout))
         .timeout(timeout);
     if is_loopback_url(url) {
         builder = builder.no_proxy();
     }
-    builder.build().map_err(|e| e.to_string())
+    // Windows does not resolve `*.localhost` itself: the name goes to the DNS
+    // server, which may answer with another machine (a captive portal, an ISP
+    // that hijacks unknown names). Counted as this machine above, such an
+    // address skips the proxy and may get a key over plain http: it has to
+    // stay on this machine.
+    if let Some(host) = url.host_str().filter(|host| host.to_ascii_lowercase().ends_with(".localhost")) {
+        builder = builder.resolve_to_addrs(
+            host,
+            &[SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), SocketAddr::from((Ipv6Addr::LOCALHOST, 0))],
+        );
+    }
+    // A client made for https never follows a redirect down to plain http:
+    // reqwest keeps Authorization when host and port stay the same
+    // (https://h:8443 to http://h:8443), and a 307 or 308 resends the body.
+    if url.scheme() == "https" {
+        builder = builder.https_only(true);
+    }
+    builder
 }
 
 /// The body of `response`, refused past `limit` bytes.
@@ -281,5 +313,43 @@ pub(crate) mod tests {
         // Under the ceiling: read whole.
         let url = serve_once("200 OK", "Content-Length: 3\r\n", b"abc".to_vec());
         assert_eq!(block_on(get(url)).unwrap(), b"abc");
+    }
+
+    #[test]
+    fn the_client_for_a_secret_header_does_not_follow_a_redirect() {
+        // Nothing listens at the target: had the redirect been followed, the
+        // request would fail instead of returning the 302.
+        let url = serve_once("302 Found", "Location: http://127.0.0.1:9/elsewhere\r\nContent-Length: 0\r\n", vec![]);
+        let url = Url::parse(&url).unwrap();
+        let response = block_on(async {
+            client_without_redirects(&url, Duration::from_secs(5))
+                .unwrap()
+                .get(url.clone())
+                .header("X-N8N-API-KEY", "secret")
+                .send()
+                .await
+        })
+        .expect("the 302 itself");
+        assert_eq!(response.status().as_u16(), 302);
+    }
+
+    #[test]
+    fn a_localhost_subdomain_is_reached_on_this_machine_whatever_the_dns_says() {
+        // Without the forced resolution, Windows would ask the DNS server for
+        // `n8n.localhost`, which does not know it, and the request would fail.
+        let served = Url::parse(&serve_once("200 OK", "Content-Length: 2\r\n", b"ok".to_vec())).unwrap();
+        let url = Url::parse(&format!("http://n8n.localhost:{}/", served.port().unwrap())).unwrap();
+        let response = block_on(async { client(&url, Duration::from_secs(5)).unwrap().get(url.clone()).send().await })
+            .expect("the server on this machine");
+        assert_eq!(response.status().as_u16(), 200);
+    }
+
+    #[test]
+    fn a_client_made_for_https_never_goes_back_to_plain_http() {
+        let https = Url::parse("https://models.example.com").unwrap();
+        let error = block_on(async { client(&https, Duration::from_secs(5)).unwrap().get("http://127.0.0.1:9/").send().await })
+            .expect_err("plain http refused");
+        // Refused before any connection, not for lack of a server on port 9.
+        assert!(error.is_builder(), "{error}");
     }
 }

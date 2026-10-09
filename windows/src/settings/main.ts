@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, keyAddress, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -502,6 +502,7 @@ const CHAT_STRINGS = {
   get remoteHttp() { return t("This address is another machine, over plain http: what you ask travels unencrypted."); },
   get keyOverHttp() { return t("Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer."); },
   get invalid() { return t("Not a valid http:// or https:// address."); },
+  get keyHttpsOnly() { return t("A key is only sent over https, or to a server on this computer."); },
   noModels: (name: string) => t("No models yet. Download one in {name} first.", { name }),
   models: (n: number) => tn("{count} model", "{count} models", n),
 };
@@ -787,6 +788,33 @@ function declaredChanged() {
   void save();
 }
 
+/**
+ * Under the n8n address field: what integrations.rs will refuse (the key does
+ * not go over plain http to another machine), said while typing rather than on
+ * the card at the next poll. Stays shown after Save, which empties the field.
+ */
+function n8nUrlNotice(input: HTMLInputElement): HTMLElement {
+  // Hidden while empty: even with no height it would count in the column's gap
+  // and push the address and key rows apart.
+  const notice = h("div", {});
+  notice.hidden = true;
+  input.addEventListener("input", () => {
+    clear(notice);
+    if (input.value.trim()) {
+      switch (keyAddress(input.value)) {
+        case "remote-http":
+          notice.append(h("div", { class: "notice warn", text: CHAT_STRINGS.keyHttpsOnly }));
+          break;
+        case "invalid":
+          notice.append(h("div", { class: "notice err", text: CHAT_STRINGS.invalid }));
+          break;
+      }
+    }
+    notice.hidden = !notice.firstChild;
+  });
+  return notice;
+}
+
 function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
@@ -842,6 +870,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
           input, saveBtn, dotEl,
         ),
       );
+      if (field.key === "n8n-url") rows.append(n8nUrlNotice(input));
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
