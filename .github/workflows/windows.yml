@@ -32,7 +32,21 @@ jobs:
       - run: npm run icons
       - name: Fetch verified native OpenCode engine
         run: npm run engine
-      - run: npm test
+      - name: Frontend regression tests
+        shell: pwsh
+        run: |
+          $output = & node --import ./tests/setup.mjs --test --test-reporter=tap "tests/**/*.test.mjs" 2>&1
+          $code = $LASTEXITCODE
+          $output | Write-Output
+          if ($code -ne 0) {
+            foreach ($failure in ($output | Select-String -Pattern '^not ok ' -Context 0,35)) {
+              $text = $failure.ToString()
+              if ($text.Length -gt 3800) { $text = $text.Substring(0,3800) }
+              $text = $text.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Frontend regression failure::$text"
+            }
+            exit $code
+          }
       - run: npm exec tsc -- --noEmit
       - run: cargo build --release -p nova-hook
       - name: Native tests and real-engine approval integration
