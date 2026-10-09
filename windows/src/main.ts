@@ -9,6 +9,7 @@ import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
+import { registerLiveHandlers } from "./island/live";
 import { isMusicPill } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
@@ -101,6 +102,7 @@ async function main() {
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
   registerSpotifyHandlers(island);
+  registerLiveHandlers({ peek: (ms) => island.peekLive(ms), resize: () => island.liveResized() });
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.some(isMusicPill)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));

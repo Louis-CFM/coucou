@@ -151,7 +151,23 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** What the Windows build adds to the island (src-tauri/src/sysevents.rs). */
+  plus: PlusPrefs;
 }
+
+export interface PlusPrefs {
+  /** The island shows the volume and takes the volume keys from Windows' popup. */
+  volumeHud: boolean;
+  brightnessHud: boolean;
+  /** Plugged in, unplugged, 20 % and 10 % left. */
+  batteryAlerts: boolean;
+  /** Texts copied lately, in memory only. */
+  clipboardHistory: boolean;
+}
+
+export const DEFAULT_PLUS: PlusPrefs = {
+  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true,
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
@@ -179,6 +195,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  plus: { ...DEFAULT_PLUS },
 };
 
 type Listener = () => void;

@@ -3404,6 +3404,138 @@
    "pt-BR": "Qualquer app que toque: uma aba do navegador, VLC, Media Player…",
    "ru": "Любое приложение, которое играет: вкладка браузера, VLC, Медиаплеер…",
    "id": "Aplikasi apa pun yang memutar: tab browser, VLC, Media Player…"
+  },
+  "Muted": {
+   "zh-Hans": "已静音",
+   "hi": "म्यूट",
+   "es": "Silenciado",
+   "ar": "صامت",
+   "fr": "Muet",
+   "bn": "মিউট",
+   "pt-BR": "Sem som",
+   "ru": "Без звука",
+   "id": "Senyap"
+  },
+  "Island extras": {
+   "zh-Hans": "岛屿附加功能",
+   "hi": "आइलैंड के अतिरिक्त फ़ीचर",
+   "es": "Extras de la isla",
+   "ar": "إضافات الجزيرة",
+   "fr": "Extras de l'île",
+   "bn": "আইল্যান্ডের অতিরিক্ত",
+   "pt-BR": "Extras da ilha",
+   "ru": "Дополнения острова",
+   "id": "Ekstra pulau"
+  },
+  "Brightness": {
+   "zh-Hans": "亮度",
+   "hi": "चमक",
+   "es": "Brillo",
+   "ar": "السطوع",
+   "fr": "Luminosité",
+   "bn": "উজ্জ্বলতা",
+   "pt-BR": "Brilho",
+   "ru": "Яркость",
+   "id": "Kecerahan"
+  },
+  "Battery": {
+   "zh-Hans": "电池",
+   "hi": "बैटरी",
+   "es": "Batería",
+   "ar": "البطارية",
+   "fr": "Batterie",
+   "bn": "ব্যাটারি",
+   "pt-BR": "Bateria",
+   "ru": "Батарея",
+   "id": "Baterai"
+  },
+  "Clipboard history": {
+   "zh-Hans": "剪贴板历史",
+   "hi": "क्लिपबोर्ड इतिहास",
+   "es": "Historial del portapapeles",
+   "ar": "سجل الحافظة",
+   "fr": "Historique du presse-papiers",
+   "bn": "ক্লিপবোর্ড ইতিহাস",
+   "pt-BR": "Histórico da área de transferência",
+   "ru": "История буфера обмена",
+   "id": "Riwayat papan klip"
+  },
+  "Charging": {
+   "zh-Hans": "正在充电",
+   "hi": "चार्ज हो रही है",
+   "es": "Cargando",
+   "ar": "يتم الشحن",
+   "fr": "En charge",
+   "bn": "চার্জ হচ্ছে",
+   "pt-BR": "Carregando",
+   "ru": "Заряжается",
+   "id": "Mengisi daya"
+  },
+  "On battery": {
+   "zh-Hans": "使用电池",
+   "hi": "बैटरी पर",
+   "es": "Con batería",
+   "ar": "على البطارية",
+   "fr": "Sur batterie",
+   "bn": "ব্যাটারিতে চলছে",
+   "pt-BR": "Na bateria",
+   "ru": "От батареи",
+   "id": "Pakai baterai"
+  },
+  "Low battery": {
+   "zh-Hans": "电量不足",
+   "hi": "बैटरी कम है",
+   "es": "Batería baja",
+   "ar": "البطارية منخفضة",
+   "fr": "Batterie faible",
+   "bn": "ব্যাটারি কম",
+   "pt-BR": "Bateria fraca",
+   "ru": "Низкий заряд",
+   "id": "Baterai lemah"
+  },
+  "The volume keys show the level in the island instead of Windows' popup.": {
+   "zh-Hans": "音量键在岛屿中显示音量，而不是 Windows 的弹窗。",
+   "hi": "वॉल्यूम कुंजियाँ Windows के पॉपअप की जगह आइलैंड में स्तर दिखाती हैं।",
+   "es": "Las teclas de volumen muestran el nivel en la isla en lugar de la ventana emergente de Windows.",
+   "ar": "تعرض مفاتيح الصوت المستوى في الجزيرة بدلًا من النافذة المنبثقة في Windows.",
+   "fr": "Les touches de volume affichent le niveau dans l'île au lieu de la fenêtre de Windows.",
+   "bn": "ভলিউম কী Windows-এর পপআপের বদলে আইল্যান্ডে লেভেল দেখায়।",
+   "pt-BR": "As teclas de volume mostram o nível na ilha em vez do pop-up do Windows.",
+   "ru": "Клавиши громкости показывают уровень на острове вместо всплывающего окна Windows.",
+   "id": "Tombol volume menampilkan level di pulau, bukan di popup Windows."
+  },
+  "The island shows the brightness when it changes.": {
+   "zh-Hans": "亮度变化时，岛屿会显示亮度。",
+   "hi": "चमक बदलने पर आइलैंड उसे दिखाता है।",
+   "es": "La isla muestra el brillo cuando cambia.",
+   "ar": "تعرض الجزيرة السطوع عند تغيّره.",
+   "fr": "L'île affiche la luminosité quand elle change.",
+   "bn": "উজ্জ্বলতা বদলালে আইল্যান্ড তা দেখায়।",
+   "pt-BR": "A ilha mostra o brilho quando ele muda.",
+   "ru": "Остров показывает яркость, когда она меняется.",
+   "id": "Pulau menampilkan kecerahan saat berubah."
+  },
+  "Plugged in, unplugged, and a word at 20 % and 10 % left.": {
+   "zh-Hans": "接通电源、断开电源，以及剩余 20 % 和 10 % 时提醒。",
+   "hi": "प्लग इन, प्लग आउट, और 20 % व 10 % बचने पर एक सूचना।",
+   "es": "Al enchufar, al desenchufar, y un aviso al 20 % y al 10 %.",
+   "ar": "عند التوصيل وفصل الشاحن، وتنبيه عند بقاء 20 % و10 %.",
+   "fr": "Branché, débranché, et un mot à 20 % et 10 % restants.",
+   "bn": "চার্জার লাগানো, খোলা, আর ২০ % ও ১০ % বাকি থাকলে একটি বার্তা।",
+   "pt-BR": "Ao ligar, ao desligar da tomada, e um aviso com 20 % e 10 % restantes.",
+   "ru": "Подключение, отключение и напоминание при 20 % и 10 %.",
+   "id": "Dicolok, dicabut, dan pemberitahuan saat tersisa 20 % dan 10 %."
+  },
+  "The last texts you copied, on the Shelf pill. Kept in memory only, never on disk; what password managers copy is never kept.": {
+   "zh-Hans": "你最近复制的文字，显示在“置物架”胶囊中。只保存在内存里，从不写入磁盘；密码管理器复制的内容永不保留。",
+   "hi": "आपके हाल में कॉपी किए गए टेक्स्ट, शेल्फ़ पिल पर। सिर्फ़ मेमोरी में रखे जाते हैं, डिस्क पर कभी नहीं; पासवर्ड मैनेजर जो कॉपी करते हैं वह कभी नहीं रखा जाता।",
+   "es": "Los últimos textos que copiaste, en la píldora Estante. Solo en memoria, nunca en disco; lo que copian los gestores de contraseñas nunca se guarda.",
+   "ar": "آخر النصوص التي نسختها، في حبة الرف. تُحفظ في الذاكرة فقط ولا تُكتب على القرص أبدًا؛ ولا يُحتفظ أبدًا بما تنسخه برامج إدارة كلمات المرور.",
+   "fr": "Les derniers textes copiés, dans la pilule Étagère. Gardés en mémoire seulement, jamais sur le disque ; ce que copient les gestionnaires de mots de passe n'est jamais gardé.",
+   "bn": "আপনার সাম্প্রতিক কপি করা টেক্সট, শেল্ফ পিলে। শুধু মেমরিতে রাখা হয়, কখনো ডিস্কে নয়; পাসওয়ার্ড ম্যানেজার যা কপি করে তা কখনো রাখা হয় না।",
+   "pt-BR": "Os últimos textos que você copiou, na pílula Prateleira. Só na memória, nunca no disco; o que os gerenciadores de senhas copiam nunca é guardado.",
+   "ru": "Последние скопированные тексты — на пилюле «Полка». Хранятся только в памяти, никогда на диске; то, что копируют менеджеры паролей, не сохраняется.",
+   "id": "Teks terakhir yang kamu salin, di pil Rak. Hanya disimpan di memori, tidak pernah di disk; yang disalin pengelola kata sandi tidak pernah disimpan."
   }
  }
 }

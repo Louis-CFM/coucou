@@ -1,4 +1,4 @@
-// The default output's master volume and mute, through Core Audio
+// The default output's master volume, through Core Audio
 // (IAudioEndpointVolume): the music card's volume slider and the volume HUD.
 
 use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
@@ -24,10 +24,3 @@ pub fn set_master_volume(v: f32) -> bool {
     endpoint().is_some_and(|e| unsafe { e.SetMasterVolumeLevelScalar(v.clamp(0.0, 1.0), std::ptr::null()).is_ok() })
 }
 
-pub fn muted() -> Option<bool> {
-    unsafe { endpoint()?.GetMute().ok().map(|b| b.as_bool()) }
-}
-
-pub fn set_muted(on: bool) -> bool {
-    endpoint().is_some_and(|e| unsafe { e.SetMute(on, std::ptr::null()).is_ok() })
-}

@@ -9,10 +9,10 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_PLUS, DEFAULT_SETTINGS, type PlusPrefs, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  HOST_OS, MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -971,6 +971,27 @@ function generalSection(): HTMLElement {
   );
 }
 
+/** Settings → Island extras (Windows): the live activities and the clipboard. */
+function islandExtrasSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+    h("div", { class: "row" },
+      h("label", { text: t(label) }),
+      toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t(hint) }),
+  ];
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Island extras") })),
+    ...item("volumeHud", N_("Volume"), N_("The volume keys show the level in the island instead of Windows' popup.")),
+    ...item("brightnessHud", N_("Brightness"), N_("The island shows the brightness when it changes.")),
+    ...item("batteryAlerts", N_("Battery"), N_("Plugged in, unplugged, and a word at 20 % and 10 % left.")),
+    ...item("clipboardHistory", N_("Clipboard history"), N_("The last texts you copied, on the Shelf pill. Kept in memory only, never on disk; what password managers copy is never kept.")),
+  );
+}
+
 /**
  * Settings → General → Language, as on the Mac: "System" follows the
  * system's language when Coucou has it (else English), or one of the ten.
@@ -1372,6 +1393,7 @@ async function render() {
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
+    ...(HOST_OS === "windows" ? [islandExtrasSection()] : []),
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",

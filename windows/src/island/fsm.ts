@@ -50,6 +50,8 @@ export class IslandStateMachine {
 
   private homeDelay = 15;
   private byHover = false;
+  /** Out of hidden for a live activity only: back to hidden when it ends. */
+  private peeking = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
@@ -61,7 +63,27 @@ export class IslandStateMachine {
     this.transition("coucou");
   }
 
+  /**
+   * A live activity (island/live.ts): hidden → compact for `ms`, then hidden
+   * again. Another one while it peeks pushes the end back; one while the
+   * island is already out changes nothing about when it hides.
+   */
+  peek(ms: number) {
+    if (this.state === "hidden") {
+      this.cancelTimers();
+      this.transition("petit");
+      this.peeking = true;
+    }
+    if (this.state !== "petit" || !this.peeking) return;
+    this.clear("petitHide");
+    this.petitHide = window.setTimeout(() => {
+      this.petitHide = null;
+      if (this.state === "petit" && this.peeking && !this.pinned) this.transition("hidden");
+    }, ms);
+  }
+
   mouseEntered() {
+    this.peeking = false;
     if (this.openOnHover && (this.state === "hidden" || this.state === "petit") && !this.pinned) {
       this.cancelTimers();
       this.byHover = true;
@@ -206,6 +228,7 @@ export class IslandStateMachine {
 
   private transition(next: FsmState) {
     if (next === this.state) return;
+    if (next !== "petit") this.peeking = false;
     const from = this.state;
     this.state = next;
     this.onTransition?.(from, next);
