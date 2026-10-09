@@ -1,0 +1,137 @@
+/* Nova shared theme — midnight glass. Dark tokens first, then the light
+   theme overrides, then one size system for every control, grid-aligned
+   rows, smooth motion, focus rings, and the 4-page settings nav. */
+
+:root {
+  color-scheme: dark;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari",
+    "Noto Sans Bengali", "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Sans SC",
+    "Droid Sans Fallback", sans-serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  --ink: #eef4fb;
+  --dim: #a4b2c5;
+  --dim-2: #7d8aa0;
+  --bg: #0a0d13;
+  --bg-raised: #0d1118;
+  --card: #121826;
+  --card-2: #161f30;
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.18);
+  --accent: #5ee6b8;
+  --accent-ink: #062c20;
+  --accent-soft: rgba(94, 230, 184, 0.12);
+  --green: #5ee6b8;
+  --red: #ff8d9e;
+  --red-soft: rgba(244, 80, 94, 0.14);
+  --amber: #f5c477;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 180ms;
+  --ctl-h: 34px;
+  --radius: 12px;
+  --radius-sm: 9px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #1d2330;
+  --dim: #4c5666;
+  --dim-2: #6a7484;
+  --bg: #eef1f5;
+  --bg-raised: #f5f7fa;
+  --card: #ffffff;
+  --card-2: #f3f6fa;
+  --hairline: rgba(35, 40, 48, 0.14);
+  --hairline-strong: rgba(35, 40, 48, 0.28);
+  --accent: #0c8a63;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(12, 138, 99, 0.10);
+  --green: #0c8a63;
+  --red: #b82837;
+  --red-soft: rgba(184, 40, 55, 0.10);
+  --amber: #8a5a0c;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scrollbar-gutter: stable; }
+
+body.settings-window {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 13px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+#settings-root {
+  padding: clamp(14px, 3vw, 28px) clamp(14px, 3vw, 28px) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 840px;
+  margin: 0 auto;
+  min-width: 0;
+  background: radial-gradient(1200px 500px at 85% -10%, var(--accent-soft), transparent 60%);
+}
+
+h1 { font: 650 21px/1.3 var(--font); letter-spacing: -0.02em; }
+
+h1 .version {
+  font: 500 11px var(--mono);
+  color: var(--dim);
+  margin-inline-start: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+section {
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  transition: border-color var(--t-med) var(--ease);
+}
+
+section:focus-within { border-color: var(--hairline-strong); }
+
+section > h2 {
+  font: 650 14px/1.5 var(--font);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  letter-spacing: -0.01em;
+}
+
+.hint {
+  font: 400 12px/1.65 var(--font);
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+
+/* Rows: fixed label column, fluid middle; selects never stretch (the model
+   picker stays compact and controls align to the right edge). */
+.row { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; min-width: 0; }
+.row > label { flex: 0 0 132px; min-width: 132px; color: var(--dim); font-size: 12.5px; }
+.row > label:empty { visibility: hidden; }
+.row > :is(input, select) { max-width: 100%; }
+.row > select { flex: 0 1 auto; max-width: 280px; min-width: 0; }
+
+.spacer { flex: 1 1 auto; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+
+code, .path {
+  font: 400 11.5px/1.65 var(--mono);
+  color: var(--dim);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  user-select: text;
+  min-width: 0;
+}
