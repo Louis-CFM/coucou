@@ -408,8 +408,17 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+/// Only the island may drive an approval — the buttons live there, and the
+/// request ids stay unguessable (pipe.rs) so they cannot be borrowed either.
+fn from_island(window: &tauri::WebviewWindow) -> bool {
+    window.label() == island::WINDOW_LABEL
+}
+
 #[tauri::command]
-fn approval_decision(app: AppHandle, request_id: String, decision: String) {
+fn approval_decision(window: tauri::WebviewWindow, app: AppHandle, request_id: String, decision: String) {
+    if !from_island(&window) {
+        return;
+    }
     recap::record_decision(&app, &request_id, &decision);
     pipe::answer(&app, &request_id, &decision);
 }
@@ -417,10 +426,14 @@ fn approval_decision(app: AppHandle, request_id: String, decision: String) {
 /// An option picked on the island for a question Claude Code asked.
 #[tauri::command]
 fn approval_answer(
+    window: tauri::WebviewWindow,
     app: AppHandle,
     request_id: String,
     answers: std::collections::HashMap<String, serde_json::Value>,
 ) {
+    if !from_island(&window) {
+        return;
+    }
     // An answered question is not an Allow / Deny: nothing for the recap.
     recap::forget_request(&app, &request_id);
     pipe::answer_question(&app, &request_id, &answers);
@@ -430,14 +443,20 @@ fn approval_answer(
 /// Until this arrives the relay only waits a few hundred milliseconds, which is
 /// what stops a paused or unresponsive island from freezing Claude Code.
 #[tauri::command]
-fn approval_ack(app: AppHandle, request_id: String) {
+fn approval_ack(window: tauri::WebviewWindow, app: AppHandle, request_id: String) {
+    if !from_island(&window) {
+        return;
+    }
     pipe::acknowledge(&app, &request_id);
 }
 
 /// Nobody can act on this request — the island is paused, or another card is
 /// already up. Claude Code falls back to asking in the terminal immediately.
 #[tauri::command]
-fn approval_decline(app: AppHandle, request_id: String) {
+fn approval_decline(window: tauri::WebviewWindow, app: AppHandle, request_id: String) {
+    if !from_island(&window) {
+        return;
+    }
     recap::forget_request(&app, &request_id);
     pipe::decline(&app, &request_id);
 }

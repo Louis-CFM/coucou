@@ -61,12 +61,39 @@ pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
+/// A process-random salt keeps request ids unguessable: `{pid}-{salt}-{n}` —
+/// anything else in a webview that can enumerate `pid` + a counter starting at
+/// 1 could otherwise drive `approval_*` commands for someone else's request.
+fn next_request_id() -> String {
+    use std::sync::OnceLock;
+    static SALT: OnceLock<u64> = OnceLock::new();
+    let salt = SALT.get_or_init(|| {
+        use std::hash::{BuildHasher, Hasher};
+        std::collections::hash_map::RandomState::new().build_hasher().finish()
+    });
+    format!("{}-{salt:016x}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed))
+}
+
+/// Only the deployed coucou-hook may raise an approval card — any local
+/// process can connect (the surface is intentionally open), but a card that
+/// asks Allow/Deny must come from our relay, not from a lookalike.
+fn trusted_hook_client(pipe: &impl Relay) -> bool {
+    let Some(pid) = pipe.client_pid() else { return false };
+    crate::platform::exe_is_hook(pid)
+}
+
 /// `\\.\pipe\coucou-<sid>` — must match coucou-hook's `pipe_path()` exactly.
 #[cfg(windows)]
 pub fn pipe_name() -> String {
     let key = crate::platform::current_user_sid()
         .unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_else(|_| "user".into()));
     format!(r"\\.\pipe\coucou-{key}")
+}
+
+/// Newlines and other control characters never reach the log: an event name or
+/// a request id is attacker-influenced text, and one `\n` forges a log entry.
+fn clean(text: &str) -> String {
+    text.chars().map(|c| if c.is_control() { ' ' } else { c }).collect()
 }
 
 #[cfg(windows)]
@@ -88,11 +115,14 @@ pub fn start(app: AppHandle) {
                 continue;
             }
             // Hand the connected instance to a task and listen on a fresh one.
+            // A transient failure (an EMFILE spike, a squatter that appeared
+            // late) must not kill the relay for the rest of the session.
             let next = match ServerOptions::new().create(&name) {
                 Ok(s) => s,
                 Err(err) => {
                     log::line(format!("cannot reopen the relay pipe: {err}"));
-                    return;
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    continue;
                 }
             };
             let connected = std::mem::replace(&mut server, next);
@@ -185,19 +215,26 @@ impl Relay for tokio::net::UnixStream {
 async fn handle(app: AppHandle, mut pipe: impl Relay) {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
+    // Only the freshly read bytes are scanned for the newline: rescanning the
+    // whole buffer per chunk is quadratic for a peer that dribbles bytes.
+    let mut end = None;
     loop {
         match pipe.read(&mut chunk).await {
             Ok(0) => break,
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
+                if let Some(i) = chunk[..n].iter().position(|b| *b == b'\n') {
+                    end = Some(buf.len() - n + i);
+                    break;
+                }
+                if buf.len() > MAX_PAYLOAD {
                     break;
                 }
             }
             Err(_) => return,
         }
     }
-    let line = match buf.iter().position(|b| *b == b'\n') {
+    let line = match end {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
@@ -212,6 +249,15 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
+    // The relay surface is open to third-party tooling on purpose (AGENTS.md),
+    // but an Allow/Deny card is not display: a permission request is only
+    // trusted from the deployed coucou-hook binary, not from any process that
+    // can reach the pipe.
+    if event == "PermissionRequest" && !trusted_hook_client(&pipe) {
+        log::line("refused a permission request from a non-relay client");
+        return;
+    }
+
     note_session_window(&pipe, &payload, &event);
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
@@ -219,14 +265,14 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
         if event != "StatusLine" {
-            log::line(format!("hook {event}"));
+            log::line(format!("hook {}", clean(&event)));
         }
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
         return;
     }
 
-    let id = format!("{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+    let id = next_request_id();
     let (tx, mut rx) = mpsc::channel::<Reply>(4);
     {
         let pending = app.state::<Pending>();
@@ -293,18 +339,24 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
         }
     }
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
-        Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {}", loggable(&d)));
-            Some(d)
-        }
-        Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} released without a decision"));
-            None
-        }
-        _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
-            None
+    // A re-ack (a webview that re-rendered the card, a page reload) is not a
+    // decision and must not end the wait — the deadline stays fixed.
+    let deadline = tokio::time::Instant::now() + DECISION_TIMEOUT;
+    loop {
+        match tokio::time::timeout_at(deadline, rx.recv()).await {
+            Ok(Some(Reply::Decision(d))) => {
+                log::line(format!("hook id={id} answered {}", loggable(&d)));
+                return Some(d);
+            }
+            Ok(Some(Reply::Decline)) => {
+                log::line(format!("hook id={id} released without a decision"));
+                return None;
+            }
+            Ok(Some(Reply::Ack)) => continue,
+            _ => {
+                log::line(format!("hook id={id} timed out — terminal takes over"));
+                return None;
+            }
         }
     }
 }
@@ -324,7 +376,7 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
         Some(tx) => {
             let _ = tx.try_send(reply);
         }
-        None => log::line(format!("reply for id={request_id} — no pending request")),
+        None => log::line(format!("reply for id={} — no pending request", clean(request_id))),
     }
 }
 
@@ -335,7 +387,7 @@ pub fn acknowledge(app: &AppHandle, request_id: &str) {
 
 /// Nobody can act on this one — paused, or another card already holds the view.
 pub fn decline(app: &AppHandle, request_id: &str) {
-    log::line(format!("decline id={request_id}"));
+    log::line(format!("decline id={}", clean(request_id)));
     send(app, request_id, Reply::Decline, false);
 }
 
@@ -346,7 +398,7 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
         "allow" | "always" => "allow",
         _ => "deny",
     };
-    log::line(format!("decision id={request_id} {word}"));
+    log::line(format!("decision id={} {word}", clean(request_id)));
     send(app, request_id, Reply::Decision(word.to_string()), false);
 }
 
@@ -354,8 +406,75 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
 /// maps each question's text to the chosen label, which is the shape
 /// AskUserQuestion takes them in.
 pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<String, serde_json::Value>) {
-    log::line(format!("decision id={request_id} answered a question"));
+    log::line(format!("decision id={} answered a question", clean(request_id)));
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The wait is async; these run it on tauri's runtime (no tokio macros dep).
+    fn wait(rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
+        tauri::async_runtime::block_on(wait_for_decision("t", rx))
+    }
+
+    #[test]
+    fn an_ack_then_a_click_answers() {
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Decision("allow".into())).unwrap();
+        assert_eq!(wait(&mut rx).as_deref(), Some("allow"));
+    }
+
+    #[test]
+    fn a_second_ack_does_not_cancel_the_wait() {
+        // The island re-acking (re-render, webview reload) used to fall into the
+        // catch-all and end the request as a timeout — the click that followed
+        // then went nowhere.
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Ack).unwrap();
+        tx.try_send(Reply::Decision("deny".into())).unwrap();
+        assert_eq!(wait(&mut rx).as_deref(), Some("deny"));
+    }
+
+    #[test]
+    fn a_click_that_beats_the_ack_still_counts() {
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        tx.try_send(Reply::Decision("allow".into())).unwrap();
+        assert_eq!(wait(&mut rx).as_deref(), Some("allow"));
+    }
+
+    #[test]
+    fn a_decline_means_the_terminal_asks() {
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        tx.try_send(Reply::Decline).unwrap();
+        assert_eq!(wait(&mut rx), None);
+    }
+
+    #[test]
+    fn no_ack_at_all_means_no_decision() {
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        drop(tx); // the island went away: the sender drops, the wait ends.
+        assert_eq!(wait(&mut rx), None);
+    }
+
+    #[test]
+    fn request_ids_are_unguessable_and_unique() {
+        let a = next_request_id();
+        let b = next_request_id();
+        assert_ne!(a, b);
+        // pid-salt-counter: the salt is not enumerable from the pid alone.
+        assert!(a.contains('-'), "{a}");
+        assert_eq!(a.matches('-').count(), 2);
+    }
+
+    #[test]
+    fn control_characters_stay_out_of_the_log() {
+        assert_eq!(clean("SessionStart\nforged"), "SessionStart forged");
+        assert_eq!(clean("ok\r\nok"), "ok  ok");
+    }
 }
