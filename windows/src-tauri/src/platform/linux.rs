@@ -94,12 +94,26 @@ fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
 pub fn prepare_environment() {
     prefer_x11_on_gnome();
     follow_gnome_text_scaling();
+    avoid_dmabuf_on_nvidia();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
     let cache = xdg("XDG_CACHE_HOME", ".cache").join("coucou");
     if std::fs::create_dir_all(&cache).is_ok() {
         std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
+    }
+}
+
+/// On the NVIDIA driver, WebKitGTK's DMA-BUF renderer fails to allocate its
+/// buffers ("Failed to create GBM buffer … Invalid argument") and the island
+/// renders nothing, or the Wayland connection dies with a protocol error.
+/// WebKit's own fallback is the documented workaround; an explicit value in
+/// the environment — "0" included — always wins.
+fn avoid_dmabuf_on_nvidia() {
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        && std::path::Path::new("/proc/driver/nvidia/version").exists()
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
 }
 
