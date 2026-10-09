@@ -11,7 +11,7 @@ const hash = createHash('sha256').update(packed).digest('hex');
 const expected = readFileSync('.nova/snapshot.sha256', 'utf8').trim();
 if (hash !== expected) throw new Error('Snapshot integrity check failed');
 const m = JSON.parse(gunzipSync(packed));
-const current = createHash('sha256').update(readFileSync('windows/package.json')).digest('hex');
+const current = createHash('sha256').update(readFileSync('windows/package.json', 'utf8').replace(/\r\n/g, '\n')).digest('hex');
 if (current !== m.basePackageSHA256) throw new Error('Unexpected upstream version: refusing to overwrite');
 function safe(path) {
   if (path.split('/').some(p => !p || p === '..' || p === '.git')) throw new Error('Unsafe snapshot path');

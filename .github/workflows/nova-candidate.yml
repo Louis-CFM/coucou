@@ -46,6 +46,22 @@ jobs:
       - name: Existing Tauri build and package pipeline
         working-directory: windows
         run: npm run pack
+      - name: Windows process launch smoke test (not visual acceptance)
+        shell: pwsh
+        run: |
+          $env:APPDATA = Join-Path $env:RUNNER_TEMP 'Nova-smoke-roaming'
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'Nova-smoke-local'
+          New-Item -ItemType Directory -Force $env:APPDATA,$env:LOCALAPPDATA | Out-Null
+          $process = Start-Process -FilePath (Resolve-Path windows/target/release/nova.exe) -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+            if ($process.HasExited) { throw "Nova exited during launch smoke test: $($process.ExitCode)" }
+            Write-Output "Nova process remained alive for 8 seconds; visual/DPI acceptance still requires a real desktop."
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { taskkill /PID $process.Id /T /F | Out-Null }
+          }
       - name: Record artifact checksums
         shell: pwsh
         run: |
