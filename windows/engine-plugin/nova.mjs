@@ -29,7 +29,7 @@ export default async ()=>({
    // A real executable invocation forces the CLI's own ctx.ask gate.
    output.args.command=prefix+quote('& { '+original+' }');
   }
-  if(input.tool==='apply_patch'){for(const match of String(output.args.patchText||'').matchAll(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm))await protect(match[1].trim());}
+  if(input.tool==='apply_patch'){for(const match of String(output.args.patchText||'').matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to):\s*(.+)$/gm))await protect(match[1].trim());}
   if(input.tool==='apply_patch'&&/^\*\*\* Delete File:/mi.test(String(output.args.patchText||'')))
    throw new Error('Use nova_recycle to delete files safely; permanent patch deletion is disabled');
  },
