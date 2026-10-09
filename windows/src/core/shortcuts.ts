@@ -382,24 +382,26 @@ export type IslandKeyAction =
 /**
  * A key pressed while the island has the keyboard → what it does, or null to
  * leave it alone. Ctrl stands in for ⌘. In a text field Ctrl+← and Ctrl+→
- * keep moving by word, and Ctrl+↑ and Ctrl+↓ by paragraph.
+ * keep moving by word, Ctrl+↑ and Ctrl+↓ by paragraph — and of the island's
+ * own shortcuts only Ctrl+K (new chat) still fires while the user is typing.
  */
 export function islandKeyAction(
   e: KeyPress,
   ctx: { view: string; inTextField: boolean },
 ): IslandKeyAction | null {
   if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return null;
+  const letter = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : /^Key([A-Z])$/.exec(e.code)?.[1].toLowerCase();
+  if (ctx.inTextField) {
+    return letter === "k" && ctx.view === "prompt" ? { kind: "newChat" } : null;
+  }
   if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-    if (ctx.inTextField) return null;
     return { kind: "cycle", delta: e.key === "ArrowRight" ? 1 : -1 };
   }
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    if (ctx.inTextField) return null;
     return { kind: "list", delta: e.key === "ArrowDown" ? 1 : -1 };
   }
   const digit = /^Digit([1-9])$/.exec(e.code);
   if (digit) return { kind: "pill", number: Number(digit[1]) };
-  const letter = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : /^Key([A-Z])$/.exec(e.code)?.[1].toLowerCase();
   if (letter === "k") return ctx.view === "prompt" ? { kind: "newChat" } : null;
   if (letter === "p") return { kind: "pin" };
   if (letter === "o") return { kind: "openSelection" };
