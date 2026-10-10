@@ -217,7 +217,9 @@ pub fn idle_secs() -> u64 {
 /// The ntfy URL for a topic: a bare topic goes to ntfy.sh; a full https URL is
 /// the user's own server. Anything else is refused.
 pub fn ntfy_url(topic: &str) -> Option<String> {
-    let t = topic.trim();
+    let t = topic.trim().trim_end_matches('/');
+    // Pasted as "ntfy.sh/topic" or "https://ntfy.sh/topic": the topic is what's after the host.
+    let t = t.strip_prefix("ntfy.sh/").unwrap_or(t);
     if t.starts_with("https://") {
         return Some(t.to_string());
     }
@@ -229,26 +231,56 @@ pub fn ntfy_url(topic: &str) -> Option<String> {
 #[tauri::command]
 pub async fn phone_push(title: String, body: String, urgent: bool, force: Option<bool>) -> bool {
     if crate::integrations::PAUSED.load(Ordering::Relaxed) {
+        crate::log::line("phone: alert skipped (paused)");
         return false;
     }
     let force = force.unwrap_or(false);
     if !force && PREFS.lock().unwrap().push_only_when_away && idle_secs() < AWAY_SECS {
         return false;
     }
-    let Some(url) = crate::secrets::get(NTFY_KEY).and_then(|t| ntfy_url(&t)) else { return false };
+    let Some(topic) = crate::secrets::get(NTFY_KEY) else {
+        crate::log::line("phone: alert skipped (no ntfy topic saved)");
+        return false;
+    };
+    let Some(url) = ntfy_url(&topic) else {
+        crate::log::line("phone: alert skipped (the saved ntfy topic isn't a topic name or an https URL)");
+        return false;
+    };
     let title: String = title.chars().filter(|c| !c.is_control()).take(120).collect();
     let body: String = body.chars().take(1000).collect();
     let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10)).build().unwrap_or_default();
-    client
+    let sent = client
         .post(url)
-        .header("Title", title)
+        // Headers are ASCII: a title with an accent or an emoji goes RFC 2047-encoded, which ntfy reads.
+        .header("Title", header_text(&title))
         .header("Tags", if urgent { "warning" } else { "robot" })
         .header("Priority", if urgent { "high" } else { "default" })
         .body(body)
         .send()
-        .await
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
+        .await;
+    match sent {
+        Ok(r) if r.status().is_success() => {
+            crate::log::line("phone: alert sent");
+            true
+        }
+        Ok(r) => {
+            crate::log::line(format!("phone: alert refused by ntfy ({})", r.status()));
+            false
+        }
+        Err(e) => {
+            crate::log::line(format!("phone: alert not sent ({})", if e.is_timeout() { "timeout" } else if e.is_connect() { "no connection" } else { "request error" }));
+            false
+        }
+    }
+}
+
+/// A header value: as is when ASCII, else `=?UTF-8?B?…?=`.
+pub fn header_text(s: &str) -> String {
+    if s.is_ascii() {
+        s.to_string()
+    } else {
+        format!("=?UTF-8?B?{}?=", crate::claude::base64_for(s.as_bytes()))
+    }
 }
 
 #[cfg(test)]
@@ -262,6 +294,9 @@ mod tests {
         assert_eq!(ntfy_url("http://ntfy.example.com/x"), None);
         assert_eq!(ntfy_url("a/../b"), None);
         assert_eq!(ntfy_url(""), None);
+        assert_eq!(ntfy_url(" ntfy.sh/my-topic/ ").as_deref(), Some("https://ntfy.sh/my-topic"));
+        assert_eq!(header_text("VS Code finished"), "VS Code finished");
+        assert!(header_text("Café ☕").starts_with("=?UTF-8?B?"));
     }
 
     #[test]

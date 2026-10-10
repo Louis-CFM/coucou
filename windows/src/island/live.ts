@@ -74,6 +74,11 @@ export function showLive(host: LiveHost, e: LiveEvent, duration?: number) {
   State.notify();
 }
 
+/** Set by registerLiveHandlers: the call was answered from the island. */
+let onAnswered: (() => void) | null = null;
+/** Who the ringing call is from. */
+let caller = "";
+
 /** The call whose card is up, so it goes when the call ends. */
 let ringing: number | null = null;
 /** A call's card stays while it rings, at most this long. */
@@ -107,6 +112,7 @@ export function registerLiveHandlers(host: LiveHost) {
     if (n.kind === "call") {
       // Stays while it rings: Phone Link takes the toast away when it ends.
       ringing = n.id;
+      caller = who;
       stopRing();
       Sound.play("approval");
       ringTimer = window.setInterval(() => Sound.play("approval"), 2200);
@@ -123,8 +129,16 @@ export function registerLiveHandlers(host: LiveHost) {
     showLive(host, { kind: n.kind, level: null, muted: false, charging: false, text });
   });
   void onEvent<number>("toast-gone", (id) => {
-    if (id === ringing) endLive(host);
+    if (id === ringing && Live.current?.muted !== true) endLive(host);
   });
+  // Answered here: the card says so and keeps its ✕ to end the call.
+  // ponytail: "On call" stays 30 s; Phone Link reports no call end we can read.
+  onAnswered = () => {
+    stopRing();
+    ringing = null;
+    // `muted` marks the answered call: no ✓, and no ring.
+    showLive(host, { kind: "call", level: null, muted: true, charging: false, text: t("On call · {0}", { 0: caller }) }, 30_000);
+  };
 }
 
 function iconFor(e: LiveEvent): { path: string; stroke: number } {
@@ -169,7 +183,23 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
   const fill = h("i", { class: "live-fill" });
   const bar = h("div", { class: "live-bar" }, fill);
   const label = h("span", { class: "live-label" });
-  const el = h("div", { id: "live" }, icon, bar, label);
+  // A ringing call: answer and end, pressed in Phone Link for you (callctl.rs).
+  const callBtn = (answer: boolean) => {
+    const b = h("button", { class: `call-btn ${answer ? "yes" : "no"}`, title: answer ? t("Answer") : t("Decline") },
+      svg(answer ? ICONS.phone : ICONS.xmark, 12, answer ? { stroke: 2.2 } : {}));
+    b.addEventListener("mousedown", (e) => e.stopPropagation());
+    b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const done = await Bridge.callAction(answer);
+      // Nothing to press (banners off, or Phone Link changed): its window instead.
+      if (!done) void Bridge.openPhoneLink();
+      else if (answer) onAnswered?.();
+    });
+    return b;
+  };
+  const yes = callBtn(true);
+  const no = callBtn(false);
+  const el = h("div", { id: "live" }, icon, bar, label, yes, no);
   let shownIcon = "";
 
   return {
@@ -190,11 +220,14 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
       }
       const isText = e.kind === "phone" || e.kind === "call" || e.kind === "message" || e.kind === "app";
       el.classList.toggle("phone", isText);
+      const ringingCall = e.kind === "call";
+      yes.style.display = ringingCall && !e.muted ? "" : "none";
+      no.style.display = ringingCall ? "" : "none";
       if (isText && e.kind !== "phone") {
         label.textContent = e.text;
         // A call opens Phone Link, where it is answered or declined.
-        el.title = e.kind === "call" ? t("Click to answer or decline in Phone Link") : e.text;
-        el.onclick = e.kind === "call" ? () => void Bridge.openPhoneLink() : null;
+        el.title = e.text;
+        el.onclick = null;
         return;
       }
       if (e.kind === "phone") {

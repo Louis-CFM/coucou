@@ -792,6 +792,33 @@ body {
   flex: none;
 }
 
+/* A call's answer / end buttons in the live card. */
+.call-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.12s, filter 0.15s;
+}
+.call-btn.yes {
+  background: #22c55e;
+}
+.call-btn.no {
+  background: #ef4444;
+}
+.call-btn:hover {
+  filter: brightness(1.15);
+}
+.call-btn:active {
+  transform: scale(0.9);
+}
+
 /* The mini player in the compact island (island/miniplayer.ts). */
 #mini-player {
   position: absolute;

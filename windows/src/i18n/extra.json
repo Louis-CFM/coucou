@@ -3944,17 +3944,6 @@
    "ru": "Уведомления на острове",
    "id": "Notifikasi di pulau"
   },
-  "Click to answer or decline in Phone Link": {
-   "zh-Hans": "点击在“手机连接”中接听或拒接",
-   "hi": "Phone Link में उठाने या काटने के लिए क्लिक करें",
-   "es": "Haz clic para contestar o rechazar en Vincular al teléfono",
-   "ar": "انقر للرد أو الرفض في Phone Link",
-   "fr": "Cliquez pour répondre ou refuser dans Mobile connecté",
-   "bn": "Phone Link-এ ধরতে বা কাটতে ক্লিক করুন",
-   "pt-BR": "Clique para atender ou recusar no Vincular ao Celular",
-   "ru": "Нажмите, чтобы ответить или отклонить в «Связи с телефоном»",
-   "id": "Klik untuk menjawab atau menolak di Phone Link"
-  },
   "Your iPhone's calls and messages (through Microsoft Phone Link) and other apps' notifications, shown in the island and never stored. Windows asks once to allow it.": {
    "zh-Hans": "你的 iPhone 来电和信息（通过 Microsoft 手机连接）以及其他应用的通知，会显示在岛屿中，从不保存。Windows 会询问一次是否允许。",
    "hi": "आपके iPhone के कॉल और मैसेज (Microsoft Phone Link से) और दूसरे ऐप्स की सूचनाएँ, आइलैंड में दिखती हैं और कभी सहेजी नहीं जातीं।Windows एक बार अनुमति माँगेगा।",
@@ -4262,6 +4251,39 @@
    "pt-BR": "Digite os minutos ou escolha um",
    "ru": "Введите минуты или выберите",
    "id": "Ketik menit, atau pilih satu"
+  },
+  "Answer": {
+   "zh-Hans": "接听",
+   "hi": "उठाएँ",
+   "es": "Contestar",
+   "ar": "رد",
+   "fr": "Répondre",
+   "bn": "ধরুন",
+   "pt-BR": "Atender",
+   "ru": "Ответить",
+   "id": "Jawab"
+  },
+  "Decline": {
+   "zh-Hans": "拒接",
+   "hi": "काटें",
+   "es": "Rechazar",
+   "ar": "رفض",
+   "fr": "Refuser",
+   "bn": "কাটুন",
+   "pt-BR": "Recusar",
+   "ru": "Отклонить",
+   "id": "Tolak"
+  },
+  "On call · {0}": {
+   "zh-Hans": "通话中 · {0}",
+   "hi": "कॉल पर · {0}",
+   "es": "En llamada · {0}",
+   "ar": "في مكالمة · {0}",
+   "fr": "En appel · {0}",
+   "bn": "কলে আছেন · {0}",
+   "pt-BR": "Em chamada · {0}",
+   "ru": "Идёт звонок · {0}",
+   "id": "Sedang menelepon · {0}"
   }
  }
 }

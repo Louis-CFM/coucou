@@ -40,6 +40,8 @@ mod sysevents;
 mod phone;
 #[cfg(windows)]
 mod notify;
+#[cfg(windows)]
+mod callctl;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -772,6 +774,8 @@ pub fn run() {
             sysevents::clipboard_copy,
             #[cfg(windows)]
             notify::open_phone_link,
+            #[cfg(windows)]
+            callctl::call_action,
             #[cfg(windows)]
             phone::phone_send,
             #[cfg(windows)]
