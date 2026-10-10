@@ -576,6 +576,10 @@ What changes on Linux:
   Spotify builds that don't report the position over MPRIS show the bar
   from where the track started; the Mac's Automation prompt has no
   equivalent here.
+  The pill is called **Media** and follows any MPRIS player, not only
+  Spotify (a browser, VLC, mpv…): the one that plays is shown, the one
+  already shown keeps its place while it plays (Spotify wins a tie), and
+  one that starts playing takes over. Its id is still `integration_spotify`.
 - **Plan usage**: the status line relay is `~/.local/share/coucou/bin/coucou-hook
   --statusline` and runs your previous status line with `/bin/sh -c`, like Claude
   Code. Codex is found on `$PATH`, in `~/.local/bin`, npm's global prefix, Volta,
@@ -613,3 +617,35 @@ What changes on Linux:
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
+
+### X11 and Wayland
+
+What Coucou does depends on the session type (`echo $XDG_SESSION_TYPE`) and on
+whether the compositor has layer-shell. The first column is what a setup
+without layer-shell does: GNOME, on X11 or on Wayland (where Coucou runs
+through XWayland by default, see above). Compositors with layer-shell (KDE
+Plasma, COSMIC, Hyprland, Sway) run Coucou natively on Wayland.
+
+| | X11 (GNOME) | Wayland, no layer-shell (GNOME) | Wayland, layer-shell (KDE, Hyprland, Sway, COSMIC) |
+|---|---|---|---|
+| Island window | dock window, top centre | the same, through XWayland | layer surface over everything |
+| Below the top bar | yes: starts at the work area the shell leaves free | *not tested*: XWayland may report no top bar, so it can sit over it | no: it goes over the bar on purpose, like the Mac's notch |
+| Global shortcuts | X11 key grabs | XDG GlobalShortcuts portal (GNOME 48+) | the portal, or commands to bind (`coucou --shortcut …`) |
+| Mochi's eyes | follow the pointer over the island only | the same | the same |
+| Mochi on the desktop | an ordinary window that goes anywhere | cannot leave the island | layer surface on the island's display |
+| Beat sync, Media pill, Claude Code chat | the same everywhere: PipeWire (`pw-record`), the session D-Bus and the `claude` CLI do not care about the display server | | |
+
+Notes:
+
+- **Below the top bar** (X11, no layer-shell): the island starts at the bottom
+  edge of the desktop's top bar, read from the work area, and its wake strip is
+  14 px tall instead of 6 so the pointer can stop on it. If it ends up over the
+  bar, or too far from it, set `COUCOU_TOP_INSET=<px>` (a GNOME bar is about
+  32 px; `0` puts it back on the edge). A layer-shell compositor always gets
+  `0`.
+- **Beat sync** needs PipeWire with `pw-record` on the `PATH`. It listens to the
+  default output, never the microphone, and only while a player plays and
+  *Settings → General → Dance to the beat* is on.
+- To see which one you have: `echo $XDG_SESSION_TYPE` (`x11` or `wayland`) and
+  `echo $XDG_CURRENT_DESKTOP`. `COUCOU_X11=0`, `COUCOU_DOCK=0` and
+  `COUCOU_LAYER_SHELL=0` (see above) force one behaviour when a setup misbehaves.
