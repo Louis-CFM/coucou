@@ -1759,6 +1759,7 @@
 				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG PHONE_LINK";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = DebugCloud;
 		};
