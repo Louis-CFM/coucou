@@ -2109,9 +2109,20 @@
    "ar": "يعرض استخدام خطة Claude (حدّا الخمس ساعات والأسبوع) في رأس الشريط. يضيف Coucou مُرحِّلًا لسطر الحالة في ~/.claude/settings.json. إن كان لديك سطر حالة فسيستمر في العمل كما كان. لخطتَي Pro وMax فقط.",
    "fr": "Affiche l'utilisation de ton forfait Claude (limites sur 5 heures et à la semaine) dans l'en-tête de l'île. Coucou ajoute un relais de ligne d'état dans ~/.claude/settings.json. Si tu as déjà une ligne d'état, elle continue de fonctionner comme avant. Forfaits Pro et Max uniquement.",
    "bn": "আইল্যান্ডের হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Coucou ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার আগে থেকে স্ট্যাটাস লাইন থাকলে সেটি আগের মতোই চলবে। শুধু Pro ও Max প্ল্যান।",
-   "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanal) no cabeçalho da ilha. O Coucou adiciona um relay de linha de status em ~/.claude/settings.json. Se você já tem uma linha de status, ela continua funcionando como antes. Apenas planos Pro e Max.",
+   "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanal) no cabeçalho da ilha. O Coucou adiciona um relay de linha de status em ~/.claude/settings.json. Si você já tem uma linha de status, ela continua funcionando como antes. Apenas planos Pro e Max.",
    "ru": "Показывает использование тарифа Claude (лимиты на 5 часов и на неделю) в заголовке острова. Coucou добавляет ретранслятор строки состояния в ~/.claude/settings.json. Если у вас уже есть строка состояния, она работает как прежде. Только тарифы Pro и Max.",
    "id": "Menampilkan pemakaian paket Claude Anda (batas 5 jam dan mingguan) di header pulau. Coucou menambahkan relay baris status di ~/.claude/settings.json. Jika Anda sudah punya baris status, baris itu tetap berjalan seperti biasa. Khusus paket Pro dan Max."
+  },
+  "The numbers come from Claude Code in a terminal; sessions in the Claude desktop app do not report them.": {
+   "zh-Hans": "数据来自终端中的 Claude Code；Claude 桌面版应用中的会话不会报告这些数据。",
+   "hi": "ये संख्याएं टर्मिनल में Claude Code से आती हैं; Claude डेस्कटॉप ऐप के सत्र इन्हें रिपोर्ट नहीं करते हैं।",
+   "es": "Los datos proceden de Claude Code en la terminal; las sesiones en la aplicación de escritorio de Claude no los reportan.",
+   "ar": "تأتي الأرقام من Claude Code في الطرفية؛ لا تُبلِّغ عنها جلسات تطبيق Claude لسطح المكتب.",
+   "fr": "Les chiffres proviennent de Claude Code dans un terminal ; les sessions dans l'application Claude pour ordinateur ne les transmettent pas.",
+   "bn": "সংখ্যাগুলো টার্মিনালে Claude Code থেকে আসে; Claude ডেস্কটপ অ্যাপের সেশনগুলো এগুলো রিপোর্ট করে না।",
+   "pt-BR": "Os números vêm do Claude Code no terminal; as sessões no aplicativo Claude para desktop não os relatam.",
+   "ru": "Показатели поступают из Claude Code в терминале; сессии в приложении Claude Desktop их не передают.",
+   "id": "Angka-angka ini berasal dari Claude Code di terminal; sesi di aplikasi desktop Claude tidak melaporkannya."
   },
   "Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.": {
    "zh-Hans": "在岛的顶栏显示你的 Codex 套餐用量（每周限额和剩余的免费重置次数）。标签显示时，Coucou 会询问 Codex CLI（codex app-server），不会安装任何东西。Codex 必须已用 ChatGPT 登录。",
