@@ -223,13 +223,16 @@ side (tray, errors) embeds the same two files.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
-The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
-add their keys in **Settings… → Chat providers**, then click the model name
-above the chat box to switch provider and model, as on the Mac. The model list
-is fetched from the provider only once you pick it and it has a key. Switching
-mid-conversation carries the conversation over as plain text, so nothing in one
-provider's format is ever sent to another. These providers get no web search
-and no tools — they answer, they never act on your PC.
+The chat also talks to **Google AI (Gemini)**, **OpenAI**, **DeepSeek** and
+**OpenRouter**: add their keys in **Settings… → Chat providers**, then click the
+model name above the chat box to switch provider and model, as on the Mac. The
+model list is fetched from the provider only once you pick it and it has a key.
+Switching mid-conversation carries the conversation over as plain text, so
+nothing in one provider's format is ever sent to another. These providers get no
+web search and no tools — they answer, they never act on your PC. DeepSeek's V4
+models are asked **not** to think, so the answer starts right away instead of
+after a page of reasoning; its two models differ on pictures, so a dropped image
+goes to **deepseek-flash** and **deepseek-v4-pro** tells you to switch to it.
 
 **Local models**: **Settings… → Local models** connects **Ollama** or **LM
 Studio** (leave the address empty for the usual one on this PC; Ollama's
@@ -428,9 +431,11 @@ own window.
   guessed at with `cmd`. The Codex CLI is looked for on `PATH` and in npm's,
   Volta's, Bun's and pnpm's folders (and nvm's on Linux).
 - The chat's model picker opens inside the chat card instead of a popover, and
-  it also offers OpenRouter and any OpenAI-compatible server, which the Mac
-  does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
-  inline), where the Mac sends its name only.
+  it also offers OpenRouter, DeepSeek and any OpenAI-compatible server, which
+  the Mac does not. Google AI, OpenAI, OpenRouter and DeepSeek's
+  **deepseek-flash** can see an image you dropped (sent inline), where the Mac
+  sends its name only; **deepseek-v4-pro** reads text only and says so, naming
+  the model to switch to.
 - Live diff: the relay forwards an edit's text whole only once the edit is done
   (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
   shows its "Edits · file" step without counts rather than wrong ones. The

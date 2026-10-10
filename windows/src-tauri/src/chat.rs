@@ -334,6 +334,7 @@ mod tests {
         let mut s = Settings::default();
         assert_eq!(model_for(&s, "anthropic"), claude::DEFAULT_MODEL);
         assert_eq!(model_for(&s, "openai"), openai_compat::provider("openai").unwrap().default_model);
+        assert_eq!(model_for(&s, "deepseek"), openai_compat::provider("deepseek").unwrap().default_model);
         assert_eq!(model_for(&s, "ollama"), "");
         s.chat_models.insert("openai".into(), " gpt-x ".into());
         s.chat_models.insert("ollama".into(), "llama3.2".into());

@@ -1,6 +1,7 @@
 // Cloud providers that speak the OpenAI chat completions API: OpenAI, Google AI
-// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it) and
-// OpenRouter. One table describes them; one client talks to all three.
+// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it),
+// OpenRouter and DeepSeek. One table describes them; one client talks to all of
+// them.
 //
 // Same contract as claude.rs: the key never leaves the credential store and
 // file bytes never cross the IPC boundary. Chat only — no tools are sent, so
@@ -29,6 +30,15 @@ pub struct Provider {
     /// OpenAI's reasoning models refuse `max_tokens` and want
     /// `max_completion_tokens`; the compatible APIs take the older name.
     pub max_tokens_field: &'static str,
+    /// Extra JSON merged into every request body for this provider only.
+    pub extra_body: Option<&'static str>,
+    /// Model ids (a substring match) that read text only: a dropped picture is
+    /// refused rather than sent, because a name it cannot see helps nobody.
+    /// Empty when every model the provider offers takes a picture.
+    pub text_only: &'static [&'static str],
+    /// The model to point at when a picture meets a text-only one. Set
+    /// wherever `text_only` is (a test holds the two together).
+    pub alternative: Option<&'static str>,
 }
 
 pub const PROVIDERS: &[Provider] = &[
@@ -44,6 +54,9 @@ pub const PROVIDERS: &[Provider] = &[
             "computer-use", "transcribe", "image", "sora", "babbage", "davinci", "instruct",
         ],
         max_tokens_field: "max_completion_tokens",
+        extra_body: None,
+        text_only: &[],
+        alternative: None,
     },
     Provider {
         id: "google",
@@ -54,6 +67,9 @@ pub const PROVIDERS: &[Provider] = &[
         default_model: "gemini-2.0-flash",
         not_chat: &["embed", "imagen", "veo", "aqa", "tts", "audio", "live"],
         max_tokens_field: "max_tokens",
+        extra_body: None,
+        text_only: &[],
+        alternative: None,
     },
     Provider {
         id: "openrouter",
@@ -64,6 +80,26 @@ pub const PROVIDERS: &[Provider] = &[
         default_model: "openrouter/auto",
         not_chat: &[],
         max_tokens_field: "max_tokens",
+        extra_body: None,
+        text_only: &[],
+        alternative: None,
+    },
+    Provider {
+        id: "deepseek",
+        name: "DeepSeek",
+        base_url: "https://api.deepseek.com/v1",
+        key: "deepseek-api-key",
+        models_path: "models",
+        default_model: "deepseek-v4-pro",
+        // Its list only ever holds chat models.
+        not_chat: &[],
+        max_tokens_field: "max_tokens",
+        // V4 models think before answering by default: slower, and the
+        // reasoning tokens come out of the same budget as the answer.
+        extra_body: Some(r#"{"thinking":{"type":"disabled"}}"#),
+        // The two models differ on pictures: flash sees them, v4-pro does not.
+        text_only: &["v4-pro"],
+        alternative: Some("deepseek-flash"),
     },
 ];
 
@@ -82,13 +118,39 @@ fn url(p: &Provider, tail: &str) -> Result<Url, String> {
     Url::parse(&net::join(&base, tail)).map_err(|e| e.to_string())
 }
 
+/// Whether the chosen model reads a dropped picture. A provider's models can
+/// differ — DeepSeek's flash sees one, its v4-pro does not.
+fn reads_images(p: &Provider, model: &str) -> bool {
+    !p.text_only.iter().any(|text_only| model.contains(text_only))
+}
+
+/// A picture the chosen model cannot read: better said out loud, with the model
+/// that can, than sent as a name the answer will quietly ignore.
+fn text_only_refusal(
+    p: &Provider,
+    model: &str,
+    first: bool,
+    context: Option<&ChatContext>,
+) -> Option<String> {
+    if !first || reads_images(p, model) {
+        return None;
+    }
+    let alternative = p.alternative?;
+    let ChatContext::File { path, .. } = context? else { return None };
+    image_media(path)?;
+    Some(tf(
+        "{name}'s {model} reads text only. Switch to {alternative} above the chat box to send a picture.",
+        &[("name", p.name), ("model", model), ("alternative", alternative)],
+    ))
+}
+
 /// The user's message for one turn: plain text, or text and an image part
 /// when the first turn carries a dropped picture.
-fn user_message(first: bool, context: Option<&ChatContext>, query: &str) -> Value {
+fn user_message(images: bool, first: bool, context: Option<&ChatContext>, query: &str) -> Value {
     let mut prefix = String::new();
     let mut image = None;
     match context.filter(|_| first) {
-        Some(ChatContext::File { name, path }) => match file_part(path) {
+        Some(ChatContext::File { name, path }) => match file_part(path, images) {
             Some(FilePart::Image(part)) => {
                 image = Some(part);
                 prefix = format!("File: {name}\n\n");
@@ -114,6 +176,13 @@ fn request_body(p: &Provider, model: &str, system: &str, history: &[Value], user
     messages.push(user.clone());
     let mut body = json!({ "model": model, "messages": messages });
     body[p.max_tokens_field] = json!(MAX_TOKENS);
+    if let Some(extra) = p.extra_body {
+        if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(extra) {
+            for (name, value) in map {
+                body[name] = value;
+            }
+        }
+    }
     body
 }
 
@@ -164,7 +233,10 @@ pub async fn send(
         return Err(tf("Pick a {name} model above the chat box.", &[("name", p.name)]));
     }
     let turn = chat.begin(p.id);
-    let user = user_message(turn.first, context.as_ref(), &query);
+    if let Some(refusal) = text_only_refusal(p, model, turn.first, context.as_ref()) {
+        return Err(refusal);
+    }
+    let user = user_message(reads_images(p, model), turn.first, context.as_ref(), &query);
     let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
 
     let endpoint = url(p, "chat/completions")?;
@@ -260,24 +332,34 @@ enum FilePart {
     Text(String),
 }
 
+/// The media type of a picture, by its extension.
+fn image_media(path: &str) -> Option<&'static str> {
+    match std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase()
+        .as_str()
+    {
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        _ => None,
+    }
+}
+
 /// Images → image_url data URL, text/code → inline text. PDFs and other binary
 /// files go by name only (there is no portable document part).
-fn file_part(path: &str) -> Option<FilePart> {
+fn file_part(path: &str, images: bool) -> Option<FilePart> {
     let ext = std::path::Path::new(path)
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_lowercase();
     let len = std::fs::metadata(path).ok()?.len();
-    let image = match ext.as_str() {
-        "jpg" | "jpeg" => Some("image/jpeg"),
-        "png" => Some("image/png"),
-        "gif" => Some("image/gif"),
-        "webp" => Some("image/webp"),
-        _ => None,
-    };
-    if let Some(media) = image {
-        if len > MAX_IMAGE {
+    if let Some(media) = image_media(path) {
+        if !images || len > MAX_IMAGE {
             return None;
         }
         let bytes = std::fs::read(path).ok()?;
@@ -306,9 +388,14 @@ mod tests {
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         );
         assert_eq!(url(p("openrouter"), "models").unwrap().as_str(), "https://openrouter.ai/api/v1/models");
+        assert_eq!(url(p("deepseek"), "chat/completions").unwrap().as_str(), "https://api.deepseek.com/v1/chat/completions");
         for prov in PROVIDERS {
             assert!(crate::secrets::KNOWN_KEYS.contains(&prov.key), "{}", prov.key);
             assert!(prov.base_url.starts_with("https://"));
+            // A provider's own body fields, where it has any, are a JSON object.
+            if let Some(extra) = prov.extra_body {
+                assert!(serde_json::from_str::<Value>(extra).unwrap().is_object(), "{}", prov.id);
+            }
         }
         assert!(provider("anthropic").is_none());
         assert!(provider("ollama").is_none());
@@ -317,7 +404,7 @@ mod tests {
     #[test]
     fn the_request_is_system_then_history_then_the_new_turn() {
         let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
-        let user = user_message(false, None, "c");
+        let user = user_message(true, false, None, "c");
         assert_eq!(user, json!({"role":"user","content":"c"}));
         let body = request_body(p("google"), "gemini-x", "sys", &history, &user);
         assert_eq!(body["model"], "gemini-x");
@@ -334,6 +421,22 @@ mod tests {
     }
 
     #[test]
+    fn only_deepseek_is_asked_not_to_think() {
+        let user = user_message(true, false, None, "hi");
+        // V4 models think by default; the notch chat wants the answer only.
+        let body = request_body(p("deepseek"), "deepseek-v4-pro", "sys", &[], &user);
+        assert_eq!(body["thinking"]["type"], "disabled");
+        assert_eq!(body["max_tokens"], MAX_TOKENS);
+        assert!(body.get("max_completion_tokens").is_none());
+        assert!(body.get("tools").is_none(), "chat only: no tools");
+        // Nobody else is told anything it never asked for.
+        for id in ["openai", "google", "openrouter"] {
+            let body = request_body(p(id), "m", "sys", &[], &user);
+            assert!(body.get("thinking").is_none(), "{id}");
+        }
+    }
+
+    #[test]
     fn context_rides_with_the_first_turn_as_text_or_an_image() {
         let dir = std::env::temp_dir().join(format!("coucou-oai-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -341,15 +444,15 @@ mod tests {
         std::fs::write(&txt, "hello").unwrap();
         let ctx = ChatContext::File { name: "notes.txt".into(), path: txt.to_string_lossy().into() };
         assert_eq!(
-            user_message(true, Some(&ctx), "sum up")["content"],
+            user_message(true, true, Some(&ctx), "sum up")["content"],
             "File: notes.txt\nFile contents:\nhello\n\nsum up"
         );
-        assert_eq!(user_message(false, Some(&ctx), "more")["content"], "more");
+        assert_eq!(user_message(true, false, Some(&ctx), "more")["content"], "more");
 
         let png = dir.join("pic.png");
         std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
         let ctx = ChatContext::File { name: "pic.png".into(), path: png.to_string_lossy().into() };
-        let msg = user_message(true, Some(&ctx), "what is it?");
+        let msg = user_message(true, true, Some(&ctx), "what is it?");
         let parts = msg["content"].as_array().unwrap();
         assert_eq!(parts[0]["type"], "image_url");
         assert!(parts[0]["image_url"]["url"].as_str().unwrap().starts_with("data:image/png;base64,"));
@@ -358,11 +461,56 @@ mod tests {
         let pdf = dir.join("doc.pdf");
         std::fs::write(&pdf, "%PDF").unwrap();
         let ctx = ChatContext::File { name: "doc.pdf".into(), path: pdf.to_string_lossy().into() };
-        assert_eq!(user_message(true, Some(&ctx), "q")["content"], "File: doc.pdf\n\nq");
+        assert_eq!(user_message(true, true, Some(&ctx), "q")["content"], "File: doc.pdf\n\nq");
         let _ = std::fs::remove_dir_all(dir);
 
         let ctx = ChatContext::Window { app_name: "Code".into(), title: "x".into(), url: None };
-        assert_eq!(user_message(true, Some(&ctx), "q")["content"], "Context — App: Code, Window: x\n\nq");
+        assert_eq!(user_message(true, true, Some(&ctx), "q")["content"], "Context — App: Code, Window: x\n\nq");
+    }
+
+    #[test]
+    fn deepseeks_two_models_differ_on_pictures() {
+        let deepseek = p("deepseek");
+        assert!(!reads_images(deepseek, "deepseek-v4-pro"));
+        assert!(reads_images(deepseek, "deepseek-flash"));
+        // Every other provider takes a picture with any of its models.
+        for id in ["openai", "google", "openrouter"] {
+            assert!(reads_images(p(id), "whatever"), "{id}");
+        }
+
+        let dir = std::env::temp_dir().join(format!("coucou-image-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("pic.png");
+        std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
+        let ctx = ChatContext::File { name: "pic.png".into(), path: png.to_string_lossy().into() };
+
+        // v4-pro says to switch rather than sending a name it cannot see.
+        let refusal = text_only_refusal(deepseek, "deepseek-v4-pro", true, Some(&ctx)).unwrap();
+        assert!(refusal.contains("deepseek-flash"), "{refusal}");
+        assert!(refusal.contains("reads text only"), "{refusal}");
+        // flash carries it, and a later turn never carries the file anyway.
+        assert!(text_only_refusal(deepseek, "deepseek-flash", true, Some(&ctx)).is_none());
+        assert!(text_only_refusal(deepseek, "deepseek-v4-pro", false, Some(&ctx)).is_none());
+        // Text files and windows are not pictures: nothing to refuse.
+        let txt = dir.join("notes.txt");
+        std::fs::write(&txt, "hello").unwrap();
+        let notes = ChatContext::File { name: "notes.txt".into(), path: txt.to_string_lossy().into() };
+        assert!(text_only_refusal(deepseek, "deepseek-v4-pro", true, Some(&notes)).is_none());
+        let window = ChatContext::Window { app_name: "Code".into(), title: "x".into(), url: None };
+        assert!(text_only_refusal(deepseek, "deepseek-v4-pro", true, Some(&window)).is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_text_only_model_always_names_one_to_switch_to() {
+        for prov in PROVIDERS {
+            assert_eq!(
+                prov.text_only.is_empty(),
+                prov.alternative.is_none(),
+                "{}: text_only and alternative go together",
+                prov.id
+            );
+        }
     }
 
     #[test]
@@ -411,6 +559,24 @@ mod tests {
         let models = parse_models(p("openrouter"), &openrouter);
         let labels: Vec<_> = models.iter().map(|m| m.label.as_str()).collect();
         assert_eq!(labels, vec!["A (free)", "C Zero (free)", "B Paid"]);
+
+        // DeepSeek lists its models with no `created` and no `name`: there is
+        // nothing to sort on, and the id is the label.
+        let deepseek = json!({"object":"list","data":[
+            {"id":"deepseek-flash","object":"model","owned_by":"deepseek"},
+            {"id":"deepseek-v4-pro","object":"model","owned_by":"deepseek"}
+        ]});
+        let shown: Vec<_> = parse_models(p("deepseek"), &deepseek)
+            .into_iter()
+            .map(|m| (m.id, m.label))
+            .collect();
+        assert_eq!(
+            shown,
+            vec![
+                ("deepseek-flash".to_string(), "deepseek-flash".to_string()),
+                ("deepseek-v4-pro".to_string(), "deepseek-v4-pro".to_string())
+            ]
+        );
     }
 
     #[test]

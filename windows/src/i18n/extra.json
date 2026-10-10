@@ -364,16 +364,16 @@
    "ru": "Провайдеры чата",
    "id": "Penyedia obrolan"
   },
-  "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
-   "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
-   "hi": "Claude की जगह Google AI, OpenAI या OpenRouter से चैट करें: यहाँ एक कुंजी जोड़ें, फिर प्रदाता और मॉडल बदलने के लिए चैट बॉक्स के ऊपर मॉडल के नाम पर क्लिक करें। कुंजियाँ सिस्टम कीचेन में रहती हैं। इन प्रदाताओं को न वेब सर्च मिलता है न टूल: वे जवाब दे सकते हैं, इस कंप्यूटर पर कभी कुछ नहीं करते।",
-   "es": "Chatea con Google AI, OpenAI u OpenRouter en lugar de Claude: añade una clave aquí y luego haz clic en el nombre del modelo encima del cuadro de chat para cambiar de proveedor y modelo. Las claves se quedan en el llavero del sistema. Estos proveedores no tienen búsqueda web ni herramientas: pueden responder, nunca actuar en este equipo.",
-   "ar": "دردش مع Google AI أو OpenAI أو OpenRouter بدلًا من Claude: أضف مفتاحًا هنا، ثم انقر على اسم النموذج فوق مربع الدردشة لتبديل المزوّد والنموذج. تبقى المفاتيح في سلسلة مفاتيح النظام. لا يحصل هؤلاء المزوّدون على بحث الويب ولا على الأدوات: يمكنهم الإجابة، ولا يتصرفون أبدًا على هذا الحاسوب.",
-   "fr": "Discute avec Google AI, OpenAI ou OpenRouter à la place de Claude : ajoute une clé ici, puis clique sur le nom du modèle au-dessus de la zone de chat pour changer de fournisseur et de modèle. Les clés restent dans le trousseau du système. Ces fournisseurs n'ont ni recherche web ni outils : ils peuvent répondre, jamais agir sur cet ordinateur.",
-   "bn": "Claude-এর বদলে Google AI, OpenAI বা OpenRouter-এর সঙ্গে চ্যাট করুন: এখানে একটি কী যোগ করুন, তারপর প্রদানকারী ও মডেল বদলাতে চ্যাট বক্সের উপরে মডেলের নামে ক্লিক করুন। কী সিস্টেম কীচেইনে থাকে। এই প্রদানকারীরা ওয়েব সার্চ বা টুল পায় না: তারা উত্তর দিতে পারে, এই কম্পিউটারে কখনো কিছু করে না।",
-   "pt-BR": "Converse com Google AI, OpenAI ou OpenRouter em vez do Claude: adicione uma chave aqui e clique no nome do modelo acima da caixa de chat para trocar de provedor e de modelo. As chaves ficam no chaveiro do sistema. Esses provedores não têm busca na web nem ferramentas: podem responder, nunca agir neste computador.",
-   "ru": "Общайтесь с Google AI, OpenAI или OpenRouter вместо Claude: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей. У этих провайдеров нет веб-поиска и инструментов: они могут отвечать, но никогда не действуют на этом компьютере.",
-   "id": "Mengobrol dengan Google AI, OpenAI, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini."
+  "Chat with Google AI, OpenAI, DeepSeek or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
+   "zh-Hans": "用 Google AI、OpenAI、DeepSeek 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
+   "hi": "Claude की जगह Google AI, OpenAI, DeepSeek या OpenRouter से चैट करें: यहाँ एक कुंजी जोड़ें, फिर प्रदाता और मॉडल बदलने के लिए चैट बॉक्स के ऊपर मॉडल के नाम पर क्लिक करें। कुंजियाँ सिस्टम कीचेन में रहती हैं। इन प्रदाताओं को न वेब सर्च मिलता है न टूल: वे जवाब दे सकते हैं, इस कंप्यूटर पर कभी कुछ नहीं करते।",
+   "es": "Chatea con Google AI, OpenAI, DeepSeek u OpenRouter en lugar de Claude: añade una clave aquí y luego haz clic en el nombre del modelo encima del cuadro de chat para cambiar de proveedor y modelo. Las claves se quedan en el llavero del sistema. Estos proveedores no tienen búsqueda web ni herramientas: pueden responder, nunca actuar en este equipo.",
+   "ar": "دردش مع Google AI أو OpenAI أو DeepSeek أو OpenRouter بدلًا من Claude: أضف مفتاحًا هنا، ثم انقر على اسم النموذج فوق مربع الدردشة لتبديل المزوّد والنموذج. تبقى المفاتيح في سلسلة مفاتيح النظام. لا يحصل هؤلاء المزوّدون على بحث الويب ولا على الأدوات: يمكنهم الإجابة، ولا يتصرفون أبدًا على هذا الحاسوب.",
+   "fr": "Discute avec Google AI, OpenAI, DeepSeek ou OpenRouter à la place de Claude : ajoute une clé ici, puis clique sur le nom du modèle au-dessus de la zone de chat pour changer de fournisseur et de modèle. Les clés restent dans le trousseau du système. Ces fournisseurs n'ont ni recherche web ni outils : ils peuvent répondre, jamais agir sur cet ordinateur.",
+   "bn": "Claude-এর বদলে Google AI, OpenAI, DeepSeek বা OpenRouter-এর সঙ্গে চ্যাট করুন: এখানে একটি কী যোগ করুন, তারপর প্রদানকারী ও মডেল বদলাতে চ্যাট বক্সের উপরে মডেলের নামে ক্লিক করুন। কী সিস্টেম কীচেইনে থাকে। এই প্রদানকারীরা ওয়েব সার্চ বা টুল পায় না: তারা উত্তর দিতে পারে, এই কম্পিউটারে কখনো কিছু করে না।",
+   "pt-BR": "Converse com Google AI, OpenAI, DeepSeek ou OpenRouter em vez do Claude: adicione uma chave aqui e clique no nome do modelo acima da caixa de chat para trocar de provedor e de modelo. As chaves ficam no chaveiro do sistema. Esses provedores não têm busca na web nem ferramentas: podem responder, nunca agir neste computador.",
+   "ru": "Общайтесь с Google AI, OpenAI, DeepSeek или OpenRouter вместо Claude: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей. У этих провайдеров нет веб-поиска и инструментов: они могут отвечать, но никогда не действуют на этом компьютере.",
+   "id": "Mengobrol dengan Google AI, OpenAI, DeepSeek, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini."
   },
   "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.": {
    "zh-Hans": "与你自己运行的模型聊天：Ollama 或 LM Studio（地址留空即使用本机的默认地址），或任何兼容 OpenAI API 的服务器，例如 vLLM 或 llama.cpp。连接后，在聊天框上方选择它。",
@@ -3195,6 +3195,17 @@
    "pt-BR": "{name} — {width}×{height} em {x},{y}",
    "ru": "{name} — {width}×{height} в точке {x},{y}",
    "id": "{name} — {width}×{height} di {x},{y}"
+  },
+  "{name}'s {model} reads text only. Switch to {alternative} above the chat box to send a picture.": {
+   "zh-Hans": "{name} 的 {model} 只能读取文本。要发送图片，请在上方的聊天框中切换到 {alternative}。",
+   "hi": "{name} का {model} केवल टेक्स्ट पढ़ता है। तस्वीर भेजने के लिए चैट बॉक्स के ऊपर {alternative} पर स्विच करें।",
+   "es": "El {model} de {name} solo lee texto. Cambia a {alternative} encima del cuadro de chat para enviar una imagen.",
+   "ar": "{model} من {name} يقرأ النص فقط. بدّل إلى {alternative} فوق مربع الدردشة لإرسال صورة.",
+   "fr": "Le {model} de {name} ne lit que le texte. Passe à {alternative} au-dessus de la zone de chat pour envoyer une image.",
+   "bn": "{name}-এর {model} শুধু টেক্সট পড়ে। ছবি পাঠাতে চ্যাট বক্সের উপরে {alternative}-এ বদলান।",
+   "pt-BR": "O {model} do {name} só lê texto. Troque para {alternative} acima da caixa de chat para enviar uma imagem.",
+   "ru": "{model} от {name} читает только текст. Переключитесь на {alternative} над полем чата, чтобы отправить изображение.",
+   "id": "{model} dari {name} hanya membaca teks. Beralih ke {alternative} di atas kotak obrolan untuk mengirim gambar."
   },
   "{name}: model not found (404). Pick another one above the chat box. {detail}": {
    "zh-Hans": "{name}：未找到模型（404）。请在聊天框上方选择其他模型。{detail}",
