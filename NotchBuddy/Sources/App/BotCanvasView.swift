@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// SwiftUI wrapper: TimelineView drives a Canvas that calls BotEngine.draw().
 /// Uses a shared engine per-task; the main bot uses AppState's shared engine.
@@ -8,18 +9,24 @@ struct BotCanvasView: View {
     /// When set, overrides island-based eye-tracking (used by desktop Mochi).
     /// CGPoint in the same coord space as state.mousePosition (DesktopSpace, y-down).
     var lookOriginOverride: CGPoint? = nil
+    /// Not drawn while true (e.g. the notch copy while Mochi is on the desktop).
+    var paused: Bool = false
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden)) { timeline in
+        // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
+        // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
+        TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
+            // The Canvas must capture the frame's date: a closure that doesn't change from
+            // one tick to the next is not redrawn, and Mochi froze.
+            let frame = timeline.date
             Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let dtRaw = min(0.05, now - engine.lastTime)
-                let dt = dtRaw
-                engine.lookX = lookX(state: state, size: size)
-                engine.lookY = lookY(state: state, size: size)
+                _ = frame
+                let look = lookXY(state: state)
+                engine.lookX = look.x
+                engine.lookY = look.y
                 engine.particleOverhang = particleOverhang
                 // Widen slot when file is hovering over the mailbox (morph > 0.5)
                 // Open mouth (hover=0.20R) when file dragged over box; close when not
@@ -82,7 +89,7 @@ struct BotCanvasView: View {
                 }
                 #endif
 
-                engine.update(dt: dt)
+                MochiFrameClock.advance(engine)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
@@ -177,44 +184,36 @@ struct BotCanvasView: View {
         }
     }
 
-    private func lookX(state: AppState, size: CGSize) -> CGFloat {
+    /// Where Mochi looks (the pointer), both axes at once: the island geometry and the
+    /// screen are looked up once per frame instead of twice each.
+    private func lookXY(state: AppState) -> (x: CGFloat, y: CGFloat) {
         if let origin = lookOriginOverride {
-            return tanh((state.mousePosition.x - origin.x) / 260)
+            return (tanh((state.mousePosition.x - origin.x) / 260),
+                    -tanh((state.mousePosition.y - origin.y) / 200))
         }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
-        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
-                                                islandW: islandW, islandH: islandH,
-                                                uploadProgress: state.uploadProgress)
-        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
-        return tanh((state.mousePosition.x - bot.x) / 260)
-    }
-
-    /// Bot centre in DesktopSpace, like state.mousePosition. The island is centred at the
-    /// top of its screen, which can be any display, anywhere in the arrangement.
-    private func islandBotPoint(islandW: CGFloat, botCx: CGFloat, botCy: CGFloat) -> CGPoint {
         let screen = IslandWindowController.islandScreen().frame
-        return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
-                                            y: screen.maxY - botCy),
-                                    desktopTop: IslandWindowController.desktopTop)
-    }
-
-    private func lookY(state: AppState, size: CGSize) -> CGFloat {
-        if let origin = lookOriginOverride {
-            return -tanh((state.mousePosition.y - origin.y) / 200)
+        let desktopTop = IslandWindowController.desktopTop
+        // The pointer read now, not from the island poll (which slows down far from it).
+        let mouse = DesktopSpace.topDown(NSEvent.mouseLocation, desktopTop: desktopTop)
+        func botPoint(islandH: CGFloat) -> CGPoint {
+            let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+                                                    islandW: islandW, islandH: islandH,
+                                                    uploadProgress: state.uploadProgress)
+            return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
+                                                y: screen.maxY - botCy),
+                                        desktopTop: desktopTop)
         }
-        let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
-                                             progress: state.uploadProgress,
-                                             nw: state.notchWidth, nh: state.notchHeight)
+        let botX = botPoint(islandH: islandH)
+        // The chat view grows with the conversation: vertical look uses its real height.
         let actualH: CGFloat = (state.mode == .expanded && state.view == .prompt)
             ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
             : islandH
-        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
-                                                islandW: islandW, islandH: actualH,
-                                                uploadProgress: state.uploadProgress)
-        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
-        return -tanh((state.mousePosition.y - bot.y) / 200)
+        let botY = actualH == islandH ? botX : botPoint(islandH: actualH)
+        return (tanh((mouse.x - botX.x) / 260),
+                -tanh((mouse.y - botY.y) / 200))
     }
 }
 
@@ -235,13 +234,17 @@ struct MiniBotCanvasView: View {
         }())
     }
 
+    @Environment(\.islandViewActive) private var viewActive
+
+
     var body: some View {
-        TimelineView(.animation) { timeline in
+        // Display refresh rate. Paused in island views that are not shown.
+        TimelineView(.animation(paused: !viewActive)) { timeline in
+            let frame = timeline.date   // see BotCanvasView: redraw on every tick
             Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let dt = min(0.05, now - engine.lastTime)
+                _ = frame
                 engine.setDancing(isDancing)
-                engine.update(dt: dt)
+                MochiFrameClock.advance(engine)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 engine.draw(context: ctx, size: size)
@@ -267,5 +270,39 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
         }
+    }
+}
+
+// MARK: - Frame clock
+
+/// Mochi's engine has always moved one `update(dt: 0.05)` per display frame (its look,
+/// colour, springs and particles are tuned to that). Drawing slower than the display must
+/// not slow Mochi down: each drawn frame runs the steps of the display frames it skipped.
+@MainActor
+enum MochiFrameClock {
+    /// The island screen's refresh rate, looked up at most every 2 s.
+    private static var fpsCache: (value: Double, at: CFTimeInterval) = (60, -10)
+    static var displayFPS: Double {
+        let now = CACurrentMediaTime()
+        if now - fpsCache.at > 2 {
+            let fps = IslandWindowController.islandScreen().maximumFramesPerSecond
+            fpsCache = (Double(min(120, max(30, fps))), now)
+        }
+        return fpsCache.value
+    }
+
+    /// minimumInterval for a target rate, 10 % short: display frames come every 16.6 ms
+    /// with jitter, and an interval of exactly 1/60 s skipped every other one (30 fps on a
+    /// 60 Hz screen). 60 on a 60 Hz screen draws every frame; on ProMotion, one in two.
+    static func interval(fps: Double) -> TimeInterval { 0.9 / fps }
+
+    static func advance(_ engine: BotEngine) {
+        let now = CACurrentMediaTime()
+        let elapsed = min(1.0 / 15.0, max(0, now - engine.lastTime))
+        engine.stepDebt += elapsed * displayFPS
+        let steps = min(8, Int(engine.stepDebt))
+        engine.stepDebt -= Double(steps)
+        if steps == 0 { engine.lastTime = now }
+        for _ in 0..<steps { engine.update(dt: 0.05) }
     }
 }

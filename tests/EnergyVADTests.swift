@@ -129,6 +129,17 @@ enum EnergyVADTests {
             check("music (~60 s): no immediate re-trigger after forced end", prevEvent != .start || segments <= 2)
         }
 
+        // MARK: 9. 100 ms buffers (10/s): same durations — 0.8 s of silence is 8 buffers
+        do {
+            var vad = EnergyVAD()
+            vad.setFrameRate(10)
+            for _ in 0..<5 { _ = vad.feed(1e-5) }            // 0.5 s calibration = 5 buffers
+            check("10/s: starts on speech after 0.5 s", vad.feed(1e-3) == .start)
+            var endAt = -1
+            for i in 1...20 where endAt < 0 { if vad.feed(1e-5) == .end { endAt = i } }
+            check("10/s: ends after 0.8 s of silence (8 buffers), got \(endAt)", endAt == 8)
+        }
+
         // Summary
         if failures == 0 { print("\n\(total)/\(total) tests passed.") }
         else { print("\n\(failures) test(s) FAILED."); exit(1) }

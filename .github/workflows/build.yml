@@ -65,6 +65,9 @@ jobs:
       - name: Voice conversation end-phrase tests
         run: bash scripts/test-voice-conversation.sh
 
+      - name: Voice gender tests
+        run: bash scripts/test-voice-gender.sh
+
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 
@@ -118,13 +121,18 @@ jobs:
 
       - name: Build
         run: |
+          set -o pipefail
           xcodebuild \
             -project NotchBuddy/NotchBuddy.xcodeproj \
             -scheme NotchBuddy \
             -configuration Release \
             build \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO 2>&1 | tee build.log || {
+              # Compiler errors as annotations, readable without downloading the log.
+              grep -E "error:" build.log | sort -u | head -30 | sed 's/^/::error::/'
+              exit 1
+            }
 
       - name: Build App Store target (unsigned)
         run: |

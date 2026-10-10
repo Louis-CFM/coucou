@@ -70,7 +70,8 @@ final class ElevenLabsTTS {
         return v
     }
 
-    /// First English voice of the gender; else any voice of the gender; else the first one.
+    /// First English voice of the gender (a young one first for a man); else any voice of
+    /// the gender; else the first one.
     nonisolated static func pick(_ voices: [[String: Any]], gender: String) -> Voice? {
         func labels(_ v: [String: Any]) -> [String: String] { v["labels"] as? [String: String] ?? [:] }
         func isEnglish(_ v: [String: Any]) -> Bool {
@@ -80,8 +81,12 @@ final class ElevenLabsTTS {
             return accent.isEmpty || ["american", "british", "australian", "irish", "english", "us", "uk"]
                 .contains { accent.contains($0) }
         }
+        func isYoung(_ v: [String: Any]) -> Bool { (labels(v)["age"] ?? "").lowercased().contains("young") }
         let ofGender = voices.filter { labels($0)["gender"]?.lowercased() == gender }
-        let v = ofGender.first(where: isEnglish) ?? ofGender.first ?? voices.first
+        let english = ofGender.filter(isEnglish)
+        // Male: a young voice first, it sounds closer to Coucou than a deep narrator.
+        let young = gender == "male" ? english.first(where: isYoung) : nil
+        let v = young ?? english.first ?? ofGender.first ?? voices.first
         guard let v, let id = v["voice_id"] as? String else { return nil }
         return Voice(id: id, name: v["name"] as? String ?? id)
     }

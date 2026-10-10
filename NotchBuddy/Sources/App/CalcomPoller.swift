@@ -8,7 +8,7 @@ final class CalcomPoller: @unchecked Sendable {
     func start() {
         guard timer == nil else { return }
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 8, repeating: 300)
+        t.schedule(deadline: .now() + 8, repeating: 300, leeway: .seconds(30))
         t.setEventHandler { [weak self] in self?.poll() }
         t.resume()
         timer = t
@@ -46,7 +46,7 @@ final class CalcomPoller: @unchecked Sendable {
                 if code == 401 { msg = "Invalid API key (401)" }
                 else if code == 0 { msg = error?.localizedDescription ?? "No connection" }
                 else { msg = "API error \(code)" }
-                DispatchQueue.main.async { AppState.shared.calcomError = msg }
+                DispatchQueue.main.async { AppState.shared.setIfChanged(\.calcomError, msg) }
                 return
             }
             guard let data,
@@ -55,9 +55,9 @@ final class CalcomPoller: @unchecked Sendable {
 
             let parsed = rawList.compactMap { self.parseBooking($0) }
             DispatchQueue.main.async {
-                AppState.shared.calcomError    = nil
-                AppState.shared.calcomBookings = parsed
-                AppState.shared.calcomLoaded   = true
+                AppState.shared.setIfChanged(\.calcomError, nil)
+                AppState.shared.setIfChanged(\.calcomBookings, parsed)
+                AppState.shared.setIfChanged(\.calcomLoaded, true)
             }
         }.resume()
     }

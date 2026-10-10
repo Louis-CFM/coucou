@@ -31,7 +31,9 @@ final class VoiceEngine: ObservableObject {
     @Published private(set) var commandTranscript: String = ""
     @Published private(set) var recognizerUnavailable: Bool = false
     @Published private(set) var audioError: String? = nil
-    @Published private(set) var micLevel: Double = 0
+    /// Read by Mochi's canvas every frame; not published, so ~20 updates/s while I talk
+    /// don't re-render Settings or the island views.
+    private(set) var micLevel: Double = 0
 
     // MARK: - Pause reasons
 
@@ -53,6 +55,7 @@ final class VoiceEngine: ObservableObject {
     // Command session timers
     private var silenceWork:    DispatchWorkItem?
     private var commandMaxWork: DispatchWorkItem?
+    private var loggedDropWhileSpeaking = false
     private var wakeWindowWork: DispatchWorkItem?   // 20 s periodic restart
 
     private var lastWordCount = 0
@@ -136,10 +139,10 @@ final class VoiceEngine: ObservableObject {
 
     /// Start the next conversation turn (re-listen for 8 s without wake phrase).
     /// Called by IslandWindowController after showing a command result.
-    func startConversationTurn() {
+    func startConversationTurn(firstWordTimeout: TimeInterval = 8.0) {
         isInConversation = true
         audio?.resetVAD()
-        startListeningDirectly(firstWordTimeout: 8.0)
+        startListeningDirectly(firstWordTimeout: firstWordTimeout)
     }
 
     /// End the conversation window and return to normal wake-phrase mode.
@@ -164,6 +167,7 @@ final class VoiceEngine: ObservableObject {
         commandTranscript     = ""
         lastWordCount         = 0
         directInitialTimeout  = firstWordTimeout
+        loggedDropWhileSpeaking = false
         audio.bypassVAD       = true
         duckMusic()
         appendAppLog("nb.log", "[Voice] direct listen start (firstWordTimeout: \(firstWordTimeout)s)")
@@ -189,7 +193,8 @@ final class VoiceEngine: ObservableObject {
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }
         commandMaxWork = maxItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.directListenMaxTime, execute: maxItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(Self.directListenMaxTime, firstWordTimeout + 10),
+                                      execute: maxItem)
     }
 
     /// Locale used for the current recognition session — nil if pipeline is not running.
@@ -353,7 +358,8 @@ final class VoiceEngine: ObservableObject {
         stopAudioStallTask()
         stallTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 500_000_000)
+                // Tolerance lets macOS batch this wakeup with others (stall seen in 2–3 s).
+                try? await Task.sleep(for: .milliseconds(500), tolerance: .milliseconds(400))
                 guard let self, let audio = self.audio else { return }
                 // Grace period: don't fire within stallTimeout of pipeline start.
                 let sinceStart = Date().timeIntervalSince(self.pipelineStartTime)
@@ -464,10 +470,13 @@ final class VoiceEngine: ObservableObject {
         // A short noise (cough, click) legitimately gives no text: only count windows
         // where speech went on for a while.
         guard elapsed >= 3 else { return }
+        // Music without words gives no text either: while music plays it takes 6 silent
+        // windows, not 2, before a rebuild (each costs a restart and ~0.5 s of deafness).
+        let music = AppState.shared.musicPlaying || SpotifyController.shared.isPlaying
         deafWindows += 1
-        if deafWindows >= 2 {
+        if deafWindows >= (music ? 6 : 2) {
             deafWindows = 0
-            appendAppLog("nb.log", "[Voice] recognizer returned nothing for 2 windows, rebuilding")
+            appendAppLog("nb.log", "[Voice] recognizer returned nothing for \(music ? 6 : 2) windows, rebuilding")
             triggerPipelineRebuild(reason: "recognizer deaf")
         }
     }
@@ -601,13 +610,23 @@ final class VoiceEngine: ObservableObject {
 
     private func commandUpdate(_ command: String) {
         // Semi-duplex: ignore updates while Coucou is speaking.
-        guard !VoiceSpeaker.shared.isBusy else { return }
+        guard !VoiceSpeaker.shared.isBusy else {
+            // Logged once per turn (no words): helps when an answer seems unheard.
+            if !loggedDropWhileSpeaking {
+                loggedDropWhileSpeaking = true
+                appendAppLog("nb.log", "[Voice] words heard while Coucou was speaking: ignored")
+            }
+            return
+        }
+        // The recognizer often repeats the same partial: no update, no re-render.
+        guard command != commandTranscript else { return }
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {
             // Load the on-device model once the sentence has started, not at the wake
             // word: loading it at the same moment slowed speech recognition down.
-            if lastWordCount == 0 { VoiceBrain.shared.prewarmSession() }
+            // Not when Claude is the brain: the on-device model would load for nothing.
+            if lastWordCount == 0 && !ClaudeVoiceBrain.isActive { VoiceBrain.shared.prewarmSession() }
             lastWordCount = wc
             resetSilenceTimer()
             let trimmed = command.trimmingCharacters(in: .whitespaces)
@@ -629,13 +648,28 @@ final class VoiceEngine: ObservableObject {
         if lastWordCount == 0 {
             timeout = directInitialTimeout
         } else {
-            timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript))
+            timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript),
+                                                 longAnswer: VoiceActionRunner.shared.expectsLongAnswer)
         }
+        scheduleSilenceCheck(after: timeout)
+    }
+
+    /// The turn ends after the silence delay, unless I'm still making sound (an "euhhh"
+    /// while thinking gives no words but is not silence): then it waits a bit more. The
+    /// command's max duration still applies.
+    private func scheduleSilenceCheck(after delay: TimeInterval) {
         let item = DispatchWorkItem { [weak self] in
-            Task { @MainActor in self?.endCommand(postFinished: true) }
+            Task { @MainActor in
+                guard let self, self.isListeningForCommand else { return }
+                if let a = self.audio, Date().timeIntervalSince(a.lastVoicedTime) < 0.5 {
+                    self.scheduleSilenceCheck(after: 0.5)
+                } else {
+                    self.endCommand(postFinished: true)
+                }
+            }
         }
         silenceWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
     /// Idempotent: if not in command mode, only cancels timers.

@@ -44,6 +44,9 @@ final class WakeSpotter: @unchecked Sendable {
 
     private let lock = NSLock()
     private var recognizer:   SFSpeechRecognizer?
+    /// One recognizer per locale for the life of this spotter (a pipeline rebuild makes a
+    /// new spotter): creating one per window cost a speech-service round trip at each wake.
+    private var cachedRecognizer: (id: String, recognizer: SFSpeechRecognizer)?
     private var request:      SFSpeechAudioBufferRecognitionRequest?
     private var task:         SFSpeechRecognitionTask?
     private var active        = false
@@ -79,9 +82,15 @@ final class WakeSpotter: @unchecked Sendable {
         var reqSnap:  SFSpeechAudioBufferRecognitionRequest?
         var taskGen   = 0
 
+        let made: SFSpeechRecognizer? = lock.withLock {
+            if let c = cachedRecognizer, c.id == locale.identifier { return c.recognizer }
+            return nil
+        } ?? SFSpeechRecognizer(locale: locale)
+
         lock.withLock {
             guard !active else { refusal = .alreadyActive; return }
-            guard let r = SFSpeechRecognizer(locale: locale),
+            if let made { cachedRecognizer = (locale.identifier, made) }
+            guard let r = made,
                   r.supportsOnDeviceRecognition,
                   r.isAvailable else { refusal = .unavailable; return }
 
