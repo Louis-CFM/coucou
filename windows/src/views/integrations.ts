@@ -116,6 +116,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openN8n(),
       }),
     );
+  } else if (task.id === "integration_slack") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: t("Open {name}", { name: "Slack" }),
+        onclick: () => void Bridge.slackOpenWorkspace(),
+      }),
+    );
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -330,6 +339,52 @@ function notionCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#E8E8E8", "Notion", t("Recent")), rows);
 }
 
+// ── Slack ─────────────────────────────────────────────────────────────────────
+
+function slackCount(icon: Node, value: unknown): HTMLElement {
+  const n = Number(value ?? 0);
+  const count = h("span", { class: "int-total" }, icon, h("span", { text: String(n) }));
+  count.style.color = n > 0 ? "#E01E5A" : "#4B5563";
+  return count;
+}
+
+function slackCard(): HTMLElement {
+  const d = get("integration_slack");
+  const counts = h(
+    "span",
+    { class: "int-total" },
+    slackCount(svg(ICONS.bubble, 9), d.unreadDms),
+    slackCount(h("b", { text: "@" }), d.mentions),
+  );
+  const rows = h("div", { class: "int-rows tight" });
+  const messages = arr("integration_slack", "messages");
+  if (messages.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("No new messages") }));
+  }
+  for (const m of messages.slice(0, 3)) {
+    const dm = m.kind === "dm";
+    const author = String(m.author ?? "");
+    const place = dm ? author : `${author} · #${String(m.channelName ?? "")}`;
+    rows.append(
+      h(
+        "button",
+        {
+          class: "int-page",
+          onclick: () => {
+            if (typeof m.channelId !== "string") return;
+            void Bridge.slackOpen(m.channelId, typeof m.permalink === "string" ? m.permalink : null);
+          },
+        },
+        dot(dm ? "#E01E5A" : "#ECB22E", 5),
+        h("span", { class: "int-name", text: place }),
+        h("span", { class: "int-sub", text: String(m.text ?? "") }),
+        h("span", { class: "int-ago", text: timeAgo(m.date) }),
+      ),
+    );
+  }
+  return h("div", { class: "int-card" }, header("#E01E5A", "Slack", t("Messages"), counts), rows);
+}
+
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
 function calcomCard(): HTMLElement {
@@ -440,6 +495,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_slack":
+      return info.loaded;
     default:
       return false;
   }
@@ -479,6 +536,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_slack":
+      return slackCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

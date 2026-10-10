@@ -959,6 +959,17 @@
    "ru": "Получает",
    "id": "Mengambil"
   },
+  "From your own Slack app, with the user scopes im:read, users:read and search:read.": {
+   "zh-Hans": "来自你自己的 Slack 应用，需要用户权限范围 im:read、users:read 和 search:read。",
+   "hi": "आपके अपने Slack ऐप से, उपयोगकर्ता स्कोप im:read, users:read और search:read के साथ।",
+   "es": "De tu propia app de Slack, con los permisos de usuario im:read, users:read y search:read.",
+   "ar": "من تطبيق Slack الخاص بك، مع نطاقات المستخدم im:read و users:read و search:read.",
+   "fr": "Depuis ta propre app Slack, avec les scopes utilisateur im:read, users:read et search:read.",
+   "bn": "আপনার নিজের Slack অ্যাপ থেকে, ইউজার স্কোপ im:read, users:read এবং search:read সহ।",
+   "pt-BR": "Do seu próprio app do Slack, com os escopos de usuário im:read, users:read e search:read.",
+   "ru": "Из твоего собственного приложения Slack, с пользовательскими правами im:read, users:read и search:read.",
+   "id": "Dari aplikasi Slack milik Anda sendiri, dengan cakupan pengguna im:read, users:read, dan search:read."
+  },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
    "hi": "Gemini CLI हुक",
@@ -1465,6 +1476,17 @@
    "ru": "Главный",
    "id": "Utama"
   },
+  "Messages": {
+   "zh-Hans": "消息",
+   "hi": "संदेश",
+   "es": "Mensajes",
+   "ar": "الرسائل",
+   "fr": "Messages",
+   "bn": "বার্তা",
+   "pt-BR": "Mensagens",
+   "ru": "Сообщения",
+   "id": "Pesan"
+  },
   "Missing recipient.": {
    "zh-Hans": "收件人缺失。",
    "hi": "प्राप्तकर्ता गुम है।",
@@ -1684,6 +1706,17 @@
    "pt-BR": "Nenhum modelo ainda — baixe um no {name} primeiro.",
    "ru": "Нет моделей — скачай одну в {name} сначала.",
    "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
+  },
+  "No new messages": {
+   "zh-Hans": "没有新消息",
+   "hi": "कोई नया संदेश नहीं",
+   "es": "Sin mensajes nuevos",
+   "ar": "لا رسائل جديدة",
+   "fr": "Aucun nouveau message",
+   "bn": "কোনো নতুন বার্তা নেই",
+   "pt-BR": "Nenhuma mensagem nova",
+   "ru": "Нет новых сообщений",
+   "id": "Tidak ada pesan baru"
   },
   "Not connected": {
    "zh-Hans": "未连接",
