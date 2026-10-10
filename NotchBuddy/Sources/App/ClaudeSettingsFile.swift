@@ -111,7 +111,7 @@ enum ClaudeSettingsFile {
             .appendingPathComponent("\(target.lastPathComponent).coucou-\(UUID().uuidString)")
         let fd = open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw Failure.writeFailed(name) }
-        let written = data.withUnsafeBytes { write(fd, $0.baseAddress, data.count) }
+        let written = data.withUnsafeBytes { Darwin.write(fd, $0.baseAddress, data.count) }
         close(fd)
         guard written == data.count else {
             try? fm.removeItem(at: temp)
