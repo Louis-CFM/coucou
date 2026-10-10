@@ -6,7 +6,7 @@ import { h, clear, dot } from "./dom";
 import { Bridge, onEvent } from "../core/bridge";
 import { State } from "../core/state";
 import { Sound } from "../core/sound";
-import { FOCUS_ID, Focus, INBOX_ID, Inbox, TODO_ID, Todos, clock, planAlert } from "../core/extras";
+import { Focus, Inbox, Todos, clock, planAlert, type ExtraView } from "../core/extras";
 import { Live, showLive, type LiveHost } from "../island/live";
 import { t } from "../i18n/i18n";
 
@@ -38,7 +38,9 @@ function focusTick() {
   }
   // The countdown sits in the compact island; a volume change shows over it
   // for a moment, then the countdown comes back.
-  if (host && Focus.running && (Live.current == null || Live.current.kind === "focus")) {
+  // Only the compact island shows it: open, the Focus tab has the clock, and a
+  // toast would sit over the top bar's tabs.
+  if (host && Focus.running && State.mode !== "expanded" && (Live.current == null || Live.current.kind === "focus")) {
     const level = 1 - left / (Focus.minutes * 60_000);
     showLive(host, { kind: "focus", level, muted: false, charging: false, text: clock(left) }, 1500);
   }
@@ -81,7 +83,28 @@ function stopFocus() {
 
 function focusCard(): ExtraCard {
   const big = h("div", { class: "x-clock" });
-  const startRow = h("div", { class: "int-actions" },
+  // Any length, typed in (1 min to 10 h), or one of the usual two.
+  const minutes = h("input", { class: "x-input x-min", type: "number", min: "1", max: "600", placeholder: t("min") }) as HTMLInputElement;
+  const startTyped = () => {
+    const m = Math.round(Number(minutes.value));
+    if (!(m >= 1 && m <= 600)) {
+      minutes.focus();
+      return;
+    }
+    minutes.value = "";
+    minutes.blur();
+    startFocus(m);
+  };
+  minutes.addEventListener("focus", () => void Bridge.focusWindow(true));
+  minutes.addEventListener("blur", () => void Bridge.focusWindow(false));
+  minutes.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") startTyped();
+    else if (e.key === "Escape") minutes.blur();
+  });
+  const startRow = h("div", { class: "int-actions x-start" },
+    minutes,
+    h("button", { class: "link-btn", onclick: startTyped }, t("Start")),
     h("button", { class: "link-btn", onclick: () => startFocus(25) }, t("25 min")),
     h("button", { class: "link-btn", onclick: () => startFocus(50) }, t("50 min")),
   );
@@ -100,7 +123,7 @@ function focusCard(): ExtraCard {
       startRow.style.display = active ? "none" : "";
       runRow.style.display = active ? "" : "none";
       pauseBtn.textContent = Focus.pausedLeft != null ? t("Resume") : t("Pause");
-      sub.textContent = active ? t("Notifications held, calls still ring") : t("Pick a length");
+      sub.textContent = active ? t("Notifications held, calls still ring") : t("Type minutes, or pick one");
     },
   };
 }
@@ -183,11 +206,11 @@ function inboxCard(): ExtraCard {
   };
 }
 
-export function buildExtraCard(id: string): ExtraCard | null {
-  if (id === FOCUS_ID) return focusCard();
-  if (id === TODO_ID) return todoCard();
-  if (id === INBOX_ID) return inboxCard();
-  return null;
+/** A top-bar tab's view: its card, beside Mochi, the whole width of the island. */
+export function buildExtraView(view: ExtraView): { el: HTMLElement; sync(): void } {
+  const c = view === "focus" ? focusCard() : view === "todo" ? todoCard() : inboxCard();
+  const el = h("div", { class: "view extra-view" }, h("div", { class: "card extra-card" }, c.el));
+  return { el, sync: () => c.sync() };
 }
 
 /** The 5-hour Claude window crossed 80 % or 95 %: a card, and the phone. */

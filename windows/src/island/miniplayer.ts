@@ -17,7 +17,11 @@ export function buildMiniPlayer(): { el: HTMLElement; sync(show: boolean): void 
   const play = h("button", { class: "mp-btn" });
   const next = h("button", { class: "mp-btn" }, svg(ICONS.forward, 10));
   // Clicks here are the player's, never the island's (which would open it).
-  for (const b of [play, next]) b.addEventListener("pointerdown", (e) => e.stopPropagation());
+  // The island opens on mousedown: the buttons keep their press to themselves.
+  for (const b of [play, next]) {
+    b.addEventListener("pointerdown", (e) => e.stopPropagation());
+    b.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
   play.addEventListener("click", (e) => { e.stopPropagation(); togglePlay(); });
   next.addEventListener("click", (e) => { e.stopPropagation(); void Bridge.spotifyControl("next"); });
   const el = h("div", { id: "mini-player" }, art, title, play, next);

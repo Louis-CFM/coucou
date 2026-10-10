@@ -770,6 +770,28 @@ body {
   background: #60a5fa;
 }
 
+/* The top bar's own tabs: one card the width of the island, beside Mochi. */
+.extra-card {
+  height: 100%;
+  padding: 0 16px 0 112px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.extra-view .x-list {
+  max-height: 66px;
+}
+.x-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.x-min {
+  width: 64px;
+  flex: none;
+}
+
 /* The mini player in the compact island (island/miniplayer.ts). */
 #mini-player {
   position: absolute;

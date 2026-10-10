@@ -167,14 +167,6 @@ export class Island {
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       foldApproval: () => this.foldApproval(),
-      openPill: (id) => {
-        if (!State.settings.activeIntegrations.includes(id)) {
-          State.toggleIntegration(id);
-          void Bridge.saveSettings(State.settings);
-        }
-        State.setFocus(id);
-        this.setView("overview");
-      },
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");

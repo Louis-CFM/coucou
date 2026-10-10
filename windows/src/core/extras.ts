@@ -1,18 +1,12 @@
-// The Windows build's own pills: Focus (a timer in the island), To-do, and the
+// The Windows build's own tabs: Focus (a timer in the island), To-do, and the
 // Inbox of calls and messages that came while you were away. Plus the Claude
 // plan alert at 80 % and 95 % of the 5-hour window. Pure logic and state; the
 // cards are in views/extras.ts.
 
 import { State } from "./state";
 
-export const FOCUS_ID = "integration_focus";
-export const TODO_ID = "integration_todo";
-export const INBOX_ID = "integration_inbox";
-export const EXTRA_IDS: readonly string[] = [FOCUS_ID, TODO_ID, INBOX_ID];
-
-export function isExtraPill(id: string | null | undefined): boolean {
-  return id != null && EXTRA_IDS.includes(id);
-}
+/** The top bar's own tabs, each a view of the island. */
+export type ExtraView = "focus" | "todo" | "inbox";
 
 function load<T>(key: string, fallback: T): T {
   try {

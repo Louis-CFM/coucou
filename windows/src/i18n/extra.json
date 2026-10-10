@@ -4065,17 +4065,6 @@
    "ru": "Уведомления на паузе, звонки звучат",
    "id": "Notifikasi ditahan, panggilan tetap berdering"
   },
-  "Pick a length": {
-   "zh-Hans": "选择时长",
-   "hi": "अवधि चुनें",
-   "es": "Elige una duración",
-   "ar": "اختر المدة",
-   "fr": "Choisissez une durée",
-   "bn": "সময় বেছে নিন",
-   "pt-BR": "Escolha a duração",
-   "ru": "Выберите длительность",
-   "id": "Pilih durasi"
-  },
   "Add a to-do and press Enter": {
    "zh-Hans": "添加待办并按回车",
    "hi": "काम जोड़ें और Enter दबाएँ",
@@ -4240,6 +4229,39 @@
    "pt-BR": "Enquanto você estava fora: {0}",
    "ru": "Пока вас не было: {0}",
    "id": "Selama kamu pergi: {0}"
+  },
+  "min": {
+   "zh-Hans": "分钟",
+   "hi": "मिनट",
+   "es": "min",
+   "ar": "دقيقة",
+   "fr": "min",
+   "bn": "মিনিট",
+   "pt-BR": "min",
+   "ru": "мин",
+   "id": "mnt"
+  },
+  "Start": {
+   "zh-Hans": "开始",
+   "hi": "शुरू करें",
+   "es": "Iniciar",
+   "ar": "ابدأ",
+   "fr": "Démarrer",
+   "bn": "শুরু",
+   "pt-BR": "Iniciar",
+   "ru": "Старт",
+   "id": "Mulai"
+  },
+  "Type minutes, or pick one": {
+   "zh-Hans": "输入分钟数，或选一个",
+   "hi": "मिनट लिखें, या एक चुनें",
+   "es": "Escribe los minutos o elige uno",
+   "ar": "اكتب الدقائق أو اختر واحدًا",
+   "fr": "Tapez des minutes, ou choisissez",
+   "bn": "মিনিট লিখুন, বা একটি বাছুন",
+   "pt-BR": "Digite os minutos ou escolha um",
+   "ru": "Введите минуты или выберите",
+   "id": "Ketik menit, atau pilih satu"
   }
  }
 }

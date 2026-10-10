@@ -23,8 +23,8 @@ import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { isMusicPill } from "../core/spotify";
-import { FOCUS_ID, Focus, INBOX_ID, Inbox, TODO_ID, isExtraPill } from "../core/extras";
-import { buildExtraCard, type ExtraCard } from "./extras";
+import { Focus, Inbox } from "../core/extras";
+import { buildExtraView } from "./extras";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { N_, language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -37,8 +37,6 @@ export interface ViewActions {
   /** Folds a waiting card to the compact island without answering it. */
   foldApproval(): void;
   setFocus(id: string): void;
-  /** Declares the pill if needed, then opens the island on it. */
-  openPill(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
@@ -114,15 +112,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
-  // Coucou's own pills, one click away (core/extras.ts): declared on first use.
-  const extraTab = (id: string, title: string, icon: string, stroke = 0) => {
-    const b = h("button", { class: "tab", title: tl(title), onclick: () => { actions.blip(); actions.openPill(id); } },
-      svg(icon, 13, stroke ? { stroke } : {}));
-    return b;
-  };
-  const tabFocus = extraTab(FOCUS_ID, N_("Focus"), ICONS.timer);
-  const tabTodo = extraTab(TODO_ID, N_("To-do"), ICONS.check, 2.4);
-  const tabInbox = extraTab(INBOX_ID, N_("Inbox"), ICONS.phone, 2);
+  // The island's own tabs (views/extras.ts): Focus, To-do, Inbox.
+  const extraTab = (view: IslandViewName, title: string, icon: string, stroke = 0) =>
+    h("button", { class: "tab", title: tl(title), onclick: () => go(view) }, svg(icon, 13, stroke ? { stroke } : {}));
+  const tabFocus = extraTab("focus", N_("Focus"), ICONS.timer);
+  const tabTodo = extraTab("todo", N_("To-do"), ICONS.check, 2.4);
+  const tabInbox = extraTab("inbox", N_("Inbox"), ICONS.phone, 2);
   const inboxDot = h("i", { class: "tab-dot" });
   tabInbox.append(inboxDot);
 
@@ -154,10 +149,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
-      const onPill = (id: string) => v === "overview" && State.focusId === id;
-      tabFocus.classList.toggle("on", onPill(FOCUS_ID));
-      tabTodo.classList.toggle("on", onPill(TODO_ID));
-      tabInbox.classList.toggle("on", onPill(INBOX_ID));
+      tabFocus.classList.toggle("on", v === "focus");
+      tabTodo.classList.toggle("on", v === "todo");
+      tabInbox.classList.toggle("on", v === "inbox");
       // A running timer and unread calls show on their buttons.
       tabFocus.classList.toggle("live", Focus.active);
       inboxDot.style.display = Inbox.unseen > 0 ? "" : "none";
@@ -255,7 +249,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       swiped = false;
     }
   }, true);
-  const extraCards = new Map<string, ExtraCard>();
+
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
@@ -272,7 +266,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | `extra:${string}` | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -420,19 +414,6 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
-      } else if (task && isExtraPill(task.id)) {
-        let c = extraCards.get(task.id);
-        if (!c) {
-          c = buildExtraCard(task.id)!;
-          extraCards.set(task.id, c);
-        }
-        if (mode !== `extra:${task.id}`) {
-          clear(leftBody);
-          leftBody.append(c.el);
-          mode = `extra:${task.id}`;
-          cardKey = "";
-        }
-        c.sync();
       } else if (task && isMusicPill(task.id)) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
@@ -911,6 +892,9 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
+  map.set("focus", buildExtraView("focus"));
+  map.set("todo", buildExtraView("todo"));
+  map.set("inbox", buildExtraView("inbox"));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

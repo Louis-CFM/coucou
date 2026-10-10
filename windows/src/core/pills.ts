@@ -139,14 +139,6 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },  // Any calendar's private iCal link (Google, Outlook, iCloud): integrations.rs.
   { id: "integration_calendar", name: "Calendar", color: "#4F9DF7", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calendar-ics-url") },
-  // Coucou's own pills (core/extras.ts): nothing to connect.
-  { id: "integration_focus", name: "Focus", color: "#F97316", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
-  { id: "integration_todo", name: "To-do", color: "#22D3EE", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
-  // Phone Link's calls and messages while you were away (notify.rs).
-  { id: "integration_inbox", name: "Inbox", color: "#60A5FA", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

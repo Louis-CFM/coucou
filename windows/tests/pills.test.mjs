@@ -46,10 +46,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     [...mac,
       ["integration_media", "Now Playing", "#A78BFA", "service", "Integration"],
-      ["integration_calendar", "Calendar", "#4F9DF7", "service", "Integration"],
-      ["integration_focus", "Focus", "#F97316", "service", "Integration"],
-      ["integration_todo", "To-do", "#22D3EE", "service", "Integration"],
-      ["integration_inbox", "Inbox", "#60A5FA", "service", "Integration"]],
+      ["integration_calendar", "Calendar", "#4F9DF7", "service", "Integration"]],
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
@@ -98,7 +95,7 @@ test("each build offers what it can read: Claude Desktop and the media controls 
   // Spotify: MPRIS on Linux, the media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  const windowsOnly = new Set(["agent_claude-desktop", "integration_music", "integration_media", "integration_inbox"]);
+  const windowsOnly = new Set(["agent_claude-desktop", "integration_music", "integration_media"]);
   assert.deepEqual(linux, windows.filter((id) => !windowsOnly.has(id)));
 });
 
@@ -184,7 +181,7 @@ test("up to eight pills (two pages of four) next to the main one, never the main
     activeIntegrations: ["integration_n8n", "integration_github", "integration_stripe"],
   };
   const full = { ...d, activeIntegrations: [...d.activeIntegrations, "agent_gemini", "integration_vercel", "integration_notion", "integration_resend"] };
-  const eight = toggleDeclared(full, "integration_focus", "linux");
+  const eight = toggleDeclared(full, "integration_calendar", "linux");
   assert.equal(eight.length, MAX_DECLARED);
   assert.equal(MAX_DECLARED, 8);
   assert.equal(toggleDeclared({ ...d, activeIntegrations: eight }, "ai_anthropic", "linux"), null);
