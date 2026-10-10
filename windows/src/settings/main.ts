@@ -773,6 +773,14 @@ function cliSection(): HTMLElement {
     codex: "codex login",
     kiro: "kiro-cli login",
   };
+  /** The binary behind each row, so "ChatGPT" next to `codex login` makes sense. */
+  const cliBin: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    cursor: "agent",
+    devin: "devin",
+    codex: "codex",
+    kiro: "kiro-cli",
+  };
 
   for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"] as const) {
     const p = providerDef(id);
@@ -783,6 +791,7 @@ function cliSection(): HTMLElement {
       h("label", {},
         h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
         h("span", { text: t(p.name) }),
+        h("span", { class: "hint", text: ` (${cliBin[id]})` }),
       ),
       state, actions, dotEl,
     ));
