@@ -157,6 +157,16 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
 #[tauri::command]
 fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    #[cfg(target_os = "linux")]
+    {
+        if !shared.gate.collapsed.load(Ordering::Relaxed) {
+            let pref = shared.settings.lock().unwrap().screen.clone();
+            // On KDE/Wayland and some X11 setups the compositor can keep the old
+            // allocation while the island animates open. Re-asserting the panel
+            // geometry on each rect update keeps the layer surface in sync.
+            island::apply_geometry(&app, &pref, false);
+        }
+    }
     // Without the cursor poll the input region is the click-through: it follows the island.
     if !platform::CURSOR_POLL {
         island::refresh_click_through(&app, &shared.gate);
