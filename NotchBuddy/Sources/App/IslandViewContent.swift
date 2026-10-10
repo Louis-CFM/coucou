@@ -223,6 +223,10 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_linear":
+            if let url = URL(string: state.linearInbox?.inboxURL ?? "https://linear.app") {
+                NSWorkspace.shared.open(url)
+            }
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1831,6 +1835,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        case "integration_linear":  return KeychainStore.shared.get("linear-api-key") != nil
         default: return false
         }
     }
@@ -1847,6 +1852,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "integration_linear":  return URL(string: appState.linearInbox?.inboxURL ?? "https://linear.app")
         default: return nil
         }
     }
@@ -1894,6 +1900,11 @@ struct IntegrationCardView: View {
         task.id == "integration_calcom" && appState.calcomLoaded
     }
 
+    // Linear: show the inbox as soon as the first poll completes
+    private var linearHasData: Bool {
+        task.id == "integration_linear" && appState.linearInbox != nil
+    }
+
     // Notion: show pages as soon as first poll completes
     private var notionHasData: Bool {
         task.id == "integration_notion" && appState.notionLoaded
@@ -1929,6 +1940,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_linear"  ? appState.linearError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1945,6 +1957,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_linear"  ? appState.linearError
                    : nil
         if let err = svcErr { return err }
         // Pills driven by hooks, never by a key: the idle card reports whether the
@@ -2035,6 +2048,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if calcomHasData {
             CalcomCardView()
+                .transition(.opacity)
+        } else if linearHasData {
+            LinearCardView()
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
@@ -2212,6 +2228,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == "integration_linear" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in LinearPoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#5E6AD2").opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
@@ -3568,6 +3590,84 @@ struct NotionCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading).padding(.top, 4)
         .transition(.opacity)
+    }
+}
+
+// MARK: - Linear Card View
+
+struct LinearCardView: View {
+    @ObservedObject private var appState = AppState.shared
+
+    private static let accent = "#5E6AD2"
+    private static let rowLimit = 3
+
+    private var inbox: LinearInbox? { appState.linearInbox }
+
+    /// Unread inbox entries first; assigned issues fill the rows left.
+    private var issues: [LinearIssue] {
+        let room = max(0, Self.rowLimit - (inbox?.unread.count ?? 0))
+        return Array((inbox?.assigned ?? []).prefix(room))
+    }
+
+    private var subtitle: String {
+        let unread = inbox?.unread.count ?? 0
+        if unread > 0 { return String(localized: "\(unread) unread") }
+        return String(localized: "Assigned to you")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: Self.accent)).frame(width: 7, height: 7)
+                Text("Linear").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                Text(subtitle).font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+            }
+            .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach((inbox?.unread ?? []).prefix(Self.rowLimit)) { note in
+                    row(url: note.url, key: note.key, title: note.title, time: note.createdAt) {
+                        Image(systemName: note.reason.symbol).font(.system(size: 9))
+                            .foregroundColor(Color(hex: Self.accent))
+                    }
+                    .help(note.actor ?? "")
+                }
+                ForEach(issues) { issue in
+                    row(url: issue.url, key: issue.key, title: issue.title, time: issue.updatedAt) {
+                        Circle().fill(Color(hex: issue.stateColor)).frame(width: 6, height: 6)
+                    }
+                    .help(issue.stateName)
+                }
+            }
+            .padding(.leading, 102).padding(.trailing, 12).padding(.top, 5)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading).padding(.top, 4)
+        .transition(.opacity)
+    }
+
+    private func row<Icon: View>(url: String, key: String?, title: String, time: Date,
+                                 @ViewBuilder icon: () -> Icon) -> some View {
+        Button {
+            if let url = safeWebURL(url) { NSWorkspace.shared.open(url) }
+        } label: {
+            HStack(spacing: 6) {
+                icon().frame(width: 14)
+                if let key {
+                    Text(key).font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).fixedSize()
+                }
+                Text(title).font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#C5C8CD"))
+                    .lineLimit(1).truncationMode(.tail).layoutPriority(1)
+                Spacer(minLength: 4)
+                Text(linearTimeAgo(time)).font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#4B5563"))
+            }
+            .padding(.horizontal, 6).padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

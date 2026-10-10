@@ -71,6 +71,7 @@ final class KeychainStore: @unchecked Sendable {
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
+        "linear-api-key",
         "elevenlabs-api-key",
     ]
 

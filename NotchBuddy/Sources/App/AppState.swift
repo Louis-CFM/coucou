@@ -369,6 +369,10 @@ final class AppState: ObservableObject {
     @Published var notionLoaded: Bool = false
     @Published var notionError: String? = nil
 
+    // Linear (populated by LinearPoller)
+    @Published var linearInbox: LinearInbox? = nil
+    @Published var linearError: String? = nil
+
     // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
     @Published var n8nRuns: [N8nRun] = []
 
