@@ -1183,6 +1183,88 @@ input[type="range"]::-webkit-slider-thumb {
   opacity: 0.6;
 }
 
+/* ── Task mode (chat → `claude -p`, views/chat.ts) ───────────────────────── */
+
+.task-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font: 500 10.5px var(--font);
+  color: #7b8089;
+  cursor: default;
+}
+
+.task-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.task-btn.on {
+  color: var(--ink-2);
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.18);
+}
+
+.task-dir {
+  display: none;
+  max-width: 150px;
+  margin-inline-end: auto;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font: 500 10.5px var(--font);
+  color: #7b8089;
+}
+
+.task-dir.on {
+  display: inline-block;
+}
+
+.task-dir-input {
+  width: 210px;
+  max-width: 210px;
+}
+
+.task-cancel,
+.task-action {
+  align-self: center;
+  flex: 0 0 auto;
+  margin-inline-start: 6px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font: 500 10px var(--font);
+  color: #c8cdd4;
+  cursor: default;
+}
+
+.task-cancel:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.task-actions {
+  display: flex;
+  gap: 6px;
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.task-action {
+  margin-inline-start: 0;
+}
+
+.task-actions .task-action:first-child {
+  margin-inline-start: 6px;
+}
+
+.task-action:hover {
+  background: rgba(167, 139, 250, 0.25);
+}
+
 .model-dot {
   flex: 0 0 6px;
   width: 6px;

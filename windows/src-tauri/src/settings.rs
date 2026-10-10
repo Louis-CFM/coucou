@@ -66,6 +66,22 @@ pub struct Settings {
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
+    /// Chat → Task mode: the folder whose subfolders are offered as project
+    /// folders for a task ("" = the home folder)…
+    pub task_projects_root: String,
+    /// …and the project folder picked last, preselected next time.
+    pub task_last_project: String,
+    /// Folders typed into the dropdown's "Other…" (any path, dotted ones
+    /// included), newest first, so they stay offered. Capped by the chat.
+    pub task_recent_dirs: Vec<String>,
+    /// Where finished tasks also land: the answer as a Markdown note, the
+    /// reports as Typst files ("" = only in the project). An Obsidian vault
+    /// folder works well here.
+    pub task_outputs_dir: String,
+    /// The command that opens a session's folder or a diff's file from the
+    /// island — "kitty -e nvim", "subl"… ("" = VS Code, `code`). Run without
+    /// a shell, the path appended as one argument.
+    pub editor_command: String,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -123,6 +139,11 @@ impl Default for Settings {
             mochi_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
+            task_projects_root: String::new(),
+            task_last_project: String::new(),
+            task_recent_dirs: Vec::new(),
+            task_outputs_dir: String::new(),
+            editor_command: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
         }
     }
@@ -400,6 +421,11 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
+  "taskProjectsRoot": "/home/me/projects",
+  "taskLastProject": "/home/me/projects/shop",
+  "taskRecentDirs": ["/home/me/.dotfiles"],
+  "taskOutputsDir": "/home/me/vault/outputs",
+  "editorCommand": "kitty -e nvim",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"##;
 
@@ -803,6 +829,11 @@ mod tests {
                 "mochiOutfit",
                 "pillColors",
                 "language",
+                "taskProjectsRoot",
+                "taskLastProject",
+                "taskRecentDirs",
+                "taskOutputsDir",
+                "editorCommand",
                 "desktopMochi",
             ]
         );

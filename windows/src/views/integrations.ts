@@ -8,7 +8,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
-import { isComingSoon, pillDefinition } from "../core/pills";
+import { editorLabel, isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
@@ -94,7 +94,10 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}b3`,
-        text: t("Open Visual Studio Code"),
+        text: (() => {
+          const editor = editorLabel(State.settings.editorCommand);
+          return editor ? t("Open {name}", { name: editor }) : t("Open Visual Studio Code");
+        })(),
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );

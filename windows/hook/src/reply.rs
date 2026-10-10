@@ -96,6 +96,21 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
     ))
 }
 
+/// The reply for a Coucou task's PreToolUse raised to an approval card
+/// (main.rs `task_ask`): a clicked Allow or Deny in the documented PreToolUse
+/// shape; anything else — nobody clicked, a decline, garbage — prints nothing,
+/// and the session's own permission rules decide as if Coucou said nothing.
+pub fn pre_tool_use_decision(decision: Option<&str>) -> Option<String> {
+    let (word, reason) = match decision.map(str::trim) {
+        Some("allow" | "always") => ("allow", "Allowed from Coucou"),
+        Some("deny") => ("deny", "Denied from Coucou"),
+        _ => return None,
+    };
+    Some(format!(
+        r#"{{"hookSpecificOutput":{{"hookEventName":"PreToolUse","permissionDecision":"{word}","permissionDecisionReason":"{reason}"}}}}"#
+    ))
+}
+
 /// True when `answers` answers exactly the questions Claude Code asked: one entry
 /// per question, keyed by its text; a single-select answer is one of its option
 /// labels (a string), a multi-select answer a non-empty list of distinct labels
@@ -217,6 +232,20 @@ mod tests {
         }
         // Hermes approvals are not supported: its decisions are never relayed.
         assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
+    }
+
+    #[test]
+    fn a_tasks_card_answers_in_pre_tool_use_shape_or_stays_silent() {
+        let allow = pre_tool_use_decision(Some("allow")).unwrap();
+        assert!(allow.contains(r#""hookEventName":"PreToolUse""#));
+        assert!(allow.contains(r#""permissionDecision":"allow""#));
+        assert!(pre_tool_use_decision(Some("always")).unwrap().contains(r#""permissionDecision":"allow""#));
+        assert!(pre_tool_use_decision(Some("deny")).unwrap().contains(r#""permissionDecision":"deny""#));
+        // No click, a decline, or anything unrecognised: silence, so the
+        // session's own permission rules decide.
+        for not_a_decision in [None, Some(""), Some("ask"), Some("maybe"), Some(r#"{"answers":{}}"#)] {
+            assert_eq!(pre_tool_use_decision(not_a_decision), None, "{not_a_decision:?}");
+        }
     }
 
     #[test]

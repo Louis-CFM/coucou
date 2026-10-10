@@ -9,6 +9,7 @@ import { N_, labels, t } from "../i18n/i18n";
 export const OUTFIT_SELECTIONS = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
   "bow", "scarf", "witchHat", "pumpkin", "santaHat", "bunnyEars",
+  "graduationCap", "headphones", "flower",
 ] as const;
 
 /** What can be stored in the preferences. The raw values are the Mac's, keep them stable. */
@@ -36,6 +37,9 @@ export const OUTFIT_KEYS: Record<OutfitSelection, string> = {
   pumpkin: N_("Pumpkin"),
   santaHat: N_("Santa hat"),
   bunnyEars: N_("Bunny ears"),
+  graduationCap: N_("Graduation cap"),
+  headphones: N_("Headphones"),
+  flower: N_("Flower"),
 };
 
 /** In the current language: every read goes through `t()`. */

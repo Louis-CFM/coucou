@@ -94,12 +94,26 @@ fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
 pub fn prepare_environment() {
     prefer_x11_on_gnome();
     follow_gnome_text_scaling();
+    avoid_dmabuf_on_nvidia();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
     let cache = xdg("XDG_CACHE_HOME", ".cache").join("coucou");
     if std::fs::create_dir_all(&cache).is_ok() {
         std::env::set_var("GST_REGISTRY", cache.join("gstreamer-registry.bin"));
+    }
+}
+
+/// On the NVIDIA driver, WebKitGTK's DMA-BUF renderer fails to allocate its
+/// buffers ("Failed to create GBM buffer … Invalid argument") and the island
+/// renders nothing, or the Wayland connection dies with a protocol error.
+/// WebKit's own fallback is the documented workaround; an explicit value in
+/// the environment — "0" included — always wins.
+fn avoid_dmabuf_on_nvidia() {
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        && std::path::Path::new("/proc/driver/nvidia/version").exists()
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
 }
 
@@ -285,6 +299,33 @@ pub fn codex_candidates() -> Vec<PathBuf> {
             entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
         versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
         out.extend(versions.iter().map(|v| nvm.join(v).join("bin/codex")));
+    }
+    out.retain(|p| {
+        std::fs::metadata(p)
+            .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    });
+    out
+}
+
+/// Where the Claude Code CLI may be, best first: $PATH, the native installer's
+/// folders, then the same per-user install folders as `codex_candidates`.
+pub fn claude_candidates() -> Vec<PathBuf> {
+    let home = home_dir();
+    let mut out: Vec<PathBuf> = find_on_path("claude").into_iter().collect();
+    for dir in
+        [".local/bin", ".claude/local", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"]
+    {
+        out.push(home.join(dir).join("claude"));
+    }
+    out.push(PathBuf::from("/usr/local/bin/claude"));
+    out.push(PathBuf::from("/usr/bin/claude"));
+    let nvm = home.join(".nvm/versions/node");
+    if let Ok(entries) = std::fs::read_dir(&nvm) {
+        let mut versions: Vec<String> =
+            entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
+        versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
+        out.extend(versions.iter().map(|v| nvm.join(v).join("bin/claude")));
     }
     out.retain(|p| {
         std::fs::metadata(p)

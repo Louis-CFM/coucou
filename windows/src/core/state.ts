@@ -3,8 +3,8 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 import {
-  DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
-  toggleDeclared, type HostOs, type PillDefinition,
+  DEFAULT_MAIN_PILL, HOST_OS, availablePills, editorLabel, orderPills, pillDefinition,
+  sanitizeDeclared, toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
@@ -63,6 +63,14 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** Task mode: the running task this bubble reports (task_runner.rs). */
+  taskId?: number;
+  /** The task is still running: the bubble shows the wait and a Cancel. */
+  pending?: boolean;
+  /** The folder the task ran in — the bubble's "Open folder". */
+  taskDir?: string;
+  /** Claude Code's session, once known — "Follow up" resumes it. */
+  sessionId?: string;
 }
 
 export type PromptContext =
@@ -146,6 +154,16 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /** Task mode: the folder whose subfolders are offered as projects ("" = home). */
+  taskProjectsRoot: string;
+  /** The project folder picked last in the chat's Task mode. */
+  taskLastProject: string;
+  /** Folders typed into "Other…" (any path, dotted too), newest first. */
+  taskRecentDirs: string[];
+  /** Where finished tasks also land (answer as Markdown, reports as Typst); "" = project only. */
+  taskOutputsDir: string;
+  /** Command that opens a session's folder or file ("" = VS Code, `code`). */
+  editorCommand: string;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -179,6 +197,11 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  taskProjectsRoot: "",
+  taskLastProject: "",
+  taskRecentDirs: [],
+  taskOutputsDir: "",
+  editorCommand: "",
 };
 
 type Listener = () => void;
@@ -400,7 +423,10 @@ class AppState {
     for (const def of availablePills(this.os)) {
       const shouldLoad = def.id === d.mainPill || d.activeIntegrations.includes(def.id);
       const idx = this.tasks.findIndex((t) => t.id === def.id);
-      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors));
+      // The VS Code pill wears the editor's name when Settings → Editor is set.
+      const name =
+        (def.id === DEFAULT_MAIN_PILL ? editorLabel(this.settings.editorCommand) : null) ?? def.name;
+      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def, this.settings.pillColors, name));
       const busy = idx >= 0 && (this.tasks[idx].state !== "idle" || this.tasks[idx].steps.length > 0);
       if (!shouldLoad && idx >= 0 && !busy) this.tasks.splice(idx, 1);
     }

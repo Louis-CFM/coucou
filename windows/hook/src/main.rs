@@ -97,7 +97,15 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// A Coucou task's PreToolUse raised to an approval card: headless
+    /// `claude -p` never fires PermissionRequest, so the island asks here
+    /// instead, and the answer goes back in PreToolUse's own shape.
+    task_ask: bool,
 }
+
+/// The tools a task may not run silently: everything that writes or executes.
+/// Reading (Read, Glob, Grep…) never raises a card.
+const TASK_ASK_TOOLS: &[&str] = &["Write", "Edit", "MultiEdit", "NotebookEdit", "Bash"];
 
 fn main() {
     if std::env::args().skip(1).any(|a| a == "--statusline") {
@@ -133,7 +141,12 @@ fn main() {
     });
 
     let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    let out = if event.task_ask {
+        reply::pre_tool_use_decision(decision.as_deref())
+    } else {
+        reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref())
+    };
+    print(out);
     std::process::exit(0);
 }
 
@@ -174,7 +187,24 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .map(str::to_string)
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
-    let name = normalize::refine(normalize::event(&raw_event), map);
+    let mut name = normalize::refine(normalize::event(&raw_event), map);
+
+    // A Coucou task (COUCOU_TASK=1, set by the island's task runner): headless
+    // `claude -p` denies without ever firing PermissionRequest, so the island
+    // would never be asked. Its PreToolUse of a writing or running tool is
+    // raised to an approval card instead. The answer goes back as PreToolUse's
+    // documented permissionDecision; nobody clicking prints nothing, and the
+    // session's own permission rules decide exactly as before.
+    let task_ask = env("COUCOU_TASK").as_deref() == Some("1")
+        && name == "PreToolUse"
+        && !map.contains_key("coucou_agent")
+        && map
+            .get("tool_name")
+            .and_then(Value::as_str)
+            .is_some_and(|tool| TASK_ASK_TOOLS.contains(&tool));
+    if task_ask {
+        name = "PermissionRequest".to_string();
+    }
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     for field in DROPPED_FIELDS {
@@ -199,7 +229,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, task_ask })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -413,6 +443,44 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn a_tasks_writing_tool_is_raised_to_an_approval_card() {
+        let task = env_of(&[("COUCOU_TASK", "1")]);
+        let args = Args { agent: "".into(), event: "".into() };
+        let run_env = |raw: &str, env: &dyn Fn(&str) -> Option<String>| {
+            prepare(raw.as_bytes(), &args, env, "/p").expect("forwarded")
+        };
+        // Write, Edit and Bash from a task: the card asks.
+        for tool in ["Write", "Edit", "MultiEdit", "NotebookEdit", "Bash"] {
+            let raw = format!(r#"{{"hook_event_name":"PreToolUse","tool_name":"{tool}"}}"#);
+            let ev = run_env(&raw, &task);
+            assert!(ev.task_ask, "{tool}");
+            assert_eq!(ev.name, "PermissionRequest");
+            let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+            assert_eq!(v["hook_event_name"], "PermissionRequest");
+        }
+        // Reading never asks; neither does anything outside a task, or another
+        // agent's event, or a real PermissionRequest.
+        let read = run_env(r#"{"hook_event_name":"PreToolUse","tool_name":"Read"}"#, &task);
+        assert!(!read.task_ask);
+        assert_eq!(read.name, "PreToolUse");
+        let no_env = run_env(r#"{"hook_event_name":"PreToolUse","tool_name":"Write"}"#, &|_| None);
+        assert!(!no_env.task_ask);
+        assert_eq!(no_env.name, "PreToolUse");
+        let gemini_args = Args { agent: "gemini".into(), event: "".into() };
+        let gemini = prepare(
+            br#"{"hook_event_name":"BeforeTool","toolCall":{"name":"write_file"}}"#,
+            &gemini_args,
+            &task,
+            "/p",
+        )
+        .expect("forwarded");
+        assert!(!gemini.task_ask);
+        let real = run_env(r#"{"hook_event_name":"PermissionRequest","tool_name":"Write"}"#, &task);
+        assert!(!real.task_ask);
+        assert_eq!(real.name, "PermissionRequest");
     }
 
     #[test]

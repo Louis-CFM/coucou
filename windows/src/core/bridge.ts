@@ -127,6 +127,21 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
+  // ── Task mode (src-tauri/src/task_runner.rs) ──────────────────────────────
+  /**
+   * Hands a task to Claude Code (`claude -p`) run in `dir`; resolves to the
+   * task id. `resume`: an earlier task's session id — the follow-up then
+   * continues that conversation instead of opening a new one.
+   */
+  taskSpawn: (prompt: string, dir: string, resume: string | null) =>
+    callOrThrow<number>("task_spawn", { prompt, dir, resume }),
+  /** Ends a running task; its bubble gets a "Cancelled." result. */
+  taskCancel: (taskId: number) => call<void>("task_cancel", { taskId }),
+  /** The folders Task mode offers: the projects root, then its subfolders. */
+  taskProjects: () => call<string[]>("task_projects"),
+  /** The bubble's folder button: the project's reports/ if any, else the project. */
+  taskReveal: (dir: string) => call<void>("task_reveal", { dir }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -275,6 +290,19 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+}
+
+/** `task-started`: the task found its Claude Code session (its island pill). */
+export interface TaskStarted {
+  taskId: number;
+  sessionId: string;
+}
+
+/** `task-result`: a task's final answer, already Markdown. */
+export interface TaskResult {
+  taskId: number;
+  ok: boolean;
+  text: string;
 }
 
 export interface LocalServer {
