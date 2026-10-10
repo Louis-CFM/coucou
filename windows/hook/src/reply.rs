@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and OpenCode. Any decision for
+/// another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "opencode")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -186,13 +186,18 @@ mod tests {
     fn each_agent_gets_its_own_reply_shape() {
         let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
         let deny = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#;
-        for agent in ["", "codex"] {
+        for agent in ["", "codex", "opencode"] {
             assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), deny);
             assert_eq!(stdout(agent, "PermissionRequest", None, None), None);
             assert_eq!(stdout(agent, "PreToolUse", None, None), None);
         }
+        // OpenCode shares Claude Code's hookSpecificOutput, and unlike Copilot it
+        // is not fail-closed: with no decision it stays silent and OpenCode asks
+        // in its own TUI. It never gets JSON on ordinary events either.
+        assert_eq!(stdout("opencode", "PermissionRequest", None, None), None);
+        assert_eq!(stdout("opencode", "PreToolUse", None, None), None);
         for agent in ["copilot", "muse"] {
             assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), r#"{"permissionDecision":"allow"}"#);
             assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), r#"{"permissionDecision":"deny"}"#);
