@@ -370,6 +370,16 @@ test("Claude Code in Cursor's terminal works on the Cursor pill, made for the se
   assert.equal(task("agent_cursor"), undefined);
 });
 
+test("Claude Code in PhpStorm's terminal works on the PhpStorm pill, made for the session", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj", session_id: "s8", term_editor: "phpstorm" });
+  hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", term_editor: "phpstorm", tool_name: "Bash", tool_input: { command: "ls" } });
+  assert.equal(task("agent_phpstorm").state, "working");
+  assert.equal(task("agent_phpstorm").sessionId, "s8");
+  assert.equal(task().state, "idle");
+  hook({ hook_event_name: "SessionEnd", term_editor: "phpstorm" });
+  assert.equal(task("agent_phpstorm"), undefined);
+});
+
 test("with another main tool, Claude Code's pill comes for the session and goes after", () => {
   State.settings.mainPill = "agent_codex";
   State.loadIntegrationTasks();
@@ -498,6 +508,13 @@ test("a request from Claude Code in Cursor's terminal goes on the Cursor pill", 
   assert.equal(task("agent_cursor").state, "approval");
   assert.equal(task("agent_cursor").name, "proj");
   assert.equal(State.focusId, "agent_cursor");
+  assert.equal(task().state, "idle");
+});
+
+test("a request from Claude Code in PhpStorm's terminal goes on the PhpStorm pill", () => {
+  ask("r1", { term_editor: "phpstorm" });
+  assert.equal(State.pendingApproval.pillId, "agent_phpstorm");
+  assert.equal(task("agent_phpstorm").state, "approval");
   assert.equal(task().state, "idle");
 });
 

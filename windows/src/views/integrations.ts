@@ -98,6 +98,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );
+  } else if (task.id === "agent_phpstorm") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}b3`,
+        text: t("Open PhpStorm"),
+        onclick: () => void Bridge.openInPhpStorm(task.sessionCwd ?? null),
+      }),
+    );
   } else if (task.id === "agent_claude-desktop") {
     actions.append(
       h("button", {

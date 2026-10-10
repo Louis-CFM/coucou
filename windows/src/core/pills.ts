@@ -77,6 +77,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Claude Code in Cursor's terminal: the same hooks as Claude Code.
   { id: "agent_cursor", name: "Cursor", color: "#C0C4CC", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
+  // Claude Code in PhpStorm's terminal: the same hooks as Claude Code.
+  { id: "agent_phpstorm", name: "PhpStorm", color: "#B07DFF", category: "workspace",
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_antigravity", name: "Antigravity", color: "#E879F9", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_codex", name: "Codex", color: "#2DD4BF", category: "workspace",
@@ -174,11 +177,17 @@ export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
   return availablePills(os).filter((p) => p.category === "workspace" && p.support !== "soon");
 }
 
+/** The editor a pill's sessions open in, when it is not VS Code. */
+export function editorOf(id: string | undefined): string | undefined {
+  return id === "agent_phpstorm" ? "phpstorm" : undefined;
+}
+
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
 export function sessionSubtitle(id: string): string {
   switch (id) {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";
+    case "agent_phpstorm": return "PhpStorm";
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";

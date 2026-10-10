@@ -199,6 +199,37 @@ fn open_url(url: String) {
 /// and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
+    open_folder_with("code", path)
+}
+
+/// The same for PhpStorm (its launcher is not on PATH unless the Toolbox
+/// scripts folder is).
+#[tauri::command]
+fn open_in_phpstorm(path: Option<String>) -> bool {
+    open_folder_with("phpstorm", path)
+}
+
+/// The command that starts an editor: `code` or `phpstorm` on PATH, and for
+/// PhpStorm also where JetBrains Toolbox and snap put theirs.
+fn editor_launcher(editor: &str) -> Option<std::path::PathBuf> {
+    if let Some(found) = platform::find_on_path(editor) {
+        return Some(found);
+    }
+    if editor != "phpstorm" {
+        return None;
+    }
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    [
+        home.map(|h| h.join(".local/share/JetBrains/Toolbox/scripts/phpstorm")),
+        Some("/snap/bin/phpstorm".into()),
+        Some("/usr/local/bin/phpstorm".into()),
+    ]
+    .into_iter()
+    .flatten()
+    .find(|p| p.is_file())
+}
+
+fn open_folder_with(editor: &str, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -213,8 +244,8 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    if let Some(launcher) = editor_launcher(editor) {
+        let mut cmd = Command::new(launcher);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -232,9 +263,10 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// runs in, when it was found (see session_window.rs); otherwise opens the
 /// folder in VS Code, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(session_id: Option<String>, path: Option<String>, editor: Option<String>) -> bool {
+    let editor = if editor.as_deref() == Some("phpstorm") { "phpstorm" } else { "code" };
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return open_folder_with(editor, path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
@@ -242,7 +274,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
         if platform::focus_session_window(&owners, &folder) {
             return true;
         }
-        open_in_vscode(path)
+        open_folder_with(editor, path)
     }
     // Linux asks the display server, KWin or the terminal, which can take a
     // moment: never on the UI thread a sync command runs on. VS Code still
@@ -251,7 +283,7 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     {
         std::thread::spawn(move || {
             if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
+                open_folder_with(editor, path);
             }
         });
         true
@@ -278,9 +310,18 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
+    open_file_with("code", path)
+}
+
+#[tauri::command]
+fn open_file_in_phpstorm(path: String) -> bool {
+    open_file_with("phpstorm", path)
+}
+
+fn open_file_with(editor: &str, path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    if let Some(launcher) = editor_launcher(editor) {
+        let mut cmd = Command::new(launcher);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
@@ -681,9 +722,11 @@ pub fn run() {
             list_monitors,
             open_url,
             open_in_vscode,
+            open_in_phpstorm,
             open_session,
             open_claude_desktop,
             open_file_in_vscode,
+            open_file_in_phpstorm,
             quit_app,
             hooks_status,
             agent_hooks_status,

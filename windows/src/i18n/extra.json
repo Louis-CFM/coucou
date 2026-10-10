@@ -3426,6 +3426,17 @@
    "pt-BR": "O chat do Claude Code compartilha suas notas de memória (a pasta .agent/memory do vault do Obsidian, ou COUCOU_MEMORY_DIR): ele as lê e pode salvar novas notas ali, em nenhum outro lugar.",
    "ru": "Чат Claude Code использует ваши заметки памяти (папка .agent/memory в хранилище Obsidian или COUCOU_MEMORY_DIR): он читает их и может сохранять новые только там.",
    "id": "Obrolan Claude Code berbagi catatan memori Anda (folder .agent/memory di vault Obsidian, atau COUCOU_MEMORY_DIR): ia membacanya dan dapat menyimpan catatan baru di sana, bukan di tempat lain."
+  },
+  "Open PhpStorm": {
+   "zh-Hans": "打开 PhpStorm",
+   "hi": "PhpStorm खोलें",
+   "es": "Abrir PhpStorm",
+   "ar": "فتح PhpStorm",
+   "fr": "Ouvrir PhpStorm",
+   "bn": "PhpStorm খুলুন",
+   "pt-BR": "Abrir o PhpStorm",
+   "ru": "Открыть PhpStorm",
+   "id": "Buka PhpStorm"
   }
  }
 }

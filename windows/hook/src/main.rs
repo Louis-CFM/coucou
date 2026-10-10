@@ -162,7 +162,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     }
     // Claude Code in Cursor's terminal goes on the Cursor pill (Mac #120).
     if !map.contains_key("term_editor") {
-        if let Some(editor) = term_editor(env) {
+        if let Some(editor) = term_editor(env, &ancestor_cmdlines) {
             map.insert("term_editor".into(), Value::String(editor.into()));
         }
     }
@@ -232,14 +232,51 @@ fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> 
 
 /// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
 /// TERM_PROGRAM=vscode like VS Code does, so it is told apart by its own trace
-/// variable, or by its executable behind VS Code's git helper.
-fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
+/// variable, or by its executable behind VS Code's git helper. `phpstorm` when
+/// the terminal is a JetBrains one (every JetBrains IDE sets the same
+/// TERMINAL_EMULATOR) and PhpStorm is among the shell's ancestors.
+fn term_editor(
+    env: &dyn Fn(&str) -> Option<String>,
+    ancestors: &dyn Fn() -> Vec<String>,
+) -> Option<&'static str> {
     if env("CURSOR_TRACE_ID").is_some_and(|v| !v.is_empty()) {
         return Some("cursor");
     }
     let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
     let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
-    exe.starts_with("cursor").then_some("cursor")
+    if exe.starts_with("cursor") {
+        return Some("cursor");
+    }
+    if env("TERMINAL_EMULATOR").is_some_and(|v| v.starts_with("JetBrains"))
+        && ancestors().iter().any(|c| c.to_ascii_lowercase().contains("phpstorm"))
+    {
+        return Some("phpstorm");
+    }
+    None
+}
+
+/// Command lines of this process's parents, nearest first (Linux: /proc).
+#[cfg(unix)]
+fn ancestor_cmdlines() -> Vec<String> {
+    let mut out = Vec::new();
+    let mut pid = std::os::unix::process::parent_id();
+    for _ in 0..16 {
+        if pid <= 1 {
+            break;
+        }
+        let Ok(cmd) = std::fs::read(format!("/proc/{pid}/cmdline")) else { break };
+        out.push(String::from_utf8_lossy(&cmd).replace('\0', " "));
+        let Ok(stat) = std::fs::read_to_string(format!("/proc/{pid}/stat")) else { break };
+        // "pid (comm) S ppid ...": comm may hold spaces and parentheses.
+        let Some(ppid) = stat.rsplit(')').next().and_then(|r| r.split_whitespace().nth(1)) else { break };
+        pid = ppid.parse().unwrap_or(0);
+    }
+    out
+}
+
+#[cfg(not(unix))]
+fn ancestor_cmdlines() -> Vec<String> {
+    Vec::new()
 }
 
 /// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
@@ -387,23 +424,38 @@ mod tests {
 
     #[test]
     fn cursor_is_told_apart_from_vs_code() {
-        assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "abc")])), Some("cursor"));
+        let editor = |pairs: &'static [(&'static str, &'static str)]| term_editor(&env_of(pairs), &Vec::new);
+        assert_eq!(editor(&[("CURSOR_TRACE_ID", "abc")]), Some("cursor"));
         assert_eq!(
-            term_editor(&env_of(&[(
+            editor(&[(
                 "VSCODE_GIT_ASKPASS_NODE",
                 r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe"
-            )])),
+            )]),
             Some("cursor")
         );
         assert_eq!(
-            term_editor(&env_of(&[(
+            editor(&[(
                 "VSCODE_GIT_ASKPASS_NODE",
                 r"C:\Users\me\AppData\Local\Programs\Microsoft VS Code\Code.exe"
-            )])),
+            )]),
             None
         );
-        assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
-        assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+        assert_eq!(editor(&[("CURSOR_TRACE_ID", "")]), None);
+        assert_eq!(editor(&[("TERM_PROGRAM", "vscode")]), None);
+    }
+
+    #[test]
+    fn phpstorm_is_told_apart_from_other_jetbrains_ides() {
+        let jb = env_of(&[("TERMINAL_EMULATOR", "JetBrains-JediTerm")]);
+        let under = |cmd: &'static str| move || vec!["-bash".to_string(), cmd.to_string()];
+        assert_eq!(
+            term_editor(&jb, &under("/opt/phpstorm/jbr/bin/java -classpath x com.intellij.idea.Main")),
+            Some("phpstorm")
+        );
+        assert_eq!(term_editor(&jb, &under("/opt/PhpStorm-2026/jbr/bin/java")), Some("phpstorm"));
+        assert_eq!(term_editor(&jb, &under("/opt/webstorm/jbr/bin/java")), None);
+        // Not a JetBrains terminal: a stray "phpstorm" ancestor does not count.
+        assert_eq!(term_editor(&env_of(&[]), &under("/opt/phpstorm/bin/phpstorm.sh")), None);
     }
 
     #[test]

@@ -12,6 +12,7 @@ import type { BotEmoteName, IslandViewName } from "../core/layout";
 import { cyclePill, islandKeyAction, navigate, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { editorOf } from "../core/pills";
 
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 
@@ -94,7 +95,7 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
     case "jumpToTerminal": {
       const task = State.focusTask;
       if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-      else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
+      else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null, editorOf(task?.id));
       if (State.mode === "expanded") host.collapse();
       break;
     }

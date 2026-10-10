@@ -482,6 +482,8 @@ fn agent_id(payload: &Value) -> String {
         format!("agent_{raw}")
     } else if text(payload, "term_editor") == "cursor" {
         "agent_cursor".to_string()
+    } else if text(payload, "term_editor") == "phpstorm" {
+        "agent_phpstorm".to_string()
     } else {
         "integration_claude".to_string()
     }
@@ -864,6 +866,7 @@ mod tests {
     fn a_turn_counts_for_the_pill_it_showed_on() {
         // Claude Code in Cursor's terminal is the Cursor pill, as in hooks.ts.
         assert_eq!(agent_id(&json!({ "term_editor": "cursor" })), "agent_cursor");
+        assert_eq!(agent_id(&json!({ "term_editor": "phpstorm" })), "agent_phpstorm");
         // An explicit agent wins over the terminal it runs in.
         assert_eq!(agent_id(&json!({ "coucou_agent": "claude-desktop", "term_editor": "cursor" })), "agent_claude-desktop");
         assert_eq!(agent_id(&json!({ "coucou_agent": "copilot" })), "agent_copilot");

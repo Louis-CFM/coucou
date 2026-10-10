@@ -12,7 +12,7 @@ import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
-import { pillDefinition, sessionSubtitle } from "../core/pills";
+import { editorOf, pillDefinition, sessionSubtitle } from "../core/pills";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
@@ -331,7 +331,7 @@ function buildOverview(actions: ViewActions): ViewHost {
               actions.blip();
               closeDiff();
             },
-            open: (path) => void Bridge.openFileInVSCode(path),
+            open: (path) => void Bridge.openFileInEditor(path, editorOf(State.focusTask?.id)),
           }));
         }
       } else if (task && sessionActive) {

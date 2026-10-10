@@ -18,6 +18,7 @@ import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
+const PHPSTORM_ID = "agent_phpstorm";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -65,7 +66,7 @@ interface HookPayload {
   coucou_agent?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
-  /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
+  /** "cursor" / "phpstorm" when Claude Code runs in that editor's terminal (set by the relay). */
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
@@ -254,9 +255,13 @@ function handleHook(island: Island, payload: HookPayload) {
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
-  // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
+  // when it runs in Cursor's terminal (Mac #120), PhpStorm's in PhpStorm's,
+  // VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  const workspaceId =
+    payload.term_editor === "cursor" ? CURSOR_ID
+    : payload.term_editor === "phpstorm" ? PHPSTORM_ID
+    : CLAUDE_ID;
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
