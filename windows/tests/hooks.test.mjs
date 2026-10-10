@@ -741,3 +741,16 @@ test("a session closed without SessionEnd gives its pill up after half an hour i
   assert.equal(task(sessionPill(SESSION_B)), undefined);
   mock.restoreAll();
 });
+
+test("session ids that differ only in dropped characters or past 36 get pills of their own", () => {
+  const long = "x".repeat(40);
+  const ids = ["abc!", "abc?", `${long}1`, `${long}2`];
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/a" });
+  ids.forEach((id, i) => hook({ hook_event_name: "SessionStart", session_id: id, cwd: `/home/me/${i}` }));
+  const pills = State.tasks.filter((t) => t.id.startsWith("session_"));
+  assert.deepEqual(pills.map((t) => t.sessionId).sort(), [...ids].sort());
+  for (const t of pills) assert.match(t.id, /^session_[A-Za-z0-9-]{1,36}$/);
+  // A UUID keeps the pill ID it always had.
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.ok(task(sessionPill(SESSION_B)));
+});

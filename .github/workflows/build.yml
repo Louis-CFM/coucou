@@ -27,6 +27,9 @@ jobs:
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
 
+      - name: Test session pill IDs
+        run: bash scripts/test-session-pill-id.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 

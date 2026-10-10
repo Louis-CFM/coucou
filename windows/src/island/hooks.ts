@@ -66,6 +66,38 @@ function pruneSessions(now: number) {
     lastHeard.delete(sessionId);
     State.removeTask(pillId);
   }
+  // Sessions that only ever held the workspace pill are forgotten the same way.
+  for (const [sessionId, heard] of lastHeard) {
+    if (sessionPills.has(sessionId) || now - heard <= SESSION_STALE_MS) continue;
+    if (State.tasks.some((t) => t.sessionId === sessionId && t.state !== "idle")) continue;
+    lastHeard.delete(sessionId);
+  }
+}
+
+const UUID = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
+const PILL_ID_PLAIN = 19;
+
+/** FNV-1a, 64 bits, as 16 hex digits. */
+function fnv1a64(text: string): string {
+  let h = 0xcbf29ce484222325n;
+  for (const b of new TextEncoder().encode(text)) {
+    h = ((h ^ BigInt(b)) * 0x100000001b3n) & 0xffffffffffffffffn;
+  }
+  return h.toString(16).padStart(16, "0");
+}
+
+/**
+ * A session's own pill ID, never shared with another session: a UUID as it is,
+ * anything else its first characters and a hash of the whole ID.
+ */
+function sessionPillId(sessionId: string): string {
+  const taken = new Set(sessionPills.values());
+  if (UUID.test(sessionId) && !taken.has(SESSION_PILL + sessionId)) return SESSION_PILL + sessionId;
+  const plain = sessionId.replace(/[^A-Za-z0-9-]/g, "").slice(0, PILL_ID_PLAIN);
+  for (let salt = 0; ; salt++) {
+    const id = `${SESSION_PILL}${plain}-${fnv1a64(salt ? `${salt}:${sessionId}` : sessionId)}`;
+    if (!taken.has(id)) return id;
+  }
 }
 
 /** The pill a Claude Code session's events go to. */
@@ -78,8 +110,7 @@ function claudePill(workspaceId: string, sessionId: string): string {
   if (own) return own;
   const owner = State.tasks.find((t) => t.id === workspaceId)?.sessionId;
   if (!owner || owner === sessionId || stale(owner, workspaceId, now)) return workspaceId;
-  // Session IDs are UUIDs; anything else still makes a plain pill ID.
-  const pillId = SESSION_PILL + sessionId.replace(/[^A-Za-z0-9-]/g, "").slice(0, 36);
+  const pillId = sessionPillId(sessionId);
   sessionPills.set(sessionId, pillId);
   return pillId;
 }

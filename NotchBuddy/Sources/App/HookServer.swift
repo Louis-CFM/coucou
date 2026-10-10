@@ -620,13 +620,18 @@ final class HookServer: @unchecked Sendable {
             lastHeard[sid] = nil
             AppState.shared.removeTask(id: pid)
         }
+        // Sessions that only ever held a workspace pill are forgotten the same way.
+        let owners = Set(workspaceOwner.values)
+        for (sid, heard) in lastHeard where sessionPills[sid] == nil && !owners.contains(sid)
+            && now.timeIntervalSince(heard) > Self.sessionStale {
+            lastHeard[sid] = nil
+        }
         lastHeard[sessionId] = now
         if let own = sessionPills[sessionId] { return own }
         if let owner = workspaceOwner[workspaceId], owner != sessionId,
            !isStale(owner, pillId: workspaceId, now: now) {
-            // Session IDs are UUIDs; anything else still makes a plain pill ID.
-            let safe = sessionId.filter { ($0.isASCII && ($0.isLetter || $0.isNumber)) || $0 == "-" }
-            let pillId = PillCatalog.sessionPillPrefix + String(safe.prefix(36))
+            let pillId = SessionPillId.make(sessionId, prefix: PillCatalog.sessionPillPrefix,
+                                            taken: Set(sessionPills.values))
             sessionPills[sessionId] = pillId
             return pillId
         }
