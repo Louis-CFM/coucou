@@ -31,6 +31,8 @@ mod sounds;
 mod spotify;
 mod tray;
 #[cfg(windows)]
+mod webview2_fix;
+#[cfg(windows)]
 mod webview_drop;
 
 use std::process::Command;
@@ -636,6 +638,8 @@ fn open_settings_window(app: AppHandle) {
 }
 
 pub fn run() {
+    // Stays the first call: it changes the process environment, which is only
+    // sound before any thread starts, and it must come before the first webview.
     platform::prepare_environment();
     let loaded = settings::load();
     i18n::set_picked(&loaded.language);

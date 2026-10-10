@@ -85,8 +85,12 @@ pub fn ensure_private_dir(dir: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dir)
 }
 
-/// Nothing to set up before the webview starts.
-pub fn prepare_environment() {}
+/// Environment the webview must inherit, set before any thread or process
+/// starts: an intact WebView2 runtime when the registered one is broken
+/// (webview2_fix.rs).
+pub fn prepare_environment() {
+    crate::webview2_fix::repair_runtime_path();
+}
 
 pub fn local_time() -> LocalTime {
     let t = unsafe { GetLocalTime() };
@@ -104,7 +108,9 @@ pub fn local_time() -> LocalTime {
 
 /// Spawned helpers must never flash a console window.
 pub fn no_console(cmd: &mut Command) -> &mut Command {
-    cmd.creation_flags(CREATE_NO_WINDOW)
+    // Nor inherit the WebView2 folder pinned for Coucou alone: every spawn goes
+    // through here or through keep_out_of (webview2_fix.rs).
+    crate::webview2_fix::keep_out_of(cmd).creation_flags(CREATE_NO_WINDOW)
 }
 
 pub fn open_url(url: &str) {
@@ -113,7 +119,7 @@ pub fn open_url(url: &str) {
 }
 
 pub fn reveal_folder(path: &str) {
-    let _ = Command::new("explorer").arg(path).spawn();
+    let _ = crate::webview2_fix::keep_out_of(&mut Command::new("explorer")).arg(path).spawn();
 }
 
 /// Our own `where`: walks %PATH% against %PATHEXT%, no shell involved.
@@ -478,7 +484,7 @@ pub fn open_claude_desktop() -> bool {
     }
     let Some(base) = std::env::var_os("LOCALAPPDATA") else { return false };
     let exe = PathBuf::from(base).join("AnthropicClaude").join("claude.exe");
-    exe.is_file() && Command::new(exe).spawn().is_ok()
+    exe.is_file() && crate::webview2_fix::keep_out_of(&mut Command::new(exe)).spawn().is_ok()
 }
 
 // ── Global shortcuts ──────────────────────────────────────────────────────────
