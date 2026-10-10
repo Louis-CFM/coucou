@@ -702,6 +702,8 @@ test("a declined permission request leaves the stop timer running", () => {
 const SESSION_A = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SESSION_B = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const sessionPill = (id) => `session_${id}`;
+/** The pill a session ended up on, whatever its ID looks like. */
+const pillOf = (sessionId) => State.tasks.find((t) => t.sessionId === sessionId)?.id;
 
 test("a second Claude Code session gets its own pill, named after its folder", () => {
   hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/coucou" });
@@ -743,6 +745,19 @@ test("a session closed without SessionEnd gives its pill up after half an hour i
   mock.restoreAll();
 });
 
+test("session ids that differ only in dropped characters or past 36 get pills of their own", () => {
+  const long = "x".repeat(40);
+  const ids = ["abc!", "abc?", `${long}1`, `${long}2`];
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/a" });
+  ids.forEach((id, i) => hook({ hook_event_name: "SessionStart", session_id: id, cwd: `/home/me/${i}` }));
+  const pills = State.tasks.filter((t) => t.id.startsWith("session_"));
+  assert.deepEqual(pills.map((t) => t.sessionId).sort(), [...ids].sort());
+  for (const t of pills) assert.match(t.id, /^session_[A-Za-z0-9-]{1,36}$/);
+  // A UUID keeps the pill ID it always had.
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.ok(task(sessionPill(SESSION_B)));
+});
+
 // ── Sessions found running ───────────────────────────────────────────────────
 
 import { answers } from "./tauri.mjs";
@@ -752,7 +767,7 @@ test("sessions already running get their pills before any event, named after the
   await discoverSessions();
   assert.equal(task().sessionId, "pid-100");
   assert.equal(task().name, "api");
-  const own = task(sessionPill("pid-200"));
+  const own = task(pillOf("pid-200"));
   assert.equal(own.name, "coucou");
   assert.equal(own.state, "idle");
   assert.equal(own.sessionCwd, "/home/me");
@@ -762,8 +777,9 @@ test("sessions already running get their pills before any event, named after the
 test("the first event of a found session lands on the pill made for its process", async () => {
   answers.set("claude_sessions", () => [{ pid: 100, cwd: "/home/me/api", name: "api" }, { pid: 200, cwd: "/home/me", name: "coucou" }]);
   await discoverSessions();
+  const ownId = pillOf("pid-200");
   hook({ hook_event_name: "PreToolUse", session_id: SESSION_B, cwd: "/home/me/coucou", coucou_claude_pid: 200, tool_name: "Bash", tool_input: { command: "ls" } });
-  const own = task(sessionPill("pid-200"));
+  const own = task(ownId);
   assert.equal(own.state, "working");
   assert.equal(own.sessionId, SESSION_B);
   assert.equal(task(sessionPill(SESSION_B)), undefined);
@@ -774,7 +790,7 @@ test("the first event of a found session lands on the pill made for its process"
   // Its process gone: the pill goes, even though it spoke a moment ago.
   answers.set("claude_sessions", () => [{ pid: 100, cwd: "/home/me/api", name: "api" }]);
   await discoverSessions();
-  assert.equal(task(sessionPill("pid-200")), undefined);
+  assert.equal(task(ownId), undefined);
   assert.equal(task().sessionId, SESSION_A);
   answers.delete("claude_sessions");
 });
