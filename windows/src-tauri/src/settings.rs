@@ -99,7 +99,7 @@ pub struct PlusPrefs {
 impl Default for PlusPrefs {
     fn default() -> Self {
         PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true,
-            always_visible: true,
+            always_visible: false,
             icloud_bridge: false,
             share_copies_to_iphone: false,
             push_only_when_away: true,
@@ -439,7 +439,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true }
 }"##;
 
     fn custom() -> Value {

@@ -176,7 +176,7 @@ export interface PlusPrefs {
 }
 
 export const DEFAULT_PLUS: PlusPrefs = {
-  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: true,
+  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: false,
   icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true, notifications: false,
 };
 
