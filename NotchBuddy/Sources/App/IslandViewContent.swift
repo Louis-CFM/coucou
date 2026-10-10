@@ -687,15 +687,18 @@ struct DiffCardView: View {
                         .font(.system(size: 10, weight: .medium).monospaced())
                         .foregroundColor(Color(hex: "#F4505E"))
                 }
-                Button(action: { openInEditor(diff) }) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundColor(Color(hex: "#5F646D"))
-                        .frame(width: 14, height: 14)
-                        .background(Color.white.opacity(0.07))
-                        .clipShape(Circle())
+                // A remote host's file is not on this Mac: nothing to open.
+                if !diff.remote {
+                    Button(action: { openInEditor(diff) }) {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                            .frame(width: 14, height: 14)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.top, 6)
             .padding(.bottom, 3)
@@ -727,7 +730,8 @@ struct DiffCardView: View {
     }
 
     private func openInEditor(_ diff: FileDiff) {
-        let path = diff.path
+        // An absolute path to a real file: never read by `code` as an option.
+        guard !diff.remote, let path = LocalFile.regular(diff.path) else { return }
         #if !APPSTORE
         let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
                          "\(NSHomeDirectory())/.nvm/current/bin/code"]
@@ -740,7 +744,8 @@ struct DiffCardView: View {
             return
         }
         #endif
-        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        // Shown in Finder, not opened: its default app could run it (.command, .app).
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 }
 

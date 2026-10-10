@@ -30,6 +30,9 @@ jobs:
       - name: Test tied process
         run: bash scripts/test-tied-process.sh
 
+      - name: Test remote trust
+        run: bash scripts/test-remote-trust.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 

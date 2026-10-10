@@ -1,7 +1,6 @@
 #if !APPSTORE
 import Foundation
 import SwiftUI
-import CryptoKit
 
 // MARK: - Remote hosts
 // Claude Code sessions on other machines, over SSH (the same design as the Linux
@@ -22,17 +21,9 @@ enum RemoteSSH {
         SSHDestination.valid(host)
     }
 
-    /// The host's socket here. macOS allows 103 bytes of path: a long host name
-    /// is cut and made unique with a hash.
+    /// The host's socket here.
     static func localSocket(for host: String) -> String {
-        var name = String(host.map { (c: Character) -> Character in
-            c.isLetter || c.isNumber || "._-".contains(c) ? c : "_"
-        })
-        if name.count > 32 {
-            let hash = SHA256.hash(data: Data(host.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
-            name = "\(name.prefix(32))-\(hash)"
-        }
-        return HookServer.supportDir.appendingPathComponent("r").appendingPathComponent("\(name).sock").path
+        HookServer.supportDir.appendingPathComponent("r").appendingPathComponent(SSHDestination.socketName(host)).path
     }
 
     // Where the relay goes on a host, and the socket it talks to there.
@@ -57,7 +48,7 @@ enum RemoteSSH {
     static func putSettings(stamp: String) -> String {
         #"""
         set -e; f=$HOME/.claude/settings.json; if [ -L "$f" ]; then f=$(readlink -f "$f"); fi; mkdir -p "$(dirname "$f")"
-        t=$f.coucou-new; trap "rm -f $t" EXIT
+        t=$f.coucou-new; cleanup() { rm -f "$t"; }; trap cleanup EXIT
         if [ -e "$f" ]; then b=$f.bak-\#(stamp); n=0; while [ -e "$b" ]; do n=$((n+1)); b=$f.bak-\#(stamp)-$n; done; cp -p "$f" "$b"; cp -p "$f" "$t"; echo "$b"; else umask 077; fi
         cat > "$t"; mv -f "$t" "$f"
         """#

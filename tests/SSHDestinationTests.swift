@@ -27,6 +27,13 @@ struct SSHDestinationTests {
         check(SSHDestination.label("ssh://[2001:db8::7]:2222"), "[2001:db8::7]", "label of IPv6 with a port")
         check(SSHDestination.label("devbox"), "devbox", "label of a plain host")
 
+        let plain = SSHDestination.socketName("a@b"), other = SSHDestination.socketName("a_b")
+        check(plain == other ? "same" : "apart", "apart", "hosts that clean up alike get their own socket")
+        check(SSHDestination.socketName("devbox") == SSHDestination.socketName("devbox") ? "stable" : "changes",
+              "stable", "a host keeps its socket name")
+        check(SSHDestination.socketName(String(repeating: "h", count: 200)).count <= 46 ? "short" : "long",
+              "short", "a long host name stays short")
+
         if failures > 0 { print("\(failures) failure(s)"); exit(1) }
         print("All SSH destination tests passed")
     }

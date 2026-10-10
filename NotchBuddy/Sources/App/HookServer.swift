@@ -34,10 +34,12 @@ final class HookServer: @unchecked Sendable {
     private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
     private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
     private static let maxConnections = 32              // concurrent connection ceiling
+    private static let maxRemoteConnections = 8         // all remote hosts together: never starve nb.sock
 
     private var serverFD: Int32 = -1
     private let connectionLock = NSLock()
     private var connectionCount = 0
+    private var remoteConnectionCount = 0
     private var pendingApprovalFD: Int32 = -1         // held open while user decides
     private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
     private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
@@ -274,10 +276,16 @@ final class HookServer: @unchecked Sendable {
             }
             // Enforce concurrent connection ceiling
             connectionLock.lock()
-            let count = connectionCount
-            if count < Self.maxConnections { connectionCount += 1 }
+            let admitted: Bool
+            if host == nil {
+                admitted = connectionCount < Self.maxConnections
+                if admitted { connectionCount += 1 }
+            } else {
+                admitted = remoteConnectionCount < Self.maxRemoteConnections
+                if admitted { remoteConnectionCount += 1 }
+            }
             connectionLock.unlock()
-            guard count < Self.maxConnections else {
+            guard admitted else {
                 close(clientFD)
                 continue
             }
@@ -289,7 +297,9 @@ final class HookServer: @unchecked Sendable {
 
     private func handleClient(fd: Int32, host: String? = nil) {
         defer {
-            connectionLock.lock(); connectionCount -= 1; connectionLock.unlock()
+            connectionLock.lock()
+            if host == nil { connectionCount -= 1 } else { remoteConnectionCount -= 1 }
+            connectionLock.unlock()
         }
         // 5-second receive timeout — unresponsive clients don't hold threads forever
         var tv = timeval(tv_sec: Self.receiveTimeoutSeconds, tv_usec: 0)
@@ -309,20 +319,12 @@ final class HookServer: @unchecked Sendable {
         }
 
         guard !raw.isEmpty,
-              var parsed = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+              let parsed = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+              let payload = host.map({ RemoteEvent.admit(parsed, host: $0) }) ?? parsed else {
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
             return
         }
-        // Another machine's terminal says nothing about this Mac's windows, and
-        // fields the app adds itself are never taken from it.
-        if let host {
-            for key in ["term_program", "iterm_session_id", "term_session_id", "bundle_id", "coucou_remote"] {
-                parsed.removeValue(forKey: key)
-            }
-            parsed["coucou_remote"] = host
-        }
-        let payload = parsed
 
         let coucouKind = payload["coucou_kind"] as? String ?? ""
 
@@ -436,8 +438,9 @@ final class HookServer: @unchecked Sendable {
             : sessionId
 
         #if PHONE_LINK
-        // The iPhone's "last turn" (prompt, actions, diffs, answer).
-        if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
+        // The iPhone's "last turn" (prompt, actions, diffs, answer). Not a remote host's:
+        // an instruction sent back would run `claude` here, in the host's folder.
+        if !isExternalAgent && !isRemote { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
         #endif
 
         // While a permission request is pending, dismiss when the resolving event arrives,
@@ -524,7 +527,8 @@ final class HookServer: @unchecked Sendable {
             // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
+            if var diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
+                diff.remote = isRemote
                 let idx = state.appendSessionDiff(diff, for: agentId)
                 let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)

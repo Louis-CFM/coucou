@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// What the user typed for a remote host, as one destination `ssh` takes after `--`.
 /// A port ("host -p 2222" or "host:2222") becomes ssh's own `ssh://host:2222` form;
@@ -47,5 +48,16 @@ enum SSHDestination {
         let rest = destination.dropFirst("ssh://".count)
         guard let colon = rest.lastIndex(of: ":"), !rest[colon...].contains("]") else { return String(rest) }
         return String(rest[..<colon])
+    }
+
+    /// The destination as the file name of its local socket. The hash of the whole
+    /// destination keeps hosts that clean up alike ("a@b", "a_b") apart; the name is
+    /// cut so the path fits macOS's 103 bytes.
+    static func socketName(_ destination: String) -> String {
+        let name = String(destination.map { (c: Character) -> Character in
+            c.isLetter || c.isNumber || "._-".contains(c) ? c : "_"
+        }.prefix(32))
+        let hash = SHA256.hash(data: Data(destination.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
+        return "\(name)-\(hash).sock"
     }
 }
