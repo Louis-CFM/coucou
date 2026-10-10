@@ -49,9 +49,11 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
     /// Adds a sentence to the queue. Starts playing if nothing is playing.
     func enqueue(_ text: String, locale: Locale?) {
         guard VoiceSettings.speakEnabled else { return }
-        let audio: Task<Data?, Never>? = ElevenLabsTTS.isActive
-            ? Task { await ElevenLabsTTS.shared.audio(for: text) }
-            : nil
+        let audio: Task<Data?, Never>? = {
+            if ElevenLabsTTS.isActive { return Task { await ElevenLabsTTS.shared.audio(for: text) } }
+            if KokoroSpeaker.isActive  { return Task { await KokoroSpeaker.shared.audio(for: text) } }
+            return nil
+        }()
         queue.append(Item(text: text, locale: locale, audio: audio))
         if !isSpeaking { playNext() }
     }
