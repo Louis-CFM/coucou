@@ -41,11 +41,14 @@ final class InstructionRunner {
 
     func start() {
         guard pollTask == nil else { return }
-        log("on: checking for instructions every 15 s")
+        log("on: checking for instructions (push, else every 15 s)")
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.check()
-                try? await Task.sleep(for: .seconds(15))
+                // CloudKit pushes reach this Mac (one came in the last half hour): they
+                // trigger the check, the poll is only a safety net. Otherwise every 15 s.
+                let pushesWork = CloudProbe.shared.lastPushAt.map { Date().timeIntervalSince($0) < 1800 } ?? false
+                try? await Task.sleep(for: .seconds(pushesWork ? 90 : 15), tolerance: .seconds(5))
             }
         }
     }
@@ -57,9 +60,30 @@ final class InstructionRunner {
         log("off")
     }
 
+    /// A CloudKit push arrived: look now instead of at the next poll.
+    func checkNow() async {
+        guard pollTask != nil else { return }
+        await check()
+    }
+
     // MARK: Reading
 
+    /// One check at a time: a push and the poll must never read the same changes twice
+    /// (an instruction would run twice).
+    private var checking = false
+    private var checkAgain = false
+
     private func check() async {
+        guard !checking else { checkAgain = true; return }
+        checking = true
+        repeat {
+            checkAgain = false
+            await readAndRun()
+        } while checkAgain
+        checking = false
+    }
+
+    private func readAndRun() async {
         var found: [CKRecord] = []
         do {
             var more = true

@@ -59,6 +59,27 @@ struct VoiceQueryTests {
         check("send an email to", VoiceQuery.mail(of: "send an email to Tana"),
               VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil))
         check("not a mail", VoiceQuery.mail(of: "envoie la musique"), nil)
+        check("guided mail (no recipient)", VoiceQuery.mail(of: "envoie un mail"),
+              VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil))
+        check("guided mail EN", VoiceQuery.mail(of: "send an email"),
+              VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil))
+        check("recipient answer", VoiceQuery.recipientAnswer("c'est Tana"), "Tana")
+        check("recipient spoken email", VoiceQuery.recipientAnswer("tana arobase gmail point com"), "tana@gmail.com")
+        check("subject answer", VoiceQuery.subjectAnswer("l'objet c'est Voilà votre image"), "Voilà votre image")
+        check("no subject", VoiceQuery.subjectAnswer("pas d'objet"), "")
+        check("body verbatim only on request", VoiceQuery.bodyAnswer("mot pour mot : Image en 1980 par 1080").body, "Image en 1980 par 1080")
+        check("body plain answer is drafted", VoiceQuery.bodyAnswer("Image en 1980 par 1080").instruction, "Image en 1980 par 1080")
+        check("body faut dire que", VoiceQuery.bodyAnswer("Faut dire que l'image est prête").instruction, "l'image est prête")
+        check("body faut dire → no literal", VoiceQuery.bodyAnswer("Faut dire que l'image est prête").body, nil)
+        check("body tell her", VoiceQuery.bodyAnswer("tell her that the file is ready").instruction, "the file is ready")
+        check("simple mail fr", VoiceQuery.simpleMail(from: "faut dire que l'image est prête"), "Bonjour,\n\nL'image est prête.\n\nBonne journée !")
+        check("simple mail en", VoiceQuery.simpleMail(from: "the file is ready"), "Hi,\n\nThe file is ready.\n\nBest,")
+        check("looks French", VoiceQuery.looksFrench("l'image est prête"), true)
+        check("looks English", VoiceQuery.looksFrench("the image is ready"), false)
+        check("mail pour lui dire → drafted", VoiceQuery.mail(of: "envoie un mail à Tana pour lui dire que l'image est prête")?.instruction, "l'image est prête")
+        check("mail description → literal", VoiceQuery.mail(of: "envoie un mail à Tana avec le texte rendez-vous demain")?.body, "rendez-vous demain")
+        check("body draft", VoiceQuery.bodyAnswer("écris-lui que je serai en retard").instruction, "je serai en retard")
+        check("attachment name", VoiceQuery.attachmentAnswer("oui, Goku point png"), "Goku.png")
         // Louis's example, as dictated
         check("Goku mail", VoiceQuery.mail(of: "Il y a une image qui s'appelle Goku.png. J'aimerais que tu la prennes et que tu l'envoies par mail à tana@gmail.com. En objet, tu écris : Voilà votre image. En description, tu écris : Image en 1980 × 1080."),
               VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: "Goku.png", folder: nil,
@@ -85,6 +106,40 @@ struct VoiceQueryTests {
         check("ouvre l'app Notes", VoiceQuery.appToOpen("ouvre l'app Notes"), "Notes")
         check("open Safari", VoiceQuery.appToOpen("open Safari"), "Safari")
         check("parse open app", IntentParser.parse("ouvre Figma", pills: pills), .openApp(name: "Figma"))
+
+        // Guided mail: names and repeats
+        check("recipient il s'appelle", VoiceQuery.recipientAnswer("Il s'appelle Enzo"), "Enzo")
+        check("recipient son nom c'est", VoiceQuery.recipientAnswer("son nom c'est Enzo Martin"), "Enzo Martin")
+        check("recipient his name is", VoiceQuery.recipientAnswer("his name is Paul"), "Paul")
+        check("contact candidates", VoiceQuery.contactCandidates("mon pote Enzo"), ["mon pote Enzo", "Enzo"])
+        check("collapse repeat", VoiceQuery.collapseRepeat("image image"), "image")
+        check("collapse repeat two words", VoiceQuery.collapseRepeat("Voilà l'image voilà l'image"), "Voilà l'image")
+        check("no collapse", VoiceQuery.collapseRepeat("bonjour Enzo"), "bonjour Enzo")
+
+        // Web search
+        check("web fr lead", VoiceQuery.webQuery(of: "cherche sur internet qui a gagné l'Euro"), "qui a gagné l'Euro")
+        check("web fr tail", VoiceQuery.webQuery(of: "Cherche les horaires du Louvre sur internet"), "les horaires du Louvre")
+        check("web fr recherche", VoiceQuery.webQuery(of: "fais une recherche internet sur Tesla"), "Tesla")
+        check("web fr peux-tu", VoiceQuery.webQuery(of: "Est-ce que tu peux chercher sur le web le prix de l'iPhone 17 ?"), "le prix de l'iPhone 17")
+        check("web en", VoiceQuery.webQuery(of: "search the web for the latest Apple news"), "the latest Apple news")
+        check("web en look up", VoiceQuery.webQuery(of: "can you look up who won the Champions League"), "who won the Champions League")
+        check("web google", VoiceQuery.webQuery(of: "Google the weather in Tokyo"), "the weather in Tokyo")
+        check("web nothing after", VoiceQuery.webQuery(of: "cherche sur internet"), "")
+        check("web not: open Google Chrome", VoiceQuery.webQuery(of: "ouvre Google Chrome"), nil)
+        check("web not: plain search", VoiceQuery.webQuery(of: "cherche Daft Punk"), nil)
+        check("parse web", IntentParser.parse("cherche sur internet la météo à Tokyo", pills: pills),
+              .webSearch(query: "la météo à Tokyo"))
+        check("question fr qui", VoiceQuery.looksLikeQuestion("qui a gagné le match hier"), true)
+        check("question fr c'est quoi", VoiceQuery.looksLikeQuestion("c'est quoi un trou noir"), true)
+        check("question fr et", VoiceQuery.looksLikeQuestion("et à Paris ?"), true)
+        check("question en", VoiceQuery.looksLikeQuestion("what's the capital of Australia"), true)
+        check("question en how", VoiceQuery.looksLikeQuestion("how tall is the Eiffel Tower"), true)
+        check("not a question: request", VoiceQuery.looksLikeQuestion("tu peux mettre de la musique ?"), false)
+        check("not a question: can you", VoiceQuery.looksLikeQuestion("can you play something chill"), false)
+        check("not a question: command", VoiceQuery.looksLikeQuestion("mets du Daft Punk"), false)
+        check("spoken markdown", VoiceQuery.spokenText("**Spain** won [the Euro](https://uefa.com) [1].\n- Final: 2-1"),
+              "Spain won the Euro. Final: 2-1")
+        check("spoken url", VoiceQuery.spokenText("See https://example.com for more."), "See for more.")
 
         // ── Answers ───────────────────────────────────────────────────────────
         var s = VoiceSnapshot()

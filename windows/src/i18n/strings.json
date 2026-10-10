@@ -123,6 +123,17 @@
    "ru": "Добавить",
    "id": "Tambah"
   },
+  "Add your Anthropic API key in Settings → Chat first.": {
+   "zh-Hans": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。",
+   "hi": "पहले सेटिंग्स → चैट में अपनी Anthropic API कुंजी जोड़ो।",
+   "es": "Primero añade tu clave de API de Anthropic en Ajustes → Chat.",
+   "ar": "أضف أولًا مفتاح Anthropic API في الإعدادات ← الدردشة.",
+   "fr": "Ajoute d'abord ta clé API Anthropic dans Réglages → Chat.",
+   "bn": "আগে সেটিংস → চ্যাটে তোমার Anthropic API কী যোগ করো।",
+   "pt-BR": "Primeiro adicione sua chave de API da Anthropic em Ajustes → Chat.",
+   "ru": "Сначала добавь ключ Anthropic API в Настройки → Чат.",
+   "id": "Tambahkan dulu kunci API Anthropic-mu di Pengaturan → Chat."
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -133,6 +144,17 @@
    "pt-BR": "Anúncio",
    "ru": "Реклама",
    "id": "Iklan"
+  },
+  "After «OK Coucou», what you say goes to Claude with your Anthropic API key, with what Coucou reads to answer (your pills, your services' data, a contact's address). It acts and searches the web. Never audio.": {
+   "zh-Hans": "说「OK Coucou」后，你说的话会用你的 Anthropic API 密钥发送给 Claude，同时发送 Coucou 为回答而读取的内容（你的药丸、你的服务数据、联系人地址）。它会执行操作并进行网页搜索。从不发送音频。",
+   "hi": "«OK Coucou» के बाद तुम जो कहते हो वह तुम्हारी Anthropic API कुंजी से Claude को जाता है, साथ में वह जो Coucou जवाब देने के लिए पढ़ता है (तुम्हारी पिल्स, तुम्हारी सेवाओं का डेटा, किसी संपर्क का पता)। वह काम करता है और वेब पर खोजता है। ऑडियो कभी नहीं।",
+   "es": "Tras «OK Coucou», lo que dices va a Claude con tu clave de API de Anthropic, junto con lo que Coucou lee para responder (tus píldoras, los datos de tus servicios, la dirección de un contacto). Actúa y busca en la web. Nunca el audio.",
+   "ar": "بعد «OK Coucou»، يُرسل ما تقوله إلى Claude بمفتاح Anthropic API الخاص بك، مع ما يقرؤه Coucou للإجابة (حبوبك، بيانات خدماتك، عنوان جهة اتصال). ينفّذ ويبحث على الويب. لا يُرسل الصوت أبدًا.",
+   "fr": "Après « OK Coucou », ce que tu dis part chez Claude avec ta clé API Anthropic, avec ce que Coucou lit pour répondre (tes pilules, les données de tes services, l'adresse d'un contact). Il agit et cherche sur le web. Jamais l'audio.",
+   "bn": "«OK Coucou»-এর পরে তুমি যা বলো তা তোমার Anthropic API কী দিয়ে Claude-এর কাছে যায়, সঙ্গে Coucou উত্তর দিতে যা পড়ে (তোমার পিল, তোমার সার্ভিসের ডেটা, কোনো কন্টাক্টের ঠিকানা)। সে কাজ করে আর ওয়েবে খোঁজে। অডিও কখনো নয়।",
+   "pt-BR": "Depois de «OK Coucou», o que você diz vai para o Claude com sua chave de API da Anthropic, junto com o que o Coucou lê para responder (suas pílulas, os dados dos seus serviços, o endereço de um contato). Ele age e pesquisa na web. Nunca o áudio.",
+   "ru": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API вместе с тем, что Coucou читает для ответа (твои пилюли, данные твоих сервисов, адрес контакта). Он действует и ищет в интернете. Звук — никогда.",
+   "id": "Setelah «OK Coucou», ucapanmu dikirim ke Claude dengan kunci API Anthropic-mu, beserta apa yang dibaca Coucou untuk menjawab (pil-mu, data layananmu, alamat kontak). Ia bertindak dan mencari di web. Tidak pernah audio."
   },
   "Agent": {
    "zh-Hans": "代理",
@@ -551,6 +573,17 @@
    "pt-BR": "Sessões do Claude Code em outras máquinas, por SSH com suas chaves e ~/.ssh/config. Conecte-se uma vez a cada host em um terminal antes, para que a chave dele seja conhecida.",
    "ru": "Сеансы Claude Code на других машинах по SSH с вашими ключами и ~/.ssh/config. Сначала подключитесь к каждому хосту один раз в терминале, чтобы его ключ был известен.",
    "id": "Sesi Claude Code di mesin lain, lewat SSH dengan kunci dan ~/.ssh/config Anda. Sambungkan ke tiap host sekali di terminal dulu agar kunci host-nya dikenal."
+  },
+  "Claude as Coucou's brain": {
+   "zh-Hans": "由 Claude 担任 Coucou 的大脑",
+   "hi": "Coucou का दिमाग: Claude",
+   "es": "Claude como cerebro de Coucou",
+   "ar": "Claude عقل Coucou",
+   "fr": "Claude comme cerveau de Coucou",
+   "bn": "Coucou-র মস্তিষ্ক: Claude",
+   "pt-BR": "Claude como cérebro do Coucou",
+   "ru": "Claude — мозг Coucou",
+   "id": "Claude sebagai otak Coucou"
   },
   "Claude is reading {name}…": {
    "zh-Hans": "Claude 正在读取 {name}…",
@@ -1090,6 +1123,17 @@
    "pt-BR": "Busca",
    "ru": "Получает",
    "id": "Mengambil"
+  },
+  "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
+   "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
+   "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
+   "es": "Para una voz más natural, descarga una voz Premium: Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces. En inglés: Ava para mujer, Jamie para hombre (británico).",
+   "ar": "لصوت أكثر طبيعية، نزّل صوتًا Premium: إعدادات النظام ← تسهيلات الاستخدام ← المحتوى المنطوق ← صوت النظام ← إدارة الأصوات. بالإنجليزية: Ava لامرأة، Jamie لرجل (بريطاني).",
+   "fr": "Pour une voix plus naturelle, télécharge une voix Premium : Réglages Système → Accessibilité → Contenu énoncé → Voix du système → Gérer les voix. En anglais : Ava pour une femme, Jamie pour un homme (britannique).",
+   "bn": "আরও স্বাভাবিক কণ্ঠের জন্য একটি Premium কণ্ঠ ডাউনলোড করো: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। ইংরেজিতে: নারী হলে Ava, পুরুষ হলে Jamie (ব্রিটিশ)।",
+   "pt-BR": "Para uma voz mais natural, baixe uma voz Premium: Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Voz do Sistema → Gerenciar Vozes. Em inglês: Ava para mulher, Jamie para homem (britânico).",
+   "ru": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский).",
+   "id": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
   },
   "From Open-Meteo for this city, only when you ask.": {
    "zh-Hans": "仅在你询问时，从 Open-Meteo 获取该城市的天气。",
@@ -2235,6 +2279,17 @@
    "ru": "Открыть / закрыть гардероб",
    "id": "Buka / tutup lemari"
   },
+  "Open Accessibility settings": {
+   "zh-Hans": "打开辅助功能",
+   "hi": "Accessibility खोलें",
+   "es": "Abrir Accesibilidad",
+   "ar": "افتح تسهيلات الاستخدام",
+   "fr": "Ouvrir Accessibilité",
+   "bn": "Accessibility খোলো",
+   "pt-BR": "Abrir Acessibilidade",
+   "ru": "Открыть Универсальный доступ",
+   "id": "Buka Aksesibilitas"
+  },
   "Open Codex": {
    "zh-Hans": "打开 Codex",
    "hi": "Codex खोलें",
@@ -2509,6 +2564,17 @@
    "pt-BR": "Fixar / soltar island",
    "ru": "Закрепить / открепить нотч",
    "id": "Sematkan / lepas island"
+  },
+  "Pitch": {
+   "zh-Hans": "音调",
+   "hi": "आवाज़ की पिच",
+   "es": "Tono",
+   "ar": "حدّة الصوت",
+   "fr": "Hauteur",
+   "bn": "কণ্ঠের তীক্ষ্ণতা",
+   "pt-BR": "Tom",
+   "ru": "Высота голоса",
+   "id": "Nada suara"
   },
   "Plan usage": {
    "zh-Hans": "计划用量",
@@ -3554,6 +3620,17 @@
    "pt-BR": "Voz",
    "ru": "Голос",
    "id": "Suara"
+  },
+  "Voice in use: {0}": {
+   "zh-Hans": "当前声音：{0}",
+   "hi": "उपयोग में आवाज़: {0}",
+   "es": "Voz en uso: {0}",
+   "ar": "الصوت المستخدم: {0}",
+   "fr": "Voix utilisée : {0}",
+   "bn": "ব্যবহৃত কণ্ঠ: {0}",
+   "pt-BR": "Voz em uso: {0}",
+   "ru": "Используется голос: {0}",
+   "id": "Suara yang dipakai: {0}"
   },
   "Voice type": {
    "zh-Hans": "声音类型",

@@ -66,6 +66,27 @@ enum VoiceSettings {
         set { UserDefaults.standard.set(newValue, forKey: "voiceElevenGender") }
     }
 
+    /// Mac voice pitch per voice type (Settings → Voice). The male default is higher than
+    /// the voice's own, so it sounds younger. Range 0.8–1.6 (AVSpeech accepts 0.5–2).
+    static let defaultPitchFemale = 1.1
+    static let defaultPitchMale   = 1.25
+    static func pitchKey(for gender: String) -> String { gender == "male" ? "voicePitchMale" : "voicePitchFemale" }
+    static func pitch(for gender: String) -> Double {
+        let v = UserDefaults.standard.double(forKey: pitchKey(for: gender))
+        let fallback = gender == "male" ? defaultPitchMale : defaultPitchFemale
+        return v == 0 ? fallback : min(1.6, max(0.8, v))
+    }
+
+    /// Claude is Coucou's brain (the user's Anthropic API key): what I say after
+    /// "OK Coucou" goes to Claude, which acts with Coucou's tools and searches the web.
+    /// Off by default: my words leave the Mac only once this is turned on.
+    static var claudeBrainEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "voiceClaudeBrain") }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceClaudeBrain") }
+    }
+    /// The older web-search-only path follows the same switch.
+    static var webSearchEnabled: Bool { claudeBrainEnabled }
+
     /// Weather by voice (Open-Meteo, no key). Off by default: network only when the user
     /// turned it on and set a city.
     static var weatherEnabled: Bool {
