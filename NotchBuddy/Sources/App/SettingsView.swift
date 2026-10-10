@@ -29,6 +29,7 @@ struct SettingsView: View {
     }
     @State private var launchAtStartup: Bool = (SMAppService.mainApp.status == .enabled)
     @State private var statusMessage: String = ""
+    @State private var showApiKeys = false
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
@@ -997,6 +998,25 @@ struct SettingsView: View {
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
+        ConnectedOnThisMacSection()
+
+        VStack(alignment: .leading, spacing: 12) {
+        // The whole row opens it, not just the little arrow (DisclosureGroup only reacts to the arrow).
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { showApiKeys.toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .rotationEffect(.degrees(showApiKeys ? 90 : 0))
+                Text(String(localized: "Use an API key instead"))
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        if showApiKeys {
         GroupBox(String(localized: "chat.anthropic-api.title")) {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
@@ -1071,6 +1091,13 @@ struct SettingsView: View {
             .padding(.vertical, 4)
         }
 
+        }
+        }
+        .onAppear {
+            // Nothing connected yet: the keys are the way in, so show them.
+            showApiKeys = state.connectedItems.isEmpty && state.customProviders.isEmpty
+        }
+
         GroupBox(String(localized: "chat.local.title")) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(localized: "chat.local.description"))
@@ -1104,6 +1131,7 @@ struct SettingsView: View {
                         ollamaURL = ""
                         state.fetchedProviderModels[.ollama] = nil
                         state.providerModelFetchError[.ollama] = nil
+                        state.autoConnectDismissed.insert("ollama")
                         if state.chatProvider == .ollama { state.chatProvider = .anthropic }
                         statusMessage = String(localized: "status.local.ollama-disconnected")
                     }
@@ -1139,6 +1167,7 @@ struct SettingsView: View {
                         lmstudioURL = ""
                         state.fetchedProviderModels[.lmstudio] = nil
                         state.providerModelFetchError[.lmstudio] = nil
+                        state.autoConnectDismissed.insert("lmstudio")
                         if state.chatProvider == .lmstudio { state.chatProvider = .anthropic }
                         statusMessage = String(localized: "status.local.lmstudio-disconnected")
                     }
@@ -1147,6 +1176,8 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+
+        CustomProvidersSettings()
     }
 
     // MARK: - Integrations section

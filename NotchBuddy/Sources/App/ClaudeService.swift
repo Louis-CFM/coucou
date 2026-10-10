@@ -85,6 +85,15 @@ final class KeychainStore: @unchecked Sendable {
         lock.withLock { cache[key] }
     }
 
+    /// Loads keys that are not in `allKeys` (custom providers' keys are named at runtime).
+    /// Main thread, once per key, before the first `get`.
+    func preload(_ keys: [String]) {
+        for key in keys {
+            guard lock.withLock({ cache[key] == nil }), let v = Keychain.load(key: key) else { continue }
+            lock.withLock { cache[key] = v }
+        }
+    }
+
     /// Updates cache + persists to Keychain.
     func set(_ key: String, value: String) {
         lock.withLock { cache[key] = value }
@@ -276,8 +285,16 @@ final class ClaudeService {
         let provider = state.chatProvider
         guard provider != .anthropic else { return }
 
+        let custom = provider == .custom ? state.activeCustomProvider : nil
+        if provider == .custom && custom == nil {
+            await showError("Pick a provider in Settings → Chat first.", state: state)
+            return
+        }
+
         let baseURL: String
-        if provider == .ollama {
+        if let custom {
+            baseURL = custom.baseURL
+        } else if provider == .ollama {
             baseURL = LocalChat.normaliseURL(state.ollamaServerURL)
         } else if provider == .lmstudio {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
@@ -285,11 +302,11 @@ final class ClaudeService {
             switch provider {
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .custom: baseURL = ""
             }
         }
 
-        guard !baseURL.isEmpty else {
+        guard !baseURL.isEmpty || custom?.cliTool != nil else {
             if provider.isLocal {
                 let name = provider == .ollama ? "Ollama" : "LM Studio"
                 await showError("Connect \(name) in Settings → Chat first.", state: state)
@@ -300,7 +317,14 @@ final class ClaudeService {
 
         // Auth header
         let authHeader: String
-        if provider.isLocal {
+        if let custom {
+            let key = KeychainStore.shared.get(custom.keychainKey) ?? ""
+            if custom.requiresKey && key.isEmpty {
+                await showError("\(custom.name) API key missing. Configure it in Settings.", state: state)
+                return
+            }
+            authHeader = "Bearer \(key.isEmpty ? "none" : key)"
+        } else if provider.isLocal {
             authHeader = "Bearer ollama"
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
@@ -349,7 +373,13 @@ final class ClaudeService {
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
 
-        let useStream = provider.isLocal
+        // A command-line tool (Claude Code…) answers through its own command, not a URL.
+        if let custom, let tool = CLIChatTools.tool(id: custom.cliTool) {
+            await chatViaCLI(tool, model: custom.model, messages: msgs, state: state)
+            return
+        }
+
+        let useStream = provider.isLocal || custom != nil
         var body: [String: Any] = [
             "model": state.activeChatModel,
             "max_tokens": 4096,
@@ -381,7 +411,9 @@ final class ClaudeService {
                 let final = try await LocalChat.streamChat(
                     baseURL: baseURL,
                     encodedBody: encodedBody,
-                    model: modelCopy
+                    model: modelCopy,
+                    completionsURL: custom == nil ? nil : url,
+                    authorization: custom == nil ? "Bearer ollama" : authHeader
                 ) { [state, msgId] visible in
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text
@@ -404,11 +436,17 @@ final class ClaudeService {
                 let msg: String
                 switch e {
                 case .serverUnreachable:
-                    msg = provider == .ollama
-                        ? "Ollama isn't running. Open it, then ask again."
-                        : "Start the local server in LM Studio, then ask again."
+                    if let custom {
+                        msg = "Cannot reach \(custom.name). Check your connection and the URL in Settings."
+                    } else {
+                        msg = provider == .ollama
+                            ? "Ollama isn't running. Open it, then ask again."
+                            : "Start the local server in LM Studio, then ask again."
+                    }
                 case .modelNotFound(let m):
-                    msg = "\(m) isn't installed. Pick another model above the chat box."
+                    msg = custom == nil
+                        ? "\(m) isn't installed. Pick another model above the chat box."
+                        : "\(m) isn't available. Pick another model above the chat box."
                 case .serverError(let s):
                     msg = s
                 }
@@ -447,6 +485,52 @@ final class ClaudeService {
                 await showError(error.localizedDescription, state: state)
             }
         }
+    }
+
+    /// Chat through a signed-in command-line tool. The reply streams into the bubble like a local model's.
+    private func chatViaCLI(_ tool: CLIChatTool, model: String, messages: [[String: Any]], state: AppState) async {
+        #if APPSTORE
+        conversationMessages.removeLast()
+        await showError("This version of Coucou cannot run \(tool.name).", state: state)
+        #else
+        let history = messages.compactMap { m -> (role: String, content: String)? in
+            guard let role = m["role"] as? String, let content = m["content"] as? String else { return nil }
+            return (role, content)
+        }
+        let placeholder = ChatMessage(role: .assistant, content: "")
+        let msgId = placeholder.id
+        state.chatHistory.append(placeholder)
+        state.stateOverride = .thinking
+        do {
+            let final = try await CLIChatRunner.chat(
+                tool, model: model, systemPrompt: systemPrompt, prompt: CLIChatTools.transcript(history)
+            ) { [state, msgId] visible in
+                if !visible.isEmpty, state.stateOverride == .thinking { state.stateOverride = nil }
+                if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                    state.chatHistory[idx].content = visible
+                }
+            }
+            conversationMessages.append(["role": "assistant", "content": final])
+            if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                state.chatHistory[idx].content = final
+            }
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            conversationMessages.removeLast()
+            state.chatHistory.removeAll { $0.id == msgId }
+            state.stateOverride = nil
+            let message: String
+            switch error as? CLIChatError {
+            case .notInstalled: message = "\(tool.name) is not installed any more. Open Settings → Chat to scan again."
+            case .notSignedIn:  message = "\(tool.name) is not signed in. \(tool.signInHint)"
+            case .failed(let text): message = text
+            case nil: message = error.localizedDescription
+            }
+            await showError(message, state: state)
+        }
+        #endif
     }
 
     // MARK: - Structured search (M8 — window attach + web search)

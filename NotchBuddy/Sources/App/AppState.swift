@@ -142,6 +142,66 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
+    // Providers the user added in Settings → Chat → More providers. The list is saved as JSON;
+    // each API key lives in the Keychain under `CustomProvider.keychainKey`.
+    @Published var customProviders: [CustomProvider] = [] {
+        didSet { UserDefaults.standard.set(CustomProviders.encodeProviders(customProviders), forKey: "customProviders") }
+    }
+    /// Which custom provider answers while `chatProvider == .custom`.
+    @Published var activeCustomProviderID: String = "" {
+        didSet { UserDefaults.standard.set(activeCustomProviderID, forKey: "activeCustomProviderID") }
+    }
+
+    /// What the automatic scan found on this Mac, for Settings → Chat → Connected on this Mac.
+    @Published var connectedItems: [ConnectedItem] = []
+    @Published var isScanningConnections = false
+    /// Tools, servers and URLs the user removed or disconnected: automatic scans leave them out.
+    @Published var autoConnectDismissed: Set<String> = [] {
+        didSet { UserDefaults.standard.set(Array(autoConnectDismissed).sorted(), forKey: "autoConnectDismissed") }
+    }
+
+    var activeCustomProvider: CustomProvider? {
+        customProviders.first { $0.id == activeCustomProviderID }
+    }
+
+    /// Makes `id` the chat provider and starts loading its models.
+    func selectCustomProvider(_ id: String) {
+        guard customProviders.contains(where: { $0.id == id }) else { return }
+        // A model fetch for the previous custom provider must not fill this one's list.
+        loadingProviderModels.remove(.custom)
+        fetchedProviderModels[.custom] = nil
+        providerModelFetchError[.custom] = nil
+        activeCustomProviderID = id
+        chatProvider = .custom
+        fetchModelsIfNeeded(for: .custom)
+    }
+
+    func setActiveCustomModel(_ model: String) {
+        guard let i = customProviders.firstIndex(where: { $0.id == activeCustomProviderID }) else { return }
+        customProviders[i].model = model
+    }
+
+    /// Adds `provider`; its API key (when there is one) goes to the Keychain.
+    func addCustomProvider(_ provider: CustomProvider, apiKey: String) {
+        if !apiKey.isEmpty { KeychainStore.shared.set(provider.keychainKey, value: apiKey) }
+        customProviders.append(provider)
+    }
+
+    func removeCustomProvider(id: String) {
+        guard let provider = customProviders.first(where: { $0.id == id }) else { return }
+        KeychainStore.shared.remove(provider.keychainKey)
+        autoConnectDismissed.insert(CustomProviders.autoConnectKey(for: provider))
+        customProviders.removeAll { $0.id == id }
+        if activeCustomProviderID == id {
+            activeCustomProviderID = ""
+            // A model fetch still running for it will drop its result: free the slot.
+            loadingProviderModels.remove(.custom)
+            fetchedProviderModels[.custom] = nil
+            providerModelFetchError[.custom] = nil
+            if chatProvider == .custom { chatProvider = .anthropic }
+        }
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -157,6 +217,10 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        if provider == .custom {
+            fetchCustomProviderModels()
+            return
+        }
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -204,7 +268,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .ollama, .lmstudio, .custom: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -224,10 +288,54 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .custom: break
                 }
             }
         }
+    }
+
+    private func fetchCustomProviderModels() {
+        guard let provider = activeCustomProvider else {
+            providerModelFetchError[.custom] = "Pick a provider in Settings → Chat first."
+            return
+        }
+        // A command-line tool offers a fixed set of models: nothing to fetch.
+        if let tool = CLIChatTools.tool(id: provider.cliTool) {
+            fetchedProviderModels[.custom] = tool.models.map { (id: $0.id, label: $0.label) }
+            if !tool.models.contains(where: { $0.id == provider.model }) { setActiveCustomModel(tool.defaultModel) }
+            return
+        }
+        let key = KeychainStore.shared.get(provider.keychainKey)
+        if provider.requiresKey, key?.isEmpty ?? true {
+            providerModelFetchError[.custom] = "No API key for \(provider.name) — add it in Settings."
+            return
+        }
+        loadingProviderModels.insert(.custom)
+        providerModelFetchError[.custom] = nil
+        Task {
+            let result = await CustomProviderClient.fetchModels(baseURL: provider.baseURL, apiKey: key)
+            // The user may have switched provider while this was loading.
+            guard activeCustomProviderID == provider.id else { return }
+            loadingProviderModels.remove(.custom)
+            switch result {
+            case .success(let models) where models.isEmpty:
+                providerModelFetchError[.custom] = "\(provider.name) returned no chat models."
+            case .success(let models):
+                fetchedProviderModels[.custom] = models
+                if !models.contains(where: { $0.id == provider.model }) { setActiveCustomModel(models[0].id) }
+            case .failure(.unauthorized):
+                providerModelFetchError[.custom] = "\(provider.name) rejected the API key."
+            case .failure(.notAModelList):
+                providerModelFetchError[.custom] = "\(provider.name) did not return a model list. Check the URL."
+            case .failure(.unreachable):
+                providerModelFetchError[.custom] = "Cannot reach \(provider.baseURL)."
+            }
+        }
+    }
+
+    /// Accent colour of the active chat provider (a custom provider brings its own).
+    var chatAccentHex: String {
+        chatProvider == .custom ? (activeCustomProvider?.colorHex ?? chatProvider.accentHex) : chatProvider.accentHex
     }
 
     /// The model currently active for chat (provider-aware).
@@ -238,6 +346,7 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .custom:    return activeCustomProvider?.model ?? ""
         }
     }
 
@@ -484,6 +593,12 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        customProviders = CustomProviders.decodeProviders(ud.data(forKey: "customProviders"))
+        KeychainStore.shared.preload(customProviders.map(\.keychainKey))
+        if let v = ud.string(forKey: "activeCustomProviderID") { activeCustomProviderID = v }
+        autoConnectDismissed = Set(ud.stringArray(forKey: "autoConnectDismissed") ?? [])
+        // A removed or unsafe custom provider must not leave chat pointing at nothing.
+        if chatProvider == .custom && activeCustomProvider == nil { chatProvider = .anthropic }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
