@@ -253,9 +253,8 @@ final class RemoteTunnel: @unchecked Sendable {
 
     /// Holds the forward open until ssh ends; returns why it ended.
     private func forward(_ remote: String) -> String {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        p.arguments = [
+        // Tied to Coucou: a forward left behind by a killed Coucou would hold the host's socket.
+        let (p, _) = TiedProcess.make("/usr/bin/ssh", [
             "-N", "-T",
             "-o", "BatchMode=yes",
             "-o", "ExitOnForwardFailure=yes",
@@ -265,9 +264,8 @@ final class RemoteTunnel: @unchecked Sendable {
             "-o", "ControlPath=none",
             "-R", "\(remote):\(local)",
             "--", host,
-        ]
+        ])
         let stderr = Pipe()
-        p.standardInput = FileHandle.nullDevice
         p.standardOutput = FileHandle.nullDevice
         p.standardError = stderr
         lock.lock()

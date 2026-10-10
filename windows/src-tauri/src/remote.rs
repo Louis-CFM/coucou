@@ -289,11 +289,25 @@ async fn tunnel(app: AppHandle, host: String) {
     }
 }
 
+/// Runs the command after it and ends it with Coucou, even when Coucou is killed
+/// outright: the shell watches its stdin, a pipe only Coucou holds, which the kernel
+/// closes when Coucou dies. The Mac's TiedProcess runs the same script.
+#[cfg(target_os = "linux")]
+const TIED: &str = r#"exec 3<&0
+"$@" </dev/null & child=$!
+(read -r _ <&3; kill $child 2>/dev/null) & watch=$!
+trap 'kill $child 2>/dev/null' TERM
+wait $child; status=$?
+kill $watch 2>/dev/null
+exit $status"#;
+
 /// Holds `ssh -R` open until it ends; returns why it ended.
 #[cfg(target_os = "linux")]
 async fn forward(app: &AppHandle, host: &str, remote: &str, local: &std::path::Path, settled: std::time::Duration) -> String {
     use tokio::io::AsyncReadExt;
-    let child = tokio::process::Command::new("ssh")
+    // Tied to Coucou: a forward left behind by a killed Coucou would hold the host's socket.
+    let child = tokio::process::Command::new("sh")
+        .args(["-c", TIED, "sh", "ssh"])
         .args([
             "-N", "-T",
             "-o", "BatchMode=yes",
@@ -306,7 +320,7 @@ async fn forward(app: &AppHandle, host: &str, remote: &str, local: &std::path::P
         ])
         .arg(format!("{remote}:{}", local.display()))
         .args(["--", host])
-        .stdin(std::process::Stdio::null())
+        .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())
         .kill_on_drop(true)
@@ -315,6 +329,7 @@ async fn forward(app: &AppHandle, host: &str, remote: &str, local: &std::path::P
         Ok(c) => c,
         Err(e) => return format!("ssh: {e}"),
     };
+    let _tie = child.stdin.take();
     let mut stderr = child.stderr.take().expect("piped");
     if tokio::time::timeout(settled, child.wait()).await.is_err() {
         set_status(app, host, "connected", String::new());
@@ -383,6 +398,66 @@ mod tests {
             }
             assert!(apply(&host, true, "stale").await.is_err());
         });
+    }
+
+    /// The pid of `shell`'s child called `name`.
+    #[cfg(target_os = "linux")]
+    fn child_named(shell: u32, name: &str) -> Option<i32> {
+        for _ in 0..50 {
+            let out = std::process::Command::new("pgrep").args(["-P", &shell.to_string(), "-x", name]).output().ok()?;
+            if let Some(pid) = String::from_utf8_lossy(&out.stdout).lines().next().and_then(|l| l.trim().parse().ok()) {
+                return Some(pid);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        None
+    }
+
+    #[cfg(target_os = "linux")]
+    fn gone(pid: i32) -> bool {
+        for _ in 0..50 {
+            if unsafe { libc::kill(pid, 0) } != 0 {
+                return true;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        false
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_tied_command_ends_when_coucou_is_killed() {
+        use std::process::{Command, Stdio};
+        let mut sh = Command::new("sh")
+            .args(["-c", TIED, "sh", "sleep", "300"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap();
+        let sleep = child_named(sh.id(), "sleep").expect("the command runs");
+        // Coucou killed outright: kill_on_drop's SIGKILL, and the pipe closes with it.
+        unsafe { libc::kill(sh.id() as i32, libc::SIGKILL) };
+        drop(sh.stdin.take());
+        let _ = sh.wait();
+        assert!(gone(sleep));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_tied_command_keeps_its_status_and_stderr() {
+        use std::process::{Command, Stdio};
+        let mut sh = Command::new("sh")
+            .args(["-c", TIED, "sh", "sh", "-c", "echo why >&2; exit 3"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        // Held as forward() holds it: closing it is Coucou going away.
+        let _tie = sh.stdin.take();
+        let out = sh.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(3));
+        assert_eq!(out.stderr, b"why\n");
     }
 
     #[test]
