@@ -391,7 +391,7 @@ final class HookServer: @unchecked Sendable {
             baseId = "integration_claude"
             isExternalAgent = false
         } else if let host = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) {
-            baseId = "integration_claude"
+            baseId = terminalWorkspace()
             isExternalAgent = false
             hostApp = host.bundleId
         } else {
@@ -651,6 +651,12 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    /// Claude Code in a terminal goes to its own pill when that is the main tool.
+    @MainActor
+    private func terminalWorkspace() -> String {
+        AppState.shared.mainPillId == "workspace_claude" ? "workspace_claude" : "integration_claude"
+    }
+
     // MARK: - Sessions found running
     //
     // A session is only heard of at its next event, and an idle one has none to send:
@@ -726,7 +732,7 @@ final class HookServer: @unchecked Sendable {
             pidCwd[key] = session.cwd
             let raw = session.name.isEmpty ? URL(fileURLWithPath: session.cwd).lastPathComponent : session.name
             let projectName = aliasProjectName(raw.isEmpty ? "Session" : raw)
-            let pillId = claudePill(workspaceId: "integration_claude", sessionId: key)
+            let pillId = claudePill(workspaceId: terminalWorkspace(), sessionId: key)
             if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
                 upsertSessionTask(id: pillId, projectName: projectName, cwd: session.cwd, bundleId: "")
             } else {
@@ -939,7 +945,7 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             basePillId = "agent_cursor"
         } else {
-            basePillId = "integration_claude"
+            basePillId = isVSCodeEditor ? "integration_claude" : terminalWorkspace()
         }
         let isClaudeCode = !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest
         let pillId = isClaudeCode ? claudePill(workspaceId: basePillId, sessionId: sessionId) : basePillId
@@ -1130,7 +1136,8 @@ final class HookServer: @unchecked Sendable {
         if isCodexRequest {
             pillId = "agent_codex"
         } else {
-            pillId = claudePill(workspaceId: isCursorEditor ? "agent_cursor" : "integration_claude", sessionId: sessionId)
+            let workspace = isCursorEditor ? "agent_cursor" : isVSCodeEditor ? "integration_claude" : terminalWorkspace()
+            pillId = claudePill(workspaceId: workspace, sessionId: sessionId)
         }
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil

@@ -791,3 +791,12 @@ test("a found session is never dropped for being quiet", async () => {
   mock.restoreAll();
   answers.delete("claude_sessions");
 });
+
+test("with Claude Code as the main tool, its sessions go to that pill, not VS Code's", () => {
+  State.settings = { ...DEFAULT_SETTINGS, mainPill: "workspace_claude" };
+  State.loadIntegrationTasks();
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/coucou" });
+  assert.equal(task("workspace_claude").sessionId, SESSION_A);
+  assert.equal(task("workspace_claude").name, "coucou");
+  assert.equal(task(CLAUDE)?.sessionId ?? null, null);
+});

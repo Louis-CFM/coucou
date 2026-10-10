@@ -18,6 +18,12 @@ import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
+const WORKSPACE_CLAUDE = "workspace_claude";
+
+/** Claude Code's own pill: the terminal one when that is the main tool, else VS Code's. */
+function claudeWorkspace(): string {
+  return State.mainPillId === WORKSPACE_CLAUDE ? WORKSPACE_CLAUDE : CLAUDE_ID;
+}
 const CURSOR_ID = "agent_cursor";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
@@ -162,7 +168,7 @@ export async function discoverSessions() {
     if (pidSessions.has(key)) continue;
     pidSessions.set(key, key);
     const projectName = aliasProjectName(name || lastPathComponent(cwd) || "Session");
-    const pillId = claudePill(CLAUDE_ID, key);
+    const pillId = claudePill(claudeWorkspace(), key);
     if (isSessionPill(pillId)) State.upsertExternalAgent(pillId, projectName, colorForProject(projectName));
     else upsert(pillId, projectName, cwd, key);
     const t = State.tasks.find((x) => x.id === pillId);
@@ -397,7 +403,7 @@ function handleHook(island: Island, payload: HookPayload) {
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
   // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : claudeWorkspace();
   const sessionId = payload.session_id ?? "";
   if (!validAgent && typeof payload.coucou_claude_pid === "number") adoptProcess(payload.coucou_claude_pid, sessionId);
   const agentId = validAgent ? `agent_${validAgent}` : claudePill(workspaceId, sessionId);
