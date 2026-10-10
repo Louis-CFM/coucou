@@ -328,7 +328,8 @@ final class AppState: ObservableObject {
             if let data = try? JSONEncoder().encode(Array(calendarFilter)) {
                 UserDefaults.standard.set(data, forKey: "calendarFilter")
             }
-            CalendarWatcher.shared.refresh()
+            // Also set while AppState.shared is being made, which refresh() reads.
+            DispatchQueue.main.async { CalendarWatcher.shared.refresh() }
         }
     }
 
