@@ -18,7 +18,7 @@ import { N_, t } from "../i18n/i18n";
 export const LIVE_TEXTS = [N_("Charging"), N_("On battery"), N_("Low battery")];
 
 export interface LiveEvent {
-  kind: "volume" | "brightness" | "battery" | "phone";
+  kind: "volume" | "brightness" | "battery" | "phone" | "call" | "message" | "app";
   /** 0…1. */
   level: number | null;
   muted: boolean;
@@ -27,7 +27,7 @@ export interface LiveEvent {
 }
 
 /** How long each kind stays, ms. */
-const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000 };
+const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000, call: 12000, message: 5000, app: 4500 };
 
 /** The compact island's width while a live activity shows. */
 export const LIVE_W = 336;
@@ -64,16 +64,33 @@ export function showLive(host: LiveHost, e: LiveEvent) {
   State.notify();
 }
 
+export interface ToastEvent {
+  kind: "call" | "message" | "app";
+  app: string;
+  title: string;
+  body: string;
+}
+
 export function registerLiveHandlers(host: LiveHost) {
-  void onEvent<LiveEvent>("live", (e) => {
-    showLive(host, e);
+  void onEvent<LiveEvent>("live", (e) => showLive(host, e));
+  // Another app's notification (notify.rs): who, and the first line.
+  void onEvent<ToastEvent>("toast", (n) => {
+    const who = n.title || n.app;
+    const text = n.kind === "call"
+      ? t("{0} is calling", { 0: who })
+      : [who, n.body].filter((x) => x).join(" · ");
+    showLive(host, { kind: n.kind, level: null, muted: false, charging: false, text });
   });
 }
 
 function iconFor(e: LiveEvent): { path: string; stroke: number } {
   switch (e.kind) {
     case "phone":
+    case "call":
       return { path: ICONS.phone, stroke: 2 };
+    case "message":
+    case "app":
+      return { path: ICONS.bubble, stroke: 0 };
     case "brightness":
       return { path: ICONS.sun, stroke: 2 };
     case "battery":
@@ -93,6 +110,9 @@ function colorFor(e: LiveEvent): string {
   }
   if (e.kind === "brightness") return "#FACC15";
   if (e.kind === "phone") return "#60A5FA";
+  if (e.kind === "call") return "#34D399";
+  if (e.kind === "message") return "#60A5FA";
+  if (e.kind === "app") return "#C5C8CD";
   return e.muted ? "#6B7079" : "#F5F6F8";
 }
 
@@ -121,7 +141,14 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
         icon.append(svg(path, 15, stroke ? { stroke } : {}));
         icon.style.color = color;
       }
-      el.classList.toggle("phone", e.kind === "phone");
+      const isText = e.kind === "phone" || e.kind === "call" || e.kind === "message" || e.kind === "app";
+      el.classList.toggle("phone", isText);
+      if (isText && e.kind !== "phone") {
+        label.textContent = e.text;
+        el.title = e.text;
+        el.onclick = null;
+        return;
+      }
       if (e.kind === "phone") {
         // The iPhone's link or text, already on the clipboard; a link opens on click.
         const url = /^https?:\/\/\S+$/i.test(e.text) ? e.text : null;

@@ -38,6 +38,8 @@ mod audio;
 mod sysevents;
 #[cfg(windows)]
 mod phone;
+#[cfg(windows)]
+mod notify;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -125,6 +127,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     sysevents::apply(&settings.plus);
     #[cfg(windows)]
     phone::apply(&settings.plus);
+    #[cfg(windows)]
+    notify::apply(settings.plus.notifications);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -807,6 +811,8 @@ pub fn run() {
             sysevents::start(&handle, &loaded.plus);
             #[cfg(windows)]
             phone::start(&handle, &loaded.plus);
+            #[cfg(windows)]
+            notify::start(&handle, loaded.plus.notifications);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

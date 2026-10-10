@@ -171,11 +171,13 @@ export interface PlusPrefs {
   shareCopiesToIphone: boolean;
   /** Phone alerts only when the PC has been idle for a minute. */
   pushOnlyWhenAway: boolean;
+  /** Other apps' notifications (Phone Link's calls and messages) in the island. */
+  notifications: boolean;
 }
 
 export const DEFAULT_PLUS: PlusPrefs = {
   volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: true,
-  icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true,
+  icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true, notifications: false,
 };
 
 export const DEFAULT_SETTINGS: Settings = {

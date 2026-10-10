@@ -92,6 +92,8 @@ pub struct PlusPrefs {
     pub share_copies_to_iphone: bool,
     /// ntfy alerts only when nobody has touched the PC for a minute.
     pub push_only_when_away: bool,
+    /// Other apps' notifications (Phone Link's calls and messages) in the island.
+    pub notifications: bool,
 }
 
 impl Default for PlusPrefs {
@@ -101,6 +103,7 @@ impl Default for PlusPrefs {
             icloud_bridge: false,
             share_copies_to_iphone: false,
             push_only_when_away: true,
+            notifications: false,
         }
     }
 }
@@ -436,7 +439,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true }
 }"##;
 
     fn custom() -> Value {

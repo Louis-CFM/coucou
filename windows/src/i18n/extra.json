@@ -3921,6 +3921,39 @@
    "pt-BR": "O que você copia no notebook é salvo para o atalho “Pegar do notebook” do iPhone. Desativado por padrão: coloca suas cópias no iCloud Drive.",
    "ru": "Скопированное на ноутбуке сохраняется для команды iPhone «Взять с ноутбука». По умолчанию выключено: копии попадают в iCloud Drive.",
    "id": "Yang kamu salin di laptop disimpan untuk pintasan “Ambil dari laptop” di iPhone. Mati secara bawaan: salinanmu masuk ke iCloud Drive."
+  },
+  "{0} is calling": {
+   "zh-Hans": "{0} 来电",
+   "hi": "{0} कॉल कर रहे हैं",
+   "es": "{0} está llamando",
+   "ar": "{0} يتصل",
+   "fr": "{0} vous appelle",
+   "bn": "{0} কল করছে",
+   "pt-BR": "{0} está ligando",
+   "ru": "{0} звонит",
+   "id": "{0} menelepon"
+  },
+  "Notifications in the island": {
+   "zh-Hans": "岛屿中的通知",
+   "hi": "आइलैंड में सूचनाएँ",
+   "es": "Notificaciones en la isla",
+   "ar": "الإشعارات في الجزيرة",
+   "fr": "Notifications dans l'île",
+   "bn": "আইল্যান্ডে নোটিফিকেশন",
+   "pt-BR": "Notificações na ilha",
+   "ru": "Уведомления на острове",
+   "id": "Notifikasi di pulau"
+  },
+  "Your iPhone's calls and messages (through Microsoft Phone Link) and other apps' notifications, shown in the island and never stored. Needs the identity package: run identity\\make-identity.ps1 once, then click Allow.": {
+   "zh-Hans": "你的 iPhone 来电和信息（通过 Microsoft 手机连接）以及其他应用的通知，会显示在岛屿中，从不保存。需要身份包：运行一次 identity\\make-identity.ps1，然后点击“允许”。",
+   "hi": "आपके iPhone के कॉल और मैसेज (Microsoft Phone Link से) और दूसरे ऐप्स की सूचनाएँ, आइलैंड में दिखती हैं और कभी सहेजी नहीं जातीं। पहचान पैकेज चाहिए: एक बार identity\\make-identity.ps1 चलाएँ, फिर Allow पर क्लिक करें।",
+   "es": "Las llamadas y mensajes de tu iPhone (a través de Microsoft Vincular al teléfono) y las notificaciones de otras apps, en la isla y nunca guardadas. Necesita el paquete de identidad: ejecuta identity\\make-identity.ps1 una vez y haz clic en Permitir.",
+   "ar": "مكالمات ورسائل iPhone (عبر Microsoft Phone Link) وإشعارات التطبيقات الأخرى، تظهر في الجزيرة ولا تُحفظ أبدًا. يتطلب حزمة الهوية: شغّل identity\\make-identity.ps1 مرة واحدة ثم انقر على السماح.",
+   "fr": "Les appels et messages de votre iPhone (via Microsoft Mobile connecté) et les notifications des autres apps, dans l'île et jamais enregistrés. Nécessite le paquet d'identité : lancez identity\\make-identity.ps1 une fois, puis cliquez sur Autoriser.",
+   "bn": "আপনার iPhone-এর কল ও মেসেজ (Microsoft Phone Link দিয়ে) এবং অন্য অ্যাপের নোটিফিকেশন, আইল্যান্ডে দেখানো হয় এবং কখনো সংরক্ষিত হয় না। আইডেন্টিটি প্যাকেজ লাগবে: একবার identity\\make-identity.ps1 চালান, তারপর Allow ক্লিক করুন।",
+   "pt-BR": "As chamadas e mensagens do seu iPhone (pelo Microsoft Vincular ao Celular) e as notificações de outros apps, na ilha e nunca guardadas. Precisa do pacote de identidade: execute identity\\make-identity.ps1 uma vez e clique em Permitir.",
+   "ru": "Звонки и сообщения iPhone (через Microsoft «Связь с телефоном») и уведомления других приложений — на острове, без сохранения. Нужен пакет идентичности: один раз запустите identity\\make-identity.ps1 и нажмите «Разрешить».",
+   "id": "Panggilan dan pesan iPhone-mu (lewat Microsoft Phone Link) serta notifikasi aplikasi lain, tampil di pulau dan tidak pernah disimpan. Perlu paket identitas: jalankan identity\\make-identity.ps1 sekali, lalu klik Izinkan."
   }
  }
 }
