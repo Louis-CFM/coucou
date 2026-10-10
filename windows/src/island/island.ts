@@ -34,6 +34,11 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/**
+ * The least time between two frames while only looping motion is left. Just
+ * under three frames at 90 Hz and two at 60, so both land on 30 a second.
+ */
+const CALM_FRAME_MS = 30;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -939,6 +944,9 @@ export class Island {
 
   // ── Frame loop ──────────────────────────────────────────────────────────────
 
+  /** Only looping motion is left, so frames are paced (see `frame`). */
+  private calm = false;
+
   ensureRunning() {
     if (this.running) return;
     this.running = true;
@@ -947,6 +955,15 @@ export class Island {
   }
 
   private frame = (nowMs: number) => {
+    // Breathing and bouncing read the same at 30 frames a second as at the
+    // display's 90 or 120, and they are all the island does most of its life.
+    if (
+      this.calm && !this.dirty && !this.width.animating && !this.height.animating &&
+      nowMs - this.lastFrame < CALM_FRAME_MS
+    ) {
+      requestAnimationFrame(this.frame);
+      return;
+    }
     const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
@@ -1003,6 +1020,14 @@ export class Island {
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+
+    // Calm: nothing left but the loops. Anything on its way somewhere — the
+    // island changing shape, eyes following the pointer, a tween, a ticker —
+    // gets every frame back at once.
+    this.calm = busy && !settling &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !greetingActive && !UploadSeq.isActive && !viewAnimating &&
+      !this.engine.moving;
 
     if (busy) {
       requestAnimationFrame(this.frame);

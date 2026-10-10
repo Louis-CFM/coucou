@@ -222,6 +222,10 @@ export class BotEngine {
 
   // Targets
   tgYaw = 0; tgPitch = 0; tgTilt = 0; tgSy = 1; tgSx = 1; tgEs = 1;
+  /** Seconds of full-rate drawing still owed to the pointer having moved the eyes. */
+  private lookMoving = 0;
+  private lookSeenX = 0;
+  private lookSeenY = 0;
 
   /** Extra canvas height above the body so hearts can fly out without clipping. */
   particleOverhang = 0;
@@ -540,22 +544,39 @@ export class BotEngine {
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
     return (
-      this.tweens.size > 0 ||
-      this.particles.length > 0 ||
-      this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
-      this.isMini ||
-      this.isDancing || this.dancingLevel > 0.001 ||
+      this.looping || this.moving || this.particles.length > 0 ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
       Math.abs(this.tgTilt - this.tilt) > 0.002 ||
       Math.abs(this.tgSy - this.sy) > 0.002 ||
       Math.abs(this.tgSx - this.sx) > 0.002 ||
+      (this.outfit !== "none" && (Math.abs(this.physVx) > 0.01 || Math.abs(this.physVy) > 0.01))
+    );
+  }
+
+  /** The motion a state repeats for as long as it lasts: breathing, a bounce, the z's. */
+  get looping(): boolean {
+    return (
+      this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat || this.isMini ||
+      this.isDancing || this.dancingLevel > 0.001
+    );
+  }
+
+  /**
+   * Something is on its way somewhere: a tween, eyes turning to the pointer, a
+   * colour changing. This is what wants every frame. The loops — a breath, a
+   * scan, a bounce, the z's drifting up — chase targets that never settle, and
+   * read the same at a third of the frames, so they are not counted here.
+   */
+  get moving(): boolean {
+    return (
+      this.tweens.size > 0 ||
+      this.lookMoving > 0 ||
       Math.abs(this.tgEs - this.es) > 0.002 ||
       this.slotH > 0.001 || Math.abs(this.slotHVel) > 0.001 ||
       Math.abs(this.col[0] - this.colT[0]) > 0.003 ||
       Math.abs(this.col[1] - this.colT[1]) > 0.003 ||
-      Math.abs(this.col[2] - this.colT[2]) > 0.003 ||
-      (this.outfit !== "none" && (Math.abs(this.physVx) > 0.01 || Math.abs(this.physVy) > 0.01))
+      Math.abs(this.col[2] - this.colT[2]) > 0.003
     );
   }
 
@@ -591,6 +612,14 @@ export class BotEngine {
     }
 
     const t = n - this.t0;
+    // The pointer turning the eyes: every frame while it does, and a moment after.
+    if (!this.isMini && (this.lookX !== this.lookSeenX || this.lookY !== this.lookSeenY)) {
+      this.lookSeenX = this.lookX;
+      this.lookSeenY = this.lookY;
+      this.lookMoving = 0.35;
+    } else if (this.lookMoving > 0) {
+      this.lookMoving = Math.max(0, this.lookMoving - dt);
+    }
     let ty = this.lookX * 0.62;
     let tp = this.lookY * 0.5;
 

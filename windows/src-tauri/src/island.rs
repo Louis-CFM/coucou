@@ -5,7 +5,7 @@
 // centre of the main display inside a borderless, transparent, always-on-top
 // window that never takes focus.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -322,6 +322,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    PLACED.fetch_add(1, Ordering::Relaxed);
     let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
@@ -342,6 +343,10 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
 }
 
+/// Counts every time the window is moved or resized, so the cursor poll knows
+/// when what it remembers of the window's place is out of date.
+static PLACED: AtomicU64 = AtomicU64::new(0);
+
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
 /// visible. Parked on a condvar the rest of the time.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
@@ -358,6 +363,9 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
+            // The window's origin, scale and logical size, as last asked.
+            let mut frame: Option<(f64, f64, f64, (f64, f64))> = None;
+            let mut frame_placed = 0;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(period));
 
@@ -379,15 +387,25 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 }
 
                 let Some(win) = window(&app) else { continue };
-                let Ok(origin) = win.outer_position() else { continue };
-                let scale = win.scale_factor().unwrap_or(1.0);
+                // Where the window is costs three trips to the main thread, and
+                // it only changes when we move it: asked again then, and with the
+                // display check as a safety net, not sixty times a second.
+                let placed = PLACED.load(Ordering::Relaxed);
+                if frame.is_none() || placed != frame_placed || ticks % screen_every == 0 {
+                    frame_placed = placed;
+                    frame = win.outer_position().ok().map(|origin| {
+                        let scale = win.scale_factor().unwrap_or(1.0);
+                        let size = match win.inner_size() {
+                            Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
+                            Err(_) => (PANEL_W, PANEL_H),
+                        };
+                        (origin.x as f64, origin.y as f64, scale, size)
+                    });
+                }
+                let Some((ox, oy, scale, size)) = frame else { continue };
                 let Some((cx, cy)) = cursor_physical() else { continue };
-                let x = (cx - origin.x as f64) / scale;
-                let y = (cy - origin.y as f64) / scale;
-                let size = match win.inner_size() {
-                    Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
-                    Err(_) => (PANEL_W, PANEL_H),
-                };
+                let x = (cx - ox) / scale;
+                let y = (cy - oy) / scale;
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
