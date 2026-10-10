@@ -353,9 +353,33 @@ test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac 
   assert.equal(desktop.color, "#D97757");
   assert.equal(desktop.sessionId, "d1");
   assert.equal(task().state, "idle");
-  // Its permission requests are answered in the app, as on macOS.
-  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash" });
-  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+  // Its permission requests get an approval card on the island (#328).
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash", tool_input: { command: "npm test" } });
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  assert.equal(State.pendingApproval?.pillId, "agent_claude-desktop");
+  assert.equal(sent("approval_ack").length, 1);
+});
+
+test("Claude Desktop AskUserQuestion gets a question card on the island (#328)", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "C:\\p\\proj", session_id: "d2", coucou_agent: "claude-desktop" });
+  hook({
+    hook_event_name: "PermissionRequest",
+    request_id: "q1",
+    coucou_agent: "claude-desktop",
+    tool_name: "AskUserQuestion",
+    tool_input: {
+      questions: [
+        {
+          question: "Proceed?",
+          options: [{ label: "Yes" }, { label: "No" }],
+        },
+      ],
+    },
+  });
+  assert.equal(State.pendingApproval?.requestId, "q1");
+  assert.equal(State.pendingApproval?.pillId, "agent_claude-desktop");
+  assert.ok(State.pendingApproval?.questions);
+  assert.equal(sent("approval_ack").length, 1);
 });
 
 // ── Main tool and Cursor ──────────────────────────────────────────────────────

@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and Claude Desktop. Any decision
+/// for another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "claude-desktop")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -49,9 +49,9 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
                 None => None,
             }
         }
-        // Claude Code and Codex share the documented hookSpecificOutput. Only
-        // Claude Code asks questions.
-        "" => decision.and_then(|d| decision_json(d, question)),
+        // Claude Code, Claude Desktop and Codex share the documented hookSpecificOutput.
+        // Claude Code and Claude Desktop can ask questions.
+        "" | "claude-desktop" => decision.and_then(|d| decision_json(d, question)),
         _ => decision.and_then(|d| decision_json(d, None)),
     }
 }
@@ -186,7 +186,7 @@ mod tests {
     fn each_agent_gets_its_own_reply_shape() {
         let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
         let deny = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#;
-        for agent in ["", "codex"] {
+        for agent in ["", "codex", "claude-desktop"] {
             assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None).unwrap(), allow);
             assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), deny);
@@ -246,8 +246,10 @@ mod tests {
         let decision = &v["hookSpecificOutput"]["decision"];
         assert_eq!(decision["behavior"], "allow");
         assert_eq!(decision["updatedInput"]["questions"], question["questions"]);
-        assert_eq!(decision["updatedInput"]["answers"]["Which one?"], "B");
-        // Only Claude Code asks questions: an answer for anyone else is nothing.
+        // Claude Desktop can also ask questions.
+        let out_desktop = stdout("claude-desktop", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).unwrap();
+        assert_eq!(out_desktop, out);
+        // Only Claude Code and Claude Desktop ask questions: an answer for anyone else is nothing.
         assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).is_none());
     }
 
