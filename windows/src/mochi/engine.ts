@@ -176,11 +176,19 @@ export function stepDanceLevel(level: number, dancing: boolean, dt: number): num
 }
 
 /**
- * The 112-BPM bounce at `seconds`, for a body of radius R and a dance `level`
- * (0…1): a sideways sway, a hop, a tilt, and a squash on landing.
+ * The dance's clock. No tempo (0): the Mac's 112 beats a minute, by the
+ * engine's own time. A tempo heard in the song (src-tauri/src/beat.rs): that
+ * many, counted from one of its beats (`beatAt`, Unix ms), so he lands on them.
  */
-export function danceTransform(seconds: number, level: number, R: number) {
-  const beat = (seconds * 112) / 60;
+export const DanceClock = { tempo: 0, beatAt: 0 };
+
+/**
+ * The bounce at `seconds`, 112 beats a minute unless told otherwise, for a body
+ * of radius R and a dance `level` (0…1): a sideways sway, a hop, a tilt, and a
+ * squash on landing.
+ */
+export function danceTransform(seconds: number, level: number, R: number, bpm = 112) {
+  const beat = (seconds * bpm) / 60;
   const hop = Math.abs(Math.sin(Math.PI * beat));
   const land = Math.pow(1 - hop, 6);
   return {
@@ -757,7 +765,9 @@ export class BotEngine {
     const R = W * 0.3;
     const px = W / 2 + this.ox * R;
     const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
-    const d = danceTransform(now(), this.dancingLevel, R);
+    const d = DanceClock.tempo > 0
+      ? danceTransform((Date.now() - DanceClock.beatAt) / 1000, this.dancingLevel, R, DanceClock.tempo)
+      : danceTransform(now(), this.dancingLevel, R);
     x.translate(px + d.dx, py + d.dy);
     x.rotate(d.rotate);
     x.scale(d.sx, d.sy);

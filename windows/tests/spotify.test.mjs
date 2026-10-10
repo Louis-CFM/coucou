@@ -8,10 +8,10 @@ import assert from "node:assert/strict";
 import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
 import {
-  IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd, islandDances,
-  musicPlaying, spotifyPosition, volumeLevel, withPlaying,
+  ANNOUNCE_SECONDS, IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd,
+  isNewSong, islandDances, musicPlaying, spotifyPosition, volumeLevel, withPlaying,
 } from "../src/core/spotify.ts";
-import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
+import { BotEngine, DanceClock, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
 import { buildSpotifyCard, buildSpotifyPill } from "../src/views/spotify.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
@@ -162,7 +162,19 @@ test("the engine dances only once asked, and keeps its frames going meanwhile", 
 
 // ── Reports from Rust ─────────────────────────────────────────────────────────
 
-const island = { reveals: 0, revealSilently() { this.reveals += 1; } };
+const island = {
+  reveals: 0,
+  revealSilently() { this.reveals += 1; },
+  /** The glances asked for, and whether the island is free to give one. */
+  glances: [],
+  free: true,
+  glance(seconds, done) {
+    if (!this.free) return false;
+    this.glances.push({ seconds, done });
+    State.mode = "expanded";
+    return true;
+  },
+};
 registerSpotifyHandlers(island);
 
 beforeEach(() => {
@@ -177,7 +189,15 @@ beforeEach(() => {
   State.loadIntegrationTasks();
   Spotify.state = { ...IDLE_SPOTIFY };
   Spotify.artwork = null;
+  Spotify.heard = null;
+  Spotify.announcing = 0;
+  Spotify.dancing = false;
+  State.mochiOnDesktop = false;
+  DanceClock.tempo = 0;
+  DanceClock.beatAt = 0;
   island.reveals = 0;
+  island.glances = [];
+  island.free = true;
 });
 
 const spotifyTask = () => State.tasks.find((t) => t.id === SPOTIFY_ID);
@@ -193,7 +213,7 @@ test("the pill wears the track's title, and its own name when nothing plays", ()
   assert.equal(spotifyTask().name, "Spotify");
 });
 
-test("music starting shows the hidden island once, silently; nothing on Windows-like setups", () => {
+test("music starting shows the hidden island once, silently; nothing while the pill is not declared", () => {
   emit("spotify", playing({ playing: false }));
   assert.equal(island.reveals, 0);
   emit("spotify", playing());
@@ -249,6 +269,21 @@ test("the idle card: not playing, or not installed with a way to get it", () => 
   assert.ok(card.el.textContent.includes(lookup("Get Spotify", "fr")));
 });
 
+test("where shuffle and repeat cannot be set, the card leaves the two buttons out", () => {
+  const card = buildSpotifyCard();
+  Spotify.state = playing({ modes: false });
+  card.sync();
+  const [shuffle, prev, play, next, repeat] = card.el.querySelector("np-buttons").children;
+  assert.equal(shuffle.style.display, "none");
+  assert.equal(repeat.style.display, "none");
+  for (const button of [prev, play, next]) assert.notEqual(button.style.display, "none");
+  // Where they work, they are there.
+  Spotify.state = playing({ modes: true });
+  card.sync();
+  assert.notEqual(shuffle.style.display, "none");
+  assert.notEqual(repeat.style.display, "none");
+});
+
 test("the playing card: title, artist · album, times, and the controls", () => {
   const card = buildSpotifyCard();
   Spotify.state = playing({ playing: false, shuffle: true });
@@ -301,4 +336,230 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   assert.equal(Spotify.state.playing, false);
   pill.el.fire("mouseleave");
   assert.ok(!pill.el.classList.contains("controls"));
+});
+
+// ── A new song ────────────────────────────────────────────────────────────────
+
+const other = (over = {}) => playing({ track: track({ id: "spotify:track:xyz", title: "Da Funk", ...over }) });
+/** The glance ends: the island folds on its own (`untouched`), or somebody took it over. */
+const endGlance = (untouched) => {
+  if (untouched) State.mode = "compact";
+  island.glances.at(-1).done(untouched);
+};
+
+test("a new song is one that starts after another: not the first, a pause, a seek or an ad", () => {
+  const first = playing();
+  assert.ok(!isNewSong(null, first), "the first heard since Spotify started");
+  assert.ok(!isNewSong(first.track.id, first), "the same one going on");
+  assert.ok(!isNewSong(first.track.id, playing({ position: 90 })), "a seek");
+  assert.ok(isNewSong(first.track.id, other()));
+  assert.ok(!isNewSong(first.track.id, { ...other(), playing: false }), "not while paused");
+  assert.ok(!isNewSong(first.track.id, other({ id: "spotify:ad:1" })), "never an ad");
+  assert.ok(!isNewSong(first.track.id, { ...IDLE_SPOTIFY }));
+});
+
+test("new songs are not announced unless asked for", () => {
+  assert.equal(DEFAULT_SETTINGS.announceSongs, false);
+  emit("spotify", playing());
+  emit("spotify", other());
+  assert.equal(island.glances.length, 0);
+  assert.equal(State.focusId, "integration_claude");
+});
+
+test("a new song opens the island on Spotify's card for a moment, then the front goes back", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  State.settings.announceSongs = true;
+  emit("spotify", playing({ playing: false }));
+  emit("spotify", playing());
+  emit("spotify", playing({ position: 60 }));
+  assert.equal(island.glances.length, 0, "the first song, then the same one going on");
+
+  emit("spotify", other());
+  assert.equal(island.glances.length, 1);
+  assert.equal(island.glances[0].seconds, ANNOUNCE_SECONDS);
+  assert.equal(State.focusId, SPOTIFY_ID, "Spotify's card in front");
+  assert.ok(Spotify.announcing, "and lit");
+  emit("spotify", other({ title: "Da Funk" }));
+  assert.equal(island.glances.length, 1, "the answer to the card's refresh is not another song");
+
+  // Nobody touched it: the island folds, and only then does the front go back.
+  endGlance(true);
+  assert.equal(Spotify.announcing, 0);
+  assert.equal(State.focusId, SPOTIFY_ID, "not while the card is still folding away");
+  t.mock.timers.tick(500);
+  assert.equal(State.focusId, "integration_claude");
+});
+
+test("a pause between two songs still announces the second, once it plays", () => {
+  State.settings.announceSongs = true;
+  emit("spotify", playing());
+  // Windows names the new track before it says it plays.
+  emit("spotify", { ...other(), playing: false });
+  assert.equal(island.glances.length, 0);
+  emit("spotify", other());
+  assert.equal(island.glances.length, 1);
+});
+
+test("an announcement somebody took over leaves the front where they see it", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  State.settings.announceSongs = true;
+  emit("spotify", playing());
+  emit("spotify", other());
+  endGlance(false);              // the mouse came, a key, an alert
+  assert.equal(Spotify.announcing, 0);
+  t.mock.timers.tick(5_000);
+  assert.equal(State.focusId, SPOTIFY_ID);
+});
+
+test("songs skipped through: one announcement carries on, and the front still goes back to the first pill", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  State.settings.announceSongs = true;
+  emit("spotify", playing());
+  emit("spotify", other());
+  const lit = Spotify.announcing;
+  emit("spotify", playing({ track: track({ id: "spotify:track:third", title: "Around the World" }) }));
+  assert.equal(island.glances.length, 2);
+  assert.notEqual(Spotify.announcing, lit, "the card's light plays again");
+  endGlance(true);
+  // One more, while the last is being put away.
+  t.mock.timers.tick(200);
+  emit("spotify", other());
+  assert.equal(island.glances.length, 3);
+  assert.equal(State.focusId, SPOTIFY_ID);
+  endGlance(true);
+  t.mock.timers.tick(500);
+  assert.equal(State.focusId, "integration_claude");
+});
+
+test("no announcement when the island is not free, when paused, or when Spotify quit in between", () => {
+  State.settings.announceSongs = true;
+  emit("spotify", playing());
+  island.free = false;           // open, under the mouse, or waiting for an answer
+  emit("spotify", other());
+  assert.equal(State.focusId, "integration_claude");
+  assert.equal(Spotify.announcing, 0);
+
+  island.free = true;
+  State.paused = true;
+  emit("spotify", playing());
+  assert.equal(island.glances.length, 0);
+
+  State.paused = false;
+  emit("spotify", { ...IDLE_SPOTIFY });
+  emit("spotify", other());
+  assert.equal(island.glances.length, 0, "the first song after Spotify came back");
+});
+
+test("the card wears its light for as long as the song is announced, and plays it again for the next", () => {
+  const card = buildSpotifyCard();
+  Spotify.state = playing();
+  card.sync();
+  assert.ok(!card.el.classList.contains("announce"));
+  Spotify.announcing = 1;
+  card.sync();
+  assert.ok(card.el.classList.contains("announce"));
+  assert.equal(card.el.style["--np-announce"], `${ANNOUNCE_SECONDS}s`);
+  assert.equal(card.el.style["--np-light"], "29, 185, 84", "Spotify's green, the pill's own colour");
+  // A colour picked for the pill's Mochi in Settings is the light's too.
+  State.settings.pillColors = { [SPOTIFY_ID]: "#14B8A6" };
+  State.loadIntegrationTasks();
+  Spotify.announcing = 2;
+  card.sync();
+  assert.ok(card.el.classList.contains("announce"));
+  assert.equal(card.el.style["--np-light"], "20, 184, 166");
+  Spotify.announcing = 0;
+  card.sync();
+  assert.ok(!card.el.classList.contains("announce"));
+});
+
+// ── The song's own beat ───────────────────────────────────────────────────────
+
+test("the bounce keeps any tempo it is given: still on each beat, highest between two", () => {
+  const R = 10;
+  for (const bpm of [87.4, 112, 142]) {
+    const beat = 60 / bpm;
+    for (const n of [0, 1, 7]) {
+      const on = danceTransform(n * beat, 1, R, bpm);
+      assert.ok(Math.abs(on.dy) < 1e-9 && Math.abs(on.sy - 0.94) < 1e-9, `${bpm}: lands on beat ${n}`);
+      assert.ok(Math.abs(danceTransform((n + 0.5) * beat, 1, R, bpm).dy + 2) < 1e-9, `${bpm}: highest after beat ${n}`);
+    }
+  }
+  // Told nothing, it is the Mac's 112.
+  assert.deepEqual(danceTransform(1.3, 1, R), danceTransform(1.3, 1, R, 112));
+});
+
+test("Mochi dances to the song's beat once it has been heard, and at 112 until then", () => {
+  State.settings.danceToBeat = true;
+  emit("spotify", playing());
+  assert.equal(DanceClock.tempo, 0, "not heard yet: the Mac's bounce");
+  emit("spotify", playing({ tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.deepEqual(DanceClock, { tempo: 87.4, beatAt: 1_700_000_000_000 });
+  // After a seek the tempo holds and where the beats fall is not known yet: he keeps the tempo.
+  emit("spotify", playing({ position: 90, tempo: 87.4, beatAt: 0 }));
+  assert.deepEqual(DanceClock, { tempo: 87.4, beatAt: 0 });
+  // Paused, the song's beat is no longer where it was.
+  emit("spotify", playing({ playing: false, tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.equal(DanceClock.tempo, 0);
+  // Linux, and a song whose beat was not found: no tempo.
+  emit("spotify", playing({ track: track({ id: "spotify:track:other" }) }));
+  assert.equal(DanceClock.tempo, 0);
+});
+
+test("the song's beat is not danced to unless asked for, and no longer once it is not", () => {
+  assert.equal(DEFAULT_SETTINGS.danceToBeat, false);
+  emit("spotify", playing({ tempo: 87.4, beatAt: 1_700_000_000_000 }));
+  assert.equal(DanceClock.tempo, 0);
+  State.settings.danceToBeat = true;
+  State.notify();
+  assert.equal(DanceClock.tempo, 87.4, "asked for: at once, without waiting for Spotify to say something");
+  State.settings.danceToBeat = false;
+  State.notify();
+  assert.equal(DanceClock.tempo, 0);
+});
+
+test("the song is listened to only when asked, and only while a Mochi is seen dancing to it", () => {
+  const told = () => sent("spotify_dancing").map((args) => args.on);
+  const before = told().length;
+  const since = () => told().slice(before);
+  // Not asked for: music plays, he dances in the compact island, and Rust is told nothing.
+  emit("spotify", playing());
+  State.mode = "compact";
+  State.notify();
+  assert.deepEqual(since(), []);
+  // Asked for.
+  State.settings.danceToBeat = true;
+  State.notify();
+  assert.deepEqual(since(), [true]);
+  State.notify();
+  assert.deepEqual(since(), [true], "said once");
+  // The island hides and he is not on the desktop: nobody to dance for.
+  State.mode = "hidden";
+  State.notify();
+  assert.deepEqual(since(), [true, false]);
+  // He lives on the desktop, where he dances while the island is hidden.
+  State.mochiOnDesktop = true;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true]);
+  // The music stops.
+  emit("spotify", playing({ playing: false }));
+  assert.deepEqual(since(), [true, false, true, false]);
+  emit("spotify", playing());
+  assert.deepEqual(since(), [true, false, true, false, true]);
+  // The app is paused.
+  State.paused = true;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false]);
+  State.paused = false;
+  // Expanded on another pill's card, with Mochi back in the island, he does not dance.
+  State.mochiOnDesktop = false;
+  State.mode = "expanded";
+  State.focusId = "integration_claude";
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false]);
+  State.setFocus(SPOTIFY_ID);
+  assert.deepEqual(since(), [true, false, true, false, true, false, true]);
+  // And the choice withdrawn is heard at once.
+  State.settings.danceToBeat = false;
+  State.notify();
+  assert.deepEqual(since(), [true, false, true, false, true, false, true, false]);
 });

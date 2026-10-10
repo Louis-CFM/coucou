@@ -21,6 +21,9 @@ export interface DesktopSnapshot {
   paused: boolean;
   /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
   dancing: boolean;
+  /** The dance's clock (mochi/engine.ts DanceClock): the song's tempo and one of its beats, or 0. */
+  tempo: number;
+  beatAt: number;
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */
