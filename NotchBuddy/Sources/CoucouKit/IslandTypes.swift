@@ -41,6 +41,13 @@ struct ApprovalInfo: Sendable {
     var inputKey: String
     /// Pill that owns this approval: "integration_claude", "agent_cursor", or "agent_codex".
     var pillId: String
+    /// Queue entry this card answers. A decision is only accepted for this id.
+    var id: UUID = UUID()
+    /// 1-based position and size of the approval queue, shown as "1 of N" when total > 1.
+    var position: Int = 1
+    var total: Int = 1
+    /// Agent name, set only when queued requests come from different sessions or agents.
+    var sourceLabel: String? = nil
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)

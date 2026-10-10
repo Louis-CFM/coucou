@@ -311,18 +311,29 @@ struct ApprovalView: View {
 
     var approval: ApprovalInfo? { state.pendingApproval }
 
+    /// "needs permission", with "1 of N" (and the agent when sources differ) only while others are queued.
+    private var approvalLabel: String {
+        guard let a = approval, a.total > 1 else { return "needs permission" }
+        var parts = ["needs permission", "\(a.position) of \(a.total)"]
+        if let source = a.sourceLabel { parts.append(source) }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
+        // Captured when the card is drawn: a click answers the request that was on screen,
+        // and is ignored if the queue has moved on since.
+        let shownId = approval?.id
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
+                AgentWho(task: state.focusTask, label: approvalLabel)
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny")
+                        if let id = shownId { HookServer.shared.sendApprovalDecision("deny", for: id) }
                     }
                     PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow")
+                        if let id = shownId { HookServer.shared.sendApprovalDecision("allow", for: id) }
                     }
                     // Codex, Copilot CLI and Muse Code do not support updatedPermissions
                     let hideAlways = approval?.pillId == "agent_codex"
@@ -330,7 +341,7 @@ struct ApprovalView: View {
                         || approval?.pillId == "agent_muse"
                     if !hideAlways {
                         SecondaryButton("Always") {
-                            HookServer.shared.sendApprovalDecision("always")
+                            if let id = shownId { HookServer.shared.sendApprovalDecision("always", for: id) }
                         }
                     }
                 }
