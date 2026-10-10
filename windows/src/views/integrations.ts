@@ -4,7 +4,7 @@
 // Cal.com is the one simplification: macOS shows a three-level calendar
 // (month → day → booking); here it is the list of upcoming bookings.
 
-import { h, svg, clear, dot } from "./dom";
+import { h, svg, clear, dot, hexColor } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -373,7 +373,7 @@ function linearCard(): HTMLElement {
     rows.append(linearRow(n.url, LINEAR, n.key, n.title, n.createdAt, n.actor));
   }
   for (const i of issues) {
-    rows.append(linearRow(i.url, String(i.stateColor ?? "#8E939C"), i.key, i.title, i.updatedAt, i.stateName));
+    rows.append(linearRow(i.url, hexColor(i.stateColor, "#8E939C"), i.key, i.title, i.updatedAt, i.stateName));
   }
   const subtitle = unread.length > 0 ? t("{count} unread", { count: unread.length }) : t("Assigned to you");
   return h("div", { class: "int-card" }, header(LINEAR, "Linear", subtitle), rows);

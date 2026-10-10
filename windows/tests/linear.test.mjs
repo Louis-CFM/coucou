@@ -72,3 +72,11 @@ test("a project entry has no key, a row click opens its link", () => {
   row.fire("click");
   assert.deepEqual(sent("open_url"), [{ url: "https://linear.app/acme/issue/n5" }]);
 });
+
+test("a state colour that is not a hex colour never reaches the row's style", () => {
+  const bad = { ...issue("ENG-9", "Styled"), stateColor: "#000;position:fixed;inset:0;opacity:0" };
+  load({ unread: [], assigned: [bad], inboxUrl: "https://linear.app/acme/inbox" });
+  const style = renderIntegrationCard(task, hooks).find(".int-page")[0].find(".dot")[0].getAttribute("style");
+  assert.ok(!style.includes("position"), style);
+  assert.ok(style.includes("background:#8E939C"), style);
+});
