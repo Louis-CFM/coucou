@@ -134,7 +134,7 @@ private struct CodeEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             tab
-            if let edit = session.edit {
+            if let edit = session.edit, !edit.pending {
                 let rows = CodeView.fit(CodeView.rows(for: edit), max: maxRows)
                 LiveRevealHost(
                     lines: rows.map { LiveReveal.Line(typed: $0.kind == .added, length: $0.text.count) },

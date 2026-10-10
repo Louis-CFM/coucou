@@ -183,7 +183,11 @@ function setup({ live = true } = {}) {
   return view;
 }
 
-const edit = (extra = {}) => toolStarted(CLAUDE, SRC, "Edit", { ...EDIT, ...extra });
+// The edit has landed and the lines around it were looked for: its rows show.
+const edit = (extra = {}) => {
+  toolStarted(CLAUDE, SRC, "Edit", { ...EDIT, ...extra });
+  codeFor(CLAUDE).edit.pending = false;
+};
 const edRows = (view) => view.el.find(".ed-row");
 const edText = (row) => row.find(".ed-text")[0].textContent;
 
@@ -212,29 +216,24 @@ test("an edit shown by hand (not followed) is instant", () => {
   mock.timers.reset();
 });
 
-test("a snippet arriving late does not restart the reveal: its context just fades in", () => {
+test("an edit is revealed once, with the lines around it already in place", () => {
   const view = setup();
-  edit();
+  toolStarted(CLAUDE, SRC, "Edit", EDIT);
   view.sync();
-  advance(160);
-  const progress = edRows(view).map((r) => r.style.opacity || "");
-  assert.ok(progress.some((o) => o !== "0"));
+  assert.equal(edRows(view).length, 0);
+  assert.equal(frames.size, 0);
 
-  codeFor(CLAUDE).edit.snippet = SNIPPET;
+  const d = codeFor(CLAUDE);
+  d.edit.snippet = SNIPPET;
+  d.edit.pending = false;
   view.sync();
   const rows = edRows(view);
-  assert.equal(rows.length, 6);
-  const kinds = rows.map((r) => r.className.replace("ed-row ", "").replace(" reveal-late", ""));
+  const kinds = rows.map((r) => r.className.replace("ed-row ", ""));
   assert.deepEqual(kinds, ["ctx", "ctx", "del", "add", "add", "ctx"]);
-  // The context fades in on its own; the edit's rows carry on, not from zero.
-  const late = rows.filter((r) => r.classList.contains("reveal-late"));
-  assert.equal(late.length, 3);
-  assert.ok(late.every((r) => !r.style.opacity));
-  const own = rows.filter((r) => !r.classList.contains("reveal-late"));
-  assert.deepEqual(own.map((r) => r.style.opacity || ""), progress);
+  assert.deepEqual(rows.map((r) => r.style.opacity || ""), ["0", "0", "0", "0", "0", "0"]);
 
   advance(2000);
-  assert.deepEqual(own.map((r) => r.style.opacity || ""), ["", "", ""]);
+  assert.deepEqual(rows.map((r) => r.style.opacity || ""), ["", "", "", "", "", ""]);
   assert.equal(frames.size, 0);
   mock.timers.reset();
 });
