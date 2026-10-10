@@ -5,6 +5,9 @@ import SwiftUI
 struct BotCanvasView: View {
     @ObservedObject var state: AppState
     var particleOverhang: CGFloat = 0
+    /// When set, overrides island-based eye-tracking (used by desktop Mochi).
+    /// CGPoint in the same coord space as state.mousePosition (DesktopSpace, y-down).
+    var lookOriginOverride: CGPoint? = nil
 
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
@@ -30,7 +33,9 @@ struct BotCanvasView: View {
                 // Claude Code tasks use state-based gradient (working=blue, thinking=purple, etc.).
                 #if !APPSTORE
                 if state.showingPlanDetail {
-                    let hex = ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
+                    let hex = state.planDetailIsCodex
+                        ? CodexPlanGauge.color(state.codexPlanUsage)
+                        : ClaudePlanGauge.color(for: state.claudePlanUsage.flatMap { ClaudePlanGauge.dominantPct($0) })
                     engine.bodyColor = cgColorFromHex(hex)
                 } else {
                     engine.bodyColor = (state.focusTask?.isIntegration == true)
@@ -46,30 +51,64 @@ struct BotCanvasView: View {
                 // Compute shouldDance per-frame (no observer lag)
                 let dancing: Bool = {
                     #if !APPSTORE
-                    guard AppState.shared.musicPlaying else { return false }
-                    guard AppState.shared.activeIntegrations.contains("integration_music") else { return false }
+                    let active = AppState.shared.activeIntegrations
+                    let music = AppState.shared.musicPlaying && active.contains("integration_music")
+                    let spotify = SpotifyController.shared.isPlaying && active.contains(SpotifyController.pillId)
+                    guard music || spotify else { return false }
                     let allowed: Set<BotState> = [.idle, .working, .thinking, .searching, .finished]
                     guard allowed.contains(state.effectiveState) else { return false }
                     if state.mode == .compact { return true }
-                    return state.mode == .expanded && state.view == .overview && state.focusId == "integration_music"
+                    guard state.mode == .expanded && state.view == .overview else { return false }
+                    return (music && state.focusId == "integration_music")
+                        || (spotify && state.focusId == SpotifyController.pillId)
                     #else
                     return false
                     #endif
                 }()
                 engine.setDancing(dancing)
+                let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+                let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+                let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+                engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
+                                 animated: state.view != .wardrobe)
+
+                #if !APPSTORE
+                if state.view == .listening {
+                    engine.listeningLevel  = CGFloat(VoiceEngine.shared.micLevel)
+                    engine.listeningHasWords = !VoiceEngine.shared.commandTranscript.isEmpty
+                }
+                #endif
 
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
-                engine.drawHandsBehind(context: ctx, size: size)
-                engine.draw(context: ctx, size: size)
+                // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
+                // rotate the entire body+accessories context around the body center so the
+                // whole character genuinely turns. Particles/badge (drawHandsAndExtras) are
+                // drawn outside the rotated context and do not spin.
+                if engine.outfit != .none && engine.outfitPresence > 0.05 && abs(engine.roll) > 0.001 {
+                    let center = engine.bodyCenter(size: size)
+                    var rigidCtx = ctx
+                    rigidCtx.translateBy(x: center.x, y: center.y)
+                    rigidCtx.rotate(by: .radians(engine.roll))
+                    rigidCtx.translateBy(x: -center.x, y: -center.y)
+                    engine.drawHandsBehind(context: rigidCtx, size: size)
+                    engine.drawOutfitBehind(context: rigidCtx, size: size)
+                    engine.draw(context: rigidCtx, size: size)
+                    engine.drawOutfitFront(context: rigidCtx, size: size)
+                } else {
+                    engine.drawHandsBehind(context: ctx, size: size)
+                    engine.drawOutfitBehind(context: ctx, size: size)
+                    engine.draw(context: ctx, size: size)
+                    engine.drawOutfitFront(context: ctx, size: size)
+                }
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
         .onChange(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
-        .onChange(of: state.view) { _, newView in
+        .onChange(of: state.view) { oldView, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
                 engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
@@ -77,6 +116,13 @@ struct BotCanvasView: View {
                 // Any other view (not mid-gulp): morph back
                 engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
             }
+            #if !APPSTORE
+            if newView == .listening {
+                engine.enterListening()
+            } else if oldView == .listening {
+                engine.exitListening(hadCommand: !VoiceEngine.shared.commandTranscript.isEmpty)
+            }
+            #endif
         }
         .onChange(of: state.mode) { _, newMode in
             // Hard-reset morph when island collapses
@@ -116,34 +162,51 @@ struct BotCanvasView: View {
         }
         .onAppear {
             engine.setState(state.effectiveState, force: true)
+            let isWardrobe = state.mode == .expanded && state.view == .wardrobe
+            let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
+            let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
+            engine.setOutfit(showOutfit ? state.resolvedOutfit : .none, animated: false)
         }
     }
 
     private func lookX(state: AppState, size: CGSize) -> CGFloat {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        if let origin = lookOriginOverride {
+            return tanh((state.mousePosition.x - origin.x) / 260)
+        }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
-        let (botCx, _, _, _) = botPosition(mode: state.mode, view: state.view,
-                                            islandW: islandW, islandH: islandH,
-                                            uploadProgress: state.uploadProgress)
-        // Island is centered on screen; bot is at botCx within island coords
-        let botScreenX = screen.frame.midX - islandW / 2 + botCx
-        return tanh((state.mousePosition.x - botScreenX) / 260)
+        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+                                                islandW: islandW, islandH: islandH,
+                                                uploadProgress: state.uploadProgress)
+        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
+        return tanh((state.mousePosition.x - bot.x) / 260)
+    }
+
+    /// Bot centre in DesktopSpace, like state.mousePosition. The island is centred at the
+    /// top of its screen, which can be any display, anywhere in the arrangement.
+    private func islandBotPoint(islandW: CGFloat, botCx: CGFloat, botCy: CGFloat) -> CGPoint {
+        let screen = IslandWindowController.islandScreen().frame
+        return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
+                                            y: screen.maxY - botCy),
+                                    desktopTop: IslandWindowController.desktopTop)
     }
 
     private func lookY(state: AppState, size: CGSize) -> CGFloat {
+        if let origin = lookOriginOverride {
+            return -tanh((state.mousePosition.y - origin.y) / 200)
+        }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
         let actualH: CGFloat = (state.mode == .expanded && state.view == .prompt)
             ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
             : islandH
-        let (_, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
-                                             islandW: islandW, islandH: actualH,
-                                             uploadProgress: state.uploadProgress)
-        // Island top = screen top → bot screen Y = botCy from island top
-        return -tanh((state.mousePosition.y - botCy) / 200)
+        let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
+                                                islandW: islandW, islandH: actualH,
+                                                uploadProgress: state.uploadProgress)
+        let bot = islandBotPoint(islandW: islandW, botCx: botCx, botCy: botCy)
+        return -tanh((state.mousePosition.y - bot.y) / 200)
     }
 }
 
@@ -179,6 +242,11 @@ struct MiniBotCanvasView: View {
         .onChange(of: task.state) { _, newState in
             engine.setState(newState)
         }
+        // The colour is set once, when the engine is made: a colour picked in
+        // Settings has to reach a mini Mochi that is already on screen.
+        .onChange(of: task.color) { _, newColor in
+            engine.bodyColor = cgColorFromHex(newColor)
+        }
         .onAppear {
             engine.setState(task.state, force: true)
             if let emote = task.emote {
@@ -191,22 +259,5 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
         }
-    }
-}
-
-// MARK: - CGColor from hex string
-
-func cgColorFromHex(_ hex: String) -> CGColor? {
-    let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-    guard let val = UInt64(h, radix: 16) else { return nil }
-    let r = CGFloat((val >> 16) & 0xFF) / 255
-    let g = CGFloat((val >> 8)  & 0xFF) / 255
-    let b = CGFloat( val        & 0xFF) / 255
-    return CGColor(red: r, green: g, blue: b, alpha: 1)
-}
-
-extension CGColor {
-    static func from(_ hex: String) -> CGColor {
-        cgColorFromHex(hex) ?? CGColor(gray: 0.5, alpha: 1)
     }
 }

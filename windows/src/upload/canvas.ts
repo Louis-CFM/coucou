@@ -6,12 +6,22 @@
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
+import { SCRIPT_FONTS } from "../core/fonts";
+import { N_, isRtl, t } from "../i18n/i18n";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
 } from "./sequence";
 
-const FONT = 'system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif';
+const FONT = `system-ui, "Segoe UI Variable Text", "Segoe UI", ${SCRIPT_FONTS}, sans-serif`;
+
+/** The card's inner right edge: no text runs past it. */
+const TEXT_RIGHT = USC.CARD_X + USC.CARD_W - 16;
+/** The two choose buttons, as drawn and as hit areas. */
+const ASK_BTN = { x: 114, w: 168 };
+const CANCEL_BTN = { x: 290, w: 120 };
+/** Drop-zone chips (English keys, shown with `t()`). */
+const CHIPS = [N_("PDF"), N_("Images"), N_("Code"), N_("Docs")];
 
 /** Mirrors the reference `rr()`: a rounded rect, radius clamped to the box. */
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -52,9 +62,48 @@ function text(
   ctx.font = font;
   ctx.fillStyle = color;
   ctx.textAlign = align;
+  // Arabic orders its words right to left; the anchor (left, centre, right) stays put.
+  ctx.direction = isRtl() ? "rtl" : "ltr";
   // SwiftUI's .leading / .center / .trailing anchors are vertically centred.
   ctx.textBaseline = "middle";
   ctx.fillText(s, x, y);
+}
+
+/**
+ * The font that fits `s` in `maxW`: `weight size FONT`, or smaller down to
+ * `minSize` for a longer translation. English was laid out for these widths
+ * and keeps its size (only an overlong file name can make it shrink).
+ */
+export function fitFont(
+  ctx: CanvasRenderingContext2D,
+  s: string,
+  maxW: number,
+  weight: number,
+  size: number,
+  minSize = size * 0.75,
+): string {
+  let px = size;
+  ctx.font = `${weight} ${px}px ${FONT}`;
+  while (ctx.measureText(s).width > maxW && px > minSize) {
+    px = Math.max(minSize, px - 0.5);
+    ctx.font = `${weight} ${px}px ${FONT}`;
+  }
+  return ctx.font;
+}
+
+/** `s` cut with an ellipsis so it fits `maxW` in `font` (a file name that is too long). */
+export function ellipsize(ctx: CanvasRenderingContext2D, s: string, maxW: number, font: string): string {
+  ctx.font = font;
+  if (ctx.measureText(s).width <= maxW) return s;
+  let cut = s;
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxW) cut = cut.slice(0, -1);
+  return `${cut}…`;
+}
+
+/** A label that fits `maxW`: a smaller font first, then an ellipsis. */
+function fitted(ctx: CanvasRenderingContext2D, s: string, maxW: number, weight: number, size: number) {
+  const font = fitFont(ctx, s, maxW, weight, size);
+  return { font, s: ellipsize(ctx, s, maxW, font) };
 }
 
 export interface UploadCanvasActions {
@@ -91,7 +140,7 @@ export class UploadCanvas {
     };
     this.overlay = document.createElement("div");
     this.overlay.id = "upload-overlay";
-    this.overlay.append(mk(114, 168, actions.ask), mk(290, 120, actions.cancel));
+    this.overlay.append(mk(ASK_BTN.x, ASK_BTN.w, actions.ask), mk(CANCEL_BTN.x, CANCEL_BTN.w, actions.cancel));
 
     this.el = document.createElement("div");
     this.el.id = "upload-layer";
@@ -174,18 +223,32 @@ export class UploadCanvas {
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, "#D5D7DB");
+    const title = fitted(ctx, t("Drop your files here"), TEXT_RIGHT - USC.TEXT_X, 500, 13);
+    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, "#D5D7DB");
 
+    // The macOS port measures chips the same rough way, so the row lines up; a
+    // translation wider than that estimate gets the room it needs.
+    const labels = CHIPS.map((chip) => t(chip));
+    let chipPx = 11;
+    const widths = () => {
+      ctx.font = `500 ${chipPx}px ${FONT}`;
+      return labels.map((l) => Math.max(l.length * 6.5 + 16, Math.ceil(ctx.measureText(l).width) + 16));
+    };
+    let ws = widths();
+    const rowW = () => ws.reduce((a, b) => a + b, 0) + 6 * (ws.length - 1);
+    while (rowW() > TEXT_RIGHT - USC.TEXT_X && chipPx > 8.5) {
+      chipPx -= 0.5;
+      ws = widths();
+    }
     let cx = USC.TEXT_X;
-    for (const chip of ["PDF", "Images", "Code", "Docs"]) {
-      // The macOS port measures chips the same rough way, so the row lines up.
-      const w = chip.length * 6.5 + 16;
+    labels.forEach((chip, i) => {
+      const w = ws[i];
       ctx.fillStyle = "rgba(255,255,255,0.07)";
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, "#B9BDC4");
       cx += w + 6;
-    }
+    });
     ctx.restore();
   }
 
@@ -200,8 +263,10 @@ export class UploadCanvas {
     const by = USC.BAR_Y;
     const barLen = (x1 - x0) * f.barReveal;
 
-    const name = State.droppedFile?.name ?? "file";
-    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, "#A9ADB5");
+    // Room up to the percentage (or the check mark) at the bar's right end.
+    const uploading = t("Uploading {name}", { name: State.droppedFile?.name ?? t("file") });
+    const label = fitted(ctx, uploading, x1 - x0 - 56, 500, 12.5);
+    text(ctx, label.s, x0, by - 30, label.font, "#A9ADB5");
 
     if (f.check > 0) {
       ctx.save();
@@ -272,19 +337,23 @@ export class UploadCanvas {
     ctx.globalAlpha = f.chooseAlpha;
     ctx.translate(0, (1 - f.chooseAlpha) * 4);
 
-    const name = State.droppedFile?.name ?? "file";
-    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, "#F5F6F8");
-    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
+    const maxW = TEXT_RIGHT - 114;
+    const ready = fitted(ctx, t("{name} is ready.", { name: State.droppedFile?.name ?? t("file") }), maxW, 600, 14);
+    text(ctx, ready.s, 114, 80, ready.font, "#F5F6F8");
+    const what = fitted(ctx, t("What do you want to do with it?"), maxW, 400, 12.5);
+    text(ctx, what.s, 114, 100, what.font, "#9398A1");
 
     ctx.fillStyle = "#F5F6F8";
-    rr(ctx, 114, 113, 168, 26, 13);
+    rr(ctx, ASK_BTN.x, 113, ASK_BTN.w, 26, 13);
     ctx.fill();
-    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+    const ask = fitted(ctx, t("Ask a question about it"), ASK_BTN.w - 14, 500, 12.5);
+    text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, "#0B0C0E", "center");
 
     ctx.fillStyle = "rgba(255,255,255,0.09)";
-    rr(ctx, 290, 113, 120, 26, 13);
+    rr(ctx, CANCEL_BTN.x, 113, CANCEL_BTN.w, 26, 13);
     ctx.fill();
-    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
+    const cancel = fitted(ctx, t("Cancel"), CANCEL_BTN.w - 14, 500, 12.5);
+    text(ctx, cancel.s, CANCEL_BTN.x + CANCEL_BTN.w / 2, 126, cancel.font, "#F1F2F4", "center");
     ctx.restore();
   }
 

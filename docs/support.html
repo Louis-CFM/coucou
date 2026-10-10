@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Support — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
 <header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
-<nav><a href="index.html">Home</a><a href="support.html" class="on">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
+<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="support.html" class="on">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
 <div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
 <section id="en">
 <h1>Support</h1>
@@ -11,14 +11,18 @@
 <b>Email:</b> <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>
 </div>
 <h2>FAQ</h2>
+<h3>How do I get Coucou on my iPhone?</h3>
+<p>Install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> from the App Store, then <a href="https://testflight.apple.com/join/3GpeHv2b">join the TestFlight beta</a>. The beta is free; Apple limits it to 10,000 testers. Then turn on <b>Settings → General → iPhone</b> in the Mac app (0.1.9 or later) and use the same Apple Account in iCloud on both. Step by step and troubleshooting: <a href="iphone.html">Coucou on iPhone</a>.</p>
+<h3>My sessions don’t show up on the iPhone</h3>
+<p>Check that the Mac and the iPhone use the same Apple Account in iCloud and that <b>Show my agent sessions on my iPhone</b> is on in the Mac app, then pull down on the Agents tab to refresh. More in <a href="iphone.html">Coucou on iPhone</a>.</p>
 <h3>macOS says it can’t verify the app</h3>
 <p>Coucou 0.1.1 and later are notarized by Apple: macOS only asks you to confirm the first launch. If you still have 0.1.0, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>, or update to the latest version.</p>
 <h3>After updating, macOS asks to let Coucou use my keys</h3>
 <p>That’s expected once after updating from 0.1.0, which was signed differently. Enter your Mac password and click <b>Always Allow</b>, once for each key you saved.</p>
 <h3>Where is the Windows download?</h3>
-<p>It is paused for now. Microsoft Defender wrongly flags the unsigned Windows installer as malware; a false-positive report is under review at Microsoft, and the installer will come back once it’s cleared and signed. Until then you can <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">build it from source</a>.</p>
+<p>Here: <a href="https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi">Coucou-Windows.msi</a> or <a href="https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe">Coucou-Windows-setup.exe</a>, always the newest version (Windows 10/11). The installer isn’t code-signed yet, so SmartScreen may warn you: click <b>More info → Run anyway</b>. Microsoft Defender once flagged it by mistake; Microsoft reviewed it and removed the detection. If Defender still blocks it, update its definitions and try again.</p>
 <h3>Is there a Linux version?</h3>
-<p>Yes, in beta: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it opens as a regular window. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
+<p>Yes: an AppImage, a .deb and a .rpm for x86_64, in <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.3.0">Coucou for Linux 0.3.0</a> (an Arch package can be built from the repository). The island sits on the top edge with compositors that support layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…); on GNOME it sits at the top of the screen through XWayland. Please report anything odd in the <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi doesn’t show my Claude Code sessions</h3>
 <p>Open Settings → Claude Code → <b>Install hooks</b>, review the changes, confirm, then start a new Claude Code session.</p>
 <h3>Can I use Coucou with Gemini CLI or Antigravity (agy)? (macOS)</h3>
@@ -58,14 +62,18 @@
 <b>E-mail :</b> <a href="mailto:raillelouis@gmail.com">raillelouis@gmail.com</a>
 </div>
 <h2>Questions fréquentes</h2>
+<h3>Comment avoir Coucou sur mon iPhone ?</h3>
+<p>Installe <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> depuis l’App Store, puis <a href="https://testflight.apple.com/join/3GpeHv2b">rejoins la bêta TestFlight</a>. La bêta est gratuite ; Apple la limite à 10 000 testeurs. Ensuite, active <b>Settings → General → iPhone</b> dans l’app Mac (0.1.9 ou plus récent) et utilise le même compte Apple dans iCloud sur les deux. Étape par étape et dépannage : <a href="iphone.html#fr">Coucou sur iPhone</a>.</p>
+<h3>Mes sessions n’apparaissent pas sur l’iPhone</h3>
+<p>Vérifie que le Mac et l’iPhone utilisent le même compte Apple dans iCloud et que <b>Show my agent sessions on my iPhone</b> est activé dans l’app Mac, puis tire vers le bas sur l’onglet Agents pour actualiser. Plus de détails dans <a href="iphone.html#fr">Coucou sur iPhone</a>.</p>
 <h3>macOS dit qu’il ne peut pas vérifier l’app</h3>
 <p>Coucou 0.1.1 et les versions suivantes sont notarisées par Apple : macOS te demande seulement de confirmer le premier lancement. Si tu as encore la 0.1.0, ouvre <b>Réglages Système → Confidentialité et sécurité</b>, descends et clique sur <b>Ouvrir quand même</b>, ou installe la dernière version.</p>
 <h3>Après la mise à jour, macOS demande d’autoriser Coucou à utiliser mes clés</h3>
 <p>C’est normal une fois après la mise à jour depuis la 0.1.0, qui était signée autrement. Tape le mot de passe de ton Mac et clique sur <b>Toujours autoriser</b>, une fois par clé enregistrée.</p>
 <h3>Où est le téléchargement Windows ?</h3>
-<p>Il est en pause pour le moment. Microsoft Defender détecte à tort l’installeur Windows (non signé) comme un malware ; un signalement de faux positif est en cours d’analyse chez Microsoft, et l’installeur reviendra dès que ce sera réglé et signé. En attendant, tu peux <a href="https://github.com/Louis-CFM/coucou/tree/main/windows#build-it-yourself">le compiler depuis le code source</a>.</p>
+<p>Ici : <a href="https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi">Coucou-Windows.msi</a> ou <a href="https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe">Coucou-Windows-setup.exe</a>, toujours la dernière version (Windows 10/11). L’installeur n’est pas encore signé, donc SmartScreen peut afficher un avertissement : clique sur <b>Informations complémentaires → Exécuter quand même</b>. Microsoft Defender l’avait détecté par erreur ; Microsoft l’a analysé et a retiré la détection. Si Defender le bloque encore, mets à jour ses définitions et réessaie.</p>
 <h3>Y a-t-il une version Linux ?</h3>
-<p>Oui, en bêta : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1">Coucou for Linux 0.1.1 (beta)</a>. L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle s’ouvre dans une fenêtre normale. Gemini CLI, Antigravity et le chat avec Google AI et OpenAI sont pour l’instant réservés au Mac. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
+<p>Oui : une AppImage, un .deb et un .rpm pour x86_64, dans <a href="https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.3.0">Coucou for Linux 0.3.0</a> (un paquet Arch se construit depuis le dépôt). L’island se place sur le bord du haut avec les compositeurs qui gèrent layer-shell (COSMIC, KDE Plasma, Hyprland, Sway…) ; sous GNOME, elle se place en haut de l’écran via XWayland. Signale tout souci dans les <a href="https://github.com/Louis-CFM/coucou/issues">issues</a>.</p>
 <h3>Mochi n’affiche pas mes sessions Claude Code</h3>
 <p>Réglages → Claude Code → <b>Install hooks</b>, vérifie les changements, confirme, puis lance une nouvelle session Claude Code.</p>
 <h3>Puis-je utiliser Coucou avec Gemini CLI ou Antigravity (agy) ? (macOS)</h3>
@@ -97,4 +105,4 @@
 <p>Sous Windows : le même bouton <b>Uninstall</b> pour les hooks, puis Paramètres Windows → Applications → <b>Coucou</b> → Désinstaller. Tu peux aussi supprimer <code>%LOCALAPPDATA%\Coucou</code>.</p>
 <p>Sous Linux : le même bouton <b>Uninstall</b> pour les hooks, puis <code>sudo apt remove coucou</code> ou <code>sudo dnf remove coucou</code>, ou supprime l’AppImage. Tu peux aussi supprimer <code>~/.config/coucou</code>, <code>~/.local/share/coucou</code>, <code>~/.local/share/fr.louisraille.coucou</code> et <code>~/.cache/coucou</code>.</p>
 </section>
-<footer>© 2026 Louis Raillé · Coucou is free and open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
+<footer>© 2026 Louis Raillé · Coucou’s code is open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>

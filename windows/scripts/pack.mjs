@@ -24,6 +24,11 @@ const PACKAGES = {
       suffix: "-setup.exe",
       names: [`Coucou-Windows-${version}-setup.exe`, "Coucou-Windows-setup.exe"],
     },
+    {
+      dir: "msi",
+      suffix: ".msi",
+      names: [`Coucou-Windows-${version}.msi`, "Coucou-Windows.msi"],
+    },
   ],
   linux: [
     {

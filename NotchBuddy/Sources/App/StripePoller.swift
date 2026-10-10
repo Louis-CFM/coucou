@@ -26,6 +26,7 @@ final class StripePoller: @unchecked Sendable {
     func pollNow() { poll() }
 
     private func poll() {
+        guard !DemoEngine.isPollerPaused else { return }
         guard let key = KeychainStore.shared.get("stripe-api-key") else { return }
         fetchBalance(key: key)
         fetchCharges(key: key)

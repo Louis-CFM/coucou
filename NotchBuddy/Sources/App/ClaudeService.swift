@@ -217,6 +217,12 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        if DemoEngine.shared.isActive {
+            state.stateOverride = .thinking
+            await DemoEngine.shared.streamChatResponse(for: query)
+            state.stateOverride = nil
+            return
+        }
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
@@ -541,14 +547,13 @@ final class ClaudeService {
         // Store full content (includes tool_use/tool_result blocks) for correct multi-turn context
         conversationMessages.append(["role": "assistant", "content": content])
 
-        guard let textBlock = content.first(where: { $0["type"] as? String == "text" }),
-              let text = textBlock["text"] as? String, !text.isEmpty else {
+        guard let text = claudeResponseText(fromContent: content) else {
             await showError("No response text.", state: state)
             return
         }
 
         // Add to display history
-        state.chatHistory.append(ChatMessage(role: .assistant, content: text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        state.chatHistory.append(ChatMessage(role: .assistant, content: text))
 
         state.stateOverride = nil
         state.view = .prompt
@@ -561,8 +566,7 @@ final class ClaudeService {
         // Extract text from Anthropic response (may contain tool_use / web_search_tool_result blocks)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
-              let textBlock = content.first(where: { $0["type"] as? String == "text" }),
-              let text = textBlock["text"] as? String else {
+              let text = claudeResponseText(fromContent: content) else {
             await showError("Unexpected API response.", state: state)
             return
         }

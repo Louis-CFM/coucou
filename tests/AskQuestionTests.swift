@@ -109,6 +109,23 @@ enum AskQuestionTests {
         let ans3 = AskQuestion.buildAnswers(questions: items, selections: [[], []])
         checkTrue("all empty → empty dict",               ans3.isEmpty)
 
+        // ── island height ──────────────────────────────────────────────────────
+        print("\nAskQuestion.estimatedIslandHeight")
+        let shortQ = AskQuestionItem(question: "Which one?", header: "", options: [
+            AskQuestionOption(label: "A", description: ""), AskQuestionOption(label: "B", description: "")
+        ], multiSelect: false)
+        let longQ = AskQuestionItem(question: String(repeating: "very long question ", count: 12), header: "Test", options: [
+            AskQuestionOption(label: "A", description: String(repeating: "explanation ", count: 12)),
+            AskQuestionOption(label: "B", description: "short"),
+            AskQuestionOption(label: "C", description: "short"),
+            AskQuestionOption(label: "D", description: "short")
+        ], multiSelect: true)
+        checkTrue("chips only → no descriptions",          !shortQ.hasDescriptions)
+        checkTrue("one description → vertical list",       longQ.hasDescriptions)
+        checkTrue("short question keeps the 160 pt floor", AskQuestion(questions: [shortQ]).estimatedIslandHeight == 160)
+        let tall = AskQuestion(questions: [shortQ, longQ]).estimatedIslandHeight
+        checkTrue("tallest question wins, within cap",     tall > 160 && tall <= 560)
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

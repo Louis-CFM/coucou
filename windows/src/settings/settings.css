@@ -5,7 +5,10 @@
      the <select> popup is white text on white. */
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  /* Then the scripts of the other interface languages (see src/style.css). */
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI",
+    "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Arabic",
+    "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --ink: #f5f6f8;
   --dim: #9398a1;
@@ -264,4 +267,163 @@ select option {
 .notice.warn {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
+}
+
+/* Active pills — one group per catalog category, one row per pill. */
+
+.pill-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.pill-group > h3 {
+  font: 600 11px var(--font);
+  color: var(--dim);
+}
+
+.pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.pill-row .name {
+  font-size: 12.5px;
+}
+
+/* The dot of a pill's row opens the colour palette (see ./colors.ts). The dot
+   itself is unchanged. */
+.color-dot {
+  cursor: pointer;
+}
+
+.color-dot:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.palette {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.palette .swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.palette .swatch.on {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink);
+}
+
+.palette .reset {
+  padding: 3px 10px;
+  font-size: 11.5px;
+}
+
+.pill-row.full .name {
+  color: var(--dim-2);
+}
+
+.pill-row .state {
+  margin-left: auto;
+  font: 400 11.5px var(--font);
+  color: var(--dim);
+}
+
+.hint.full {
+  color: var(--amber);
+}
+
+/* Shortcuts section */
+
+.subhead {
+  font: 600 11px var(--font);
+  color: var(--dim-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row.shortcut {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.row.shortcut.off .shortcut-name {
+  color: var(--dim-2);
+}
+
+.shortcut-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.keycap {
+  font: 500 11.5px var(--mono);
+  min-width: 118px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.keycap.recording {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--dim);
+}
+
+.keycap.static {
+  background: transparent;
+  color: var(--dim);
+}
+
+.tag {
+  font: 500 10.5px var(--font);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.tag.warn {
+  background: rgba(245, 165, 36, 0.13);
+  color: #fbc06a;
+}
+
+.tag.err {
+  background: rgba(244, 80, 94, 0.14);
+  color: #ff8d97;
+}
+
+/* Arabic: the window reads right to left (main.ts sets <html dir="rtl">);
+   diffs, paths, keys and addresses stay left to right. */
+html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
+  direction: ltr;
 }

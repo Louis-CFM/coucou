@@ -5,6 +5,12 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
+    private var demoMenuItem: NSMenuItem?
+
+    func applicationWillTerminate(_ notification: Notification) {
+        DemoEngine.shared.stop()
+        HotKeyCenter.shared.unregisterAll()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
@@ -14,6 +20,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        #if DEBUG
+        let debugMenu = NSMenu(title: "Debug")
+        debugMenu.addItem(NSMenuItem(title: "Render recap image", action: #selector(renderRecapImage), keyEquivalent: ""))
+        let debugMenuItem = NSMenuItem(title: "Debug", action: nil, keyEquivalent: "")
+        debugMenuItem.submenu = debugMenu
+        NSApp.mainMenu?.addItem(debugMenuItem)
+        #endif
+        #if PHONE_LINK
+        CloudProbe.shared.startIfEnabled()
+        #endif
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openIsland()
+        return true
     }
 
     // MARK: - Menu bar
@@ -27,19 +48,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.image?.isTemplate = true
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Coucou", action: #selector(openIsland), keyEquivalent: "")
+        menu.delegate = self
+        let demoItem = NSMenuItem(title: NSLocalizedString("Demo mode", comment: ""), action: #selector(toggleDemoMode), keyEquivalent: "")
+        demoMenuItem = demoItem
+        menu.addItem(demoItem)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        menu.addItem(withTitle: NSLocalizedString("Open Coucou", comment: ""), action: #selector(openIsland), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: NSLocalizedString("Weekly recap", comment: ""), action: #selector(openWeeklyRecap), keyEquivalent: "")
+        menu.addItem(withTitle: NSLocalizedString("Settings…", comment: ""), action: #selector(openSettings), keyEquivalent: ",")
+        menu.addItem(.separator())
+        menu.addItem(withTitle: NSLocalizedString("Quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         statusItem?.menu = menu
     }
 
     // MARK: - Actions
 
+    @objc private func toggleDemoMode() {
+        if DemoEngine.shared.isActive { DemoEngine.shared.stop() }
+        else { DemoEngine.shared.start() }
+    }
+
     @objc private func openIsland() {
+        islandController?.fsm.openedExternally()
         islandController?.expand(to: .overview)
+    }
+
+    @objc private func openWeeklyRecap() {
+        islandController?.expand(to: .recap)
     }
 
     private var settingsWindow: NSWindow?
@@ -62,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered, defer: false)
-        win.title = "Settings — Coucou"
+        win.title = String(localized: "settings.window.title")
         let host = NSHostingView(rootView: SettingsView())
         host.sizingOptions = [.minSize]
         win.contentView = host
@@ -75,10 +112,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Centres the window horizontally and keeps its title bar clear of the island panel
-    /// (320 pt tall at the top of the notch screen), shrinking it to fit if needed.
+    /// (320 pt tall at the top of the island screen), shrinking it to fit if needed.
     private func placeBelowIsland(_ win: NSWindow) {
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main ?? win.screen
-        guard let screen else { win.center(); return }
+        let screen = IslandWindowController.islandScreen()
         let visible = screen.visibleFrame
         let islandBottom = screen.frame.maxY - 320 - 12   // island panel height + margin
         let top = min(visible.maxY, islandBottom)
@@ -89,6 +125,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.setFrame(frame, display: true)
     }
 
+    // MARK: - Debug helpers
+
+    #if DEBUG
+    @objc func renderRecapImage() {
+        let summary = RecapStore.shared.weeklySummary() ?? WeeklySummary(
+            weekStart: Date(), weekEnd: Date(),
+            totalMinutes: 300, sessionCount: 6,
+            filesChanged: 31, linesAdded: 1217, linesRemoved: 312,
+            commandsRun: 54, questionsAnswered: 11,
+            permissionsAllowed: 4, permissionsDenied: 1,
+            topAgent: "Claude Code", topProject: "coucou",
+            busiestDay: "Friday", longestSessionMinutes: 300
+        )
+        let view = RecapShareImageView(summary: summary, hideProjects: false)
+        let renderer = ImageRenderer(content: view)
+        renderer.proposedSize = ProposedViewSize(width: 1080, height: 1920)
+        renderer.scale = 1
+        guard let cg = renderer.cgImage else { return }
+        let img = NSImage(cgImage: cg, size: NSSize(width: 1080, height: 1920))
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Desktop/coucou-recap-debug.png")
+        if let tiff = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try? png.write(to: url)
+            NSWorkspace.shared.open(url)
+        }
+    }
+    #endif
+
+    // MARK: - Weekly recap trigger
+
+    /// On Monday ≥ 8 am, show the recap card once (if there is activity to display).
+    /// Called from greetComplete, SessionStart/UserPromptSubmit hooks, and on wake.
+    func checkMondayRecap() {
+        let cal = Calendar(identifier: .iso8601)
+        let now = Date()
+        // weekday in ISO 8601 calendar: 2 = Monday
+        guard cal.component(.weekday, from: now) == 2,
+              cal.component(.hour,    from: now) >= 8 else { return }
+        // Don't interrupt a pending approval or question
+        let s = AppState.shared
+        guard s.pendingApproval == nil, s.pendingQuestion == nil else { return }
+        let weekYear = cal.component(.yearForWeekOfYear, from: now)
+        let weekNum  = cal.component(.weekOfYear,        from: now)
+        let weekKey  = weekYear * 100 + weekNum
+        let lastShown = UserDefaults.standard.integer(forKey: "recapLastShownWeek")
+        guard weekKey != lastShown else { return }
+        guard RecapStore.shared.weeklySummary() != nil else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            let s = AppState.shared
+            guard s.pendingApproval == nil, s.pendingQuestion == nil else { return }
+            self?.islandController?.expand(to: .recap)
+            UserDefaults.standard.set(weekKey, forKey: "recapLastShownWeek")
+        }
+    }
+
     // MARK: - Island setup
 
     private func setupIsland() {
@@ -96,6 +189,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        #if !APPSTORE
+        _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
+        #endif
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()
@@ -105,8 +201,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotionPoller.shared.start()
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
+        // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { [weak self] _ in
+            DesktopMochiController.shared.launchFlyIfNeeded()
+            self?.checkMondayRecap()
+        }
+        // Check for Monday recap on wake and when a new session/prompt arrives
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in
+            self?.checkMondayRecap()
+        }
+        NotificationCenter.default.addObserver(forName: .checkMondayRecap, object: nil, queue: .main) { [weak self] _ in
+            self?.checkMondayRecap()
+        }
         #if !APPSTORE
         _ = MusicController.shared
+        _ = SpotifyController.shared
         #endif
+    }
+}
+
+// MARK: - NSMenuDelegate
+
+extension AppDelegate: NSMenuDelegate {
+    func menuWillOpen(_ menu: NSMenu) {
+        demoMenuItem?.title = DemoEngine.shared.isActive
+            ? NSLocalizedString("demo.stop", comment: "")
+            : NSLocalizedString("Demo mode", comment: "")
     }
 }

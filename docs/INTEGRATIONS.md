@@ -133,7 +133,72 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 - Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
 - Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
 
-**Vue Terminé (FinishedView)** — liste les fichiers touchés (nom + bilan, 4 au plus, puis "+ N more"). Un clic affiche la carte diff du dernier diff connu pour ce fichier.
+**Vue Terminé (FinishedView)** — affiche la dernière ligne utile de la session (`finalLine` → dernière étape non-diff → "Session finished"), sur une ligne (`.lineLimit(1).truncationMode(.tail)`). Pas de liste de fichiers.
+
+---
+
+## 1quater. GitHub (pulse)
+
+**Plateforme** : macOS uniquement (build GitHub)
+
+**Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
+
+### Données récupérées
+
+Deux requêtes GraphQL séparées (POST `https://api.github.com/graphql`, même token, même en-tête) :
+
+**Requête pulse** :
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`)
+- **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
+- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : `oid` et état CI du commit HEAD sur `defaultBranchRef`
+
+**Cadence pulse** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). Première requête 10 s après le lancement.
+
+**Rafraîchissement pulse à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` appelé quand `integration_github` prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail (sauf Activity). Si données < 60 s ou requête en vol, ignoré.
+
+**Requête activité** (`contributionCalendar`) :
+```graphql
+query { viewer { login contributionsCollection { contributionCalendar {
+  totalContributions weeks { contributionDays { date contributionCount contributionLevel weekday } }
+} } } }
+```
+- `contributionLevel` : NONE → 0, FIRST_QUARTILE → 1, SECOND_QUARTILE → 2, THIRD_QUARTILE → 3, FOURTH_QUARTILE → 4. Valeur inconnue → 0.
+
+**Cadence activité** : 30 min, première requête 15 s après le lancement.
+
+**Rafraîchissement activité à l'ouverture** : `GithubPoller.refreshActivityIfStale(maxAge: 300)` appelé à l'ouverture de la vue Activity. Si données < 5 min ou requête en vol, ignoré.
+
+Données gardées en mémoire (`AppState.githubActivity`). Remises à nil si token change ou si `integration_github` est désactivé.
+
+### États CI (`CIState`)
+
+| Valeur GitHub         | `CIState`  |
+|-----------------------|------------|
+| `PENDING`, `EXPECTED` | `.pending` |
+| `SUCCESS`             | `.success` |
+| `FAILURE`, `ERROR`    | `.failure` |
+| `null` ou autre       | `.unknown` |
+
+### Alertes
+
+Premier poll après lancement : toujours silencieux. Polls suivants :
+
+**Même `headSha` (oid) qu'au poll précédent** — règles classiques de transition :
+- CI passe de `!failure` → `failure` : `.ciFailed` / `.mainFailed`
+- CI passe de `pending` → `success` : `.ciPassed`
+
+**`headSha` différent ou PR/dépôt absent au poll précédent** (nouveau commit ou nouvelle PR, CI déjà terminée avant le poll) :
+- CI = `success` → `.ciPassed` (PR uniquement ; pas d'alerte vert pour main)
+- CI = `failure` → `.ciFailed` / `.mainFailed`
+- CI = `pending` → rien (le poll suivant, même sha, verra la transition)
+
+| Événement             | Badge   | Son        |
+|-----------------------|---------|------------|
+| CI PR failure / main  | `.error` (rouge) | `error` |
+| Nouvelle review demandée | `.finished` (vert) | `question` |
+| CI PR success         | `.finished` (vert) | `finish` |
+
+Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
@@ -263,6 +328,7 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 | Automatisation → Mail | envoyer les mails | premier envoi |
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
 | Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
+| Automatisation → Spotify *(GitHub only)* | lire la position, le shuffle, le volume ; piloter la lecture | activation de la pill Spotify, ou première ouverture de sa carte |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 
