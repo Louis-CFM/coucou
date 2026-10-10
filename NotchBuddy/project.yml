@@ -25,6 +25,8 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Manual
     OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+    # Prevent Xcode from scanning Swift source and rewriting Localizable.xcstrings.
+    SWIFT_EMIT_LOC_STRINGS: NO
   configs:
     Debug:
       CODE_SIGNING_REQUIRED: NO
@@ -172,6 +174,13 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+    postBuildScripts:
+      - name: "Write Git Hash to Info.plist"
+        script: |
+          HASH=$(git -C "${SRCROOT}/.." rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          /usr/libexec/PlistBuddy -c "Set :CoucouGitHash ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :CoucouGitHash string ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+        showEnvVars: false
 
   CoucouAppStore:
     type: application

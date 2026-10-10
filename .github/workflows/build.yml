@@ -36,6 +36,24 @@ jobs:
       - name: Test open on hover
         run: bash scripts/test-island-hover.sh
 
+      - name: Wake phrase tests
+        run: bash scripts/test-voice-wake.sh
+
+      - name: Energy VAD tests
+        run: bash scripts/test-voice-vad.sh
+
+      - name: Voice island FSM tests
+        run: bash scripts/test-voice-island.sh
+
+      - name: Voice IntentParser tests
+        run: bash scripts/test-voice-intent.sh
+
+      - name: Voice EntityResolver tests
+        run: bash scripts/test-voice-entity.sh
+
+      - name: Voice ActionRunner tests
+        run: bash scripts/test-voice-runner.sh
+
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 

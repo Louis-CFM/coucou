@@ -422,6 +422,9 @@ final class AppState: ObservableObject {
     #if !APPSTORE
     @Published var musicPlaying: Bool = false
     @Published var musicAutomationDenied: Bool = false
+
+    // Voice command result (shown in VoiceResultView for ~2 s, then cleared by IWC)
+    @Published var voiceResult: VoiceActionResult? = nil
     #endif
 
     // Claude plan gauge (from statusline hook)
@@ -649,6 +652,17 @@ final class AppState: ObservableObject {
     /// Toggle a catalog pill on/off.
     /// mainPillId: never toggleable (change via the Main picker first).
     /// Max 4 non-main pills active at once.
+    /// Switch the always-on workspace pill. Mirrors what the Settings Picker does.
+    func setMainPill(_ id: String) {
+        guard PillCatalog.available.contains(where: {
+            $0.id == id && $0.category == .workspace && !$0.comingSoon
+        }) else { return }
+        mainPillId = id
+        activeIntegrations.remove(id)
+        loadIntegrationTasks()
+        setFocus(id)
+    }
+
     func toggleIntegration(_ id: String) {
         guard id != mainPillId else { return }
         guard PillCatalog.available.contains(where: { $0.id == id }) else { return }

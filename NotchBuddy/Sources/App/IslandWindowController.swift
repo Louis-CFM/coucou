@@ -22,6 +22,11 @@ final class IslandWindowController: NSWindowController {
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
 
+    // Voice result auto-dismiss timer
+    #if !APPSTORE
+    private var voiceResultWork: DispatchWorkItem?
+    #endif
+
     // Suppress peek sound on next reveal (e.g. musicReveal)
     var silentNextReveal = false
 
@@ -151,6 +156,9 @@ final class IslandWindowController: NSWindowController {
         startLocalKeyMonitor()
         startHotKeys()
         wireFSM()
+        #if !APPSTORE
+        VoiceActionRunner.shared.configureLive()
+        #endif
 
         // Make panel key whenever the prompt/chat view becomes active
         // (nonactivatingPanel never auto-becomes key, but TextField needs it)
@@ -248,11 +256,18 @@ final class IslandWindowController: NSWindowController {
                     } else {
                         SoundEngine.shared.play("peek")
                     }
+                } else if from == .listening {
+                    // Voice session ended — no peek sound, just compact
+                    #if !APPSTORE
+                    VoiceEngine.shared.cancelListening()
+                    #endif
                 }
                 // setMode BEFORE changing view: onChange(of: state.view) guards on .expanded,
                 // so setting view while already compact won't trigger a spurious open animation.
                 self.setMode(.compact)
-                if from == .coucou { self.state.view = self.defaultView() }
+                // Reset view when leaving .coucou or .listening so stale views
+                // (e.g. .voiceResult) never linger on a collapsed island.
+                if from == .coucou || from == .listening { self.state.view = self.defaultView() }
                 // Start 60s hide timer if mouse is not currently over the island
                 if !self.wasInIsland { self.fsm.mouseLeft() }
 
@@ -265,6 +280,9 @@ final class IslandWindowController: NSWindowController {
 
             case .coucou:
                 self.expand(to: .greeting)
+
+            case .listening:
+                self.expand(to: .listening)
             }
         }
 
@@ -276,6 +294,43 @@ final class IslandWindowController: NSWindowController {
         }
 
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+
+        // Voice: wake phrase detected → open listening island
+        #if !APPSTORE
+        NotificationCenter.default.addObserver(
+            forName: .voiceWoke, object: nil, queue: .main
+        ) { [weak self] note in
+            let isDirect = (note.object as? String) == "direct"
+            Task { @MainActor [weak self] in
+                // Genuine wake phrase (not programmatic re-listen) → clear any pending question
+                if !isDirect { VoiceActionRunner.shared.pendingQuestion = nil }
+                self?.fsm.voiceWoke()
+            }
+        }
+        // Voice: command session ended — run intent, show result for 2 s, then collapse.
+        NotificationCenter.default.addObserver(
+            forName: .voiceFinished, object: nil, queue: .main
+        ) { [weak self] note in
+            let transcript = note.object as? String ?? ""
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if transcript.isEmpty {
+                    if VoiceActionRunner.shared.pendingQuestion != nil {
+                        // Re-listen timed out with no answer → show cancellation message
+                        let result = await VoiceActionRunner.shared.handleAnswer(
+                            "", availablePills: PillCatalog.available)
+                        AppState.shared.voiceResult = result
+                        self.expand(to: .voiceResult)
+                        self.scheduleVoiceDismiss(delay: 1.5)
+                    } else {
+                        self.fsm.voiceFinished()
+                    }
+                } else {
+                    await self.handleVoiceCommand(transcript)
+                }
+            }
+        }
+        #endif
     }
 
     // MARK: - Polling loop
@@ -536,6 +591,11 @@ final class IslandWindowController: NSWindowController {
                 islandPanel.makeKey()
                 expand(to: .wardrobe)
             }
+
+        case .talkToCoucou:
+            #if !APPSTORE
+            VoiceEngine.shared.startListeningDirectly()
+            #endif
         }
     }
 
@@ -1240,6 +1300,111 @@ struct GhostBotView: View {
             }
     }
 }
+
+// MARK: - Voice command handling
+
+#if !APPSTORE
+extension IslandWindowController {
+
+    /// Run the intent derived from `transcript`, show VoiceResultView for 2 s (6 s for questions), then collapse.
+    @MainActor
+    func handleVoiceCommand(_ transcript: String) async {
+        let pills  = PillCatalog.available
+        let runner = VoiceActionRunner.shared
+
+        // Propagate recognition locale so responses are in the spoken language.
+        runner.commandLocale = VoiceEngine.shared.speechLocale
+
+        // ── Follow-up answer to a pending question ────────────────────────────────
+        if runner.pendingQuestion != nil {
+            let result = await runner.handleAnswer(transcript, availablePills: pills)
+            showVoiceResult(result, emote: result.outcome == .success ? BotEmote.happy : nil)
+            return
+        }
+
+        // ── Multi-action: "mets Gemini et enlève GitHub" ──────────────────────────
+        if let intents = IntentParser.parseMultiAction(transcript, pills: pills), intents.count >= 2 {
+            var parts: [String] = []
+            var anyFailure = false
+            for intent in intents {
+                let r = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+                parts.append(r.message)
+                if case .failure = r.outcome { anyFailure = true }
+                // .question in multi-action: treat as failure (no re-listen in combined flow).
+                if case .question = r.outcome { anyFailure = true }
+            }
+            let combined = VoiceActionResult(
+                outcome: anyFailure ? .failure : .success,
+                message: parts.joined(separator: " · ")
+            )
+            if anyFailure {
+                NotificationCenter.default.post(name: .botDizzy, object: nil)
+            } else {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+            showVoiceResult(combined)
+            return
+        }
+
+        // ── Single command ────────────────────────────────────────────────────────
+        let intent = IntentParser.parse(transcript, pills: pills)
+        let result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+
+        // Mochi reaction
+        switch result.outcome {
+        case .success:
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        case .failure:
+            NotificationCenter.default.post(name: .botDizzy, object: nil)
+        case .question:
+            break   // Mochi will show listening after re-open
+        }
+
+        // Show result view
+        AppState.shared.voiceResult = result
+        expand(to: .voiceResult)
+
+        if case .question = result.outcome {
+            // Re-open listening in command phase (skip wake gate) so the answer goes straight
+            // to the command pipeline. Give 5 s initial silence — user needs to read the question.
+            voiceResultWork?.cancel()
+            voiceResultWork = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                guard self != nil else { return }
+                VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+            }
+        } else {
+            scheduleVoiceDismiss(delay: 2.0)
+        }
+    }
+
+    @MainActor
+    private func showVoiceResult(_ result: VoiceActionResult, emote: BotEmote? = nil) {
+        if let emote = emote {
+            NotificationCenter.default.post(name: .triggerEmote, object: emote)
+        } else if result.outcome == .failure {
+            NotificationCenter.default.post(name: .botDizzy, object: nil)
+        }
+        AppState.shared.voiceResult = result
+        expand(to: .voiceResult)
+        scheduleVoiceDismiss(delay: 2.0)
+    }
+
+    @MainActor
+    private func scheduleVoiceDismiss(delay: TimeInterval) {
+        voiceResultWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            AppState.shared.voiceResult = nil
+            // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
+            AppState.shared.view = self.defaultView()
+            self.fsm.voiceFinished()
+        }
+        voiceResultWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+}
+#endif
 
 // MARK: - Notification names
 

@@ -72,6 +72,13 @@ struct BotCanvasView: View {
                 engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
                                  animated: state.view != .wardrobe)
 
+                #if !APPSTORE
+                if state.view == .listening {
+                    engine.listeningLevel  = CGFloat(VoiceEngine.shared.micLevel)
+                    engine.listeningHasWords = !VoiceEngine.shared.commandTranscript.isEmpty
+                }
+                #endif
+
                 engine.update(dt: dt)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
@@ -101,7 +108,7 @@ struct BotCanvasView: View {
         .onChange(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
-        .onChange(of: state.view) { _, newView in
+        .onChange(of: state.view) { oldView, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
                 engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
@@ -109,6 +116,13 @@ struct BotCanvasView: View {
                 // Any other view (not mid-gulp): morph back
                 engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
             }
+            #if !APPSTORE
+            if newView == .listening {
+                engine.enterListening()
+            } else if oldView == .listening {
+                engine.exitListening(hadCommand: !VoiceEngine.shared.commandTranscript.isEmpty)
+            }
+            #endif
         }
         .onChange(of: state.mode) { _, newMode in
             // Hard-reset morph when island collapses

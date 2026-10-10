@@ -65,6 +65,70 @@
         }
       }
     },
+    "%@ — open Spotify": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — فتح Spotify"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Spotify খুলুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — open Spotify"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — abrir Spotify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — ouvrir Spotify"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Spotify खोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — buka Spotify"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — abrir o Spotify"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — открыть Spotify"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 打开 Spotify"
+          }
+        }
+      }
+    },
     "%lld custom": {
       "localizations": {
         "ar": {
@@ -321,6 +385,70 @@
         }
       }
     },
+    "Advertisement": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعلان"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিজ্ঞাপন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advertisement"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuncio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicité"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "विज्ञापन"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iklan"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anúncio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Реклама"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "广告"
+          }
+        }
+      }
+    },
     "Agents": {
       "localizations": {
         "ar": {
@@ -509,6 +637,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "允许 Coucou 控制音乐"
+          }
+        }
+      }
+    },
+    "Allow Coucou to control Spotify": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح لـ Coucou بالتحكم في Spotify"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Coucou to control Spotify"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir que Coucou controle Spotify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser Coucou à contrôler Spotify"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou को Spotify नियंत्रित करने दें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izinkan Coucou mengontrol Spotify"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir que o Coucou controle o Spotify"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить Coucou управлять Spotify"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许 Coucou 控制 Spotify"
           }
         }
       }
@@ -2433,6 +2625,135 @@
         }
       }
     },
+    "Demo mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo mode"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وضع العرض"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডেমো মোড"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo demo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode démo"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डेमो मोड"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode demo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo demo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демо-режим"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "演示模式"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مرفوض"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রত্যাখ্যাত"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denied"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denegado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refusé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अस्वीकृत"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ditolak"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Negado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отклонено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝"
+          }
+        }
+      }
+    },
     "Deny": {
       "localizations": {
         "ar": {
@@ -3009,6 +3330,70 @@
         }
       }
     },
+    "Enable voice command": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفعيل الأوامر الصوتية"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভয়েস কমান্ড সক্ষম করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable voice command"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar comando de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer la commande vocale"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वॉइस कमांड सक्षम करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktifkan perintah suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar comando de voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить голосовые команды"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用语音命令"
+          }
+        }
+      }
+    },
     "Failed": {
       "localizations": {
         "ar": {
@@ -3073,6 +3458,70 @@
         }
       }
     },
+    "Favorite": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة إلى المفضلة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রিয়তে যোগ করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a favoritos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter aux favoris"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पसंदीदा में जोड़ें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambahkan ke favorit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favoritar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В избранное"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏"
+          }
+        }
+      }
+    },
     "General": {
       "localizations": {
         "ar": {
@@ -3133,6 +3582,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "通用"
+          }
+        }
+      }
+    },
+    "Get Spotify": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احصل على Spotify"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify নিন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Spotify"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar Spotify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenir Spotify"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify पाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dapatkan Spotify"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar o Spotify"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать Spotify"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取 Spotify"
           }
         }
       }
@@ -3261,6 +3774,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gmail 节点在 30 秒后超时。请重试或打开 n8n。"
+          }
+        }
+      }
+    },
+    "Granted": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ممنوح"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুমোদিত"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Granted"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concedido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accordé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुमत"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diberikan"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concedido"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授权"
           }
         }
       }
@@ -4033,6 +4610,70 @@
         }
       }
     },
+    "Listening…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ الاستماع…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুনছি…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À l’écoute …"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सुन रहा हूँ…"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mendengarkan…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvindo…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушаю…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在收听…"
+          }
+        }
+      }
+    },
     "Loading models…": {
       "localizations": {
         "ar": {
@@ -4285,6 +4926,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要"
+          }
+        }
+      }
+    },
+    "Microphone unavailable": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الميكروفون غير متاح"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মাইক্রোফোন অনুপলব্ধ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone unavailable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrófono no disponible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone indisponible"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "माइक्रोफ़ोन अनुपलब्ध"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon tidak tersedia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microfone indisponível"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Микрофон недоступен"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "麦克风不可用"
+          }
+        }
+      }
+    },
+    "Microphone:": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الميكروفون:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মাইক্রোফোন:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrófono:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone :"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "माइक्रोफ़ोन:"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microfone:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Микрофон:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "麦克风："
           }
         }
       }
@@ -4737,6 +5506,135 @@
         }
       }
     },
+    "No error details available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No error details available."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد تفاصيل للخطأ."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো ত্রুটির বিবরণ পাওয়া যায়নি।"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay detalles del error disponibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun détail d'erreur disponible."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोई त्रुटि विवरण उपलब्ध नहीं है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada detail kesalahan yang tersedia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum detalhe de erro disponível."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет подробностей об ошибке."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无错误详情。"
+          }
+        }
+      }
+    },
+    "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد نموذج للتعرف على الكلام متاح على هذا الجهاز. قم بتثبيت واحد في إعدادات النظام → لوحة المفاتيح → الإملاء."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ডিভাইসে কোনো বক্তৃতা স্বীকৃতি মডেল পাওয়া যায়নি। সিস্টেম সেটিংস → কীবোর্ড → ডিকটেশনে একটি ইনস্টল করুন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay modelo de reconocimiento de voz disponible en este dispositivo. Instala uno en Ajustes del Sistema → Teclado → Dictado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun modèle de reconnaissance vocale disponible sur cet appareil. Installez un modèle dans Réglages Système → Clavier → Dictée."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस डिवाइस पर कोई वाक् पहचान मॉडल उपलब्ध नहीं है। सिस्टम सेटिंग्स → कीबोर्ड → डिक्टेशन में एक इंस्टॉल करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum modelo de reconhecimento de fala disponível neste dispositivo. Instale um em Ajustes do Sistema → Teclado → Ditado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。"
+          }
+        }
+      }
+    },
     "Not connected": {
       "localizations": {
         "ar": {
@@ -4801,6 +5699,70 @@
         }
       }
     },
+    "Not installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير مثبت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ইনস্টল নেই"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not installed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No instalado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non installé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इंस्टॉल नहीं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belum terpasang"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não instalado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не установлено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装"
+          }
+        }
+      }
+    },
     "Not playing": {
       "localizations": {
         "ar": {
@@ -4861,6 +5823,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "未播放"
+          }
+        }
+      }
+    },
+    "Not requested": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُطلب"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুরোধ করা হয়নি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not requested"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No solicitado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non demandé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुरोध नहीं किया गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belum diminta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não solicitado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не запрошено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未请求"
           }
         }
       }
@@ -5505,6 +6531,70 @@
         }
       }
     },
+    "Open Spotify": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح Spotify"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify খুলুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Spotify"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Spotify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir Spotify"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify खोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka Spotify"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir o Spotify"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть Spotify"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Spotify"
+          }
+        }
+      }
+    },
     "Open Visual Studio Code": {
       "localizations": {
         "ar": {
@@ -5953,6 +7043,70 @@
         }
       }
     },
+    "Pause": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف مؤقت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিরতি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रोकें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeda"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пауза"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停"
+          }
+        }
+      }
+    },
     "Payments": {
       "localizations": {
         "ar": {
@@ -6013,6 +7167,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "付款"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأذونات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুমতি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permisos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुमतियाँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izin"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissões"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешения"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "权限"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تشغيل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "চালান"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चलाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Putar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduzir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизвести"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放"
           }
         }
       }
@@ -6141,6 +7423,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件未安装"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السابق"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আগেরটি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Précédent"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पिछला"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sebelumnya"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anterior"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предыдущий"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一首"
           }
         }
       }
@@ -6401,6 +7747,326 @@
         }
       }
     },
+    "Remove from favorites": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة من المفضلة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রিয় থেকে সরান"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from favorites"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar de favoritos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer des favoris"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पसंदीदा से हटाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hapus dari favorit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover dos favoritos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать из избранного"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消收藏"
+          }
+        }
+      }
+    },
+    "Repeat all": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تكرار الكل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সব রিপিট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat all"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir todo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout répéter"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सभी दोहराएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangi semua"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir tudo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторять все"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部重复"
+          }
+        }
+      }
+    },
+    "Repeat off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التكرار متوقف"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রিপিট বন্ধ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répétition désactivée"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "दोहराना बंद"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangi nonaktif"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir desativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повтор выкл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重复：关"
+          }
+        }
+      }
+    },
+    "Repeat on": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التكرار مفعّل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রিপিট চালু"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat on"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir activado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répétition activée"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "दोहराना चालू"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangi aktif"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir ativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повтор вкл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重复：开"
+          }
+        }
+      }
+    },
+    "Repeat one": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تكرار مقطع واحد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি রিপিট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat one"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir una"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répéter le morceau"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "एक दोहराएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangi satu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir uma"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторять один"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单曲重复"
+          }
+        }
+      }
+    },
     "Reply in terminal": {
       "localizations": {
         "ar": {
@@ -6461,6 +8127,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "在终端回复"
+          }
+        }
+      }
+    },
+    "Request permissions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طلب الأذونات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুমতি অনুরোধ করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request permissions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitar permisos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demander les permissions"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुमतियाँ अनुरोध करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minta izin"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitar permissões"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запросить разрешения"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求权限"
           }
         }
       }
@@ -6781,6 +8511,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "存储…"
+          }
+        }
+      }
+    },
+    "Say your command": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قل أمرك"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার কমান্ড বলুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Say your command"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di tu comando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dites votre commande"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपना आदेश बोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katakan perintah Anda"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diga seu comando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скажите команду"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "说出您的命令"
           }
         }
       }
@@ -7425,6 +9219,134 @@
         }
       }
     },
+    "Shuffle off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الترتيب العشوائي متوقف"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শাফল বন্ধ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shuffle off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aleatorio desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aléatoire désactivé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शफ़ल बंद"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acak nonaktif"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aleatório desativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемешивание выкл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随机播放：关"
+          }
+        }
+      }
+    },
+    "Shuffle on": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الترتيب العشوائي مفعّل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শাফল চালু"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shuffle on"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aleatorio activado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aléatoire activé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शफ़ल चालू"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acak aktif"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aleatório ativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемешивание вкл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随机播放：开"
+          }
+        }
+      }
+    },
     "Sound": {
       "localizations": {
         "ar": {
@@ -7485,6 +9407,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "声音"
+          }
+        }
+      }
+    },
+    "Speech recognition:": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعرف على الكلام:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বক্তৃতা স্বীকৃতি:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech recognition:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocimiento de voz:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnaissance vocale :"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वाक् पहचान:"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengenalan ucapan:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconhecimento de fala:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распознавание речи:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音识别："
+          }
+        }
+      }
+    },
+    "Spotify not installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify غير مثبت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify ইনস্টল নেই"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify not installed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify no está instalado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify n'est pas installé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify इंस्टॉल नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify belum terpasang"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify não está instalado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify не установлен"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 Spotify"
           }
         }
       }
@@ -8129,6 +10179,70 @@
         }
       }
     },
+    "Voice": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভয়েস"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голос"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音"
+          }
+        }
+      }
+    },
     "Volume": {
       "localizations": {
         "ar": {
@@ -8189,6 +10303,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "音量"
+          }
+        }
+      }
+    },
+    "Volume %lld%%": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مستوى الصوت %lld%%"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভলিউম %lld%%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld%%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volumen %lld%%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld %%"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वॉल्यूम %lld%%"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld%%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld%%"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Громкость %lld%%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音量 %lld%%"
           }
         }
       }
@@ -8445,6 +10623,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "您想对它做什么？"
+          }
+        }
+      }
+    },
+    "When enabled, Coucou listens for the wake word « OK Coucou ». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عند التفعيل، يستمع Coucou لكلمة التنشيط « OK Coucou ». يعمل التعرف على الكلام بالكامل على الجهاز — لا يغادر أي صوت أو نص جهاز Mac."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সক্ষম হলে, Coucou ওয়েক ওয়ার্ড « OK Coucou » শোনে। ভাষণ স্বীকৃতি সম্পূর্ণ ডিভাইসে চলে — কোনো অডিও বা ট্রান্সক্রিপ্ট আপনার Mac ছেড়ে যায় না।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When enabled, Coucou listens for the wake word « OK Coucou ». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuando está activado, Coucou escucha la palabra de activación « OK Coucou ». El reconocimiento de voz se ejecuta completamente en el dispositivo — ningún audio ni transcripción sale de tu Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quand cette option est activée, Coucou écoute le mot de réveil « OK Coucou ». La reconnaissance vocale se fait entièrement sur l’appareil — aucun audio ni transcription ne quitte votre Mac."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सक्षम होने पर, Coucou वेक शब्द « OK Coucou » सुनता है। वाक् पहचान पूरी तरह डिवाइस पर चलती है — कोई ऑडियो या ट्रांसक्रिप्ट आपके Mac को नहीं छोड़ता।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saat diaktifkan, Coucou mendengarkan kata pengaktif « OK Coucou ». Pengenalan ucapan berjalan sepenuhnya di perangkat — tidak ada audio atau transkrip yang meninggalkan Mac Anda."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quando ativado, o Coucou escuta a palavra de ativação « OK Coucou ». O reconhecimento de fala é executado inteiramente no dispositivo — nenhum áudio ou transcrição sai do seu Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Когда включено, Coucou слушает слово активации « OK Coucou ». Распознавание речи работает полностью на устройстве — никакие аудиозаписи или транскрипции не покидают ваш Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。"
+          }
+        }
+      }
+    },
+    "While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء الاستماع، يعرض macOS نقطة الميكروفون البرتقالية في أعلى يمين شريط القوائم. هذا هو السلوك الطبيعي للنظام."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শোনার সময়, macOS মেনু বারের উপরের-ডানে কমলা মাইক্রোফোন বিন্দু দেখায়। এটি স্বাভাবিক সিস্টেম আচরণ।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante la escucha, macOS muestra el punto naranja del micrófono en la parte superior derecha de la barra de menús. Este es el comportamiento normal del sistema."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendant l’écoute, macOS affiche le point orange du microphone en haut à droite de la barre de menus. C’est le comportement normal du système."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सुनते समय, macOS मेनू बार के ऊपर-दाईं ओर नारंगी माइक्रोफ़ोन बिंदु दिखाता है। यह सामान्य सिस्टम व्यवहार है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante a escuta, o macOS exibe o ponto laranja do microfone no canto superior direito da barra de menus. Este é o comportamento normal do sistema."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收听时，macOS 会在菜单栏右上角显示橙色麦克风指示灯。这是正常的系统行为。"
           }
         }
       }
@@ -9853,6 +12159,266 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天 — 其他服务商"
+          }
+        }
+      }
+    },
+    "demo.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استكشف جميع الميزات بدون مفتاح API أو Claude Code. لا يُكتب شيء على القرص."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API কী বা Claude Code ছাড়াই সমস্ত ফিচার এক্সপ্লোর করুন। ডিস্কে কিছু লেখা হয় না।"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explora todas las funciones sin clave de API ni Claude Code. Nada se escribe en el disco."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore toutes les fonctions sans clé d'API ni Claude Code. Rien n'est écrit sur le disque."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API कुंजी या Claude Code के बिना सभी सुविधाएँ एक्सप्लोर करें। डिस्क पर कुछ नहीं लिखा जाता।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore todos os recursos sem chave de API ou Claude Code. Nada é gravado no disco."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。"
+          }
+        }
+      }
+    },
+    "demo.groupbox.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تجريبي"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডেমো"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démo"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डेमो"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "演示"
+          }
+        }
+      }
+    },
+    "demo.start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try demo mode"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تجربة وضع العرض"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডেমো মোড চেষ্টা করুন"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar el modo demo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essayer la démo"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डेमो मोड आज़माएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coba mode demo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Experimentar modo demo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробовать демо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试用演示模式"
+          }
+        }
+      }
+    },
+    "demo.stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop demo"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف العرض"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডেমো বন্ধ করুন"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener demo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêter la démo"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डेमो रोकें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hentikan demo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parar demo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить демо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止演示"
           }
         }
       }
@@ -13057,134 +15623,6 @@
         }
       }
     },
-    "plugin.hermes.title": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ملحق Hermes"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes প্লাগইন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes Agent"
-          }
-        }
-      }
-    },
-    "plugin.hermes.installed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ ملحق Hermes مثبَّت في ~/.hermes/plugins/coucou/"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes প্লাগইন ~/.hermes/plugins/coucou/-এ ইনস্টল হয়েছে"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes plugin installed in ~/.hermes/plugins/coucou/"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin de Hermes instalado en ~/.hermes/plugins/coucou/"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes installé dans ~/.hermes/plugins/coucou/"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes प्लगइन ~/.hermes/plugins/coucou/ में इंस्टॉल हुआ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin do Hermes instalado em ~/.hermes/plugins/coucou/"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/"
-          }
-        }
-      }
-    },
     "plugin.hermes.approvals": {
       "localizations": {
         "ar": {
@@ -13245,6 +15683,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "在刘海中显示审批请求"
+          }
+        }
+      }
+    },
+    "plugin.hermes.approvals.disabled": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعالج Hermes طلبات الموافقة (الطرفية أو البوابة)."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes অনুমোদন অনুরোধ পরিচালনা করে (টার্মিনাল বা গেটওয়ে)।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approval requests are handled by Hermes (terminal or gateway)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las solicitudes de aprobación las gestiona Hermes (terminal o gateway)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les demandes d'approbation sont gérées par Hermes (terminal ou passerelle)."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुमोदन अनुरोध Hermes द्वारा संभाले जाते हैं (टर्मिनल या गेटवे)।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitações de aprovação tratadas pelo Hermes (terminal ou gateway)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "审批请求由 Hermes 处理（终端或网关）。"
           }
         }
       }
@@ -13313,66 +15815,130 @@
         }
       }
     },
-    "plugin.hermes.approvals.disabled": {
+    "plugin.hermes.installed": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تعالج Hermes طلبات الموافقة (الطرفية أو البوابة)."
+            "value": "✓ ملحق Hermes مثبَّت في ~/.hermes/plugins/coucou/"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hermes অনুমোদন অনুরোধ পরিচালনা করে (টার্মিনাল বা গেটওয়ে)।"
+            "value": "✓ Hermes প্লাগইন ~/.hermes/plugins/coucou/-এ ইনস্টল হয়েছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approval requests are handled by Hermes (terminal or gateway)."
+            "value": "✓ Hermes plugin installed in ~/.hermes/plugins/coucou/"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las solicitudes de aprobación las gestiona Hermes (terminal o gateway)."
+            "value": "✓ Plugin de Hermes instalado en ~/.hermes/plugins/coucou/"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les demandes d'approbation sont gérées par Hermes (terminal ou passerelle)."
+            "value": "✓ Plugin Hermes installé dans ~/.hermes/plugins/coucou/"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "अनुमोदन अनुरोध Hermes द्वारा संभाले जाते हैं (टर्मिनल या गेटवे)।"
+            "value": "✓ Hermes प्लगइन ~/.hermes/plugins/coucou/ में इंस्टॉल हुआ"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway)."
+            "value": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solicitações de aprovação tratadas pelo Hermes (terminal ou gateway)."
+            "value": "✓ Plugin do Hermes instalado em ~/.hermes/plugins/coucou/"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз)."
+            "value": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "审批请求由 Hermes 处理（终端或网关）。"
+            "value": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/"
+          }
+        }
+      }
+    },
+    "plugin.hermes.title": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملحق Hermes"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes প্লাগইন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
           }
         }
       }
@@ -17025,134 +19591,6 @@
         }
       }
     },
-    "status.hermes-plugin-installed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ ملحق Hermes مثبَّت"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes প্লাগইন ইনস্টল হয়েছে"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes plugin installed"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin de Hermes instalado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes installé"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes प्लगइन इंस्टॉल हुआ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes terpasang"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin do Hermes instalado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Плагин Hermes установлен"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes 插件已安装"
-          }
-        }
-      }
-    },
-    "status.hermes-plugin-removed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ تمت إزالة ملحق Hermes."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes প্লাগইন সরানো হয়েছে।"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hermes plugin removed"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin de Hermes eliminado."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes supprimé."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes प्लगइन हटा दिया गया।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Hermes dihapus."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin do Hermes removido."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Плагин Hermes удалён."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Hermes 插件已移除。"
-          }
-        }
-      }
-    },
     "status.codex-hooks-installed": {
       "localizations": {
         "ar": {
@@ -17597,6 +20035,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Google 密钥已保存。"
+          }
+        }
+      }
+    },
+    "status.hermes-plugin-installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ملحق Hermes مثبَّت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes প্লাগইন ইনস্টল হয়েছে"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes plugin installed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin de Hermes instalado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes installé"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes प्लगइन इंस्टॉल हुआ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes terpasang"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin do Hermes instalado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Плагин Hermes установлен"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes 插件已安装"
+          }
+        }
+      }
+    },
+    "status.hermes-plugin-removed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ تمت إزالة ملحق Hermes."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes প্লাগইন সরানো হয়েছে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes plugin removed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin de Hermes eliminado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes supprimé."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes प्लगइन हटा दिया गया।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Hermes dihapus."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin do Hermes removido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Плагин Hermes удалён."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes 插件已移除。"
           }
         }
       }
@@ -19769,1106 +22335,462 @@
         }
       }
     },
-    "No error details available.": {
+    "« OK Coucou » — voice wake word": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — كلمة التنشيط الصوتية"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — ভয়েস ওয়েক ওয়ার্ড"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — voice wake word"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — palabra de activación de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — commande vocale mains libres"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — वॉइस वेक वर्ड"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — kata pengaktif suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — palavra de ativação de voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — голосовая активация"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — 语音唤醒词"
+          }
+        }
+      }
+    },
+    "shortcut.talk-to-coucou": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No error details available."
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا توجد تفاصيل للخطأ."
+            "value": "التحدث إلى Coucou"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কোনো ত্রুটির বিবরণ পাওয়া যায়নি।"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay detalles del error disponibles."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun détail d'erreur disponible."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कोई त्रुटि विवरण उपलब्ध नहीं है।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tidak ada detail kesalahan yang tersedia."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum detalhe de erro disponível."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет подробностей об ошибке."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无错误详情。"
-          }
-        }
-      }
-    },
-    "demo.groupbox.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تجريبي"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ডেমো"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démo"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "डेमो"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демо"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "演示"
-          }
-        }
-      }
-    },
-    "demo.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "استكشف جميع الميزات بدون مفتاح API أو Claude Code. لا يُكتب شيء على القرص."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "API কী বা Claude Code ছাড়াই সমস্ত ফিচার এক্সপ্লোর করুন। ডিস্কে কিছু লেখা হয় না।"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explora todas las funciones sin clave de API ni Claude Code. Nada se escribe en el disco."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explore toutes les fonctions sans clé d'API ni Claude Code. Rien n'est écrit sur le disque."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "API कुंजी या Claude Code के बिना सभी सुविधाएँ एक्सप्लोर करें। डिस्क पर कुछ नहीं लिखा जाता।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explore todos os recursos sem chave de API ou Claude Code. Nada é gravado no disco."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。"
-          }
-        }
-      }
-    },
-    "demo.start": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try demo mode"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تجربة وضع العرض"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ডেমো মোড চেষ্টা করুন"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Probar el modo demo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Essayer la démo"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "डेमो मोड आज़माएँ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coba mode demo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Experimentar modo demo"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Попробовать демо"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "试用演示模式"
-          }
-        }
-      }
-    },
-    "demo.stop": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stop demo"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إيقاف العرض"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ডেমো বন্ধ করুন"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detener demo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrêter la démo"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "डेमो रोकें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hentikan demo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parar demo"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Остановить демо"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "停止演示"
-          }
-        }
-      }
-    },
-    "Demo mode": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo mode"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "وضع العرض"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ডেমো মোড"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modo demo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mode démo"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "डेमो मोड"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mode demo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modo demo"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демо-режим"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "演示模式"
-          }
-        }
-      }
-    },
-    "Repeat on": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "التكرار مفعّل"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "রিপিট চালু"
+            "value": "Coucou-এর সাথে কথা বলুন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repeat on"
+            "value": "Talk to Coucou"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir activado"
+            "value": "Hablar con Coucou"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Répétition activée"
+            "value": "Parler à Coucou"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "दोहराना चालू"
+            "value": "Coucou से बात करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ulangi aktif"
+            "value": "Bicara ke Coucou"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir ativado"
+            "value": "Falar com Coucou"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Повтор вкл."
+            "value": "Говорить с Coucou"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重复：开"
+            "value": "与 Coucou 对话"
           }
         }
       }
     },
-    "Repeat off": {
+    "voice.ask-which-remove": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "التكرار متوقف"
+            "value": "4 نشطة — أيها أزيل؟"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "রিপিট বন্ধ"
+            "value": "4টি সক্রিয় — কোনটি সরাবো?"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repeat off"
+            "value": "4 active — remove which?"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir desactivado"
+            "value": "4 activas — ¿cuál quitar?"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Répétition désactivée"
+            "value": "4 actives — laquelle retirer ?"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "दोहराना बंद"
+            "value": "4 सक्रिय — कौन सा हटाएं?"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ulangi nonaktif"
+            "value": "4 aktif — mana yang dihapus?"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir desativado"
+            "value": "4 ativas — qual remover?"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Повтор выкл."
+            "value": "4 активно — что удалить?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重复：关"
+            "value": "4 个激活 — 删除哪个？"
           }
         }
       }
     },
-    "Remove from favorites": {
+    "voice.music-artist-err": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إزالة من المفضلة"
+            "value": "غير موجود: %@"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "প্রিয় থেকে সরান"
+            "value": "পাওয়া যায়নি: %@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove from favorites"
+            "value": "Not found: %@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quitar de favoritos"
+            "value": "No encontrado: %@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirer des favoris"
+            "value": "Introuvable : %@"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "पसंदीदा से हटाएँ"
+            "value": "नहीं मिला: %@"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hapus dari favorit"
+            "value": "Tidak ditemukan: %@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remover dos favoritos"
+            "value": "Não encontrado: %@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Убрать из избранного"
+            "value": "Не найдено: %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消收藏"
+            "value": "未找到：%@"
           }
         }
       }
     },
-    "Allow Coucou to control Spotify": {
+    "voice.music-launch": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "السماح لـ Coucou بالتحكم في Spotify"
+            "value": "فتح Apple Music…"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন"
+            "value": "Apple Music খুলছে…"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allow Coucou to control Spotify"
+            "value": "Opening Apple Music…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir que Coucou controle Spotify"
+            "value": "Abriendo Apple Music…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autoriser Coucou à contrôler Spotify"
+            "value": "Ouverture d'Apple Music…"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coucou को Spotify नियंत्रित करने दें"
+            "value": "Apple Music खुल रहा है…"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Izinkan Coucou mengontrol Spotify"
+            "value": "Membuka Apple Music…"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir que o Coucou controle o Spotify"
+            "value": "Abrindo Apple Music…"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разрешить Coucou управлять Spotify"
+            "value": "Открытие Apple Music…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许 Coucou 控制 Spotify"
+            "value": "正在打开 Apple Music…"
           }
         }
       }
     },
-    "Get Spotify": {
+    "voice.music-next": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "احصل على Spotify"
+            "value": "المقطع التالي"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spotify নিন"
+            "value": "পরবর্তী ট্র্যাক"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Get Spotify"
+            "value": "Next track"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargar Spotify"
+            "value": "Siguiente pista"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Obtenir Spotify"
+            "value": "Morceau suivant"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spotify पाएँ"
+            "value": "अगला ट्रैक"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dapatkan Spotify"
+            "value": "Lagu berikutnya"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baixar o Spotify"
+            "value": "Próxima faixa"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Скачать Spotify"
+            "value": "Следующий трек"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "获取 Spotify"
+            "value": "下一首"
           }
         }
       }
     },
-    "Open Spotify": {
+    "voice.music-no-app": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "فتح Spotify"
+            "value": "لا يوجد تطبيق موسيقى"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spotify খুলুন"
+            "value": "কোনো মিউজিক অ্যাপ নেই"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Spotify"
+            "value": "No music app running"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir Spotify"
+            "value": "Sin app de música"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir Spotify"
+            "value": "Aucune app musicale active"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spotify खोलें"
+            "value": "कोई म्यूज़िक ऐप नहीं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buka Spotify"
+            "value": "Tidak ada app musik"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir o Spotify"
+            "value": "Nenhum app de música"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Открыть Spotify"
+            "value": "Нет музыкального приложения"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开 Spotify"
+            "value": "没有音乐应用"
           }
         }
       }
     },
-    "Previous": {
+    "voice.music-paused": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "السابق"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "আগেরটি"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Previous"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anterior"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Précédent"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "पिछला"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sebelumnya"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anterior"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Предыдущий"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "上一首"
-          }
-        }
-      }
-    },
-    "Repeat one": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تكرار مقطع واحد"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "একটি রিপিট"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repeat one"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repetir una"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Répéter le morceau"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "एक दोहराएँ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ulangi satu"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repetir uma"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Повторять один"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "单曲重复"
-          }
-        }
-      }
-    },
-    "Play": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تشغيل"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "চালান"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Play"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reproducir"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lecture"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "चलाएँ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Putar"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reproduzir"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Воспроизвести"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "播放"
-          }
-        }
-      }
-    },
-    "Favorite": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إضافة إلى المفضلة"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "প্রিয়তে যোগ করুন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Favorite"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Añadir a favoritos"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter aux favoris"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "पसंदीदा में जोड़ें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tambahkan ke favorit"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Favoritar"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В избранное"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收藏"
-          }
-        }
-      }
-    },
-    "Spotify not installed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify غير مثبت"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify ইনস্টল নেই"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify not installed"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify no está instalado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify n'est pas installé"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify इंस्टॉल नहीं है"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify belum terpasang"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify não está instalado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spotify не установлен"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未安装 Spotify"
-          }
-        }
-      }
-    },
-    "Pause": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إيقاف مؤقت"
+            "value": "متوقف مؤقتاً"
           }
         },
         "bn": {
@@ -20880,37 +22802,37 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pause"
+            "value": "Paused"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausa"
+            "value": "En pausa"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pause"
+            "value": "En pause"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "रोकें"
+            "value": "रुका हुआ"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jeda"
+            "value": "Dijeda"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausar"
+            "value": "Em pausa"
           }
         },
         "ru": {
@@ -20922,455 +22844,1032 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂停"
+            "value": "已暂停"
           }
         }
       }
     },
-    "Shuffle off": {
+    "voice.music-playing": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الترتيب العشوائي متوقف"
+            "value": "يشغّل"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "শাফল বন্ধ"
+            "value": "চলছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shuffle off"
+            "value": "Playing"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aleatorio desactivado"
+            "value": "Reproduciendo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aléatoire désactivé"
+            "value": "Lecture"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "शफ़ल बंद"
+            "value": "चल रहा है"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acak nonaktif"
+            "value": "Memutar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aleatório desativado"
+            "value": "Reproduzindo"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Перемешивание выкл."
+            "value": "Воспроизведение"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "随机播放：关"
+            "value": "正在播放"
           }
         }
       }
     },
-    "Volume %lld%%": {
+    "voice.music-prev": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مستوى الصوت %lld%%"
+            "value": "المقطع السابق"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ভলিউম %lld%%"
+            "value": "আগের ট্র্যাক"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volume %lld%%"
+            "value": "Previous track"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volumen %lld%%"
+            "value": "Pista anterior"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volume %lld %%"
+            "value": "Morceau précédent"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "वॉल्यूम %lld%%"
+            "value": "पिछला ट्रैक"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volume %lld%%"
+            "value": "Lagu sebelumnya"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volume %lld%%"
+            "value": "Faixa anterior"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Громкость %lld%%"
+            "value": "Предыдущий трек"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "音量 %lld%%"
+            "value": "上一首"
           }
         }
       }
     },
-    "Repeat all": {
+    "voice.music-vol-down": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تكرار الكل"
+            "value": "خفض الصوت"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "সব রিপিট"
+            "value": "ভলিউম কমছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repeat all"
+            "value": "Volume down"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir todo"
+            "value": "Bajar volumen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tout répéter"
+            "value": "Volume −"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सभी दोहराएँ"
+            "value": "आवाज़ घटाएं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ulangi semua"
+            "value": "Volume turun"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir tudo"
+            "value": "Volume mais baixo"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Повторять все"
+            "value": "Тише"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "全部重复"
+            "value": "调低音量"
           }
         }
       }
     },
-    "Shuffle on": {
+    "voice.music-vol-set": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الترتيب العشوائي مفعّل"
+            "value": "الصوت: %d%%"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "শাফল চালু"
+            "value": "ভলিউম: %d%%"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shuffle on"
+            "value": "Volume: %d%%"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aleatorio activado"
+            "value": "Volumen: %d%%"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aléatoire activé"
+            "value": "Volume : %d%%"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "शफ़ल चालू"
+            "value": "वॉल्यूम: %d%%"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acak aktif"
+            "value": "Volume: %d%%"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aleatório ativado"
+            "value": "Volume: %d%%"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Перемешивание вкл."
+            "value": "Громкость: %d%%"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "随机播放：开"
+            "value": "音量：%d%%"
           }
         }
       }
     },
-    "Advertisement": {
+    "voice.music-vol-up": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إعلان"
+            "value": "رفع الصوت"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "বিজ্ঞাপন"
+            "value": "ভলিউম বাড়ছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Advertisement"
+            "value": "Volume up"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anuncio"
+            "value": "Subir volumen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publicité"
+            "value": "Volume +"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "विज्ञापन"
+            "value": "आवाज़ बढ़ाएं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iklan"
+            "value": "Volume naik"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anúncio"
+            "value": "Volume mais alto"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Реклама"
+            "value": "Громче"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "广告"
+            "value": "调高音量"
           }
         }
       }
     },
-    "Not installed": {
+    "voice.pill-added": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "غير مثبت"
+            "value": "تمت إضافة %@"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ইনস্টল নেই"
+            "value": "%@ যোগ হয়েছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not installed"
+            "value": "%@ added"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No instalado"
+            "value": "%@ añadido"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non installé"
+            "value": "%@ ajouté"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "इंस्टॉल नहीं"
+            "value": "%@ जोड़ा गया"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Belum terpasang"
+            "value": "%@ ditambahkan"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não instalado"
+            "value": "%@ adicionado"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не установлено"
+            "value": "%@ добавлено"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未安装"
+            "value": "已添加 %@"
           }
         }
       }
     },
-    "%@ — open Spotify": {
+    "voice.pill-already-active": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — فتح Spotify"
+            "value": "مفعّل بالفعل"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — Spotify খুলুন"
+            "value": "ইতিমধ্যে সক্রিয়"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — open Spotify"
+            "value": "Already active"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — abrir Spotify"
+            "value": "Ya activo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — ouvrir Spotify"
+            "value": "Déjà actif"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — Spotify खोलें"
+            "value": "पहले से सक्रिय"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — buka Spotify"
+            "value": "Sudah aktif"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — abrir o Spotify"
+            "value": "Já ativo"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — открыть Spotify"
+            "value": "Уже активно"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — 打开 Spotify"
+            "value": "已激活"
+          }
+        }
+      }
+    },
+    "voice.pill-main": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الرئيسي: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মূল: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Main: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Principal: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Principal : %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "मुख्य: %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utama: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Principal: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Главный: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主要：%@"
+          }
+        }
+      }
+    },
+    "voice.pill-no-hooks": {
+      "extractionState": "stale",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمت إضافة %@ — الخطافات غير مثبّتة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ যোগ হয়েছে — হুকস ইনস্টল নেই"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ added — hooks not installed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ añadido — hooks no instalados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ajouté — hooks non installés"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ जोड़ा — hooks इंस्टॉल नहीं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ditambahkan — hooks tidak terpasang"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ adicionado — hooks não instalados"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ добавлено — хуки не установлены"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已添加 %@ — 钩子未安装"
+          }
+        }
+      }
+    },
+    "voice.pill-not-active": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير نشط"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সক্রিয় নয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not active"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No activo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non actif"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सक्रिय नहीं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak aktif"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não ativo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не активно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未激活"
+          }
+        }
+      }
+    },
+    "voice.pill-only": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فقط: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুধুমাত্র: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seulement : %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "केवल: %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hanya: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apenas: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅：%@"
+          }
+        }
+      }
+    },
+    "voice.pill-removed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمت إزالة %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ সরানো হয়েছে"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ removed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ eliminado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ retiré"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ हटाया गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dihapus"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ removido"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ удалено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除 %@"
+          }
+        }
+      }
+    },
+    "voice.pill-replaced": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        }
+      }
+    },
+    "voice.question-cancelled": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حسنًا، أتركه كما هو"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ঠিক আছে, এটা যেমন আছে রেখে দিচ্ছি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK, leaving it as is"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De acuerdo, lo dejo como está"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D'accord, je laisse comme ça"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ठीक है, जैसा है वैसा छोड़ता हूँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baik, biarkan seperti itu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ok, vou deixar como está"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хорошо, оставляю как есть"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "好的，保持原样"
+          }
+        }
+      }
+    },
+    "voice.unknown": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأمر غير مُتعرَّف عليه"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কমান্ড চেনা যায়নি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command not recognised"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando no reconocido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commande non reconnue"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आदेश पहचाना नहीं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perintah tidak dikenali"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando não reconhecido"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда не распознана"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法识别指令"
+          }
+        }
+      }
+    },
+    "voice.unknown-transcript": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير مفهوم: « %@ »"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বোঝা যায়নি: « %@ »"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not recognised: « %@ »"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entendido: « %@ »"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas compris : « %@ »"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "समझ नहीं आया: « %@ »"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak dimengerti: « %@ »"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não entendido: « %@ »"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Непонятно: « %@ »"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法理解：« %@ »"
           }
         }
       }

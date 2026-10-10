@@ -263,6 +263,13 @@ final class BotEngine: ObservableObject {
     // Slap tracking (for dizzy on 3 slaps)
     var slapTimes: [Double] = []
 
+    // Listening mode
+    var listenHandRaise: CGFloat = 0   // 0=rest, 1=raised to listening position (right hand)
+    var listeningLevel:  CGFloat = 0   // smoothed mic level 0…1, set each frame by BotCanvasView
+    var isInListeningMode  = false
+    var listeningHasWords  = false
+    private var listeningPrevPermanentEmote: BotEmote? = nil
+
     // Dancing (Apple Music)
     var isDancing: Bool = false
     var dancingLevel: CGFloat = 0   // 0→1 over 0.3s, 1→0 over 0.5s
@@ -588,6 +595,76 @@ final class BotEngine: ObservableObject {
         anim("hands", keys: [TweenKey(target: 0, duration: 150, ease: Ease.inOut)])
     }
 
+    // MARK: - Listening mode
+
+    /// Call when the island enters listening state (.voiceWoke).
+    func enterListening() {
+        isInListeningMode = true
+        listeningHasWords  = false
+        listeningPrevPermanentEmote = permanentEmote
+        interruptGreet()
+
+        // Small jump
+        anim("oy", keys: [
+            TweenKey(target: -0.20, duration: 130, ease: Ease.out),
+            TweenKey(target: 0,     duration: 280, ease: Ease.back),
+        ])
+        squash()
+
+        // Wide eyes — permanent (survive blinks)
+        setPermanentEmote(.listening)
+
+        // Head tilt held (no return-to-zero)
+        anim("tilt", keys: [TweenKey(target: -0.10, duration: 200, ease: Ease.out)])
+
+        // Show and raise right hand
+        anim("hands",          keys: [TweenKey(target: 1,   duration: 150, ease: Ease.out)])
+        anim("listenHandRaise",keys: [TweenKey(target: 1,   duration: 280, ease: Ease.out)])
+
+        // Attentive sound
+        SoundEngine.shared.play("question")
+
+        // First slow blink sooner than normal
+        nextBlink = CACurrentMediaTime() + 2.5 + Double.random(in: 0...1.0)
+    }
+
+    /// Call when the island leaves listening state.
+    /// `hadCommand` = commandTranscript was non-empty when the session ended.
+    func exitListening(hadCommand: Bool) {
+        isInListeningMode = false
+        listeningLevel    = 0
+        listeningHasWords = false
+
+        // Restore the permanent emote that was active before listening started
+        setPermanentEmote(listeningPrevPermanentEmote)
+        listeningPrevPermanentEmote = nil
+
+        // Return head tilt to rest
+        anim("tilt", keys: [TweenKey(target: 0, duration: 250, ease: Ease.inOut)])
+
+        // Lower hand
+        anim("listenHandRaise", keys: [TweenKey(target: 0, duration: 200, ease: Ease.inOut)])
+        anim("hands",           keys: [TweenKey(target: 0, duration: 180, ease: Ease.inOut)])
+
+        if hadCommand {
+            // Nod
+            anim("oy", keys: [
+                TweenKey(target: -0.08, duration: 110, ease: Ease.out),
+                TweenKey(target: 0,     duration: 200, ease: Ease.back),
+            ])
+            triggerEmote(.happy, duration: 1.0, silent: true)
+        } else {
+            // Shrug
+            anim("sy", keys: [
+                TweenKey(target: 0.93, duration: 180, ease: Ease.out),
+                TweenKey(target: 1,    duration: 350, ease: Ease.back),
+            ])
+        }
+
+        // Resume normal blink interval
+        nextBlink = CACurrentMediaTime() + 1.5 + Double.random(in: 0...2)
+    }
+
     /// Sets a permanent eye expression that survives blinks and transient emotes.
     func setPermanentEmote(_ emote: BotEmote?) {
         permanentEmote = emote
@@ -679,6 +756,17 @@ final class BotEngine: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                 SoundEngine.shared.play("annoyed")
             }
+        case .listening:
+            // Attentive: slight head tilt + wide-open eyes
+            anim("tilt", keys: [
+                TweenKey(target: -0.07, duration: 180, ease: Ease.out),
+                TweenKey(target: -0.07, duration: CGFloat((duration - 0.4) * 1000), ease: Ease.lin),
+                TweenKey(target: 0,     duration: 240, ease: Ease.inOut),
+            ])
+            anim("es", keys: [
+                TweenKey(target: 1.12, duration: 200, ease: Ease.out),
+                TweenKey(target: 1,    duration: 500, ease: Ease.inOut),
+            ])
         }
     }
 
@@ -764,6 +852,22 @@ final class BotEngine: ObservableObject {
         tgPitch = tp
         tgTilt  = cfg.tilt
 
+        // Listening mode: waiting sway + voice reactive
+        if isInListeningMode {
+            if !listeningHasWords {
+                ty += sin(CGFloat(now - t0) * 1.1) * 0.06   // gentle waiting sway
+                tp += -0.12                                    // look slightly upward
+            }
+            tgYaw   = ty
+            tgPitch = tp
+            if listeningLevel > 0.01 {
+                let lvl = listeningLevel
+                tgEs = max(tgEs, 1.0 + lvl * 0.15)
+                if !locks.contains("sy") { tgSy = max(tgSy, 1.0 + lvl * 0.04) }
+                if !locks.contains("sx") { tgSx = min(tgSx, 1.0 - lvl * 0.02) }
+            }
+        }
+
         // Body sway during greeting wave
         if now > waveStart && now < waveUntil {
             let wt = CGFloat(now - waveStart)
@@ -813,7 +917,8 @@ final class BotEngine: ObservableObject {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.23) { [weak self] in self?.blink() }
                 }
             }
-            nextBlink = now + 2.2 + Double.random(in: 0...3.2)
+            nextBlink = now + (isInListeningMode ? 3.0 + Double.random(in: 0...1.5)
+                                                 : 2.2 + Double.random(in: 0...3.2))
         }
 
         // Clear expired eye override (restore permanent if set)
@@ -1020,6 +1125,13 @@ final class BotEngine: ObservableObject {
                 let wt = CGFloat(now - waveStart)
                 localX = -hwB * 1.08
                 localY = hhB * 0.70 + sin(6 * wt) * 0.04 * bodyH
+
+            } else if sd > 0 && listenHandRaise > 0.01 {
+                // Right hand: raised to attentive listening position (not waving)
+                let h = listenHandRaise
+                localX = lerp(hwB * 1.08, hwB * 1.05, h)
+                localY = lerp(hhB * 0.70, -hhB * 0.28, h)
+                handRot = -0.45 * h   // tilts slightly toward head
 
             } else {
                 // Rest: lower-side, clearly peeking behind body bottom
@@ -1543,6 +1655,7 @@ final class BotEngine: ObservableObject {
         case "es":            es            = value
         case "badgeS":        badgeS        = value
         case "outfitPresence": outfitPresence = value
+        case "listenHandRaise": listenHandRaise = value
         default: break
         }
     }
@@ -1565,6 +1678,7 @@ final class BotEngine: ObservableObject {
         case "es":            return es
         case "badgeS":        return badgeS
         case "outfitPresence": return outfitPresence
+        case "listenHandRaise": return listenHandRaise
         default:              return 0
         }
     }
@@ -1615,6 +1729,7 @@ private func emoteEyeShape(_ e: BotEmote) -> EyeShape {
     case .yawn:      return .tired
     case .happy:     return .happy
     case .annoyed:   return .line
+    case .listening: return .wide
     }
 }
 
