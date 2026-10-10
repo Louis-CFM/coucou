@@ -363,7 +363,9 @@ pub async fn poll(app: AppHandle) {
 }
 
 async fn fetch(token: &str) -> Result<(Identity, Vec<Message>, i64, usize), Failure> {
-    let identity = match CACHE.lock().unwrap().identity.clone() {
+    // Read apart from the match: its lock would otherwise be held across the await.
+    let cached = CACHE.lock().unwrap().identity.clone();
+    let identity = match cached {
         Some(i) => i,
         None => {
             let json = call(token, "auth.test", &[]).await?;
