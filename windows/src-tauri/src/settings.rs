@@ -346,6 +346,12 @@ fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
 
 /// `save`, for the file at `path`, whose directory already exists.
 fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
+    // Callers save outside the settings lock, so the file write itself is
+    // serialized here: two saves sharing the temp name can otherwise truncate
+    // each other mid-flight and install half a settings.json.
+    static SAVE_LOCK: Mutex<()> = Mutex::new(());
+    let _save = SAVE_LOCK.lock().unwrap();
+
     keep_what_was_not_loaded(path)?;
     let json = serde_json::to_vec_pretty(settings)
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
@@ -358,10 +364,10 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
     let path = resolved.as_path();
 
     // Write beside the target and rename over it: a crash, a full disk or a
-    // power cut leaves the previous settings.json intact rather than half a file.
+    // power cut leaves the previous settings.json intact rather than half a
+    // file. write_like keeps the original's permissions and starts ours 0600.
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    let written = std::fs::File::create(&temp)
-        .and_then(|mut file| write_whole(&mut file, &json))
+    let written = crate::config_file::write_like(&temp, path, &json)
         .and_then(|()| std::fs::rename(&temp, path));
     if written.is_err() {
         let _ = std::fs::remove_file(&temp);
