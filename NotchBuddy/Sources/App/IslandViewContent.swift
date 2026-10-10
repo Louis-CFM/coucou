@@ -27,6 +27,7 @@ struct IslandViewContent: View {
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
+        case .code:      CodeSessionView(state: state)
         case .listening:
             #if !APPSTORE
             VoiceListeningView(isActive: state.view == .listening)
@@ -97,7 +98,7 @@ struct OverviewView: View {
                             }
                             .padding(.top, 6)
                             .padding(.leading, 108)
-                            .padding(.trailing, 36)
+                            .padding(.trailing, hasCode ? 56 : 36)
 
                             TickerView(task: agent, onDiffTap: { diffIdx in
                                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
@@ -142,6 +143,21 @@ struct OverviewView: View {
                 #else
                 let hideJumpButton = showingN8nDetail || activeDiffId != nil
                 #endif
+                if !hideJumpButton && hasCode {
+                    Button(action: openCode) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: 7, weight: .semibold))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                            .frame(width: 16, height: 16)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(String(localized: "Code"))
+                    .padding(.top, 8)
+                    .padding(.trailing, 30)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
@@ -194,6 +210,16 @@ struct OverviewView: View {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
             }
         }
+    }
+
+    /// The focused Claude Code session has an edit or a command for the code view.
+    private var hasCode: Bool {
+        guard let agent else { return false }
+        return state.codeSessions[agent.id]?.hasContent == true
+    }
+
+    private func openCode() {
+        withAnimation(.easeIn(duration: 0.16)) { state.view = .code }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -2075,7 +2101,7 @@ struct IntegrationCardView: View {
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
-                .padding(.trailing, 36)
+                .padding(.trailing, appState.codeSessions[task.id]?.hasContent == true ? 56 : 36)
 
                 TickerView(task: task, onDiffTap: onDiffTap)
                     .frame(height: 44)

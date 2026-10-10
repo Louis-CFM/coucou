@@ -446,6 +446,10 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        if !isExternalAgent && !isCodexEvent {
+            recordCode(event: name, pillId: agentId, payload: payload, cwd: cwd, project: projectName)
+        }
+
         switch name {
 
         case "SessionStart":
@@ -1030,6 +1034,56 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].steps.append(step)
         if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
         state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
+    }
+
+    // MARK: - Code view
+
+    /// Keeps what the code view shows of a Claude Code session: phases, last edit, last command.
+    @MainActor
+    private func recordCode(event: String, pillId: String, payload: [String: Any], cwd: String, project: String) {
+        let state = AppState.shared
+        if event == "SessionEnd" {
+            state.codeSessions[pillId] = nil
+            return
+        }
+        var session = state.codeSessions[pillId] ?? CodeSession(project: project, root: cwd)
+        let tool = payload["tool_name"] as? String ?? ""
+        switch event {
+        case "UserPromptSubmit":
+            session = CodeSession(project: project, root: cwd)
+        case "PreToolUse":
+            session.toolStarted(tool: tool, input: payload["tool_input"] as? [String: Any] ?? [:], cwd: cwd)
+            if readsSnippet(tool, payload, session.edit) { session.awaitSnippet() }
+        case "PostToolUse", "PostToolUseFailure":
+            let failed = event == "PostToolUseFailure"
+            session.toolFinished(tool: tool, response: payload["tool_response"], failed: failed, error: payload["error"] as? String)
+            if !failed, readsSnippet(tool, payload, session.edit), let edit = session.edit {
+                loadSnippet(edit, pillId: pillId, root: session.root, cwd: cwd)
+            }
+        case "Stop":
+            session.endTurn()
+        default:
+            return
+        }
+        state.codeSessions[pillId] = session
+    }
+
+    /// Reads the lines around an edit off the main thread, then adds them if the edit is still the one shown.
+    @MainActor
+    private func loadSnippet(_ edit: CodeEdit, pillId: String, root: String, cwd: String) {
+        let base = edit.path.hasPrefix(root + "/") ? root : cwd
+        DispatchQueue.global(qos: .utility).async {
+            let snippet = CodeView.readSnippet(path: edit.path, root: base, find: edit.added)
+            Task { @MainActor in
+                AppState.shared.codeSessions[pillId]?.snippetRead(snippet, for: edit)
+            }
+        }
+    }
+
+    /// An Edit made on this Mac: the lines around it are read from the file. A remote
+    /// session's files are on its host.
+    private func readsSnippet(_ tool: String, _ payload: [String: Any], _ edit: CodeEdit?) -> Bool {
+        tool == "Edit" && payload["coucou_remote"] == nil && edit?.added.isEmpty == false
     }
 
     // MARK: - Project name alias mapping

@@ -383,6 +383,9 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    /// The code view's data, by pill (see CodeSession.swift).
+    @Published var codeSessions: [String: CodeSession] = [:]
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]

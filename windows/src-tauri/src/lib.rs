@@ -27,6 +27,7 @@ mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod snippet;
 mod sounds;
 mod spotify;
 mod tray;
@@ -191,6 +192,16 @@ fn open_url(url: String) {
         return;
     }
     platform::open_url(&url);
+}
+
+/// The lines around an edit, for the code view (see snippet.rs). Off the main
+/// thread: a slow disk must not freeze the island.
+#[tauri::command]
+async fn file_snippet(cwd: String, path: String, find: String, context: usize) -> Option<snippet::Snippet> {
+    tauri::async_runtime::spawn_blocking(move || snippet::for_session(&cwd, &path, &find, context))
+        .await
+        .ok()
+        .flatten()
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
@@ -678,6 +689,7 @@ pub fn run() {
             list_monitors,
             open_url,
             open_in_vscode,
+            file_snippet,
             open_session,
             open_claude_desktop,
             open_file_in_vscode,

@@ -2628,3 +2628,309 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── Code view: a small editor next to Mochi and the turn's phases ─────────── */
+
+.code-view {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  height: 100%;
+  padding: 10px 11px 8px 10px;
+}
+
+.code-left {
+  flex: 0 0 112px;
+  min-width: 0;
+  /* Mochi, on its own canvas, fills the top of this column. */
+  padding: 112px 0 0 8px;
+}
+
+.code-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 14px var(--font);
+  color: var(--ink);
+}
+
+.code-name span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.code-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1px 0 14px;
+  font: 400 12.5px var(--font);
+  color: var(--dim-2);
+}
+
+.code-back {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim-4);
+  cursor: default;
+}
+
+.code-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.code-view .phases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.code-view .phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13.5px/16px var(--font);
+  color: var(--dim-4);
+}
+
+.code-view .phase.done {
+  color: var(--dim-2);
+}
+
+.code-view .phase.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.ph-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+/* A phase this turn went through: a green disc with a tick. */
+.ph-icon.ok {
+  border-radius: 50%;
+  background: var(--green-2);
+  color: #052e1c;
+}
+
+/* "Done" before the end: the same disc, muted. */
+.ph-icon.ok.muted {
+  background: var(--dim-4);
+  color: #0b0c0e;
+}
+
+/* The running phase: a ring with a gap, turning. */
+.ph-icon.spin {
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  border-right-color: transparent;
+  animation: ph-spin 0.9s linear infinite;
+}
+
+/* A phase that has not started: its glyph in a rounded square. */
+.ph-icon.todo {
+  border-radius: 4.5px;
+  color: var(--dim-4);
+  box-shadow: inset 0 0 0 1.5px var(--dim-4);
+}
+
+@keyframes ph-spin {
+  to { transform: rotate(360deg); }
+}
+
+.editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: #0b0c0e;
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+  font: 400 10px/17px var(--mono);
+}
+
+.ed-tab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 4px 8px;
+  color: var(--ink-2);
+  font: 500 10.5px var(--mono);
+}
+
+/* The file tab: one pill around the language chip and the name. */
+.ed-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 8px;
+  background: #15161a;
+}
+
+.ed-chip {
+  padding: 0 4px;
+  border-radius: 3px;
+  font: 700 8.5px/13px var(--font);
+}
+
+.ed-dir {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--dim-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* a long path keeps its end, the useful part */
+}
+
+.ed-code {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 4px;
+}
+
+.ed-row {
+  display: flex;
+  white-space: pre;
+  overflow: hidden;
+  border-left: 2px solid transparent;
+}
+
+.ed-n {
+  flex: 0 0 34px;
+  padding-right: 8px;
+  text-align: right;
+  color: var(--dim-4);
+}
+
+.ed-sign {
+  flex: 0 0 14px;
+  text-align: center;
+  color: var(--dim-4);
+}
+
+.ed-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #c4cad4;
+}
+
+.ed-row.add {
+  background: rgba(52, 211, 153, 0.13);
+  border-left-color: var(--green-2);
+}
+
+.ed-row.add .ed-sign,
+.ed-row.add .ed-n {
+  color: var(--green-2);
+}
+
+.ed-row.del {
+  background: rgba(244, 80, 94, 0.15);
+  border-left-color: var(--red);
+}
+
+.ed-row.del .ed-sign,
+.ed-row.del .ed-n {
+  color: var(--red-text);
+}
+
+.ed-row.del .ed-text {
+  color: var(--dim-3);
+  text-decoration: line-through;
+  text-decoration-color: rgba(244, 80, 94, 0.5);
+}
+
+.term {
+  flex: 0 0 auto;
+  padding: 8px 12px 9px;
+}
+
+.term-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dim-2);
+}
+
+.term-line.good { color: var(--green-2); }
+.term-line.bad { color: var(--red-text); }
+.term-line .prompt { color: var(--cyan); }
+.term-line .dim { color: var(--dim-2); }
+
+.term-cmd {
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-run {
+  color: var(--dim-3);
+}
+
+.term .badge {
+  padding: 0 5px;
+  border-radius: 3px;
+  font: 700 9px/14px var(--font);
+  letter-spacing: 0.03em;
+}
+
+.term .badge.pass {
+  background: var(--green-2);
+  color: #052e1c;
+}
+
+.term .badge.fail {
+  background: var(--red);
+  color: #2c0509;
+}
+
+.tok-k { color: #c3a6ff; }
+.tok-s { color: #d3dd8e; }
+.tok-n { color: #f4a46a; }
+.tok-t { color: #f2c070; }
+.tok-f { color: #f2c070; }
+.tok-c { color: var(--dim-4); font-style: italic; }
+
+/* The overview's left card opens the code view when there is code to show. */
+.expand-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 2;
+  display: none;
+  color: var(--dim-4);
+}
+
+.card.expandable {
+  cursor: pointer;
+}
+
+.card.expandable .expand-hint {
+  display: block;
+}
+
+.card.expandable:hover .expand-hint {
+  color: var(--dim-2);
+}
