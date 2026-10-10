@@ -73,11 +73,11 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+All standard Claude Code hook events are supported. `PermissionRequest` raises a
+real Allow / Deny card for the agents that take decisions — Claude Code, Codex,
+Copilot CLI and Muse. A `PermissionRequest` from any other agent is answered
+immediately with no decision, so the relay writes nothing and the agent re-asks
+in its terminal.
 
 The pill lifecycle:
 
@@ -103,7 +103,9 @@ The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigr
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
 Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
-the main pill; session support is coming in a future version.
+the main pill. On Windows and Linux, Codex is a first-class agent already: its hooks
+are installed from Settings and its approval requests get a real card. On macOS,
+session support is coming in a future version.
 
 Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
 
