@@ -21,8 +21,89 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test Claude hook detection
+        run: bash scripts/test-claude-hooks.sh
+
+      - name: Test display choice
+        run: bash scripts/test-display-choice.sh
+
+      - name: Desktop Mochi and gaze tests
+        run: bash scripts/test-desktop-mochi.sh
+
+      - name: Test auto-close timing
+        run: bash scripts/test-auto-close.sh
+
+      - name: Test open on hover
+        run: bash scripts/test-island-hover.sh
+
+      - name: Wake phrase tests
+        run: bash scripts/test-voice-wake.sh
+
+      - name: Energy VAD tests
+        run: bash scripts/test-voice-vad.sh
+
+      - name: Voice island FSM tests
+        run: bash scripts/test-voice-island.sh
+
+      - name: Voice IntentParser tests
+        run: bash scripts/test-voice-intent.sh
+
+      - name: Voice EntityResolver tests
+        run: bash scripts/test-voice-entity.sh
+
+      - name: Voice ActionRunner tests
+        run: bash scripts/test-voice-runner.sh
+
+      - name: Voice conversation end-phrase tests
+        run: bash scripts/test-voice-conversation.sh
+
+      - name: Test terminal target
+        run: bash scripts/test-terminal-target.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
+
+      - name: Test Claude response text
+        run: bash scripts/test-claude-response.sh
+
+      - name: Test chat parsing
+        run: bash scripts/test-chat-parsing.sh
+
+      - name: Test plan gauge
+        run: bash scripts/test-plan-gauge.sh
+
+      - name: Test ask question
+        run: bash scripts/test-ask-question.sh
+
+      - name: Diff engine tests
+        run: bash scripts/test-diff-engine.sh
+
+      - name: GitHub pulse tests
+        run: bash scripts/test-github-pulse.sh
+
+      - name: GitHub activity tests
+        run: bash scripts/test-github-activity.sh
+
+      - name: Wardrobe tests
+        run: bash scripts/test-wardrobe.sh
+
+      - name: Pill colour tests
+        run: bash scripts/test-pill-colors.sh
+
+      - name: Claude settings file tests
+        run: bash scripts/test-claude-settings.sh
+
+      - name: Turn end policy tests
+        run: bash scripts/test-turn-end-policy.sh
+
+      - name: Voice spotter generation tests
+        run: bash scripts/test-voice-spotter-gen.sh
+
+      - name: Voice wake blocked tests
+        run: bash scripts/test-voice-wake-blocked.sh
+
+      - name: Conversation context tests
+        run: bash scripts/test-conversation-context.sh
 
       - name: Build
         run: |
@@ -33,3 +114,42 @@ jobs:
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Build App Store target (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouAppStore \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, DebugCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddyCloud \
+            -configuration DebugCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone link spike (Mac, ReleaseCloud, unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddy \
+            -configuration ReleaseCloud \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build iPhone app (unsigned)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme CoucouPhone \
+            -destination 'generic/platform=iOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO

@@ -1,0 +1,67 @@
+name: Windows CI
+
+# Type-checks and tests the Windows app on every pull request that touches it.
+# Nothing is packed and nothing is published: releases stay in windows.yml,
+# which only runs on tags.
+
+on:
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/windows-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'windows/**'
+      - '.github/workflows/windows-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The tests run the TypeScript sources directly, which needs Node 22.18
+      # or newer; 24 is the version they are run with locally.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: windows-ci-cargo-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: windows-ci-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Island tests
+        run: npm test
+
+      # The app bundles target/release/coucou-hook.exe as a resource, and its
+      # build script refuses to run until that file exists. One command per
+      # step: PowerShell carries on after a failed command in the same step.
+      - name: Build the relay
+        run: cargo build --release -p coucou-hook
+
+      - name: Rust tests
+        run: cargo test --workspace --locked

@@ -45,9 +45,17 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 - « Toujours autoriser » : si la doc permet de renvoyer une règle de permission persistante, l'utiliser. Sinon l'app garde sa propre liste (projet + outil + motif de commande) et répond `allow` automatiquement ensuite. Liste visible et supprimable dans les réglages.
 - Raccourcis Y / N quand la vue `approval` est ouverte.
 
-### Répondre aux questions
-- Si Claude utilise l'outil de question (`AskUserQuestion`), l'intercepter en `PreToolUse` et afficher les options dans la vue `question`.
-- Vérifier dans la doc si un hook peut fournir la réponse. Si oui : clic sur une option = réponse. **Si non** : la vue affiche la question et un bouton « Répondre dans le terminal » qui saute à la session. Ne pas bricoler de frappe clavier simulée.
+### Répondre aux questions (`AskUserQuestion`)
+- **Claude Code 2.1.85+** : `AskUserQuestion` arrive en `PreToolUse` (avec `matcher: "AskUserQuestion"`), non plus en `PermissionRequest`. Un hook dédié avec `--ask` et un timeout de 130 s est requis dans `settings.json`. Si ce hook manque, l'app affiche la bannière « Hooks outdated — update them to answer Claude's questions from the notch » dans les réglages et propose la mise à jour.
+- `PermissionRequest` pour `AskUserQuestion` : l'app répond `{"permissionDecision":"ask"}` immédiatement (no-op) et n'affiche pas de carte.
+- `PreToolUse` général pour `AskUserQuestion` : l'app ignore l'événement (pas de mise à jour de l'état `.working`).
+- `tool_input.questions` : tableau de 1 à 4 questions, chacune avec `question` (texte), `header` (≤ 12 car.), `options` (2 à 4, chacune `label` + `description`), `multiSelect`.
+- L'app parse en un modèle Foundation (`AskQuestion`) ; si le parse échoue, nb-hook.py n'émet rien → Claude Code re-pose la question dans le terminal.
+- La vue `question` affiche une question à la fois (compteur 1/N), les options en grille fluide (`ChipFlowLayout`), un champ libre « Other… », et un lien « Reply in terminal » dans l'en-tête (envoie `ask`, aucune sortie).
+- Single-select : clic = réponse immédiate (pas de bouton Send). Multi-select : toggles + bouton Send/Next, désactivé tant qu'aucun choix.
+- Réponse via socket : `{"decision":"answer","answers":{"<question>":"<label>"}}`. Multi-select : valeur `[String]` (tableau, Claude Code 2.1.136+). Single-select et « Other… » : valeur `String`.
+- nb-hook.py `--ask` : si `decision == 'answer'` → émet `hookSpecificOutput` avec `hookEventName: "PreToolUse"`, `permissionDecision: "allow"` et `updatedInput: {questions, answers}` — Claude Code reçoit les réponses et continue.
+- Fallback : si l'app ne répond pas (absente, timeout 125 s) ou renvoie `ask`, nb-hook n'émet rien → Claude Code re-pose la question dans le terminal.
 
 ### Sauter au terminal
 | Contexte capté | Action |
@@ -65,6 +73,132 @@ Demande l'autorisation Automatisation la première fois (normal).
 3. **Fusionner** : ajouter les hooks Notch Buddy sans toucher aux hooks existants. Chemin de `nb-hook` entre guillemets (il contient un espace).
 4. Montrer le diff à Louis, attendre son OK, écrire.
 5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy.
+
+---
+
+## 1bis. Jauge de forfait Claude (statusLine)
+
+**Affichage** : petit pill dans l'en-tête de l'île (vue home uniquement) — plus de pastille dans le catalogue Active pills.  
+**Plateforme** : macOS uniquement (build GitHub)  
+**Plans** : Pro et Max uniquement (le champ `rate_limits` n'est présent que pour ces plans)
+
+Affiche la consommation du forfait Claude via un pill coloré dans l'en-tête de l'île. Couleur dynamique : vert `#22C55E` < 50 %, orange `#F59E0B` 50–80 %, rouge `#F4505E` ≥ 80 %, gris `#6B7079` sans données. Cliquer sur le pill bascule `showingPlanDetail`, ce qui remplace la carte en cours par `ClaudePlanCardView`. `showingPlanDetail` se remet à false au changement de focusId, de vue ou de mode.
+
+### Données
+
+Claude Code envoie, à chaque réponse et avec un debounce de 300 ms, un JSON à la commande `statusLine` configurée dans `~/.claude/settings.json`. Ce JSON contient :
+
+```json
+{
+  "session_id": "…",
+  "rate_limits": {
+    "five_hour": { "used_percentage": 23.5, "resets_at": 1738425600 },
+    "seven_day":  { "used_percentage": 67.0, "resets_at": 1738598400 }
+  }
+}
+```
+
+`used_percentage` va de 0 à 100. `resets_at` est un epoch UNIX en secondes. Le champ `rate_limits` peut être absent (plan Free, ou première réponse de la session). Chaque fenêtre peut être absente indépendamment. Les valeurs absurdes (< 0 ou > 100) sont ignorées. Une fenêtre dont `resets_at` est passé s'affiche à 0 % jusqu'à la prochaine mise à jour.
+
+### Relais
+
+nb-hook.py, en mode `--statusline`, lit le JSON de stdin, en extrait `rate_limits` et `session_id`, et envoie `{"coucou_kind": "statusline", …}` au socket en fire-and-forget (timeout 0,3 s). Si une `statusLine` précédente existait (sauvegardée dans `statusline-previous.json` à côté de nb-hook), elle est appelée via `/bin/sh -c` avec le même stdin et sa sortie est réécrite telle quelle (timeout 10 s, couleurs ANSI comprises).
+
+### Installation et activation
+
+Réglages → Agents → Plan usage → **Install relay**. Coucou montre le diff de `~/.claude/settings.json` avant d'écrire quoi que ce soit. Si une `statusLine` existait, seul le champ `command` est remplacé ; les autres champs (`padding`, `refreshInterval`, etc.) sont conservés. Une fois le relais installé, activer le toggle **Show in the notch** pour faire apparaître le pill dans l'en-tête. Si le toggle est activé avant l'installation du relais, l'installation est lancée automatiquement ; le toggle s'active après confirmation.
+
+### Désinstallation
+
+Réglages → Agents → Plan usage → **Uninstall relay**. Remet l'objet `statusLine` d'origine à l'identique, ou retire la clé si elle n'existait pas. Si la `statusLine` actuelle n'est plus celle de Coucou (l'utilisateur l'a changée), elle n'est pas touchée.
+
+---
+
+## 1ter. Diff en direct (live diff)
+
+Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'app calcule un diff ligne à ligne et l'affiche dans le fil de l'île.
+
+**Données**
+- `Edit` : `old_string → new_string`
+- `MultiEdit` : liste `edits`, chaque entrée `old_string → new_string`
+- `Write` : `content` — tout le contenu est compté en ajout (on ne lit jamais le fichier sur le disque)
+- Le diff est calculé localement (Foundation, jamais de lecture sur le disque).
+- Limite : 200 Ko de texte combiné ou 4 000 lignes combinées → bilan seul, "Diff too large".
+- Mémoire : 50 diffs max par session, les plus anciens sont oubliés ; tout effacé à la fin de la session (`SessionEnd`) ou après une heure sans activité.
+
+**Fil (TickerView)** — les étapes de modification affichent le nom du fichier, `+N` en vert `#22C55E` et `−M` en rouge `#F4505E`, petits et monospacés.
+
+**Carte diff** — un clic sur une étape de modification ouvre la carte diff dans la vue principale :
+- En-tête : nom du fichier + bilan + bouton ↗ (ouvre dans VS Code via `code -g fichier:ligne`, sinon `NSWorkspace`)
+- Lignes en monospace 10,5 pt, fond vert ou rouge à 12 %, symbole +/− en marge, 3 lignes de contexte
+- Défilement vertical ; Échap ou clic sur l'en-tête pour revenir au fil
+
+**Vue Terminé (FinishedView)** — affiche la dernière ligne utile de la session (`finalLine` → dernière étape non-diff → "Session finished"), sur une ligne (`.lineLimit(1).truncationMode(.tail)`). Pas de liste de fichiers.
+
+---
+
+## 1quater. GitHub (pulse)
+
+**Plateforme** : macOS uniquement (build GitHub)
+
+**Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
+
+### Données récupérées
+
+Deux requêtes GraphQL séparées (POST `https://api.github.com/graphql`, même token, même en-tête) :
+
+**Requête pulse** :
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`)
+- **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
+- **CI branche par défaut** (10 derniers dépôts propres, non archivés) : `oid` et état CI du commit HEAD sur `defaultBranchRef`
+
+**Cadence pulse** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). Première requête 10 s après le lancement.
+
+**Rafraîchissement pulse à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` appelé quand `integration_github` prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail (sauf Activity). Si données < 60 s ou requête en vol, ignoré.
+
+**Requête activité** (`contributionCalendar`) :
+```graphql
+query { viewer { login contributionsCollection { contributionCalendar {
+  totalContributions weeks { contributionDays { date contributionCount contributionLevel weekday } }
+} } } }
+```
+- `contributionLevel` : NONE → 0, FIRST_QUARTILE → 1, SECOND_QUARTILE → 2, THIRD_QUARTILE → 3, FOURTH_QUARTILE → 4. Valeur inconnue → 0.
+
+**Cadence activité** : 30 min, première requête 15 s après le lancement.
+
+**Rafraîchissement activité à l'ouverture** : `GithubPoller.refreshActivityIfStale(maxAge: 300)` appelé à l'ouverture de la vue Activity. Si données < 5 min ou requête en vol, ignoré.
+
+Données gardées en mémoire (`AppState.githubActivity`). Remises à nil si token change ou si `integration_github` est désactivé.
+
+### États CI (`CIState`)
+
+| Valeur GitHub         | `CIState`  |
+|-----------------------|------------|
+| `PENDING`, `EXPECTED` | `.pending` |
+| `SUCCESS`             | `.success` |
+| `FAILURE`, `ERROR`    | `.failure` |
+| `null` ou autre       | `.unknown` |
+
+### Alertes
+
+Premier poll après lancement : toujours silencieux. Polls suivants :
+
+**Même `headSha` (oid) qu'au poll précédent** — règles classiques de transition :
+- CI passe de `!failure` → `failure` : `.ciFailed` / `.mainFailed`
+- CI passe de `pending` → `success` : `.ciPassed`
+
+**`headSha` différent ou PR/dépôt absent au poll précédent** (nouveau commit ou nouvelle PR, CI déjà terminée avant le poll) :
+- CI = `success` → `.ciPassed` (PR uniquement ; pas d'alerte vert pour main)
+- CI = `failure` → `.ciFailed` / `.mainFailed`
+- CI = `pending` → rien (le poll suivant, même sha, verra la transition)
+
+| Événement             | Badge   | Son        |
+|-----------------------|---------|------------|
+| CI PR failure / main  | `.error` (rouge) | `error` |
+| Nouvelle review demandée | `.finished` (vert) | `question` |
+| CI PR success         | `.finished` (vert) | `finish` |
+
+Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
@@ -141,6 +275,32 @@ Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de past
 
 ---
 
+## 5ter. Modèles locaux (Ollama / LM Studio)
+
+**IDs de pastilles** : `ai_ollama` (jaune `#FACC15`), `ai_lmstudio` (vert citron `#A3E635`)  
+**Catégorie** : AI for the chat  
+**Plateforme** : macOS uniquement
+
+Connexion à un serveur local compatible OpenAI. Aucune clé d'API requise.
+
+### Connexion
+
+Réglages → Chat → Local models → **Connect**. Coucou envoie une requête `GET /v1/models` au serveur. Si le serveur répond avec des modèles, l'URL est sauvegardée et le fournisseur apparaît dans le sélecteur de modèle. Les modèles d'embedding (`nomic-embed-text`, `bge-*`, etc.) sont filtrés automatiquement.
+
+### Streaming
+
+Les messages sont diffusés token par token via `POST /v1/chat/completions` avec `"stream": true`. Les blocs de raisonnement (`<think>…</think>`, utilisés par des modèles comme DeepSeek-R1) sont masqués dans la bulle de chat tant que le bloc est ouvert, puis retirés de la réponse finale.
+
+### Pièces jointes
+
+Les fichiers texte sont envoyés en ligne, tronqués à 24 000 caractères. Images et PDF : seul le nom du fichier est envoyé.
+
+### Déconnexion
+
+Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardée et le cache des modèles. Si un fournisseur local était actif dans le chat, le chat revient sur Anthropic.
+
+---
+
 ## 6. Mail (app Mail du Mac)
 
 - Vue `mail` : À (obligatoire, validation d'adresse), Objet (prérempli : nom du fichier), Message (optionnel, une ligne).
@@ -167,7 +327,11 @@ Voir le catalogue de pastilles dans `docs/SPEC.md` (section « Catalogue de past
 |---|---|---|
 | Automatisation → Mail | envoyer les mails | premier envoi |
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
+| Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
+| Automatisation → Spotify *(GitHub only)* | lire la position, le shuffle, le volume ; piloter la lecture | activation de la pill Spotify, ou première ouverture de sa carte |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 
 Aucune permission Accessibilité nécessaire.
+
+

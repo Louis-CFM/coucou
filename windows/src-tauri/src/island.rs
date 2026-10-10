@@ -89,14 +89,14 @@ impl PollGate {
         self.cv.notify_all();
     }
 
-    fn wait_until_active(&self) {
+    pub(crate) fn wait_until_active(&self) {
         let mut guard = self.active.lock().unwrap();
         while !*guard {
             guard = self.cv.wait(guard).unwrap();
         }
     }
 
-    fn is_active(&self) -> bool {
+    pub(crate) fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
     }
 }
@@ -114,9 +114,117 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
-/// The display the island lives on: the primary one, or the one under the cursor.
+/// A display's logical origin, the key `at:<x>,<y>` preferences are matched on.
+/// Names are no good for that: two monitors of the same model share one.
+fn logical_origin(m: &Monitor) -> (i32, i32) {
+    let scale = m.scale_factor();
+    let p = m.position();
+    ((p.x as f64 / scale).round() as i32, (p.y as f64 / scale).round() as i32)
+}
+
+/// One entry of the "Island lives on" list in Settings.
+#[derive(Serialize, Clone)]
+pub struct MonitorChoice {
+    pub key: String,
+    pub label: String,
+}
+
+pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
+    let Ok(monitors) = app.available_monitors() else { return Vec::new() };
+    monitors
+        .iter()
+        .map(|m| {
+            let d = describe(m);
+            MonitorChoice {
+                key: d.key(),
+                label: crate::i18n::tf(
+                    "{name} — {width}×{height} at {x},{y}",
+                    &[
+                        ("name", &d.name),
+                        ("width", &d.w.to_string()),
+                        ("height", &d.h.to_string()),
+                        ("x", &d.x.to_string()),
+                        ("y", &d.y.to_string()),
+                    ],
+                ),
+            }
+        })
+        .collect()
+}
+
+/// What a display is remembered by: its logical origin, plus its name and
+/// logical size, so it is still found after the layout is rearranged or the
+/// resolution changes (the Mac keeps the display's UUID for the same reason;
+/// Tauri has no stable ID).
+#[derive(Debug, Clone, PartialEq)]
+struct DisplayId {
+    name: String,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+}
+
+impl DisplayId {
+    /// `at:<x>,<y>` stays first, so a preference saved before still matches.
+    fn key(&self) -> String {
+        format!("at:{},{}|{}|{}x{}", self.x, self.y, self.name.replace('|', " "), self.w, self.h)
+    }
+}
+
+fn describe(m: &Monitor) -> DisplayId {
+    let (x, y) = logical_origin(m);
+    let scale = m.scale_factor();
+    let s = m.size();
+    DisplayId {
+        name: m.name().cloned().unwrap_or_else(|| "Display".into()),
+        x,
+        y,
+        w: (s.width as f64 / scale).round() as i32,
+        h: (s.height as f64 / scale).round() as i32,
+    }
+}
+
+/// Which display a saved `at:` preference points at, best match first: same
+/// place and name; the same name and size elsewhere (layout rearranged); the
+/// same name alone when unique (resolution changed); the same place. None
+/// means unplugged, and the caller falls back to the primary display.
+fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
+    let rest = pref.strip_prefix("at:")?;
+    let mut parts = rest.split('|');
+    let (x, y) = parts.next()?.split_once(',')?;
+    let (x, y) = (x.trim().parse::<i32>().ok()?, y.trim().parse::<i32>().ok()?);
+    let name = parts.next();
+    let size = parts.next().and_then(|s| {
+        let (w, h) = s.split_once('x')?;
+        Some((w.parse::<i32>().ok()?, h.parse::<i32>().ok()?))
+    });
+    let at = |d: &DisplayId| d.x == x && d.y == y;
+    if let Some(name) = name {
+        if let Some(i) = displays.iter().position(|d| at(d) && d.name == name) {
+            return Some(i);
+        }
+        if let Some((w, h)) = size {
+            if let Some(i) = displays.iter().position(|d| d.name == name && d.w == w && d.h == h) {
+                return Some(i);
+            }
+        }
+        let mut same_name = displays.iter().enumerate().filter(|(_, d)| d.name == name);
+        if let (Some((i, _)), None) = (same_name.next(), same_name.next()) {
+            return Some(i);
+        }
+    }
+    displays.iter().position(at)
+}
+
+/// The display the island lives on: a chosen one, the primary one, or the one
+/// under the cursor.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
+    let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
+    if let Some(i) = pick_display(pref, &ids) {
+        return Some(monitors[i].clone());
+    }
     if pref == "cursor" {
         if let Some((cx, cy)) = cursor_physical() {
             if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
@@ -128,6 +236,48 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
         .ok()
         .flatten()
         .or_else(|| monitors.into_iter().next())
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+
+    fn d(name: &str, x: i32, y: i32, w: i32, h: i32) -> DisplayId {
+        DisplayId { name: name.into(), x, y, w, h }
+    }
+
+    #[test]
+    fn a_display_is_found_again_after_changes() {
+        let dell = d("DELL U2720Q", 1920, 0, 2560, 1440);
+        let lap = d("eDP-1", 0, 0, 1920, 1200);
+        let key = dell.key();
+        assert_eq!(pick_display(&key, &[lap.clone(), dell.clone()]), Some(1));
+        // Rearranged: the Dell moved to the left of the laptop.
+        let moved = [d("eDP-1", 2560, 0, 1920, 1200), d("DELL U2720Q", 0, 0, 2560, 1440)];
+        assert_eq!(pick_display(&key, &moved), Some(1));
+        // Resolution changed, still the only Dell.
+        let rescaled = [lap.clone(), d("DELL U2720Q", 1920, 0, 1920, 1080)];
+        assert_eq!(pick_display(&key, &rescaled), Some(1));
+        // Unplugged: nothing, so the caller falls back to the primary display.
+        assert_eq!(pick_display(&key, &[lap.clone()]), None);
+    }
+
+    #[test]
+    fn two_identical_monitors_are_told_apart_by_place() {
+        let a = d("LG 27UL500", 0, 0, 1920, 1080);
+        let b = d("LG 27UL500", 1920, 0, 1920, 1080);
+        assert_eq!(pick_display(&b.key(), &[a.clone(), b.clone()]), Some(1));
+        assert_eq!(pick_display(&a.key(), &[a, b]), Some(0));
+    }
+
+    #[test]
+    fn preferences_saved_before_still_match() {
+        let lap = d("eDP-1", 0, 0, 1920, 1200);
+        let ext = d("HDMI-1", 1920, 0, 1920, 1080);
+        assert_eq!(pick_display("at:1920,0", &[lap.clone(), ext.clone()]), Some(1));
+        assert_eq!(pick_display("primary", &[lap, ext]), None);
+        assert_eq!(pick_display("at:nonsense", &[]), None);
+    }
 }
 
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
@@ -172,6 +322,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    let (lx, ly) = logical_origin(&m);
+    platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);

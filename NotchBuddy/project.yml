@@ -6,16 +6,37 @@ options:
   xcodeVersion: "27.0"
   createIntermediateGroups: true
 
+# DebugCloud = Debug, but signed with iCloud (CloudKit) and push entitlements
+# and compiled with PHONE_LINK, for the iPhone link spike. ReleaseCloud = the
+# same for a Developer ID build with its provisioning profile
+# (scripts/cloud-test-build.sh); a Developer ID profile only allows the
+# Production CloudKit environment, so the iPhone joins it with the
+# CoucouPhoneProduction scheme. Release also compiles PHONE_LINK (the sync
+# stays off until turned on in Settings); Debug stays unsigned without it.
+configs:
+  Debug: debug
+  DebugCloud: debug
+  Release: release
+  ReleaseCloud: release
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Manual
     OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+    # Prevent Xcode from scanning Swift source and rewriting Localizable.xcstrings.
+    SWIFT_EMIT_LOC_STRINGS: NO
   configs:
     Debug:
       CODE_SIGNING_REQUIRED: NO
       CODE_SIGNING_ALLOWED: NO
+    DebugCloud:
+      CODE_SIGNING_REQUIRED: YES
+      CODE_SIGNING_ALLOWED: YES
+      CODE_SIGN_STYLE: Automatic
+      CODE_SIGN_IDENTITY: "Apple Development"
+      DEVELOPMENT_TEAM: 256AUJ9555
     Release:
       CODE_SIGNING_REQUIRED: YES
       CODE_SIGNING_ALLOWED: YES
@@ -24,6 +45,13 @@ settings:
       OTHER_CODE_SIGN_FLAGS: "--timestamp"
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
       CODE_SIGN_ENTITLEMENTS: Resources/Coucou.entitlements
+    ReleaseCloud:
+      CODE_SIGNING_REQUIRED: YES
+      CODE_SIGNING_ALLOWED: YES
+      CODE_SIGN_IDENTITY: "Developer ID Application"
+      DEVELOPMENT_TEAM: 256AUJ9555
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
 
 schemes:
   NotchBuddy:
@@ -42,6 +70,40 @@ schemes:
       config: Debug
     archive:
       config: Release
+  NotchBuddyCloud:
+    build:
+      targets:
+        NotchBuddy: all
+    run:
+      config: DebugCloud
+    archive:
+      config: Release
+  CoucouAppStoreCloud:
+    build:
+      targets:
+        CoucouAppStore: all
+    run:
+      config: DebugCloud
+    archive:
+      config: Release
+  CoucouPhone:
+    build:
+      targets:
+        CoucouPhone: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  # Same iPhone app on the Production CloudKit environment, to talk to the
+  # Developer ID build (scripts/cloud-test-build.sh), which can only use Production.
+  CoucouPhoneProduction:
+    build:
+      targets:
+        CoucouPhone: all
+    run:
+      config: DebugCloud
+    archive:
+      config: Release
 
 targets:
   NotchBuddy:
@@ -50,25 +112,46 @@ targets:
     sources:
       - path: Sources
         type: group
+        excludes:
+          - "Phone/**"
+          - "Widgets/**"
+          - "NotificationContent/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
         buildPhase: resources
         type: folder
+      - path: Resources/Localizable.xcstrings
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "3"
-        CFBundleShortVersionString: "0.1.2"
+        CFBundleVersion: "14"
+        CFBundleShortVersionString: "0.2.3"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
-        NSAppleEventsUsageDescription: "Pour sauter au terminal et envoyer des mails."
+        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a message in the chat."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleLocalizations:
+          - en
+          - ar
+          - bn
+          - es
+          - fr
+          - hi
+          - id
+          - pt-BR
+          - ru
+          - zh-Hans
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
@@ -77,6 +160,27 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         ENABLE_SANDBOX: NO
+      configs:
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
+        # The distributed build carries the iPhone sync (off until the user
+        # turns it on in Settings), so it needs iCloud and its Developer ID profile.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
+          PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+        ReleaseCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
+          PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+    postBuildScripts:
+      - name: "Write Git Hash to Info.plist"
+        script: |
+          HASH=$(git -C "${SRCROOT}/.." rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          /usr/libexec/PlistBuddy -c "Set :CoucouGitHash ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :CoucouGitHash string ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+        showEnvVars: false
 
   CoucouAppStore:
     type: application
@@ -84,25 +188,44 @@ targets:
     sources:
       - path: Sources
         type: group
+        excludes:
+          - "Phone/**"
+          - "Widgets/**"
+          - "NotificationContent/**"
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
         buildPhase: resources
         type: folder
+      - path: Resources/Localizable.xcstrings
+        buildPhase: resources
     info:
       path: Resources/InfoAppStore.plist
       properties:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.Coucou
-        CFBundleVersion: "4"
-        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "6"
+        CFBundleShortVersionString: "1.1"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
         LSApplicationCategoryType: public.app-category.developer-tools
         ITSAppUsesNonExemptEncryption: NO
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleLocalizations:
+          - en
+          - ar
+          - bn
+          - es
+          - fr
+          - hi
+          - id
+          - pt-BR
+          - ru
+          - zh-Hans
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
@@ -116,3 +239,194 @@ targets:
         DEVELOPMENT_TEAM: 256AUJ9555
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
         CODE_SIGNING_ALLOWED: YES
+      configs:
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStoreCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "APPSTORE PHONE_LINK"
+        # App Store archive: same iCloud entitlements; Xcode switches push to
+        # production when exporting for the App Store.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouAppStoreCloud.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "APPSTORE PHONE_LINK"
+
+  # iPhone app. Same bundle ID as the Mac App Store build, for universal purchase.
+  CoucouPhone:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    dependencies:
+      - target: CoucouWidgets
+      - target: CoucouNotificationContent
+    sources:
+      - path: Sources/Phone
+        type: group
+      # Shared with the Mac targets (they get it through Sources/).
+      - path: Sources/CoucouKit
+        type: group
+      - path: PhoneAssets.xcassets
+        buildPhase: resources
+      # Mochi's sounds for the iPhone's notifications.
+      - path: Resources/sounds/approval.wav
+        buildPhase: resources
+      - path: Resources/sounds/finish.wav
+        buildPhase: resources
+      - path: Resources/sounds/question.wav
+        buildPhase: resources
+      - path: Resources/sounds/error.wav
+        buildPhase: resources
+    info:
+      path: Resources/InfoPhone.plist
+      properties:
+        CFBundleName: Coucou
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou
+        CFBundleVersion: "3"
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: APPL
+        LSRequiresIPhoneOS: YES
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: YES
+        UIBackgroundModes:
+          - remote-notification
+        # Portrait, except a diff opened full screen (PhoneAppDelegate decides).
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: NO
+        NSFaceIDUsageDescription: "Coucou asks for Face ID before allowing a command from your iPhone."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate an instruction for Claude Code."
+        NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of an instruction for Claude Code."
+        NSSupportsLiveActivities: YES
+        # Lets Mochi move at 120 Hz on ProMotion screens, like the Mac's notch.
+        CADisableMinimumFrameDurationOnPhone: YES
+        # Steps change often while an agent works: without this, iOS holds back
+        # updates once its budget is spent, and "waiting for your OK" came late.
+        NSSupportsLiveActivitiesFrequentUpdates: YES
+        # coucou://session/<id>: the widgets open a session in the app.
+        CFBundleURLTypes:
+          - CFBundleURLName: fr.louisraille.Coucou
+            CFBundleURLSchemes:
+              - coucou
+        # Which APNs environment the Live Activity tokens belong to (read by the Mac).
+        CoucouAPNsEnvironment: $(COUCOU_APNS_ENV)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
+        PRODUCT_NAME: Coucou
+        INFOPLIST_FILE: Resources/InfoPhone.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Mochi in other colors, picked in Settings (UIApplication.setAlternateIconName).
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Blue AppIcon-Green AppIcon-Purple AppIcon-Pink AppIcon-Graphite"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
+        COUCOU_APNS_ENV: production
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhone.entitlements
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+      configs:
+        Debug:
+          COUCOU_APNS_ENV: development
+        DebugCloud:
+          CODE_SIGN_ENTITLEMENTS: Resources/CoucouPhoneProduction.entitlements
+          COUCOU_APNS_ENV: development
+
+  # Home Screen and Lock Screen widgets (Solo, Team, List, accessories). They
+  # read the sessions the iPhone app saves to the shared App Group.
+  CoucouWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/Widgets
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/SharedSessions.swift
+      - path: Sources/Phone/MacStubs.swift
+      - path: Sources/Phone/MochiActivityAttributes.swift
+      - path: Sources/Phone/OpenLeadMochiIntent.swift
+      - path: Sources/Phone/DenyApprovalIntent.swift
+    info:
+      path: Resources/InfoWidgets.plist
+      properties:
+        CFBundleName: CoucouWidgets
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou.Widgets
+        CFBundleVersion: "3"
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.Widgets
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXTENSION"
+        PRODUCT_NAME: CoucouWidgets
+        INFOPLIST_FILE: Resources/InfoWidgets.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Resources/CoucouWidgets.entitlements
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  # The expanded approval notification: Mochi alive, with the command.
+  CoucouNotificationContent:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources/NotificationContent
+        type: group
+      - path: Sources/CoucouKit
+        type: group
+      - path: Sources/Phone/MochiLive.swift
+      - path: Sources/Phone/MacStubs.swift
+    info:
+      path: Resources/InfoNotificationContent.plist
+      properties:
+        CFBundleName: CoucouNotificationContent
+        CFBundleDisplayName: Coucou
+        CFBundleIdentifier: fr.louisraille.Coucou.NotificationContent
+        CFBundleVersion: "3"
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: XPC!
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: COUCOU_APPROVAL
+            UNNotificationExtensionInitialContentSizeRatio: 0.45
+            UNNotificationExtensionDefaultContentHidden: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou.NotificationContent
+        PRODUCT_NAME: CoucouNotificationContent
+        INFOPLIST_FILE: Resources/InfoNotificationContent.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: 256AUJ9555
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: ""
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES

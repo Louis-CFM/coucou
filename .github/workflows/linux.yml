@@ -25,11 +25,10 @@ on:
 permissions:
   contents: read
 
-# Off until a first build has been checked by hand: run this workflow manually,
-# download the Coucou-Linux artifact, try it, then set this to 'true' and push a
-# linux-v* tag.
+# On: a linux-v* tag publishes. Run this workflow by hand first and try the
+# Coucou-Linux artifact; set this to 'false' to build tags without publishing.
 env:
-  PUBLISH: 'false'
+  PUBLISH: 'true'
 
 jobs:
   build:
