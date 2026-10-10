@@ -27,6 +27,9 @@ jobs:
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
 
+      - name: Test loopback hosts
+        run: bash scripts/test-loopback-host.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 
