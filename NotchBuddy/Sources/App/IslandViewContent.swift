@@ -1719,10 +1719,12 @@ struct IntegrationCardView: View {
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
 
     private var isConfigured: Bool {
+        // A session's own pill is Claude Code too.
+        if task.id.hasPrefix(PillCatalog.sessionPillPrefix) { return HookServer.claudeHooksInstalled() }
         switch task.id {
         // Cursor sessions are Claude Code running in Cursor's integrated terminal,
         // so the Cursor pill is set up exactly when the Claude Code hooks are.
-        case "integration_claude", "agent_cursor":
+        case "integration_claude", "workspace_claude", "agent_cursor":
             return HookServer.claudeHooksInstalled()
         case "agent_codex":
             #if !APPSTORE
@@ -1911,7 +1913,8 @@ struct IntegrationCardView: View {
         // Pills driven by hooks, never by a key: the idle card reports whether the
         // hooks are in place. integration_claude read "Connected · loading…" with
         // nothing left to load — a session replaces this card, it never resolves here.
-        let isHooks = task.id == "integration_claude" || task.id == "agent_gemini"
+        let isHooks = task.id == "integration_claude" || task.id == "workspace_claude"
+                   || task.id.hasPrefix(PillCatalog.sessionPillPrefix) || task.id == "agent_gemini"
                    || task.id == "agent_antigravity"  || task.id == "agent_cursor"
                    || task.id == "agent_codex"        || task.id == "agent_copilot"
                    || task.id == "agent_muse"         || task.id == "agent_opencode"
