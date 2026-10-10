@@ -4,7 +4,7 @@
 // Cal.com is the one simplification: macOS shows a three-level calendar
 // (month → day → booking); here it is the list of upcoming bookings.
 
-import { h, svg, clear, dot } from "./dom";
+import { h, svg, clear, dot, hexColor } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -373,14 +373,14 @@ function timelyCard(color: string): HTMLElement {
     const cells: Node[] = [h("span", { class: "int-name", text: r.project })];
     if (r.note) cells.push(h("span", { class: "int-sub", text: r.note }));
     cells.push(h("span", { class: "int-ago", text: hm(entrySeconds(r, now)) }));
-    rows.append(listRow(r.color, true, ...cells));
+    rows.append(listRow(hexColor(r.color, color), true, ...cells));
   } else {
     rows.append(h("div", { class: "int-empty", text: t("No timer running") }));
   }
   const others = (day?.entries ?? []).filter((e) => e.timerStartedOn == null).slice(-2).reverse();
   for (const e of others) {
     rows.append(
-      listRow(e.color, false, h("span", { class: "int-name", text: e.project }), h("span", { class: "int-ago", text: hm(e.loggedSeconds) })),
+      listRow(hexColor(e.color, color), false, h("span", { class: "int-name", text: e.project }), h("span", { class: "int-ago", text: hm(e.loggedSeconds) })),
     );
   }
 

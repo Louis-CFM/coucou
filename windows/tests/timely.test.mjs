@@ -89,6 +89,30 @@ test("the card shows the running timer, the day's total against capacity, and th
   assert.match(text, /Support1:00/);
 });
 
+test("a project colour that is not a hex colour never reaches a row's style", () => {
+  const today = new Date();
+  const day = localDay(today);
+  const bad = "#000;position:fixed;inset:0;opacity:0";
+  State.integrations.integration_timely = {
+    data: {
+      entries: [
+        entry({ id: 1, day, color: bad }),
+        entry({ id: 2, day, color: bad, timerStartedOn: Math.floor(today.getTime() / 1000) - 60 }),
+      ],
+      capacityHours: null,
+    },
+    error: null, loaded: true, configured: true,
+  };
+  const task = { id: "integration_timely", name: "Timely", color: "#F5A524", state: "idle", steps: [], stepIndex: 0 };
+  const card = renderIntegrationCard(task, { detailOpen: false, openDetail() {}, closeDetail() {}, openSettings() {} });
+  const styles = card.find(".int-row").map((row) => row.find(".dot")[0].getAttribute("style"));
+  assert.equal(styles.length, 2);
+  for (const style of styles) {
+    assert.ok(!style.includes("position"), style);
+    assert.ok(style.includes("background:#F5A524"), style);
+  }
+});
+
 test("before any data the card is the idle one", () => {
   State.integrations.integration_timely = { data: {}, error: null, loaded: false, configured: false };
   assert.equal(hasIntegrationData("integration_timely"), false);
