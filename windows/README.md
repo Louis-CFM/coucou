@@ -199,9 +199,9 @@ Weekly recap** turns it off or clears it.
 
 ## Languages
 
-Coucou speaks the same ten languages as the Mac app: English, 简体中文, हिन्दी,
-Español, العربية, Français, বাংলা, Português (Brasil), Русский and Bahasa
-Indonesia. **Settings… → General → Language** picks one; **System** (the
+Coucou speaks the same eleven languages as the Mac app: English, 简体中文, हिन्दी,
+Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa
+Indonesia and 한국어. **Settings… → General → Language** picks one; **System** (the
 default) follows your system's language when it is one of these, English
 otherwise. The island, the settings window and the tray menu switch at once —
 nothing restarts, and the island keeps its sessions, steps and chat.

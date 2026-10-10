@@ -152,6 +152,7 @@ targets:
           - pt-BR
           - ru
           - zh-Hans
+          - ko
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy
@@ -226,6 +227,7 @@ targets:
           - pt-BR
           - ru
           - zh-Hans
+          - ko
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.Coucou
