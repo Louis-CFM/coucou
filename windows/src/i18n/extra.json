@@ -409,6 +409,18 @@
    "id": "Tidak dapat membaca {path}: {error}",
    "cs": "Nelze číst {path}: {error}"
   },
+  "Devin": {
+   "zh-Hans": "Devin",
+   "hi": "Devin",
+   "es": "Devin",
+   "ar": "Devin",
+   "fr": "Devin",
+   "bn": "Devin",
+   "pt-BR": "Devin",
+   "ru": "Devin",
+   "id": "Devin",
+   "cs": "Devin"
+  },
   "Chat providers": {
    "zh-Hans": "聊天服务商",
    "hi": "चैट प्रदाता",
@@ -421,17 +433,17 @@
    "id": "Penyedia obrolan",
    "cs": "Poskytovatelé chatu"
   },
-  "Chat through the tools you already pay for: Cursor's agent, Kiro and Claude Code answer on your subscription — no API key. Once signed in, pick them above the chat box.": {
-   "zh-Hans": "通过你已付费的工具聊天：Cursor 的 agent、Kiro 和 Claude Code 使用你的订阅回复 — 无需 API 密钥。登录后，在聊天框上方选择它们。",
-   "hi": "उन टूल्स से चैट करें जिनके लिए आप पहले से भुगतान करते हैं: Cursor का agent, Kiro और Claude Code आपकी सदस्यता से उत्तर देते हैं — कोई API कुंजी नहीं। साइन इन करने के बाद, चैट बॉक्स के ऊपर उन्हें चुनें।",
-   "es": "Chatea con las herramientas por las que ya pagas: el agente de Cursor, Kiro y Claude Code responden con tu suscripción — sin clave API. Una vez conectado, elígelos sobre el cuadro de chat.",
-   "ar": "تحدث عبر الأدوات التي تدفع ثمنها بالفعل: وكيل Cursor وKiro وClaude Code يجيبون عبر اشتراكك — بلا مفتاح API. بعد تسجيل الدخول، اخترها فوق مربع الدردشة.",
-   "fr": "Discutez avec les outils pour lesquels vous payez déjà : l'agent de Cursor, Kiro et Claude Code répondent via votre abonnement — sans clé API. Une fois connecté, choisissez-les au-dessus de la zone de chat.",
-   "bn": "যে টুলগুলোর জন্য আপনি ইতিমধ্যে টাকা দেন সেগুলো দিয়ে চ্যাট করুন: Cursor-এর agent, Kiro এবং Claude Code আপনার সাবস্ক্রিপশনে উত্তর দেয় — API কী লাগে না। সাইন ইন করার পর, চ্যাট বাক্সের উপরে সেগুলো বেছে নিন।",
-   "pt-BR": "Converse pelas ferramentas pelas quais você já paga: o agente do Cursor, o Kiro e o Claude Code respondem na sua assinatura — sem chave de API. Depois de entrar, escolha-os acima da caixa de chat.",
-   "ru": "Общайтесь через инструменты, за которые вы уже платите: агент Cursor, Kiro и Claude Code отвечают по вашей подписке — без ключа API. После входа выберите их над полем чата.",
-   "id": "Ngobrol lewat alat yang sudah Anda bayar: agen Cursor, Kiro, dan Claude Code menjawab dengan langganan Anda — tanpa kunci API. Setelah masuk, pilih di atas kotak chat.",
-   "cs": "Chatujte přes nástroje, za které už platíte: agent Cursoru, Kiro a Claude Code odpovídají na vaše předplatné — bez klíče API. Po přihlášení je vyberte nad polem chatu."
+  "Chat through the tools you already pay for: Claude Code, Cursor's agent, Devin, ChatGPT and Kiro answer on your subscription — no API key. Once signed in, pick them above the chat box.": {
+   "zh-Hans": "通过你已付费的工具聊天：Claude Code、Cursor 的 agent、Devin、ChatGPT 和 Kiro 用你的订阅回答——无需 API 密钥。登录后，在输入框上方选择它们。",
+   "hi": "अपने पहले से मौजूद पेड टूल्स से चैट करें: Claude Code, Cursor का agent, Devin, ChatGPT और Kiro आपकी सदस्यता से जवाब देते हैं — कोई API key नहीं। साइन इन के बाद, उन्हें चैट बॉक्स के ऊपर चुनें।",
+   "es": "Chatea con las herramientas que ya pagas: Claude Code, el agente de Cursor, Devin, ChatGPT y Kiro responden con tu suscripción — sin clave API. Tras iniciar sesión, elígelos sobre el cuadro de chat.",
+   "ar": "تحدّث عبر الأدوات التي تدفع لها أصلًا: يجيب Claude Code ووكيل Cursor وDevin وChatGPT وKiro عبر اشتراكك — دون مفتاح API. بعد تسجيل الدخول اخترها فوق مربع الدردشة.",
+   "fr": "Discute via les outils que tu paies déjà : Claude Code, l'agent de Cursor, Devin, ChatGPT et Kiro répondent avec ton abonnement — sans clé API. Une fois connecté, choisis-les au-dessus du champ de chat.",
+   "bn": "যেসব টুলের জন্য আপনি ইতিমধ্যে পে করেন সেগুলো দিয়ে চ্যাট করুন: Claude Code, Cursor-এর agent, Devin, ChatGPT ও Kiro আপনার সাবস্ক্রিপশনে উত্তর দেয় — কোনো API key নয়। সাইন ইন করলে চ্যাট বক্সের উপরে সেগুলো বেছে নিন।",
+   "pt-BR": "Converse pelas ferramentas que você já paga: Claude Code, agente do Cursor, Devin, ChatGPT e Kiro respondem pela sua assinatura — sem chave de API. Depois de entrar, escolha-os acima da caixa de chat.",
+   "ru": "Общайтесь через инструменты, за которые уже платите: Claude Code, агент Cursor, Devin, ChatGPT и Kiro отвечают по вашей подписке — без API-ключа. После входа выбирайте их над полем чата.",
+   "id": "Mengobrol lewat alat yang sudah Anda bayar: Claude Code, agen Cursor, Devin, ChatGPT, dan Kiro menjawab dengan langganan Anda — tanpa API key. Setelah masuk, pilih di atas kotak chat.",
+   "cs": "Chatujte přes nástroje, za které už platíte: Claude Code, Cursor agent, Devin, ChatGPT a Kiro odpovídají na vaše předplatné — bez API klíče. Po přihlášení je vyberte nad polem chatu."
   },
   "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
    "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
@@ -456,6 +468,18 @@
    "ru": "Общайтесь с моделью, которую запускаете сами: Ollama или LM Studio (оставьте адрес пустым, чтобы использовать обычный адрес на этом компьютере) или любой сервер с API OpenAI, например vLLM или llama.cpp. После подключения выберите его над полем чата.",
    "id": "Mengobrol dengan model yang Anda jalankan sendiri: Ollama atau LM Studio (kosongkan alamat untuk alamat biasa di komputer ini), atau server apa pun yang mendukung API OpenAI, seperti vLLM atau llama.cpp. Setelah terhubung, pilih di atas kotak obrolan.",
    "cs": "Chatujte s modelem, který provozujete sami: Ollama nebo LM Studio (pro obvyklou adresu na tomto počítači nechte pole prázdné), případně libovolný server mluvící OpenAI API, jako vLLM nebo llama.cpp. Po připojení ho vyberte nad chatovým polem."
+  },
+  "ChatGPT": {
+   "zh-Hans": "ChatGPT",
+   "hi": "ChatGPT",
+   "es": "ChatGPT",
+   "ar": "ChatGPT",
+   "fr": "ChatGPT",
+   "bn": "ChatGPT",
+   "pt-BR": "ChatGPT",
+   "ru": "ChatGPT",
+   "id": "ChatGPT",
+   "cs": "ChatGPT"
   },
   "Checking…": {
    "zh-Hans": "正在检查…",

@@ -746,7 +746,7 @@ function localSection(customKey: boolean): HTMLElement {
 
 const CLI_STRINGS = {
   get title() { return t("On your plan"); },
-  get hint() { return t("Chat through the tools you already pay for: Cursor's agent, Kiro and Claude Code answer on your subscription — no API key. Once signed in, pick them above the chat box."); },
+  get hint() { return t("Chat through the tools you already pay for: Claude Code, Cursor's agent, Devin, ChatGPT and Kiro answer on your subscription — no API key. Once signed in, pick them above the chat box."); },
   get checking() { return t("Checking…"); },
   get notInstalled() { return t("Not installed"); },
   get notSignedIn() { return t("Not signed in"); },
@@ -769,10 +769,12 @@ function cliSection(): HTMLElement {
   /** The terminal command each CLI's sign-in lives behind, when a button can't open it. */
   const loginCmd: Partial<Record<ProviderId, string>> = {
     "claude-cli": "claude",
+    devin: "devin auth login",
+    codex: "codex login",
     kiro: "kiro-cli login",
   };
 
-  for (const id of ["claude-cli", "cursor", "kiro"] as const) {
+  for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"] as const) {
     const p = providerDef(id);
     const dotEl = statusDot(false);
     const state = h("span", { class: "hint", text: CLI_STRINGS.checking });

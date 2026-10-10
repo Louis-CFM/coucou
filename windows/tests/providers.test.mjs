@@ -13,14 +13,14 @@ const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 test("the ids and key names match the Rust side and the Mac", () => {
   assert.deepEqual(
     PROVIDERS.map((p) => p.id),
-    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "kiro", "ollama", "lmstudio", "custom"],
+    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "devin", "codex", "kiro", "ollama", "lmstudio", "custom"],
   );
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
   assert.equal(providerDef("ollama").key, null);
   // The CLI providers have no key: the sign-in lives in their own binary.
-  for (const id of ["claude-cli", "cursor", "kiro"]) {
+  for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"]) {
     assert.equal(providerDef(id).cli, true, id);
     assert.equal(providerDef(id).key, null, id);
     assert.equal(providerDef(id).urlField, null, id);
@@ -70,8 +70,10 @@ test("a CLI provider shows once signed in, and always while in use", () => {
   assert.deepEqual(ids(settings(), ["cursor"]), ["anthropic", "cursor"]);
   assert.deepEqual(ids(settings({ chatProvider: "claude-cli" }), []), ["claude-cli"]);
   assert.deepEqual(ids(settings(), ["claude-cli", "kiro", "cursor"]), ["anthropic", "claude-cli", "cursor", "kiro"]);
+  assert.deepEqual(ids(settings(), ["devin", "codex"]), ["anthropic", "devin", "codex"]);
   // A signed-out CLI stays while the chat uses it.
   assert.deepEqual(ids(settings({ chatProvider: "kiro" }), ["cursor"]), ["cursor", "kiro"]);
+  assert.deepEqual(ids(settings({ chatProvider: "codex" }), []), ["codex"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

@@ -14,12 +14,17 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, claude_cli, cursor_chat, kiro_chat, local_chat, openai_compat, secrets};
+use crate::{
+    claude, claude_cli, codex_chat, cursor_chat, devin_chat, kiro_chat, local_chat, openai_compat,
+    secrets,
+};
 
 pub const ANTHROPIC: &str = "anthropic";
 /// Chat through the user's own CLI sign-ins instead of an API key.
 pub const CLAUDE_CLI: &str = "claude-cli";
+pub const CODEX: &str = "codex";
 pub const CURSOR: &str = "cursor";
+pub const DEVIN: &str = "devin";
 pub const KIRO: &str = "kiro";
 
 #[derive(Debug, Clone, Deserialize)]
@@ -258,15 +263,15 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
     let cli_default = match provider {
         CURSOR => Some(cursor_chat::DEFAULT_MODEL),
         KIRO => Some(kiro_chat::DEFAULT_MODEL),
-        // claude-cli's empty model means the user's own CLI setting.
-        CLAUDE_CLI => Some(""),
+        // An empty model means the user's own CLI setting for these.
+        CLAUDE_CLI | CODEX | DEVIN => Some(""),
         _ => None,
     };
     settings
         .chat_models
         .get(provider)
         .map(|m| m.trim().to_string())
-        .filter(|m| !m.is_empty() || provider == CLAUDE_CLI)
+        .filter(|m| !m.is_empty() || matches!(provider, CLAUDE_CLI | CODEX | DEVIN))
         .or_else(|| cli_default.map(str::to_string))
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
         .unwrap_or_default()
@@ -362,6 +367,18 @@ pub async fn send(
         })
         .await;
     }
+    if provider == DEVIN {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            devin_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
+    if provider == CODEX {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            codex_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
     }
@@ -393,6 +410,12 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
     }
     if provider == CLAUDE_CLI {
         return Ok(claude_cli::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == DEVIN {
+        return Ok(devin_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CODEX {
+        return Ok(codex_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::models(&server).await;

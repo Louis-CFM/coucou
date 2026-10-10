@@ -6,10 +6,12 @@ mod chat;
 mod claude;
 mod claude_cli;
 mod cli_chat;
+mod codex_chat;
 mod codex_plan;
 mod config_file;
 mod cursor_chat;
 mod desktop;
+mod devin_chat;
 mod dictation;
 mod files;
 mod github;
@@ -557,6 +559,8 @@ async fn cli_status(provider: String) -> Option<cli_chat::CliStatus> {
         "cursor" => Some(cursor_chat::status().await),
         "kiro" => Some(kiro_chat::status().await),
         "claude-cli" => Some(claude_cli::status().await),
+        "devin" => Some(devin_chat::status().await),
+        "codex" => Some(codex_chat::status().await),
         _ => None,
     }
 }

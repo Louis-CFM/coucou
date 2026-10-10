@@ -8,7 +8,7 @@ import { N_ } from "../i18n/i18n";
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
   | "ollama" | "lmstudio" | "custom"
-  | "cursor" | "kiro" | "claude-cli";
+  | "cursor" | "kiro" | "claude-cli" | "devin" | "codex";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -19,7 +19,7 @@ export interface ProviderDef {
   key: string | null;
   /** Settings field holding a model server's address. */
   urlField: "ollamaUrl" | "lmstudioUrl" | "customUrl" | null;
-  /** A CLI the chat asks instead of an API: the user's own plan, via `agent` / `kiro-cli` / `claude`. */
+  /** A CLI the chat asks instead of an API: the user's own plan, via `agent` / `kiro-cli` / `claude` / `devin` / `codex`. */
   cli: boolean;
   defaultModel: string;
   /** When the saved model is not offered, the first one containing this is picked. */
@@ -33,6 +33,8 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, cli: false, defaultModel: "openrouter/auto", prefer: null },
   { id: "claude-cli", name: N_("Claude Code"), accent: "#E07950", key: null, urlField: null, cli: true, defaultModel: "", prefer: null },
   { id: "cursor", name: "Cursor", accent: "#4C9AFF", key: null, urlField: null, cli: true, defaultModel: "auto", prefer: null },
+  { id: "devin", name: N_("Devin"), accent: "#6366F1", key: null, urlField: null, cli: true, defaultModel: "", prefer: null },
+  { id: "codex", name: N_("ChatGPT"), accent: "#10A37F", key: null, urlField: null, cli: true, defaultModel: "", prefer: null },
   { id: "kiro", name: "Kiro", accent: "#A259FF", key: null, urlField: null, cli: true, defaultModel: "auto", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", cli: false, defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", cli: false, defaultModel: "", prefer: null },

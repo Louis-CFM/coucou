@@ -157,7 +157,10 @@ test("a signed-in CLI joins the chips; a signed-out one is never asked for model
   $(".model-btn").fire("click");
   await flush(); await flush();
   // The CLIs are asked for their status, by name (once eagerly, once on open).
-  assert.deepEqual([...new Set(sent("cli_status").map((c) => c.provider))].sort(), ["claude-cli", "cursor", "kiro"]);
+  assert.deepEqual(
+    [...new Set(sent("cli_status").map((c) => c.provider))].sort(),
+    ["claude-cli", "codex", "cursor", "devin", "kiro"],
+  );
   assert.deepEqual(chips(), ["Anthropic", "Cursor"]);
   // The key providers were still asked about their keys the same way.
   const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
