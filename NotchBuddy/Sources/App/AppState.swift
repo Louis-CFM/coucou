@@ -272,21 +272,22 @@ final class AppState: ObservableObject {
     }
     // Folded island: space between each edge and Mochi or the pills — persisted
     @Published var compactPaddingTop: Double = Double(CompactPadding.standard.top) {
-        didSet { compactPaddingTop = Self.clampedPadding(compactPaddingTop, key: "compactPaddingTop") }
+        didSet { let v = Self.clampedPadding(compactPaddingTop, key: "compactPaddingTop"); if v != compactPaddingTop { compactPaddingTop = v } }
     }
     @Published var compactPaddingRight: Double = Double(CompactPadding.standard.right) {
-        didSet { compactPaddingRight = Self.clampedPadding(compactPaddingRight, key: "compactPaddingRight") }
+        didSet { let v = Self.clampedPadding(compactPaddingRight, key: "compactPaddingRight"); if v != compactPaddingRight { compactPaddingRight = v } }
     }
     @Published var compactPaddingBottom: Double = Double(CompactPadding.standard.bottom) {
-        didSet { compactPaddingBottom = Self.clampedPadding(compactPaddingBottom, key: "compactPaddingBottom") }
+        didSet { let v = Self.clampedPadding(compactPaddingBottom, key: "compactPaddingBottom"); if v != compactPaddingBottom { compactPaddingBottom = v } }
     }
     @Published var compactPaddingLeft: Double = Double(CompactPadding.standard.left) {
-        didSet { compactPaddingLeft = Self.clampedPadding(compactPaddingLeft, key: "compactPaddingLeft") }
+        didSet { let v = Self.clampedPadding(compactPaddingLeft, key: "compactPaddingLeft"); if v != compactPaddingLeft { compactPaddingLeft = v } }
     }
     var compactPadding: CompactPadding {
         CompactPadding(top: CGFloat(compactPaddingTop), right: CGFloat(compactPaddingRight),
                        bottom: CGFloat(compactPaddingBottom), left: CGFloat(compactPaddingLeft))
     }
+    // Reassign only when clamped: a @Published didSet that always writes back recurses forever
     private static func clampedPadding(_ value: Double, key: String) -> Double {
         let v = min(IslandConst.compactPaddingMax, max(0, value))
         UserDefaults.standard.set(v, forKey: key)
