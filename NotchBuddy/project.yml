@@ -19,6 +19,17 @@ configs:
   Release: release
   ReleaseCloud: release
 
+packages:
+  KokoroSwift:
+    url: https://github.com/mlalma/kokoro-ios
+    branch: main
+  MLX:
+    url: https://github.com/ml-explore/mlx-swift
+    exactVersion: "0.30.2"
+  MLXUtilsLibrary:
+    url: https://github.com/mlalma/MLXUtilsLibrary
+    exactVersion: "0.0.6"
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -58,6 +69,7 @@ schemes:
     build:
       targets:
         NotchBuddy: all
+      buildImplicitDependencies: false
     run:
       config: Debug
     archive:
@@ -178,6 +190,13 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+    dependencies:
+      - package: KokoroSwift
+        product: KokoroSwift
+      - package: MLX
+        product: MLX
+      - package: MLXUtilsLibrary
+        product: MLXUtilsLibrary
     postBuildScripts:
       - name: "Write Git Hash to Info.plist"
         script: |

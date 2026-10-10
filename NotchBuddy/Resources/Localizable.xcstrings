@@ -25480,6 +25480,91 @@
         }
       }
     },
+    "voice.kokoro-label" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Natural voice (Kokoro)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voix naturelle (Kokoro)"
+          }
+        }
+      }
+    },
+    "voice.kokoro-download" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download natural voice (~300 MB)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger la voix naturelle (~300 Mo)"
+          }
+        }
+      }
+    },
+    "voice.kokoro-ready" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Natural voice installed"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voix naturelle installée"
+          }
+        }
+      }
+    },
+    "voice.kokoro-delete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete model"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le modèle"
+          }
+        }
+      }
+    },
+    "voice.kokoro-desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kokoro-82M · no account · 100% on-device · English only"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kokoro-82M · sans compte · 100% local · anglais uniquement"
+          }
+        }
+      }
+    },
     "voice.unknown" : {
       "localizations" : {
         "ar" : {

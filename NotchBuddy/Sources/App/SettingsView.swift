@@ -1336,10 +1336,15 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Picker(String(localized: "voice.tts-engine"), selection: $ttsEngine) {
                     Text(String(localized: "voice.tts-system")).tag("system")
+                    Text(String(localized: "voice.kokoro-label")).tag("kokoro")
                     Text(verbatim: "ElevenLabs").tag("elevenlabs")
                 }
                 .labelsHidden()   // the box is already titled "Voice"
                 .frame(maxWidth: 260)
+
+                if ttsEngine == "kokoro" {
+                    KokoroDownloadRow()
+                }
 
                 if ttsEngine == "elevenlabs" {
                     HStack(spacing: 6) {
@@ -1409,6 +1414,52 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    // MARK: - Kokoro download row
+
+    private struct KokoroDownloadRow: View {
+        @ObservedObject private var mgr = KokoroModelManager.shared
+
+        var body: some View {
+            if mgr.isDownloaded {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                    Text(String(localized: "voice.kokoro-ready"))
+                        .font(.system(size: 12))
+                    Spacer()
+                    Button(String(localized: "voice.kokoro-delete")) { mgr.deleteModel() }
+                        .foregroundColor(.red)
+                }
+            } else if mgr.isDownloading {
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: mgr.downloadProgress)
+                        .frame(maxWidth: 260)
+                    HStack {
+                        Text("\(Int(mgr.downloadProgress * 100)) %")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button(String(localized: "Cancel")) { mgr.cancelDownload() }
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(String(localized: "voice.kokoro-download")) { mgr.startDownload() }
+                        .buttonStyle(.borderedProminent)
+                    Text(String(localized: "voice.kokoro-desc"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let err = mgr.downloadError {
+                        Text(err)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
 
     // MARK: - Transcript history debug view (in-memory, cleared on close)
 
