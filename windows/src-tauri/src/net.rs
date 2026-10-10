@@ -150,6 +150,10 @@ pub fn error_detail(body: &[u8]) -> String {
         if let Some(m) = v.get("message").and_then(|m| m.as_str()) {
             return m.to_string();
         }
+        // FastAPI servers (Open WebUI).
+        if let Some(m) = v.get("detail").and_then(|m| m.as_str()) {
+            return m.to_string();
+        }
         // Gemini answers some errors as a one-element array.
         if let Some(m) = v.pointer("/0/error/message").and_then(|m| m.as_str()) {
             return m.to_string();
@@ -233,6 +237,7 @@ pub(crate) mod tests {
         assert_eq!(error_detail(br#"{"error":{"message":"bad key"}}"#), "bad key");
         assert_eq!(error_detail(br#"{"error":"model 'x' not found"}"#), "model 'x' not found");
         assert_eq!(error_detail(br#"[{"error":{"message":"quota"}}]"#), "quota");
+        assert_eq!(error_detail(br#"{"detail":"Model not found"}"#), "Model not found");
         assert_eq!(error_detail(b"  plain text  "), "plain text");
         assert_eq!(error_detail("x".repeat(500).as_bytes()).len(), 200);
     }

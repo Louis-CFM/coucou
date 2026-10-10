@@ -128,6 +128,10 @@ export interface Settings {
   ollamaUrl: string;
   lmstudioUrl: string;
   customUrl: string;
+  /** Open WebUI, which keeps the chats in its own history. */
+  openWebuiUrl: string;
+  /** Open WebUI searches the web for each question (its admin permitting). */
+  openWebuiWebSearch: boolean;
   /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
   shortcuts: Bindings;
   /**
@@ -175,6 +179,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",
+  openWebuiUrl: "",
+  openWebuiWebSearch: true,
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},

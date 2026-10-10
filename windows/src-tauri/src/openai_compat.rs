@@ -231,7 +231,7 @@ fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
             let free = p.id == "openrouter" && is_free(m, &id);
             let name = m.get("name").and_then(Value::as_str).unwrap_or(&id);
             let label = if free && !name.to_lowercase().contains("(free)") { format!("{name} (free)") } else { name.to_string() };
-            Some((ModelInfo { id, label }, created, free))
+            Some((ModelInfo { id, label, group: None }, created, free))
         })
         .collect();
     match p.id {
