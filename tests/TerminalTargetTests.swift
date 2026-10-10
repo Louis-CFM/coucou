@@ -53,6 +53,14 @@ struct TerminalTargetTests {
         check(TerminalTarget.tmuxPane(tty: "/dev/ttys009", listing: listing) == nil,
               "a tty outside tmux is not a pane")
 
+        // WezTerm: the session's pane found by its tty in `wezterm cli list --format json`
+        let wez = #"[{"window_id":2,"tab_id":2,"pane_id":2,"title":"coucou-mac","tty_name":"/dev/ttys002"},"# +
+                  #"{"window_id":3,"tab_id":3,"pane_id":7,"title":"[mosh] coucou · claude","tty_name":"/dev/ttys003"}]"#
+        let wezPane = TerminalTarget.weztermPane(tty: "/dev/ttys003", listing: wez)
+        check(wezPane?.id == 7 && wezPane?.title == "[mosh] coucou · claude", "WezTerm pane found by its tty")
+        check(TerminalTarget.weztermPane(tty: "/dev/ttys009", listing: wez) == nil, "no WezTerm pane on another tty")
+        check(TerminalTarget.weztermPane(tty: "/dev/ttys002", listing: "not json") == nil, "bad WezTerm listing is ignored")
+
         if failures > 0 { print("\(failures) failure(s)"); exit(1) }
         print("All terminal target tests passed")
     }

@@ -89,6 +89,25 @@ enum TerminalTarget {
         return nil
     }
 
+    static let weztermId = "com.github.wez.wezterm"
+
+    /// The WezTerm pane on `tty` and its title, from `wezterm cli list --format json`.
+    static func weztermPane(tty: String, listing: String) -> (id: Int, title: String)? {
+        guard let panes = try? JSONSerialization.jsonObject(with: Data(listing.utf8)) as? [[String: Any]],
+              let pane = panes.first(where: { $0["tty_name"] as? String == tty }),
+              let id = pane["pane_id"] as? Int else { return nil }
+        return (id, pane["title"] as? String ?? "")
+    }
+
+    /// Makes the pane on `tty` the active one in its WezTerm window; returns that window's title.
+    /// The CLI does not raise the window itself.
+    static func activateWezTermPane(tty: String, cli: String) -> String? {
+        guard FileManager.default.isExecutableFile(atPath: cli),
+              let pane = weztermPane(tty: tty, listing: run(cli, ["cli", "list", "--format", "json"])) else { return nil }
+        _ = run(cli, ["cli", "activate-pane", "--pane-id", String(pane.id)])
+        return pane.title
+    }
+
     private static func run(_ exe: String, _ args: [String]) -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: exe)

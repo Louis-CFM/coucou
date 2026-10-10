@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 
 // MARK: - ClaudeHost
 //
@@ -81,6 +82,23 @@ struct ClaudeHost: Equatable {
 
     private static let tabQueue = DispatchQueue(label: "fr.louisraille.coucou.terminal-tab")
 
+    /// Puts the app's window titled `title` in front of its other windows (needs Accessibility).
+    private static func raiseWindow(titled title: String, bundleId: String) {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { return }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement] else { return }
+        for window in windows {
+            var titleValue: CFTypeRef?
+            AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
+            if titleValue as? String == title {
+                AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                return
+            }
+        }
+    }
+
     /// Opens the app at `url` through Launch Services: NSRunningApplication.activate() is ignored
     /// on macOS 14+ unless the caller is the active app, which Coucou never is. With the session's
     /// tty, its tmux pane is selected and its Terminal or iTerm2 tab raised first, so the session's
@@ -95,6 +113,12 @@ struct ClaudeHost: Equatable {
         if let tty, isTTY(tty) {
             tabQueue.async {
                 for candidate in TerminalTarget.tabTTYs(for: tty) where ClaudeHost.isTTY(candidate) {
+                    if bundleId == TerminalTarget.weztermId {
+                        let cli = url.appendingPathComponent("Contents/MacOS/wezterm").path
+                        guard let title = TerminalTarget.activateWezTermPane(tty: candidate, cli: cli) else { continue }
+                        raiseWindow(titled: title, bundleId: bundleId)
+                        break
+                    }
                     guard let source = TerminalTarget.tabScript(bundleId: bundleId, tty: candidate) else { break }
                     var error: NSDictionary?
                     if NSAppleScript(source: source)?.executeAndReturnError(&error).booleanValue == true { break }
