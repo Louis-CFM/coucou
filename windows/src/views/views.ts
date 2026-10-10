@@ -563,7 +563,15 @@ function buildApproval(actions: ViewActions): ViewHost {
         shownAt = performance.now();
       }
       clear(who);
-      who.append(agentWho(State.focusTask, t("needs permission")));
+      // "needs permission", with "1 of N" (and the agent when sources differ)
+      // while more requests are queued behind the card (Mac #157).
+      const reqInfo = State.pendingApproval;
+      let label = t("needs permission");
+      if (reqInfo && (reqInfo.total ?? 1) > 1) {
+        label += ` · ${t("{position} of {total}", { position: reqInfo.position ?? 1, total: reqInfo.total ?? 1 })}`;
+        if (reqInfo.sourceLabel) label += ` · ${reqInfo.sourceLabel}`;
+      }
+      who.append(agentWho(State.focusTask, label));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.

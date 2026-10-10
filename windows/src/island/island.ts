@@ -24,6 +24,7 @@ import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine, type FsmState } from "./fsm";
+import { settleApproval } from "./approvals";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
@@ -156,11 +157,11 @@ export class Island {
     });
   }
 
-  /** The request has its answer: the card goes and the session carries on. */
+  /** The request has its answer: the card goes and the session carries on —
+   * unless another request was waiting in line, which takes the card instead. */
   private closeApproval() {
-    State.endApproval();
-    this.fsm.pinned = false;
-    this.setView(State.defaultView());
+    settleApproval(this);
+    this.fsm.pinned = State.isPinned;
   }
 
   /**

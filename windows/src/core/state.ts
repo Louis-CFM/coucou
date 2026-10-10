@@ -42,6 +42,8 @@ export interface AgentTask {
 }
 
 export interface ApprovalInfo {
+  /** Queue entry this card answers — a decision only ever applies to this id. */
+  id?: string;
   requestId: string;
   sessionId: string;
   /** The pill the request belongs to: VS Code's or Cursor's (Claude Code), or an agent's (Codex…). */
@@ -52,6 +54,13 @@ export interface ApprovalInfo {
   description?: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /** tool_input with sorted keys, to match the PostToolUse that resolves it. */
+  inputKey?: string;
+  /** 1-based place in the approval queue and its size, shown as "1 of N" when total > 1. */
+  position?: number;
+  total?: number;
+  /** Agent name, set only when queued requests come from different sessions or agents. */
+  sourceLabel?: string;
 }
 
 /** One question of an AskUserQuestion call. */
@@ -315,10 +324,14 @@ class AppState {
    * the pill that was there is remembered (HookServer.focusBeforeApproval).
    */
   beginApproval(info: ApprovalInfo) {
+    // Same request re-shown (queue metadata refreshed, card promoted back):
+    // the card updates in place without pulling the front away from a pill
+    // the user picked while it was up.
+    const isNew = this.pendingApproval?.id !== info.id;
     this.pendingApproval = info;
     this.isPinned = true;
     if (this.focusBeforeApproval == null) this.focusBeforeApproval = this.focusId;
-    this.setFocus(info.pillId);
+    if (isNew) this.setFocus(info.pillId);
   }
 
   /**
