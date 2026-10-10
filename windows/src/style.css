@@ -558,6 +558,16 @@ body {
   flex: 1 1 auto;
 }
 
+.diff-head .diff-live {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 18%, transparent);
+  color: var(--green);
+  font: 600 9px var(--mono);
+  text-transform: uppercase;
+}
+
 .diff-head .tick-count {
   flex: 0 0 auto;
   font: 500 10px var(--mono);

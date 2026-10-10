@@ -103,6 +103,8 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
+  /** Each Claude Code file edit opens the island on its diff as it happens. */
+  followEdits: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -158,6 +160,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
+  followEdits: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -230,6 +233,10 @@ class AppState {
   planDetailIsCodex = false;
   /** Per-pill file diffs, in order of reception. Steps carry their ids. */
   sessionDiffs = new Map<string, FileDiff[]>();
+  /** The edit being followed live (Settings → Follow edits live). */
+  liveDiff: { pillId: string; diffId: number } | null = null;
+  /** Pills whose live diff was closed: not followed again until their next prompt. */
+  liveStopped = new Set<string>();
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;

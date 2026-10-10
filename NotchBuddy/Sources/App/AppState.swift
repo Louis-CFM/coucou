@@ -274,6 +274,25 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    // Each Claude Code file edit opens the island on its diff as it happens — persisted, off by default
+    @Published var followEdits: Bool = false {
+        didSet { UserDefaults.standard.set(followEdits, forKey: "followEdits") }
+    }
+    @Published var liveDiff: LiveDiff? = nil
+    /// Pills whose live diff was closed: not followed again until their next prompt.
+    var liveStopped: Set<String> = []
+
+    /// The live diff was closed: that session is not followed until its next prompt.
+    func stopFollowing() {
+        if let live = liveDiff { liveStopped.insert(live.pillId) }
+        liveDiff = nil
+    }
+
+    /// A session's turn ends or starts anew: it stops being followed, or may be again.
+    func endFollow(_ pillId: String) {
+        if liveDiff?.pillId == pillId { liveDiff = nil }
+        liveStopped.remove(pillId)
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -505,6 +524,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "followEdits") as? Bool { followEdits = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }

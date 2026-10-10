@@ -467,6 +467,7 @@ final class HookServer: @unchecked Sendable {
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
+            state.endFollow(agentId)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
@@ -499,6 +500,7 @@ final class HookServer: @unchecked Sendable {
                 let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)
                 RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+                followEdit(pillId: agentId, diffId: idx)
             }
 
         case "PostToolUseFailure":
@@ -518,6 +520,7 @@ final class HookServer: @unchecked Sendable {
 
         case "Stop":
             state.updateTask(id: agentId, state: .finished)
+            if state.liveDiff?.pillId == agentId { state.liveDiff = nil }
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
@@ -563,6 +566,7 @@ final class HookServer: @unchecked Sendable {
         case "SessionEnd":
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
+            state.endFollow(agentId)
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
             RecapStore.shared.sessionEnd(sessionId: recapSessionId)
@@ -621,6 +625,26 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Helpers
 
     @MainActor
+    /// Settings → Follow edits live: the edit just made opens on its diff (LiveEdits.mayFollow).
+    @MainActor
+    private func followEdit(pillId: String, diffId: Int) {
+        let state = AppState.shared
+        let follow = LiveEdits.mayFollow(
+            enabled: state.followEdits,
+            stopped: state.liveStopped.contains(pillId),
+            cardPending: state.pendingApproval != nil || state.pendingQuestion != nil,
+            expanded: state.mode == .expanded,
+            onOverview: state.view == .overview,
+            typing: NSApp.keyWindow?.firstResponder is NSTextView,
+            followingOther: state.liveDiff.map { $0.pillId != pillId } ?? false)
+        guard follow else { return }
+        state.liveDiff = LiveDiff(pillId: pillId, diffId: diffId)
+        state.focusId = pillId
+        if state.mode != .expanded {
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+        }
+    }
+
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
         let isAlert: Bool
